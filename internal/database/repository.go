@@ -134,3 +134,14 @@ func DeleteTask(db *sql.DB, taskID int) error {
 	_, err := db.Exec("DELETE FROM tasks WHERE id = ?", taskID)
 	return err
 }
+
+// UpdateTaskTitle updates the title of an existing task
+func UpdateTaskTitle(db *sql.DB, taskID int, title string) error {
+	_, err := db.Exec(
+		`UPDATE tasks
+		 SET title = ?, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = ?`,
+		title, taskID,
+	)
+	return err
+}

@@ -1,6 +1,10 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"fmt"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 // View renders the current state of the application
 // This implements the "View" part of the Model-View-Update pattern
@@ -10,19 +14,98 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
-	// Render each column with its tasks
-	var columns []string
-	for _, col := range m.columns {
-		tasks := m.tasks[col.ID]
-		columns = append(columns, RenderColumn(col, tasks))
+	// Handle input modes: show centered dialog
+	if m.mode == AddTaskMode || m.mode == EditTaskMode {
+		inputBox := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("170")).
+			Padding(1).
+			Width(50).
+			Render(fmt.Sprintf("%s\n> %s_", m.inputPrompt, m.inputBuffer))
+
+		return lipgloss.Place(
+			m.width, m.height,
+			lipgloss.Center, lipgloss.Center,
+			inputBox,
+		)
 	}
 
-	// Layout columns horizontally, aligned to top
-	board := lipgloss.JoinHorizontal(lipgloss.Top, columns...)
+	// Handle delete confirmation mode: show centered dialog
+	if m.mode == DeleteConfirmMode {
+		task := m.getCurrentTask()
+		if task != nil {
+			confirmBox := lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("196")).
+				Padding(1).
+				Width(50).
+				Render(fmt.Sprintf("Delete '%s'?\n\n[y]es  [n]o", task.Title))
+
+			return lipgloss.Place(
+				m.width, m.height,
+				lipgloss.Center, lipgloss.Center,
+				confirmBox,
+			)
+		}
+	}
+
+	// Normal mode: render kanban board
+	// Handle empty column list edge case
+	if len(m.columns) == 0 {
+		header := TitleStyle.Render("PASO - Your Tasks")
+		emptyMsg := "No columns found. Please check database initialization."
+		footer := "[q] quit"
+		return lipgloss.JoinVertical(
+			lipgloss.Left,
+			header,
+			"",
+			emptyMsg,
+			"",
+			footer,
+		)
+	}
+
+	// Calculate visible columns based on viewport
+	endIdx := min(m.viewportOffset+m.viewportSize, len(m.columns))
+	visibleColumns := m.columns[m.viewportOffset:endIdx]
+
+	// Render only visible columns
+	var columns []string
+	for i, col := range visibleColumns {
+		// Calculate global index for selection check
+		globalIndex := m.viewportOffset + i
+
+		tasks := m.tasks[col.ID]
+
+		// Determine selection state for this column
+		isSelected := (globalIndex == m.selectedColumn)
+
+		// Determine which task is selected (only for the selected column)
+		selectedTaskIdx := -1
+		if isSelected {
+			selectedTaskIdx = m.selectedTask
+		}
+
+		columns = append(columns, RenderColumn(col, tasks, isSelected, selectedTaskIdx))
+	}
+
+	// Add scroll indicators
+	leftArrow := " "
+	rightArrow := " "
+	if m.viewportOffset > 0 {
+		leftArrow = "◀"
+	}
+	if m.viewportOffset+m.viewportSize < len(m.columns) {
+		rightArrow = "▶"
+	}
+
+	// Layout columns horizontally with scroll indicators
+	columnsView := lipgloss.JoinHorizontal(lipgloss.Top, columns...)
+	board := lipgloss.JoinHorizontal(lipgloss.Top, leftArrow, " ", columnsView, " ", rightArrow)
 
 	// Create header and footer
 	header := TitleStyle.Render("PASO - Your Tasks")
-	footer := "Press 'q' to quit"
+	footer := "[a]dd  [e]dit  [d]elete  [hjkl] navigate  [[ ]] scroll  [q] quit"
 
 	// Combine all elements vertically
 	return lipgloss.JoinVertical(

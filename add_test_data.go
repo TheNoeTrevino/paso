@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Helper script to add test tasks to the database
