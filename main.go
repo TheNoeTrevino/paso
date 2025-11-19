@@ -4,30 +4,26 @@ import (
 	"fmt"
 	"log"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/thenoetrevino/paso/internal/database"
+	"github.com/thenoetrevino/paso/internal/tui"
 )
 
 func main() {
-	fmt.Println("=== Phase 1: Database Foundation Test ===\n")
-
-	// Run CRUD tests
-	testCRUD()
-
-	// Display database info
-	fmt.Println("\n=== Database Information ===")
+	// Initialize database
 	db, err := database.InitDB()
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.Close()
 
-	columns, _ := database.GetAllColumns(db)
-	fmt.Printf("Database location: ~/.paso/tasks.db\n")
-	fmt.Printf("Default columns created: %d\n", len(columns))
-	for _, col := range columns {
-		tasks, _ := database.GetTasksByColumn(db, col.ID)
-		fmt.Printf("  - %s (%d tasks)\n", col.Name, len(tasks))
-	}
+	// Create initial TUI model with database connection
+	model := tui.InitialModel(db)
 
-	fmt.Println("\n✅ Phase 1 completed successfully!")
+	// Create and run Bubble Tea program
+	p := tea.NewProgram(model)
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Error running program: %v\n", err)
+		log.Fatal(err)
+	}
 }
