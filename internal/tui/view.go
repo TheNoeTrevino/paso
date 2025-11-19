@@ -30,6 +30,38 @@ func (m Model) View() string {
 		)
 	}
 
+	// Handle column creation mode: show centered dialog with green border
+	if m.mode == AddColumnMode {
+		inputBox := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("42")). // Green for creation
+			Padding(1).
+			Width(50).
+			Render(fmt.Sprintf("%s\n> %s_", m.inputPrompt, m.inputBuffer))
+
+		return lipgloss.Place(
+			m.width, m.height,
+			lipgloss.Center, lipgloss.Center,
+			inputBox,
+		)
+	}
+
+	// Handle column edit mode: show centered dialog with blue border
+	if m.mode == EditColumnMode {
+		inputBox := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("62")). // Blue for editing
+			Padding(1).
+			Width(50).
+			Render(fmt.Sprintf("%s\n> %s_", m.inputPrompt, m.inputBuffer))
+
+		return lipgloss.Place(
+			m.width, m.height,
+			lipgloss.Center, lipgloss.Center,
+			inputBox,
+		)
+	}
+
 	// Handle delete confirmation mode: show centered dialog
 	if m.mode == DeleteConfirmMode {
 		task := m.getCurrentTask()
@@ -40,6 +72,36 @@ func (m Model) View() string {
 				Padding(1).
 				Width(50).
 				Render(fmt.Sprintf("Delete '%s'?\n\n[y]es  [n]o", task.Title))
+
+			return lipgloss.Place(
+				m.width, m.height,
+				lipgloss.Center, lipgloss.Center,
+				confirmBox,
+			)
+		}
+	}
+
+	// Handle delete column confirmation mode: show centered dialog with task count warning
+	if m.mode == DeleteColumnConfirmMode {
+		column := m.getCurrentColumn()
+		if column != nil {
+			var content string
+			if m.deleteColumnTaskCount > 0 {
+				content = fmt.Sprintf(
+					"Delete column '%s'?\nThis will also delete %d task(s).\n\n[y]es  [n]o",
+					column.Name,
+					m.deleteColumnTaskCount,
+				)
+			} else {
+				content = fmt.Sprintf("Delete column '%s'?\n\n[y]es  [n]o", column.Name)
+			}
+
+			confirmBox := lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("196")). // Red for deletion
+				Padding(1).
+				Width(50).
+				Render(content)
 
 			return lipgloss.Place(
 				m.width, m.height,
@@ -105,7 +167,7 @@ func (m Model) View() string {
 
 	// Create header and footer
 	header := TitleStyle.Render("PASO - Your Tasks")
-	footer := "[a]dd  [e]dit  [d]elete  [hjkl] navigate  [[ ]] scroll  [q] quit"
+	footer := "[a]dd task  [e]dit  [d]elete  [C]reate col  [R]ename col  [X] del col  [hjkl] nav  [[ ]] scroll  [q] quit"
 
 	// Combine all elements vertically
 	return lipgloss.JoinVertical(

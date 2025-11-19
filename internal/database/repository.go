@@ -7,46 +7,152 @@ import (
 )
 
 // CreateColumn creates a new column in the database
-func CreateColumn(db *sql.DB, name string, position int) (*models.Column, error) {
-	result, err := db.Exec(
-		"INSERT INTO columns (name, position) VALUES (?, ?)",
-		name, position,
+// If afterColumnID is nil, the column is appended to the end of the list
+// Otherwise, it's inserted after the specified column
+func CreateColumn(db *sql.DB, name string, afterColumnID *int) (*models.Column, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var prevID *int
+	var nextID *int
+
+	if afterColumnID == nil {
+		// Append to end: find tail (column where next_id IS NULL)
+		var tailID sql.NullInt64
+		err = tx.QueryRow(`SELECT id FROM columns WHERE next_id IS NULL LIMIT 1`).Scan(&tailID)
+		if err != nil && err != sql.ErrNoRows {
+			return nil, err
+		}
+
+		if tailID.Valid {
+			// There's a tail, insert after it
+			tailIDInt := int(tailID.Int64)
+			prevID = &tailIDInt
+			nextID = nil
+		} else {
+			// No columns exist, this will be the head
+			prevID = nil
+			nextID = nil
+		}
+	} else {
+		// Insert after specified column
+		prevID = afterColumnID
+
+		// Get the next_id of the column we're inserting after
+		var currentNextID sql.NullInt64
+		err = tx.QueryRow(`SELECT next_id FROM columns WHERE id = ?`, *afterColumnID).Scan(&currentNextID)
+		if err != nil {
+			return nil, err
+		}
+
+		if currentNextID.Valid {
+			nextIDInt := int(currentNextID.Int64)
+			nextID = &nextIDInt
+		}
+	}
+
+	// Create the new column
+	result, err := tx.Exec(
+		`INSERT INTO columns (name, prev_id, next_id) VALUES (?, ?, ?)`,
+		name, prevID, nextID,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	id, err := result.LastInsertId()
+	newID, err := result.LastInsertId()
 	if err != nil {
+		return nil, err
+	}
+	newIDInt := int(newID)
+
+	// Update the previous column's next_id to point to the new column
+	if prevID != nil {
+		_, err = tx.Exec(`UPDATE columns SET next_id = ? WHERE id = ?`, newIDInt, *prevID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Update the next column's prev_id to point to the new column
+	if nextID != nil {
+		_, err = tx.Exec(`UPDATE columns SET prev_id = ? WHERE id = ?`, newIDInt, *nextID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 
 	return &models.Column{
-		ID:       int(id),
-		Name:     name,
-		Position: position,
+		ID:     newIDInt,
+		Name:   name,
+		PrevID: prevID,
+		NextID: nextID,
 	}, nil
 }
 
-// GetAllColumns retrieves all columns from the database, ordered by position
+// GetAllColumns retrieves all columns from the database by traversing the linked list
+// Returns columns in order from head to tail
 func GetAllColumns(db *sql.DB) ([]*models.Column, error) {
-	rows, err := db.Query("SELECT id, name, position FROM columns ORDER BY position")
+	// 1. Find the head (column where prev_id IS NULL)
+	var headID sql.NullInt64
+	err := db.QueryRow(`SELECT id FROM columns WHERE prev_id IS NULL LIMIT 1`).Scan(&headID)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			// No columns exist
+			return []*models.Column{}, nil
+		}
 		return nil, err
 	}
-	defer rows.Close()
 
+	if !headID.Valid {
+		// No head found, return empty list
+		return []*models.Column{}, nil
+	}
+
+	// 2. Traverse the linked list using next_id
 	var columns []*models.Column
-	for rows.Next() {
+	currentID := int(headID.Int64)
+
+	for {
+		// Get the current column
 		col := &models.Column{}
-		if err := rows.Scan(&col.ID, &col.Name, &col.Position); err != nil {
+		var prevID, nextID sql.NullInt64
+
+		err := db.QueryRow(
+			`SELECT id, name, prev_id, next_id FROM columns WHERE id = ?`,
+			currentID,
+		).Scan(&col.ID, &col.Name, &prevID, &nextID)
+
+		if err != nil {
 			return nil, err
 		}
-		columns = append(columns, col)
-	}
 
-	if err := rows.Err(); err != nil {
-		return nil, err
+		// Set pointer fields
+		if prevID.Valid {
+			prevIDInt := int(prevID.Int64)
+			col.PrevID = &prevIDInt
+		}
+		if nextID.Valid {
+			nextIDInt := int(nextID.Int64)
+			col.NextID = &nextIDInt
+		}
+
+		// Add column to result
+		columns = append(columns, col)
+
+		// Move to next column
+		if !nextID.Valid {
+			// We've reached the tail
+			break
+		}
+		currentID = int(nextID.Int64)
 	}
 
 	return columns, nil
@@ -144,4 +250,225 @@ func UpdateTaskTitle(db *sql.DB, taskID int, title string) error {
 		title, taskID,
 	)
 	return err
+}
+
+// UpdateColumnName updates the name of an existing column
+func UpdateColumnName(db *sql.DB, columnID int, name string) error {
+	_, err := db.Exec(
+		`UPDATE columns SET name = ? WHERE id = ?`,
+		name, columnID,
+	)
+	return err
+}
+
+// DeleteColumn removes a column and all its tasks from the database
+// This operation maintains the linked list structure by updating adjacent columns
+func DeleteColumn(db *sql.DB, columnID int) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Get the column's prev_id and next_id
+	var prevID, nextID sql.NullInt64
+	err = tx.QueryRow(
+		`SELECT prev_id, next_id FROM columns WHERE id = ?`,
+		columnID,
+	).Scan(&prevID, &nextID)
+	if err != nil {
+		return err
+	}
+
+	// 2. Update adjacent columns to maintain linked list
+	// If there's a previous column, update its next_id
+	if prevID.Valid {
+		var newNextID interface{}
+		if nextID.Valid {
+			newNextID = nextID.Int64
+		} else {
+			newNextID = nil
+		}
+		_, err = tx.Exec(`UPDATE columns SET next_id = ? WHERE id = ?`, newNextID, prevID.Int64)
+		if err != nil {
+			return err
+		}
+	}
+
+	// If there's a next column, update its prev_id
+	if nextID.Valid {
+		var newPrevID interface{}
+		if prevID.Valid {
+			newPrevID = prevID.Int64
+		} else {
+			newPrevID = nil
+		}
+		_, err = tx.Exec(`UPDATE columns SET prev_id = ? WHERE id = ?`, newPrevID, nextID.Int64)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 3. Delete all tasks in the column
+	_, err = tx.Exec("DELETE FROM tasks WHERE column_id = ?", columnID)
+	if err != nil {
+		return err
+	}
+
+	// 4. Delete the column
+	_, err = tx.Exec("DELETE FROM columns WHERE id = ?", columnID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// GetTaskCountByColumn returns the number of tasks in a specific column
+func GetTaskCountByColumn(db *sql.DB, columnID int) (int, error) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM tasks WHERE column_id = ?", columnID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// MoveTask moves a task to a different column and position using a transaction
+// This is a wrapper around UpdateTaskColumn that provides transactional guarantees
+func MoveTask(db *sql.DB, taskID, newColumnID, newPosition int) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Update task's column and position
+	_, err = tx.Exec(
+		`UPDATE tasks
+		 SET column_id = ?, position = ?, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = ?`,
+		newColumnID, newPosition, taskID,
+	)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// MoveTaskToNextColumn moves a task from its current column to the next column in the linked list
+// Returns an error if the task doesn't exist or if there's no next column
+func MoveTaskToNextColumn(db *sql.DB, taskID int) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Get the task's current column_id
+	var currentColumnID int
+	err = tx.QueryRow(
+		`SELECT column_id FROM tasks WHERE id = ?`,
+		taskID,
+	).Scan(&currentColumnID)
+	if err != nil {
+		return err
+	}
+
+	// 2. Get the next column's ID
+	var nextColumnID sql.NullInt64
+	err = tx.QueryRow(
+		`SELECT next_id FROM columns WHERE id = ?`,
+		currentColumnID,
+	).Scan(&nextColumnID)
+	if err != nil {
+		return err
+	}
+
+	// 3. Check if there's a next column
+	if !nextColumnID.Valid {
+		return sql.ErrNoRows // Already at last column
+	}
+
+	// 4. Get the number of tasks in the next column to determine position
+	var taskCount int
+	err = tx.QueryRow(
+		`SELECT COUNT(*) FROM tasks WHERE column_id = ?`,
+		nextColumnID.Int64,
+	).Scan(&taskCount)
+	if err != nil {
+		return err
+	}
+
+	// 5. Move the task to the next column (append to end)
+	_, err = tx.Exec(
+		`UPDATE tasks
+		 SET column_id = ?, position = ?, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = ?`,
+		nextColumnID.Int64, taskCount, taskID,
+	)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// MoveTaskToPrevColumn moves a task from its current column to the previous column in the linked list
+// Returns an error if the task doesn't exist or if there's no previous column
+func MoveTaskToPrevColumn(db *sql.DB, taskID int) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Get the task's current column_id
+	var currentColumnID int
+	err = tx.QueryRow(
+		`SELECT column_id FROM tasks WHERE id = ?`,
+		taskID,
+	).Scan(&currentColumnID)
+	if err != nil {
+		return err
+	}
+
+	// 2. Get the previous column's ID
+	var prevColumnID sql.NullInt64
+	err = tx.QueryRow(
+		`SELECT prev_id FROM columns WHERE id = ?`,
+		currentColumnID,
+	).Scan(&prevColumnID)
+	if err != nil {
+		return err
+	}
+
+	// 3. Check if there's a previous column
+	if !prevColumnID.Valid {
+		return sql.ErrNoRows // Already at first column
+	}
+
+	// 4. Get the number of tasks in the previous column to determine position
+	var taskCount int
+	err = tx.QueryRow(
+		`SELECT COUNT(*) FROM tasks WHERE column_id = ?`,
+		prevColumnID.Int64,
+	).Scan(&taskCount)
+	if err != nil {
+		return err
+	}
+
+	// 5. Move the task to the previous column (append to end)
+	_, err = tx.Exec(
+		`UPDATE tasks
+		 SET column_id = ?, position = ?, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = ?`,
+		prevColumnID.Int64, taskCount, taskID,
+	)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }

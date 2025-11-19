@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/thenoetrevino/paso/internal/database"
+	"github.com/thenoetrevino/paso/internal/models"
 )
 
 // Update handles all messages and updates the model accordingly
@@ -43,6 +44,38 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Delete selected task (if one exists)
 				if m.getCurrentTask() != nil {
 					m.mode = DeleteConfirmMode
+				}
+				return m, nil
+
+			case "C":
+				// Create new column
+				m.mode = AddColumnMode
+				m.inputPrompt = "New column name:"
+				m.inputBuffer = ""
+				return m, nil
+
+			case "R":
+				// Rename selected column (if one exists)
+				column := m.getCurrentColumn()
+				if column != nil {
+					m.mode = EditColumnMode
+					m.inputBuffer = column.Name
+					m.inputPrompt = "Rename column:"
+				}
+				return m, nil
+
+			case "X":
+				// Delete selected column (if one exists)
+				column := m.getCurrentColumn()
+				if column != nil {
+					// Get task count for warning
+					taskCount, err := database.GetTaskCountByColumn(m.db, column.ID)
+					if err != nil {
+						log.Printf("Error getting task count: %v", err)
+						taskCount = 0
+					}
+					m.deleteColumnTaskCount = taskCount
+					m.mode = DeleteColumnConfirmMode
 				}
 				return m, nil
 
@@ -105,13 +138,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.selectedTask > 0 {
 					m.selectedTask--
 				}
+
+			// Task movement: Move tasks between columns
+			case ">", "L":
+				// Move task to next column (right)
+				if m.getCurrentTask() != nil {
+					m.moveTaskRight()
+				}
+
+			case "<", "H":
+				// Move task to previous column (left)
+				if m.getCurrentTask() != nil {
+					m.moveTaskLeft()
+				}
 			}
 
-		} else if m.mode == AddTaskMode || m.mode == EditTaskMode {
+		} else if m.mode == AddTaskMode || m.mode == EditTaskMode || m.mode == AddColumnMode || m.mode == EditColumnMode {
 			// Input modes: handle text input
 			switch msg.String() {
 			case "enter":
-				// Confirm input and create/edit task
+				// Confirm input and create/edit task or column
 				if strings.TrimSpace(m.inputBuffer) != "" {
 					if m.mode == AddTaskMode {
 						// Create new task
@@ -137,6 +183,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 								log.Printf("Error updating task: %v", err)
 							} else {
 								task.Title = strings.TrimSpace(m.inputBuffer)
+							}
+						}
+					} else if m.mode == AddColumnMode {
+						// Create new column after the current column
+						var afterColumnID *int
+						if len(m.columns) > 0 {
+							currentCol := m.columns[m.selectedColumn]
+							afterColumnID = &currentCol.ID
+						}
+						column, err := database.CreateColumn(m.db, strings.TrimSpace(m.inputBuffer), afterColumnID)
+						if err != nil {
+							log.Printf("Error creating column: %v", err)
+						} else {
+							// Reload columns from database to get correct order
+							m.columns, err = database.GetAllColumns(m.db)
+							if err != nil {
+								log.Printf("Error reloading columns: %v", err)
+							}
+							m.tasks[column.ID] = []*models.Task{}
+							// Move selection to new column (it will be after current)
+							if afterColumnID != nil {
+								m.selectedColumn++
+							}
+						}
+					} else if m.mode == EditColumnMode {
+						// Update existing column
+						column := m.getCurrentColumn()
+						if column != nil {
+							err := database.UpdateColumnName(m.db, column.ID, strings.TrimSpace(m.inputBuffer))
+							if err != nil {
+								log.Printf("Error updating column: %v", err)
+							} else {
+								column.Name = strings.TrimSpace(m.inputBuffer)
 							}
 						}
 					}
@@ -172,7 +251,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		} else if m.mode == DeleteConfirmMode {
-			// Delete confirmation mode
+			// Delete confirmation mode (for tasks)
 			switch msg.String() {
 			case "y", "Y":
 				// Confirm deletion
@@ -183,6 +262,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						log.Printf("Error deleting task: %v", err)
 					} else {
 						m.removeCurrentTask()
+					}
+				}
+				m.mode = NormalMode
+				return m, nil
+
+			case "n", "N", "esc":
+				// Cancel deletion
+				m.mode = NormalMode
+				return m, nil
+			}
+
+		} else if m.mode == DeleteColumnConfirmMode {
+			// Delete confirmation mode (for columns)
+			switch msg.String() {
+			case "y", "Y":
+				// Confirm deletion
+				column := m.getCurrentColumn()
+				if column != nil {
+					err := database.DeleteColumn(m.db, column.ID)
+					if err != nil {
+						log.Printf("Error deleting column: %v", err)
+					} else {
+						// Delete tasks from local state
+						delete(m.tasks, column.ID)
+						// Remove column from local state
+						m.removeCurrentColumn()
 					}
 				}
 				m.mode = NormalMode
