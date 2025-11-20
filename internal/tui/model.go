@@ -5,7 +5,6 @@ import (
 	"log"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/harmonica"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -14,30 +13,30 @@ import (
 type Mode int
 
 const (
-	NormalMode Mode = iota       // Default navigation mode
-	AddTaskMode                  // Creating a new task
-	EditTaskMode                 // Editing an existing task
-	DeleteConfirmMode            // Confirming task deletion
-	AddColumnMode                // Creating a new column
-	EditColumnMode               // Renaming an existing column
-	DeleteColumnConfirmMode      // Confirming column deletion
+	NormalMode              Mode = iota // Default navigation mode
+	AddTaskMode                         // Creating a new task
+	EditTaskMode                        // Editing an existing task
+	DeleteConfirmMode                   // Confirming task deletion
+	AddColumnMode                       // Creating a new column
+	EditColumnMode                      // Renaming an existing column
+	DeleteColumnConfirmMode             // Confirming column deletion
 )
 
 // Model represents the application state for the TUI
 type Model struct {
-	db             *sql.DB                // Database connection
-	columns        []*models.Column       // All columns ordered by position
-	tasks          map[int][]*models.Task // Tasks organized by column ID
-	selectedColumn int                    // Index of currently selected column
-	selectedTask   int                    // Index of currently selected task in the column
-	width          int                    // Terminal width
-	height         int                    // Terminal height
-	mode                   Mode                   // Current interaction mode
-	inputBuffer            string                 // Text being typed in input mode
-	inputPrompt            string                 // Prompt to show in input dialog
-	viewportOffset         int                    // Index of leftmost visible column
-	viewportSize           int                    // Number of columns that fit on screen
-	deleteColumnTaskCount  int                    // Number of tasks in column being deleted
+	db                    *sql.DB                // Database connection
+	columns               []*models.Column       // All columns ordered by position
+	tasks                 map[int][]*models.Task // Tasks organized by column ID
+	selectedColumn        int                    // Index of currently selected column
+	selectedTask          int                    // Index of currently selected task in the column
+	width                 int                    // Terminal width
+	height                int                    // Terminal height
+	mode                  Mode                   // Current interaction mode
+	inputBuffer           string                 // Text being typed in input mode
+	inputPrompt           string                 // Prompt to show in input dialog
+	viewportOffset        int                    // Index of leftmost visible column
+	viewportSize          int                    // Number of columns that fit on screen
+	deleteColumnTaskCount int                    // Number of tasks in column being deleted
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
