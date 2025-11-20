@@ -18,13 +18,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle keyboard input based on current mode
 		if m.mode == NormalMode {
 			// Normal mode: navigation and command keys
+			// Clear any previous error messages
+			m.errorMessage = ""
+
 			switch msg.String() {
 			case "q", "ctrl+c":
 				// Quit the application
 				return m, tea.Quit
 
+			case "?":
+				// Show help screen
+				m.mode = HelpMode
+				return m, nil
+
 			case "a":
 				// Add new task in current column
+				if len(m.columns) == 0 {
+					m.errorMessage = "Cannot add task: No columns exist. Create a column first with 'C'"
+					return m, nil
+				}
 				m.mode = AddTaskMode
 				m.inputPrompt = "New task title:"
 				m.inputBuffer = ""
@@ -37,6 +49,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.mode = EditTaskMode
 					m.inputBuffer = task.Title
 					m.inputPrompt = "Edit task title:"
+				} else {
+					m.errorMessage = "No task selected to edit"
 				}
 				return m, nil
 
@@ -44,6 +58,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Delete selected task (if one exists)
 				if m.getCurrentTask() != nil {
 					m.mode = DeleteConfirmMode
+				} else {
+					m.errorMessage = "No task selected to delete"
 				}
 				return m, nil
 
@@ -61,6 +77,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.mode = EditColumnMode
 					m.inputBuffer = column.Name
 					m.inputPrompt = "Rename column:"
+				} else {
+					m.errorMessage = "No column selected to rename"
 				}
 				return m, nil
 
@@ -72,10 +90,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					taskCount, err := database.GetTaskCountByColumn(m.db, column.ID)
 					if err != nil {
 						log.Printf("Error getting task count: %v", err)
-						taskCount = 0
+						m.errorMessage = "Error getting column info"
+						return m, nil
 					}
 					m.deleteColumnTaskCount = taskCount
 					m.mode = DeleteColumnConfirmMode
+				} else {
+					m.errorMessage = "No column selected to delete"
 				}
 				return m, nil
 
@@ -295,6 +316,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "n", "N", "esc":
 				// Cancel deletion
+				m.mode = NormalMode
+				return m, nil
+			}
+
+		} else if m.mode == HelpMode {
+			// Help screen mode - any key returns to normal mode
+			switch msg.String() {
+			case "?", "q", "esc", "enter", " ":
 				m.mode = NormalMode
 				return m, nil
 			}
