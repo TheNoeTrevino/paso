@@ -8,30 +8,36 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// RenderTask renders a single task as a formatted string
+// RenderTask renders a single task as a card
 // This is a pure, reusable component that displays task title and ID
 //
-// Format:
+// Format (as a card with border):
 //
-//	▸ {Task Title}
-//	  PASO-{ID}
+//	┌─────────────────────┐
+//	│ {Task Title}        │
+//	│ PASO-{ID}           │
+//	└─────────────────────┘
 //
 // When selected is true, the task is highlighted with:
 //   - Bold text
-//   - Purple foreground color
-//   - Left border with thick style
+//   - Purple border color
+//   - Brighter background
 func RenderTask(task *models.Task, selected bool) string {
-	content := fmt.Sprintf("▸ %s\n  PASO-%d", task.Title, task.ID)
+	// Format task content with title and ID
+	title := lipgloss.NewStyle().Bold(true).Render(task.Title)
+	id := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240")).
+		Render(fmt.Sprintf("PASO-%d", task.ID))
+
+	content := fmt.Sprintf("%s\n%s", title, id)
 
 	// Apply selection styling if this task is selected
 	style := TaskStyle
 	if selected {
 		style = style.
-			Bold(true).
-			Foreground(lipgloss.Color("170")).
-			BorderLeft(true).
-			BorderStyle(lipgloss.ThickBorder()).
-			BorderForeground(lipgloss.Color("170"))
+			BorderForeground(lipgloss.Color("170")). // Purple border when selected
+			Background(lipgloss.Color("237")).        // Lighter background when selected
+			BorderStyle(lipgloss.ThickBorder())
 	}
 
 	return style.Render(content)
@@ -42,7 +48,7 @@ func RenderTask(task *models.Task, selected bool) string {
 //
 // Layout:
 //
-//	{Column Name}
+//	{Column Name} ({count})
 //
 //	{Task 1}
 //	{Task 2}
@@ -54,13 +60,18 @@ func RenderTask(task *models.Task, selected bool) string {
 //   - selected: Whether this column is currently selected
 //   - selectedTaskIdx: Index of selected task in this column (-1 if not this column)
 func RenderColumn(column *models.Column, tasks []*models.Task, selected bool, selectedTaskIdx int) string {
-	// Render column title
-	content := TitleStyle.Render(column.Name) + "\n\n"
+	// Render column title with task count
+	header := fmt.Sprintf("%s (%d)", column.Name, len(tasks))
+	content := TitleStyle.Render(header) + "\n\n"
 
 	// Render all tasks in the column or show empty state
 	if len(tasks) == 0 {
-		// Empty column - no tasks to render
-		content += ""
+		// Empty column - show helpful message
+		emptyStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("240")).
+			Italic(true).
+			Padding(1, 0)
+		content += emptyStyle.Render("No tasks")
 	} else {
 		var taskViews []string
 		for i, task := range tasks {
