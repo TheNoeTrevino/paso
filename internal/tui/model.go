@@ -20,6 +20,7 @@ const (
 	AddColumnMode                       // Creating a new column
 	EditColumnMode                      // Renaming an existing column
 	DeleteColumnConfirmMode             // Confirming column deletion
+	HelpMode                            // Displaying help screen
 )
 
 // Model represents the application state for the TUI
@@ -37,6 +38,7 @@ type Model struct {
 	viewportOffset        int                    // Index of leftmost visible column
 	viewportSize          int                    // Number of columns that fit on screen
 	deleteColumnTaskCount int                    // Number of tasks in column being deleted
+	errorMessage          string                 // Current error message to display
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
@@ -134,9 +136,9 @@ func (m *Model) removeCurrentTask() {
 }
 
 // calculateViewportSize calculates how many columns can fit in the terminal width
-// Column width: 30 (content) + 2 (padding) + 2 (border) = 34 chars
+// Column width: 40 (content) + 2 (padding) + 2 (border) = 44 chars
 // Spacing between columns: 2 chars
-// Total per column: 36 chars
+// Total per column: 46 chars
 // This method ensures at least 1 column is always visible
 func (m *Model) calculateViewportSize() {
 	if m.width == 0 {
@@ -144,7 +146,7 @@ func (m *Model) calculateViewportSize() {
 		return
 	}
 
-	const columnWidth = 36 // 30 content + 2 padding + 2 border + 2 spacing
+	const columnWidth = 46 // 40 content + 2 padding + 2 border + 2 spacing
 	// Reserve 4 chars for margins and scroll indicators
 	availableWidth := m.width - 4
 

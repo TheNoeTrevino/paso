@@ -91,6 +91,41 @@ Phase 2 will implement the Bubble Tea TUI framework to create the interactive te
 - **Lipgloss** - Styling (Phase 2)
 - **Harmonica** - Animations (Phase 8)
 
+## Running Tests
+
+Run all tests in all packages
+
+``` bash
+  go test ./...
+```
+
+Run with verbose output (shows each test name)
+
+``` bash
+  go test -v ./...
+```
+
+Run with coverage report
+``` bash
+  go test -cover ./...
+```
+
+Run with detailed coverage
+``` bash
+  go test -coverprofile=coverage.out ./...
+  go tool cover -html=coverage.out
+```
+
+Run specific package
+```
+  go test ./internal/database
+```
+
+Run specific test
+``` go
+  go test -v ./internal/database -run TestTaskCRUDPersistence
+```
+
 ## License
 
 MIT

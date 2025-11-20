@@ -111,6 +111,50 @@ func (m Model) View() string {
 		}
 	}
 
+	// Handle help mode: show keyboard shortcuts
+	if m.mode == HelpMode {
+		helpContent := `PASO - Keyboard Shortcuts
+
+TASKS
+  a     Add new task
+  e     Edit selected task
+  d     Delete selected task
+  <     Move task to previous column
+  >     Move task to next column
+
+COLUMNS
+  C     Create new column (after current)
+  R     Rename current column
+  X     Delete current column
+
+NAVIGATION
+  h/←   Move to previous column
+  l/→   Move to next column
+  k/↑   Move to previous task
+  j/↓   Move to next task
+  [     Scroll viewport left
+  ]     Scroll viewport right
+
+OTHER
+  ?     Show this help screen
+  q     Quit application
+
+Press any key to close`
+
+		helpBox := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("62")). // Blue for info
+			Padding(1, 2).
+			Width(50).
+			Render(helpContent)
+
+		return lipgloss.Place(
+			m.width, m.height,
+			lipgloss.Center, lipgloss.Center,
+			helpBox,
+		)
+	}
+
 	// Normal mode: render kanban board
 	// Handle empty column list edge case
 	if len(m.columns) == 0 {
@@ -165,17 +209,40 @@ func (m Model) View() string {
 	columnsView := lipgloss.JoinHorizontal(lipgloss.Top, columns...)
 	board := lipgloss.JoinHorizontal(lipgloss.Top, leftArrow, " ", columnsView, " ", rightArrow)
 
-	// Create header and footer
+	// Calculate total task count
+	totalTasks := 0
+	for _, tasks := range m.tasks {
+		totalTasks += len(tasks)
+	}
+
+	// Create header with status bar
 	header := TitleStyle.Render("PASO - Your Tasks")
-	footer := "[a]dd task  [e]dit  [d]elete  [C]reate col  [R]ename col  [X] del col  [hjkl] nav  [[ ]] scroll  [q] quit"
+	statusBar := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240")).
+		Render(fmt.Sprintf("%d columns  |  %d tasks  |  Press ? for help", len(m.columns), totalTasks))
+
+	// Create error banner if there's an error
+	var errorBanner string
+	if m.errorMessage != "" {
+		errorBanner = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("196")).
+			Background(lipgloss.Color("52")).
+			Bold(true).
+			Padding(0, 1).
+			Render("⚠ " + m.errorMessage)
+	}
+
+	// Create footer with keyboard shortcuts
+	footer := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240")).
+		Render("[a]dd  [e]dit  [d]elete  [C]ol  [R]ename  [X]delete  [hjkl]nav  [[]]scroll  [?]help  [q]uit")
 
 	// Combine all elements vertically
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		header,
-		"",
-		board,
-		"",
-		footer,
-	)
+	elements := []string{header, statusBar}
+	if errorBanner != "" {
+		elements = append(elements, errorBanner)
+	}
+	elements = append(elements, "", board, "", footer)
+
+	return lipgloss.JoinVertical(lipgloss.Left, elements...)
 }

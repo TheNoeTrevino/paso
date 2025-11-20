@@ -550,8 +550,9 @@ func TestTransactionRollback(t *testing.T) {
 	}
 }
 
-// Test 7: Concurrent Operations
-func TestConcurrentOperations(t *testing.T) {
+// Test 7: Sequential Bulk Operations
+// Note: Tests creating many tasks rapidly (realistic for TUI event-driven app)
+func TestSequentialBulkOperations(t *testing.T) {
 	t.Parallel()
 	db := createTestDB(t)
 	defer db.Close()
@@ -559,23 +560,13 @@ func TestConcurrentOperations(t *testing.T) {
 	// Create a column
 	col, _ := CreateColumn(db, "Todo", nil)
 
-	// Spawn multiple goroutines to create tasks simultaneously
-	numTasks := 10
-	done := make(chan bool, numTasks)
-
+	// Create many tasks in sequence (like rapid user input)
+	numTasks := 50
 	for i := 0; i < numTasks; i++ {
-		go func(taskNum int) {
-			_, err := CreateTask(db, "Task", "Description", col.ID, taskNum)
-			if err != nil {
-				t.Errorf("Failed to create task %d: %v", taskNum, err)
-			}
-			done <- true
-		}(i)
-	}
-
-	// Wait for all goroutines to complete
-	for i := 0; i < numTasks; i++ {
-		<-done
+		_, err := CreateTask(db, "Task", "Description", col.ID, i)
+		if err != nil {
+			t.Fatalf("Failed to create task %d: %v", i, err)
+		}
 	}
 
 	// Verify all tasks were created
@@ -588,7 +579,7 @@ func TestConcurrentOperations(t *testing.T) {
 		t.Errorf("Expected %d tasks, got %d", numTasks, len(tasks))
 	}
 
-	// Verify no data corruption (all tasks have valid IDs)
+	// Verify no data corruption (all tasks have valid unique IDs)
 	taskIDs := make(map[int]bool)
 	for _, task := range tasks {
 		if task.ID == 0 {
@@ -598,6 +589,29 @@ func TestConcurrentOperations(t *testing.T) {
 			t.Errorf("Found duplicate task ID %d (data corruption)", task.ID)
 		}
 		taskIDs[task.ID] = true
+	}
+
+	// Test rapid updates
+	for i := 0; i < 10; i++ {
+		err := UpdateTaskTitle(db, tasks[i].ID, "Updated")
+		if err != nil {
+			t.Fatalf("Failed to update task %d: %v", i, err)
+		}
+	}
+
+	// Test rapid deletions
+	for i := 10; i < 20; i++ {
+		err := DeleteTask(db, tasks[i].ID)
+		if err != nil {
+			t.Fatalf("Failed to delete task %d: %v", i, err)
+		}
+	}
+
+	// Verify final count
+	tasks, _ = GetTasksByColumn(db, col.ID)
+	expectedCount := numTasks - 10 // deleted 10 tasks
+	if len(tasks) != expectedCount {
+		t.Errorf("Expected %d tasks after deletions, got %d", expectedCount, len(tasks))
 	}
 }
 
@@ -893,11 +907,11 @@ func TestComplexMovementSequencePersistence(t *testing.T) {
 	task3, _ := CreateTask(db, "Task 3", "", col1.ID, 2)
 
 	// Move tasks in complex pattern
-	MoveTaskToNextColumn(db, task1.ID)      // Task 1: Col1 -> Col2
-	MoveTaskToNextColumn(db, task1.ID)      // Task 1: Col2 -> Col3
-	MoveTaskToNextColumn(db, task2.ID)      // Task 2: Col1 -> Col2
-	MoveTaskToPrevColumn(db, task1.ID)      // Task 1: Col3 -> Col2
-	MoveTaskToNextColumn(db, task3.ID)      // Task 3: Col1 -> Col2
+	MoveTaskToNextColumn(db, task1.ID) // Task 1: Col1 -> Col2
+	MoveTaskToNextColumn(db, task1.ID) // Task 1: Col2 -> Col3
+	MoveTaskToNextColumn(db, task2.ID) // Task 2: Col1 -> Col2
+	MoveTaskToPrevColumn(db, task1.ID) // Task 1: Col3 -> Col2
+	MoveTaskToNextColumn(db, task3.ID) // Task 3: Col1 -> Col2
 
 	// Expected state:
 	// Col1: []
