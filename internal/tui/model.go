@@ -15,8 +15,6 @@ type Mode int
 
 const (
 	NormalMode              Mode = iota // Default navigation mode
-	AddTaskMode                         // Creating a new task (legacy - simple input)
-	EditTaskMode                        // Editing an existing task (legacy - simple input)
 	DeleteConfirmMode                   // Confirming task deletion
 	AddColumnMode                       // Creating a new column
 	EditColumnMode                      // Renaming an existing column

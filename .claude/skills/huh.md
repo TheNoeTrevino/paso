@@ -270,6 +270,31 @@ form.WithTheme(customTheme)
 
 ## Integration with Bubble Tea
 
+> **IMPORTANT: Value Binding Caveat**
+>
+> When using huh forms with Bubble Tea, **DO NOT rely on pointer bindings** (`.Value(&myVar)`) to read form values after submission. Bubble Tea passes models by value, so the pointers end up pointing to stale copies of your model's fields.
+>
+> **Always use `GetString()`, `GetBool()`, `GetInt()`, or `Get()` to read values from the form:**
+>
+> ```go
+> // WRONG - pointer bindings are stale in Bubble Tea
+> if m.form.State == huh.StateCompleted {
+>     fmt.Println(m.myBoundVar)  // May have old/wrong value!
+> }
+>
+> // CORRECT - read directly from form using keys
+> if m.form.State == huh.StateCompleted {
+>     title := m.form.GetString("title")
+>     confirmed := m.form.GetBool("confirm")
+>     // For generic types, use Get() with type assertion:
+>     if ids, ok := m.form.Get("labels").([]int); ok {
+>         // use ids
+>     }
+> }
+> ```
+>
+> This means you must assign `.Key("fieldname")` to every field you want to retrieve later.
+
 ```go
 type Model struct {
     form *huh.Form  // Huh form is a tea.Model
@@ -280,7 +305,7 @@ func NewModel() Model {
         form: huh.NewForm(
             huh.NewGroup(
                 huh.NewSelect[string]().
-                    Key("class").
+                    Key("class").  // Key is required for retrieval!
                     Options(huh.NewOptions("Warrior", "Mage", "Rogue")...).
                     Title("Choose your class"),
             ),
@@ -307,6 +332,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
     // Check if form is completed
     if m.form.State == huh.StateCompleted {
+        // Use GetString, not bound variables!
         class := m.form.GetString("class")
         return fmt.Sprintf("You selected: %s", class)
     }
