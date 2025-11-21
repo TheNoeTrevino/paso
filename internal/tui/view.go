@@ -36,22 +36,6 @@ func (m Model) View() string {
 		)
 	}
 
-	// Handle legacy input modes: show centered dialog (fallback)
-	if m.mode == AddTaskMode || m.mode == EditTaskMode {
-		inputBox := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("170")).
-			Padding(1).
-			Width(50).
-			Render(fmt.Sprintf("%s\n> %s_", m.inputPrompt, m.inputBuffer))
-
-		return lipgloss.Place(
-			m.width, m.height,
-			lipgloss.Center, lipgloss.Center,
-			inputBox,
-		)
-	}
-
 	// Handle column creation mode: show centered dialog with green border
 	if m.mode == AddColumnMode {
 		inputBox := lipgloss.NewStyle().
