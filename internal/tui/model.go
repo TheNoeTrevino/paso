@@ -5,6 +5,7 @@ import (
 	"log"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -14,31 +15,43 @@ type Mode int
 
 const (
 	NormalMode              Mode = iota // Default navigation mode
-	AddTaskMode                         // Creating a new task
-	EditTaskMode                        // Editing an existing task
+	AddTaskMode                         // Creating a new task (legacy - simple input)
+	EditTaskMode                        // Editing an existing task (legacy - simple input)
 	DeleteConfirmMode                   // Confirming task deletion
 	AddColumnMode                       // Creating a new column
 	EditColumnMode                      // Renaming an existing column
 	DeleteColumnConfirmMode             // Confirming column deletion
 	HelpMode                            // Displaying help screen
+	ViewTaskMode                        // Viewing full task details
+	TicketFormMode                      // Full ticket form with huh
 )
 
 // Model represents the application state for the TUI
 type Model struct {
-	db                    *sql.DB                // Database connection
-	columns               []*models.Column       // All columns ordered by position
-	tasks                 map[int][]*models.Task // Tasks organized by column ID
-	selectedColumn        int                    // Index of currently selected column
-	selectedTask          int                    // Index of currently selected task in the column
-	width                 int                    // Terminal width
-	height                int                    // Terminal height
-	mode                  Mode                   // Current interaction mode
-	inputBuffer           string                 // Text being typed in input mode
-	inputPrompt           string                 // Prompt to show in input dialog
-	viewportOffset        int                    // Index of leftmost visible column
-	viewportSize          int                    // Number of columns that fit on screen
-	deleteColumnTaskCount int                    // Number of tasks in column being deleted
-	errorMessage          string                 // Current error message to display
+	db                    *sql.DB                       // Database connection
+	columns               []*models.Column              // All columns ordered by position
+	tasks                 map[int][]*models.TaskSummary // Task summaries organized by column ID
+	labels                []*models.Label               // All available labels
+	selectedColumn        int                           // Index of currently selected column
+	selectedTask          int                           // Index of currently selected task in the column
+	width                 int                           // Terminal width
+	height                int                           // Terminal height
+	mode                  Mode                          // Current interaction mode
+	inputBuffer           string                        // Text being typed in input mode
+	inputPrompt           string                        // Prompt to show in input dialog
+	viewportOffset        int                           // Index of leftmost visible column
+	viewportSize          int                           // Number of columns that fit on screen
+	deleteColumnTaskCount int                           // Number of tasks in column being deleted
+	errorMessage          string                        // Current error message to display
+	viewingTask           *models.TaskDetail            // Task being viewed in detail mode
+
+	// Ticket form fields (for huh form)
+	ticketForm      *huh.Form // The huh form for adding/editing tickets
+	editingTaskID   int       // ID of task being edited (0 for new task)
+	formTitle       string    // Form field: title
+	formDescription string    // Form field: description
+	formLabelIDs    []int     // Form field: selected label IDs
+	formConfirm     bool      // Form field: confirmation
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
@@ -50,21 +63,29 @@ func InitialModel(db *sql.DB) Model {
 		columns = []*models.Column{}
 	}
 
-	// Load tasks for each column
-	tasks := make(map[int][]*models.Task)
+	// Load task summaries for each column (includes labels)
+	tasks := make(map[int][]*models.TaskSummary)
 	for _, col := range columns {
-		columnTasks, err := database.GetTasksByColumn(db, col.ID)
+		columnTasks, err := database.GetTaskSummariesByColumn(db, col.ID)
 		if err != nil {
 			log.Printf("Error loading tasks for column %d: %v", col.ID, err)
-			columnTasks = []*models.Task{}
+			columnTasks = []*models.TaskSummary{}
 		}
 		tasks[col.ID] = columnTasks
+	}
+
+	// Load all labels
+	labels, err := database.GetAllLabels(db)
+	if err != nil {
+		log.Printf("Error loading labels: %v", err)
+		labels = []*models.Label{}
 	}
 
 	return Model{
 		db:             db,
 		columns:        columns,
 		tasks:          tasks,
+		labels:         labels,
 		selectedColumn: 0,
 		selectedTask:   0,
 		width:          0,
@@ -84,23 +105,23 @@ func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-// getCurrentTasks returns the tasks for the currently selected column
+// getCurrentTasks returns the task summaries for the currently selected column
 // Returns an empty slice if the column has no tasks
-func (m Model) getCurrentTasks() []*models.Task {
+func (m Model) getCurrentTasks() []*models.TaskSummary {
 	if len(m.columns) == 0 {
-		return []*models.Task{}
+		return []*models.TaskSummary{}
 	}
 	currentCol := m.columns[m.selectedColumn]
 	tasks := m.tasks[currentCol.ID]
 	if tasks == nil {
-		return []*models.Task{}
+		return []*models.TaskSummary{}
 	}
 	return tasks
 }
 
-// getCurrentTask returns the currently selected task
+// getCurrentTask returns the currently selected task summary
 // Returns nil if there are no tasks in the current column or no columns exist
-func (m Model) getCurrentTask() *models.Task {
+func (m Model) getCurrentTask() *models.TaskSummary {
 	tasks := m.getCurrentTasks()
 	if len(tasks) == 0 {
 		return nil

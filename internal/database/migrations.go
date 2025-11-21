@@ -42,6 +42,32 @@ func runMigrations(db *sql.DB) error {
 		return err
 	}
 
+	// Create labels table
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS labels (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL UNIQUE,
+			color TEXT NOT NULL DEFAULT '#7D56F4'
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	// Create task_labels join table (many-to-many)
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS task_labels (
+			task_id INTEGER NOT NULL,
+			label_id INTEGER NOT NULL,
+			PRIMARY KEY (task_id, label_id),
+			FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+			FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
 	// Seed default columns if the table is empty
 	if err := seedDefaultColumns(db); err != nil {
 		return err

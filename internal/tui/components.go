@@ -8,28 +8,71 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
+// RenderTabs renders a tab bar with the given tab names
+// selectedIdx indicates which tab is active (0-indexed)
+// width is the total width to fill with the tab gap
+func RenderTabs(tabs []string, selectedIdx int, width int) string {
+	var renderedTabs []string
+
+	for i, tabName := range tabs {
+		if i == selectedIdx {
+			renderedTabs = append(renderedTabs, ActiveTabStyle.Render(tabName))
+		} else {
+			renderedTabs = append(renderedTabs, TabStyle.Render(tabName))
+		}
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
+
+	// Fill remaining space with gap
+	gapWidth := width - lipgloss.Width(row) - 2
+	if gapWidth < 0 {
+		gapWidth = 0
+	}
+	gap := TabGapStyle.Render(strings.Repeat(" ", gapWidth))
+
+	return lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap)
+}
+
+// RenderLabelChip renders a single label as a small colored chip
+func RenderLabelChip(label *models.Label) string {
+	return lipgloss.NewStyle().
+		Background(lipgloss.Color(label.Color)).
+		Foreground(lipgloss.Color("#FFFFFF")).
+		Padding(0, 1).
+		MarginRight(1).
+		Render(label.Name)
+}
+
 // RenderTask renders a single task as a card
-// This is a pure, reusable component that displays task title and ID
+// This is a pure, reusable component that displays task title and labels
 //
 // Format (as a card with border):
 //
 //	┌─────────────────────┐
 //	│ {Task Title}        │
-//	│ PASO-{ID}           │
+//	│ [label1] [label2]   │
 //	└─────────────────────┘
 //
 // When selected is true, the task is highlighted with:
 //   - Bold text
 //   - Purple border color
 //   - Brighter background
-func RenderTask(task *models.Task, selected bool) string {
-	// Format task content with title and ID
+func RenderTask(task *models.TaskSummary, selected bool) string {
+	// Format task content with title
 	title := lipgloss.NewStyle().Bold(true).Render(task.Title)
-	id := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).
-		Render(fmt.Sprintf("PASO-%d", task.ID))
 
-	content := fmt.Sprintf("%s\n%s", title, id)
+	// Render label chips
+	var labelChips string
+	if len(task.Labels) > 0 {
+		var chips []string
+		for _, label := range task.Labels {
+			chips = append(chips, RenderLabelChip(label))
+		}
+		labelChips = "\n" + strings.Join(chips, "")
+	}
+
+	content := title + labelChips
 
 	// Apply selection styling if this task is selected
 	style := TaskStyle
@@ -56,10 +99,11 @@ func RenderTask(task *models.Task, selected bool) string {
 //
 // Parameters:
 //   - column: The column to render
-//   - tasks: Tasks in this column
+//   - tasks: Task summaries in this column
 //   - selected: Whether this column is currently selected
 //   - selectedTaskIdx: Index of selected task in this column (-1 if not this column)
-func RenderColumn(column *models.Column, tasks []*models.Task, selected bool, selectedTaskIdx int) string {
+//   - height: Fixed height for the column (0 for auto)
+func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected bool, selectedTaskIdx int, height int) string {
 	// Render column title with task count
 	header := fmt.Sprintf("%s (%d)", column.Name, len(tasks))
 	content := TitleStyle.Render(header) + "\n\n"
@@ -84,10 +128,13 @@ func RenderColumn(column *models.Column, tasks []*models.Task, selected bool, se
 		content += strings.Join(taskViews, "\n")
 	}
 
-	// Apply column styling with selection highlight
+	// Apply column styling with selection highlight and fixed height
 	style := ColumnStyle
 	if selected {
 		style = style.BorderForeground(lipgloss.Color("170"))
+	}
+	if height > 0 {
+		style = style.Height(height)
 	}
 
 	return style.Render(content)

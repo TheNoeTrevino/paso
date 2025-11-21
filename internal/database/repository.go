@@ -472,3 +472,207 @@ func MoveTaskToPrevColumn(db *sql.DB, taskID int) error {
 
 	return tx.Commit()
 }
+
+// ============================================================================
+// Label Operations
+// ============================================================================
+
+// CreateLabel creates a new label in the database
+func CreateLabel(db *sql.DB, name, color string) (*models.Label, error) {
+	result, err := db.Exec(
+		`INSERT INTO labels (name, color) VALUES (?, ?)`,
+		name, color,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.Label{
+		ID:    int(id),
+		Name:  name,
+		Color: color,
+	}, nil
+}
+
+// GetAllLabels retrieves all labels from the database
+func GetAllLabels(db *sql.DB) ([]*models.Label, error) {
+	rows, err := db.Query(`SELECT id, name, color FROM labels ORDER BY name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var labels []*models.Label
+	for rows.Next() {
+		label := &models.Label{}
+		if err := rows.Scan(&label.ID, &label.Name, &label.Color); err != nil {
+			return nil, err
+		}
+		labels = append(labels, label)
+	}
+
+	return labels, rows.Err()
+}
+
+// DeleteLabel removes a label from the database (cascade removes task associations)
+func DeleteLabel(db *sql.DB, labelID int) error {
+	_, err := db.Exec("DELETE FROM labels WHERE id = ?", labelID)
+	return err
+}
+
+// AddLabelToTask associates a label with a task
+func AddLabelToTask(db *sql.DB, taskID, labelID int) error {
+	_, err := db.Exec(
+		`INSERT OR IGNORE INTO task_labels (task_id, label_id) VALUES (?, ?)`,
+		taskID, labelID,
+	)
+	return err
+}
+
+// RemoveLabelFromTask removes the association between a label and a task
+func RemoveLabelFromTask(db *sql.DB, taskID, labelID int) error {
+	_, err := db.Exec(
+		`DELETE FROM task_labels WHERE task_id = ? AND label_id = ?`,
+		taskID, labelID,
+	)
+	return err
+}
+
+// GetLabelsForTask retrieves all labels associated with a task
+func GetLabelsForTask(db *sql.DB, taskID int) ([]*models.Label, error) {
+	rows, err := db.Query(`
+		SELECT l.id, l.name, l.color
+		FROM labels l
+		INNER JOIN task_labels tl ON l.id = tl.label_id
+		WHERE tl.task_id = ?
+		ORDER BY l.name
+	`, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var labels []*models.Label
+	for rows.Next() {
+		label := &models.Label{}
+		if err := rows.Scan(&label.ID, &label.Name, &label.Color); err != nil {
+			return nil, err
+		}
+		labels = append(labels, label)
+	}
+
+	return labels, rows.Err()
+}
+
+// SetTaskLabels replaces all labels for a task with the given label IDs
+func SetTaskLabels(db *sql.DB, taskID int, labelIDs []int) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Remove all existing labels
+	_, err = tx.Exec(`DELETE FROM task_labels WHERE task_id = ?`, taskID)
+	if err != nil {
+		return err
+	}
+
+	// Add new labels
+	for _, labelID := range labelIDs {
+		_, err = tx.Exec(
+			`INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)`,
+			taskID, labelID,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// ============================================================================
+// Task Summary/Detail Operations (DTOs with Labels)
+// ============================================================================
+
+// GetTaskSummariesByColumn retrieves task summaries for a column, including labels
+func GetTaskSummariesByColumn(db *sql.DB, columnID int) ([]*models.TaskSummary, error) {
+	// Get tasks
+	rows, err := db.Query(
+		`SELECT id, title, column_id, position
+		 FROM tasks
+		 WHERE column_id = ?
+		 ORDER BY position`,
+		columnID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var summaries []*models.TaskSummary
+	for rows.Next() {
+		summary := &models.TaskSummary{}
+		if err := rows.Scan(&summary.ID, &summary.Title, &summary.ColumnID, &summary.Position); err != nil {
+			return nil, err
+		}
+		summaries = append(summaries, summary)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Get labels for each task
+	for _, summary := range summaries {
+		labels, err := GetLabelsForTask(db, summary.ID)
+		if err != nil {
+			return nil, err
+		}
+		summary.Labels = labels
+	}
+
+	return summaries, nil
+}
+
+// GetTaskDetail retrieves full task details including description, timestamps, and labels
+func GetTaskDetail(db *sql.DB, taskID int) (*models.TaskDetail, error) {
+	detail := &models.TaskDetail{}
+	err := db.QueryRow(
+		`SELECT id, title, description, column_id, position, created_at, updated_at
+		 FROM tasks WHERE id = ?`,
+		taskID,
+	).Scan(
+		&detail.ID, &detail.Title, &detail.Description,
+		&detail.ColumnID, &detail.Position, &detail.CreatedAt, &detail.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get labels
+	labels, err := GetLabelsForTask(db, taskID)
+	if err != nil {
+		return nil, err
+	}
+	detail.Labels = labels
+
+	return detail, nil
+}
+
+// UpdateTask updates a task's title and description
+func UpdateTask(db *sql.DB, taskID int, title, description string) error {
+	_, err := db.Exec(
+		`UPDATE tasks
+		 SET title = ?, description = ?, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = ?`,
+		title, description, taskID,
+	)
+	return err
+}

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -12,6 +13,11 @@ import (
 // Update handles all messages and updates the model accordingly
 // This implements the "Update" part of the Model-View-Update pattern
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle TicketFormMode first - form needs ALL messages, not just KeyMsg
+	if m.mode == TicketFormMode {
+		return m.updateTicketForm(msg)
+	}
+
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
@@ -32,23 +38,58 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "a":
-				// Add new task in current column
+				// Add new task in current column using ticket form
 				if len(m.columns) == 0 {
 					m.errorMessage = "Cannot add task: No columns exist. Create a column first with 'C'"
 					return m, nil
 				}
-				m.mode = AddTaskMode
-				m.inputPrompt = "New task title:"
-				m.inputBuffer = ""
-				return m, nil
+				// Initialize form fields
+				m.formTitle = ""
+				m.formDescription = ""
+				m.formLabelIDs = []int{}
+				m.formConfirm = false
+				m.editingTaskID = 0 // 0 means new task
+				// Create the form
+				m.ticketForm = CreateTicketForm(
+					&m.formTitle,
+					&m.formDescription,
+					&m.formLabelIDs,
+					m.labels,
+					&m.formConfirm,
+				)
+				m.mode = TicketFormMode
+				return m, m.ticketForm.Init()
 
 			case "e":
-				// Edit selected task (if one exists)
+				// Edit selected task using ticket form
 				task := m.getCurrentTask()
 				if task != nil {
-					m.mode = EditTaskMode
-					m.inputBuffer = task.Title
-					m.inputPrompt = "Edit task title:"
+					// Load full task details
+					taskDetail, err := database.GetTaskDetail(m.db, task.ID)
+					if err != nil {
+						log.Printf("Error loading task details: %v", err)
+						m.errorMessage = "Error loading task details"
+						return m, nil
+					}
+					// Initialize form fields with existing data
+					m.formTitle = taskDetail.Title
+					m.formDescription = taskDetail.Description
+					m.formLabelIDs = make([]int, len(taskDetail.Labels))
+					for i, label := range taskDetail.Labels {
+						m.formLabelIDs[i] = label.ID
+					}
+					m.formConfirm = false
+					m.editingTaskID = task.ID
+					// Create the form
+					m.ticketForm = CreateTicketForm(
+						&m.formTitle,
+						&m.formDescription,
+						&m.formLabelIDs,
+						m.labels,
+						&m.formConfirm,
+					)
+					m.mode = TicketFormMode
+					return m, m.ticketForm.Init()
 				} else {
 					m.errorMessage = "No task selected to edit"
 				}
@@ -60,6 +101,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.mode = DeleteConfirmMode
 				} else {
 					m.errorMessage = "No task selected to delete"
+				}
+				return m, nil
+
+			case " ": // Space key
+				// View task details (if one exists)
+				task := m.getCurrentTask()
+				if task != nil {
+					// Load full task detail from database
+					taskDetail, err := database.GetTaskDetail(m.db, task.ID)
+					if err != nil {
+						log.Printf("Error loading task details: %v", err)
+						m.errorMessage = "Error loading task details"
+						return m, nil
+					}
+					m.viewingTask = taskDetail
+					m.mode = ViewTaskMode
+				} else {
+					m.errorMessage = "No task selected to view"
 				}
 				return m, nil
 
@@ -193,7 +252,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if err != nil {
 							log.Printf("Error creating task: %v", err)
 						} else {
-							m.tasks[currentCol.ID] = append(m.tasks[currentCol.ID], task)
+							// Convert Task to TaskSummary for display
+							summary := &models.TaskSummary{
+								ID:       task.ID,
+								Title:    task.Title,
+								Labels:   []*models.Label{},
+								ColumnID: task.ColumnID,
+								Position: task.Position,
+							}
+							m.tasks[currentCol.ID] = append(m.tasks[currentCol.ID], summary)
 						}
 					} else if m.mode == EditTaskMode {
 						// Update existing task
@@ -222,7 +289,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							if err != nil {
 								log.Printf("Error reloading columns: %v", err)
 							}
-							m.tasks[column.ID] = []*models.Task{}
+							m.tasks[column.ID] = []*models.TaskSummary{}
 							// Move selection to new column (it will be after current)
 							if afterColumnID != nil {
 								m.selectedColumn++
@@ -327,7 +394,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.mode = NormalMode
 				return m, nil
 			}
+
+		} else if m.mode == ViewTaskMode {
+			// View task mode - close popup on esc or space
+			switch msg.String() {
+			case "esc", " ", "q":
+				m.mode = NormalMode
+				m.viewingTask = nil
+				return m, nil
+			}
 		}
+		// Note: TicketFormMode is handled at the top of Update()
 
 	case tea.WindowSizeMsg:
 		// Handle terminal resize events
@@ -345,4 +422,106 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Return updated model with no command
 	return m, nil
+}
+
+// updateTicketForm handles all messages when in TicketFormMode
+// This is separated out because huh forms need to receive ALL messages, not just KeyMsg
+func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.ticketForm == nil {
+		m.mode = NormalMode
+		return m, nil
+	}
+
+	// Check for escape key to cancel
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg.String() == "esc" {
+			m.mode = NormalMode
+			m.ticketForm = nil
+			return m, nil
+		}
+	}
+
+	// Forward ALL messages to the form
+	var cmds []tea.Cmd
+	form, cmd := m.ticketForm.Update(msg)
+	if f, ok := form.(*huh.Form); ok {
+		m.ticketForm = f
+		cmds = append(cmds, cmd)
+	}
+
+	// Check if form is complete
+	if m.ticketForm.State == huh.StateCompleted {
+		// Form submitted - check confirmation and save the task
+		if !m.formConfirm {
+			// User selected "No" on confirmation
+			m.mode = NormalMode
+			m.ticketForm = nil
+			return m, nil
+		}
+		if strings.TrimSpace(m.formTitle) != "" {
+			if m.editingTaskID == 0 {
+				// Create new task
+				currentCol := m.columns[m.selectedColumn]
+				task, err := database.CreateTask(
+					m.db,
+					strings.TrimSpace(m.formTitle),
+					strings.TrimSpace(m.formDescription),
+					currentCol.ID,
+					len(m.tasks[currentCol.ID]),
+				)
+				if err != nil {
+					log.Printf("Error creating task: %v", err)
+					m.errorMessage = "Error creating task"
+				} else {
+					// Set labels
+					if len(m.formLabelIDs) > 0 {
+						err = database.SetTaskLabels(m.db, task.ID, m.formLabelIDs)
+						if err != nil {
+							log.Printf("Error setting labels: %v", err)
+						}
+					}
+					// Reload task summary with labels
+					summaries, err := database.GetTaskSummariesByColumn(m.db, currentCol.ID)
+					if err != nil {
+						log.Printf("Error reloading tasks: %v", err)
+					} else {
+						m.tasks[currentCol.ID] = summaries
+					}
+				}
+			} else {
+				// Update existing task
+				err := database.UpdateTask(m.db, m.editingTaskID, strings.TrimSpace(m.formTitle), strings.TrimSpace(m.formDescription))
+				if err != nil {
+					log.Printf("Error updating task: %v", err)
+					m.errorMessage = "Error updating task"
+				} else {
+					// Update labels
+					err = database.SetTaskLabels(m.db, m.editingTaskID, m.formLabelIDs)
+					if err != nil {
+						log.Printf("Error setting labels: %v", err)
+					}
+					// Reload task summaries for the column
+					currentCol := m.columns[m.selectedColumn]
+					summaries, err := database.GetTaskSummariesByColumn(m.db, currentCol.ID)
+					if err != nil {
+						log.Printf("Error reloading tasks: %v", err)
+					} else {
+						m.tasks[currentCol.ID] = summaries
+					}
+				}
+			}
+		}
+		m.mode = NormalMode
+		m.ticketForm = nil
+		return m, nil
+	}
+
+	// Check if form was aborted
+	if m.ticketForm.State == huh.StateAborted {
+		m.mode = NormalMode
+		m.ticketForm = nil
+		return m, nil
+	}
+
+	return m, tea.Batch(cmds...)
 }
