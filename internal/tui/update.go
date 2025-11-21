@@ -233,47 +233,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		} else if m.mode == AddTaskMode || m.mode == EditTaskMode || m.mode == AddColumnMode || m.mode == EditColumnMode {
-			// Input modes: handle text input
+		} else if m.mode == AddColumnMode || m.mode == EditColumnMode {
+			// Input modes: handle text input for column operations
 			switch msg.String() {
 			case "enter":
-				// Confirm input and create/edit task or column
+				// Confirm input and create/edit column
 				if strings.TrimSpace(m.inputBuffer) != "" {
-					if m.mode == AddTaskMode {
-						// Create new task
-						currentCol := m.columns[m.selectedColumn]
-						task, err := database.CreateTask(
-							m.db,
-							strings.TrimSpace(m.inputBuffer),
-							"",
-							currentCol.ID,
-							len(m.tasks[currentCol.ID]),
-						)
-						if err != nil {
-							log.Printf("Error creating task: %v", err)
-						} else {
-							// Convert Task to TaskSummary for display
-							summary := &models.TaskSummary{
-								ID:       task.ID,
-								Title:    task.Title,
-								Labels:   []*models.Label{},
-								ColumnID: task.ColumnID,
-								Position: task.Position,
-							}
-							m.tasks[currentCol.ID] = append(m.tasks[currentCol.ID], summary)
-						}
-					} else if m.mode == EditTaskMode {
-						// Update existing task
-						task := m.getCurrentTask()
-						if task != nil {
-							err := database.UpdateTaskTitle(m.db, task.ID, strings.TrimSpace(m.inputBuffer))
-							if err != nil {
-								log.Printf("Error updating task: %v", err)
-							} else {
-								task.Title = strings.TrimSpace(m.inputBuffer)
-							}
-						}
-					} else if m.mode == AddColumnMode {
+					if m.mode == AddColumnMode {
 						// Create new column after the current column
 						var afterColumnID *int
 						if len(m.columns) > 0 {
@@ -451,15 +417,9 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Check if form is complete
 	if m.ticketForm.State == huh.StateCompleted {
-		log.Printf("DEBUG: Form completed!")
-
 		// Read values directly from the form (not from bound pointers which point to stale model copies)
 		title := m.ticketForm.GetString("title")
 		description := m.ticketForm.GetString("description")
-
-		// Debug: Log raw Get values
-		log.Printf("DEBUG: Raw Get('confirm') = %v (type: %T)", m.ticketForm.Get("confirm"), m.ticketForm.Get("confirm"))
-		log.Printf("DEBUG: GetBool('confirm') = %v", m.ticketForm.GetBool("confirm"))
 
 		confirm := true
 		if c := m.ticketForm.Get("confirm"); c != nil {
@@ -476,19 +436,15 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		log.Printf("DEBUG: title=%q, description=%q, confirm=%v, labelIDs=%v", title, description, confirm, labelIDs)
-		log.Printf("DEBUG: editingTaskID=%d, selectedColumn=%d", m.editingTaskID, m.selectedColumn)
-
 		// Form submitted - check confirmation and save the task
 		if !confirm {
-			log.Printf("DEBUG: User selected 'No' on confirmation, not saving")
 			// User selected "No" on confirmation
 			m.mode = NormalMode
 			m.ticketForm = nil
-			return m, nil
+			m.editingTaskID = 0
+			return m, tea.ClearScreen
 		}
 		if strings.TrimSpace(title) != "" {
-			log.Printf("DEBUG: Title is not empty, proceeding to save")
 			if m.editingTaskID == 0 {
 				// Create new task
 				currentCol := m.columns[m.selectedColumn]
@@ -503,7 +459,6 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					log.Printf("Error creating task: %v", err)
 					m.errorMessage = "Error creating task"
 				} else {
-					log.Printf("DEBUG: Task created successfully! ID=%d", task.ID)
 					// Set labels
 					if len(labelIDs) > 0 {
 						err = database.SetTaskLabels(m.db, task.ID, labelIDs)
@@ -516,7 +471,6 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err != nil {
 						log.Printf("Error reloading tasks: %v", err)
 					} else {
-						log.Printf("DEBUG: Reloaded %d tasks for column %d", len(summaries), currentCol.ID)
 						m.tasks[currentCol.ID] = summaries
 					}
 				}
@@ -542,19 +496,19 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
-		} else {
-			log.Printf("DEBUG: Title is empty, not saving task")
 		}
 		m.mode = NormalMode
 		m.ticketForm = nil
-		return m, nil
+		m.editingTaskID = 0
+		return m, tea.ClearScreen
 	}
 
 	// Check if form was aborted
 	if m.ticketForm.State == huh.StateAborted {
 		m.mode = NormalMode
 		m.ticketForm = nil
-		return m, nil
+		m.editingTaskID = 0
+		return m, tea.ClearScreen
 	}
 
 	return m, tea.Batch(cmds...)
