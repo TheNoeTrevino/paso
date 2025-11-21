@@ -2,7 +2,9 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -14,7 +16,27 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
-	// Handle input modes: show centered dialog
+	// Handle ticket form mode: show huh form in centered dialog
+	if m.mode == TicketFormMode && m.ticketForm != nil {
+		formView := m.ticketForm.View()
+
+		// Wrap form in a styled container
+		formBox := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("170")).
+			Padding(1, 2).
+			Width(m.width / 2).
+			Height(m.height / 2).
+			Render(formView)
+
+		return lipgloss.Place(
+			m.width, m.height,
+			lipgloss.Center, lipgloss.Center,
+			formBox,
+		)
+	}
+
+	// Handle legacy input modes: show centered dialog (fallback)
 	if m.mode == AddTaskMode || m.mode == EditTaskMode {
 		inputBox := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
@@ -121,6 +143,7 @@ TASKS
   d     Delete selected task
   <     Move task to previous column
   >     Move task to next column
+  space View task details
 
 COLUMNS
   C     Create new column (after current)
@@ -155,6 +178,83 @@ Press any key to close`
 		)
 	}
 
+	// Handle view task mode: show full task details in 50% popup
+	if m.mode == ViewTaskMode && m.viewingTask != nil {
+		task := m.viewingTask
+
+		// Build task content
+		titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("170"))
+		labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+
+		content := titleStyle.Render(task.Title) + "\n\n"
+
+		// Description - render as markdown using glamour
+		if task.Description != "" {
+			content += labelStyle.Render("Description:") + "\n"
+
+			// Create a glamour renderer with dark style for terminal
+			// Use a width that fits within the popup (account for padding and border)
+			popupWidth := m.width / 2
+			descWidth := popupWidth - 8 // Account for border (2) + padding (4) + margin
+			if descWidth < 40 {
+				descWidth = 40
+			}
+
+			renderer, err := glamour.NewTermRenderer(
+				glamour.WithAutoStyle(),
+				glamour.WithWordWrap(descWidth),
+			)
+			if err == nil {
+				renderedDesc, err := renderer.Render(task.Description)
+				if err == nil {
+					// Trim extra newlines that glamour adds
+					content += strings.TrimSpace(renderedDesc) + "\n\n"
+				} else {
+					// Fallback to plain text if rendering fails
+					content += task.Description + "\n\n"
+				}
+			} else {
+				// Fallback to plain text if renderer creation fails
+				content += task.Description + "\n\n"
+			}
+		} else {
+			content += labelStyle.Render("No description") + "\n\n"
+		}
+
+		// Labels
+		if len(task.Labels) > 0 {
+			content += labelStyle.Render("Labels:") + "\n"
+			for _, label := range task.Labels {
+				content += RenderLabelChip(label)
+			}
+			content += "\n\n"
+		}
+
+		// Timestamps
+		content += labelStyle.Render(fmt.Sprintf("Created: %s", task.CreatedAt.Format("Jan 2, 2006 3:04 PM"))) + "\n"
+		content += labelStyle.Render(fmt.Sprintf("Updated: %s", task.UpdatedAt.Format("Jan 2, 2006 3:04 PM"))) + "\n\n"
+
+		content += lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Press Esc or Space to close")
+
+		// 50% width and height popup
+		popupWidth := m.width / 2
+		popupHeight := m.height / 2
+
+		taskBox := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("170")). // Purple for task view
+			Padding(1, 2).
+			Width(popupWidth).
+			Height(popupHeight).
+			Render(content)
+
+		return lipgloss.Place(
+			m.width, m.height,
+			lipgloss.Center, lipgloss.Center,
+			taskBox,
+		)
+	}
+
 	// Normal mode: render kanban board
 	// Handle empty column list edge case
 	if len(m.columns) == 0 {
@@ -175,6 +275,13 @@ Press any key to close`
 	endIdx := min(m.viewportOffset+m.viewportSize, len(m.columns))
 	visibleColumns := m.columns[m.viewportOffset:endIdx]
 
+	// Calculate column height: terminal height minus tabs, header, status bar, footer, and margins
+	// Tab bar (3) + empty line (1) + Header (1) + status bar (1) + empty line (1) + empty line (1) + footer (1) + margins (2) = ~11
+	columnHeight := m.height - 11
+	if columnHeight < 10 {
+		columnHeight = 10 // Minimum height
+	}
+
 	// Render only visible columns
 	var columns []string
 	for i, col := range visibleColumns {
@@ -192,7 +299,7 @@ Press any key to close`
 			selectedTaskIdx = m.selectedTask
 		}
 
-		columns = append(columns, RenderColumn(col, tasks, isSelected, selectedTaskIdx))
+		columns = append(columns, RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight))
 	}
 
 	// Add scroll indicators
@@ -214,6 +321,10 @@ Press any key to close`
 	for _, tasks := range m.tasks {
 		totalTasks += len(tasks)
 	}
+
+	// Create project tabs
+	projectTabs := []string{"Project 1", "Project 2", "Project 3"}
+	tabBar := RenderTabs(projectTabs, 0, m.width) // 0 = first tab selected (placeholder)
 
 	// Create header with status bar
 	header := TitleStyle.Render("PASO - Your Tasks")
@@ -238,7 +349,7 @@ Press any key to close`
 		Render("[a]dd  [e]dit  [d]elete  [C]ol  [R]ename  [X]delete  [hjkl]nav  [[]]scroll  [?]help  [q]uit")
 
 	// Combine all elements vertically
-	elements := []string{header, statusBar}
+	elements := []string{tabBar, "", header, statusBar}
 	if errorBanner != "" {
 		elements = append(elements, errorBanner)
 	}
