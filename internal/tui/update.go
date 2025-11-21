@@ -47,8 +47,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.formTitle = ""
 				m.formDescription = ""
 				m.formLabelIDs = []int{}
-				m.formConfirm = false
-				m.editingTaskID = 0 // 0 means new task
+				m.formConfirm = true // Default to "Yes" so user can just hit Enter to save
+				m.editingTaskID = 0  // 0 means new task
 				// Create the form
 				m.ticketForm = CreateTicketForm(
 					&m.formTitle,
@@ -78,7 +78,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					for i, label := range taskDetail.Labels {
 						m.formLabelIDs[i] = label.ID
 					}
-					m.formConfirm = false
+					m.formConfirm = true // Default to "Yes" so user can just hit Enter to save
 					m.editingTaskID = task.ID
 					// Create the form
 					m.ticketForm = CreateTicketForm(
@@ -451,21 +451,51 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Check if form is complete
 	if m.ticketForm.State == huh.StateCompleted {
+		log.Printf("DEBUG: Form completed!")
+
+		// Read values directly from the form (not from bound pointers which point to stale model copies)
+		title := m.ticketForm.GetString("title")
+		description := m.ticketForm.GetString("description")
+
+		// Debug: Log raw Get values
+		log.Printf("DEBUG: Raw Get('confirm') = %v (type: %T)", m.ticketForm.Get("confirm"), m.ticketForm.Get("confirm"))
+		log.Printf("DEBUG: GetBool('confirm') = %v", m.ticketForm.GetBool("confirm"))
+
+		confirm := true
+		if c := m.ticketForm.Get("confirm"); c != nil {
+			if b, ok := c.(bool); ok {
+				confirm = b
+			}
+		}
+
+		// Get label IDs - need type assertion since it's a generic Get
+		var labelIDs []int
+		if labels := m.ticketForm.Get("labels"); labels != nil {
+			if ids, ok := labels.([]int); ok {
+				labelIDs = ids
+			}
+		}
+
+		log.Printf("DEBUG: title=%q, description=%q, confirm=%v, labelIDs=%v", title, description, confirm, labelIDs)
+		log.Printf("DEBUG: editingTaskID=%d, selectedColumn=%d", m.editingTaskID, m.selectedColumn)
+
 		// Form submitted - check confirmation and save the task
-		if !m.formConfirm {
+		if !confirm {
+			log.Printf("DEBUG: User selected 'No' on confirmation, not saving")
 			// User selected "No" on confirmation
 			m.mode = NormalMode
 			m.ticketForm = nil
 			return m, nil
 		}
-		if strings.TrimSpace(m.formTitle) != "" {
+		if strings.TrimSpace(title) != "" {
+			log.Printf("DEBUG: Title is not empty, proceeding to save")
 			if m.editingTaskID == 0 {
 				// Create new task
 				currentCol := m.columns[m.selectedColumn]
 				task, err := database.CreateTask(
 					m.db,
-					strings.TrimSpace(m.formTitle),
-					strings.TrimSpace(m.formDescription),
+					strings.TrimSpace(title),
+					strings.TrimSpace(description),
 					currentCol.ID,
 					len(m.tasks[currentCol.ID]),
 				)
@@ -473,9 +503,10 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					log.Printf("Error creating task: %v", err)
 					m.errorMessage = "Error creating task"
 				} else {
+					log.Printf("DEBUG: Task created successfully! ID=%d", task.ID)
 					// Set labels
-					if len(m.formLabelIDs) > 0 {
-						err = database.SetTaskLabels(m.db, task.ID, m.formLabelIDs)
+					if len(labelIDs) > 0 {
+						err = database.SetTaskLabels(m.db, task.ID, labelIDs)
 						if err != nil {
 							log.Printf("Error setting labels: %v", err)
 						}
@@ -485,18 +516,19 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err != nil {
 						log.Printf("Error reloading tasks: %v", err)
 					} else {
+						log.Printf("DEBUG: Reloaded %d tasks for column %d", len(summaries), currentCol.ID)
 						m.tasks[currentCol.ID] = summaries
 					}
 				}
 			} else {
 				// Update existing task
-				err := database.UpdateTask(m.db, m.editingTaskID, strings.TrimSpace(m.formTitle), strings.TrimSpace(m.formDescription))
+				err := database.UpdateTask(m.db, m.editingTaskID, strings.TrimSpace(title), strings.TrimSpace(description))
 				if err != nil {
 					log.Printf("Error updating task: %v", err)
 					m.errorMessage = "Error updating task"
 				} else {
 					// Update labels
-					err = database.SetTaskLabels(m.db, m.editingTaskID, m.formLabelIDs)
+					err = database.SetTaskLabels(m.db, m.editingTaskID, labelIDs)
 					if err != nil {
 						log.Printf("Error setting labels: %v", err)
 					}
@@ -510,6 +542,8 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
+		} else {
+			log.Printf("DEBUG: Title is empty, not saving task")
 		}
 		m.mode = NormalMode
 		m.ticketForm = nil

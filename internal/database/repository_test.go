@@ -434,3 +434,239 @@ func TestSingleColumn(t *testing.T) {
 		t.Error("Should not be able to move task left from single column")
 	}
 }
+
+// =============================================================================
+// Task Persistence Tests
+// =============================================================================
+
+// TestTaskCreationPersistence tests that tasks are properly saved to the database
+func TestTaskCreationPersistence(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// Create a column first
+	col, err := CreateColumn(db, "Todo", nil)
+	if err != nil {
+		t.Fatalf("Failed to create column: %v", err)
+	}
+
+	// Create a task with title and description
+	task, err := CreateTask(db, "Test Task Title", "This is a test description", col.ID, 0)
+	if err != nil {
+		t.Fatalf("Failed to create task: %v", err)
+	}
+
+	// Verify task was created with correct data
+	if task.ID == 0 {
+		t.Error("Task should have a valid ID")
+	}
+	if task.Title != "Test Task Title" {
+		t.Errorf("Expected title 'Test Task Title', got '%s'", task.Title)
+	}
+	if task.Description != "This is a test description" {
+		t.Errorf("Expected description 'This is a test description', got '%s'", task.Description)
+	}
+	if task.ColumnID != col.ID {
+		t.Errorf("Expected column ID %d, got %d", col.ID, task.ColumnID)
+	}
+
+	// Verify task can be retrieved from database
+	tasks, err := GetTasksByColumn(db, col.ID)
+	if err != nil {
+		t.Fatalf("Failed to get tasks: %v", err)
+	}
+	if len(tasks) != 1 {
+		t.Fatalf("Expected 1 task, got %d", len(tasks))
+	}
+	if tasks[0].Title != "Test Task Title" {
+		t.Errorf("Retrieved task has wrong title: %s", tasks[0].Title)
+	}
+	if tasks[0].Description != "This is a test description" {
+		t.Errorf("Retrieved task has wrong description: %s", tasks[0].Description)
+	}
+}
+
+// TestTaskUpdatePersistence tests that task updates are properly saved
+func TestTaskUpdatePersistence(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// Create column and task
+	col, _ := CreateColumn(db, "Todo", nil)
+	task, _ := CreateTask(db, "Original Title", "Original Description", col.ID, 0)
+
+	// Update the task
+	err := UpdateTask(db, task.ID, "Updated Title", "Updated Description")
+	if err != nil {
+		t.Fatalf("Failed to update task: %v", err)
+	}
+
+	// Retrieve and verify the update persisted
+	detail, err := GetTaskDetail(db, task.ID)
+	if err != nil {
+		t.Fatalf("Failed to get task detail: %v", err)
+	}
+	if detail.Title != "Updated Title" {
+		t.Errorf("Expected title 'Updated Title', got '%s'", detail.Title)
+	}
+	if detail.Description != "Updated Description" {
+		t.Errorf("Expected description 'Updated Description', got '%s'", detail.Description)
+	}
+}
+
+// TestLabelPersistence tests that labels are properly saved and retrieved
+func TestLabelPersistence(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// Create a label
+	label, err := CreateLabel(db, "Bug", "#FF0000")
+	if err != nil {
+		t.Fatalf("Failed to create label: %v", err)
+	}
+
+	if label.ID == 0 {
+		t.Error("Label should have a valid ID")
+	}
+	if label.Name != "Bug" {
+		t.Errorf("Expected label name 'Bug', got '%s'", label.Name)
+	}
+	if label.Color != "#FF0000" {
+		t.Errorf("Expected label color '#FF0000', got '%s'", label.Color)
+	}
+
+	// Retrieve all labels
+	labels, err := GetAllLabels(db)
+	if err != nil {
+		t.Fatalf("Failed to get labels: %v", err)
+	}
+	if len(labels) != 1 {
+		t.Fatalf("Expected 1 label, got %d", len(labels))
+	}
+	if labels[0].Name != "Bug" {
+		t.Errorf("Retrieved label has wrong name: %s", labels[0].Name)
+	}
+}
+
+// TestTaskLabelAssociation tests the many-to-many relationship between tasks and labels
+func TestTaskLabelAssociation(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// Create column, task, and labels
+	col, _ := CreateColumn(db, "Todo", nil)
+	task, _ := CreateTask(db, "Test Task", "Description", col.ID, 0)
+	label1, _ := CreateLabel(db, "Bug", "#FF0000")
+	label2, _ := CreateLabel(db, "Feature", "#00FF00")
+
+	// Associate labels with task
+	err := SetTaskLabels(db, task.ID, []int{label1.ID, label2.ID})
+	if err != nil {
+		t.Fatalf("Failed to set task labels: %v", err)
+	}
+
+	// Retrieve labels for task
+	labels, err := GetLabelsForTask(db, task.ID)
+	if err != nil {
+		t.Fatalf("Failed to get labels for task: %v", err)
+	}
+	if len(labels) != 2 {
+		t.Fatalf("Expected 2 labels, got %d", len(labels))
+	}
+
+	// Verify task summary includes labels
+	summaries, err := GetTaskSummariesByColumn(db, col.ID)
+	if err != nil {
+		t.Fatalf("Failed to get task summaries: %v", err)
+	}
+	if len(summaries) != 1 {
+		t.Fatalf("Expected 1 summary, got %d", len(summaries))
+	}
+	if len(summaries[0].Labels) != 2 {
+		t.Errorf("Expected summary to have 2 labels, got %d", len(summaries[0].Labels))
+	}
+
+	// Verify task detail includes labels
+	detail, err := GetTaskDetail(db, task.ID)
+	if err != nil {
+		t.Fatalf("Failed to get task detail: %v", err)
+	}
+	if len(detail.Labels) != 2 {
+		t.Errorf("Expected detail to have 2 labels, got %d", len(detail.Labels))
+	}
+}
+
+// TestSetTaskLabelsReplaces tests that SetTaskLabels replaces existing labels
+func TestSetTaskLabelsReplaces(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// Create column, task, and labels
+	col, _ := CreateColumn(db, "Todo", nil)
+	task, _ := CreateTask(db, "Test Task", "", col.ID, 0)
+	label1, _ := CreateLabel(db, "Bug", "#FF0000")
+	label2, _ := CreateLabel(db, "Feature", "#00FF00")
+	label3, _ := CreateLabel(db, "Enhancement", "#0000FF")
+
+	// Set initial labels
+	SetTaskLabels(db, task.ID, []int{label1.ID, label2.ID})
+
+	// Replace with different labels
+	err := SetTaskLabels(db, task.ID, []int{label3.ID})
+	if err != nil {
+		t.Fatalf("Failed to replace task labels: %v", err)
+	}
+
+	// Verify only the new label is associated
+	labels, err := GetLabelsForTask(db, task.ID)
+	if err != nil {
+		t.Fatalf("Failed to get labels: %v", err)
+	}
+	if len(labels) != 1 {
+		t.Fatalf("Expected 1 label after replacement, got %d", len(labels))
+	}
+	if labels[0].ID != label3.ID {
+		t.Errorf("Expected label ID %d, got %d", label3.ID, labels[0].ID)
+	}
+}
+
+// TestTaskDetailIncludesAllFields tests that GetTaskDetail returns all fields
+func TestTaskDetailIncludesAllFields(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// Create column, task with description, and labels
+	col, _ := CreateColumn(db, "Todo", nil)
+	task, _ := CreateTask(db, "Full Task", "A complete description with details", col.ID, 0)
+	label, _ := CreateLabel(db, "Important", "#FFD700")
+	SetTaskLabels(db, task.ID, []int{label.ID})
+
+	// Get full detail
+	detail, err := GetTaskDetail(db, task.ID)
+	if err != nil {
+		t.Fatalf("Failed to get task detail: %v", err)
+	}
+
+	// Verify all fields
+	if detail.ID != task.ID {
+		t.Errorf("Wrong ID: expected %d, got %d", task.ID, detail.ID)
+	}
+	if detail.Title != "Full Task" {
+		t.Errorf("Wrong title: %s", detail.Title)
+	}
+	if detail.Description != "A complete description with details" {
+		t.Errorf("Wrong description: %s", detail.Description)
+	}
+	if detail.ColumnID != col.ID {
+		t.Errorf("Wrong column ID: expected %d, got %d", col.ID, detail.ColumnID)
+	}
+	if len(detail.Labels) != 1 {
+		t.Errorf("Expected 1 label, got %d", len(detail.Labels))
+	}
+	if detail.CreatedAt.IsZero() {
+		t.Error("CreatedAt should not be zero")
+	}
+	if detail.UpdatedAt.IsZero() {
+		t.Error("UpdatedAt should not be zero")
+	}
+}
