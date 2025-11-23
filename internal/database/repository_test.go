@@ -34,17 +34,17 @@ func TestLinkedListTraversal(t *testing.T) {
 	defer db.Close()
 
 	// Create 3 columns
-	col1, err := CreateColumn(db, "Todo", nil)
+	col1, err := CreateColumn(db, "Todo", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 1: %v", err)
 	}
 
-	col2, err := CreateColumn(db, "In Progress", nil)
+	col2, err := CreateColumn(db, "In Progress", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 2: %v", err)
 	}
 
-	col3, err := CreateColumn(db, "Done", nil)
+	col3, err := CreateColumn(db, "Done", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 3: %v", err)
 	}
@@ -97,11 +97,11 @@ func TestInsertColumnMiddle(t *testing.T) {
 	defer db.Close()
 
 	// Create initial columns
-	col1, _ := CreateColumn(db, "Todo", nil)
-	col3, _ := CreateColumn(db, "Done", nil)
+	col1, _ := CreateColumn(db, "Todo", 1, nil)
+	col3, _ := CreateColumn(db, "Done", 1, nil)
 
 	// Insert a column in the middle (after col1)
-	col2, err := CreateColumn(db, "In Progress", &col1.ID)
+	col2, err := CreateColumn(db, "In Progress", 1, &col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to insert column in middle: %v", err)
 	}
@@ -142,11 +142,11 @@ func TestInsertColumnEnd(t *testing.T) {
 	defer db.Close()
 
 	// Create initial columns
-	_, _ = CreateColumn(db, "Todo", nil)
-	col2, _ := CreateColumn(db, "In Progress", nil)
+	_, _ = CreateColumn(db, "Todo", 1, nil)
+	col2, _ := CreateColumn(db, "In Progress", 1, nil)
 
 	// Append a column to the end (pass nil for afterColumnID)
-	col3, err := CreateColumn(db, "Done", nil)
+	col3, err := CreateColumn(db, "Done", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to append column: %v", err)
 	}
@@ -180,9 +180,9 @@ func TestDeleteColumnMiddle(t *testing.T) {
 	defer db.Close()
 
 	// Create three columns
-	col1, _ := CreateColumn(db, "Todo", nil)
-	col2, _ := CreateColumn(db, "In Progress", nil)
-	col3, _ := CreateColumn(db, "Done", nil)
+	col1, _ := CreateColumn(db, "Todo", 1, nil)
+	col2, _ := CreateColumn(db, "In Progress", 1, nil)
+	col3, _ := CreateColumn(db, "Done", 1, nil)
 
 	// Delete the middle column
 	err := DeleteColumn(db, col2.ID)
@@ -220,9 +220,9 @@ func TestDeleteColumnHead(t *testing.T) {
 	defer db.Close()
 
 	// Create three columns
-	col1, _ := CreateColumn(db, "Todo", nil)
-	col2, _ := CreateColumn(db, "In Progress", nil)
-	col3, _ := CreateColumn(db, "Done", nil)
+	col1, _ := CreateColumn(db, "Todo", 1, nil)
+	col2, _ := CreateColumn(db, "In Progress", 1, nil)
+	col3, _ := CreateColumn(db, "Done", 1, nil)
 
 	// Delete the head column
 	err := DeleteColumn(db, col1.ID)
@@ -258,9 +258,9 @@ func TestDeleteColumnTail(t *testing.T) {
 	defer db.Close()
 
 	// Create three columns
-	col1, _ := CreateColumn(db, "Todo", nil)
-	col2, _ := CreateColumn(db, "In Progress", nil)
-	col3, _ := CreateColumn(db, "Done", nil)
+	col1, _ := CreateColumn(db, "Todo", 1, nil)
+	col2, _ := CreateColumn(db, "In Progress", 1, nil)
+	col3, _ := CreateColumn(db, "Done", 1, nil)
 
 	// Delete the tail column
 	err := DeleteColumn(db, col3.ID)
@@ -296,9 +296,9 @@ func TestMoveTaskBetweenColumns(t *testing.T) {
 	defer db.Close()
 
 	// Create columns
-	col1, _ := CreateColumn(db, "Todo", nil)
-	col2, _ := CreateColumn(db, "In Progress", nil)
-	col3, _ := CreateColumn(db, "Done", nil)
+	col1, _ := CreateColumn(db, "Todo", 1, nil)
+	col2, _ := CreateColumn(db, "In Progress", 1, nil)
+	col3, _ := CreateColumn(db, "Done", 1, nil)
 
 	// Create a task in the first column
 	task, err := CreateTask(db, "Test Task", "Description", col1.ID, 0)
@@ -401,7 +401,7 @@ func TestSingleColumn(t *testing.T) {
 	defer db.Close()
 
 	// Create single column
-	col, err := CreateColumn(db, "Only Column", nil)
+	col, err := CreateColumn(db, "Only Column", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create single column: %v", err)
 	}
@@ -445,7 +445,7 @@ func TestTaskCreationPersistence(t *testing.T) {
 	defer db.Close()
 
 	// Create a column first
-	col, err := CreateColumn(db, "Todo", nil)
+	col, err := CreateColumn(db, "Todo", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column: %v", err)
 	}
@@ -492,7 +492,7 @@ func TestTaskUpdatePersistence(t *testing.T) {
 	defer db.Close()
 
 	// Create column and task
-	col, _ := CreateColumn(db, "Todo", nil)
+	col, _ := CreateColumn(db, "Todo", 1, nil)
 	task, _ := CreateTask(db, "Original Title", "Original Description", col.ID, 0)
 
 	// Update the task
@@ -554,7 +554,7 @@ func TestTaskLabelAssociation(t *testing.T) {
 	defer db.Close()
 
 	// Create column, task, and labels
-	col, _ := CreateColumn(db, "Todo", nil)
+	col, _ := CreateColumn(db, "Todo", 1, nil)
 	task, _ := CreateTask(db, "Test Task", "Description", col.ID, 0)
 	label1, _ := CreateLabel(db, "Bug", "#FF0000")
 	label2, _ := CreateLabel(db, "Feature", "#00FF00")
@@ -602,7 +602,7 @@ func TestSetTaskLabelsReplaces(t *testing.T) {
 	defer db.Close()
 
 	// Create column, task, and labels
-	col, _ := CreateColumn(db, "Todo", nil)
+	col, _ := CreateColumn(db, "Todo", 1, nil)
 	task, _ := CreateTask(db, "Test Task", "", col.ID, 0)
 	label1, _ := CreateLabel(db, "Bug", "#FF0000")
 	label2, _ := CreateLabel(db, "Feature", "#00FF00")
@@ -636,7 +636,7 @@ func TestTaskDetailIncludesAllFields(t *testing.T) {
 	defer db.Close()
 
 	// Create column, task with description, and labels
-	col, _ := CreateColumn(db, "Todo", nil)
+	col, _ := CreateColumn(db, "Todo", 1, nil)
 	task, _ := CreateTask(db, "Full Task", "A complete description with details", col.ID, 0)
 	label, _ := CreateLabel(db, "Important", "#FFD700")
 	SetTaskLabels(db, task.ID, []int{label.ID})

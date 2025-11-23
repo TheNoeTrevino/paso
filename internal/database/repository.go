@@ -6,10 +6,235 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// CreateColumn creates a new column in the database
-// If afterColumnID is nil, the column is appended to the end of the list
+// ============================================================================
+// Project Operations
+// ============================================================================
+
+// CreateProject creates a new project with default columns (Todo, In Progress, Done)
+func CreateProject(db *sql.DB, name, description string) (*models.Project, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// Insert the project
+	result, err := tx.Exec(
+		`INSERT INTO projects (name, description) VALUES (?, ?)`,
+		name, description,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	projectID, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize the project counter
+	_, err = tx.Exec(
+		`INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)`,
+		projectID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create default columns for the project (as a linked list)
+	defaultColumns := []string{"Todo", "In Progress", "Done"}
+	var prevColID *int
+
+	for _, colName := range defaultColumns {
+		var colResult sql.Result
+		if prevColID == nil {
+			// First column: no prev_id
+			colResult, err = tx.Exec(
+				`INSERT INTO columns (name, project_id, prev_id, next_id) VALUES (?, ?, NULL, NULL)`,
+				colName, projectID,
+			)
+		} else {
+			// Subsequent columns: set prev_id
+			colResult, err = tx.Exec(
+				`INSERT INTO columns (name, project_id, prev_id, next_id) VALUES (?, ?, ?, NULL)`,
+				colName, projectID, *prevColID,
+			)
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		colID, err := colResult.LastInsertId()
+		if err != nil {
+			return nil, err
+		}
+		colIDInt := int(colID)
+
+		// Update the previous column's next_id
+		if prevColID != nil {
+			_, err = tx.Exec(`UPDATE columns SET next_id = ? WHERE id = ?`, colIDInt, *prevColID)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		prevColID = &colIDInt
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	// Retrieve the created project
+	return GetProjectByID(db, int(projectID))
+}
+
+// GetProjectByID retrieves a project by its ID
+func GetProjectByID(db *sql.DB, id int) (*models.Project, error) {
+	project := &models.Project{}
+	err := db.QueryRow(
+		`SELECT id, name, description, created_at, updated_at FROM projects WHERE id = ?`,
+		id,
+	).Scan(&project.ID, &project.Name, &project.Description, &project.CreatedAt, &project.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return project, nil
+}
+
+// GetAllProjects retrieves all projects ordered by name
+func GetAllProjects(db *sql.DB) ([]*models.Project, error) {
+	rows, err := db.Query(`SELECT id, name, description, created_at, updated_at FROM projects ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var projects []*models.Project
+	for rows.Next() {
+		project := &models.Project{}
+		if err := rows.Scan(&project.ID, &project.Name, &project.Description, &project.CreatedAt, &project.UpdatedAt); err != nil {
+			return nil, err
+		}
+		projects = append(projects, project)
+	}
+
+	return projects, rows.Err()
+}
+
+// UpdateProject updates a project's name and description
+func UpdateProject(db *sql.DB, id int, name, description string) error {
+	_, err := db.Exec(
+		`UPDATE projects SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		name, description, id,
+	)
+	return err
+}
+
+// DeleteProject removes a project and all its columns and tasks (cascade)
+func DeleteProject(db *sql.DB, id int) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Get all columns for this project
+	rows, err := tx.Query(`SELECT id FROM columns WHERE project_id = ?`, id)
+	if err != nil {
+		return err
+	}
+
+	var columnIDs []int
+	for rows.Next() {
+		var colID int
+		if err := rows.Scan(&colID); err != nil {
+			rows.Close()
+			return err
+		}
+		columnIDs = append(columnIDs, colID)
+	}
+	rows.Close()
+
+	// Delete all tasks in those columns
+	for _, colID := range columnIDs {
+		_, err = tx.Exec(`DELETE FROM tasks WHERE column_id = ?`, colID)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Delete all columns for this project
+	_, err = tx.Exec(`DELETE FROM columns WHERE project_id = ?`, id)
+	if err != nil {
+		return err
+	}
+
+	// Delete the project counter
+	_, err = tx.Exec(`DELETE FROM project_counters WHERE project_id = ?`, id)
+	if err != nil {
+		return err
+	}
+
+	// Delete the project
+	_, err = tx.Exec(`DELETE FROM projects WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// GetProjectTaskCount returns the total number of tasks in a project
+func GetProjectTaskCount(db *sql.DB, projectID int) (int, error) {
+	var count int
+	err := db.QueryRow(`
+		SELECT COUNT(*)
+		FROM tasks t
+		JOIN columns c ON t.column_id = c.id
+		WHERE c.project_id = ?
+	`, projectID).Scan(&count)
+	return count, err
+}
+
+// GetNextTicketNumber returns and increments the next ticket number for a project
+func GetNextTicketNumber(db *sql.DB, projectID int) (int, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	// Get current counter
+	var ticketNumber int
+	err = tx.QueryRow(
+		`SELECT next_ticket_number FROM project_counters WHERE project_id = ?`,
+		projectID,
+	).Scan(&ticketNumber)
+	if err != nil {
+		return 0, err
+	}
+
+	// Increment counter
+	_, err = tx.Exec(
+		`UPDATE project_counters SET next_ticket_number = next_ticket_number + 1 WHERE project_id = ?`,
+		projectID,
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	return ticketNumber, nil
+}
+
+// CreateColumn creates a new column in the database for a specific project
+// If afterColumnID is nil, the column is appended to the end of the project's list
 // Otherwise, it's inserted after the specified column
-func CreateColumn(db *sql.DB, name string, afterColumnID *int) (*models.Column, error) {
+func CreateColumn(db *sql.DB, name string, projectID int, afterColumnID *int) (*models.Column, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return nil, err
@@ -20,9 +245,9 @@ func CreateColumn(db *sql.DB, name string, afterColumnID *int) (*models.Column, 
 	var nextID *int
 
 	if afterColumnID == nil {
-		// Append to end: find tail (column where next_id IS NULL)
+		// Append to end: find tail (column where next_id IS NULL) for this project
 		var tailID sql.NullInt64
-		err = tx.QueryRow(`SELECT id FROM columns WHERE next_id IS NULL LIMIT 1`).Scan(&tailID)
+		err = tx.QueryRow(`SELECT id FROM columns WHERE next_id IS NULL AND project_id = ? LIMIT 1`, projectID).Scan(&tailID)
 		if err != nil && err != sql.ErrNoRows {
 			return nil, err
 		}
@@ -33,7 +258,7 @@ func CreateColumn(db *sql.DB, name string, afterColumnID *int) (*models.Column, 
 			prevID = &tailIDInt
 			nextID = nil
 		} else {
-			// No columns exist, this will be the head
+			// No columns exist for this project, this will be the head
 			prevID = nil
 			nextID = nil
 		}
@@ -56,8 +281,8 @@ func CreateColumn(db *sql.DB, name string, afterColumnID *int) (*models.Column, 
 
 	// Create the new column
 	result, err := tx.Exec(
-		`INSERT INTO columns (name, prev_id, next_id) VALUES (?, ?, ?)`,
-		name, prevID, nextID,
+		`INSERT INTO columns (name, project_id, prev_id, next_id) VALUES (?, ?, ?, ?)`,
+		name, projectID, prevID, nextID,
 	)
 	if err != nil {
 		return nil, err
@@ -90,22 +315,23 @@ func CreateColumn(db *sql.DB, name string, afterColumnID *int) (*models.Column, 
 	}
 
 	return &models.Column{
-		ID:     newIDInt,
-		Name:   name,
-		PrevID: prevID,
-		NextID: nextID,
+		ID:        newIDInt,
+		Name:      name,
+		ProjectID: projectID,
+		PrevID:    prevID,
+		NextID:    nextID,
 	}, nil
 }
 
-// GetAllColumns retrieves all columns from the database by traversing the linked list
+// GetColumnsByProject retrieves all columns for a specific project by traversing the linked list
 // Returns columns in order from head to tail
-func GetAllColumns(db *sql.DB) ([]*models.Column, error) {
-	// 1. Find the head (column where prev_id IS NULL)
+func GetColumnsByProject(db *sql.DB, projectID int) ([]*models.Column, error) {
+	// 1. Find the head (column where prev_id IS NULL) for this project
 	var headID sql.NullInt64
-	err := db.QueryRow(`SELECT id FROM columns WHERE prev_id IS NULL LIMIT 1`).Scan(&headID)
+	err := db.QueryRow(`SELECT id FROM columns WHERE prev_id IS NULL AND project_id = ? LIMIT 1`, projectID).Scan(&headID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// No columns exist
+			// No columns exist for this project
 			return []*models.Column{}, nil
 		}
 		return nil, err
@@ -126,9 +352,9 @@ func GetAllColumns(db *sql.DB) ([]*models.Column, error) {
 		var prevID, nextID sql.NullInt64
 
 		err := db.QueryRow(
-			`SELECT id, name, prev_id, next_id FROM columns WHERE id = ?`,
+			`SELECT id, name, project_id, prev_id, next_id FROM columns WHERE id = ?`,
 			currentID,
-		).Scan(&col.ID, &col.Name, &prevID, &nextID)
+		).Scan(&col.ID, &col.Name, &col.ProjectID, &prevID, &nextID)
 
 		if err != nil {
 			return nil, err
@@ -156,6 +382,23 @@ func GetAllColumns(db *sql.DB) ([]*models.Column, error) {
 	}
 
 	return columns, nil
+}
+
+// GetAllColumns retrieves all columns from the database by traversing the linked list
+// This is a convenience function that gets columns for all projects (used in tests)
+// Returns columns in order from head to tail
+func GetAllColumns(db *sql.DB) ([]*models.Column, error) {
+	// Get the first project and return its columns
+	// For backward compatibility with tests
+	var projectID int
+	err := db.QueryRow(`SELECT id FROM projects ORDER BY id LIMIT 1`).Scan(&projectID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return []*models.Column{}, nil
+		}
+		return nil, err
+	}
+	return GetColumnsByProject(db, projectID)
 }
 
 // CreateTask creates a new task in the database

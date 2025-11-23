@@ -18,6 +18,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateTicketForm(msg)
 	}
 
+	// Handle ProjectFormMode - form needs ALL messages, not just KeyMsg
+	if m.mode == ProjectFormMode {
+		return m.updateProjectForm(msg)
+	}
+
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
@@ -231,6 +236,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.getCurrentTask() != nil {
 					m.moveTaskLeft()
 				}
+
+			// Project tab navigation
+			case "{":
+				// Switch to previous project
+				if m.selectedProject > 0 {
+					m.switchToProject(m.selectedProject - 1)
+				}
+
+			case "}":
+				// Switch to next project
+				if m.selectedProject < len(m.projects)-1 {
+					m.switchToProject(m.selectedProject + 1)
+				}
+
+			case "ctrl+p":
+				// Create new project
+				m.formProjectName = ""
+				m.formProjectDescription = ""
+				m.projectForm = CreateProjectForm(
+					&m.formProjectName,
+					&m.formProjectDescription,
+				)
+				m.mode = ProjectFormMode
+				return m, m.projectForm.Init()
 			}
 
 		} else if m.mode == AddColumnMode || m.mode == EditColumnMode {
@@ -240,18 +269,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Confirm input and create/edit column
 				if strings.TrimSpace(m.inputBuffer) != "" {
 					if m.mode == AddColumnMode {
-						// Create new column after the current column
+						// Create new column after the current column in the current project
 						var afterColumnID *int
 						if len(m.columns) > 0 {
 							currentCol := m.columns[m.selectedColumn]
 							afterColumnID = &currentCol.ID
 						}
-						column, err := database.CreateColumn(m.db, strings.TrimSpace(m.inputBuffer), afterColumnID)
+						// Get current project ID
+						projectID := 0
+						if project := m.getCurrentProject(); project != nil {
+							projectID = project.ID
+						}
+						column, err := database.CreateColumn(m.db, strings.TrimSpace(m.inputBuffer), projectID, afterColumnID)
 						if err != nil {
 							log.Printf("Error creating column: %v", err)
 						} else {
 							// Reload columns from database to get correct order
-							m.columns, err = database.GetAllColumns(m.db)
+							m.columns, err = database.GetColumnsByProject(m.db, projectID)
 							if err != nil {
 								log.Printf("Error reloading columns: %v", err)
 							}
@@ -508,6 +542,71 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mode = NormalMode
 		m.ticketForm = nil
 		m.editingTaskID = 0
+		return m, tea.ClearScreen
+	}
+
+	return m, tea.Batch(cmds...)
+}
+
+// updateProjectForm handles all messages when in ProjectFormMode
+// This is separated out because huh forms need to receive ALL messages, not just KeyMsg
+func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.projectForm == nil {
+		m.mode = NormalMode
+		return m, nil
+	}
+
+	// Check for escape key to cancel
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg.String() == "esc" {
+			m.mode = NormalMode
+			m.projectForm = nil
+			return m, nil
+		}
+	}
+
+	// Forward ALL messages to the form
+	var cmds []tea.Cmd
+	form, cmd := m.projectForm.Update(msg)
+	if f, ok := form.(*huh.Form); ok {
+		m.projectForm = f
+		cmds = append(cmds, cmd)
+	}
+
+	// Check if form is complete
+	if m.projectForm.State == huh.StateCompleted {
+		// Read values directly from the form using GetString
+		name := m.projectForm.GetString("name")
+		description := m.projectForm.GetString("description")
+
+		// Form submitted - create the project
+		if strings.TrimSpace(name) != "" {
+			project, err := database.CreateProject(m.db, strings.TrimSpace(name), strings.TrimSpace(description))
+			if err != nil {
+				log.Printf("Error creating project: %v", err)
+				m.errorMessage = "Error creating project"
+			} else {
+				// Reload projects list
+				m.reloadProjects()
+
+				// Switch to the new project
+				for i, p := range m.projects {
+					if p.ID == project.ID {
+						m.switchToProject(i)
+						break
+					}
+				}
+			}
+		}
+		m.mode = NormalMode
+		m.projectForm = nil
+		return m, tea.ClearScreen
+	}
+
+	// Check if form was aborted
+	if m.projectForm.State == huh.StateAborted {
+		m.mode = NormalMode
+		m.projectForm = nil
 		return m, tea.ClearScreen
 	}
 
