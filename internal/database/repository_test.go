@@ -19,10 +19,14 @@ func setupTestDB(t *testing.T) *sql.DB {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
 
-	// Clear the default seeded columns for fresh tests
+	// Clear the default seeded columns and labels for fresh tests
 	_, err = db.Exec("DELETE FROM columns")
 	if err != nil {
 		t.Fatalf("Failed to clear columns: %v", err)
+	}
+	_, err = db.Exec("DELETE FROM labels")
+	if err != nil {
+		t.Fatalf("Failed to clear labels: %v", err)
 	}
 
 	return db
@@ -519,8 +523,8 @@ func TestLabelPersistence(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
-	// Create a label
-	label, err := CreateLabel(db, "Bug", "#FF0000")
+	// Create a label (projectID 1 is created by migrations)
+	label, err := CreateLabel(db, 1, "Bug", "#FF0000")
 	if err != nil {
 		t.Fatalf("Failed to create label: %v", err)
 	}
@@ -533,6 +537,9 @@ func TestLabelPersistence(t *testing.T) {
 	}
 	if label.Color != "#FF0000" {
 		t.Errorf("Expected label color '#FF0000', got '%s'", label.Color)
+	}
+	if label.ProjectID != 1 {
+		t.Errorf("Expected label project ID 1, got %d", label.ProjectID)
 	}
 
 	// Retrieve all labels
@@ -556,8 +563,8 @@ func TestTaskLabelAssociation(t *testing.T) {
 	// Create column, task, and labels
 	col, _ := CreateColumn(db, "Todo", 1, nil)
 	task, _ := CreateTask(db, "Test Task", "Description", col.ID, 0)
-	label1, _ := CreateLabel(db, "Bug", "#FF0000")
-	label2, _ := CreateLabel(db, "Feature", "#00FF00")
+	label1, _ := CreateLabel(db, 1, "Bug", "#FF0000")
+	label2, _ := CreateLabel(db, 1, "Feature", "#00FF00")
 
 	// Associate labels with task
 	err := SetTaskLabels(db, task.ID, []int{label1.ID, label2.ID})
@@ -604,9 +611,9 @@ func TestSetTaskLabelsReplaces(t *testing.T) {
 	// Create column, task, and labels
 	col, _ := CreateColumn(db, "Todo", 1, nil)
 	task, _ := CreateTask(db, "Test Task", "", col.ID, 0)
-	label1, _ := CreateLabel(db, "Bug", "#FF0000")
-	label2, _ := CreateLabel(db, "Feature", "#00FF00")
-	label3, _ := CreateLabel(db, "Enhancement", "#0000FF")
+	label1, _ := CreateLabel(db, 1, "Bug", "#FF0000")
+	label2, _ := CreateLabel(db, 1, "Feature", "#00FF00")
+	label3, _ := CreateLabel(db, 1, "Enhancement", "#0000FF")
 
 	// Set initial labels
 	SetTaskLabels(db, task.ID, []int{label1.ID, label2.ID})
@@ -638,7 +645,7 @@ func TestTaskDetailIncludesAllFields(t *testing.T) {
 	// Create column, task with description, and labels
 	col, _ := CreateColumn(db, "Todo", 1, nil)
 	task, _ := CreateTask(db, "Full Task", "A complete description with details", col.ID, 0)
-	label, _ := CreateLabel(db, "Important", "#FFD700")
+	label, _ := CreateLabel(db, 1, "Important", "#FFD700")
 	SetTaskLabels(db, task.ID, []int{label.ID})
 
 	// Get full detail
@@ -668,5 +675,68 @@ func TestTaskDetailIncludesAllFields(t *testing.T) {
 	}
 	if detail.UpdatedAt.IsZero() {
 		t.Error("UpdatedAt should not be zero")
+	}
+}
+
+// TestProjectSpecificLabels tests that labels are properly scoped to projects
+func TestProjectSpecificLabels(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// Project 1 is already created by migrations
+	// Create a second project
+	project2, err := CreateProject(db, "Project 2", "Second project")
+	if err != nil {
+		t.Fatalf("Failed to create project 2: %v", err)
+	}
+
+	// Create labels for project 1
+	label1, err := CreateLabel(db, 1, "Bug", "#FF0000")
+	if err != nil {
+		t.Fatalf("Failed to create label for project 1: %v", err)
+	}
+	if label1.ProjectID != 1 {
+		t.Errorf("Expected project ID 1, got %d", label1.ProjectID)
+	}
+
+	// Create labels for project 2
+	label2, err := CreateLabel(db, project2.ID, "Feature", "#00FF00")
+	if err != nil {
+		t.Fatalf("Failed to create label for project 2: %v", err)
+	}
+	if label2.ProjectID != project2.ID {
+		t.Errorf("Expected project ID %d, got %d", project2.ID, label2.ProjectID)
+	}
+
+	// GetLabelsByProject should return only project-specific labels
+	labelsP1, err := GetLabelsByProject(db, 1)
+	if err != nil {
+		t.Fatalf("Failed to get labels for project 1: %v", err)
+	}
+	if len(labelsP1) != 1 {
+		t.Errorf("Expected 1 label for project 1, got %d", len(labelsP1))
+	}
+	if labelsP1[0].Name != "Bug" {
+		t.Errorf("Expected label 'Bug', got '%s'", labelsP1[0].Name)
+	}
+
+	labelsP2, err := GetLabelsByProject(db, project2.ID)
+	if err != nil {
+		t.Fatalf("Failed to get labels for project 2: %v", err)
+	}
+	if len(labelsP2) != 1 {
+		t.Errorf("Expected 1 label for project 2, got %d", len(labelsP2))
+	}
+	if labelsP2[0].Name != "Feature" {
+		t.Errorf("Expected label 'Feature', got '%s'", labelsP2[0].Name)
+	}
+
+	// GetAllLabels should return all labels
+	allLabels, err := GetAllLabels(db)
+	if err != nil {
+		t.Fatalf("Failed to get all labels: %v", err)
+	}
+	if len(allLabels) != 2 {
+		t.Errorf("Expected 2 total labels, got %d", len(allLabels))
 	}
 }

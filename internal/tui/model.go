@@ -3,6 +3,7 @@ package tui
 import (
 	"database/sql"
 	"log"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
@@ -23,6 +24,9 @@ const (
 	ViewTaskMode                        // Viewing full task details
 	TicketFormMode                      // Full ticket form with huh
 	ProjectFormMode                     // Creating a new project with huh
+	LabelManagementMode                 // Managing labels (create/edit/delete)
+	LabelAssignMode                     // Quick label assignment to task
+	LabelPickerMode                     // GitHub-style label picker popup
 )
 
 // Model represents the application state for the TUI
@@ -60,6 +64,25 @@ type Model struct {
 	projectForm            *huh.Form // The huh form for creating projects
 	formProjectName        string    // Form field: project name
 	formProjectDescription string    // Form field: project description
+
+	// Label management fields
+	labelForm         *huh.Form // The huh form for creating/editing labels
+	editingLabelID    int       // ID of label being edited (0 for new label)
+	formLabelName     string    // Form field: label name
+	formLabelColor    string    // Form field: label color
+	selectedLabelIdx  int       // Index of selected label in label list
+	labelListMode     string    // "list", "add", "edit", "delete" - sub-mode for label management
+
+	// Label assignment fields (quick toggle)
+	assigningLabelIDs []int // Currently selected labels for assignment
+
+	// Label picker fields
+	labelPickerItems      []LabelPickerItem // Items in the label picker
+	labelPickerCursor     int               // Current cursor position in picker
+	labelPickerFilter     string            // Filter text for label search
+	labelPickerTaskID     int               // Task being edited in picker
+	labelPickerColorIdx   int               // Cursor for color picker
+	labelPickerCreateMode bool              // True when in color selection for new label
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
@@ -95,8 +118,8 @@ func InitialModel(db *sql.DB) Model {
 		tasks[col.ID] = columnTasks
 	}
 
-	// Load all labels
-	labels, err := database.GetAllLabels(db)
+	// Load labels for the current project
+	labels, err := database.GetLabelsByProject(db, currentProjectID)
 	if err != nil {
 		log.Printf("Error loading labels: %v", err)
 		labels = []*models.Label{}
@@ -363,7 +386,7 @@ func (m Model) getCurrentProject() *models.Project {
 	return m.projects[m.selectedProject]
 }
 
-// switchToProject switches to a different project by index and reloads columns/tasks
+// switchToProject switches to a different project by index and reloads columns/tasks/labels
 func (m *Model) switchToProject(projectIndex int) {
 	if projectIndex < 0 || projectIndex >= len(m.projects) {
 		return
@@ -391,6 +414,14 @@ func (m *Model) switchToProject(projectIndex int) {
 		m.tasks[col.ID] = columnTasks
 	}
 
+	// Reload labels for this project
+	labels, err := database.GetLabelsByProject(m.db, project.ID)
+	if err != nil {
+		log.Printf("Error loading labels for project %d: %v", project.ID, err)
+		labels = []*models.Label{}
+	}
+	m.labels = labels
+
 	// Reset selection state
 	m.selectedColumn = 0
 	m.selectedTask = 0
@@ -405,4 +436,74 @@ func (m *Model) reloadProjects() {
 		return
 	}
 	m.projects = projects
+}
+
+// reloadLabels reloads the labels for the current project from the database
+func (m *Model) reloadLabels() {
+	project := m.getCurrentProject()
+	if project == nil {
+		m.labels = []*models.Label{}
+		return
+	}
+
+	labels, err := database.GetLabelsByProject(m.db, project.ID)
+	if err != nil {
+		log.Printf("Error reloading labels: %v", err)
+		return
+	}
+	m.labels = labels
+}
+
+// initLabelPicker initializes the label picker for a task
+// Returns false if there's no task to edit
+func (m *Model) initLabelPicker(taskID int) bool {
+	if taskID == 0 {
+		return false
+	}
+
+	// Get current labels for the task
+	taskLabels, err := database.GetLabelsForTask(m.db, taskID)
+	if err != nil {
+		log.Printf("Error loading task labels: %v", err)
+		taskLabels = []*models.Label{}
+	}
+
+	// Build a map of task label IDs for quick lookup
+	taskLabelMap := make(map[int]bool)
+	for _, label := range taskLabels {
+		taskLabelMap[label.ID] = true
+	}
+
+	// Build picker items from all project labels
+	m.labelPickerItems = make([]LabelPickerItem, len(m.labels))
+	for i, label := range m.labels {
+		m.labelPickerItems[i] = LabelPickerItem{
+			Label:    label,
+			Selected: taskLabelMap[label.ID],
+		}
+	}
+
+	m.labelPickerTaskID = taskID
+	m.labelPickerCursor = 0
+	m.labelPickerFilter = ""
+	m.labelPickerCreateMode = false
+	m.labelPickerColorIdx = 0
+
+	return true
+}
+
+// getFilteredLabelPickerItems returns label picker items filtered by the current filter text
+func (m *Model) getFilteredLabelPickerItems() []LabelPickerItem {
+	if m.labelPickerFilter == "" {
+		return m.labelPickerItems
+	}
+
+	lowerFilter := strings.ToLower(m.labelPickerFilter)
+	var filtered []LabelPickerItem
+	for _, item := range m.labelPickerItems {
+		if strings.Contains(strings.ToLower(item.Label.Name), lowerFilter) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
 }

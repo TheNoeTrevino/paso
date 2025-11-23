@@ -720,11 +720,11 @@ func MoveTaskToPrevColumn(db *sql.DB, taskID int) error {
 // Label Operations
 // ============================================================================
 
-// CreateLabel creates a new label in the database
-func CreateLabel(db *sql.DB, name, color string) (*models.Label, error) {
+// CreateLabel creates a new label in the database for a specific project
+func CreateLabel(db *sql.DB, projectID int, name, color string) (*models.Label, error) {
 	result, err := db.Exec(
-		`INSERT INTO labels (name, color) VALUES (?, ?)`,
-		name, color,
+		`INSERT INTO labels (name, color, project_id) VALUES (?, ?, ?)`,
+		name, color, projectID,
 	)
 	if err != nil {
 		return nil, err
@@ -736,15 +736,17 @@ func CreateLabel(db *sql.DB, name, color string) (*models.Label, error) {
 	}
 
 	return &models.Label{
-		ID:    int(id),
-		Name:  name,
-		Color: color,
+		ID:        int(id),
+		Name:      name,
+		Color:     color,
+		ProjectID: projectID,
 	}, nil
 }
 
-// GetAllLabels retrieves all labels from the database
+// GetAllLabels retrieves all labels from the database (for backward compatibility)
+// Prefer GetLabelsByProject for project-specific label retrieval
 func GetAllLabels(db *sql.DB) ([]*models.Label, error) {
-	rows, err := db.Query(`SELECT id, name, color FROM labels ORDER BY name`)
+	rows, err := db.Query(`SELECT id, name, color, project_id FROM labels ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
@@ -753,13 +755,45 @@ func GetAllLabels(db *sql.DB) ([]*models.Label, error) {
 	var labels []*models.Label
 	for rows.Next() {
 		label := &models.Label{}
-		if err := rows.Scan(&label.ID, &label.Name, &label.Color); err != nil {
+		if err := rows.Scan(&label.ID, &label.Name, &label.Color, &label.ProjectID); err != nil {
 			return nil, err
 		}
 		labels = append(labels, label)
 	}
 
 	return labels, rows.Err()
+}
+
+// GetLabelsByProject retrieves all labels for a specific project
+func GetLabelsByProject(db *sql.DB, projectID int) ([]*models.Label, error) {
+	rows, err := db.Query(
+		`SELECT id, name, color, project_id FROM labels WHERE project_id = ? ORDER BY name`,
+		projectID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var labels []*models.Label
+	for rows.Next() {
+		label := &models.Label{}
+		if err := rows.Scan(&label.ID, &label.Name, &label.Color, &label.ProjectID); err != nil {
+			return nil, err
+		}
+		labels = append(labels, label)
+	}
+
+	return labels, rows.Err()
+}
+
+// UpdateLabel updates an existing label's name and color
+func UpdateLabel(db *sql.DB, labelID int, name, color string) error {
+	_, err := db.Exec(
+		`UPDATE labels SET name = ?, color = ? WHERE id = ?`,
+		name, color, labelID,
+	)
+	return err
 }
 
 // DeleteLabel removes a label from the database (cascade removes task associations)
@@ -789,7 +823,7 @@ func RemoveLabelFromTask(db *sql.DB, taskID, labelID int) error {
 // GetLabelsForTask retrieves all labels associated with a task
 func GetLabelsForTask(db *sql.DB, taskID int) ([]*models.Label, error) {
 	rows, err := db.Query(`
-		SELECT l.id, l.name, l.color
+		SELECT l.id, l.name, l.color, l.project_id
 		FROM labels l
 		INNER JOIN task_labels tl ON l.id = tl.label_id
 		WHERE tl.task_id = ?
@@ -803,7 +837,7 @@ func GetLabelsForTask(db *sql.DB, taskID int) ([]*models.Label, error) {
 	var labels []*models.Label
 	for rows.Next() {
 		label := &models.Label{}
-		if err := rows.Scan(&label.ID, &label.Name, &label.Color); err != nil {
+		if err := rows.Scan(&label.ID, &label.Name, &label.Color, &label.ProjectID); err != nil {
 			return nil, err
 		}
 		labels = append(labels, label)

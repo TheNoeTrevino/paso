@@ -68,12 +68,15 @@ func runMigrations(db *sql.DB) error {
 		return err
 	}
 
-	// Create labels table
+	// Create labels table (project-specific)
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS labels (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT NOT NULL UNIQUE,
-			color TEXT NOT NULL DEFAULT '#7D56F4'
+			name TEXT NOT NULL,
+			color TEXT NOT NULL DEFAULT '#7D56F4',
+			project_id INTEGER NOT NULL DEFAULT 1,
+			FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+			UNIQUE(name, project_id)
 		)
 	`)
 	if err != nil {
@@ -116,6 +119,11 @@ func runMigrations(db *sql.DB) error {
 
 	// Migrate tasks to include ticket_number
 	if err := migrateTasksTicketNumber(db); err != nil {
+		return err
+	}
+
+	// Migrate labels to include project_id and seed default labels
+	if err := migrateLabelsToProject(db); err != nil {
 		return err
 	}
 
@@ -445,4 +453,118 @@ func migrateTasksTicketNumber(db *sql.DB) error {
 	}
 
 	return tx.Commit()
+}
+
+// migrateLabelsToProject adds project_id column to labels table and seeds default labels
+func migrateLabelsToProject(db *sql.DB) error {
+	// Check if project_id column already exists
+	var count int
+	err := db.QueryRow(`
+		SELECT COUNT(*) FROM pragma_table_info('labels')
+		WHERE name = 'project_id'
+	`).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	// If column doesn't exist, we need to migrate
+	if count == 0 {
+		// Start transaction
+		tx, err := db.Begin()
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+
+		// Get the default project ID
+		var defaultProjectID int
+		err = tx.QueryRow(`SELECT id FROM projects WHERE name = 'Default' LIMIT 1`).Scan(&defaultProjectID)
+		if err != nil {
+			// If no default project, try to get the first project
+			err = tx.QueryRow(`SELECT id FROM projects ORDER BY id LIMIT 1`).Scan(&defaultProjectID)
+			if err != nil {
+				// No projects exist yet, this will be handled when projects are created
+				return nil
+			}
+		}
+
+		// Add project_id column
+		_, err = tx.Exec(`ALTER TABLE labels ADD COLUMN project_id INTEGER NOT NULL DEFAULT 1`)
+		if err != nil {
+			return err
+		}
+
+		// Update all existing labels to belong to the default project
+		_, err = tx.Exec(`UPDATE labels SET project_id = ?`, defaultProjectID)
+		if err != nil {
+			return err
+		}
+
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+
+	// Seed default labels for all projects that don't have labels yet
+	return seedDefaultLabels(db)
+}
+
+// seedDefaultLabels seeds default GitHub-style labels for projects that don't have any labels
+func seedDefaultLabels(db *sql.DB) error {
+	// Default labels (GitHub-style)
+	defaultLabels := []struct {
+		name  string
+		color string
+	}{
+		{"bug", "#EF4444"},         // Red
+		{"duplicate", "#6B7280"},   // Gray
+		{"enhancement", "#3B82F6"}, // Blue
+		{"help wanted", "#22C55E"}, // Green
+		{"invalid", "#6B7280"},     // Gray
+		{"question", "#EC4899"},    // Pink/Magenta
+	}
+
+	// Get all projects
+	rows, err := db.Query(`SELECT id FROM projects`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var projectIDs []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return err
+		}
+		projectIDs = append(projectIDs, id)
+	}
+
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	// For each project, check if it has labels and seed if not
+	for _, projectID := range projectIDs {
+		var labelCount int
+		err := db.QueryRow(`SELECT COUNT(*) FROM labels WHERE project_id = ?`, projectID).Scan(&labelCount)
+		if err != nil {
+			return err
+		}
+
+		// Only seed if project has no labels
+		if labelCount == 0 {
+			for _, label := range defaultLabels {
+				_, err := db.Exec(
+					`INSERT OR IGNORE INTO labels (name, color, project_id) VALUES (?, ?, ?)`,
+					label.name, label.color, projectID,
+				)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }
