@@ -83,3 +83,28 @@ func CreateTicketForm(
 
 	return form
 }
+
+// CreateProjectForm creates a huh form for adding a new project
+func CreateProjectForm(
+	name *string,
+	description *string,
+) *huh.Form {
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Key("name").
+				Title("Project Name").
+				Placeholder("Enter project name...").
+				Value(name),
+
+			huh.NewText().
+				Key("description").
+				Title("Description (optional)").
+				Placeholder("Enter project description...").
+				CharLimit(500).
+				Value(description),
+		),
+	).WithTheme(huh.ThemeDracula())
+
+	return form
+}

@@ -146,8 +146,8 @@ func TestTaskCRUDPersistence(t *testing.T) {
 	db := createTestDB(t)
 	defer db.Close()
 
-	// Create a column
-	col, err := CreateColumn(db, "Todo", nil)
+	// Create a column (using default project ID 1)
+	col, err := CreateColumn(db, "Todo", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column: %v", err)
 	}
@@ -221,18 +221,18 @@ func TestColumnCRUDPersistence(t *testing.T) {
 	db, dbPath := createTestDBFile(t)
 	defer os.Remove(dbPath)
 
-	// Create 3 columns
-	col1, err := CreateColumn(db, "Todo", nil)
+	// Create 3 columns (using default project ID 1)
+	col1, err := CreateColumn(db, "Todo", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 1: %v", err)
 	}
 
-	col2, err := CreateColumn(db, "In Progress", nil)
+	col2, err := CreateColumn(db, "In Progress", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 2: %v", err)
 	}
 
-	col3, err := CreateColumn(db, "Done", nil)
+	col3, err := CreateColumn(db, "Done", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 3: %v", err)
 	}
@@ -317,10 +317,10 @@ func TestTaskMovementPersistence(t *testing.T) {
 	db, dbPath := createTestDBFile(t)
 	defer os.Remove(dbPath)
 
-	// Create database with 3 columns
-	col1, _ := CreateColumn(db, "Todo", nil)
-	col2, _ := CreateColumn(db, "In Progress", nil)
-	col3, _ := CreateColumn(db, "Done", nil)
+	// Create database with 3 columns (using default project ID 1)
+	col1, _ := CreateColumn(db, "Todo", 1, nil)
+	col2, _ := CreateColumn(db, "In Progress", 1, nil)
+	col3, _ := CreateColumn(db, "Done", 1, nil)
 
 	// Create task in first column
 	task, err := CreateTask(db, "Test task", "Description", col1.ID, 0)
@@ -389,12 +389,12 @@ func TestColumnInsertionPersistence(t *testing.T) {
 	db, dbPath := createTestDBFile(t)
 	defer os.Remove(dbPath)
 
-	// Create database with 2 columns (A, B)
-	colA, _ := CreateColumn(db, "Column A", nil)
-	colB, _ := CreateColumn(db, "Column B", nil)
+	// Create database with 2 columns (A, B) using default project ID 1
+	colA, _ := CreateColumn(db, "Column A", 1, nil)
+	colB, _ := CreateColumn(db, "Column B", 1, nil)
 
 	// Insert new column after A (creating A, C, B)
-	colC, err := CreateColumn(db, "Column C", &colA.ID)
+	colC, err := CreateColumn(db, "Column C", 1, &colA.ID)
 	if err != nil {
 		t.Fatalf("Failed to insert column: %v", err)
 	}
@@ -463,8 +463,8 @@ func TestCascadeDeletion(t *testing.T) {
 	db, dbPath := createTestDBFile(t)
 	defer os.Remove(dbPath)
 
-	// Create database with 1 column
-	col, _ := CreateColumn(db, "Todo", nil)
+	// Create database with 1 column (using default project ID 1)
+	col, _ := CreateColumn(db, "Todo", 1, nil)
 
 	// Create 5 tasks in column
 	for i := 0; i < 5; i++ {
@@ -520,9 +520,9 @@ func TestTransactionRollback(t *testing.T) {
 	db := createTestDB(t)
 	defer db.Close()
 
-	// Create 2 columns
-	col1, _ := CreateColumn(db, "Todo", nil)
-	col2, _ := CreateColumn(db, "Done", nil)
+	// Create 2 columns (using default project ID 1)
+	col1, _ := CreateColumn(db, "Todo", 1, nil)
+	col2, _ := CreateColumn(db, "Done", 1, nil)
 
 	// Attempt to delete column with invalid ID
 	err := DeleteColumn(db, 99999)
@@ -557,8 +557,8 @@ func TestSequentialBulkOperations(t *testing.T) {
 	db := createTestDB(t)
 	defer db.Close()
 
-	// Create a column
-	col, _ := CreateColumn(db, "Todo", nil)
+	// Create a column (using default project ID 1)
+	col, _ := CreateColumn(db, "Todo", 1, nil)
 
 	// Create many tasks in sequence (like rapid user input)
 	numTasks := 50
@@ -626,7 +626,7 @@ func TestReloadFullState(t *testing.T) {
 	var columnIDs []int
 
 	for _, name := range columnNames {
-		col, err := CreateColumn(db, name, nil)
+		col, err := CreateColumn(db, name, 1, nil)
 		if err != nil {
 			t.Fatalf("Failed to create column %s: %v", name, err)
 		}
@@ -709,8 +709,8 @@ func TestMigrationIdempotency(t *testing.T) {
 	db, dbPath := createTestDBFile(t)
 	defer os.Remove(dbPath)
 
-	// Create some data
-	col, _ := CreateColumn(db, "Todo", nil)
+	// Create some data (using default project ID 1)
+	col, _ := CreateColumn(db, "Todo", 1, nil)
 	_, _ = CreateTask(db, "Task", "Description", col.ID, 0)
 
 	// Run migrations again
@@ -836,8 +836,8 @@ func TestTimestampsPersistence(t *testing.T) {
 	db, dbPath := createTestDBFile(t)
 	defer os.Remove(dbPath)
 
-	// Create column and task
-	col, _ := CreateColumn(db, "Todo", nil)
+	// Create column and task (using default project ID 1)
+	col, _ := CreateColumn(db, "Todo", 1, nil)
 	task, err := CreateTask(db, "Test task", "Description", col.ID, 0)
 	if err != nil {
 		t.Fatalf("Failed to create task: %v", err)
@@ -895,11 +895,11 @@ func TestComplexMovementSequencePersistence(t *testing.T) {
 	db, dbPath := createTestDBFile(t)
 	defer os.Remove(dbPath)
 
-	// Create 4 columns
-	col1, _ := CreateColumn(db, "Col1", nil)
-	col2, _ := CreateColumn(db, "Col2", nil)
-	col3, _ := CreateColumn(db, "Col3", nil)
-	col4, _ := CreateColumn(db, "Col4", nil)
+	// Create 4 columns (using default project ID 1)
+	col1, _ := CreateColumn(db, "Col1", 1, nil)
+	col2, _ := CreateColumn(db, "Col2", 1, nil)
+	col3, _ := CreateColumn(db, "Col3", 1, nil)
+	col4, _ := CreateColumn(db, "Col4", 1, nil)
 
 	// Create 3 tasks in col1
 	task1, _ := CreateTask(db, "Task 1", "", col1.ID, 0)
@@ -951,13 +951,13 @@ func TestColumnReorderingPersistence(t *testing.T) {
 	db, dbPath := createTestDBFile(t)
 	defer os.Remove(dbPath)
 
-	// Create 3 columns: A, B, C
-	colA, _ := CreateColumn(db, "A", nil)
-	_, _ = CreateColumn(db, "B", nil)
-	_, _ = CreateColumn(db, "C", nil)
+	// Create 3 columns: A, B, C (using default project ID 1)
+	colA, _ := CreateColumn(db, "A", 1, nil)
+	_, _ = CreateColumn(db, "B", 1, nil)
+	_, _ = CreateColumn(db, "C", 1, nil)
 
 	// Insert D between A and B
-	_, _ = CreateColumn(db, "D", &colA.ID)
+	_, _ = CreateColumn(db, "D", 1, &colA.ID)
 
 	// Expected order: A, D, B, C
 	columns, _ := GetAllColumns(db)
@@ -997,9 +997,9 @@ func TestUpdateTaskColumnDirectly(t *testing.T) {
 	db := createTestDB(t)
 	defer db.Close()
 
-	// Create 2 columns
-	col1, _ := CreateColumn(db, "Todo", nil)
-	col2, _ := CreateColumn(db, "Done", nil)
+	// Create 2 columns (using default project ID 1)
+	col1, _ := CreateColumn(db, "Todo", 1, nil)
+	col2, _ := CreateColumn(db, "Done", 1, nil)
 
 	// Create task in col1
 	task, _ := CreateTask(db, "Test", "Description", col1.ID, 0)
@@ -1029,7 +1029,7 @@ func TestMultipleTasksInColumnOrder(t *testing.T) {
 	db := createTestDB(t)
 	defer db.Close()
 
-	col, _ := CreateColumn(db, "Todo", nil)
+	col, _ := CreateColumn(db, "Todo", 1, nil)
 
 	// Create tasks with specific positions
 	task1, _ := CreateTask(db, "Task 1", "", col.ID, 0)
