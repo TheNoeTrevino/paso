@@ -108,3 +108,42 @@ func CreateProjectForm(
 
 	return form
 }
+
+// LabelColorOptions returns the available color options for labels
+func LabelColorOptions() []huh.Option[string] {
+	return []huh.Option[string]{
+		huh.NewOption("Purple", "#7D56F4"),
+		huh.NewOption("Blue", "#3B82F6"),
+		huh.NewOption("Green", "#22C55E"),
+		huh.NewOption("Yellow", "#EAB308"),
+		huh.NewOption("Orange", "#F97316"),
+		huh.NewOption("Red", "#EF4444"),
+		huh.NewOption("Pink", "#EC4899"),
+		huh.NewOption("Cyan", "#06B6D4"),
+		huh.NewOption("Gray", "#6B7280"),
+	}
+}
+
+// CreateLabelForm creates a huh form for adding/editing a label
+func CreateLabelForm(
+	name *string,
+	color *string,
+) *huh.Form {
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Key("name").
+				Title("Label Name").
+				Placeholder("Enter label name...").
+				Value(name),
+
+			huh.NewSelect[string]().
+				Key("color").
+				Title("Color").
+				Options(LabelColorOptions()...).
+				Value(color),
+		),
+	).WithTheme(huh.ThemeDracula())
+
+	return form
+}

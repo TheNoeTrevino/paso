@@ -148,6 +148,7 @@ TASKS
   <     Move task to previous column
   >     Move task to next column
   space View task details
+  l     Edit labels (when viewing task)
 
 COLUMNS
   C     Create new column (after current)
@@ -155,10 +156,10 @@ COLUMNS
   X     Delete current column
 
 NAVIGATION
-  h/←   Move to previous column
-  l/→   Move to next column
-  k/↑   Move to previous task
-  j/↓   Move to next task
+  h     Move to previous column
+  l     Move to next column
+  k     Move to previous task
+  j     Move to next task
   [     Scroll viewport left
   ]     Scroll viewport right
 
@@ -179,6 +180,51 @@ Press any key to close`
 			m.width, m.height,
 			lipgloss.Center, lipgloss.Center,
 			helpBox,
+		)
+	}
+
+	// Handle label picker mode: show picker over task view
+	if m.mode == LabelPickerMode {
+		// Render the label picker content
+		var pickerContent string
+		if m.labelPickerCreateMode {
+			// Show color picker
+			pickerContent = RenderLabelColorPicker(
+				GetDefaultLabelColors(),
+				m.labelPickerColorIdx,
+				m.formLabelName,
+				m.width/2-8,
+			)
+		} else {
+			// Show label list
+			pickerContent = RenderLabelPicker(
+				m.labelPickerItems,
+				m.labelPickerCursor,
+				m.labelPickerFilter,
+				true, // show create option
+				m.width/2-8,
+				m.height/2-4,
+			)
+		}
+
+		// Wrap in styled container
+		borderColor := lipgloss.Color("170") // Purple
+		if m.labelPickerCreateMode {
+			borderColor = lipgloss.Color("42") // Green for creation
+		}
+
+		pickerBox := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(borderColor).
+			Padding(1, 2).
+			Width(m.width / 2).
+			Height(m.height / 2).
+			Render(pickerContent)
+
+		return lipgloss.Place(
+			m.width, m.height,
+			lipgloss.Center, lipgloss.Center,
+			pickerBox,
 		)
 	}
 
@@ -238,7 +284,7 @@ Press any key to close`
 		content += labelStyle.Render(fmt.Sprintf("Created: %s", task.CreatedAt.Format("Jan 2, 2006 3:04 PM"))) + "\n"
 		content += labelStyle.Render(fmt.Sprintf("Updated: %s", task.UpdatedAt.Format("Jan 2, 2006 3:04 PM"))) + "\n\n"
 
-		content += lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Press Esc or Space to close")
+		content += lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("[l] labels  [Esc/Space] close")
 
 		// 50% width and height popup
 		popupWidth := m.width / 2

@@ -396,13 +396,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		} else if m.mode == ViewTaskMode {
-			// View task mode - close popup on esc or space
+			// View task mode - close popup on esc or space, 'l' opens label picker
 			switch msg.String() {
 			case "esc", " ", "q":
 				m.mode = NormalMode
 				m.viewingTask = nil
 				return m, nil
+			case "l":
+				// Open label picker for this task
+				if m.viewingTask != nil {
+					if m.initLabelPicker(m.viewingTask.ID) {
+						m.mode = LabelPickerMode
+					}
+				}
+				return m, nil
 			}
+
+		} else if m.mode == LabelPickerMode {
+			// Label picker mode - navigate, toggle, create
+			return m.updateLabelPicker(msg)
 		}
 		// Note: TicketFormMode is handled at the top of Update()
 
@@ -611,4 +623,211 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, tea.Batch(cmds...)
+}
+
+// updateLabelPicker handles keyboard input in the label picker mode
+func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	// Handle color picker sub-mode for creating new label
+	if m.labelPickerCreateMode {
+		return m.updateLabelColorPicker(keyMsg)
+	}
+
+	// Get filtered items to determine bounds
+	filteredItems := m.getFilteredLabelPickerItems()
+	maxIdx := len(filteredItems) // +1 for "create new label" option
+
+	switch keyMsg.String() {
+	case "esc":
+		// Close picker and return to ViewTaskMode
+		m.mode = ViewTaskMode
+		m.labelPickerFilter = ""
+		m.labelPickerCursor = 0
+		return m, nil
+
+	case "up", "k":
+		// Move cursor up
+		if m.labelPickerCursor > 0 {
+			m.labelPickerCursor--
+		}
+		return m, nil
+
+	case "down", "j":
+		// Move cursor down
+		if m.labelPickerCursor < maxIdx {
+			m.labelPickerCursor++
+		}
+		return m, nil
+
+	case "enter":
+		// Toggle label or create new
+		if m.labelPickerCursor < len(filteredItems) {
+			// Toggle this label
+			item := filteredItems[m.labelPickerCursor]
+
+			// Find the index in the unfiltered list
+			for i, pi := range m.labelPickerItems {
+				if pi.Label.ID == item.Label.ID {
+					if m.labelPickerItems[i].Selected {
+						// Remove label from task
+						err := database.RemoveLabelFromTask(m.db, m.labelPickerTaskID, item.Label.ID)
+						if err != nil {
+							log.Printf("Error removing label: %v", err)
+						} else {
+							m.labelPickerItems[i].Selected = false
+						}
+					} else {
+						// Add label to task
+						err := database.AddLabelToTask(m.db, m.labelPickerTaskID, item.Label.ID)
+						if err != nil {
+							log.Printf("Error adding label: %v", err)
+						} else {
+							m.labelPickerItems[i].Selected = true
+						}
+					}
+					break
+				}
+			}
+
+			// Reload task detail to update the view
+			m.reloadViewingTask()
+			// Reload task summaries for the current column
+			m.reloadCurrentColumnTasks()
+		} else {
+			// Create new label - switch to color picker sub-mode
+			if strings.TrimSpace(m.labelPickerFilter) != "" {
+				m.formLabelName = strings.TrimSpace(m.labelPickerFilter)
+			} else {
+				m.formLabelName = "New Label"
+			}
+			m.labelPickerCreateMode = true
+			m.labelPickerColorIdx = 0
+		}
+		return m, nil
+
+	case "backspace", "ctrl+h":
+		// Remove last character from filter
+		if len(m.labelPickerFilter) > 0 {
+			m.labelPickerFilter = m.labelPickerFilter[:len(m.labelPickerFilter)-1]
+			// Reset cursor if it's out of bounds after filter change
+			newFiltered := m.getFilteredLabelPickerItems()
+			if m.labelPickerCursor > len(newFiltered) {
+				m.labelPickerCursor = len(newFiltered)
+			}
+		}
+		return m, nil
+
+	default:
+		// Type to filter/search
+		key := keyMsg.String()
+		if len(key) == 1 && len(m.labelPickerFilter) < 50 {
+			m.labelPickerFilter += key
+			// Reset cursor to 0 when filter changes
+			m.labelPickerCursor = 0
+		}
+		return m, nil
+	}
+}
+
+// updateLabelColorPicker handles keyboard input when selecting a color for new label
+func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	colors := GetDefaultLabelColors()
+	maxIdx := len(colors) - 1
+
+	switch keyMsg.String() {
+	case "esc":
+		// Cancel and return to label list
+		m.labelPickerCreateMode = false
+		return m, nil
+
+	case "up", "k":
+		if m.labelPickerColorIdx > 0 {
+			m.labelPickerColorIdx--
+		}
+		return m, nil
+
+	case "down", "j":
+		if m.labelPickerColorIdx < maxIdx {
+			m.labelPickerColorIdx++
+		}
+		return m, nil
+
+	case "enter":
+		// Create the new label
+		color := colors[m.labelPickerColorIdx].Color
+		project := m.getCurrentProject()
+		if project == nil {
+			m.labelPickerCreateMode = false
+			return m, nil
+		}
+
+		label, err := database.CreateLabel(m.db, project.ID, m.formLabelName, color)
+		if err != nil {
+			log.Printf("Error creating label: %v", err)
+			m.labelPickerCreateMode = false
+			return m, nil
+		}
+
+		// Add to labels list
+		m.labels = append(m.labels, label)
+
+		// Add to picker items (selected by default)
+		m.labelPickerItems = append(m.labelPickerItems, LabelPickerItem{
+			Label:    label,
+			Selected: true,
+		})
+
+		// Assign to current task
+		err = database.AddLabelToTask(m.db, m.labelPickerTaskID, label.ID)
+		if err != nil {
+			log.Printf("Error assigning new label to task: %v", err)
+		}
+
+		// Reload task detail to update the view
+		m.reloadViewingTask()
+		// Reload task summaries for the current column
+		m.reloadCurrentColumnTasks()
+
+		// Exit create mode and clear filter
+		m.labelPickerCreateMode = false
+		m.labelPickerFilter = ""
+		m.labelPickerCursor = 0
+
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// reloadViewingTask reloads the task detail being viewed
+func (m *Model) reloadViewingTask() {
+	if m.viewingTask == nil {
+		return
+	}
+
+	taskDetail, err := database.GetTaskDetail(m.db, m.viewingTask.ID)
+	if err != nil {
+		log.Printf("Error reloading task detail: %v", err)
+		return
+	}
+	m.viewingTask = taskDetail
+}
+
+// reloadCurrentColumnTasks reloads task summaries for the current column
+func (m *Model) reloadCurrentColumnTasks() {
+	if len(m.columns) == 0 || m.selectedColumn >= len(m.columns) {
+		return
+	}
+
+	currentCol := m.columns[m.selectedColumn]
+	summaries, err := database.GetTaskSummariesByColumn(m.db, currentCol.ID)
+	if err != nil {
+		log.Printf("Error reloading column tasks: %v", err)
+		return
+	}
+	m.tasks[currentCol.ID] = summaries
 }
