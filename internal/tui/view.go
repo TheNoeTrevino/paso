@@ -36,6 +36,26 @@ func (m Model) View() string {
 		)
 	}
 
+	// Handle project form mode: show huh form in centered dialog
+	if m.mode == ProjectFormMode && m.projectForm != nil {
+		formView := m.projectForm.View()
+
+		// Wrap form in a styled container with green border for creation
+		formBox := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("42")). // Green for creation
+			Padding(1, 2).
+			Width(m.width / 2).
+			Height(m.height / 3).
+			Render("New Project\n\n" + formView)
+
+		return lipgloss.Place(
+			m.width, m.height,
+			lipgloss.Center, lipgloss.Center,
+			formBox,
+		)
+	}
+
 	// Handle column creation mode: show centered dialog with green border
 	if m.mode == AddColumnMode {
 		inputBox := lipgloss.NewStyle().
@@ -306,9 +326,15 @@ Press any key to close`
 		totalTasks += len(tasks)
 	}
 
-	// Create project tabs
-	projectTabs := []string{"Project 1", "Project 2", "Project 3"}
-	tabBar := RenderTabs(projectTabs, 0, m.width) // 0 = first tab selected (placeholder)
+	// Create project tabs from actual project data
+	var projectTabs []string
+	for _, project := range m.projects {
+		projectTabs = append(projectTabs, project.Name)
+	}
+	if len(projectTabs) == 0 {
+		projectTabs = []string{"No Projects"}
+	}
+	tabBar := RenderTabs(projectTabs, m.selectedProject, m.width)
 
 	// Create header with status bar
 	header := TitleStyle.Render("PASO - Your Tasks")

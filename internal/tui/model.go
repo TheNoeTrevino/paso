@@ -22,6 +22,7 @@ const (
 	HelpMode                            // Displaying help screen
 	ViewTaskMode                        // Viewing full task details
 	TicketFormMode                      // Full ticket form with huh
+	ProjectFormMode                     // Creating a new project with huh
 )
 
 // Model represents the application state for the TUI
@@ -43,6 +44,10 @@ type Model struct {
 	errorMessage          string                        // Current error message to display
 	viewingTask           *models.TaskDetail            // Task being viewed in detail mode
 
+	// Project fields
+	projects        []*models.Project // All available projects
+	selectedProject int               // Index of currently selected project
+
 	// Ticket form fields (for huh form)
 	ticketForm      *huh.Form // The huh form for adding/editing tickets
 	editingTaskID   int       // ID of task being edited (0 for new task)
@@ -50,12 +55,30 @@ type Model struct {
 	formDescription string    // Form field: description
 	formLabelIDs    []int     // Form field: selected label IDs
 	formConfirm     bool      // Form field: confirmation
+
+	// Project form fields (for huh form)
+	projectForm            *huh.Form // The huh form for creating projects
+	formProjectName        string    // Form field: project name
+	formProjectDescription string    // Form field: project description
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
 func InitialModel(db *sql.DB) Model {
-	// Load all columns from database
-	columns, err := database.GetAllColumns(db)
+	// Load all projects
+	projects, err := database.GetAllProjects(db)
+	if err != nil {
+		log.Printf("Error loading projects: %v", err)
+		projects = []*models.Project{}
+	}
+
+	// Get the first project's ID (or 0 if no projects)
+	var currentProjectID int
+	if len(projects) > 0 {
+		currentProjectID = projects[0].ID
+	}
+
+	// Load columns for the current project
+	columns, err := database.GetColumnsByProject(db, currentProjectID)
 	if err != nil {
 		log.Printf("Error loading columns: %v", err)
 		columns = []*models.Column{}
@@ -80,19 +103,21 @@ func InitialModel(db *sql.DB) Model {
 	}
 
 	return Model{
-		db:             db,
-		columns:        columns,
-		tasks:          tasks,
-		labels:         labels,
-		selectedColumn: 0,
-		selectedTask:   0,
-		width:          0,
-		height:         0,
-		mode:           NormalMode,
-		inputBuffer:    "",
-		inputPrompt:    "",
-		viewportOffset: 0,
-		viewportSize:   1, // Default to 1, will be recalculated when width is set
+		db:              db,
+		projects:        projects,
+		selectedProject: 0,
+		columns:         columns,
+		tasks:           tasks,
+		labels:          labels,
+		selectedColumn:  0,
+		selectedTask:    0,
+		width:           0,
+		height:          0,
+		mode:            NormalMode,
+		inputBuffer:     "",
+		inputPrompt:     "",
+		viewportOffset:  0,
+		viewportSize:    1, // Default to 1, will be recalculated when width is set
 	}
 }
 
@@ -324,4 +349,60 @@ func (m *Model) moveTaskLeft() {
 	if m.selectedColumn < m.viewportOffset {
 		m.viewportOffset--
 	}
+}
+
+// getCurrentProject returns the currently selected project
+// Returns nil if there are no projects
+func (m Model) getCurrentProject() *models.Project {
+	if len(m.projects) == 0 {
+		return nil
+	}
+	if m.selectedProject >= len(m.projects) {
+		return nil
+	}
+	return m.projects[m.selectedProject]
+}
+
+// switchToProject switches to a different project by index and reloads columns/tasks
+func (m *Model) switchToProject(projectIndex int) {
+	if projectIndex < 0 || projectIndex >= len(m.projects) {
+		return
+	}
+
+	m.selectedProject = projectIndex
+	project := m.projects[projectIndex]
+
+	// Reload columns for this project
+	columns, err := database.GetColumnsByProject(m.db, project.ID)
+	if err != nil {
+		log.Printf("Error loading columns for project %d: %v", project.ID, err)
+		columns = []*models.Column{}
+	}
+	m.columns = columns
+
+	// Reload task summaries for each column
+	m.tasks = make(map[int][]*models.TaskSummary)
+	for _, col := range m.columns {
+		columnTasks, err := database.GetTaskSummariesByColumn(m.db, col.ID)
+		if err != nil {
+			log.Printf("Error loading tasks for column %d: %v", col.ID, err)
+			columnTasks = []*models.TaskSummary{}
+		}
+		m.tasks[col.ID] = columnTasks
+	}
+
+	// Reset selection state
+	m.selectedColumn = 0
+	m.selectedTask = 0
+	m.viewportOffset = 0
+}
+
+// reloadProjects reloads the projects list from the database
+func (m *Model) reloadProjects() {
+	projects, err := database.GetAllProjects(m.db)
+	if err != nil {
+		log.Printf("Error reloading projects: %v", err)
+		return
+	}
+	m.projects = projects
 }
