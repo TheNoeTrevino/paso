@@ -943,6 +943,19 @@ func GetTaskDetail(db *sql.DB, taskID int) (*models.TaskDetail, error) {
 	return detail, nil
 }
 
+// GetColumnByID retrieves a single column by its ID
+func GetColumnByID(db *sql.DB, columnID int) (*models.Column, error) {
+	column := &models.Column{}
+	err := db.QueryRow(
+		`SELECT id, name, project_id, prev_id, next_id FROM columns WHERE id = ?`,
+		columnID,
+	).Scan(&column.ID, &column.Name, &column.ProjectID, &column.PrevID, &column.NextID)
+	if err != nil {
+		return nil, err
+	}
+	return column, nil
+}
+
 // UpdateTask updates a task's title and description
 func UpdateTask(db *sql.DB, taskID int, title, description string) error {
 	_, err := db.Exec(

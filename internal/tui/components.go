@@ -139,3 +139,21 @@ func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected b
 
 	return style.Render(content)
 }
+
+// RenderTaskMetadataSection renders a metadata section with label and value
+// Used in the two-column task detail view for compact metadata display
+//
+// Format:
+//
+//	{Label}
+//	{Value}
+func RenderTaskMetadataSection(label string, value string) string {
+	labelStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240")).
+		Bold(true)
+
+	valueStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("252"))
+
+	return labelStyle.Render(label) + "\n" + valueStyle.Render(value) + "\n"
+}
