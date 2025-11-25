@@ -240,7 +240,7 @@ Press any key to close`
 
 		// Split content width: 80% left (description), 20% right (metadata)
 		leftColWidth := (contentWidth * 80) / 100
-		rightColWidth := contentWidth - leftColWidth - 2 // Subtract 2-char gutter
+		rightColWidth := contentWidth - leftColWidth - 1 // Subtract 1 for left border
 
 		// === LEFT COLUMN: Description ===
 		var leftContent string
@@ -267,12 +267,6 @@ Press any key to close`
 				Italic(true)
 			leftContent = emptyStyle.Render("No description")
 		}
-
-		// Wrap left content in a styled box with fixed width
-		leftStyle := lipgloss.NewStyle().
-			Width(leftColWidth).
-			Padding(0, 1)
-		leftColumn := leftStyle.Render(leftContent)
 
 		// === RIGHT COLUMN: Metadata ===
 		var rightParts []string
@@ -313,51 +307,72 @@ Press any key to close`
 		// Combine right column parts
 		rightContent := strings.Join(rightParts, "\n")
 
-		// Wrap right content in a styled box with fixed width
+		// Wrap right content with left border as divider
 		rightStyle := lipgloss.NewStyle().
 			Width(rightColWidth).
-			Padding(0, 1)
+			Padding(0, 1).
+			BorderLeft(true).
+			BorderStyle(lipgloss.Border{
+				Left: "│",
+			}).
+			BorderForeground(lipgloss.Color("240")) // Gray
 		rightColumn := rightStyle.Render(rightContent)
 
-		// === COMBINE COLUMNS ===
-		// Join left and right columns horizontally with top alignment
-		twoColumnLayout := lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			leftColumn,
-			"  ", // 2-space gutter
-			rightColumn,
-		)
+		// === LEFT COLUMN (Full Height) ===
+		// Contains: Task ID, Title, Description, Footer
+		var leftParts []string
 
-		// === HEADER: Task Title ===
+		// Add Task ID
+		taskIDStyle := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("170"))
+		leftParts = append(leftParts, taskIDStyle.Render(fmt.Sprintf("Task #%d", task.ID)))
+		leftParts = append(leftParts, "")
+
+		// Add Title
 		titleStyle := lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("170"))
-		header := titleStyle.Render(task.Title) + "\n\n"
+		leftParts = append(leftParts, titleStyle.Render(task.Title))
+		leftParts = append(leftParts, "")
 
-		// === FOOTER: Help Text ===
+		// Add Description (already rendered as leftContent)
+		leftParts = append(leftParts, leftContent)
+
+		// Add Footer
+		leftParts = append(leftParts, "")
+		leftParts = append(leftParts, "")
 		footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-		footer := "\n\n" + footerStyle.Render("[l] labels  [Esc/Space] close")
+		leftParts = append(leftParts, footerStyle.Render("[l] labels  [Esc/Space] close"))
 
-		// Combine all parts
-		fullContent := header + twoColumnLayout + footer
+		// Combine left column
+		leftFullContent := strings.Join(leftParts, "\n")
+
+		// Wrap left column with width constraint
+		leftColumnFull := lipgloss.NewStyle().
+			Width(leftColWidth).
+			Padding(0, 1).
+			Render(leftFullContent)
+
+		// Recreate right column with border (already exists but making it explicit)
+		rightColumnFull := rightColumn
+
+		// === COMBINE COLUMNS ===
+		// Join columns horizontally - divider now spans full height
+		fullContent := lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			leftColumnFull,
+			rightColumnFull,
+		)
 
 		// === WRAP IN POPUP BOX ===
-		// Create title with task ID
-		borderTitle := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("170")).
-			Render(fmt.Sprintf("Task #%d", task.ID))
-
-		// Add title to content
-		fullContentWithTitle := borderTitle + "\n\n" + fullContent
-
 		taskBox := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("170")).
 			Padding(1, 2).
 			Width(popupWidth).
 			Height(popupHeight).
-			Render(fullContentWithTitle)
+			Render(fullContent)
 
 		return lipgloss.Place(
 			m.width, m.height,
