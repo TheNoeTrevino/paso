@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/thenoetrevino/paso/internal/database"
 )
 
 // View renders the current state of the application
@@ -228,75 +229,135 @@ Press any key to close`
 		)
 	}
 
-	// Handle view task mode: show full task details in 50% popup
+	// Handle view task mode: show full task details in two-column layout
 	if m.mode == ViewTaskMode && m.viewingTask != nil {
 		task := m.viewingTask
 
-		// Build task content
-		titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("170"))
-		labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+		// Calculate dimensions
+		popupWidth := m.width / 2
+		popupHeight := m.height / 2
+		contentWidth := popupWidth - 8 // Account for border + padding
 
-		content := titleStyle.Render(task.Title) + "\n\n"
+		// Split content width: 80% left (description), 20% right (metadata)
+		leftColWidth := (contentWidth * 80) / 100
+		rightColWidth := contentWidth - leftColWidth - 2 // Subtract 2-char gutter
 
-		// Description - render as markdown using glamour
+		// === LEFT COLUMN: Description ===
+		var leftContent string
+
 		if task.Description != "" {
-			content += labelStyle.Render("Description:") + "\n"
-
-			// Create a glamour renderer with dark style for terminal
-			// Use a width that fits within the popup (account for padding and border)
-			popupWidth := m.width / 2
-			descWidth := popupWidth - 8 // Account for border (2) + padding (4) + margin
-			if descWidth < 40 {
-				descWidth = 40
-			}
-
+			// Glamour markdown rendering with word wrap
 			renderer, err := glamour.NewTermRenderer(
 				glamour.WithAutoStyle(),
-				glamour.WithWordWrap(descWidth),
+				glamour.WithWordWrap(leftColWidth),
 			)
 			if err == nil {
 				renderedDesc, err := renderer.Render(task.Description)
 				if err == nil {
-					// Trim extra newlines that glamour adds
-					content += strings.TrimSpace(renderedDesc) + "\n\n"
+					leftContent = strings.TrimSpace(renderedDesc)
 				} else {
-					// Fallback to plain text if rendering fails
-					content += task.Description + "\n\n"
+					leftContent = task.Description
 				}
 			} else {
-				// Fallback to plain text if renderer creation fails
-				content += task.Description + "\n\n"
+				leftContent = task.Description
 			}
 		} else {
-			content += labelStyle.Render("No description") + "\n\n"
+			emptyStyle := lipgloss.NewStyle().
+				Foreground(lipgloss.Color("240")).
+				Italic(true)
+			leftContent = emptyStyle.Render("No description")
 		}
 
-		// Labels
+		// Wrap left content in a styled box with fixed width
+		leftStyle := lipgloss.NewStyle().
+			Width(leftColWidth).
+			Padding(0, 1)
+		leftColumn := leftStyle.Render(leftContent)
+
+		// === RIGHT COLUMN: Metadata ===
+		var rightParts []string
+		labelHeaderStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("240")).
+			Bold(true)
+
+		// 1. Status section (column name)
+		column, err := database.GetColumnByID(m.db, task.ColumnID)
+		statusValue := "Unknown"
+		if err == nil && column != nil {
+			statusValue = column.Name
+		}
+		rightParts = append(rightParts, RenderTaskMetadataSection("Status", statusValue))
+
+		// 2. Created timestamp
+		createdStr := task.CreatedAt.Format("Jan 2, 2006 3:04 PM")
+		rightParts = append(rightParts, RenderTaskMetadataSection("Created", createdStr))
+
+		// 3. Updated timestamp
+		updatedStr := task.UpdatedAt.Format("Jan 2, 2006 3:04 PM")
+		rightParts = append(rightParts, RenderTaskMetadataSection("Updated", updatedStr))
+
+		// 4. Labels section
 		if len(task.Labels) > 0 {
-			content += labelStyle.Render("Labels:") + "\n"
+			rightParts = append(rightParts, labelHeaderStyle.Render("Labels"))
 			for _, label := range task.Labels {
-				content += RenderLabelChip(label)
+				rightParts = append(rightParts, RenderLabelChip(label))
 			}
-			content += "\n\n"
+			rightParts = append(rightParts, "")
+		} else {
+			rightParts = append(rightParts, labelHeaderStyle.Render("Labels"))
+			emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+			rightParts = append(rightParts, emptyStyle.Render("No labels"))
+			rightParts = append(rightParts, "")
 		}
 
-		// Timestamps
-		content += labelStyle.Render(fmt.Sprintf("Created: %s", task.CreatedAt.Format("Jan 2, 2006 3:04 PM"))) + "\n"
-		content += labelStyle.Render(fmt.Sprintf("Updated: %s", task.UpdatedAt.Format("Jan 2, 2006 3:04 PM"))) + "\n\n"
+		// Combine right column parts
+		rightContent := strings.Join(rightParts, "\n")
 
-		content += lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("[l] labels  [Esc/Space] close")
+		// Wrap right content in a styled box with fixed width
+		rightStyle := lipgloss.NewStyle().
+			Width(rightColWidth).
+			Padding(0, 1)
+		rightColumn := rightStyle.Render(rightContent)
 
-		// 50% width and height popup
-		popupWidth := m.width / 2
-		popupHeight := m.height / 2
+		// === COMBINE COLUMNS ===
+		// Join left and right columns horizontally with top alignment
+		twoColumnLayout := lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			leftColumn,
+			"  ", // 2-space gutter
+			rightColumn,
+		)
+
+		// === HEADER: Task Title ===
+		titleStyle := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("170"))
+		header := titleStyle.Render(task.Title) + "\n\n"
+
+		// === FOOTER: Help Text ===
+		footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+		footer := "\n\n" + footerStyle.Render("[l] labels  [Esc/Space] close")
+
+		// Combine all parts
+		fullContent := header + twoColumnLayout + footer
+
+		// === WRAP IN POPUP BOX ===
+		// Create title with task ID
+		borderTitle := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("170")).
+			Render(fmt.Sprintf("Task #%d", task.ID))
+
+		// Add title to content
+		fullContentWithTitle := borderTitle + "\n\n" + fullContent
 
 		taskBox := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("170")). // Purple for task view
+			BorderForeground(lipgloss.Color("170")).
 			Padding(1, 2).
 			Width(popupWidth).
 			Height(popupHeight).
-			Render(content)
+			Render(fullContentWithTitle)
 
 		return lipgloss.Place(
 			m.width, m.height,
