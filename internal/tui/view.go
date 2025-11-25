@@ -2,11 +2,9 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/thenoetrevino/paso/internal/database"
+	"github.com/thenoetrevino/paso/internal/tui/components"
 )
 
 // View renders the current state of the application
@@ -163,6 +161,8 @@ NAVIGATION
   j     Move to next task
   [     Scroll viewport left
   ]     Scroll viewport right
+  {     Move to next project
+  }     Move to prev project
 
 OTHER
   ?     Show this help screen
@@ -229,156 +229,15 @@ Press any key to close`
 		)
 	}
 
-	// Handle view task mode: show full task details in two-column layout
 	if m.mode == ViewTaskMode && m.viewingTask != nil {
-		task := m.viewingTask
-
-		// Calculate dimensions
-		popupWidth := m.width / 2
-		popupHeight := m.height / 2
-		contentWidth := popupWidth - 8 // Account for border + padding
-
-		// Split content width: 80% left (description), 20% right (metadata)
-		leftColWidth := (contentWidth * 80) / 100
-		rightColWidth := contentWidth - leftColWidth - 1 // Subtract 1 for left border
-
-		// === LEFT COLUMN: Description ===
-		var leftContent string
-
-		if task.Description != "" {
-			// Glamour markdown rendering with word wrap
-			renderer, err := glamour.NewTermRenderer(
-				glamour.WithAutoStyle(),
-				glamour.WithWordWrap(leftColWidth),
-			)
-			if err == nil {
-				renderedDesc, err := renderer.Render(task.Description)
-				if err == nil {
-					leftContent = strings.TrimSpace(renderedDesc)
-				} else {
-					leftContent = task.Description
-				}
-			} else {
-				leftContent = task.Description
-			}
-		} else {
-			emptyStyle := lipgloss.NewStyle().
-				Foreground(lipgloss.Color("240")).
-				Italic(true)
-			leftContent = emptyStyle.Render("No description")
-		}
-
-		// === RIGHT COLUMN: Metadata ===
-		var rightParts []string
-		labelHeaderStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240")).
-			Bold(true)
-
-		// 1. Status section (column name)
-		column, err := database.GetColumnByID(m.db, task.ColumnID)
-		statusValue := "Unknown"
-		if err == nil && column != nil {
-			statusValue = column.Name
-		}
-		rightParts = append(rightParts, RenderTaskMetadataSection("Status", statusValue))
-
-		// 2. Created timestamp
-		createdStr := task.CreatedAt.Format("Jan 2, 2006 3:04 PM")
-		rightParts = append(rightParts, RenderTaskMetadataSection("Created", createdStr))
-
-		// 3. Updated timestamp
-		updatedStr := task.UpdatedAt.Format("Jan 2, 2006 3:04 PM")
-		rightParts = append(rightParts, RenderTaskMetadataSection("Updated", updatedStr))
-
-		// 4. Labels section
-		if len(task.Labels) > 0 {
-			rightParts = append(rightParts, labelHeaderStyle.Render("Labels"))
-			for _, label := range task.Labels {
-				rightParts = append(rightParts, RenderLabelChip(label))
-			}
-			rightParts = append(rightParts, "")
-		} else {
-			rightParts = append(rightParts, labelHeaderStyle.Render("Labels"))
-			emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-			rightParts = append(rightParts, emptyStyle.Render("No labels"))
-			rightParts = append(rightParts, "")
-		}
-
-		// Combine right column parts
-		rightContent := strings.Join(rightParts, "\n")
-
-		// Wrap right content with left border as divider
-		rightStyle := lipgloss.NewStyle().
-			Width(rightColWidth).
-			Padding(0, 1).
-			BorderLeft(true).
-			BorderStyle(lipgloss.Border{
-				Left: "│",
-			}).
-			BorderForeground(lipgloss.Color("240")) // Gray
-		rightColumn := rightStyle.Render(rightContent)
-
-		// === LEFT COLUMN (Full Height) ===
-		// Contains: Task ID, Title, Description, Footer
-		var leftParts []string
-
-		// Add Task ID
-		taskIDStyle := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("170"))
-		leftParts = append(leftParts, taskIDStyle.Render(fmt.Sprintf("Task #%d", task.ID)))
-		leftParts = append(leftParts, "")
-
-		// Add Title
-		titleStyle := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("170"))
-		leftParts = append(leftParts, titleStyle.Render(task.Title))
-		leftParts = append(leftParts, "")
-
-		// Add Description (already rendered as leftContent)
-		leftParts = append(leftParts, leftContent)
-
-		// Add Footer
-		leftParts = append(leftParts, "")
-		leftParts = append(leftParts, "")
-		footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-		leftParts = append(leftParts, footerStyle.Render("[l] labels  [Esc/Space] close"))
-
-		// Combine left column
-		leftFullContent := strings.Join(leftParts, "\n")
-
-		// Wrap left column with width constraint
-		leftColumnFull := lipgloss.NewStyle().
-			Width(leftColWidth).
-			Padding(0, 1).
-			Render(leftFullContent)
-
-		// Recreate right column with border (already exists but making it explicit)
-		rightColumnFull := rightColumn
-
-		// === COMBINE COLUMNS ===
-		// Join columns horizontally - divider now spans full height
-		fullContent := lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			leftColumnFull,
-			rightColumnFull,
-		)
-
-		// === WRAP IN POPUP BOX ===
-		taskBox := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("170")).
-			Padding(1, 2).
-			Width(popupWidth).
-			Height(popupHeight).
-			Render(fullContent)
-
-		return lipgloss.Place(
-			m.width, m.height,
-			lipgloss.Center, lipgloss.Center,
-			taskBox,
-		)
+		return components.RenderTaskView(components.TaskViewProps{
+			Task:         m.viewingTask,
+			DB:           m.db,
+			PopupWidth:   m.width / 2,
+			PopupHeight:  m.height / 2,
+			ScreenWidth:  m.width,
+			ScreenHeight: m.height,
+		})
 	}
 
 	// Normal mode: render kanban board
