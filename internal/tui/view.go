@@ -325,13 +325,13 @@ Press any key to close`
 
 	// Create error banner if there's an error
 	var errorBanner string
-	if m.errorMessage != "" {
+	if m.errorState.HasError() {
 		errorBanner = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("196")).
 			Background(lipgloss.Color("52")).
 			Bold(true).
 			Padding(0, 1).
-			Render("⚠ " + m.errorMessage)
+			Render("⚠ " + m.errorState.Get())
 	}
 
 	// Create footer with keyboard shortcuts

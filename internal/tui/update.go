@@ -31,6 +31,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Normal mode: navigation and command keys
 			// Clear any previous error messages
 			m.errorMessage = ""
+			m.errorState.Clear() // Keep errorState synced
 
 			switch msg.String() {
 			case "q", "ctrl+c":
@@ -46,6 +47,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Add new task in current column using ticket form
 				if len(m.columns) == 0 {
 					m.errorMessage = "Cannot add task: No columns exist. Create a column first with 'C'"
+					m.errorState.Set(m.errorMessage) // Keep errorState synced
 					return m, nil
 				}
 				// Initialize form fields
@@ -74,6 +76,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err != nil {
 						log.Printf("Error loading task details: %v", err)
 						m.errorMessage = "Error loading task details"
+						m.errorState.Set(m.errorMessage) // Keep errorState synced
 						return m, nil
 					}
 					// Initialize form fields with existing data
@@ -97,6 +100,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, m.ticketForm.Init()
 				} else {
 					m.errorMessage = "No task selected to edit"
+					m.errorState.Set(m.errorMessage) // Keep errorState synced
 				}
 				return m, nil
 
@@ -106,6 +110,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.mode = DeleteConfirmMode
 				} else {
 					m.errorMessage = "No task selected to delete"
+					m.errorState.Set(m.errorMessage) // Keep errorState synced
 				}
 				return m, nil
 
@@ -118,12 +123,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err != nil {
 						log.Printf("Error loading task details: %v", err)
 						m.errorMessage = "Error loading task details"
+						m.errorState.Set(m.errorMessage) // Keep errorState synced
 						return m, nil
 					}
 					m.viewingTask = taskDetail
 					m.mode = ViewTaskMode
 				} else {
 					m.errorMessage = "No task selected to view"
+					m.errorState.Set(m.errorMessage) // Keep errorState synced
 				}
 				return m, nil
 
@@ -143,6 +150,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.inputPrompt = "Rename column:"
 				} else {
 					m.errorMessage = "No column selected to rename"
+					m.errorState.Set(m.errorMessage) // Keep errorState synced
 				}
 				return m, nil
 
@@ -155,12 +163,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err != nil {
 						log.Printf("Error getting task count: %v", err)
 						m.errorMessage = "Error getting column info"
+						m.errorState.Set(m.errorMessage) // Keep errorState synced
 						return m, nil
 					}
 					m.deleteColumnTaskCount = taskCount
 					m.mode = DeleteColumnConfirmMode
 				} else {
 					m.errorMessage = "No column selected to delete"
+					m.errorState.Set(m.errorMessage) // Keep errorState synced
 				}
 				return m, nil
 
@@ -504,6 +514,7 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					log.Printf("Error creating task: %v", err)
 					m.errorMessage = "Error creating task"
+					m.errorState.Set(m.errorMessage) // Keep errorState synced
 				} else {
 					// Set labels
 					if len(labelIDs) > 0 {
@@ -526,6 +537,7 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					log.Printf("Error updating task: %v", err)
 					m.errorMessage = "Error updating task"
+					m.errorState.Set(m.errorMessage) // Keep errorState synced
 				} else {
 					// Update labels
 					err = database.SetTaskLabels(m.db, m.editingTaskID, labelIDs)
@@ -597,6 +609,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				log.Printf("Error creating project: %v", err)
 				m.errorMessage = "Error creating project"
+				m.errorState.Set(m.errorMessage) // Keep errorState synced
 			} else {
 				// Reload projects list
 				m.reloadProjects()
