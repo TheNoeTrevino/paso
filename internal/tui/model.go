@@ -3,7 +3,6 @@ package tui
 import (
 	"database/sql"
 	"log"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
@@ -78,7 +77,7 @@ type Model struct {
 	assigningLabelIDs []int // Currently selected labels for assignment
 
 	// Label picker fields
-	labelPickerItems      []LabelPickerItem // Items in the label picker
+	labelPickerItems      []state.LabelPickerItem // Items in the label picker
 	labelPickerCursor     int               // Current cursor position in picker
 	labelPickerFilter     string            // Filter text for label search
 	labelPickerTaskID     int               // Task being edited in picker
@@ -180,11 +179,11 @@ func (m Model) Init() tea.Cmd {
 // getCurrentTasks returns the task summaries for the currently selected column
 // Returns an empty slice if the column has no tasks
 func (m Model) getCurrentTasks() []*models.TaskSummary {
-	if len(m.columns) == 0 {
+	if len(m.appState.Columns()) == 0 {
 		return []*models.TaskSummary{}
 	}
-	currentCol := m.columns[m.selectedColumn]
-	tasks := m.tasks[currentCol.ID]
+	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+	tasks := m.appState.Tasks()[currentCol.ID]
 	if tasks == nil {
 		return []*models.TaskSummary{}
 	}
@@ -198,33 +197,33 @@ func (m Model) getCurrentTask() *models.TaskSummary {
 	if len(tasks) == 0 {
 		return nil
 	}
-	if m.selectedTask >= len(tasks) {
+	if m.uiState.SelectedTask() >= len(tasks) {
 		return nil
 	}
-	return tasks[m.selectedTask]
+	return tasks[m.uiState.SelectedTask()]
 }
 
 // removeCurrentTask removes the currently selected task from the model's local state
 // This should be called after successfully deleting a task from the database
 // It adjusts the selectedTask index if necessary to keep it within bounds
 func (m *Model) removeCurrentTask() {
-	if len(m.columns) == 0 {
+	if len(m.appState.Columns()) == 0 {
 		return
 	}
 
-	currentCol := m.columns[m.selectedColumn]
-	tasks := m.tasks[currentCol.ID]
+	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+	tasks := m.appState.Tasks()[currentCol.ID]
 
-	if len(tasks) == 0 || m.selectedTask >= len(tasks) {
+	if len(tasks) == 0 || m.uiState.SelectedTask() >= len(tasks) {
 		return
 	}
 
 	// Remove the task at selectedTask index
-	m.tasks[currentCol.ID] = append(tasks[:m.selectedTask], tasks[m.selectedTask+1:]...)
+	m.appState.Tasks()[currentCol.ID] = append(tasks[:m.uiState.SelectedTask()], tasks[m.uiState.SelectedTask()+1:]...)
 
 	// Adjust selectedTask if we removed the last task
-	if m.selectedTask >= len(m.tasks[currentCol.ID]) && m.selectedTask > 0 {
-		m.selectedTask--
+	if m.uiState.SelectedTask() >= len(m.appState.Tasks()[currentCol.ID]) && m.uiState.SelectedTask() > 0 {
+		m.uiState.SetSelectedTask(m.uiState.SelectedTask() - 1)
 	}
 }
 
@@ -234,10 +233,8 @@ func (m *Model) removeCurrentTask() {
 // Total per column: 46 chars
 // This method ensures at least 1 column is always visible
 func (m *Model) calculateViewportSize() {
-	// Delegate to UIState which now owns this logic
-	// Keep old field updated for backwards compatibility (will be removed in Phase 4)
-	m.uiState.SetWidth(m.width)
-	m.viewportSize = m.uiState.ViewportSize()
+	// UIState now owns this logic (width is already set via SetWidth)
+	// This method exists for backwards compatibility, no action needed
 }
 
 // max returns the maximum of two integers
@@ -259,13 +256,13 @@ func min(a, b int) int {
 // getCurrentColumn returns the currently selected column
 // Returns nil if there are no columns
 func (m Model) getCurrentColumn() *models.Column {
-	if len(m.columns) == 0 {
+	if len(m.appState.Columns()) == 0 {
 		return nil
 	}
-	if m.selectedColumn >= len(m.columns) {
+	if m.uiState.SelectedColumn() >= len(m.appState.Columns()) {
 		return nil
 	}
-	return m.columns[m.selectedColumn]
+	return m.appState.Columns()[m.uiState.SelectedColumn()]
 }
 
 // removeCurrentColumn removes the currently selected column from the model's local state
@@ -273,24 +270,26 @@ func (m Model) getCurrentColumn() *models.Column {
 // It adjusts the selectedColumn index if necessary to keep it within bounds
 // It also adjusts the viewportOffset if needed
 func (m *Model) removeCurrentColumn() {
-	if len(m.columns) == 0 || m.selectedColumn >= len(m.columns) {
+	columns := m.appState.Columns()
+	selectedCol := m.uiState.SelectedColumn()
+
+	if len(columns) == 0 || selectedCol >= len(columns) {
 		return
 	}
 
 	// Remove the column at selectedColumn index
-	m.columns = append(m.columns[:m.selectedColumn], m.columns[m.selectedColumn+1:]...)
+	m.appState.SetColumns(append(columns[:selectedCol], columns[selectedCol+1:]...))
 
 	// Adjust selectedColumn if we removed the last column
-	if m.selectedColumn >= len(m.columns) && m.selectedColumn > 0 {
-		m.selectedColumn--
+	if selectedCol >= len(m.appState.Columns()) && selectedCol > 0 {
+		m.uiState.SetSelectedColumn(selectedCol - 1)
 	}
 
 	// Reset task selection
-	m.selectedTask = 0
+	m.uiState.SetSelectedTask(0)
 
-	// Adjust viewportOffset using UIState helper (keeps old field synced)
-	m.uiState.AdjustViewportAfterColumnRemoval(m.selectedColumn, len(m.columns))
-	m.viewportOffset = m.uiState.ViewportOffset()
+	// Adjust viewportOffset using UIState helper
+	m.uiState.AdjustViewportAfterColumnRemoval(m.uiState.SelectedColumn(), len(m.appState.Columns()))
 }
 
 // moveTaskRight moves the currently selected task to the next column (right)
@@ -304,7 +303,7 @@ func (m *Model) moveTaskRight() {
 	}
 
 	// Check if there's a next column using the linked list
-	currentCol := m.columns[m.selectedColumn]
+	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 	if currentCol.NextID == nil {
 		// Already at last column
 		return
@@ -318,24 +317,23 @@ func (m *Model) moveTaskRight() {
 	}
 
 	// Update local state: remove from current column
-	tasks := m.tasks[currentCol.ID]
-	m.tasks[currentCol.ID] = append(tasks[:m.selectedTask], tasks[m.selectedTask+1:]...)
+	tasks := m.appState.Tasks()[currentCol.ID]
+	m.appState.Tasks()[currentCol.ID] = append(tasks[:m.uiState.SelectedTask()], tasks[m.uiState.SelectedTask()+1:]...)
 
 	// Find the next column and add task there
 	nextColID := *currentCol.NextID
-	newPosition := len(m.tasks[nextColID])
+	newPosition := len(m.appState.Tasks()[nextColID])
 	task.ColumnID = nextColID
 	task.Position = newPosition
-	m.tasks[nextColID] = append(m.tasks[nextColID], task)
+	m.appState.Tasks()[nextColID] = append(m.appState.Tasks()[nextColID], task)
 
 	// Move selection to follow the task
-	m.selectedColumn++
-	m.selectedTask = newPosition
+	m.uiState.SetSelectedColumn(m.uiState.SelectedColumn() + 1)
+	m.uiState.SetSelectedTask(newPosition)
 
 	// Ensure the moved task is visible (auto-scroll viewport if needed)
-	if m.selectedColumn >= m.viewportOffset+m.viewportSize {
-		m.viewportOffset++
-		m.uiState.SetViewportOffset(m.viewportOffset) // Keep UIState synced
+	if m.uiState.SelectedColumn() >= m.uiState.ViewportOffset()+m.uiState.ViewportSize() {
+		m.uiState.SetViewportOffset(m.uiState.ViewportOffset() + 1)
 	}
 }
 
@@ -350,7 +348,7 @@ func (m *Model) moveTaskLeft() {
 	}
 
 	// Check if there's a previous column using the linked list
-	currentCol := m.columns[m.selectedColumn]
+	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 	if currentCol.PrevID == nil {
 		// Already at first column
 		return
@@ -364,24 +362,23 @@ func (m *Model) moveTaskLeft() {
 	}
 
 	// Update local state: remove from current column
-	tasks := m.tasks[currentCol.ID]
-	m.tasks[currentCol.ID] = append(tasks[:m.selectedTask], tasks[m.selectedTask+1:]...)
+	tasks := m.appState.Tasks()[currentCol.ID]
+	m.appState.Tasks()[currentCol.ID] = append(tasks[:m.uiState.SelectedTask()], tasks[m.uiState.SelectedTask()+1:]...)
 
 	// Find the previous column and add task there
 	prevColID := *currentCol.PrevID
-	newPosition := len(m.tasks[prevColID])
+	newPosition := len(m.appState.Tasks()[prevColID])
 	task.ColumnID = prevColID
 	task.Position = newPosition
-	m.tasks[prevColID] = append(m.tasks[prevColID], task)
+	m.appState.Tasks()[prevColID] = append(m.appState.Tasks()[prevColID], task)
 
 	// Move selection to follow the task
-	m.selectedColumn--
-	m.selectedTask = newPosition
+	m.uiState.SetSelectedColumn(m.uiState.SelectedColumn() - 1)
+	m.uiState.SetSelectedTask(newPosition)
 
 	// Ensure the moved task is visible (auto-scroll viewport if needed)
-	if m.selectedColumn < m.viewportOffset {
-		m.viewportOffset--
-		m.uiState.SetViewportOffset(m.viewportOffset) // Keep UIState synced
+	if m.uiState.SelectedColumn() < m.uiState.ViewportOffset() {
+		m.uiState.SetViewportOffset(m.uiState.ViewportOffset() - 1)
 	}
 }
 
@@ -394,15 +391,14 @@ func (m Model) getCurrentProject() *models.Project {
 
 // switchToProject switches to a different project by index and reloads columns/tasks/labels
 func (m *Model) switchToProject(projectIndex int) {
-	if projectIndex < 0 || projectIndex >= len(m.projects) {
+	if projectIndex < 0 || projectIndex >= len(m.appState.Projects()) {
 		return
 	}
 
-	// Update both old and new state for backwards compatibility
-	m.selectedProject = projectIndex
+	// Update state
 	m.appState.SetSelectedProject(projectIndex)
 
-	project := m.projects[projectIndex]
+	project := m.appState.Projects()[projectIndex]
 
 	// Reload columns for this project
 	columns, err := database.GetColumnsByProject(m.db, project.ID)
@@ -410,7 +406,6 @@ func (m *Model) switchToProject(projectIndex int) {
 		log.Printf("Error loading columns for project %d: %v", project.ID, err)
 		columns = []*models.Column{}
 	}
-	m.columns = columns
 	m.appState.SetColumns(columns)
 
 	// Reload task summaries for each column
@@ -423,7 +418,6 @@ func (m *Model) switchToProject(projectIndex int) {
 		}
 		tasks[col.ID] = columnTasks
 	}
-	m.tasks = tasks
 	m.appState.SetTasks(tasks)
 
 	// Reload labels for this project
@@ -432,13 +426,10 @@ func (m *Model) switchToProject(projectIndex int) {
 		log.Printf("Error loading labels for project %d: %v", project.ID, err)
 		labels = []*models.Label{}
 	}
-	m.labels = labels
 	m.appState.SetLabels(labels)
 
 	// Reset selection state
-	m.selectedColumn = 0
-	m.selectedTask = 0
-	m.viewportOffset = 0
+	m.uiState.ResetSelection()
 }
 
 // reloadProjects reloads the projects list from the database
@@ -448,8 +439,6 @@ func (m *Model) reloadProjects() {
 		log.Printf("Error reloading projects: %v", err)
 		return
 	}
-	// Update both old and new state for backwards compatibility
-	m.projects = projects
 	m.appState.SetProjects(projects)
 }
 
@@ -457,7 +446,6 @@ func (m *Model) reloadProjects() {
 func (m *Model) reloadLabels() {
 	project := m.getCurrentProject()
 	if project == nil {
-		m.labels = []*models.Label{}
 		m.appState.SetLabels([]*models.Label{})
 		return
 	}
@@ -467,8 +455,6 @@ func (m *Model) reloadLabels() {
 		log.Printf("Error reloading labels: %v", err)
 		return
 	}
-	// Update both old and new state for backwards compatibility
-	m.labels = labels
 	m.appState.SetLabels(labels)
 }
 
@@ -493,35 +479,27 @@ func (m *Model) initLabelPicker(taskID int) bool {
 	}
 
 	// Build picker items from all project labels
-	m.labelPickerItems = make([]LabelPickerItem, len(m.labels))
-	for i, label := range m.labels {
-		m.labelPickerItems[i] = LabelPickerItem{
+	items := make([]state.LabelPickerItem, len(m.appState.Labels()))
+	for i, label := range m.appState.Labels() {
+		items[i] = state.LabelPickerItem{
 			Label:    label,
 			Selected: taskLabelMap[label.ID],
 		}
 	}
 
-	m.labelPickerTaskID = taskID
-	m.labelPickerCursor = 0
-	m.labelPickerFilter = ""
-	m.labelPickerCreateMode = false
-	m.labelPickerColorIdx = 0
+	// Initialize LabelPickerState
+	m.labelPickerState.SetItems(items)
+	m.labelPickerState.SetTaskID(taskID)
+	m.labelPickerState.SetCursor(0)
+	m.labelPickerState.SetFilter("")
+	m.labelPickerState.SetCreateMode(false)
+	m.labelPickerState.SetColorIdx(0)
 
 	return true
 }
 
 // getFilteredLabelPickerItems returns label picker items filtered by the current filter text
-func (m *Model) getFilteredLabelPickerItems() []LabelPickerItem {
-	if m.labelPickerFilter == "" {
-		return m.labelPickerItems
-	}
-
-	lowerFilter := strings.ToLower(m.labelPickerFilter)
-	var filtered []LabelPickerItem
-	for _, item := range m.labelPickerItems {
-		if strings.Contains(strings.ToLower(item.Label.Name), lowerFilter) {
-			filtered = append(filtered, item)
-		}
-	}
-	return filtered
+func (m *Model) getFilteredLabelPickerItems() []state.LabelPickerItem {
+	// Delegate to LabelPickerState which now owns this logic
+	return m.labelPickerState.GetFilteredItems()
 }

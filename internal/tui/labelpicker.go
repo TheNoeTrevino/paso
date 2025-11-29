@@ -4,19 +4,13 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/state"
 )
-
-// LabelPickerItem represents an item in the label picker list
-type LabelPickerItem struct {
-	Label    *models.Label
-	Selected bool // Whether the label is assigned to the current task
-}
 
 // RenderLabelPicker renders the label picker popup
 // This is a GitHub-style label picker with checkboxes
 func RenderLabelPicker(
-	items []LabelPickerItem,
+	items []state.LabelPickerItem,
 	cursorIdx int,
 	filterText string,
 	showCreateOption bool,
@@ -50,7 +44,7 @@ func RenderLabelPicker(
 	// Filter items based on filterText
 	filteredItems := items
 	if filterText != "" {
-		filteredItems = []LabelPickerItem{}
+		filteredItems = []state.LabelPickerItem{}
 		lowerFilter := strings.ToLower(filterText)
 		for _, item := range items {
 			if strings.Contains(strings.ToLower(item.Label.Name), lowerFilter) {

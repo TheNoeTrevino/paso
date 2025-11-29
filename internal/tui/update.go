@@ -8,18 +8,19 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
 // Update handles all messages and updates the model accordingly
 // This implements the "Update" part of the Model-View-Update pattern
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle TicketFormMode first - form needs ALL messages, not just KeyMsg
-	if m.mode == TicketFormMode {
+	if m.uiState.Mode() == state.TicketFormMode {
 		return m.updateTicketForm(msg)
 	}
 
 	// Handle ProjectFormMode - form needs ALL messages, not just KeyMsg
-	if m.mode == ProjectFormMode {
+	if m.uiState.Mode() == state.ProjectFormMode {
 		return m.updateProjectForm(msg)
 	}
 
@@ -27,11 +28,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		// Handle keyboard input based on current mode
-		if m.mode == NormalMode {
+		if m.uiState.Mode() == state.NormalMode {
 			// Normal mode: navigation and command keys
 			// Clear any previous error messages
-			m.errorMessage = ""
-			m.errorState.Clear() // Keep errorState synced
+			m.errorState.Clear()
 
 			switch msg.String() {
 			case "q", "ctrl+c":
@@ -40,31 +40,37 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "?":
 				// Show help screen
-				m.mode = HelpMode
+				m.uiState.SetMode(state.HelpMode)
 				return m, nil
 
 			case "a":
 				// Add new task in current column using ticket form
-				if len(m.columns) == 0 {
-					m.errorMessage = "Cannot add task: No columns exist. Create a column first with 'C'"
-					m.errorState.Set(m.errorMessage) // Keep errorState synced
+				if len(m.appState.Columns()) == 0 {
+					m.errorState.Set("Cannot add task: No columns exist. Create a column first with 'C'")
 					return m, nil
 				}
-				// Initialize form fields
+				// Initialize form fields (old fields still needed for form binding)
 				m.formTitle = ""
 				m.formDescription = ""
 				m.formLabelIDs = []int{}
-				m.formConfirm = true // Default to "Yes" so user can just hit Enter to save
-				m.editingTaskID = 0  // 0 means new task
-				// Create the form
+				m.formConfirm = true
+				m.editingTaskID = 0
+				// Sync to FormState
+				m.formState.SetFormTitle(m.formTitle)
+				m.formState.SetFormDescription(m.formDescription)
+				m.formState.SetFormLabelIDs(m.formLabelIDs)
+				m.formState.SetFormConfirm(m.formConfirm)
+				m.formState.SetEditingTaskID(m.editingTaskID)
+				// Create the form (binds to old fields)
 				m.ticketForm = CreateTicketForm(
 					&m.formTitle,
 					&m.formDescription,
 					&m.formLabelIDs,
-					m.labels,
+					m.appState.Labels(),
 					&m.formConfirm,
 				)
-				m.mode = TicketFormMode
+				m.formState.SetTicketForm(m.ticketForm)
+				m.uiState.SetMode(state.TicketFormMode)
 				return m, m.ticketForm.Init()
 
 			case "e":
@@ -75,8 +81,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					taskDetail, err := database.GetTaskDetail(m.db, task.ID)
 					if err != nil {
 						log.Printf("Error loading task details: %v", err)
-						m.errorMessage = "Error loading task details"
-						m.errorState.Set(m.errorMessage) // Keep errorState synced
+						m.errorState.Set("Error loading task details")
 						return m, nil
 					}
 					// Initialize form fields with existing data
@@ -86,31 +91,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					for i, label := range taskDetail.Labels {
 						m.formLabelIDs[i] = label.ID
 					}
-					m.formConfirm = true // Default to "Yes" so user can just hit Enter to save
+					m.formConfirm = true
 					m.editingTaskID = task.ID
-					// Create the form
+					// Sync to FormState
+					m.formState.SetFormTitle(m.formTitle)
+					m.formState.SetFormDescription(m.formDescription)
+					m.formState.SetFormLabelIDs(m.formLabelIDs)
+					m.formState.SetFormConfirm(m.formConfirm)
+					m.formState.SetEditingTaskID(m.editingTaskID)
+					// Create the form (binds to old fields)
 					m.ticketForm = CreateTicketForm(
 						&m.formTitle,
 						&m.formDescription,
 						&m.formLabelIDs,
-						m.labels,
+						m.appState.Labels(),
 						&m.formConfirm,
 					)
-					m.mode = TicketFormMode
+					m.formState.SetTicketForm(m.ticketForm)
+					m.uiState.SetMode(state.TicketFormMode)
 					return m, m.ticketForm.Init()
 				} else {
-					m.errorMessage = "No task selected to edit"
-					m.errorState.Set(m.errorMessage) // Keep errorState synced
+					m.errorState.Set("No task selected to edit")
 				}
 				return m, nil
 
 			case "d":
 				// Delete selected task (if one exists)
 				if m.getCurrentTask() != nil {
-					m.mode = DeleteConfirmMode
+					m.uiState.SetMode(state.DeleteConfirmMode)
 				} else {
-					m.errorMessage = "No task selected to delete"
-					m.errorState.Set(m.errorMessage) // Keep errorState synced
+					m.errorState.Set("No task selected to delete")
 				}
 				return m, nil
 
@@ -122,35 +132,38 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					taskDetail, err := database.GetTaskDetail(m.db, task.ID)
 					if err != nil {
 						log.Printf("Error loading task details: %v", err)
-						m.errorMessage = "Error loading task details"
-						m.errorState.Set(m.errorMessage) // Keep errorState synced
+						m.errorState.Set("Error loading task details")
 						return m, nil
 					}
-					m.viewingTask = taskDetail
-					m.mode = ViewTaskMode
+					m.uiState.SetViewingTask(taskDetail)
+					m.uiState.SetMode(state.ViewTaskMode)
 				} else {
-					m.errorMessage = "No task selected to view"
-					m.errorState.Set(m.errorMessage) // Keep errorState synced
+					m.errorState.Set("No task selected to view")
 				}
 				return m, nil
 
 			case "C":
 				// Create new column
-				m.mode = AddColumnMode
+				m.uiState.SetMode(state.AddColumnMode)
 				m.inputPrompt = "New column name:"
 				m.inputBuffer = ""
+				// Sync to InputState
+				m.inputState.SetPrompt(m.inputPrompt)
+				m.inputState.SetBuffer(m.inputBuffer)
 				return m, nil
 
 			case "R":
 				// Rename selected column (if one exists)
 				column := m.getCurrentColumn()
 				if column != nil {
-					m.mode = EditColumnMode
+					m.uiState.SetMode(state.EditColumnMode)
 					m.inputBuffer = column.Name
 					m.inputPrompt = "Rename column:"
+					// Sync to InputState
+					m.inputState.SetBuffer(m.inputBuffer)
+					m.inputState.SetPrompt(m.inputPrompt)
 				} else {
-					m.errorMessage = "No column selected to rename"
-					m.errorState.Set(m.errorMessage) // Keep errorState synced
+					m.errorState.Set("No column selected to rename")
 				}
 				return m, nil
 
@@ -162,61 +175,60 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					taskCount, err := database.GetTaskCountByColumn(m.db, column.ID)
 					if err != nil {
 						log.Printf("Error getting task count: %v", err)
-						m.errorMessage = "Error getting column info"
-						m.errorState.Set(m.errorMessage) // Keep errorState synced
+						m.errorState.Set("Error getting column info")
 						return m, nil
 					}
 					m.deleteColumnTaskCount = taskCount
-					m.mode = DeleteColumnConfirmMode
+					m.inputState.SetDeleteColumnTaskCount(taskCount)
+					m.uiState.SetMode(state.DeleteColumnConfirmMode)
 				} else {
-					m.errorMessage = "No column selected to delete"
-					m.errorState.Set(m.errorMessage) // Keep errorState synced
+					m.errorState.Set("No column selected to delete")
 				}
 				return m, nil
 
 			// Viewport scrolling: Move the viewport window
 			case "]":
 				// Scroll viewport right (show columns to the right)
-				if m.viewportOffset+m.viewportSize < len(m.columns) {
-					m.viewportOffset++
+				if m.uiState.ViewportOffset()+m.uiState.ViewportSize() < len(m.appState.Columns()) {
+					m.uiState.SetViewportOffset(m.uiState.ViewportOffset() + 1)
 					// Adjust selectedColumn if it's now off-screen to the left
-					if m.selectedColumn < m.viewportOffset {
-						m.selectedColumn = m.viewportOffset
-						m.selectedTask = 0
+					if m.uiState.SelectedColumn() < m.uiState.ViewportOffset() {
+						m.uiState.SetSelectedColumn(m.uiState.ViewportOffset())
+						m.uiState.SetSelectedTask(0)
 					}
 				}
 
 			case "[":
 				// Scroll viewport left (show columns to the left)
-				if m.viewportOffset > 0 {
-					m.viewportOffset--
+				if m.uiState.ViewportOffset() > 0 {
+					m.uiState.SetViewportOffset(m.uiState.ViewportOffset() - 1)
 					// Adjust selectedColumn if it's now off-screen to the right
-					if m.selectedColumn >= m.viewportOffset+m.viewportSize {
-						m.selectedColumn = m.viewportOffset + m.viewportSize - 1
-						m.selectedTask = 0
+					if m.uiState.SelectedColumn() >= m.uiState.ViewportOffset()+m.uiState.ViewportSize() {
+						m.uiState.SetSelectedColumn(m.uiState.ViewportOffset() + m.uiState.ViewportSize() - 1)
+						m.uiState.SetSelectedTask(0)
 					}
 				}
 
 			// Left/Right navigation: Move between columns
 			case "h", "left":
 				// Move to previous column if not at first column
-				if m.selectedColumn > 0 {
-					m.selectedColumn--
-					m.selectedTask = 0 // Reset task selection when switching columns
+				if m.uiState.SelectedColumn() > 0 {
+					m.uiState.SetSelectedColumn(m.uiState.SelectedColumn() - 1)
+					m.uiState.SetSelectedTask(0) // Reset task selection when switching columns
 					// Auto-scroll viewport if selected column is now off-screen to the left
-					if m.selectedColumn < m.viewportOffset {
-						m.viewportOffset = m.selectedColumn
+					if m.uiState.SelectedColumn() < m.uiState.ViewportOffset() {
+						m.uiState.SetViewportOffset(m.uiState.SelectedColumn())
 					}
 				}
 
 			case "l", "right":
 				// Move to next column if not at last column
-				if m.selectedColumn < len(m.columns)-1 {
-					m.selectedColumn++
-					m.selectedTask = 0 // Reset task selection when switching columns
+				if m.uiState.SelectedColumn() < len(m.appState.Columns())-1 {
+					m.uiState.SetSelectedColumn(m.uiState.SelectedColumn() + 1)
+					m.uiState.SetSelectedTask(0) // Reset task selection when switching columns
 					// Auto-scroll viewport if selected column is now off-screen to the right
-					if m.selectedColumn >= m.viewportOffset+m.viewportSize {
-						m.viewportOffset = m.selectedColumn - m.viewportSize + 1
+					if m.uiState.SelectedColumn() >= m.uiState.ViewportOffset()+m.uiState.ViewportSize() {
+						m.uiState.SetViewportOffset(m.uiState.SelectedColumn() - m.uiState.ViewportSize() + 1)
 					}
 				}
 
@@ -224,14 +236,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "j", "down":
 				// Move to next task in current column
 				currentTasks := m.getCurrentTasks()
-				if len(currentTasks) > 0 && m.selectedTask < len(currentTasks)-1 {
-					m.selectedTask++
+				if len(currentTasks) > 0 && m.uiState.SelectedTask() < len(currentTasks)-1 {
+					m.uiState.SetSelectedTask(m.uiState.SelectedTask() + 1)
 				}
 
 			case "k", "up":
 				// Move to previous task in current column
-				if m.selectedTask > 0 {
-					m.selectedTask--
+				if m.uiState.SelectedTask() > 0 {
+					m.uiState.SetSelectedTask(m.uiState.SelectedTask() - 1)
 				}
 
 			// Task movement: Move tasks between columns
@@ -250,39 +262,43 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Project tab navigation
 			case "{":
 				// Switch to previous project
-				if m.selectedProject > 0 {
-					m.switchToProject(m.selectedProject - 1)
+				if m.appState.SelectedProject() > 0 {
+					m.switchToProject(m.appState.SelectedProject() - 1)
 				}
 
 			case "}":
 				// Switch to next project
-				if m.selectedProject < len(m.projects)-1 {
-					m.switchToProject(m.selectedProject + 1)
+				if m.appState.SelectedProject() < len(m.appState.Projects())-1 {
+					m.switchToProject(m.appState.SelectedProject() + 1)
 				}
 
 			case "ctrl+p":
 				// Create new project
 				m.formProjectName = ""
 				m.formProjectDescription = ""
+				// Sync to FormState
+				m.formState.SetFormProjectName(m.formProjectName)
+				m.formState.SetFormProjectDescription(m.formProjectDescription)
 				m.projectForm = CreateProjectForm(
 					&m.formProjectName,
 					&m.formProjectDescription,
 				)
-				m.mode = ProjectFormMode
+				m.formState.SetProjectForm(m.projectForm)
+				m.uiState.SetMode(state.ProjectFormMode)
 				return m, m.projectForm.Init()
 			}
 
-		} else if m.mode == AddColumnMode || m.mode == EditColumnMode {
+		} else if m.uiState.Mode() == state.AddColumnMode || m.uiState.Mode() == state.EditColumnMode {
 			// Input modes: handle text input for column operations
 			switch msg.String() {
 			case "enter":
 				// Confirm input and create/edit column
 				if strings.TrimSpace(m.inputBuffer) != "" {
-					if m.mode == AddColumnMode {
+					if m.uiState.Mode() == state.AddColumnMode {
 						// Create new column after the current column in the current project
 						var afterColumnID *int
-						if len(m.columns) > 0 {
-							currentCol := m.columns[m.selectedColumn]
+						if len(m.appState.Columns()) > 0 {
+							currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 							afterColumnID = &currentCol.ID
 						}
 						// Get current project ID
@@ -295,17 +311,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							log.Printf("Error creating column: %v", err)
 						} else {
 							// Reload columns from database to get correct order
-							m.columns, err = database.GetColumnsByProject(m.db, projectID)
+							columns, err := database.GetColumnsByProject(m.db, projectID)
 							if err != nil {
 								log.Printf("Error reloading columns: %v", err)
 							}
-							m.tasks[column.ID] = []*models.TaskSummary{}
+							m.appState.SetColumns(columns)
+							m.appState.Tasks()[column.ID] = []*models.TaskSummary{}
 							// Move selection to new column (it will be after current)
 							if afterColumnID != nil {
-								m.selectedColumn++
+								m.uiState.SetSelectedColumn(m.uiState.SelectedColumn() + 1)
 							}
 						}
-					} else if m.mode == EditColumnMode {
+					} else if m.uiState.Mode() == state.EditColumnMode {
 						// Update existing column
 						column := m.getCurrentColumn()
 						if column != nil {
@@ -319,22 +336,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				// Return to normal mode
-				m.mode = NormalMode
+				m.uiState.SetMode(state.NormalMode)
 				m.inputBuffer = ""
 				m.inputPrompt = ""
+				m.inputState.Clear()
 				return m, nil
 
 			case "esc":
 				// Cancel input
-				m.mode = NormalMode
+				m.uiState.SetMode(state.NormalMode)
 				m.inputBuffer = ""
 				m.inputPrompt = ""
+				m.inputState.Clear()
 				return m, nil
 
 			case "backspace", "ctrl+h":
 				// Remove last character
 				if len(m.inputBuffer) > 0 {
 					m.inputBuffer = m.inputBuffer[:len(m.inputBuffer)-1]
+					m.inputState.Backspace() // Keep InputState synced
 				}
 				return m, nil
 
@@ -344,11 +364,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				key := msg.String()
 				if len(key) == 1 && len(m.inputBuffer) < 100 {
 					m.inputBuffer += key
+					if len(key) == 1 {
+						m.inputState.AppendChar(rune(key[0])) // Keep InputState synced
+					}
 				}
 				return m, nil
 			}
 
-		} else if m.mode == DeleteConfirmMode {
+		} else if m.uiState.Mode() == state.DeleteConfirmMode {
 			// Delete confirmation mode (for tasks)
 			switch msg.String() {
 			case "y", "Y":
@@ -362,16 +385,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.removeCurrentTask()
 					}
 				}
-				m.mode = NormalMode
+				m.uiState.SetMode(state.NormalMode)
 				return m, nil
 
 			case "n", "N", "esc":
 				// Cancel deletion
-				m.mode = NormalMode
+				m.uiState.SetMode(state.NormalMode)
 				return m, nil
 			}
 
-		} else if m.mode == DeleteColumnConfirmMode {
+		} else if m.uiState.Mode() == state.DeleteColumnConfirmMode {
 			// Delete confirmation mode (for columns)
 			switch msg.String() {
 			case "y", "Y":
@@ -383,46 +406,46 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						log.Printf("Error deleting column: %v", err)
 					} else {
 						// Delete tasks from local state
-						delete(m.tasks, column.ID)
+						delete(m.appState.Tasks(), column.ID)
 						// Remove column from local state
 						m.removeCurrentColumn()
 					}
 				}
-				m.mode = NormalMode
+				m.uiState.SetMode(state.NormalMode)
 				return m, nil
 
 			case "n", "N", "esc":
 				// Cancel deletion
-				m.mode = NormalMode
+				m.uiState.SetMode(state.NormalMode)
 				return m, nil
 			}
 
-		} else if m.mode == HelpMode {
+		} else if m.uiState.Mode() == state.HelpMode {
 			// Help screen mode - any key returns to normal mode
 			switch msg.String() {
 			case "?", "q", "esc", "enter", " ":
-				m.mode = NormalMode
+				m.uiState.SetMode(state.NormalMode)
 				return m, nil
 			}
 
-		} else if m.mode == ViewTaskMode {
+		} else if m.uiState.Mode() == state.ViewTaskMode {
 			// View task mode - close popup on esc or space, 'l' opens label picker
 			switch msg.String() {
 			case "esc", " ", "q":
-				m.mode = NormalMode
-				m.viewingTask = nil
+				m.uiState.SetMode(state.NormalMode)
+				m.uiState.SetViewingTask(nil)
 				return m, nil
 			case "l":
 				// Open label picker for this task
-				if m.viewingTask != nil {
-					if m.initLabelPicker(m.viewingTask.ID) {
-						m.mode = LabelPickerMode
+				if m.uiState.ViewingTask() != nil {
+					if m.initLabelPicker(m.uiState.ViewingTask().ID) {
+						m.uiState.SetMode(state.LabelPickerMode)
 					}
 				}
 				return m, nil
 			}
 
-		} else if m.mode == LabelPickerMode {
+		} else if m.uiState.Mode() == state.LabelPickerMode {
 			// Label picker mode - navigate, toggle, create
 			return m.updateLabelPicker(msg)
 		}
@@ -430,15 +453,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.WindowSizeMsg:
 		// Handle terminal resize events
-		m.width = msg.Width
-		m.height = msg.Height
+		m.uiState.SetWidth(msg.Width)
+		m.uiState.SetHeight(msg.Height)
 
-		// Recalculate how many columns fit in the new width
+		// Recalculate how many columns fit in the new width (UIState handles this internally)
 		m.calculateViewportSize()
 
 		// Ensure viewport offset is still valid after resize
-		if m.viewportOffset+m.viewportSize > len(m.columns) {
-			m.viewportOffset = max(0, len(m.columns)-m.viewportSize)
+		if m.uiState.ViewportOffset()+m.uiState.ViewportSize() > len(m.appState.Columns()) {
+			m.uiState.SetViewportOffset(max(0, len(m.appState.Columns())-m.uiState.ViewportSize()))
 		}
 	}
 
@@ -450,14 +473,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // This is separated out because huh forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.ticketForm == nil {
-		m.mode = NormalMode
+		m.uiState.SetMode(state.NormalMode)
 		return m, nil
 	}
 
 	// Check for escape key to cancel
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		if keyMsg.String() == "esc" {
-			m.mode = NormalMode
+			m.uiState.SetMode(state.NormalMode)
 			m.ticketForm = nil
 			return m, nil
 		}
@@ -495,26 +518,26 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Form submitted - check confirmation and save the task
 		if !confirm {
 			// User selected "No" on confirmation
-			m.mode = NormalMode
+			m.uiState.SetMode(state.NormalMode)
 			m.ticketForm = nil
 			m.editingTaskID = 0
+			m.formState.ClearTicketForm()
 			return m, tea.ClearScreen
 		}
 		if strings.TrimSpace(title) != "" {
 			if m.editingTaskID == 0 {
 				// Create new task
-				currentCol := m.columns[m.selectedColumn]
+				currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 				task, err := database.CreateTask(
 					m.db,
 					strings.TrimSpace(title),
 					strings.TrimSpace(description),
 					currentCol.ID,
-					len(m.tasks[currentCol.ID]),
+					len(m.appState.Tasks()[currentCol.ID]),
 				)
 				if err != nil {
 					log.Printf("Error creating task: %v", err)
-					m.errorMessage = "Error creating task"
-					m.errorState.Set(m.errorMessage) // Keep errorState synced
+					m.errorState.Set("Error creating task")
 				} else {
 					// Set labels
 					if len(labelIDs) > 0 {
@@ -528,7 +551,7 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err != nil {
 						log.Printf("Error reloading tasks: %v", err)
 					} else {
-						m.tasks[currentCol.ID] = summaries
+						m.appState.Tasks()[currentCol.ID] = summaries
 					}
 				}
 			} else {
@@ -536,8 +559,7 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				err := database.UpdateTask(m.db, m.editingTaskID, strings.TrimSpace(title), strings.TrimSpace(description))
 				if err != nil {
 					log.Printf("Error updating task: %v", err)
-					m.errorMessage = "Error updating task"
-					m.errorState.Set(m.errorMessage) // Keep errorState synced
+					m.errorState.Set("Error updating task")
 				} else {
 					// Update labels
 					err = database.SetTaskLabels(m.db, m.editingTaskID, labelIDs)
@@ -545,27 +567,29 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 						log.Printf("Error setting labels: %v", err)
 					}
 					// Reload task summaries for the column
-					currentCol := m.columns[m.selectedColumn]
+					currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 					summaries, err := database.GetTaskSummariesByColumn(m.db, currentCol.ID)
 					if err != nil {
 						log.Printf("Error reloading tasks: %v", err)
 					} else {
-						m.tasks[currentCol.ID] = summaries
+						m.appState.Tasks()[currentCol.ID] = summaries
 					}
 				}
 			}
 		}
-		m.mode = NormalMode
+		m.uiState.SetMode(state.NormalMode)
 		m.ticketForm = nil
 		m.editingTaskID = 0
+		m.formState.ClearTicketForm()
 		return m, tea.ClearScreen
 	}
 
 	// Check if form was aborted
 	if m.ticketForm.State == huh.StateAborted {
-		m.mode = NormalMode
+		m.uiState.SetMode(state.NormalMode)
 		m.ticketForm = nil
 		m.editingTaskID = 0
+		m.formState.ClearTicketForm()
 		return m, tea.ClearScreen
 	}
 
@@ -576,14 +600,14 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 // This is separated out because huh forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.projectForm == nil {
-		m.mode = NormalMode
+		m.uiState.SetMode(state.NormalMode)
 		return m, nil
 	}
 
 	// Check for escape key to cancel
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		if keyMsg.String() == "esc" {
-			m.mode = NormalMode
+			m.uiState.SetMode(state.NormalMode)
 			m.projectForm = nil
 			return m, nil
 		}
@@ -608,14 +632,13 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			project, err := database.CreateProject(m.db, strings.TrimSpace(name), strings.TrimSpace(description))
 			if err != nil {
 				log.Printf("Error creating project: %v", err)
-				m.errorMessage = "Error creating project"
-				m.errorState.Set(m.errorMessage) // Keep errorState synced
+				m.errorState.Set("Error creating project")
 			} else {
 				// Reload projects list
 				m.reloadProjects()
 
 				// Switch to the new project
-				for i, p := range m.projects {
+				for i, p := range m.appState.Projects() {
 					if p.ID == project.ID {
 						m.switchToProject(i)
 						break
@@ -623,15 +646,17 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-		m.mode = NormalMode
+		m.uiState.SetMode(state.NormalMode)
 		m.projectForm = nil
+		m.formState.ClearProjectForm()
 		return m, tea.ClearScreen
 	}
 
 	// Check if form was aborted
 	if m.projectForm.State == huh.StateAborted {
-		m.mode = NormalMode
+		m.uiState.SetMode(state.NormalMode)
 		m.projectForm = nil
+		m.formState.ClearProjectForm()
 		return m, tea.ClearScreen
 	}
 
@@ -657,7 +682,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		// Close picker and return to ViewTaskMode
-		m.mode = ViewTaskMode
+		m.uiState.SetMode(state.ViewTaskMode)
 		m.labelPickerFilter = ""
 		m.labelPickerCursor = 0
 		return m, nil
@@ -789,7 +814,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.labels = append(m.labels, label)
 
 		// Add to picker items (selected by default)
-		m.labelPickerItems = append(m.labelPickerItems, LabelPickerItem{
+		m.labelPickerItems = append(m.labelPickerItems, state.LabelPickerItem{
 			Label:    label,
 			Selected: true,
 		})
@@ -832,15 +857,15 @@ func (m *Model) reloadViewingTask() {
 
 // reloadCurrentColumnTasks reloads task summaries for the current column
 func (m *Model) reloadCurrentColumnTasks() {
-	if len(m.columns) == 0 || m.selectedColumn >= len(m.columns) {
+	if len(m.appState.Columns()) == 0 || m.uiState.SelectedColumn() >= len(m.appState.Columns()) {
 		return
 	}
 
-	currentCol := m.columns[m.selectedColumn]
+	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 	summaries, err := database.GetTaskSummariesByColumn(m.db, currentCol.ID)
 	if err != nil {
 		log.Printf("Error reloading column tasks: %v", err)
 		return
 	}
-	m.tasks[currentCol.ID] = summaries
+	m.appState.Tasks()[currentCol.ID] = summaries
 }

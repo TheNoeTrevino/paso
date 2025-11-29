@@ -5,90 +5,91 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
 // View renders the current state of the application
 // This implements the "View" part of the Model-View-Update pattern
 func (m Model) View() string {
 	// Wait for terminal size to be initialized
-	if m.width == 0 {
+	if m.uiState.Width() == 0 {
 		return "Loading..."
 	}
 
 	// Handle ticket form mode: show huh form in centered dialog
-	if m.mode == TicketFormMode && m.ticketForm != nil {
-		formView := m.ticketForm.View()
+	if m.uiState.Mode() == state.TicketFormMode && m.formState.TicketForm() != nil {
+		formView := m.formState.TicketForm().View()
 
 		// Wrap form in a styled container
 		formBox := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("170")).
 			Padding(1, 2).
-			Width(m.width / 2).
-			Height(m.height / 2).
+			Width(m.uiState.Width() / 2).
+			Height(m.uiState.Height() / 2).
 			Render(formView)
 
 		return lipgloss.Place(
-			m.width, m.height,
+			m.uiState.Width(), m.uiState.Height(),
 			lipgloss.Center, lipgloss.Center,
 			formBox,
 		)
 	}
 
 	// Handle project form mode: show huh form in centered dialog
-	if m.mode == ProjectFormMode && m.projectForm != nil {
-		formView := m.projectForm.View()
+	if m.uiState.Mode() == state.ProjectFormMode && m.formState.ProjectForm() != nil {
+		formView := m.formState.ProjectForm().View()
 
 		// Wrap form in a styled container with green border for creation
 		formBox := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("42")). // Green for creation
 			Padding(1, 2).
-			Width(m.width / 2).
-			Height(m.height / 3).
+			Width(m.uiState.Width() / 2).
+			Height(m.uiState.Height() / 3).
 			Render("New Project\n\n" + formView)
 
 		return lipgloss.Place(
-			m.width, m.height,
+			m.uiState.Width(), m.uiState.Height(),
 			lipgloss.Center, lipgloss.Center,
 			formBox,
 		)
 	}
 
 	// Handle column creation mode: show centered dialog with green border
-	if m.mode == AddColumnMode {
+	if m.uiState.Mode() == state.AddColumnMode {
 		inputBox := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("42")). // Green for creation
 			Padding(1).
 			Width(50).
-			Render(fmt.Sprintf("%s\n> %s_", m.inputPrompt, m.inputBuffer))
+			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt(), m.inputState.Buffer()))
 
 		return lipgloss.Place(
-			m.width, m.height,
+			m.uiState.Width(), m.uiState.Height(),
 			lipgloss.Center, lipgloss.Center,
 			inputBox,
 		)
 	}
 
 	// Handle column edit mode: show centered dialog with blue border
-	if m.mode == EditColumnMode {
+	if m.uiState.Mode() == state.EditColumnMode {
 		inputBox := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("62")). // Blue for editing
 			Padding(1).
 			Width(50).
-			Render(fmt.Sprintf("%s\n> %s_", m.inputPrompt, m.inputBuffer))
+			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt(), m.inputState.Buffer()))
 
 		return lipgloss.Place(
-			m.width, m.height,
+			m.uiState.Width(), m.uiState.Height(),
 			lipgloss.Center, lipgloss.Center,
 			inputBox,
 		)
 	}
 
 	// Handle delete confirmation mode: show centered dialog
-	if m.mode == DeleteConfirmMode {
+	if m.uiState.Mode() == state.DeleteConfirmMode {
 		task := m.getCurrentTask()
 		if task != nil {
 			confirmBox := lipgloss.NewStyle().
@@ -99,7 +100,7 @@ func (m Model) View() string {
 				Render(fmt.Sprintf("Delete '%s'?\n\n[y]es  [n]o", task.Title))
 
 			return lipgloss.Place(
-				m.width, m.height,
+				m.uiState.Width(), m.uiState.Height(),
 				lipgloss.Center, lipgloss.Center,
 				confirmBox,
 			)
@@ -107,15 +108,16 @@ func (m Model) View() string {
 	}
 
 	// Handle delete column confirmation mode: show centered dialog with task count warning
-	if m.mode == DeleteColumnConfirmMode {
+	if m.uiState.Mode() == state.DeleteColumnConfirmMode {
 		column := m.getCurrentColumn()
 		if column != nil {
 			var content string
-			if m.deleteColumnTaskCount > 0 {
+			taskCount := m.inputState.DeleteColumnTaskCount()
+			if taskCount > 0 {
 				content = fmt.Sprintf(
 					"Delete column '%s'?\nThis will also delete %d task(s).\n\n[y]es  [n]o",
 					column.Name,
-					m.deleteColumnTaskCount,
+					taskCount,
 				)
 			} else {
 				content = fmt.Sprintf("Delete column '%s'?\n\n[y]es  [n]o", column.Name)
@@ -129,7 +131,7 @@ func (m Model) View() string {
 				Render(content)
 
 			return lipgloss.Place(
-				m.width, m.height,
+				m.uiState.Width(), m.uiState.Height(),
 				lipgloss.Center, lipgloss.Center,
 				confirmBox,
 			)
@@ -137,7 +139,7 @@ func (m Model) View() string {
 	}
 
 	// Handle help mode: show keyboard shortcuts
-	if m.mode == HelpMode {
+	if m.uiState.Mode() == state.HelpMode {
 		helpContent := `PASO - Keyboard Shortcuts
 
 TASKS
@@ -178,14 +180,14 @@ Press any key to close`
 			Render(helpContent)
 
 		return lipgloss.Place(
-			m.width, m.height,
+			m.uiState.Width(), m.uiState.Height(),
 			lipgloss.Center, lipgloss.Center,
 			helpBox,
 		)
 	}
 
 	// Handle label picker mode: show picker over task view
-	if m.mode == LabelPickerMode {
+	if m.uiState.Mode() == state.LabelPickerMode {
 		// Render the label picker content
 		var pickerContent string
 		if m.labelPickerCreateMode {
@@ -194,7 +196,7 @@ Press any key to close`
 				GetDefaultLabelColors(),
 				m.labelPickerColorIdx,
 				m.formLabelName,
-				m.width/2-8,
+				m.uiState.Width()/2-8,
 			)
 		} else {
 			// Show label list
@@ -203,8 +205,8 @@ Press any key to close`
 				m.labelPickerCursor,
 				m.labelPickerFilter,
 				true, // show create option
-				m.width/2-8,
-				m.height/2-4,
+				m.uiState.Width()/2-8,
+				m.uiState.Height()/2-4,
 			)
 		}
 
@@ -218,31 +220,31 @@ Press any key to close`
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(borderColor).
 			Padding(1, 2).
-			Width(m.width / 2).
-			Height(m.height / 2).
+			Width(m.uiState.Width() / 2).
+			Height(m.uiState.Height() / 2).
 			Render(pickerContent)
 
 		return lipgloss.Place(
-			m.width, m.height,
+			m.uiState.Width(), m.uiState.Height(),
 			lipgloss.Center, lipgloss.Center,
 			pickerBox,
 		)
 	}
 
-	if m.mode == ViewTaskMode && m.viewingTask != nil {
+	if m.uiState.Mode() == state.ViewTaskMode && m.uiState.ViewingTask() != nil {
 		return components.RenderTaskView(components.TaskViewProps{
-			Task:         m.viewingTask,
+			Task:         m.uiState.ViewingTask(),
 			DB:           m.db,
-			PopupWidth:   m.width / 2,
-			PopupHeight:  m.height / 2,
-			ScreenWidth:  m.width,
-			ScreenHeight: m.height,
+			PopupWidth:   m.uiState.Width() / 2,
+			PopupHeight:  m.uiState.Height() / 2,
+			ScreenWidth:  m.uiState.Width(),
+			ScreenHeight: m.uiState.Height(),
 		})
 	}
 
 	// Normal mode: render kanban board
 	// Handle empty column list edge case
-	if len(m.columns) == 0 {
+	if len(m.appState.Columns()) == 0 {
 		header := TitleStyle.Render("PASO - Your Tasks")
 		emptyMsg := "No columns found. Please check database initialization."
 		footer := "[q] quit"
@@ -257,12 +259,12 @@ Press any key to close`
 	}
 
 	// Calculate visible columns based on viewport
-	endIdx := min(m.viewportOffset+m.viewportSize, len(m.columns))
-	visibleColumns := m.columns[m.viewportOffset:endIdx]
+	endIdx := min(m.uiState.ViewportOffset()+m.uiState.ViewportSize(), len(m.appState.Columns()))
+	visibleColumns := m.appState.Columns()[m.uiState.ViewportOffset():endIdx]
 
 	// Calculate column height: terminal height minus tabs, header, status bar, footer, and margins
 	// Tab bar (3) + empty line (1) + Header (1) + status bar (1) + empty line (1) + empty line (1) + footer (1) + margins (2) = ~11
-	columnHeight := m.height - 11
+	columnHeight := m.uiState.Height() - 11
 	if columnHeight < 10 {
 		columnHeight = 10 // Minimum height
 	}
@@ -271,17 +273,17 @@ Press any key to close`
 	var columns []string
 	for i, col := range visibleColumns {
 		// Calculate global index for selection check
-		globalIndex := m.viewportOffset + i
+		globalIndex := m.uiState.ViewportOffset() + i
 
-		tasks := m.tasks[col.ID]
+		tasks := m.appState.Tasks()[col.ID]
 
 		// Determine selection state for this column
-		isSelected := (globalIndex == m.selectedColumn)
+		isSelected := (globalIndex == m.uiState.SelectedColumn())
 
 		// Determine which task is selected (only for the selected column)
 		selectedTaskIdx := -1
 		if isSelected {
-			selectedTaskIdx = m.selectedTask
+			selectedTaskIdx = m.uiState.SelectedTask()
 		}
 
 		columns = append(columns, RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight))
@@ -290,10 +292,10 @@ Press any key to close`
 	// Add scroll indicators
 	leftArrow := " "
 	rightArrow := " "
-	if m.viewportOffset > 0 {
+	if m.uiState.ViewportOffset() > 0 {
 		leftArrow = "◀"
 	}
-	if m.viewportOffset+m.viewportSize < len(m.columns) {
+	if m.uiState.ViewportOffset()+m.uiState.ViewportSize() < len(m.appState.Columns()) {
 		rightArrow = "▶"
 	}
 
@@ -303,25 +305,25 @@ Press any key to close`
 
 	// Calculate total task count
 	totalTasks := 0
-	for _, tasks := range m.tasks {
+	for _, tasks := range m.appState.Tasks() {
 		totalTasks += len(tasks)
 	}
 
 	// Create project tabs from actual project data
 	var projectTabs []string
-	for _, project := range m.projects {
+	for _, project := range m.appState.Projects() {
 		projectTabs = append(projectTabs, project.Name)
 	}
 	if len(projectTabs) == 0 {
 		projectTabs = []string{"No Projects"}
 	}
-	tabBar := RenderTabs(projectTabs, m.selectedProject, m.width)
+	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width())
 
 	// Create header with status bar
 	header := TitleStyle.Render("PASO - Your Tasks")
 	statusBar := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("240")).
-		Render(fmt.Sprintf("%d columns  |  %d tasks  |  Press ? for help", len(m.columns), totalTasks))
+		Render(fmt.Sprintf("%d columns  |  %d tasks  |  Press ? for help", len(m.appState.Columns()), totalTasks))
 
 	// Create error banner if there's an error
 	var errorBanner string
