@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
 // Mode represents the current interaction mode of the TUI
@@ -83,6 +84,15 @@ type Model struct {
 	labelPickerTaskID     int               // Task being edited in picker
 	labelPickerColorIdx   int               // Cursor for color picker
 	labelPickerCreateMode bool              // True when in color selection for new label
+
+	// New state management fields (Phase 2: Refactoring to avoid God Object)
+	// These will eventually replace the individual fields above
+	appState         *state.AppState
+	uiState          *state.UIState
+	inputState       *state.InputState
+	formState        *state.FormState
+	labelPickerState *state.LabelPickerState
+	errorState       *state.ErrorState
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
@@ -125,6 +135,14 @@ func InitialModel(db *sql.DB) Model {
 		labels = []*models.Label{}
 	}
 
+	// Initialize new state objects
+	appState := state.NewAppState(projects, 0, columns, tasks, labels)
+	uiState := state.NewUIState()
+	inputState := state.NewInputState()
+	formState := state.NewFormState()
+	labelPickerState := state.NewLabelPickerState()
+	errorState := state.NewErrorState()
+
 	return Model{
 		db:              db,
 		projects:        projects,
@@ -141,6 +159,14 @@ func InitialModel(db *sql.DB) Model {
 		inputPrompt:     "",
 		viewportOffset:  0,
 		viewportSize:    1, // Default to 1, will be recalculated when width is set
+
+		// New state fields
+		appState:         appState,
+		uiState:          uiState,
+		inputState:       inputState,
+		formState:        formState,
+		labelPickerState: labelPickerState,
+		errorState:       errorState,
 	}
 }
 
@@ -208,17 +234,10 @@ func (m *Model) removeCurrentTask() {
 // Total per column: 46 chars
 // This method ensures at least 1 column is always visible
 func (m *Model) calculateViewportSize() {
-	if m.width == 0 {
-		m.viewportSize = 1
-		return
-	}
-
-	const columnWidth = 46 // 40 content + 2 padding + 2 border + 2 spacing
-	// Reserve 4 chars for margins and scroll indicators
-	availableWidth := m.width - 4
-
-	// Calculate how many columns fit, with minimum of 1
-	m.viewportSize = max(1, availableWidth/columnWidth)
+	// Delegate to UIState which now owns this logic
+	// Keep old field updated for backwards compatibility (will be removed in Phase 4)
+	m.uiState.SetWidth(m.width)
+	m.viewportSize = m.uiState.ViewportSize()
 }
 
 // max returns the maximum of two integers
@@ -269,19 +288,9 @@ func (m *Model) removeCurrentColumn() {
 	// Reset task selection
 	m.selectedTask = 0
 
-	// Adjust viewportOffset if needed to keep selection visible
-	if len(m.columns) > 0 {
-		// If selected column is before viewport, move viewport left
-		if m.selectedColumn < m.viewportOffset {
-			m.viewportOffset = m.selectedColumn
-		}
-		// If viewport offset is now beyond available columns, adjust it
-		if m.viewportOffset+m.viewportSize > len(m.columns) {
-			m.viewportOffset = max(0, len(m.columns)-m.viewportSize)
-		}
-	} else {
-		m.viewportOffset = 0
-	}
+	// Adjust viewportOffset using UIState helper (keeps old field synced)
+	m.uiState.AdjustViewportAfterColumnRemoval(m.selectedColumn, len(m.columns))
+	m.viewportOffset = m.uiState.ViewportOffset()
 }
 
 // moveTaskRight moves the currently selected task to the next column (right)
@@ -326,6 +335,7 @@ func (m *Model) moveTaskRight() {
 	// Ensure the moved task is visible (auto-scroll viewport if needed)
 	if m.selectedColumn >= m.viewportOffset+m.viewportSize {
 		m.viewportOffset++
+		m.uiState.SetViewportOffset(m.viewportOffset) // Keep UIState synced
 	}
 }
 
@@ -371,19 +381,15 @@ func (m *Model) moveTaskLeft() {
 	// Ensure the moved task is visible (auto-scroll viewport if needed)
 	if m.selectedColumn < m.viewportOffset {
 		m.viewportOffset--
+		m.uiState.SetViewportOffset(m.viewportOffset) // Keep UIState synced
 	}
 }
 
 // getCurrentProject returns the currently selected project
 // Returns nil if there are no projects
 func (m Model) getCurrentProject() *models.Project {
-	if len(m.projects) == 0 {
-		return nil
-	}
-	if m.selectedProject >= len(m.projects) {
-		return nil
-	}
-	return m.projects[m.selectedProject]
+	// Use new appState (while keeping old fields for backwards compatibility)
+	return m.appState.GetCurrentProject()
 }
 
 // switchToProject switches to a different project by index and reloads columns/tasks/labels
@@ -392,7 +398,10 @@ func (m *Model) switchToProject(projectIndex int) {
 		return
 	}
 
+	// Update both old and new state for backwards compatibility
 	m.selectedProject = projectIndex
+	m.appState.SetSelectedProject(projectIndex)
+
 	project := m.projects[projectIndex]
 
 	// Reload columns for this project
@@ -402,17 +411,20 @@ func (m *Model) switchToProject(projectIndex int) {
 		columns = []*models.Column{}
 	}
 	m.columns = columns
+	m.appState.SetColumns(columns)
 
 	// Reload task summaries for each column
-	m.tasks = make(map[int][]*models.TaskSummary)
-	for _, col := range m.columns {
+	tasks := make(map[int][]*models.TaskSummary)
+	for _, col := range columns {
 		columnTasks, err := database.GetTaskSummariesByColumn(m.db, col.ID)
 		if err != nil {
 			log.Printf("Error loading tasks for column %d: %v", col.ID, err)
 			columnTasks = []*models.TaskSummary{}
 		}
-		m.tasks[col.ID] = columnTasks
+		tasks[col.ID] = columnTasks
 	}
+	m.tasks = tasks
+	m.appState.SetTasks(tasks)
 
 	// Reload labels for this project
 	labels, err := database.GetLabelsByProject(m.db, project.ID)
@@ -421,6 +433,7 @@ func (m *Model) switchToProject(projectIndex int) {
 		labels = []*models.Label{}
 	}
 	m.labels = labels
+	m.appState.SetLabels(labels)
 
 	// Reset selection state
 	m.selectedColumn = 0
@@ -435,7 +448,9 @@ func (m *Model) reloadProjects() {
 		log.Printf("Error reloading projects: %v", err)
 		return
 	}
+	// Update both old and new state for backwards compatibility
 	m.projects = projects
+	m.appState.SetProjects(projects)
 }
 
 // reloadLabels reloads the labels for the current project from the database
@@ -443,6 +458,7 @@ func (m *Model) reloadLabels() {
 	project := m.getCurrentProject()
 	if project == nil {
 		m.labels = []*models.Label{}
+		m.appState.SetLabels([]*models.Label{})
 		return
 	}
 
@@ -451,7 +467,9 @@ func (m *Model) reloadLabels() {
 		log.Printf("Error reloading labels: %v", err)
 		return
 	}
+	// Update both old and new state for backwards compatibility
 	m.labels = labels
+	m.appState.SetLabels(labels)
 }
 
 // initLabelPicker initializes the label picker for a task
