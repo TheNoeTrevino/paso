@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"testing"
@@ -100,7 +101,7 @@ func closeAndReopenDB(t *testing.T, db *sql.DB, dbPath string) *sql.DB {
 // verifyLinkedListIntegrity checks that all columns are properly linked
 func verifyLinkedListIntegrity(t *testing.T, db *sql.DB) {
 	t.Helper()
-	columns, err := GetAllColumns(db)
+	columns, err := GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -147,19 +148,19 @@ func TestTaskCRUDPersistence(t *testing.T) {
 	defer db.Close()
 
 	// Create a column (using default project ID 1)
-	col, err := CreateColumn(db, "Todo", 1, nil)
+	col, err := CreateColumn(context.Background(), db, "Todo", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column: %v", err)
 	}
 
 	// Create a task
-	task, err := CreateTask(db, "Test task", "Test description", col.ID, 0)
+	task, err := CreateTask(context.Background(), db, "Test task", "Test description", col.ID, 0)
 	if err != nil {
 		t.Fatalf("Failed to create task: %v", err)
 	}
 
 	// Verify task exists in database
-	tasks, err := GetTasksByColumn(db, col.ID)
+	tasks, err := GetTasksByColumn(context.Background(), db, col.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}
@@ -177,12 +178,12 @@ func TestTaskCRUDPersistence(t *testing.T) {
 	}
 
 	// Update task title
-	if err := UpdateTaskTitle(db, task.ID, "Updated task"); err != nil {
+	if err := UpdateTaskTitle(context.Background(), db, task.ID, "Updated task"); err != nil {
 		t.Fatalf("Failed to update task title: %v", err)
 	}
 
 	// Verify update persisted
-	tasks, err = GetTasksByColumn(db, col.ID)
+	tasks, err = GetTasksByColumn(context.Background(), db, col.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks after update: %v", err)
 	}
@@ -201,12 +202,12 @@ func TestTaskCRUDPersistence(t *testing.T) {
 	}
 
 	// Delete task
-	if err := DeleteTask(db, task.ID); err != nil {
+	if err := DeleteTask(context.Background(), db, task.ID); err != nil {
 		t.Fatalf("Failed to delete task: %v", err)
 	}
 
 	// Verify task no longer exists
-	tasks, err = GetTasksByColumn(db, col.ID)
+	tasks, err = GetTasksByColumn(context.Background(), db, col.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks after delete: %v", err)
 	}
@@ -222,17 +223,17 @@ func TestColumnCRUDPersistence(t *testing.T) {
 	defer os.Remove(dbPath)
 
 	// Create 3 columns (using default project ID 1)
-	col1, err := CreateColumn(db, "Todo", 1, nil)
+	col1, err := CreateColumn(context.Background(), db, "Todo", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 1: %v", err)
 	}
 
-	col2, err := CreateColumn(db, "In Progress", 1, nil)
+	col2, err := CreateColumn(context.Background(), db, "In Progress", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 2: %v", err)
 	}
 
-	col3, err := CreateColumn(db, "Done", 1, nil)
+	col3, err := CreateColumn(context.Background(), db, "Done", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 3: %v", err)
 	}
@@ -240,7 +241,7 @@ func TestColumnCRUDPersistence(t *testing.T) {
 	// Verify linked list pointers are correct
 	verifyLinkedListIntegrity(t, db)
 
-	columns, err := GetAllColumns(db)
+	columns, err := GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -259,7 +260,7 @@ func TestColumnCRUDPersistence(t *testing.T) {
 	defer db.Close()
 
 	// Verify columns reload with correct order
-	columns, err = GetAllColumns(db)
+	columns, err = GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns after reload: %v", err)
 	}
@@ -275,12 +276,12 @@ func TestColumnCRUDPersistence(t *testing.T) {
 	verifyLinkedListIntegrity(t, db)
 
 	// Delete middle column
-	if err := DeleteColumn(db, col2.ID); err != nil {
+	if err := DeleteColumn(context.Background(), db, col2.ID); err != nil {
 		t.Fatalf("Failed to delete column: %v", err)
 	}
 
 	// Verify pointers updated correctly
-	columns, err = GetAllColumns(db)
+	columns, err = GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns after delete: %v", err)
 	}
@@ -296,7 +297,7 @@ func TestColumnCRUDPersistence(t *testing.T) {
 	defer db.Close()
 
 	// Verify deletion persisted
-	columns, err = GetAllColumns(db)
+	columns, err = GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns after reload: %v", err)
 	}
@@ -318,23 +319,23 @@ func TestTaskMovementPersistence(t *testing.T) {
 	defer os.Remove(dbPath)
 
 	// Create database with 3 columns (using default project ID 1)
-	col1, _ := CreateColumn(db, "Todo", 1, nil)
-	col2, _ := CreateColumn(db, "In Progress", 1, nil)
-	col3, _ := CreateColumn(db, "Done", 1, nil)
+	col1, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	col2, _ := CreateColumn(context.Background(), db, "In Progress", 1, nil)
+	col3, _ := CreateColumn(context.Background(), db, "Done", 1, nil)
 
 	// Create task in first column
-	task, err := CreateTask(db, "Test task", "Description", col1.ID, 0)
+	task, err := CreateTask(context.Background(), db, "Test task", "Description", col1.ID, 0)
 	if err != nil {
 		t.Fatalf("Failed to create task: %v", err)
 	}
 
 	// Move task to next column
-	if err := MoveTaskToNextColumn(db, task.ID); err != nil {
+	if err := MoveTaskToNextColumn(context.Background(), db, task.ID); err != nil {
 		t.Fatalf("Failed to move task: %v", err)
 	}
 
 	// Verify task moved in database
-	tasks, err := GetTasksByColumn(db, col2.ID)
+	tasks, err := GetTasksByColumn(context.Background(), db, col2.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}
@@ -348,7 +349,7 @@ func TestTaskMovementPersistence(t *testing.T) {
 	defer db.Close()
 
 	// Verify task is still in correct column
-	tasks, err = GetTasksByColumn(db, col2.ID)
+	tasks, err = GetTasksByColumn(context.Background(), db, col2.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks after reload: %v", err)
 	}
@@ -358,12 +359,12 @@ func TestTaskMovementPersistence(t *testing.T) {
 	}
 
 	// Move task to previous column
-	if err := MoveTaskToPrevColumn(db, task.ID); err != nil {
+	if err := MoveTaskToPrevColumn(context.Background(), db, task.ID); err != nil {
 		t.Fatalf("Failed to move task back: %v", err)
 	}
 
 	// Verify movement persisted
-	tasks, err = GetTasksByColumn(db, col1.ID)
+	tasks, err = GetTasksByColumn(context.Background(), db, col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}
@@ -373,12 +374,12 @@ func TestTaskMovementPersistence(t *testing.T) {
 	}
 
 	// Verify not in col2 or col3
-	tasks, _ = GetTasksByColumn(db, col2.ID)
+	tasks, _ = GetTasksByColumn(context.Background(), db, col2.ID)
 	if len(tasks) != 0 {
 		t.Error("Task should not be in second column")
 	}
 
-	tasks, _ = GetTasksByColumn(db, col3.ID)
+	tasks, _ = GetTasksByColumn(context.Background(), db, col3.ID)
 	if len(tasks) != 0 {
 		t.Error("Task should not be in third column")
 	}
@@ -390,17 +391,17 @@ func TestColumnInsertionPersistence(t *testing.T) {
 	defer os.Remove(dbPath)
 
 	// Create database with 2 columns (A, B) using default project ID 1
-	colA, _ := CreateColumn(db, "Column A", 1, nil)
-	colB, _ := CreateColumn(db, "Column B", 1, nil)
+	colA, _ := CreateColumn(context.Background(), db, "Column A", 1, nil)
+	colB, _ := CreateColumn(context.Background(), db, "Column B", 1, nil)
 
 	// Insert new column after A (creating A, C, B)
-	colC, err := CreateColumn(db, "Column C", 1, &colA.ID)
+	colC, err := CreateColumn(context.Background(), db, "Column C", 1, &colA.ID)
 	if err != nil {
 		t.Fatalf("Failed to insert column: %v", err)
 	}
 
 	// Verify linked list: A.next=C, C.prev=A, C.next=B, B.prev=C
-	columns, err := GetAllColumns(db)
+	columns, err := GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -441,7 +442,7 @@ func TestColumnInsertionPersistence(t *testing.T) {
 	defer db.Close()
 
 	// Verify order is still A, C, B
-	columns, err = GetAllColumns(db)
+	columns, err = GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns after reload: %v", err)
 	}
@@ -464,35 +465,35 @@ func TestCascadeDeletion(t *testing.T) {
 	defer os.Remove(dbPath)
 
 	// Create database with 1 column (using default project ID 1)
-	col, _ := CreateColumn(db, "Todo", 1, nil)
+	col, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
 
 	// Create 5 tasks in column
 	for i := 0; i < 5; i++ {
-		_, err := CreateTask(db, "Task", "Description", col.ID, i)
+		_, err := CreateTask(context.Background(), db, "Task", "Description", col.ID, i)
 		if err != nil {
 			t.Fatalf("Failed to create task %d: %v", i, err)
 		}
 	}
 
 	// Verify tasks exist
-	tasks, _ := GetTasksByColumn(db, col.ID)
+	tasks, _ := GetTasksByColumn(context.Background(), db, col.ID)
 	if len(tasks) != 5 {
 		t.Fatalf("Expected 5 tasks, got %d", len(tasks))
 	}
 
 	// Delete column
-	if err := DeleteColumn(db, col.ID); err != nil {
+	if err := DeleteColumn(context.Background(), db, col.ID); err != nil {
 		t.Fatalf("Failed to delete column: %v", err)
 	}
 
 	// Verify all tasks are deleted
-	tasks, _ = GetTasksByColumn(db, col.ID)
+	tasks, _ = GetTasksByColumn(context.Background(), db, col.ID)
 	if len(tasks) != 0 {
 		t.Errorf("Expected 0 tasks after column deletion, got %d", len(tasks))
 	}
 
 	// Verify column doesn't exist
-	columns, _ := GetAllColumns(db)
+	columns, _ := GetAllColumns(context.Background(), db)
 	if len(columns) != 0 {
 		t.Errorf("Expected 0 columns, got %d", len(columns))
 	}
@@ -502,13 +503,13 @@ func TestCascadeDeletion(t *testing.T) {
 	defer db.Close()
 
 	// Verify column and tasks don't exist
-	columns, _ = GetAllColumns(db)
+	columns, _ = GetAllColumns(context.Background(), db)
 	if len(columns) != 0 {
 		t.Errorf("Expected 0 columns after reload, got %d", len(columns))
 	}
 
 	// Try to query tasks (should return empty)
-	tasks, _ = GetTasksByColumn(db, col.ID)
+	tasks, _ = GetTasksByColumn(context.Background(), db, col.ID)
 	if len(tasks) != 0 {
 		t.Errorf("Expected 0 tasks after reload, got %d", len(tasks))
 	}
@@ -521,30 +522,30 @@ func TestTransactionRollback(t *testing.T) {
 	defer db.Close()
 
 	// Create 2 columns (using default project ID 1)
-	col1, _ := CreateColumn(db, "Todo", 1, nil)
-	col2, _ := CreateColumn(db, "Done", 1, nil)
+	col1, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	col2, _ := CreateColumn(context.Background(), db, "Done", 1, nil)
 
 	// Attempt to delete column with invalid ID
-	err := DeleteColumn(db, 99999)
+	err := DeleteColumn(context.Background(), db, 99999)
 	if err == nil {
 		t.Error("Expected error when deleting non-existent column")
 	}
 
 	// Verify transaction rolled back (no changes)
-	columns, _ := GetAllColumns(db)
+	columns, _ := GetAllColumns(context.Background(), db)
 	if len(columns) != 2 {
 		t.Errorf("Expected 2 columns, got %d (transaction should have rolled back)", len(columns))
 	}
 
 	// Attempt to create task with invalid column ID
-	_, err = CreateTask(db, "Test", "Description", 99999, 0)
+	_, err = CreateTask(context.Background(), db, "Test", "Description", 99999, 0)
 	if err == nil {
 		t.Error("Expected error when creating task with invalid column ID")
 	}
 
 	// Verify no tasks were created
-	count1, _ := GetTaskCountByColumn(db, col1.ID)
-	count2, _ := GetTaskCountByColumn(db, col2.ID)
+	count1, _ := GetTaskCountByColumn(context.Background(), db, col1.ID)
+	count2, _ := GetTaskCountByColumn(context.Background(), db, col2.ID)
 	if count1 != 0 || count2 != 0 {
 		t.Error("No tasks should have been created")
 	}
@@ -558,19 +559,19 @@ func TestSequentialBulkOperations(t *testing.T) {
 	defer db.Close()
 
 	// Create a column (using default project ID 1)
-	col, _ := CreateColumn(db, "Todo", 1, nil)
+	col, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
 
 	// Create many tasks in sequence (like rapid user input)
 	numTasks := 50
 	for i := 0; i < numTasks; i++ {
-		_, err := CreateTask(db, "Task", "Description", col.ID, i)
+		_, err := CreateTask(context.Background(), db, "Task", "Description", col.ID, i)
 		if err != nil {
 			t.Fatalf("Failed to create task %d: %v", i, err)
 		}
 	}
 
 	// Verify all tasks were created
-	tasks, err := GetTasksByColumn(db, col.ID)
+	tasks, err := GetTasksByColumn(context.Background(), db, col.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}
@@ -593,7 +594,7 @@ func TestSequentialBulkOperations(t *testing.T) {
 
 	// Test rapid updates
 	for i := 0; i < 10; i++ {
-		err := UpdateTaskTitle(db, tasks[i].ID, "Updated")
+		err := UpdateTaskTitle(context.Background(), db, tasks[i].ID, "Updated")
 		if err != nil {
 			t.Fatalf("Failed to update task %d: %v", i, err)
 		}
@@ -601,14 +602,14 @@ func TestSequentialBulkOperations(t *testing.T) {
 
 	// Test rapid deletions
 	for i := 10; i < 20; i++ {
-		err := DeleteTask(db, tasks[i].ID)
+		err := DeleteTask(context.Background(), db, tasks[i].ID)
 		if err != nil {
 			t.Fatalf("Failed to delete task %d: %v", i, err)
 		}
 	}
 
 	// Verify final count
-	tasks, _ = GetTasksByColumn(db, col.ID)
+	tasks, _ = GetTasksByColumn(context.Background(), db, col.ID)
 	expectedCount := numTasks - 10 // deleted 10 tasks
 	if len(tasks) != expectedCount {
 		t.Errorf("Expected %d tasks after deletions, got %d", expectedCount, len(tasks))
@@ -626,7 +627,7 @@ func TestReloadFullState(t *testing.T) {
 	var columnIDs []int
 
 	for _, name := range columnNames {
-		col, err := CreateColumn(db, name, 1, nil)
+		col, err := CreateColumn(context.Background(), db, name, 1, nil)
 		if err != nil {
 			t.Fatalf("Failed to create column %s: %v", name, err)
 		}
@@ -637,7 +638,7 @@ func TestReloadFullState(t *testing.T) {
 	taskCount := 0
 	for colIdx, colID := range columnIDs {
 		for i := 0; i < 4; i++ {
-			_, err := CreateTask(db, "Task", "Description", colID, i)
+			_, err := CreateTask(context.Background(), db, "Task", "Description", colID, i)
 			if err != nil {
 				t.Fatalf("Failed to create task in column %d: %v", colIdx, err)
 			}
@@ -653,7 +654,7 @@ func TestReloadFullState(t *testing.T) {
 	defer db.Close()
 
 	// Load all columns (verify order)
-	columns, err := GetAllColumns(db)
+	columns, err := GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns after reload: %v", err)
 	}
@@ -671,7 +672,7 @@ func TestReloadFullState(t *testing.T) {
 	// Load all tasks (verify correct columns)
 	totalTasks := 0
 	for _, colID := range columnIDs {
-		tasks, err := GetTasksByColumn(db, colID)
+		tasks, err := GetTasksByColumn(context.Background(), db, colID)
 		if err != nil {
 			t.Fatalf("Failed to get tasks for column %d: %v", colID, err)
 		}
@@ -698,7 +699,7 @@ func TestReloadFullState(t *testing.T) {
 	verifyLinkedListIntegrity(t, db)
 
 	// Verify foreign keys intact by trying to create task with invalid column
-	_, err = CreateTask(db, "Invalid", "Description", 99999, 0)
+	_, err = CreateTask(context.Background(), db, "Invalid", "Description", 99999, 0)
 	if err == nil {
 		t.Error("Should not be able to create task with invalid column_id")
 	}
@@ -710,8 +711,8 @@ func TestMigrationIdempotency(t *testing.T) {
 	defer os.Remove(dbPath)
 
 	// Create some data (using default project ID 1)
-	col, _ := CreateColumn(db, "Todo", 1, nil)
-	_, _ = CreateTask(db, "Task", "Description", col.ID, 0)
+	col, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	_, _ = CreateTask(context.Background(), db, "Task", "Description", col.ID, 0)
 
 	// Run migrations again
 	if err := runMigrations(db); err != nil {
@@ -719,7 +720,7 @@ func TestMigrationIdempotency(t *testing.T) {
 	}
 
 	// Verify no errors and schema is correct
-	columns, err := GetAllColumns(db)
+	columns, err := GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -728,7 +729,7 @@ func TestMigrationIdempotency(t *testing.T) {
 		t.Errorf("Expected 1 column, got %d", len(columns))
 	}
 
-	tasks, _ := GetTasksByColumn(db, col.ID)
+	tasks, _ := GetTasksByColumn(context.Background(), db, col.ID)
 	if len(tasks) != 1 {
 		t.Errorf("Expected 1 task, got %d", len(tasks))
 	}
@@ -739,7 +740,7 @@ func TestMigrationIdempotency(t *testing.T) {
 	}
 
 	// Verify still works correctly
-	columns, err = GetAllColumns(db)
+	columns, err = GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -805,7 +806,7 @@ func TestEmptyDatabaseReload(t *testing.T) {
 	}
 
 	// Get all columns and verify linked list
-	columns, err := GetAllColumns(db)
+	columns, err := GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -837,8 +838,8 @@ func TestTimestampsPersistence(t *testing.T) {
 	defer os.Remove(dbPath)
 
 	// Create column and task (using default project ID 1)
-	col, _ := CreateColumn(db, "Todo", 1, nil)
-	task, err := CreateTask(db, "Test task", "Description", col.ID, 0)
+	col, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	task, err := CreateTask(context.Background(), db, "Test task", "Description", col.ID, 0)
 	if err != nil {
 		t.Fatalf("Failed to create task: %v", err)
 	}
@@ -850,12 +851,12 @@ func TestTimestampsPersistence(t *testing.T) {
 	time.Sleep(1100 * time.Millisecond)
 
 	// Update task
-	if err := UpdateTaskTitle(db, task.ID, "Updated task"); err != nil {
+	if err := UpdateTaskTitle(context.Background(), db, task.ID, "Updated task"); err != nil {
 		t.Fatalf("Failed to update task: %v", err)
 	}
 
 	// Reload task
-	tasks, _ := GetTasksByColumn(db, col.ID)
+	tasks, _ := GetTasksByColumn(context.Background(), db, col.ID)
 	updatedTask := tasks[0]
 
 	// Verify created_at hasn't changed
@@ -873,7 +874,7 @@ func TestTimestampsPersistence(t *testing.T) {
 	defer db.Close()
 
 	// Verify timestamps persisted correctly
-	tasks, _ = GetTasksByColumn(db, col.ID)
+	tasks, _ = GetTasksByColumn(context.Background(), db, col.ID)
 	if len(tasks) == 0 {
 		t.Fatal("Task not found after reload")
 	}
@@ -896,22 +897,22 @@ func TestComplexMovementSequencePersistence(t *testing.T) {
 	defer os.Remove(dbPath)
 
 	// Create 4 columns (using default project ID 1)
-	col1, _ := CreateColumn(db, "Col1", 1, nil)
-	col2, _ := CreateColumn(db, "Col2", 1, nil)
-	col3, _ := CreateColumn(db, "Col3", 1, nil)
-	col4, _ := CreateColumn(db, "Col4", 1, nil)
+	col1, _ := CreateColumn(context.Background(), db, "Col1", 1, nil)
+	col2, _ := CreateColumn(context.Background(), db, "Col2", 1, nil)
+	col3, _ := CreateColumn(context.Background(), db, "Col3", 1, nil)
+	col4, _ := CreateColumn(context.Background(), db, "Col4", 1, nil)
 
 	// Create 3 tasks in col1
-	task1, _ := CreateTask(db, "Task 1", "", col1.ID, 0)
-	task2, _ := CreateTask(db, "Task 2", "", col1.ID, 1)
-	task3, _ := CreateTask(db, "Task 3", "", col1.ID, 2)
+	task1, _ := CreateTask(context.Background(), db, "Task 1", "", col1.ID, 0)
+	task2, _ := CreateTask(context.Background(), db, "Task 2", "", col1.ID, 1)
+	task3, _ := CreateTask(context.Background(), db, "Task 3", "", col1.ID, 2)
 
 	// Move tasks in complex pattern
-	MoveTaskToNextColumn(db, task1.ID) // Task 1: Col1 -> Col2
-	MoveTaskToNextColumn(db, task1.ID) // Task 1: Col2 -> Col3
-	MoveTaskToNextColumn(db, task2.ID) // Task 2: Col1 -> Col2
-	MoveTaskToPrevColumn(db, task1.ID) // Task 1: Col3 -> Col2
-	MoveTaskToNextColumn(db, task3.ID) // Task 3: Col1 -> Col2
+	MoveTaskToNextColumn(context.Background(), db, task1.ID) // Task 1: Col1 -> Col2
+	MoveTaskToNextColumn(context.Background(), db, task1.ID) // Task 1: Col2 -> Col3
+	MoveTaskToNextColumn(context.Background(), db, task2.ID) // Task 2: Col1 -> Col2
+	MoveTaskToPrevColumn(context.Background(), db, task1.ID) // Task 1: Col3 -> Col2
+	MoveTaskToNextColumn(context.Background(), db, task3.ID) // Task 3: Col1 -> Col2
 
 	// Expected state:
 	// Col1: []
@@ -920,10 +921,10 @@ func TestComplexMovementSequencePersistence(t *testing.T) {
 	// Col4: []
 
 	// Verify state before close
-	tasks1, _ := GetTasksByColumn(db, col1.ID)
-	tasks2, _ := GetTasksByColumn(db, col2.ID)
-	tasks3, _ := GetTasksByColumn(db, col3.ID)
-	tasks4, _ := GetTasksByColumn(db, col4.ID)
+	tasks1, _ := GetTasksByColumn(context.Background(), db, col1.ID)
+	tasks2, _ := GetTasksByColumn(context.Background(), db, col2.ID)
+	tasks3, _ := GetTasksByColumn(context.Background(), db, col3.ID)
+	tasks4, _ := GetTasksByColumn(context.Background(), db, col4.ID)
 
 	if len(tasks1) != 0 || len(tasks2) != 3 || len(tasks3) != 0 || len(tasks4) != 0 {
 		t.Errorf("Unexpected task distribution: col1=%d, col2=%d, col3=%d, col4=%d",
@@ -935,10 +936,10 @@ func TestComplexMovementSequencePersistence(t *testing.T) {
 	defer db.Close()
 
 	// Verify state persisted
-	tasks1, _ = GetTasksByColumn(db, col1.ID)
-	tasks2, _ = GetTasksByColumn(db, col2.ID)
-	tasks3, _ = GetTasksByColumn(db, col3.ID)
-	tasks4, _ = GetTasksByColumn(db, col4.ID)
+	tasks1, _ = GetTasksByColumn(context.Background(), db, col1.ID)
+	tasks2, _ = GetTasksByColumn(context.Background(), db, col2.ID)
+	tasks3, _ = GetTasksByColumn(context.Background(), db, col3.ID)
+	tasks4, _ = GetTasksByColumn(context.Background(), db, col4.ID)
 
 	if len(tasks1) != 0 || len(tasks2) != 3 || len(tasks3) != 0 || len(tasks4) != 0 {
 		t.Errorf("Task distribution not persisted: col1=%d, col2=%d, col3=%d, col4=%d",
@@ -952,15 +953,15 @@ func TestColumnReorderingPersistence(t *testing.T) {
 	defer os.Remove(dbPath)
 
 	// Create 3 columns: A, B, C (using default project ID 1)
-	colA, _ := CreateColumn(db, "A", 1, nil)
-	_, _ = CreateColumn(db, "B", 1, nil)
-	_, _ = CreateColumn(db, "C", 1, nil)
+	colA, _ := CreateColumn(context.Background(), db, "A", 1, nil)
+	_, _ = CreateColumn(context.Background(), db, "B", 1, nil)
+	_, _ = CreateColumn(context.Background(), db, "C", 1, nil)
 
 	// Insert D between A and B
-	_, _ = CreateColumn(db, "D", 1, &colA.ID)
+	_, _ = CreateColumn(context.Background(), db, "D", 1, &colA.ID)
 
 	// Expected order: A, D, B, C
-	columns, _ := GetAllColumns(db)
+	columns, _ := GetAllColumns(context.Background(), db)
 	if len(columns) != 4 {
 		t.Fatalf("Expected 4 columns, got %d", len(columns))
 	}
@@ -977,7 +978,7 @@ func TestColumnReorderingPersistence(t *testing.T) {
 	defer db.Close()
 
 	// Verify order persisted
-	columns, _ = GetAllColumns(db)
+	columns, _ = GetAllColumns(context.Background(), db)
 	if len(columns) != 4 {
 		t.Fatalf("Expected 4 columns after reload, got %d", len(columns))
 	}
@@ -998,21 +999,21 @@ func TestUpdateTaskColumnDirectly(t *testing.T) {
 	defer db.Close()
 
 	// Create 2 columns (using default project ID 1)
-	col1, _ := CreateColumn(db, "Todo", 1, nil)
-	col2, _ := CreateColumn(db, "Done", 1, nil)
+	col1, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	col2, _ := CreateColumn(context.Background(), db, "Done", 1, nil)
 
 	// Create task in col1
-	task, _ := CreateTask(db, "Test", "Description", col1.ID, 0)
+	task, _ := CreateTask(context.Background(), db, "Test", "Description", col1.ID, 0)
 
 	// Move task using UpdateTaskColumn
-	err := UpdateTaskColumn(db, task.ID, col2.ID, 0)
+	err := UpdateTaskColumn(context.Background(), db, task.ID, col2.ID, 0)
 	if err != nil {
 		t.Fatalf("Failed to update task column: %v", err)
 	}
 
 	// Verify task moved
-	tasks1, _ := GetTasksByColumn(db, col1.ID)
-	tasks2, _ := GetTasksByColumn(db, col2.ID)
+	tasks1, _ := GetTasksByColumn(context.Background(), db, col1.ID)
+	tasks2, _ := GetTasksByColumn(context.Background(), db, col2.ID)
 
 	if len(tasks1) != 0 {
 		t.Error("Task should not be in col1")
@@ -1029,15 +1030,15 @@ func TestMultipleTasksInColumnOrder(t *testing.T) {
 	db := createTestDB(t)
 	defer db.Close()
 
-	col, _ := CreateColumn(db, "Todo", 1, nil)
+	col, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
 
 	// Create tasks with specific positions
-	task1, _ := CreateTask(db, "Task 1", "", col.ID, 0)
-	task2, _ := CreateTask(db, "Task 2", "", col.ID, 1)
-	task3, _ := CreateTask(db, "Task 3", "", col.ID, 2)
+	task1, _ := CreateTask(context.Background(), db, "Task 1", "", col.ID, 0)
+	task2, _ := CreateTask(context.Background(), db, "Task 2", "", col.ID, 1)
+	task3, _ := CreateTask(context.Background(), db, "Task 3", "", col.ID, 2)
 
 	// Retrieve tasks
-	tasks, err := GetTasksByColumn(db, col.ID)
+	tasks, err := GetTasksByColumn(context.Background(), db, col.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}

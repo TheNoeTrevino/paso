@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"log"
 	"strings"
 
@@ -124,7 +125,7 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.formState.EditingTaskID == 0 {
 				// Create new task
 				currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
-				task, err := database.CreateTask(
+				task, err := database.CreateTask(context.Background(), 
 					m.db,
 					strings.TrimSpace(title),
 					strings.TrimSpace(description),
@@ -137,13 +138,13 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					// Set labels
 					if len(labelIDs) > 0 {
-						err = database.SetTaskLabels(m.db, task.ID, labelIDs)
+						err = database.SetTaskLabels(context.Background(), m.db, task.ID, labelIDs)
 						if err != nil {
 							log.Printf("Error setting labels: %v", err)
 						}
 					}
 					// Reload task summary with labels
-					summaries, err := database.GetTaskSummariesByColumn(m.db, currentCol.ID)
+					summaries, err := database.GetTaskSummariesByColumn(context.Background(), m.db, currentCol.ID)
 					if err != nil {
 						log.Printf("Error reloading tasks: %v", err)
 					} else {
@@ -152,19 +153,19 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			} else {
 				// Update existing task
-				err := database.UpdateTask(m.db, m.formState.EditingTaskID, strings.TrimSpace(title), strings.TrimSpace(description))
+				err := database.UpdateTask(context.Background(), m.db, m.formState.EditingTaskID, strings.TrimSpace(title), strings.TrimSpace(description))
 				if err != nil {
 					log.Printf("Error updating task: %v", err)
 					m.errorState.Set("Error updating task")
 				} else {
 					// Update labels
-					err = database.SetTaskLabels(m.db, m.formState.EditingTaskID, labelIDs)
+					err = database.SetTaskLabels(context.Background(), m.db, m.formState.EditingTaskID, labelIDs)
 					if err != nil {
 						log.Printf("Error setting labels: %v", err)
 					}
 					// Reload task summaries for the column
 					currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
-					summaries, err := database.GetTaskSummariesByColumn(m.db, currentCol.ID)
+					summaries, err := database.GetTaskSummariesByColumn(context.Background(), m.db, currentCol.ID)
 					if err != nil {
 						log.Printf("Error reloading tasks: %v", err)
 					} else {
@@ -225,7 +226,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Form submitted - create the project
 		if strings.TrimSpace(name) != "" {
-			project, err := database.CreateProject(m.db, strings.TrimSpace(name), strings.TrimSpace(description))
+			project, err := database.CreateProject(context.Background(), m.db, strings.TrimSpace(name), strings.TrimSpace(description))
 			if err != nil {
 				log.Printf("Error creating project: %v", err)
 				m.errorState.Set("Error creating project")
@@ -308,7 +309,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if pi.Label.ID == item.Label.ID {
 					if m.labelPickerState.Items[i].Selected {
 						// Remove label from task
-						err := database.RemoveLabelFromTask(m.db, m.labelPickerState.TaskID, item.Label.ID)
+						err := database.RemoveLabelFromTask(context.Background(), m.db, m.labelPickerState.TaskID, item.Label.ID)
 						if err != nil {
 							log.Printf("Error removing label: %v", err)
 						} else {
@@ -316,7 +317,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					} else {
 						// Add label to task
-						err := database.AddLabelToTask(m.db, m.labelPickerState.TaskID, item.Label.ID)
+						err := database.AddLabelToTask(context.Background(), m.db, m.labelPickerState.TaskID, item.Label.ID)
 						if err != nil {
 							log.Printf("Error adding label: %v", err)
 						} else {
@@ -399,7 +400,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		label, err := database.CreateLabel(m.db, project.ID, m.formState.FormLabelName, color)
+		label, err := database.CreateLabel(context.Background(), m.db, project.ID, m.formState.FormLabelName, color)
 		if err != nil {
 			log.Printf("Error creating label: %v", err)
 			m.labelPickerState.CreateMode = false
@@ -416,7 +417,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		})
 
 		// Assign to current task
-		err = database.AddLabelToTask(m.db, m.labelPickerState.TaskID, label.ID)
+		err = database.AddLabelToTask(context.Background(), m.db, m.labelPickerState.TaskID, label.ID)
 		if err != nil {
 			log.Printf("Error assigning new label to task: %v", err)
 		}
@@ -443,7 +444,7 @@ func (m *Model) reloadViewingTask() {
 		return
 	}
 
-	taskDetail, err := database.GetTaskDetail(m.db, m.uiState.ViewingTask().ID)
+	taskDetail, err := database.GetTaskDetail(context.Background(), m.db, m.uiState.ViewingTask().ID)
 	if err != nil {
 		log.Printf("Error reloading task detail: %v", err)
 		return
@@ -458,7 +459,7 @@ func (m *Model) reloadCurrentColumnTasks() {
 	}
 
 	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
-	summaries, err := database.GetTaskSummariesByColumn(m.db, currentCol.ID)
+	summaries, err := database.GetTaskSummariesByColumn(context.Background(), m.db, currentCol.ID)
 	if err != nil {
 		log.Printf("Error reloading column tasks: %v", err)
 		return

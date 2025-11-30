@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 
@@ -38,23 +39,23 @@ func TestLinkedListTraversal(t *testing.T) {
 	defer db.Close()
 
 	// Create 3 columns
-	col1, err := CreateColumn(db, "Todo", 1, nil)
+	col1, err := CreateColumn(context.Background(), db, "Todo", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 1: %v", err)
 	}
 
-	col2, err := CreateColumn(db, "In Progress", 1, nil)
+	col2, err := CreateColumn(context.Background(), db, "In Progress", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 2: %v", err)
 	}
 
-	col3, err := CreateColumn(db, "Done", 1, nil)
+	col3, err := CreateColumn(context.Background(), db, "Done", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 3: %v", err)
 	}
 
 	// Retrieve all columns and verify order
-	columns, err := GetAllColumns(db)
+	columns, err := GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -101,17 +102,17 @@ func TestInsertColumnMiddle(t *testing.T) {
 	defer db.Close()
 
 	// Create initial columns
-	col1, _ := CreateColumn(db, "Todo", 1, nil)
-	col3, _ := CreateColumn(db, "Done", 1, nil)
+	col1, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	col3, _ := CreateColumn(context.Background(), db, "Done", 1, nil)
 
 	// Insert a column in the middle (after col1)
-	col2, err := CreateColumn(db, "In Progress", 1, &col1.ID)
+	col2, err := CreateColumn(context.Background(), db, "In Progress", 1, &col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to insert column in middle: %v", err)
 	}
 
 	// Verify the linked list structure
-	columns, err := GetAllColumns(db)
+	columns, err := GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -146,17 +147,17 @@ func TestInsertColumnEnd(t *testing.T) {
 	defer db.Close()
 
 	// Create initial columns
-	_, _ = CreateColumn(db, "Todo", 1, nil)
-	col2, _ := CreateColumn(db, "In Progress", 1, nil)
+	_, _ = CreateColumn(context.Background(), db, "Todo", 1, nil)
+	col2, _ := CreateColumn(context.Background(), db, "In Progress", 1, nil)
 
 	// Append a column to the end (pass nil for afterColumnID)
-	col3, err := CreateColumn(db, "Done", 1, nil)
+	col3, err := CreateColumn(context.Background(), db, "Done", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to append column: %v", err)
 	}
 
 	// Verify the linked list structure
-	columns, err := GetAllColumns(db)
+	columns, err := GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -184,18 +185,18 @@ func TestDeleteColumnMiddle(t *testing.T) {
 	defer db.Close()
 
 	// Create three columns
-	col1, _ := CreateColumn(db, "Todo", 1, nil)
-	col2, _ := CreateColumn(db, "In Progress", 1, nil)
-	col3, _ := CreateColumn(db, "Done", 1, nil)
+	col1, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	col2, _ := CreateColumn(context.Background(), db, "In Progress", 1, nil)
+	col3, _ := CreateColumn(context.Background(), db, "Done", 1, nil)
 
 	// Delete the middle column
-	err := DeleteColumn(db, col2.ID)
+	err := DeleteColumn(context.Background(), db, col2.ID)
 	if err != nil {
 		t.Fatalf("Failed to delete column: %v", err)
 	}
 
 	// Verify only two columns remain
-	columns, err := GetAllColumns(db)
+	columns, err := GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -224,18 +225,18 @@ func TestDeleteColumnHead(t *testing.T) {
 	defer db.Close()
 
 	// Create three columns
-	col1, _ := CreateColumn(db, "Todo", 1, nil)
-	col2, _ := CreateColumn(db, "In Progress", 1, nil)
-	col3, _ := CreateColumn(db, "Done", 1, nil)
+	col1, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	col2, _ := CreateColumn(context.Background(), db, "In Progress", 1, nil)
+	col3, _ := CreateColumn(context.Background(), db, "Done", 1, nil)
 
 	// Delete the head column
-	err := DeleteColumn(db, col1.ID)
+	err := DeleteColumn(context.Background(), db, col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to delete head column: %v", err)
 	}
 
 	// Verify two columns remain
-	columns, err := GetAllColumns(db)
+	columns, err := GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -262,18 +263,18 @@ func TestDeleteColumnTail(t *testing.T) {
 	defer db.Close()
 
 	// Create three columns
-	col1, _ := CreateColumn(db, "Todo", 1, nil)
-	col2, _ := CreateColumn(db, "In Progress", 1, nil)
-	col3, _ := CreateColumn(db, "Done", 1, nil)
+	col1, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	col2, _ := CreateColumn(context.Background(), db, "In Progress", 1, nil)
+	col3, _ := CreateColumn(context.Background(), db, "Done", 1, nil)
 
 	// Delete the tail column
-	err := DeleteColumn(db, col3.ID)
+	err := DeleteColumn(context.Background(), db, col3.ID)
 	if err != nil {
 		t.Fatalf("Failed to delete tail column: %v", err)
 	}
 
 	// Verify two columns remain
-	columns, err := GetAllColumns(db)
+	columns, err := GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -300,24 +301,24 @@ func TestMoveTaskBetweenColumns(t *testing.T) {
 	defer db.Close()
 
 	// Create columns
-	col1, _ := CreateColumn(db, "Todo", 1, nil)
-	col2, _ := CreateColumn(db, "In Progress", 1, nil)
-	col3, _ := CreateColumn(db, "Done", 1, nil)
+	col1, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	col2, _ := CreateColumn(context.Background(), db, "In Progress", 1, nil)
+	col3, _ := CreateColumn(context.Background(), db, "Done", 1, nil)
 
 	// Create a task in the first column
-	task, err := CreateTask(db, "Test Task", "Description", col1.ID, 0)
+	task, err := CreateTask(context.Background(), db, "Test Task", "Description", col1.ID, 0)
 	if err != nil {
 		t.Fatalf("Failed to create task: %v", err)
 	}
 
 	// Move task to next column (col1 -> col2)
-	err = MoveTaskToNextColumn(db, task.ID)
+	err = MoveTaskToNextColumn(context.Background(), db, task.ID)
 	if err != nil {
 		t.Fatalf("Failed to move task to next column: %v", err)
 	}
 
 	// Verify task is now in col2
-	tasks, err := GetTasksByColumn(db, col2.ID)
+	tasks, err := GetTasksByColumn(context.Background(), db, col2.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}
@@ -326,7 +327,7 @@ func TestMoveTaskBetweenColumns(t *testing.T) {
 	}
 
 	// Verify task is not in col1
-	tasks, err = GetTasksByColumn(db, col1.ID)
+	tasks, err = GetTasksByColumn(context.Background(), db, col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}
@@ -335,13 +336,13 @@ func TestMoveTaskBetweenColumns(t *testing.T) {
 	}
 
 	// Move task to next column (col2 -> col3)
-	err = MoveTaskToNextColumn(db, task.ID)
+	err = MoveTaskToNextColumn(context.Background(), db, task.ID)
 	if err != nil {
 		t.Fatalf("Failed to move task to third column: %v", err)
 	}
 
 	// Verify task is now in col3
-	tasks, err = GetTasksByColumn(db, col3.ID)
+	tasks, err = GetTasksByColumn(context.Background(), db, col3.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}
@@ -350,19 +351,19 @@ func TestMoveTaskBetweenColumns(t *testing.T) {
 	}
 
 	// Try to move beyond last column (should fail)
-	err = MoveTaskToNextColumn(db, task.ID)
+	err = MoveTaskToNextColumn(context.Background(), db, task.ID)
 	if err == nil {
 		t.Error("Should not be able to move task beyond last column")
 	}
 
 	// Move task back (col3 -> col2)
-	err = MoveTaskToPrevColumn(db, task.ID)
+	err = MoveTaskToPrevColumn(context.Background(), db, task.ID)
 	if err != nil {
 		t.Fatalf("Failed to move task to previous column: %v", err)
 	}
 
 	// Verify task is back in col2
-	tasks, err = GetTasksByColumn(db, col2.ID)
+	tasks, err = GetTasksByColumn(context.Background(), db, col2.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}
@@ -371,13 +372,13 @@ func TestMoveTaskBetweenColumns(t *testing.T) {
 	}
 
 	// Move task back to col1
-	err = MoveTaskToPrevColumn(db, task.ID)
+	err = MoveTaskToPrevColumn(context.Background(), db, task.ID)
 	if err != nil {
 		t.Fatalf("Failed to move task to first column: %v", err)
 	}
 
 	// Try to move before first column (should fail)
-	err = MoveTaskToPrevColumn(db, task.ID)
+	err = MoveTaskToPrevColumn(context.Background(), db, task.ID)
 	if err == nil {
 		t.Error("Should not be able to move task before first column")
 	}
@@ -389,7 +390,7 @@ func TestEmptyList(t *testing.T) {
 	defer db.Close()
 
 	// Get columns from empty database
-	columns, err := GetAllColumns(db)
+	columns, err := GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns from empty DB: %v", err)
 	}
@@ -405,7 +406,7 @@ func TestSingleColumn(t *testing.T) {
 	defer db.Close()
 
 	// Create single column
-	col, err := CreateColumn(db, "Only Column", 1, nil)
+	col, err := CreateColumn(context.Background(), db, "Only Column", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create single column: %v", err)
 	}
@@ -416,7 +417,7 @@ func TestSingleColumn(t *testing.T) {
 	}
 
 	// Get all columns
-	columns, err := GetAllColumns(db)
+	columns, err := GetAllColumns(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -426,14 +427,14 @@ func TestSingleColumn(t *testing.T) {
 	}
 
 	// Create a task and try to move it (should fail in both directions)
-	task, _ := CreateTask(db, "Test Task", "", col.ID, 0)
+	task, _ := CreateTask(context.Background(), db, "Test Task", "", col.ID, 0)
 
-	err = MoveTaskToNextColumn(db, task.ID)
+	err = MoveTaskToNextColumn(context.Background(), db, task.ID)
 	if err == nil {
 		t.Error("Should not be able to move task right from single column")
 	}
 
-	err = MoveTaskToPrevColumn(db, task.ID)
+	err = MoveTaskToPrevColumn(context.Background(), db, task.ID)
 	if err == nil {
 		t.Error("Should not be able to move task left from single column")
 	}
@@ -449,13 +450,13 @@ func TestTaskCreationPersistence(t *testing.T) {
 	defer db.Close()
 
 	// Create a column first
-	col, err := CreateColumn(db, "Todo", 1, nil)
+	col, err := CreateColumn(context.Background(), db, "Todo", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column: %v", err)
 	}
 
 	// Create a task with title and description
-	task, err := CreateTask(db, "Test Task Title", "This is a test description", col.ID, 0)
+	task, err := CreateTask(context.Background(), db, "Test Task Title", "This is a test description", col.ID, 0)
 	if err != nil {
 		t.Fatalf("Failed to create task: %v", err)
 	}
@@ -475,7 +476,7 @@ func TestTaskCreationPersistence(t *testing.T) {
 	}
 
 	// Verify task can be retrieved from database
-	tasks, err := GetTasksByColumn(db, col.ID)
+	tasks, err := GetTasksByColumn(context.Background(), db, col.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}
@@ -496,17 +497,17 @@ func TestTaskUpdatePersistence(t *testing.T) {
 	defer db.Close()
 
 	// Create column and task
-	col, _ := CreateColumn(db, "Todo", 1, nil)
-	task, _ := CreateTask(db, "Original Title", "Original Description", col.ID, 0)
+	col, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	task, _ := CreateTask(context.Background(), db, "Original Title", "Original Description", col.ID, 0)
 
 	// Update the task
-	err := UpdateTask(db, task.ID, "Updated Title", "Updated Description")
+	err := UpdateTask(context.Background(), db, task.ID, "Updated Title", "Updated Description")
 	if err != nil {
 		t.Fatalf("Failed to update task: %v", err)
 	}
 
 	// Retrieve and verify the update persisted
-	detail, err := GetTaskDetail(db, task.ID)
+	detail, err := GetTaskDetail(context.Background(), db, task.ID)
 	if err != nil {
 		t.Fatalf("Failed to get task detail: %v", err)
 	}
@@ -524,7 +525,7 @@ func TestLabelPersistence(t *testing.T) {
 	defer db.Close()
 
 	// Create a label (projectID 1 is created by migrations)
-	label, err := CreateLabel(db, 1, "Bug", "#FF0000")
+	label, err := CreateLabel(context.Background(), db, 1, "Bug", "#FF0000")
 	if err != nil {
 		t.Fatalf("Failed to create label: %v", err)
 	}
@@ -543,7 +544,7 @@ func TestLabelPersistence(t *testing.T) {
 	}
 
 	// Retrieve all labels
-	labels, err := GetAllLabels(db)
+	labels, err := GetAllLabels(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get labels: %v", err)
 	}
@@ -561,19 +562,19 @@ func TestTaskLabelAssociation(t *testing.T) {
 	defer db.Close()
 
 	// Create column, task, and labels
-	col, _ := CreateColumn(db, "Todo", 1, nil)
-	task, _ := CreateTask(db, "Test Task", "Description", col.ID, 0)
-	label1, _ := CreateLabel(db, 1, "Bug", "#FF0000")
-	label2, _ := CreateLabel(db, 1, "Feature", "#00FF00")
+	col, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	task, _ := CreateTask(context.Background(), db, "Test Task", "Description", col.ID, 0)
+	label1, _ := CreateLabel(context.Background(), db, 1, "Bug", "#FF0000")
+	label2, _ := CreateLabel(context.Background(), db, 1, "Feature", "#00FF00")
 
 	// Associate labels with task
-	err := SetTaskLabels(db, task.ID, []int{label1.ID, label2.ID})
+	err := SetTaskLabels(context.Background(), db, task.ID, []int{label1.ID, label2.ID})
 	if err != nil {
 		t.Fatalf("Failed to set task labels: %v", err)
 	}
 
 	// Retrieve labels for task
-	labels, err := GetLabelsForTask(db, task.ID)
+	labels, err := GetLabelsForTask(context.Background(), db, task.ID)
 	if err != nil {
 		t.Fatalf("Failed to get labels for task: %v", err)
 	}
@@ -582,7 +583,7 @@ func TestTaskLabelAssociation(t *testing.T) {
 	}
 
 	// Verify task summary includes labels
-	summaries, err := GetTaskSummariesByColumn(db, col.ID)
+	summaries, err := GetTaskSummariesByColumn(context.Background(), db, col.ID)
 	if err != nil {
 		t.Fatalf("Failed to get task summaries: %v", err)
 	}
@@ -594,7 +595,7 @@ func TestTaskLabelAssociation(t *testing.T) {
 	}
 
 	// Verify task detail includes labels
-	detail, err := GetTaskDetail(db, task.ID)
+	detail, err := GetTaskDetail(context.Background(), db, task.ID)
 	if err != nil {
 		t.Fatalf("Failed to get task detail: %v", err)
 	}
@@ -609,23 +610,23 @@ func TestSetTaskLabelsReplaces(t *testing.T) {
 	defer db.Close()
 
 	// Create column, task, and labels
-	col, _ := CreateColumn(db, "Todo", 1, nil)
-	task, _ := CreateTask(db, "Test Task", "", col.ID, 0)
-	label1, _ := CreateLabel(db, 1, "Bug", "#FF0000")
-	label2, _ := CreateLabel(db, 1, "Feature", "#00FF00")
-	label3, _ := CreateLabel(db, 1, "Enhancement", "#0000FF")
+	col, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	task, _ := CreateTask(context.Background(), db, "Test Task", "", col.ID, 0)
+	label1, _ := CreateLabel(context.Background(), db, 1, "Bug", "#FF0000")
+	label2, _ := CreateLabel(context.Background(), db, 1, "Feature", "#00FF00")
+	label3, _ := CreateLabel(context.Background(), db, 1, "Enhancement", "#0000FF")
 
 	// Set initial labels
-	SetTaskLabels(db, task.ID, []int{label1.ID, label2.ID})
+	SetTaskLabels(context.Background(), db, task.ID, []int{label1.ID, label2.ID})
 
 	// Replace with different labels
-	err := SetTaskLabels(db, task.ID, []int{label3.ID})
+	err := SetTaskLabels(context.Background(), db, task.ID, []int{label3.ID})
 	if err != nil {
 		t.Fatalf("Failed to replace task labels: %v", err)
 	}
 
 	// Verify only the new label is associated
-	labels, err := GetLabelsForTask(db, task.ID)
+	labels, err := GetLabelsForTask(context.Background(), db, task.ID)
 	if err != nil {
 		t.Fatalf("Failed to get labels: %v", err)
 	}
@@ -643,13 +644,13 @@ func TestTaskDetailIncludesAllFields(t *testing.T) {
 	defer db.Close()
 
 	// Create column, task with description, and labels
-	col, _ := CreateColumn(db, "Todo", 1, nil)
-	task, _ := CreateTask(db, "Full Task", "A complete description with details", col.ID, 0)
-	label, _ := CreateLabel(db, 1, "Important", "#FFD700")
-	SetTaskLabels(db, task.ID, []int{label.ID})
+	col, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	task, _ := CreateTask(context.Background(), db, "Full Task", "A complete description with details", col.ID, 0)
+	label, _ := CreateLabel(context.Background(), db, 1, "Important", "#FFD700")
+	SetTaskLabels(context.Background(), db, task.ID, []int{label.ID})
 
 	// Get full detail
-	detail, err := GetTaskDetail(db, task.ID)
+	detail, err := GetTaskDetail(context.Background(), db, task.ID)
 	if err != nil {
 		t.Fatalf("Failed to get task detail: %v", err)
 	}
@@ -685,13 +686,13 @@ func TestProjectSpecificLabels(t *testing.T) {
 
 	// Project 1 is already created by migrations
 	// Create a second project
-	project2, err := CreateProject(db, "Project 2", "Second project")
+	project2, err := CreateProject(context.Background(), db, "Project 2", "Second project")
 	if err != nil {
 		t.Fatalf("Failed to create project 2: %v", err)
 	}
 
 	// Create labels for project 1
-	label1, err := CreateLabel(db, 1, "Bug", "#FF0000")
+	label1, err := CreateLabel(context.Background(), db, 1, "Bug", "#FF0000")
 	if err != nil {
 		t.Fatalf("Failed to create label for project 1: %v", err)
 	}
@@ -700,7 +701,7 @@ func TestProjectSpecificLabels(t *testing.T) {
 	}
 
 	// Create labels for project 2
-	label2, err := CreateLabel(db, project2.ID, "Feature", "#00FF00")
+	label2, err := CreateLabel(context.Background(), db, project2.ID, "Feature", "#00FF00")
 	if err != nil {
 		t.Fatalf("Failed to create label for project 2: %v", err)
 	}
@@ -709,7 +710,7 @@ func TestProjectSpecificLabels(t *testing.T) {
 	}
 
 	// GetLabelsByProject should return only project-specific labels
-	labelsP1, err := GetLabelsByProject(db, 1)
+	labelsP1, err := GetLabelsByProject(context.Background(), db, 1)
 	if err != nil {
 		t.Fatalf("Failed to get labels for project 1: %v", err)
 	}
@@ -720,7 +721,7 @@ func TestProjectSpecificLabels(t *testing.T) {
 		t.Errorf("Expected label 'Bug', got '%s'", labelsP1[0].Name)
 	}
 
-	labelsP2, err := GetLabelsByProject(db, project2.ID)
+	labelsP2, err := GetLabelsByProject(context.Background(), db, project2.ID)
 	if err != nil {
 		t.Fatalf("Failed to get labels for project 2: %v", err)
 	}
@@ -732,7 +733,7 @@ func TestProjectSpecificLabels(t *testing.T) {
 	}
 
 	// GetAllLabels should return all labels
-	allLabels, err := GetAllLabels(db)
+	allLabels, err := GetAllLabels(context.Background(), db)
 	if err != nil {
 		t.Fatalf("Failed to get all labels: %v", err)
 	}
