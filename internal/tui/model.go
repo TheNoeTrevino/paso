@@ -5,7 +5,6 @@ import (
 	"log"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/huh"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -31,61 +30,7 @@ const (
 
 // Model represents the application state for the TUI
 type Model struct {
-	db                    *sql.DB                       // Database connection
-	columns               []*models.Column              // All columns ordered by position
-	tasks                 map[int][]*models.TaskSummary // Task summaries organized by column ID
-	labels                []*models.Label               // All available labels
-	selectedColumn        int                           // Index of currently selected column
-	selectedTask          int                           // Index of currently selected task in the column
-	width                 int                           // Terminal width
-	height                int                           // Terminal height
-	mode                  Mode                          // Current interaction mode
-	inputBuffer           string                        // Text being typed in input mode
-	inputPrompt           string                        // Prompt to show in input dialog
-	viewportOffset        int                           // Index of leftmost visible column
-	viewportSize          int                           // Number of columns that fit on screen
-	deleteColumnTaskCount int                           // Number of tasks in column being deleted
-	errorMessage          string                        // Current error message to display
-	viewingTask           *models.TaskDetail            // Task being viewed in detail mode
-
-	// Project fields
-	projects        []*models.Project // All available projects
-	selectedProject int               // Index of currently selected project
-
-	// Ticket form fields (for huh form)
-	ticketForm      *huh.Form // The huh form for adding/editing tickets
-	editingTaskID   int       // ID of task being edited (0 for new task)
-	formTitle       string    // Form field: title
-	formDescription string    // Form field: description
-	formLabelIDs    []int     // Form field: selected label IDs
-	formConfirm     bool      // Form field: confirmation
-
-	// Project form fields (for huh form)
-	projectForm            *huh.Form // The huh form for creating projects
-	formProjectName        string    // Form field: project name
-	formProjectDescription string    // Form field: project description
-
-	// Label management fields
-	labelForm         *huh.Form // The huh form for creating/editing labels
-	editingLabelID    int       // ID of label being edited (0 for new label)
-	formLabelName     string    // Form field: label name
-	formLabelColor    string    // Form field: label color
-	selectedLabelIdx  int       // Index of selected label in label list
-	labelListMode     string    // "list", "add", "edit", "delete" - sub-mode for label management
-
-	// Label assignment fields (quick toggle)
-	assigningLabelIDs []int // Currently selected labels for assignment
-
-	// Label picker fields
-	labelPickerItems      []state.LabelPickerItem // Items in the label picker
-	labelPickerCursor     int               // Current cursor position in picker
-	labelPickerFilter     string            // Filter text for label search
-	labelPickerTaskID     int               // Task being edited in picker
-	labelPickerColorIdx   int               // Cursor for color picker
-	labelPickerCreateMode bool              // True when in color selection for new label
-
-	// New state management fields (Phase 2: Refactoring to avoid God Object)
-	// These will eventually replace the individual fields above
+	db               *sql.DB
 	appState         *state.AppState
 	uiState          *state.UIState
 	inputState       *state.InputState
@@ -143,23 +88,7 @@ func InitialModel(db *sql.DB) Model {
 	errorState := state.NewErrorState()
 
 	return Model{
-		db:              db,
-		projects:        projects,
-		selectedProject: 0,
-		columns:         columns,
-		tasks:           tasks,
-		labels:          labels,
-		selectedColumn:  0,
-		selectedTask:    0,
-		width:           0,
-		height:          0,
-		mode:            NormalMode,
-		inputBuffer:     "",
-		inputPrompt:     "",
-		viewportOffset:  0,
-		viewportSize:    1, // Default to 1, will be recalculated when width is set
-
-		// New state fields
+		db:               db,
 		appState:         appState,
 		uiState:          uiState,
 		inputState:       inputState,
@@ -225,16 +154,6 @@ func (m *Model) removeCurrentTask() {
 	if m.uiState.SelectedTask() >= len(m.appState.Tasks()[currentCol.ID]) && m.uiState.SelectedTask() > 0 {
 		m.uiState.SetSelectedTask(m.uiState.SelectedTask() - 1)
 	}
-}
-
-// calculateViewportSize calculates how many columns can fit in the terminal width
-// Column width: 40 (content) + 2 (padding) + 2 (border) = 44 chars
-// Spacing between columns: 2 chars
-// Total per column: 46 chars
-// This method ensures at least 1 column is always visible
-func (m *Model) calculateViewportSize() {
-	// UIState now owns this logic (width is already set via SetWidth)
-	// This method exists for backwards compatibility, no action needed
 }
 
 // max returns the maximum of two integers
@@ -385,7 +304,6 @@ func (m *Model) moveTaskLeft() {
 // getCurrentProject returns the currently selected project
 // Returns nil if there are no projects
 func (m Model) getCurrentProject() *models.Project {
-	// Use new appState (while keeping old fields for backwards compatibility)
 	return m.appState.GetCurrentProject()
 }
 
@@ -488,12 +406,12 @@ func (m *Model) initLabelPicker(taskID int) bool {
 	}
 
 	// Initialize LabelPickerState
-	m.labelPickerState.SetItems(items)
-	m.labelPickerState.SetTaskID(taskID)
-	m.labelPickerState.SetCursor(0)
-	m.labelPickerState.SetFilter("")
-	m.labelPickerState.SetCreateMode(false)
-	m.labelPickerState.SetColorIdx(0)
+	m.labelPickerState.Items = items
+	m.labelPickerState.TaskID = taskID
+	m.labelPickerState.Cursor = 0
+	m.labelPickerState.Filter = ""
+	m.labelPickerState.CreateMode = false
+	m.labelPickerState.ColorIdx = 0
 
 	return true
 }
