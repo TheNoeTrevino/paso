@@ -3,6 +3,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -14,33 +15,36 @@ func InitDB() (*sql.DB, error) {
 	// adding paso database to the home dir
 	home, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatalf("Failed to get home directory.")
-		return nil, err
+		return nil, fmt.Errorf("failed to get home directory: %w", err)
 	}
 
 	pasoDir := filepath.Join(home, ".paso")
 	if err := os.MkdirAll(pasoDir, 0o755); err != nil {
-		log.Fatalf("Failed to create directory.")
-		return nil, err
+		return nil, fmt.Errorf("failed to create directory: %w", err)
 	}
 
 	dbPath := filepath.Join(pasoDir, "tasks.db")
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
-		log.Fatalf("Failed to open database.")
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+
+	// Enable foreign key constraints (required for CASCADE deletions)
+	_, err = db.Exec("PRAGMA foreign_keys = ON")
+	if err != nil {
+		log.Printf("Failed to enable foreign keys: %v", err)
+		db.Close()
 		return nil, err
 	}
 
 	if err := db.Ping(); err != nil {
-		log.Fatalf("DB ping failed failed")
 		db.Close()
-		return nil, err
+		return nil, fmt.Errorf("database ping failed: %w", err)
 	}
 
 	if err := runMigrations(db); err != nil {
-		log.Fatalf("Migrations: %v", err)
 		db.Close()
-		return nil, err
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
 	return db, nil

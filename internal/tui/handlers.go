@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"log"
 	"strings"
 
@@ -170,7 +171,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	taskDetail, err := database.GetTaskDetail(m.db, task.ID)
+	taskDetail, err := database.GetTaskDetail(context.Background(), m.db, task.ID)
 	if err != nil {
 		log.Printf("Error loading task details: %v", err)
 		m.errorState.Set("Error loading task details")
@@ -214,7 +215,7 @@ func (m Model) handleViewTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	taskDetail, err := database.GetTaskDetail(m.db, task.ID)
+	taskDetail, err := database.GetTaskDetail(context.Background(), m.db, task.ID)
 	if err != nil {
 		log.Printf("Error loading task details: %v", err)
 		m.errorState.Set("Error loading task details")
@@ -269,7 +270,7 @@ func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 		m.errorState.Set("No column selected to delete")
 		return m, nil
 	}
-	taskCount, err := database.GetTaskCountByColumn(m.db, column.ID)
+	taskCount, err := database.GetTaskCountByColumn(context.Background(), m.db, column.ID)
 	if err != nil {
 		log.Printf("Error getting task count: %v", err)
 		m.errorState.Set("Error getting column info")
@@ -365,13 +366,15 @@ func (m Model) createColumn() (tea.Model, tea.Cmd) {
 		projectID = project.ID
 	}
 
-	column, err := database.CreateColumn(m.db, strings.TrimSpace(m.inputState.Buffer), projectID, afterColumnID)
+	column, err := database.CreateColumn(context.Background(), m.db, strings.TrimSpace(m.inputState.Buffer), projectID, afterColumnID)
 	if err != nil {
 		log.Printf("Error creating column: %v", err)
+		m.errorState.Set("Failed to create column")
 	} else {
-		columns, err := database.GetColumnsByProject(m.db, projectID)
+		columns, err := database.GetColumnsByProject(context.Background(), m.db, projectID)
 		if err != nil {
 			log.Printf("Error reloading columns: %v", err)
+			m.errorState.Set("Failed to reload columns")
 		}
 		m.appState.SetColumns(columns)
 		m.appState.Tasks()[column.ID] = []*models.TaskSummary{}
@@ -389,9 +392,10 @@ func (m Model) createColumn() (tea.Model, tea.Cmd) {
 func (m Model) renameColumn() (tea.Model, tea.Cmd) {
 	column := m.getCurrentColumn()
 	if column != nil {
-		err := database.UpdateColumnName(m.db, column.ID, strings.TrimSpace(m.inputState.Buffer))
+		err := database.UpdateColumnName(context.Background(), m.db, column.ID, strings.TrimSpace(m.inputState.Buffer))
 		if err != nil {
 			log.Printf("Error updating column: %v", err)
+			m.errorState.Set("Failed to rename column")
 		} else {
 			column.Name = strings.TrimSpace(m.inputState.Buffer)
 		}
@@ -422,9 +426,10 @@ func (m Model) handleDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 	task := m.getCurrentTask()
 	if task != nil {
-		err := database.DeleteTask(m.db, task.ID)
+		err := database.DeleteTask(context.Background(), m.db, task.ID)
 		if err != nil {
 			log.Printf("Error deleting task: %v", err)
+			m.errorState.Set("Failed to delete task")
 		} else {
 			m.removeCurrentTask()
 		}
@@ -449,9 +454,10 @@ func (m Model) handleDeleteColumnConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 	column := m.getCurrentColumn()
 	if column != nil {
-		err := database.DeleteColumn(m.db, column.ID)
+		err := database.DeleteColumn(context.Background(), m.db, column.ID)
 		if err != nil {
 			log.Printf("Error deleting column: %v", err)
+			m.errorState.Set("Failed to delete column")
 		} else {
 			delete(m.appState.Tasks(), column.ID)
 			m.removeCurrentColumn()

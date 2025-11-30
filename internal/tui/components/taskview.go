@@ -1,7 +1,6 @@
 package components
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 
@@ -11,7 +10,7 @@ import (
 
 type TaskViewProps struct {
 	Task         *models.TaskDetail
-	DB           *sql.DB
+	ColumnName   string
 	PopupWidth   int
 	PopupHeight  int
 	ScreenWidth  int
@@ -32,10 +31,10 @@ func RenderTaskView(props TaskViewProps) string {
 	})
 
 	rightColumn := RenderMetadataColumn(MetadataColumnProps{
-		Task:      task,
-		DB:        props.DB,
-		Width:     rightColWidth,
-		HasBorder: true,
+		Task:       task,
+		ColumnName: props.ColumnName,
+		Width:      rightColWidth,
+		HasBorder:  true,
 	})
 
 	var leftParts []string
