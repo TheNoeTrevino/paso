@@ -68,4 +68,54 @@ var (
 	TitleStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("170")) // Purple text
+
+	// Modal dialog base styles (extract width/height for dynamic sizing)
+
+	// FormBoxStyle defines the base style for ticket forms (purple border)
+	FormBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("170")).
+			Padding(1, 2)
+
+	// ProjectFormBoxStyle defines the base style for project creation forms (green border)
+	ProjectFormBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("42")).
+				Padding(1, 2)
+
+	// CreateInputBoxStyle defines the base style for creation dialogs (green border)
+	CreateInputBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("42")).
+				Padding(1)
+
+	// EditInputBoxStyle defines the base style for edit dialogs (blue border)
+	EditInputBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("62")).
+				Padding(1)
+
+	// DeleteConfirmBoxStyle defines the base style for deletion confirmations (red border)
+	DeleteConfirmBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("196")).
+				Padding(1)
+
+	// HelpBoxStyle defines the base style for help screen (blue border)
+	HelpBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("62")).
+			Padding(1, 2)
+
+	// LabelPickerBoxStyle defines the base style for label picker (purple border)
+	LabelPickerBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("170")).
+				Padding(1, 2)
+
+	// LabelPickerCreateBoxStyle defines the style for label creation mode (green border)
+	LabelPickerCreateBoxStyle = lipgloss.NewStyle().
+					Border(lipgloss.RoundedBorder()).
+					BorderForeground(lipgloss.Color("42")).
+					Padding(1, 2)
 )
