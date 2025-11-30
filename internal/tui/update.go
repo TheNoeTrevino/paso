@@ -49,29 +49,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.errorState.Set("Cannot add task: No columns exist. Create a column first with 'C'")
 					return m, nil
 				}
-				// Initialize form fields (old fields still needed for form binding)
-				m.formTitle = ""
-				m.formDescription = ""
-				m.formLabelIDs = []int{}
-				m.formConfirm = true
-				m.editingTaskID = 0
-				// Sync to FormState
-				m.formState.SetFormTitle(m.formTitle)
-				m.formState.SetFormDescription(m.formDescription)
-				m.formState.SetFormLabelIDs(m.formLabelIDs)
-				m.formState.SetFormConfirm(m.formConfirm)
-				m.formState.SetEditingTaskID(m.editingTaskID)
-				// Create the form (binds to old fields)
-				m.ticketForm = CreateTicketForm(
-					&m.formTitle,
-					&m.formDescription,
-					&m.formLabelIDs,
+				// Initialize form fields
+				m.formState.FormTitle = ""
+				m.formState.FormDescription = ""
+				m.formState.FormLabelIDs = []int{}
+				m.formState.FormConfirm = true
+				m.formState.EditingTaskID = 0
+				// Create the form
+				m.formState.TicketForm = CreateTicketForm(
+					&m.formState.FormTitle,
+					&m.formState.FormDescription,
+					&m.formState.FormLabelIDs,
 					m.appState.Labels(),
-					&m.formConfirm,
+					&m.formState.FormConfirm,
 				)
-				m.formState.SetTicketForm(m.ticketForm)
 				m.uiState.SetMode(state.TicketFormMode)
-				return m, m.ticketForm.Init()
+				return m, m.formState.TicketForm.Init()
 
 			case "e":
 				// Edit selected task using ticket form
@@ -85,31 +78,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, nil
 					}
 					// Initialize form fields with existing data
-					m.formTitle = taskDetail.Title
-					m.formDescription = taskDetail.Description
-					m.formLabelIDs = make([]int, len(taskDetail.Labels))
+					m.formState.FormTitle = taskDetail.Title
+					m.formState.FormDescription = taskDetail.Description
+					m.formState.FormLabelIDs = make([]int, len(taskDetail.Labels))
 					for i, label := range taskDetail.Labels {
-						m.formLabelIDs[i] = label.ID
+						m.formState.FormLabelIDs[i] = label.ID
 					}
-					m.formConfirm = true
-					m.editingTaskID = task.ID
-					// Sync to FormState
-					m.formState.SetFormTitle(m.formTitle)
-					m.formState.SetFormDescription(m.formDescription)
-					m.formState.SetFormLabelIDs(m.formLabelIDs)
-					m.formState.SetFormConfirm(m.formConfirm)
-					m.formState.SetEditingTaskID(m.editingTaskID)
-					// Create the form (binds to old fields)
-					m.ticketForm = CreateTicketForm(
-						&m.formTitle,
-						&m.formDescription,
-						&m.formLabelIDs,
+					m.formState.FormConfirm = true
+					m.formState.EditingTaskID = task.ID
+					// Create the form
+					m.formState.TicketForm = CreateTicketForm(
+						&m.formState.FormTitle,
+						&m.formState.FormDescription,
+						&m.formState.FormLabelIDs,
 						m.appState.Labels(),
-						&m.formConfirm,
+						&m.formState.FormConfirm,
 					)
-					m.formState.SetTicketForm(m.ticketForm)
 					m.uiState.SetMode(state.TicketFormMode)
-					return m, m.ticketForm.Init()
+					return m, m.formState.TicketForm.Init()
 				} else {
 					m.errorState.Set("No task selected to edit")
 				}
@@ -145,11 +131,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "C":
 				// Create new column
 				m.uiState.SetMode(state.AddColumnMode)
-				m.inputPrompt = "New column name:"
-				m.inputBuffer = ""
+				m.inputState.Prompt = "New column name:"
+				m.inputState.Buffer = ""
 				// Sync to InputState
-				m.inputState.SetPrompt(m.inputPrompt)
-				m.inputState.SetBuffer(m.inputBuffer)
 				return m, nil
 
 			case "R":
@@ -157,11 +141,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				column := m.getCurrentColumn()
 				if column != nil {
 					m.uiState.SetMode(state.EditColumnMode)
-					m.inputBuffer = column.Name
-					m.inputPrompt = "Rename column:"
+					m.inputState.Buffer = column.Name
+					m.inputState.Prompt = "Rename column:"
 					// Sync to InputState
-					m.inputState.SetBuffer(m.inputBuffer)
-					m.inputState.SetPrompt(m.inputPrompt)
 				} else {
 					m.errorState.Set("No column selected to rename")
 				}
@@ -178,8 +160,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.errorState.Set("Error getting column info")
 						return m, nil
 					}
-					m.deleteColumnTaskCount = taskCount
-					m.inputState.SetDeleteColumnTaskCount(taskCount)
+					m.inputState.DeleteColumnTaskCount = taskCount
 					m.uiState.SetMode(state.DeleteColumnConfirmMode)
 				} else {
 					m.errorState.Set("No column selected to delete")
@@ -274,18 +255,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "ctrl+p":
 				// Create new project
-				m.formProjectName = ""
-				m.formProjectDescription = ""
-				// Sync to FormState
-				m.formState.SetFormProjectName(m.formProjectName)
-				m.formState.SetFormProjectDescription(m.formProjectDescription)
-				m.projectForm = CreateProjectForm(
-					&m.formProjectName,
-					&m.formProjectDescription,
+				m.formState.FormProjectName = ""
+				m.formState.FormProjectDescription = ""
+				m.formState.ProjectForm = CreateProjectForm(
+					&m.formState.FormProjectName,
+					&m.formState.FormProjectDescription,
 				)
-				m.formState.SetProjectForm(m.projectForm)
 				m.uiState.SetMode(state.ProjectFormMode)
-				return m, m.projectForm.Init()
+				return m, m.formState.ProjectForm.Init()
 			}
 
 		} else if m.uiState.Mode() == state.AddColumnMode || m.uiState.Mode() == state.EditColumnMode {
@@ -293,7 +270,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "enter":
 				// Confirm input and create/edit column
-				if strings.TrimSpace(m.inputBuffer) != "" {
+				if strings.TrimSpace(m.inputState.Buffer) != "" {
 					if m.uiState.Mode() == state.AddColumnMode {
 						// Create new column after the current column in the current project
 						var afterColumnID *int
@@ -306,7 +283,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if project := m.getCurrentProject(); project != nil {
 							projectID = project.ID
 						}
-						column, err := database.CreateColumn(m.db, strings.TrimSpace(m.inputBuffer), projectID, afterColumnID)
+						column, err := database.CreateColumn(m.db, strings.TrimSpace(m.inputState.Buffer), projectID, afterColumnID)
 						if err != nil {
 							log.Printf("Error creating column: %v", err)
 						} else {
@@ -326,47 +303,37 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Update existing column
 						column := m.getCurrentColumn()
 						if column != nil {
-							err := database.UpdateColumnName(m.db, column.ID, strings.TrimSpace(m.inputBuffer))
+							err := database.UpdateColumnName(m.db, column.ID, strings.TrimSpace(m.inputState.Buffer))
 							if err != nil {
 								log.Printf("Error updating column: %v", err)
 							} else {
-								column.Name = strings.TrimSpace(m.inputBuffer)
+								column.Name = strings.TrimSpace(m.inputState.Buffer)
 							}
 						}
 					}
 				}
 				// Return to normal mode
 				m.uiState.SetMode(state.NormalMode)
-				m.inputBuffer = ""
-				m.inputPrompt = ""
 				m.inputState.Clear()
 				return m, nil
 
 			case "esc":
 				// Cancel input
 				m.uiState.SetMode(state.NormalMode)
-				m.inputBuffer = ""
-				m.inputPrompt = ""
 				m.inputState.Clear()
 				return m, nil
 
 			case "backspace", "ctrl+h":
 				// Remove last character
-				if len(m.inputBuffer) > 0 {
-					m.inputBuffer = m.inputBuffer[:len(m.inputBuffer)-1]
-					m.inputState.Backspace() // Keep InputState synced
-				}
+				m.inputState.Backspace()
 				return m, nil
 
 			default:
 				// Append character to input buffer
-				// Only accept printable characters and limit length
+				// Only accept printable characters
 				key := msg.String()
-				if len(key) == 1 && len(m.inputBuffer) < 100 {
-					m.inputBuffer += key
-					if len(key) == 1 {
-						m.inputState.AppendChar(rune(key[0])) // Keep InputState synced
-					}
+				if len(key) == 1 {
+					m.inputState.AppendChar(rune(key[0]))
 				}
 				return m, nil
 			}
@@ -456,9 +423,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.uiState.SetWidth(msg.Width)
 		m.uiState.SetHeight(msg.Height)
 
-		// Recalculate how many columns fit in the new width (UIState handles this internally)
-		m.calculateViewportSize()
-
+		// UIState recalculates viewport size internally
 		// Ensure viewport offset is still valid after resize
 		if m.uiState.ViewportOffset()+m.uiState.ViewportSize() > len(m.appState.Columns()) {
 			m.uiState.SetViewportOffset(max(0, len(m.appState.Columns())-m.uiState.ViewportSize()))
@@ -472,7 +437,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // updateTicketForm handles all messages when in TicketFormMode
 // This is separated out because huh forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.ticketForm == nil {
+	if m.formState.TicketForm == nil {
 		m.uiState.SetMode(state.NormalMode)
 		return m, nil
 	}
@@ -481,27 +446,27 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		if keyMsg.String() == "esc" {
 			m.uiState.SetMode(state.NormalMode)
-			m.ticketForm = nil
+			m.formState.TicketForm = nil
 			return m, nil
 		}
 	}
 
 	// Forward ALL messages to the form
 	var cmds []tea.Cmd
-	form, cmd := m.ticketForm.Update(msg)
+	form, cmd := m.formState.TicketForm.Update(msg)
 	if f, ok := form.(*huh.Form); ok {
-		m.ticketForm = f
+		m.formState.TicketForm = f
 		cmds = append(cmds, cmd)
 	}
 
 	// Check if form is complete
-	if m.ticketForm.State == huh.StateCompleted {
+	if m.formState.TicketForm.State == huh.StateCompleted {
 		// Read values directly from the form (not from bound pointers which point to stale model copies)
-		title := m.ticketForm.GetString("title")
-		description := m.ticketForm.GetString("description")
+		title := m.formState.TicketForm.GetString("title")
+		description := m.formState.TicketForm.GetString("description")
 
 		confirm := true
-		if c := m.ticketForm.Get("confirm"); c != nil {
+		if c := m.formState.TicketForm.Get("confirm"); c != nil {
 			if b, ok := c.(bool); ok {
 				confirm = b
 			}
@@ -509,7 +474,7 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Get label IDs - need type assertion since it's a generic Get
 		var labelIDs []int
-		if labels := m.ticketForm.Get("labels"); labels != nil {
+		if labels := m.formState.TicketForm.Get("labels"); labels != nil {
 			if ids, ok := labels.([]int); ok {
 				labelIDs = ids
 			}
@@ -519,13 +484,13 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !confirm {
 			// User selected "No" on confirmation
 			m.uiState.SetMode(state.NormalMode)
-			m.ticketForm = nil
-			m.editingTaskID = 0
+			m.formState.TicketForm = nil
+			m.formState.EditingTaskID = 0
 			m.formState.ClearTicketForm()
 			return m, tea.ClearScreen
 		}
 		if strings.TrimSpace(title) != "" {
-			if m.editingTaskID == 0 {
+			if m.formState.EditingTaskID == 0 {
 				// Create new task
 				currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 				task, err := database.CreateTask(
@@ -556,13 +521,13 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			} else {
 				// Update existing task
-				err := database.UpdateTask(m.db, m.editingTaskID, strings.TrimSpace(title), strings.TrimSpace(description))
+				err := database.UpdateTask(m.db, m.formState.EditingTaskID, strings.TrimSpace(title), strings.TrimSpace(description))
 				if err != nil {
 					log.Printf("Error updating task: %v", err)
 					m.errorState.Set("Error updating task")
 				} else {
 					// Update labels
-					err = database.SetTaskLabels(m.db, m.editingTaskID, labelIDs)
+					err = database.SetTaskLabels(m.db, m.formState.EditingTaskID, labelIDs)
 					if err != nil {
 						log.Printf("Error setting labels: %v", err)
 					}
@@ -578,17 +543,17 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.uiState.SetMode(state.NormalMode)
-		m.ticketForm = nil
-		m.editingTaskID = 0
+		m.formState.TicketForm = nil
+		m.formState.EditingTaskID = 0
 		m.formState.ClearTicketForm()
 		return m, tea.ClearScreen
 	}
 
 	// Check if form was aborted
-	if m.ticketForm.State == huh.StateAborted {
+	if m.formState.TicketForm.State == huh.StateAborted {
 		m.uiState.SetMode(state.NormalMode)
-		m.ticketForm = nil
-		m.editingTaskID = 0
+		m.formState.TicketForm = nil
+		m.formState.EditingTaskID = 0
 		m.formState.ClearTicketForm()
 		return m, tea.ClearScreen
 	}
@@ -599,7 +564,7 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 // updateProjectForm handles all messages when in ProjectFormMode
 // This is separated out because huh forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.projectForm == nil {
+	if m.formState.ProjectForm == nil {
 		m.uiState.SetMode(state.NormalMode)
 		return m, nil
 	}
@@ -608,24 +573,24 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		if keyMsg.String() == "esc" {
 			m.uiState.SetMode(state.NormalMode)
-			m.projectForm = nil
+			m.formState.ProjectForm = nil
 			return m, nil
 		}
 	}
 
 	// Forward ALL messages to the form
 	var cmds []tea.Cmd
-	form, cmd := m.projectForm.Update(msg)
+	form, cmd := m.formState.ProjectForm.Update(msg)
 	if f, ok := form.(*huh.Form); ok {
-		m.projectForm = f
+		m.formState.ProjectForm = f
 		cmds = append(cmds, cmd)
 	}
 
 	// Check if form is complete
-	if m.projectForm.State == huh.StateCompleted {
+	if m.formState.ProjectForm.State == huh.StateCompleted {
 		// Read values directly from the form using GetString
-		name := m.projectForm.GetString("name")
-		description := m.projectForm.GetString("description")
+		name := m.formState.ProjectForm.GetString("name")
+		description := m.formState.ProjectForm.GetString("description")
 
 		// Form submitted - create the project
 		if strings.TrimSpace(name) != "" {
@@ -647,15 +612,15 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.uiState.SetMode(state.NormalMode)
-		m.projectForm = nil
+		m.formState.ProjectForm = nil
 		m.formState.ClearProjectForm()
 		return m, tea.ClearScreen
 	}
 
 	// Check if form was aborted
-	if m.projectForm.State == huh.StateAborted {
+	if m.formState.ProjectForm.State == huh.StateAborted {
 		m.uiState.SetMode(state.NormalMode)
-		m.projectForm = nil
+		m.formState.ProjectForm = nil
 		m.formState.ClearProjectForm()
 		return m, tea.ClearScreen
 	}
@@ -671,7 +636,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle color picker sub-mode for creating new label
-	if m.labelPickerCreateMode {
+	if m.labelPickerState.CreateMode {
 		return m.updateLabelColorPicker(keyMsg)
 	}
 
@@ -683,48 +648,48 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "esc":
 		// Close picker and return to ViewTaskMode
 		m.uiState.SetMode(state.ViewTaskMode)
-		m.labelPickerFilter = ""
-		m.labelPickerCursor = 0
+		m.labelPickerState.Filter = ""
+		m.labelPickerState.Cursor = 0
 		return m, nil
 
 	case "up", "k":
 		// Move cursor up
-		if m.labelPickerCursor > 0 {
-			m.labelPickerCursor--
+		if m.labelPickerState.Cursor > 0 {
+			m.labelPickerState.Cursor--
 		}
 		return m, nil
 
 	case "down", "j":
 		// Move cursor down
-		if m.labelPickerCursor < maxIdx {
-			m.labelPickerCursor++
+		if m.labelPickerState.Cursor < maxIdx {
+			m.labelPickerState.Cursor++
 		}
 		return m, nil
 
 	case "enter":
 		// Toggle label or create new
-		if m.labelPickerCursor < len(filteredItems) {
+		if m.labelPickerState.Cursor < len(filteredItems) {
 			// Toggle this label
-			item := filteredItems[m.labelPickerCursor]
+			item := filteredItems[m.labelPickerState.Cursor]
 
 			// Find the index in the unfiltered list
-			for i, pi := range m.labelPickerItems {
+			for i, pi := range m.labelPickerState.Items {
 				if pi.Label.ID == item.Label.ID {
-					if m.labelPickerItems[i].Selected {
+					if m.labelPickerState.Items[i].Selected {
 						// Remove label from task
-						err := database.RemoveLabelFromTask(m.db, m.labelPickerTaskID, item.Label.ID)
+						err := database.RemoveLabelFromTask(m.db, m.labelPickerState.TaskID, item.Label.ID)
 						if err != nil {
 							log.Printf("Error removing label: %v", err)
 						} else {
-							m.labelPickerItems[i].Selected = false
+							m.labelPickerState.Items[i].Selected = false
 						}
 					} else {
 						// Add label to task
-						err := database.AddLabelToTask(m.db, m.labelPickerTaskID, item.Label.ID)
+						err := database.AddLabelToTask(m.db, m.labelPickerState.TaskID, item.Label.ID)
 						if err != nil {
 							log.Printf("Error adding label: %v", err)
 						} else {
-							m.labelPickerItems[i].Selected = true
+							m.labelPickerState.Items[i].Selected = true
 						}
 					}
 					break
@@ -737,24 +702,24 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.reloadCurrentColumnTasks()
 		} else {
 			// Create new label - switch to color picker sub-mode
-			if strings.TrimSpace(m.labelPickerFilter) != "" {
-				m.formLabelName = strings.TrimSpace(m.labelPickerFilter)
+			if strings.TrimSpace(m.labelPickerState.Filter) != "" {
+				m.formState.FormLabelName = strings.TrimSpace(m.labelPickerState.Filter)
 			} else {
-				m.formLabelName = "New Label"
+				m.formState.FormLabelName = "New Label"
 			}
-			m.labelPickerCreateMode = true
-			m.labelPickerColorIdx = 0
+			m.labelPickerState.CreateMode = true
+			m.labelPickerState.ColorIdx = 0
 		}
 		return m, nil
 
 	case "backspace", "ctrl+h":
 		// Remove last character from filter
-		if len(m.labelPickerFilter) > 0 {
-			m.labelPickerFilter = m.labelPickerFilter[:len(m.labelPickerFilter)-1]
+		if len(m.labelPickerState.Filter) > 0 {
+			m.labelPickerState.Filter = m.labelPickerState.Filter[:len(m.labelPickerState.Filter)-1]
 			// Reset cursor if it's out of bounds after filter change
 			newFiltered := m.getFilteredLabelPickerItems()
-			if m.labelPickerCursor > len(newFiltered) {
-				m.labelPickerCursor = len(newFiltered)
+			if m.labelPickerState.Cursor > len(newFiltered) {
+				m.labelPickerState.Cursor = len(newFiltered)
 			}
 		}
 		return m, nil
@@ -762,10 +727,10 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	default:
 		// Type to filter/search
 		key := keyMsg.String()
-		if len(key) == 1 && len(m.labelPickerFilter) < 50 {
-			m.labelPickerFilter += key
+		if len(key) == 1 && len(m.labelPickerState.Filter) < 50 {
+			m.labelPickerState.Filter += key
 			// Reset cursor to 0 when filter changes
-			m.labelPickerCursor = 0
+			m.labelPickerState.Cursor = 0
 		}
 		return m, nil
 	}
@@ -779,48 +744,48 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		// Cancel and return to label list
-		m.labelPickerCreateMode = false
+		m.labelPickerState.CreateMode = false
 		return m, nil
 
 	case "up", "k":
-		if m.labelPickerColorIdx > 0 {
-			m.labelPickerColorIdx--
+		if m.labelPickerState.ColorIdx > 0 {
+			m.labelPickerState.ColorIdx--
 		}
 		return m, nil
 
 	case "down", "j":
-		if m.labelPickerColorIdx < maxIdx {
-			m.labelPickerColorIdx++
+		if m.labelPickerState.ColorIdx < maxIdx {
+			m.labelPickerState.ColorIdx++
 		}
 		return m, nil
 
 	case "enter":
 		// Create the new label
-		color := colors[m.labelPickerColorIdx].Color
+		color := colors[m.labelPickerState.ColorIdx].Color
 		project := m.getCurrentProject()
 		if project == nil {
-			m.labelPickerCreateMode = false
+			m.labelPickerState.CreateMode = false
 			return m, nil
 		}
 
-		label, err := database.CreateLabel(m.db, project.ID, m.formLabelName, color)
+		label, err := database.CreateLabel(m.db, project.ID, m.formState.FormLabelName, color)
 		if err != nil {
 			log.Printf("Error creating label: %v", err)
-			m.labelPickerCreateMode = false
+			m.labelPickerState.CreateMode = false
 			return m, nil
 		}
 
 		// Add to labels list
-		m.labels = append(m.labels, label)
+		m.appState.SetLabels(append(m.appState.Labels(), label))
 
 		// Add to picker items (selected by default)
-		m.labelPickerItems = append(m.labelPickerItems, state.LabelPickerItem{
+		m.labelPickerState.Items = append(m.labelPickerState.Items, state.LabelPickerItem{
 			Label:    label,
 			Selected: true,
 		})
 
 		// Assign to current task
-		err = database.AddLabelToTask(m.db, m.labelPickerTaskID, label.ID)
+		err = database.AddLabelToTask(m.db, m.labelPickerState.TaskID, label.ID)
 		if err != nil {
 			log.Printf("Error assigning new label to task: %v", err)
 		}
@@ -831,9 +796,9 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.reloadCurrentColumnTasks()
 
 		// Exit create mode and clear filter
-		m.labelPickerCreateMode = false
-		m.labelPickerFilter = ""
-		m.labelPickerCursor = 0
+		m.labelPickerState.CreateMode = false
+		m.labelPickerState.Filter = ""
+		m.labelPickerState.Cursor = 0
 
 		return m, nil
 	}
@@ -843,16 +808,16 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // reloadViewingTask reloads the task detail being viewed
 func (m *Model) reloadViewingTask() {
-	if m.viewingTask == nil {
+	if m.uiState.ViewingTask() == nil {
 		return
 	}
 
-	taskDetail, err := database.GetTaskDetail(m.db, m.viewingTask.ID)
+	taskDetail, err := database.GetTaskDetail(m.db, m.uiState.ViewingTask().ID)
 	if err != nil {
 		log.Printf("Error reloading task detail: %v", err)
 		return
 	}
-	m.viewingTask = taskDetail
+	m.uiState.SetViewingTask(taskDetail)
 }
 
 // reloadCurrentColumnTasks reloads task summaries for the current column
