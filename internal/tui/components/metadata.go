@@ -36,7 +36,7 @@ func RenderMetadataColumn(props MetadataColumnProps) string {
 	if len(props.Task.Labels) > 0 {
 		parts = append(parts, labelHeaderStyle.Render("Labels"))
 		for _, label := range props.Task.Labels {
-			parts = append(parts, renderLabelChip(label))
+			parts = append(parts, RenderLabelChip(label))
 		}
 		parts = append(parts, "")
 	} else {
@@ -75,7 +75,8 @@ func renderMetadataSection(label string, value string) string {
 	return labelStyle.Render(label) + "\n" + valueStyle.Render(value) + "\n"
 }
 
-func renderLabelChip(label *models.Label) string {
+// RenderLabelChip renders a single label as a small colored chip
+func RenderLabelChip(label *models.Label) string {
 	return lipgloss.NewStyle().
 		Background(lipgloss.Color(label.Color)).
 		Foreground(lipgloss.Color("#FFFFFF")).
