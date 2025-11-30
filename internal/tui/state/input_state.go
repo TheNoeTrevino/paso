@@ -1,5 +1,7 @@
 package state
 
+import "strings"
+
 // InputState manages simple text input state for dialogs.
 // This is used for column creation/renaming and other simple text inputs.
 // For complex forms with multiple fields, see FormState.
@@ -63,33 +65,10 @@ func (s *InputState) Backspace() bool {
 
 // IsEmpty returns true if the input buffer is empty or contains only whitespace.
 func (s *InputState) IsEmpty() bool {
-	return len(s.Buffer) == 0 || len(trimSpace(s.Buffer)) == 0
+	return len(s.Buffer) == 0 || len(strings.TrimSpace(s.Buffer)) == 0
 }
 
 // TrimmedBuffer returns the input buffer with leading and trailing whitespace removed.
 func (s *InputState) TrimmedBuffer() string {
-	return trimSpace(s.Buffer)
-}
-
-// trimSpace removes leading and trailing whitespace from a string.
-// This is a simple implementation to avoid importing strings package.
-func trimSpace(s string) string {
-	// Find first non-space character
-	start := 0
-	for start < len(s) && isSpace(s[start]) {
-		start++
-	}
-
-	// Find last non-space character
-	end := len(s)
-	for end > start && isSpace(s[end-1]) {
-		end--
-	}
-
-	return s[start:end]
-}
-
-// isSpace checks if a byte is a whitespace character.
-func isSpace(c byte) bool {
-	return c == ' ' || c == '\t' || c == '\n' || c == '\r'
+	return strings.TrimSpace(s.Buffer)
 }
