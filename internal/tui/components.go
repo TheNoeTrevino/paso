@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/components"
 )
 
 // RenderTabs renders a tab bar with the given tab names
@@ -34,16 +35,6 @@ func RenderTabs(tabs []string, selectedIdx int, width int) string {
 	return lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap)
 }
 
-// RenderLabelChip renders a single label as a small colored chip
-func RenderLabelChip(label *models.Label) string {
-	return lipgloss.NewStyle().
-		Background(lipgloss.Color(label.Color)).
-		Foreground(lipgloss.Color("#FFFFFF")).
-		Padding(0, 1).
-		MarginRight(1).
-		Render(label.Name)
-}
-
 // RenderTask renders a single task as a card
 // This is a pure, reusable component that displays task title and labels
 //
@@ -67,7 +58,7 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 	if len(task.Labels) > 0 {
 		var chips []string
 		for _, label := range task.Labels {
-			chips = append(chips, RenderLabelChip(label))
+			chips = append(chips, components.RenderLabelChip(label))
 		}
 		labelChips = "\n" + strings.Join(chips, "")
 	}
