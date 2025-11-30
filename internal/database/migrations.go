@@ -59,7 +59,7 @@ func runMigrations(db *sql.DB) error {
 		return err
 	}
 
-	// Create index for efficient queries
+	// Create index for efficient task queries
 	_, err = db.Exec(`
 		CREATE INDEX IF NOT EXISTS idx_tasks_column
 		ON tasks(column_id, position)
@@ -124,6 +124,34 @@ func runMigrations(db *sql.DB) error {
 
 	// Migrate labels to include project_id and seed default labels
 	if err := migrateLabelsToProject(db); err != nil {
+		return err
+	}
+
+	// Create indexes AFTER all table/column migrations are complete
+	// Index on columns.project_id for efficient project-based queries
+	_, err = db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_columns_project
+		ON columns(project_id)
+	`)
+	if err != nil {
+		return err
+	}
+
+	// Index on labels.project_id for efficient project-based label queries
+	_, err = db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_labels_project
+		ON labels(project_id)
+	`)
+	if err != nil {
+		return err
+	}
+
+	// Index on task_labels.label_id for efficient label lookups
+	_, err = db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_task_labels_label
+		ON task_labels(label_id)
+	`)
+	if err != nil {
 		return err
 	}
 

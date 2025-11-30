@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -106,59 +107,76 @@ func CreateColumn(ctx context.Context, db *sql.DB, name string, projectID int, a
 // GetColumnsByProject retrieves all columns for a specific project by traversing the linked list
 // Returns columns in order from head to tail
 func GetColumnsByProject(ctx context.Context, db *sql.DB, projectID int) ([]*models.Column, error) {
-	// 1. Find the head (column where prev_id IS NULL) for this project
-	var headID sql.NullInt64
-	err := db.QueryRowContext(ctx, `SELECT id FROM columns WHERE prev_id IS NULL AND project_id = ? LIMIT 1`, projectID).Scan(&headID)
+	// Fetch ALL columns for the project in a single query (fixes N+1 problem)
+	rows, err := db.QueryContext(ctx,
+		`SELECT id, name, project_id, prev_id, next_id FROM columns WHERE project_id = ?`,
+		projectID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			// No columns exist for this project
-			return []*models.Column{}, nil
-		}
-		return nil, err
+		return nil, fmt.Errorf("querying columns for project: %w", err)
 	}
+	defer rows.Close()
 
-	if !headID.Valid {
-		// No head found, return empty list
-		return []*models.Column{}, nil
-	}
+	// Build a map for O(1) lookups and find the head
+	columnMap := make(map[int]*models.Column)
+	var headID *int
 
-	// 2. Traverse the linked list using next_id
-	var columns []*models.Column
-	currentID := int(headID.Int64)
-
-	for {
-		// Get the current column
+	for rows.Next() {
 		col := &models.Column{}
 		var prevID, nextID sql.NullInt64
 
-		err := db.QueryRowContext(ctx,
-			`SELECT id, name, project_id, prev_id, next_id FROM columns WHERE id = ?`,
-			currentID,
-		).Scan(&col.ID, &col.Name, &col.ProjectID, &prevID, &nextID)
-
-		if err != nil {
-			return nil, err
+		if err := rows.Scan(&col.ID, &col.Name, &col.ProjectID, &prevID, &nextID); err != nil {
+			return nil, fmt.Errorf("scanning column row: %w", err)
 		}
 
 		// Set pointer fields
 		if prevID.Valid {
 			prevIDInt := int(prevID.Int64)
 			col.PrevID = &prevIDInt
+		} else {
+			// This is the head (prev_id is NULL)
+			headID = &col.ID
 		}
+
 		if nextID.Valid {
 			nextIDInt := int(nextID.Int64)
 			col.NextID = &nextIDInt
 		}
 
-		// Add column to result
+		columnMap[col.ID] = col
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating column rows: %w", err)
+	}
+
+	// If no columns found, return empty slice
+	if len(columnMap) == 0 {
+		return []*models.Column{}, nil
+	}
+
+	// If no head found, database is in inconsistent state
+	if headID == nil {
+		return nil, fmt.Errorf("no head column found for project %d (linked list broken)", projectID)
+	}
+
+	// Traverse the linked list in memory using the map
+	var columns []*models.Column
+	currentID := *headID
+
+	for {
+		col, exists := columnMap[currentID]
+		if !exists {
+			return nil, fmt.Errorf("column %d not found in map (linked list broken)", currentID)
+		}
+
 		columns = append(columns, col)
 
 		// Move to next column
-		if !nextID.Valid {
+		if col.NextID == nil {
 			// We've reached the tail
 			break
 		}
-		currentID = int(nextID.Int64)
+		currentID = *col.NextID
 	}
 
 	return columns, nil
