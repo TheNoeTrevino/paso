@@ -20,107 +20,47 @@ type LabelPickerItem struct {
 // This includes the list of available labels, cursor position, filtering,
 // and color picker for creating new labels.
 type LabelPickerState struct {
-	// items contains all available labels with their selection states
-	items []LabelPickerItem
+	// Items contains all available labels with their selection states
+	Items []LabelPickerItem
 
-	// cursor is the current cursor position in the picker list
-	cursor int
+	// Cursor is the current cursor position in the picker list
+	Cursor int
 
-	// filter is the text filter for searching labels
-	filter string
+	// Filter is the text filter for searching labels
+	Filter string
 
-	// taskID is the ID of the task being edited
-	taskID int
+	// TaskID is the ID of the task being edited
+	TaskID int
 
-	// colorIdx is the cursor position in the color picker (when creating new labels)
-	colorIdx int
+	// ColorIdx is the cursor position in the color picker (when creating new labels)
+	ColorIdx int
 
-	// createMode indicates whether we're in color selection mode for new label creation
-	createMode bool
+	// CreateMode indicates whether we're in color selection mode for new label creation
+	CreateMode bool
 }
 
 // NewLabelPickerState creates a new LabelPickerState with default values.
 func NewLabelPickerState() *LabelPickerState {
 	return &LabelPickerState{
-		items:      []LabelPickerItem{},
-		cursor:     0,
-		filter:     "",
-		taskID:     0,
-		colorIdx:   0,
-		createMode: false,
+		Items:      []LabelPickerItem{},
+		Cursor:     0,
+		Filter:     "",
+		TaskID:     0,
+		ColorIdx:   0,
+		CreateMode: false,
 	}
-}
-
-// Items returns the label picker items.
-func (s *LabelPickerState) Items() []LabelPickerItem {
-	return s.items
-}
-
-// SetItems sets the label picker items.
-func (s *LabelPickerState) SetItems(items []LabelPickerItem) {
-	s.items = items
-}
-
-// Cursor returns the current cursor position.
-func (s *LabelPickerState) Cursor() int {
-	return s.cursor
-}
-
-// SetCursor sets the cursor position.
-func (s *LabelPickerState) SetCursor(pos int) {
-	s.cursor = pos
-}
-
-// Filter returns the current filter text.
-func (s *LabelPickerState) Filter() string {
-	return s.filter
-}
-
-// SetFilter sets the filter text.
-func (s *LabelPickerState) SetFilter(filter string) {
-	s.filter = filter
-}
-
-// TaskID returns the ID of the task being edited.
-func (s *LabelPickerState) TaskID() int {
-	return s.taskID
-}
-
-// SetTaskID sets the task ID.
-func (s *LabelPickerState) SetTaskID(id int) {
-	s.taskID = id
-}
-
-// ColorIdx returns the color picker cursor position.
-func (s *LabelPickerState) ColorIdx() int {
-	return s.colorIdx
-}
-
-// SetColorIdx sets the color picker cursor position.
-func (s *LabelPickerState) SetColorIdx(idx int) {
-	s.colorIdx = idx
-}
-
-// CreateMode returns whether we're in create mode.
-func (s *LabelPickerState) CreateMode() bool {
-	return s.createMode
-}
-
-// SetCreateMode sets the create mode state.
-func (s *LabelPickerState) SetCreateMode(enabled bool) {
-	s.createMode = enabled
 }
 
 // GetFilteredItems returns label picker items filtered by the current filter text.
 // If no filter is set, returns all items.
 func (s *LabelPickerState) GetFilteredItems() []LabelPickerItem {
-	if s.filter == "" {
-		return s.items
+	if s.Filter == "" {
+		return s.Items
 	}
 
-	lowerFilter := strings.ToLower(s.filter)
+	lowerFilter := strings.ToLower(s.Filter)
 	var filtered []LabelPickerItem
-	for _, item := range s.items {
+	for _, item := range s.Items {
 		if strings.Contains(strings.ToLower(item.Label.Name), lowerFilter) {
 			filtered = append(filtered, item)
 		}
@@ -130,19 +70,19 @@ func (s *LabelPickerState) GetFilteredItems() []LabelPickerItem {
 
 // Clear resets all state to default values.
 func (s *LabelPickerState) Clear() {
-	s.items = []LabelPickerItem{}
-	s.cursor = 0
-	s.filter = ""
-	s.taskID = 0
-	s.colorIdx = 0
-	s.createMode = false
+	s.Items = []LabelPickerItem{}
+	s.Cursor = 0
+	s.Filter = ""
+	s.TaskID = 0
+	s.ColorIdx = 0
+	s.CreateMode = false
 }
 
 // MoveCursorUp moves the cursor up one position if possible.
 // Returns true if the cursor moved, false if already at top.
 func (s *LabelPickerState) MoveCursorUp() bool {
-	if s.cursor > 0 {
-		s.cursor--
+	if s.Cursor > 0 {
+		s.Cursor--
 		return true
 	}
 	return false
@@ -154,8 +94,8 @@ func (s *LabelPickerState) MoveCursorUp() bool {
 // Parameters:
 //   - maxIdx: the maximum valid cursor position (typically len(items))
 func (s *LabelPickerState) MoveCursorDown(maxIdx int) bool {
-	if s.cursor < maxIdx {
-		s.cursor++
+	if s.Cursor < maxIdx {
+		s.Cursor++
 		return true
 	}
 	return false
@@ -169,22 +109,22 @@ func (s *LabelPickerState) MoveCursorDown(maxIdx int) bool {
 func (s *LabelPickerState) AppendFilter(c rune) bool {
 	const maxFilterLength = 50
 
-	if len(s.filter) >= maxFilterLength {
+	if len(s.Filter) >= maxFilterLength {
 		return false
 	}
 
-	s.filter += string(c)
+	s.Filter += string(c)
 	return true
 }
 
 // BackspaceFilter removes the last character from the filter text.
 // Returns true if a character was removed, false if filter was already empty.
 func (s *LabelPickerState) BackspaceFilter() bool {
-	if len(s.filter) == 0 {
+	if len(s.Filter) == 0 {
 		return false
 	}
 
-	s.filter = s.filter[:len(s.filter)-1]
+	s.Filter = s.Filter[:len(s.Filter)-1]
 	return true
 }
 
@@ -195,9 +135,9 @@ func (s *LabelPickerState) BackspaceFilter() bool {
 //   - labelID: the ID of the label to update
 //   - selected: the new selection state
 func (s *LabelPickerState) UpdateItemSelection(labelID int, selected bool) bool {
-	for i := range s.items {
-		if s.items[i].Label.ID == labelID {
-			s.items[i].Selected = selected
+	for i := range s.Items {
+		if s.Items[i].Label.ID == labelID {
+			s.Items[i].Selected = selected
 			return true
 		}
 	}
@@ -206,5 +146,5 @@ func (s *LabelPickerState) UpdateItemSelection(labelID int, selected bool) bool 
 
 // AddItem adds a new label picker item to the list.
 func (s *LabelPickerState) AddItem(item LabelPickerItem) {
-	s.items = append(s.items, item)
+	s.Items = append(s.Items, item)
 }

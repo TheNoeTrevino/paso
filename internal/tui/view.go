@@ -17,8 +17,8 @@ func (m Model) View() string {
 	}
 
 	// Handle ticket form mode: show huh form in centered dialog
-	if m.uiState.Mode() == state.TicketFormMode && m.formState.TicketForm() != nil {
-		formView := m.formState.TicketForm().View()
+	if m.uiState.Mode() == state.TicketFormMode && m.formState.TicketForm != nil {
+		formView := m.formState.TicketForm.View()
 
 		// Wrap form in a styled container
 		formBox := lipgloss.NewStyle().
@@ -37,8 +37,8 @@ func (m Model) View() string {
 	}
 
 	// Handle project form mode: show huh form in centered dialog
-	if m.uiState.Mode() == state.ProjectFormMode && m.formState.ProjectForm() != nil {
-		formView := m.formState.ProjectForm().View()
+	if m.uiState.Mode() == state.ProjectFormMode && m.formState.ProjectForm != nil {
+		formView := m.formState.ProjectForm.View()
 
 		// Wrap form in a styled container with green border for creation
 		formBox := lipgloss.NewStyle().
@@ -63,7 +63,7 @@ func (m Model) View() string {
 			BorderForeground(lipgloss.Color("42")). // Green for creation
 			Padding(1).
 			Width(50).
-			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt(), m.inputState.Buffer()))
+			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
 
 		return lipgloss.Place(
 			m.uiState.Width(), m.uiState.Height(),
@@ -79,7 +79,7 @@ func (m Model) View() string {
 			BorderForeground(lipgloss.Color("62")). // Blue for editing
 			Padding(1).
 			Width(50).
-			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt(), m.inputState.Buffer()))
+			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
 
 		return lipgloss.Place(
 			m.uiState.Width(), m.uiState.Height(),
@@ -112,7 +112,7 @@ func (m Model) View() string {
 		column := m.getCurrentColumn()
 		if column != nil {
 			var content string
-			taskCount := m.inputState.DeleteColumnTaskCount()
+			taskCount := m.inputState.DeleteColumnTaskCount
 			if taskCount > 0 {
 				content = fmt.Sprintf(
 					"Delete column '%s'?\nThis will also delete %d task(s).\n\n[y]es  [n]o",
@@ -190,20 +190,20 @@ Press any key to close`
 	if m.uiState.Mode() == state.LabelPickerMode {
 		// Render the label picker content
 		var pickerContent string
-		if m.labelPickerCreateMode {
+		if m.labelPickerState.CreateMode {
 			// Show color picker
 			pickerContent = RenderLabelColorPicker(
 				GetDefaultLabelColors(),
-				m.labelPickerColorIdx,
-				m.formLabelName,
+				m.labelPickerState.ColorIdx,
+				m.formState.FormLabelName,
 				m.uiState.Width()/2-8,
 			)
 		} else {
 			// Show label list
 			pickerContent = RenderLabelPicker(
-				m.labelPickerItems,
-				m.labelPickerCursor,
-				m.labelPickerFilter,
+				m.labelPickerState.Items,
+				m.labelPickerState.Cursor,
+				m.labelPickerState.Filter,
 				true, // show create option
 				m.uiState.Width()/2-8,
 				m.uiState.Height()/2-4,
@@ -212,7 +212,7 @@ Press any key to close`
 
 		// Wrap in styled container
 		borderColor := lipgloss.Color("170") // Purple
-		if m.labelPickerCreateMode {
+		if m.labelPickerState.CreateMode {
 			borderColor = lipgloss.Color("42") // Green for creation
 		}
 
