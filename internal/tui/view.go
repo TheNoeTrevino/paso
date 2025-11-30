@@ -21,10 +21,7 @@ func (m Model) View() string {
 		formView := m.formState.TicketForm.View()
 
 		// Wrap form in a styled container
-		formBox := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("170")).
-			Padding(1, 2).
+		formBox := FormBoxStyle.
 			Width(m.uiState.Width() / 2).
 			Height(m.uiState.Height() / 2).
 			Render(formView)
@@ -41,10 +38,7 @@ func (m Model) View() string {
 		formView := m.formState.ProjectForm.View()
 
 		// Wrap form in a styled container with green border for creation
-		formBox := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("42")). // Green for creation
-			Padding(1, 2).
+		formBox := ProjectFormBoxStyle.
 			Width(m.uiState.Width() / 2).
 			Height(m.uiState.Height() / 3).
 			Render("New Project\n\n" + formView)
@@ -58,10 +52,7 @@ func (m Model) View() string {
 
 	// Handle column creation mode: show centered dialog with green border
 	if m.uiState.Mode() == state.AddColumnMode {
-		inputBox := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("42")). // Green for creation
-			Padding(1).
+		inputBox := CreateInputBoxStyle.
 			Width(50).
 			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
 
@@ -74,10 +65,7 @@ func (m Model) View() string {
 
 	// Handle column edit mode: show centered dialog with blue border
 	if m.uiState.Mode() == state.EditColumnMode {
-		inputBox := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("62")). // Blue for editing
-			Padding(1).
+		inputBox := EditInputBoxStyle.
 			Width(50).
 			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
 
@@ -92,10 +80,7 @@ func (m Model) View() string {
 	if m.uiState.Mode() == state.DeleteConfirmMode {
 		task := m.getCurrentTask()
 		if task != nil {
-			confirmBox := lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("196")).
-				Padding(1).
+			confirmBox := DeleteConfirmBoxStyle.
 				Width(50).
 				Render(fmt.Sprintf("Delete '%s'?\n\n[y]es  [n]o", task.Title))
 
@@ -123,10 +108,7 @@ func (m Model) View() string {
 				content = fmt.Sprintf("Delete column '%s'?\n\n[y]es  [n]o", column.Name)
 			}
 
-			confirmBox := lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("196")). // Red for deletion
-				Padding(1).
+			confirmBox := DeleteConfirmBoxStyle.
 				Width(50).
 				Render(content)
 
@@ -172,10 +154,7 @@ OTHER
 
 Press any key to close`
 
-		helpBox := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("62")). // Blue for info
-			Padding(1, 2).
+		helpBox := HelpBoxStyle.
 			Width(50).
 			Render(helpContent)
 
@@ -210,19 +189,19 @@ Press any key to close`
 			)
 		}
 
-		// Wrap in styled container
-		borderColor := lipgloss.Color("170") // Purple
+		// Wrap in styled container - use different style for create mode
+		var pickerBox string
 		if m.labelPickerState.CreateMode {
-			borderColor = lipgloss.Color("42") // Green for creation
+			pickerBox = LabelPickerCreateBoxStyle.
+				Width(m.uiState.Width() / 2).
+				Height(m.uiState.Height() / 2).
+				Render(pickerContent)
+		} else {
+			pickerBox = LabelPickerBoxStyle.
+				Width(m.uiState.Width() / 2).
+				Height(m.uiState.Height() / 2).
+				Render(pickerContent)
 		}
-
-		pickerBox := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(borderColor).
-			Padding(1, 2).
-			Width(m.uiState.Width() / 2).
-			Height(m.uiState.Height() / 2).
-			Render(pickerContent)
 
 		return lipgloss.Place(
 			m.uiState.Width(), m.uiState.Height(),
