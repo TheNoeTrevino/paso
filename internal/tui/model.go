@@ -141,21 +141,6 @@ func (m *Model) removeCurrentTask() {
 	}
 }
 
-// max returns the maximum of two integers
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
 
 // getCurrentColumn returns the currently selected column
 // Returns nil if there are no columns
