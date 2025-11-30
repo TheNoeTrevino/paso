@@ -81,9 +81,7 @@ func (m Model) handleNavigateLeft() (tea.Model, tea.Cmd) {
 	if m.uiState.SelectedColumn() > 0 {
 		m.uiState.SetSelectedColumn(m.uiState.SelectedColumn() - 1)
 		m.uiState.SetSelectedTask(0)
-		if m.uiState.SelectedColumn() < m.uiState.ViewportOffset() {
-			m.uiState.SetViewportOffset(m.uiState.SelectedColumn())
-		}
+		m.uiState.EnsureSelectionVisible(m.uiState.SelectedColumn())
 	}
 	return m, nil
 }
@@ -93,9 +91,7 @@ func (m Model) handleNavigateRight() (tea.Model, tea.Cmd) {
 	if m.uiState.SelectedColumn() < len(m.appState.Columns())-1 {
 		m.uiState.SetSelectedColumn(m.uiState.SelectedColumn() + 1)
 		m.uiState.SetSelectedTask(0)
-		if m.uiState.SelectedColumn() >= m.uiState.ViewportOffset()+m.uiState.ViewportSize() {
-			m.uiState.SetViewportOffset(m.uiState.SelectedColumn() - m.uiState.ViewportSize() + 1)
-		}
+		m.uiState.EnsureSelectionVisible(m.uiState.SelectedColumn())
 	}
 	return m, nil
 }
