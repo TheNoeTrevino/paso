@@ -1,19 +1,17 @@
 package components
 
 import (
-	"database/sql"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
 type MetadataColumnProps struct {
-	Task      *models.TaskDetail
-	DB        *sql.DB
-	Width     int
-	HasBorder bool
+	Task       *models.TaskDetail
+	ColumnName string
+	Width      int
+	HasBorder  bool
 }
 
 func RenderMetadataColumn(props MetadataColumnProps) string {
@@ -24,12 +22,7 @@ func RenderMetadataColumn(props MetadataColumnProps) string {
 		Bold(true)
 
 	// Status section
-	column, err := database.GetColumnByID(props.DB, props.Task.ColumnID)
-	statusValue := "Unknown"
-	if err == nil && column != nil {
-		statusValue = column.Name
-	}
-	parts = append(parts, renderMetadataSection("Status", statusValue))
+	parts = append(parts, renderMetadataSection("Status", props.ColumnName))
 
 	// Created timestamp
 	createdStr := props.Task.CreatedAt.Format("Jan 2, 2006 3:04 PM")

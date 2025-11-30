@@ -232,9 +232,18 @@ Press any key to close`
 	}
 
 	if m.uiState.Mode() == state.ViewTaskMode && m.uiState.ViewingTask() != nil {
+		// Find the column name for the task
+		columnName := "Unknown"
+		for _, col := range m.appState.Columns() {
+			if col.ID == m.uiState.ViewingTask().ColumnID {
+				columnName = col.Name
+				break
+			}
+		}
+
 		return components.RenderTaskView(components.TaskViewProps{
 			Task:         m.uiState.ViewingTask(),
-			DB:           m.db,
+			ColumnName:   columnName,
 			PopupWidth:   m.uiState.Width() / 2,
 			PopupHeight:  m.uiState.Height() / 2,
 			ScreenWidth:  m.uiState.Width(),

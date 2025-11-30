@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"database/sql"
 	"log"
 
@@ -8,24 +9,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
-)
-
-// Mode represents the current interaction mode of the TUI
-type Mode int
-
-const (
-	NormalMode              Mode = iota // Default navigation mode
-	DeleteConfirmMode                   // Confirming task deletion
-	AddColumnMode                       // Creating a new column
-	EditColumnMode                      // Renaming an existing column
-	DeleteColumnConfirmMode             // Confirming column deletion
-	HelpMode                            // Displaying help screen
-	ViewTaskMode                        // Viewing full task details
-	TicketFormMode                      // Full ticket form with huh
-	ProjectFormMode                     // Creating a new project with huh
-	LabelManagementMode                 // Managing labels (create/edit/delete)
-	LabelAssignMode                     // Quick label assignment to task
-	LabelPickerMode                     // GitHub-style label picker popup
 )
 
 // Model represents the application state for the TUI
@@ -41,8 +24,10 @@ type Model struct {
 
 // InitialModel creates and initializes the TUI model with data from the database
 func InitialModel(db *sql.DB) Model {
+	ctx := context.Background()
+
 	// Load all projects
-	projects, err := database.GetAllProjects(db)
+	projects, err := database.GetAllProjects(ctx, db)
 	if err != nil {
 		log.Printf("Error loading projects: %v", err)
 		projects = []*models.Project{}
@@ -55,7 +40,7 @@ func InitialModel(db *sql.DB) Model {
 	}
 
 	// Load columns for the current project
-	columns, err := database.GetColumnsByProject(db, currentProjectID)
+	columns, err := database.GetColumnsByProject(ctx, db, currentProjectID)
 	if err != nil {
 		log.Printf("Error loading columns: %v", err)
 		columns = []*models.Column{}
@@ -64,7 +49,7 @@ func InitialModel(db *sql.DB) Model {
 	// Load task summaries for each column (includes labels)
 	tasks := make(map[int][]*models.TaskSummary)
 	for _, col := range columns {
-		columnTasks, err := database.GetTaskSummariesByColumn(db, col.ID)
+		columnTasks, err := database.GetTaskSummariesByColumn(ctx, db, col.ID)
 		if err != nil {
 			log.Printf("Error loading tasks for column %d: %v", col.ID, err)
 			columnTasks = []*models.TaskSummary{}
@@ -73,7 +58,7 @@ func InitialModel(db *sql.DB) Model {
 	}
 
 	// Load labels for the current project
-	labels, err := database.GetLabelsByProject(db, currentProjectID)
+	labels, err := database.GetLabelsByProject(ctx, db, currentProjectID)
 	if err != nil {
 		log.Printf("Error loading labels: %v", err)
 		labels = []*models.Label{}
@@ -229,7 +214,7 @@ func (m *Model) moveTaskRight() {
 	}
 
 	// Use the new database function to move task
-	err := database.MoveTaskToNextColumn(m.db, task.ID)
+	err := database.MoveTaskToNextColumn(context.Background(), m.db, task.ID)
 	if err != nil {
 		log.Printf("Error moving task to next column: %v", err)
 		return
@@ -274,7 +259,7 @@ func (m *Model) moveTaskLeft() {
 	}
 
 	// Use the new database function to move task
-	err := database.MoveTaskToPrevColumn(m.db, task.ID)
+	err := database.MoveTaskToPrevColumn(context.Background(), m.db, task.ID)
 	if err != nil {
 		log.Printf("Error moving task to previous column: %v", err)
 		return
@@ -319,7 +304,7 @@ func (m *Model) switchToProject(projectIndex int) {
 	project := m.appState.Projects()[projectIndex]
 
 	// Reload columns for this project
-	columns, err := database.GetColumnsByProject(m.db, project.ID)
+	columns, err := database.GetColumnsByProject(context.Background(), m.db, project.ID)
 	if err != nil {
 		log.Printf("Error loading columns for project %d: %v", project.ID, err)
 		columns = []*models.Column{}
@@ -329,7 +314,7 @@ func (m *Model) switchToProject(projectIndex int) {
 	// Reload task summaries for each column
 	tasks := make(map[int][]*models.TaskSummary)
 	for _, col := range columns {
-		columnTasks, err := database.GetTaskSummariesByColumn(m.db, col.ID)
+		columnTasks, err := database.GetTaskSummariesByColumn(context.Background(), m.db, col.ID)
 		if err != nil {
 			log.Printf("Error loading tasks for column %d: %v", col.ID, err)
 			columnTasks = []*models.TaskSummary{}
@@ -339,7 +324,7 @@ func (m *Model) switchToProject(projectIndex int) {
 	m.appState.SetTasks(tasks)
 
 	// Reload labels for this project
-	labels, err := database.GetLabelsByProject(m.db, project.ID)
+	labels, err := database.GetLabelsByProject(context.Background(), m.db, project.ID)
 	if err != nil {
 		log.Printf("Error loading labels for project %d: %v", project.ID, err)
 		labels = []*models.Label{}
@@ -352,7 +337,7 @@ func (m *Model) switchToProject(projectIndex int) {
 
 // reloadProjects reloads the projects list from the database
 func (m *Model) reloadProjects() {
-	projects, err := database.GetAllProjects(m.db)
+	projects, err := database.GetAllProjects(context.Background(), m.db)
 	if err != nil {
 		log.Printf("Error reloading projects: %v", err)
 		return
@@ -368,7 +353,7 @@ func (m *Model) reloadLabels() {
 		return
 	}
 
-	labels, err := database.GetLabelsByProject(m.db, project.ID)
+	labels, err := database.GetLabelsByProject(context.Background(), m.db, project.ID)
 	if err != nil {
 		log.Printf("Error reloading labels: %v", err)
 		return
@@ -384,7 +369,7 @@ func (m *Model) initLabelPicker(taskID int) bool {
 	}
 
 	// Get current labels for the task
-	taskLabels, err := database.GetLabelsForTask(m.db, taskID)
+	taskLabels, err := database.GetLabelsForTask(context.Background(), m.db, taskID)
 	if err != nil {
 		log.Printf("Error loading task labels: %v", err)
 		taskLabels = []*models.Label{}
