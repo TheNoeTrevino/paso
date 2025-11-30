@@ -178,9 +178,9 @@ Press any key to close`
 				m.uiState.Width()/2-8,
 			)
 		} else {
-			// Show label list
+			// Show label list (use filtered items from state)
 			pickerContent = RenderLabelPicker(
-				m.labelPickerState.Items,
+				m.getFilteredLabelPickerItems(),
 				m.labelPickerState.Cursor,
 				m.labelPickerState.Filter,
 				true, // show create option
