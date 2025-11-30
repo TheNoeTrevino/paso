@@ -9,8 +9,9 @@ import (
 
 // RenderLabelPicker renders the label picker popup
 // This is a GitHub-style label picker with checkboxes
+// Note: filteredItems should already be filtered by the caller using LabelPickerState.GetFilteredItems()
 func RenderLabelPicker(
-	items []state.LabelPickerItem,
+	filteredItems []state.LabelPickerItem,
 	cursorIdx int,
 	filterText string,
 	showCreateOption bool,
@@ -41,19 +42,7 @@ func RenderLabelPicker(
 	selectedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("170")).Bold(true)
 	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 
-	// Filter items based on filterText
-	filteredItems := items
-	if filterText != "" {
-		filteredItems = []state.LabelPickerItem{}
-		lowerFilter := strings.ToLower(filterText)
-		for _, item := range items {
-			if strings.Contains(strings.ToLower(item.Label.Name), lowerFilter) {
-				filteredItems = append(filteredItems, item)
-			}
-		}
-	}
-
-	// Render each label item
+	// Render each label item (already filtered by caller)
 	for i, item := range filteredItems {
 		// Checkbox indicator
 		checkbox := "[ ]"
