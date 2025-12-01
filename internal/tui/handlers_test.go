@@ -12,7 +12,7 @@ import (
 // No database connection needed for pure state transformations.
 func setupTestModel(columns []*models.Column, tasks map[int][]*models.TaskSummary) Model {
 	return Model{
-		db:               nil, // No DB needed for navigation handlers
+		repo:             nil, // No repo needed for navigation handlers
 		appState:         state.NewAppState(nil, 0, columns, tasks, nil),
 		uiState:          state.NewUIState(),
 		inputState:       state.NewInputState(),
