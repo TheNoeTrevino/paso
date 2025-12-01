@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -19,12 +20,12 @@ func (r *LabelRepo) Create(ctx context.Context, projectID int, name, color strin
 		name, color, projectID,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create label '%s' for project %d: %w", name, projectID, err)
 	}
 
 	id, err := result.LastInsertId()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get label ID after insert: %w", err)
 	}
 
 	return &models.Label{
@@ -42,7 +43,7 @@ func (r *LabelRepo) GetByProject(ctx context.Context, projectID int) ([]*models.
 		projectID,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query labels for project %d: %w", projectID, err)
 	}
 	defer rows.Close()
 
@@ -50,12 +51,15 @@ func (r *LabelRepo) GetByProject(ctx context.Context, projectID int) ([]*models.
 	for rows.Next() {
 		label := &models.Label{}
 		if err := rows.Scan(&label.ID, &label.Name, &label.Color, &label.ProjectID); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan label row for project %d: %w", projectID, err)
 		}
 		labels = append(labels, label)
 	}
 
-	return labels, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating label rows for project %d: %w", projectID, err)
+	}
+	return labels, nil
 }
 
 // GetForTask retrieves all labels associated with a task
@@ -68,7 +72,7 @@ func (r *LabelRepo) GetForTask(ctx context.Context, taskID int) ([]*models.Label
 		ORDER BY l.name
 	`, taskID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query labels for task %d: %w", taskID, err)
 	}
 	defer rows.Close()
 
@@ -76,12 +80,15 @@ func (r *LabelRepo) GetForTask(ctx context.Context, taskID int) ([]*models.Label
 	for rows.Next() {
 		label := &models.Label{}
 		if err := rows.Scan(&label.ID, &label.Name, &label.Color, &label.ProjectID); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan label row for task %d: %w", taskID, err)
 		}
 		labels = append(labels, label)
 	}
 
-	return labels, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating label rows for task %d: %w", taskID, err)
+	}
+	return labels, nil
 }
 
 // Update updates an existing label's name and color
@@ -90,13 +97,19 @@ func (r *LabelRepo) Update(ctx context.Context, labelID int, name, color string)
 		`UPDATE labels SET name = ?, color = ? WHERE id = ?`,
 		name, color, labelID,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to update label %d: %w", labelID, err)
+	}
+	return nil
 }
 
 // Delete removes a label from the database (cascade removes task associations)
 func (r *LabelRepo) Delete(ctx context.Context, labelID int) error {
 	_, err := r.db.ExecContext(ctx, "DELETE FROM labels WHERE id = ?", labelID)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to delete label %d: %w", labelID, err)
+	}
+	return nil
 }
 
 // AddToTask associates a label with a task
@@ -105,7 +118,10 @@ func (r *LabelRepo) AddToTask(ctx context.Context, taskID, labelID int) error {
 		`INSERT OR IGNORE INTO task_labels (task_id, label_id) VALUES (?, ?)`,
 		taskID, labelID,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to add label %d to task %d: %w", labelID, taskID, err)
+	}
+	return nil
 }
 
 // RemoveFromTask removes the association between a label and a task
@@ -114,21 +130,24 @@ func (r *LabelRepo) RemoveFromTask(ctx context.Context, taskID, labelID int) err
 		`DELETE FROM task_labels WHERE task_id = ? AND label_id = ?`,
 		taskID, labelID,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to remove label %d from task %d: %w", labelID, taskID, err)
+	}
+	return nil
 }
 
 // SetForTask replaces all labels for a task with the given label IDs
 func (r *LabelRepo) SetForTask(ctx context.Context, taskID int, labelIDs []int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin transaction for setting labels on task %d: %w", taskID, err)
 	}
 	defer tx.Rollback()
 
 	// Remove all existing labels
 	_, err = tx.ExecContext(ctx, `DELETE FROM task_labels WHERE task_id = ?`, taskID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to clear existing labels for task %d: %w", taskID, err)
 	}
 
 	// Add new labels
@@ -138,9 +157,12 @@ func (r *LabelRepo) SetForTask(ctx context.Context, taskID int, labelIDs []int) 
 			taskID, labelID,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to add label %d to task %d: %w", labelID, taskID, err)
 		}
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit label changes for task %d: %w", taskID, err)
+	}
+	return nil
 }
