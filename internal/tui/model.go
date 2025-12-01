@@ -2,7 +2,6 @@ package tui
 
 import (
 	"context"
-	"database/sql"
 	"log"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,7 +12,7 @@ import (
 
 // Model represents the application state for the TUI
 type Model struct {
-	db               *sql.DB
+	repo             *database.Repository
 	appState         *state.AppState
 	uiState          *state.UIState
 	inputState       *state.InputState
@@ -23,11 +22,11 @@ type Model struct {
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
-func InitialModel(db *sql.DB) Model {
+func InitialModel(repo *database.Repository) Model {
 	ctx := context.Background()
 
 	// Load all projects
-	projects, err := database.GetAllProjects(ctx, db)
+	projects, err := repo.GetAllProjects(ctx)
 	if err != nil {
 		log.Printf("Error loading projects: %v", err)
 		projects = []*models.Project{}
@@ -40,7 +39,7 @@ func InitialModel(db *sql.DB) Model {
 	}
 
 	// Load columns for the current project
-	columns, err := database.GetColumnsByProject(ctx, db, currentProjectID)
+	columns, err := repo.GetColumnsByProject(ctx, currentProjectID)
 	if err != nil {
 		log.Printf("Error loading columns: %v", err)
 		columns = []*models.Column{}
@@ -49,7 +48,7 @@ func InitialModel(db *sql.DB) Model {
 	// Load task summaries for each column (includes labels)
 	tasks := make(map[int][]*models.TaskSummary)
 	for _, col := range columns {
-		columnTasks, err := database.GetTaskSummariesByColumn(ctx, db, col.ID)
+		columnTasks, err := repo.GetTaskSummariesByColumn(ctx, col.ID)
 		if err != nil {
 			log.Printf("Error loading tasks for column %d: %v", col.ID, err)
 			columnTasks = []*models.TaskSummary{}
@@ -58,7 +57,7 @@ func InitialModel(db *sql.DB) Model {
 	}
 
 	// Load labels for the current project
-	labels, err := database.GetLabelsByProject(ctx, db, currentProjectID)
+	labels, err := repo.GetLabelsByProject(ctx, currentProjectID)
 	if err != nil {
 		log.Printf("Error loading labels: %v", err)
 		labels = []*models.Label{}
@@ -73,7 +72,7 @@ func InitialModel(db *sql.DB) Model {
 	errorState := state.NewErrorState()
 
 	return Model{
-		db:               db,
+		repo:             repo,
 		appState:         appState,
 		uiState:          uiState,
 		inputState:       inputState,
@@ -199,7 +198,7 @@ func (m *Model) moveTaskRight() {
 	}
 
 	// Use the new database function to move task
-	err := database.MoveTaskToNextColumn(context.Background(), m.db, task.ID)
+	err := m.repo.MoveTaskToNextColumn(context.Background(), task.ID)
 	if err != nil {
 		log.Printf("Error moving task to next column: %v", err)
 		return
@@ -244,7 +243,7 @@ func (m *Model) moveTaskLeft() {
 	}
 
 	// Use the new database function to move task
-	err := database.MoveTaskToPrevColumn(context.Background(), m.db, task.ID)
+	err := m.repo.MoveTaskToPrevColumn(context.Background(), task.ID)
 	if err != nil {
 		log.Printf("Error moving task to previous column: %v", err)
 		return
@@ -289,7 +288,7 @@ func (m *Model) switchToProject(projectIndex int) {
 	project := m.appState.Projects()[projectIndex]
 
 	// Reload columns for this project
-	columns, err := database.GetColumnsByProject(context.Background(), m.db, project.ID)
+	columns, err := m.repo.GetColumnsByProject(context.Background(), project.ID)
 	if err != nil {
 		log.Printf("Error loading columns for project %d: %v", project.ID, err)
 		columns = []*models.Column{}
@@ -299,7 +298,7 @@ func (m *Model) switchToProject(projectIndex int) {
 	// Reload task summaries for each column
 	tasks := make(map[int][]*models.TaskSummary)
 	for _, col := range columns {
-		columnTasks, err := database.GetTaskSummariesByColumn(context.Background(), m.db, col.ID)
+		columnTasks, err := m.repo.GetTaskSummariesByColumn(context.Background(), col.ID)
 		if err != nil {
 			log.Printf("Error loading tasks for column %d: %v", col.ID, err)
 			columnTasks = []*models.TaskSummary{}
@@ -309,7 +308,7 @@ func (m *Model) switchToProject(projectIndex int) {
 	m.appState.SetTasks(tasks)
 
 	// Reload labels for this project
-	labels, err := database.GetLabelsByProject(context.Background(), m.db, project.ID)
+	labels, err := m.repo.GetLabelsByProject(context.Background(), project.ID)
 	if err != nil {
 		log.Printf("Error loading labels for project %d: %v", project.ID, err)
 		labels = []*models.Label{}
@@ -322,7 +321,7 @@ func (m *Model) switchToProject(projectIndex int) {
 
 // reloadProjects reloads the projects list from the database
 func (m *Model) reloadProjects() {
-	projects, err := database.GetAllProjects(context.Background(), m.db)
+	projects, err := m.repo.GetAllProjects(context.Background())
 	if err != nil {
 		log.Printf("Error reloading projects: %v", err)
 		return
@@ -338,7 +337,7 @@ func (m *Model) reloadLabels() {
 		return
 	}
 
-	labels, err := database.GetLabelsByProject(context.Background(), m.db, project.ID)
+	labels, err := m.repo.GetLabelsByProject(context.Background(), project.ID)
 	if err != nil {
 		log.Printf("Error reloading labels: %v", err)
 		return
@@ -354,7 +353,7 @@ func (m *Model) initLabelPicker(taskID int) bool {
 	}
 
 	// Get current labels for the task
-	taskLabels, err := database.GetLabelsForTask(context.Background(), m.db, taskID)
+	taskLabels, err := m.repo.GetLabelsForTask(context.Background(), taskID)
 	if err != nil {
 		log.Printf("Error loading task labels: %v", err)
 		taskLabels = []*models.Label{}

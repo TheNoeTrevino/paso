@@ -9,13 +9,14 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// ============================================================================
-// Task Operations
-// ============================================================================
+// TaskRepo handles all task-related database operations.
+type TaskRepo struct {
+	db *sql.DB
+}
 
-// CreateTask creates a new task in the database
-func CreateTask(ctx context.Context, db *sql.DB, title, description string, columnID, position int) (*models.Task, error) {
-	result, err := db.ExecContext(ctx,
+// Create creates a new task in the database
+func (r *TaskRepo) Create(ctx context.Context, title, description string, columnID, position int) (*models.Task, error) {
+	result, err := r.db.ExecContext(ctx,
 		`INSERT INTO tasks (title, description, column_id, position)
 		 VALUES (?, ?, ?, ?)`,
 		title, description, columnID, position,
@@ -31,7 +32,7 @@ func CreateTask(ctx context.Context, db *sql.DB, title, description string, colu
 
 	// Retrieve the created task to get timestamps
 	task := &models.Task{}
-	err = db.QueryRowContext(ctx,
+	err = r.db.QueryRowContext(ctx,
 		`SELECT id, title, description, column_id, position, created_at, updated_at
 		 FROM tasks WHERE id = ?`,
 		id,
@@ -46,70 +47,115 @@ func CreateTask(ctx context.Context, db *sql.DB, title, description string, colu
 	return task, nil
 }
 
-// GetTasksByColumn retrieves all tasks for a specific column, ordered by position
-func GetTasksByColumn(ctx context.Context, db *sql.DB, columnID int) ([]*models.Task, error) {
-	rows, err := db.QueryContext(ctx,
-		`SELECT id, title, description, column_id, position, created_at, updated_at
-		 FROM tasks
-		 WHERE column_id = ?
-		 ORDER BY position`,
-		columnID,
-	)
+// GetSummariesByColumn retrieves task summaries for a column, including labels
+// Uses a single query with LEFT JOIN to avoid N+1 query pattern
+func (r *TaskRepo) GetSummariesByColumn(ctx context.Context, columnID int) ([]*models.TaskSummary, error) {
+	// Single query with LEFT JOIN to fetch tasks and their labels
+	// GROUP_CONCAT aggregates labels for each task
+	query := `
+		SELECT
+			t.id,
+			t.title,
+			t.column_id,
+			t.position,
+			GROUP_CONCAT(l.id, '|') as label_ids,
+			GROUP_CONCAT(l.name, '|') as label_names,
+			GROUP_CONCAT(l.color, '|') as label_colors
+		FROM tasks t
+		LEFT JOIN task_labels tl ON t.id = tl.task_id
+		LEFT JOIN labels l ON tl.label_id = l.id
+		WHERE t.column_id = ?
+		GROUP BY t.id, t.title, t.column_id, t.position
+		ORDER BY t.position`
+
+	rows, err := r.db.QueryContext(ctx, query, columnID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var tasks []*models.Task
+	var summaries []*models.TaskSummary
 	for rows.Next() {
-		task := &models.Task{}
+		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
+		summary := &models.TaskSummary{}
+
 		if err := rows.Scan(
-			&task.ID, &task.Title, &task.Description,
-			&task.ColumnID, &task.Position, &task.CreatedAt, &task.UpdatedAt,
+			&summary.ID,
+			&summary.Title,
+			&summary.ColumnID,
+			&summary.Position,
+			&labelIDsStr,
+			&labelNamesStr,
+			&labelColorsStr,
 		); err != nil {
 			return nil, err
 		}
-		tasks = append(tasks, task)
+
+		// Parse concatenated label data
+		summary.Labels = parseLabelStrings(labelIDsStr, labelNamesStr, labelColorsStr)
+		summaries = append(summaries, summary)
 	}
 
+	return summaries, rows.Err()
+}
+
+// GetDetail retrieves full task details including description, timestamps, and labels
+func (r *TaskRepo) GetDetail(ctx context.Context, taskID int) (*models.TaskDetail, error) {
+	detail := &models.TaskDetail{}
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, title, description, column_id, position, created_at, updated_at
+		 FROM tasks WHERE id = ?`,
+		taskID,
+	).Scan(
+		&detail.ID, &detail.Title, &detail.Description,
+		&detail.ColumnID, &detail.Position, &detail.CreatedAt, &detail.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get labels for this task
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT l.id, l.name, l.color, l.project_id
+		FROM labels l
+		INNER JOIN task_labels tl ON l.id = tl.label_id
+		WHERE tl.task_id = ?
+		ORDER BY l.name
+	`, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var labels []*models.Label
+	for rows.Next() {
+		label := &models.Label{}
+		if err := rows.Scan(&label.ID, &label.Name, &label.Color, &label.ProjectID); err != nil {
+			return nil, err
+		}
+		labels = append(labels, label)
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return tasks, nil
+	detail.Labels = labels
+	return detail, nil
 }
 
-// UpdateTaskColumn moves a task to a different column and/or position
-func UpdateTaskColumn(ctx context.Context, db *sql.DB, taskID, newColumnID, newPosition int) error {
-	_, err := db.ExecContext(ctx,
-		`UPDATE tasks
-		 SET column_id = ?, position = ?, updated_at = CURRENT_TIMESTAMP
-		 WHERE id = ?`,
-		newColumnID, newPosition, taskID,
-	)
-	return err
+// GetCountByColumn returns the number of tasks in a specific column
+func (r *TaskRepo) GetCountByColumn(ctx context.Context, columnID int) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks WHERE column_id = ?", columnID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
-// DeleteTask removes a task from the database
-func DeleteTask(ctx context.Context, db *sql.DB, taskID int) error {
-	_, err := db.ExecContext(ctx, "DELETE FROM tasks WHERE id = ?", taskID)
-	return err
-}
-
-// UpdateTaskTitle updates the title of an existing task
-func UpdateTaskTitle(ctx context.Context, db *sql.DB, taskID int, title string) error {
-	_, err := db.ExecContext(ctx,
-		`UPDATE tasks
-		 SET title = ?, updated_at = CURRENT_TIMESTAMP
-		 WHERE id = ?`,
-		title, taskID,
-	)
-	return err
-}
-
-// UpdateTask updates a task's title and description
-func UpdateTask(ctx context.Context, db *sql.DB, taskID int, title, description string) error {
-	_, err := db.ExecContext(ctx,
+// Update updates a task's title and description
+func (r *TaskRepo) Update(ctx context.Context, taskID int, title, description string) error {
+	_, err := r.db.ExecContext(ctx,
 		`UPDATE tasks
 		 SET title = ?, description = ?, updated_at = CURRENT_TIMESTAMP
 		 WHERE id = ?`,
@@ -118,43 +164,10 @@ func UpdateTask(ctx context.Context, db *sql.DB, taskID int, title, description 
 	return err
 }
 
-// GetTaskCountByColumn returns the number of tasks in a specific column
-func GetTaskCountByColumn(ctx context.Context, db *sql.DB, columnID int) (int, error) {
-	var count int
-	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks WHERE column_id = ?", columnID).Scan(&count)
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
-}
-
-// MoveTask moves a task to a different column and position using a transaction
-// This is a wrapper around UpdateTaskColumn that provides transactional guarantees
-func MoveTask(ctx context.Context, db *sql.DB, taskID, newColumnID, newPosition int) error {
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	// Update task's column and position
-	_, err = tx.ExecContext(ctx,
-		`UPDATE tasks
-		 SET column_id = ?, position = ?, updated_at = CURRENT_TIMESTAMP
-		 WHERE id = ?`,
-		newColumnID, newPosition, taskID,
-	)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
-}
-
-// MoveTaskToNextColumn moves a task from its current column to the next column in the linked list
+// MoveToNextColumn moves a task from its current column to the next column in the linked list
 // Returns an error if the task doesn't exist or if there's no next column
-func MoveTaskToNextColumn(ctx context.Context, db *sql.DB, taskID int) error {
-	tx, err := db.BeginTx(ctx, nil)
+func (r *TaskRepo) MoveToNextColumn(ctx context.Context, taskID int) error {
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -209,10 +222,10 @@ func MoveTaskToNextColumn(ctx context.Context, db *sql.DB, taskID int) error {
 	return tx.Commit()
 }
 
-// MoveTaskToPrevColumn moves a task from its current column to the previous column in the linked list
+// MoveToPrevColumn moves a task from its current column to the previous column in the linked list
 // Returns an error if the task doesn't exist or if there's no previous column
-func MoveTaskToPrevColumn(ctx context.Context, db *sql.DB, taskID int) error {
-	tx, err := db.BeginTx(ctx, nil)
+func (r *TaskRepo) MoveToPrevColumn(ctx context.Context, taskID int) error {
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -267,9 +280,11 @@ func MoveTaskToPrevColumn(ctx context.Context, db *sql.DB, taskID int) error {
 	return tx.Commit()
 }
 
-// ============================================================================
-// Task Summary/Detail Operations (DTOs with Labels)
-// ============================================================================
+// Delete removes a task from the database
+func (r *TaskRepo) Delete(ctx context.Context, taskID int) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM tasks WHERE id = ?", taskID)
+	return err
+}
 
 // parseLabelStrings parses pipe-delimited label data from GROUP_CONCAT
 func parseLabelStrings(labelIDsStr, labelNamesStr, labelColorsStr sql.NullString) []*models.Label {
@@ -303,81 +318,4 @@ func parseLabelStrings(labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
 	}
 
 	return labels
-}
-
-// GetTaskSummariesByColumn retrieves task summaries for a column, including labels
-// Uses a single query with LEFT JOIN to avoid N+1 query pattern
-func GetTaskSummariesByColumn(ctx context.Context, db *sql.DB, columnID int) ([]*models.TaskSummary, error) {
-	// Single query with LEFT JOIN to fetch tasks and their labels
-	// GROUP_CONCAT aggregates labels for each task
-	query := `
-		SELECT
-			t.id,
-			t.title,
-			t.column_id,
-			t.position,
-			GROUP_CONCAT(l.id, '|') as label_ids,
-			GROUP_CONCAT(l.name, '|') as label_names,
-			GROUP_CONCAT(l.color, '|') as label_colors
-		FROM tasks t
-		LEFT JOIN task_labels tl ON t.id = tl.task_id
-		LEFT JOIN labels l ON tl.label_id = l.id
-		WHERE t.column_id = ?
-		GROUP BY t.id, t.title, t.column_id, t.position
-		ORDER BY t.position`
-
-	rows, err := db.QueryContext(ctx, query, columnID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var summaries []*models.TaskSummary
-	for rows.Next() {
-		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
-		summary := &models.TaskSummary{}
-
-		if err := rows.Scan(
-			&summary.ID,
-			&summary.Title,
-			&summary.ColumnID,
-			&summary.Position,
-			&labelIDsStr,
-			&labelNamesStr,
-			&labelColorsStr,
-		); err != nil {
-			return nil, err
-		}
-
-		// Parse concatenated label data
-		summary.Labels = parseLabelStrings(labelIDsStr, labelNamesStr, labelColorsStr)
-		summaries = append(summaries, summary)
-	}
-
-	return summaries, rows.Err()
-}
-
-// GetTaskDetail retrieves full task details including description, timestamps, and labels
-func GetTaskDetail(ctx context.Context, db *sql.DB, taskID int) (*models.TaskDetail, error) {
-	detail := &models.TaskDetail{}
-	err := db.QueryRowContext(ctx,
-		`SELECT id, title, description, column_id, position, created_at, updated_at
-		 FROM tasks WHERE id = ?`,
-		taskID,
-	).Scan(
-		&detail.ID, &detail.Title, &detail.Description,
-		&detail.ColumnID, &detail.Position, &detail.CreatedAt, &detail.UpdatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get labels
-	labels, err := GetLabelsForTask(ctx, db, taskID)
-	if err != nil {
-		return nil, err
-	}
-	detail.Labels = labels
-
-	return detail, nil
 }

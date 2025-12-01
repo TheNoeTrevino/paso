@@ -17,8 +17,11 @@ func main() {
 	}
 	defer db.Close()
 
-	// Create initial TUI model with database connection
-	model := tui.InitialModel(db)
+	// Create repository wrapping the database
+	repo := database.NewRepository(db)
+
+	// Create initial TUI model with repository
+	model := tui.InitialModel(repo)
 
 	// Create and run Bubble Tea program with alternate screen
 	// This clears the screen and restores it on exit (like vim, htop, etc.)
