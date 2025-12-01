@@ -23,6 +23,9 @@ type AppState struct {
 
 	// selectedProject is the index of the currently active project in the projects slice
 	selectedProject int
+
+	// totalTaskCount caches the total number of tasks across all columns
+	totalTaskCount int
 }
 
 // NewAppState creates a new AppState with the provided data.
@@ -45,7 +48,17 @@ func NewAppState(
 		columns:         columns,
 		tasks:           tasks,
 		labels:          labels,
+		totalTaskCount:  calculateTotalTaskCount(tasks),
 	}
+}
+
+// calculateTotalTaskCount computes the total number of tasks across all columns
+func calculateTotalTaskCount(tasks map[int][]*models.TaskSummary) int {
+	total := 0
+	for _, columnTasks := range tasks {
+		total += len(columnTasks)
+	}
+	return total
 }
 
 // GetCurrentProject returns the currently selected project.
@@ -91,11 +104,18 @@ func (s *AppState) Tasks() map[int][]*models.TaskSummary {
 
 // SetTasks replaces the entire tasks map.
 // This should be called after reloading all tasks from the database.
+// It also recalculates the cached total task count.
 func (s *AppState) SetTasks(tasks map[int][]*models.TaskSummary) {
 	if tasks == nil {
 		tasks = make(map[int][]*models.TaskSummary)
 	}
 	s.tasks = tasks
+	s.totalTaskCount = calculateTotalTaskCount(tasks)
+}
+
+// TotalTaskCount returns the cached total number of tasks across all columns.
+func (s *AppState) TotalTaskCount() int {
+	return s.totalTaskCount
 }
 
 // Labels returns the labels slice.

@@ -291,11 +291,8 @@ Press any key to close`
 	columnsView := lipgloss.JoinHorizontal(lipgloss.Top, columns...)
 	board := lipgloss.JoinHorizontal(lipgloss.Top, leftArrow, " ", columnsView, " ", rightArrow)
 
-	// Calculate total task count
-	totalTasks := 0
-	for _, tasks := range m.appState.Tasks() {
-		totalTasks += len(tasks)
-	}
+	// Get cached total task count
+	totalTasks := m.appState.TotalTaskCount()
 
 	// Create project tabs from actual project data
 	var projectTabs []string
