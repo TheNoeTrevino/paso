@@ -27,6 +27,7 @@ func NewRepository(db *sql.DB) *Repository {
 }
 
 // Wrapper methods for ProjectRepo to maintain existing API
+
 func (r *Repository) CreateProject(ctx context.Context, name, description string) (*models.Project, error) {
 	return r.ProjectRepo.Create(ctx, name, description)
 }
@@ -48,6 +49,7 @@ func (r *Repository) DeleteProject(ctx context.Context, id int) error {
 }
 
 // Wrapper methods for ColumnRepo to maintain existing API
+
 func (r *Repository) CreateColumn(ctx context.Context, name string, projectID int, afterID *int) (*models.Column, error) {
 	return r.ColumnRepo.Create(ctx, name, projectID, afterID)
 }
@@ -69,12 +71,17 @@ func (r *Repository) DeleteColumn(ctx context.Context, id int) error {
 }
 
 // Wrapper methods for TaskRepo to maintain existing API
+
 func (r *Repository) CreateTask(ctx context.Context, title, description string, columnID, position int) (*models.Task, error) {
 	return r.TaskRepo.Create(ctx, title, description, columnID, position)
 }
 
 func (r *Repository) GetTaskSummariesByColumn(ctx context.Context, columnID int) ([]*models.TaskSummary, error) {
 	return r.TaskRepo.GetSummariesByColumn(ctx, columnID)
+}
+
+func (r *Repository) GetTasksByColumn(ctx context.Context, columnID int) ([]*models.Task, error) {
+	return r.TaskRepo.GetByColumn(ctx, columnID)
 }
 
 func (r *Repository) GetTaskDetail(ctx context.Context, id int) (*models.TaskDetail, error) {
@@ -102,6 +109,7 @@ func (r *Repository) DeleteTask(ctx context.Context, id int) error {
 }
 
 // Wrapper methods for LabelRepo to maintain existing API
+
 func (r *Repository) CreateLabel(ctx context.Context, projectID int, name, color string) (*models.Label, error) {
 	return r.LabelRepo.Create(ctx, projectID, name, color)
 }

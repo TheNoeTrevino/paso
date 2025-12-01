@@ -47,6 +47,33 @@ func (r *TaskRepo) Create(ctx context.Context, title, description string, column
 	return task, nil
 }
 
+// GetByColumn retrieves all tasks for a column with full details
+// This is primarily used for testing and admin purposes
+func (r *TaskRepo) GetByColumn(ctx context.Context, columnID int) ([]*models.Task, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, title, description, column_id, position, created_at, updated_at
+		 FROM tasks WHERE column_id = ? ORDER BY position`,
+		columnID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tasks []*models.Task
+	for rows.Next() {
+		task := &models.Task{}
+		if err := rows.Scan(
+			&task.ID, &task.Title, &task.Description,
+			&task.ColumnID, &task.Position, &task.CreatedAt, &task.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, task)
+	}
+	return tasks, rows.Err()
+}
+
 // GetSummariesByColumn retrieves task summaries for a column, including labels
 // Uses a single query with LEFT JOIN to avoid N+1 query pattern
 func (r *TaskRepo) GetSummariesByColumn(ctx context.Context, columnID int) ([]*models.TaskSummary, error) {
