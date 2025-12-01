@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -22,12 +23,12 @@ func (r *TaskRepo) CreateTask(ctx context.Context, title, description string, co
 		title, description, columnID, position,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to insert task: %w", err)
 	}
 
 	id, err := result.LastInsertId()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get last insert ID for task: %w", err)
 	}
 
 	// Retrieve the created task to get timestamps
@@ -41,7 +42,7 @@ func (r *TaskRepo) CreateTask(ctx context.Context, title, description string, co
 		&task.ColumnID, &task.Position, &task.CreatedAt, &task.UpdatedAt,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to retrieve created task %d: %w", id, err)
 	}
 
 	return task, nil
@@ -56,7 +57,7 @@ func (r *TaskRepo) GetTasksByColumn(ctx context.Context, columnID int) ([]*model
 		columnID,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query tasks for column %d: %w", columnID, err)
 	}
 	defer rows.Close()
 
@@ -67,11 +68,14 @@ func (r *TaskRepo) GetTasksByColumn(ctx context.Context, columnID int) ([]*model
 			&task.ID, &task.Title, &task.Description,
 			&task.ColumnID, &task.Position, &task.CreatedAt, &task.UpdatedAt,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan task row for column %d: %w", columnID, err)
 		}
 		tasks = append(tasks, task)
 	}
-	return tasks, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating tasks for column %d: %w", columnID, err)
+	}
+	return tasks, nil
 }
 
 // GetTaskSummariesByColumn retrieves task summaries for a column, including labels
@@ -97,7 +101,7 @@ func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) (
 
 	rows, err := r.db.QueryContext(ctx, query, columnID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query task summaries for column %d: %w", columnID, err)
 	}
 	defer rows.Close()
 
@@ -115,7 +119,7 @@ func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) (
 			&labelNamesStr,
 			&labelColorsStr,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan task summary for column %d: %w", columnID, err)
 		}
 
 		// Parse concatenated label data
@@ -123,7 +127,10 @@ func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) (
 		summaries = append(summaries, summary)
 	}
 
-	return summaries, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating task summaries for column %d: %w", columnID, err)
+	}
+	return summaries, nil
 }
 
 // GetTaskDetail retrieves full task details including description, timestamps, and labels
@@ -138,7 +145,7 @@ func (r *TaskRepo) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskD
 		&detail.ColumnID, &detail.Position, &detail.CreatedAt, &detail.UpdatedAt,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get task detail for task %d: %w", taskID, err)
 	}
 
 	// Get labels for this task
@@ -150,7 +157,7 @@ func (r *TaskRepo) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskD
 		ORDER BY l.name
 	`, taskID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query labels for task %d: %w", taskID, err)
 	}
 	defer rows.Close()
 
@@ -158,12 +165,12 @@ func (r *TaskRepo) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskD
 	for rows.Next() {
 		label := &models.Label{}
 		if err := rows.Scan(&label.ID, &label.Name, &label.Color, &label.ProjectID); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan label for task %d: %w", taskID, err)
 		}
 		labels = append(labels, label)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error iterating labels for task %d: %w", taskID, err)
 	}
 
 	detail.Labels = labels
@@ -175,7 +182,7 @@ func (r *TaskRepo) GetTaskCountByColumn(ctx context.Context, columnID int) (int,
 	var count int
 	err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks WHERE column_id = ?", columnID).Scan(&count)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to get task count for column %d: %w", columnID, err)
 	}
 	return count, nil
 }
@@ -188,7 +195,10 @@ func (r *TaskRepo) UpdateTask(ctx context.Context, taskID int, title, descriptio
 		 WHERE id = ?`,
 		title, description, taskID,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to update task %d: %w", taskID, err)
+	}
+	return nil
 }
 
 // MoveTaskToNextColumn moves a task from its current column to the next column in the linked list
@@ -196,7 +206,7 @@ func (r *TaskRepo) UpdateTask(ctx context.Context, taskID int, title, descriptio
 func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin transaction for moving task %d to next column: %w", taskID, err)
 	}
 	defer tx.Rollback()
 
@@ -207,7 +217,7 @@ func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		taskID,
 	).Scan(&currentColumnID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get current column for task %d: %w", taskID, err)
 	}
 
 	// 2. Get the next column's ID
@@ -217,7 +227,7 @@ func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		currentColumnID,
 	).Scan(&nextColumnID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get next column for column %d: %w", currentColumnID, err)
 	}
 
 	// 3. Check if there's a next column
@@ -232,7 +242,7 @@ func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		nextColumnID.Int64,
 	).Scan(&taskCount)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to count tasks in target column %d: %w", nextColumnID.Int64, err)
 	}
 
 	// 5. Move the task to the next column (append to end)
@@ -243,10 +253,13 @@ func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		nextColumnID.Int64, taskCount, taskID,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to move task %d to next column: %w", taskID, err)
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction for moving task %d: %w", taskID, err)
+	}
+	return nil
 }
 
 // MoveTaskToPrevColumn moves a task from its current column to the previous column in the linked list
@@ -254,7 +267,7 @@ func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin transaction for moving task %d to prev column: %w", taskID, err)
 	}
 	defer tx.Rollback()
 
@@ -265,7 +278,7 @@ func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		taskID,
 	).Scan(&currentColumnID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get current column for task %d: %w", taskID, err)
 	}
 
 	// 2. Get the previous column's ID
@@ -275,7 +288,7 @@ func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		currentColumnID,
 	).Scan(&prevColumnID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get prev column for column %d: %w", currentColumnID, err)
 	}
 
 	// 3. Check if there's a previous column
@@ -290,7 +303,7 @@ func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		prevColumnID.Int64,
 	).Scan(&taskCount)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to count tasks in target column %d: %w", prevColumnID.Int64, err)
 	}
 
 	// 5. Move the task to the previous column (append to end)
@@ -301,16 +314,22 @@ func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		prevColumnID.Int64, taskCount, taskID,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to move task %d to prev column: %w", taskID, err)
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction for moving task %d: %w", taskID, err)
+	}
+	return nil
 }
 
 // DeleteTask removes a task from the database
 func (r *TaskRepo) DeleteTask(ctx context.Context, taskID int) error {
 	_, err := r.db.ExecContext(ctx, "DELETE FROM tasks WHERE id = ?", taskID)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to delete task %d: %w", taskID, err)
+	}
+	return nil
 }
 
 // parseLabelStrings parses pipe-delimited label data from GROUP_CONCAT
