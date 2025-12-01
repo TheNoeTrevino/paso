@@ -157,134 +157,125 @@ func (m Model) updateExistingTaskWithLabels(values ticketFormValues) {
 	}
 }
 
-// finishTicketForm cleans up form state and returns to normal mode
-func (m Model) finishTicketForm() (tea.Model, tea.Cmd) {
-	m.uiState.SetMode(state.NormalMode)
-	m.formState.TicketForm = nil
-	m.formState.EditingTaskID = 0
-	m.formState.ClearTicketForm()
-	return m, tea.ClearScreen
+// formConfig holds configuration for generic form handling
+type formConfig struct {
+	form       *huh.Form
+	setForm    func(*huh.Form)
+	clearForm  func()
+	onComplete func() // Called when form completes successfully
+}
+
+// handleFormUpdate processes form messages generically
+func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd) {
+	if cfg.form == nil {
+		m.uiState.SetMode(state.NormalMode)
+		return m, nil
+	}
+
+	// Escape key handling
+	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == "esc" {
+		m.uiState.SetMode(state.NormalMode)
+		cfg.setForm(nil)
+		return m, nil
+	}
+
+	// Forward to form
+	var cmds []tea.Cmd
+	form, cmd := cfg.form.Update(msg)
+	if f, ok := form.(*huh.Form); ok {
+		cfg.setForm(f)
+		cmds = append(cmds, cmd)
+	}
+
+	// Check completion
+	if cfg.form.State == huh.StateCompleted {
+		cfg.onComplete()
+		m.uiState.SetMode(state.NormalMode)
+		cfg.setForm(nil)
+		cfg.clearForm()
+		return m, tea.ClearScreen
+	}
+
+	// Check abort
+	if cfg.form.State == huh.StateAborted {
+		m.uiState.SetMode(state.NormalMode)
+		cfg.setForm(nil)
+		cfg.clearForm()
+		return m, tea.ClearScreen
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 // updateTicketForm handles all messages when in TicketFormMode
 // This is separated out because huh forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.formState.TicketForm == nil {
-		m.uiState.SetMode(state.NormalMode)
-		return m, nil
-	}
+	return m.handleFormUpdate(msg, formConfig{
+		form: m.formState.TicketForm,
+		setForm: func(f *huh.Form) {
+			m.formState.TicketForm = f
+		},
+		clearForm: func() {
+			m.formState.ClearTicketForm()
+			m.formState.EditingTaskID = 0
+		},
+		onComplete: func() {
+			values := m.extractTicketFormValues()
 
-	// Check for escape key to cancel
-	if keyMsg, ok := msg.(tea.KeyMsg); ok {
-		if keyMsg.String() == "esc" {
-			m.uiState.SetMode(state.NormalMode)
-			m.formState.TicketForm = nil
-			return m, nil
-		}
-	}
-
-	// Forward ALL messages to the form
-	var cmds []tea.Cmd
-	form, cmd := m.formState.TicketForm.Update(msg)
-	if f, ok := form.(*huh.Form); ok {
-		m.formState.TicketForm = f
-		cmds = append(cmds, cmd)
-	}
-
-	// Check if form is complete
-	if m.formState.TicketForm.State == huh.StateCompleted {
-		values := m.extractTicketFormValues()
-
-		// Form submitted - check confirmation and save the task
-		if !values.confirm {
-			// User selected "No" on confirmation
-			return m.finishTicketForm()
-		}
-
-		if values.title != "" {
-			if m.formState.EditingTaskID == 0 {
-				m.createNewTaskWithLabels(values)
-			} else {
-				m.updateExistingTaskWithLabels(values)
+			// Form submitted - check confirmation and save the task
+			if !values.confirm {
+				// User selected "No" on confirmation
+				return
 			}
-		}
 
-		return m.finishTicketForm()
-	}
-
-	// Check if form was aborted
-	if m.formState.TicketForm.State == huh.StateAborted {
-		return m.finishTicketForm()
-	}
-
-	return m, tea.Batch(cmds...)
+			if values.title != "" {
+				if m.formState.EditingTaskID == 0 {
+					m.createNewTaskWithLabels(values)
+				} else {
+					m.updateExistingTaskWithLabels(values)
+				}
+			}
+		},
+	})
 }
 
 // updateProjectForm handles all messages when in ProjectFormMode
 // This is separated out because huh forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.formState.ProjectForm == nil {
-		m.uiState.SetMode(state.NormalMode)
-		return m, nil
-	}
+	return m.handleFormUpdate(msg, formConfig{
+		form: m.formState.ProjectForm,
+		setForm: func(f *huh.Form) {
+			m.formState.ProjectForm = f
+		},
+		clearForm: func() {
+			m.formState.ClearProjectForm()
+		},
+		onComplete: func() {
+			// Read values directly from the form using GetString
+			name := m.formState.ProjectForm.GetString("name")
+			description := m.formState.ProjectForm.GetString("description")
 
-	// Check for escape key to cancel
-	if keyMsg, ok := msg.(tea.KeyMsg); ok {
-		if keyMsg.String() == "esc" {
-			m.uiState.SetMode(state.NormalMode)
-			m.formState.ProjectForm = nil
-			return m, nil
-		}
-	}
+			// Form submitted - create the project
+			if strings.TrimSpace(name) != "" {
+				project, err := m.repo.CreateProject(context.Background(), strings.TrimSpace(name), strings.TrimSpace(description))
+				if err != nil {
+					log.Printf("Error creating project: %v", err)
+					m.errorState.Set("Error creating project")
+				} else {
+					// Reload projects list
+					m.reloadProjects()
 
-	// Forward ALL messages to the form
-	var cmds []tea.Cmd
-	form, cmd := m.formState.ProjectForm.Update(msg)
-	if f, ok := form.(*huh.Form); ok {
-		m.formState.ProjectForm = f
-		cmds = append(cmds, cmd)
-	}
-
-	// Check if form is complete
-	if m.formState.ProjectForm.State == huh.StateCompleted {
-		// Read values directly from the form using GetString
-		name := m.formState.ProjectForm.GetString("name")
-		description := m.formState.ProjectForm.GetString("description")
-
-		// Form submitted - create the project
-		if strings.TrimSpace(name) != "" {
-			project, err := m.repo.CreateProject(context.Background(), strings.TrimSpace(name), strings.TrimSpace(description))
-			if err != nil {
-				log.Printf("Error creating project: %v", err)
-				m.errorState.Set("Error creating project")
-			} else {
-				// Reload projects list
-				m.reloadProjects()
-
-				// Switch to the new project
-				for i, p := range m.appState.Projects() {
-					if p.ID == project.ID {
-						m.switchToProject(i)
-						break
+					// Switch to the new project
+					for i, p := range m.appState.Projects() {
+						if p.ID == project.ID {
+							m.switchToProject(i)
+							break
+						}
 					}
 				}
 			}
-		}
-		m.uiState.SetMode(state.NormalMode)
-		m.formState.ProjectForm = nil
-		m.formState.ClearProjectForm()
-		return m, tea.ClearScreen
-	}
-
-	// Check if form was aborted
-	if m.formState.ProjectForm.State == huh.StateAborted {
-		m.uiState.SetMode(state.NormalMode)
-		m.formState.ProjectForm = nil
-		m.formState.ClearProjectForm()
-		return m, tea.ClearScreen
-	}
-
-	return m, tea.Batch(cmds...)
+		},
+	})
 }
 
 // updateLabelPicker handles keyboard input in the label picker mode
