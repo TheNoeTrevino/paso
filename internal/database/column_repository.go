@@ -8,15 +8,16 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// ============================================================================
-// Column Operations
-// ============================================================================
+// ColumnRepo handles all column-related database operations.
+type ColumnRepo struct {
+	db *sql.DB
+}
 
-// CreateColumn creates a new column in the database for a specific project
+// Create creates a new column in the database for a specific project
 // If afterColumnID is nil, the column is appended to the end of the project's list
 // Otherwise, it's inserted after the specified column
-func CreateColumn(ctx context.Context, db *sql.DB, name string, projectID int, afterColumnID *int) (*models.Column, error) {
-	tx, err := db.BeginTx(ctx, nil)
+func (r *ColumnRepo) Create(ctx context.Context, name string, projectID int, afterColumnID *int) (*models.Column, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -104,11 +105,11 @@ func CreateColumn(ctx context.Context, db *sql.DB, name string, projectID int, a
 	}, nil
 }
 
-// GetColumnsByProject retrieves all columns for a specific project by traversing the linked list
+// GetByProject retrieves all columns for a specific project by traversing the linked list
 // Returns columns in order from head to tail
-func GetColumnsByProject(ctx context.Context, db *sql.DB, projectID int) ([]*models.Column, error) {
+func (r *ColumnRepo) GetByProject(ctx context.Context, projectID int) ([]*models.Column, error) {
 	// Fetch ALL columns for the project in a single query (fixes N+1 problem)
-	rows, err := db.QueryContext(ctx,
+	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, name, project_id, prev_id, next_id FROM columns WHERE project_id = ?`,
 		projectID)
 	if err != nil {
@@ -182,27 +183,10 @@ func GetColumnsByProject(ctx context.Context, db *sql.DB, projectID int) ([]*mod
 	return columns, nil
 }
 
-// GetAllColumns retrieves all columns from the database by traversing the linked list
-// This is a convenience function that gets columns for all projects (used in tests)
-// Returns columns in order from head to tail
-func GetAllColumns(ctx context.Context, db *sql.DB) ([]*models.Column, error) {
-	// Get the first project and return its columns
-	// For backward compatibility with tests
-	var projectID int
-	err := db.QueryRowContext(ctx, `SELECT id FROM projects ORDER BY id LIMIT 1`).Scan(&projectID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return []*models.Column{}, nil
-		}
-		return nil, err
-	}
-	return GetColumnsByProject(ctx, db, projectID)
-}
-
-// GetColumnByID retrieves a column by its ID
-func GetColumnByID(ctx context.Context, db *sql.DB, columnID int) (*models.Column, error) {
+// GetByID retrieves a column by its ID
+func (r *ColumnRepo) GetByID(ctx context.Context, columnID int) (*models.Column, error) {
 	column := &models.Column{}
-	err := db.QueryRowContext(ctx,
+	err := r.db.QueryRowContext(ctx,
 		`SELECT id, name, project_id, prev_id, next_id FROM columns WHERE id = ?`,
 		columnID,
 	).Scan(&column.ID, &column.Name, &column.ProjectID, &column.PrevID, &column.NextID)
@@ -212,19 +196,19 @@ func GetColumnByID(ctx context.Context, db *sql.DB, columnID int) (*models.Colum
 	return column, nil
 }
 
-// UpdateColumnName updates the name of an existing column
-func UpdateColumnName(ctx context.Context, db *sql.DB, columnID int, name string) error {
-	_, err := db.ExecContext(ctx,
+// UpdateName updates the name of an existing column
+func (r *ColumnRepo) UpdateName(ctx context.Context, columnID int, name string) error {
+	_, err := r.db.ExecContext(ctx,
 		`UPDATE columns SET name = ? WHERE id = ?`,
 		name, columnID,
 	)
 	return err
 }
 
-// DeleteColumn removes a column and all its tasks from the database
+// Delete removes a column and all its tasks from the database
 // This operation maintains the linked list structure by updating adjacent columns
-func DeleteColumn(ctx context.Context, db *sql.DB, columnID int) error {
-	tx, err := db.BeginTx(ctx, nil)
+func (r *ColumnRepo) Delete(ctx context.Context, columnID int) error {
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}

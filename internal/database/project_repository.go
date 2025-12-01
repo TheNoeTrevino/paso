@@ -7,13 +7,14 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// ============================================================================
-// Project Operations
-// ============================================================================
+// ProjectRepo handles all project-related database operations.
+type ProjectRepo struct {
+	db *sql.DB
+}
 
-// CreateProject creates a new project with default columns (Todo, In Progress, Done)
-func CreateProject(ctx context.Context, db *sql.DB, name, description string) (*models.Project, error) {
-	tx, err := db.BeginTx(ctx, nil)
+// Create creates a new project with default columns (Todo, In Progress, Done)
+func (r *ProjectRepo) Create(ctx context.Context, name, description string) (*models.Project, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -87,13 +88,13 @@ func CreateProject(ctx context.Context, db *sql.DB, name, description string) (*
 	}
 
 	// Retrieve the created project
-	return GetProjectByID(ctx, db, int(projectID))
+	return r.GetByID(ctx, int(projectID))
 }
 
-// GetProjectByID retrieves a project by its ID
-func GetProjectByID(ctx context.Context, db *sql.DB, id int) (*models.Project, error) {
+// GetByID retrieves a project by its ID
+func (r *ProjectRepo) GetByID(ctx context.Context, id int) (*models.Project, error) {
 	project := &models.Project{}
-	err := db.QueryRowContext(ctx,
+	err := r.db.QueryRowContext(ctx,
 		`SELECT id, name, description, created_at, updated_at FROM projects WHERE id = ?`,
 		id,
 	).Scan(&project.ID, &project.Name, &project.Description, &project.CreatedAt, &project.UpdatedAt)
@@ -103,9 +104,9 @@ func GetProjectByID(ctx context.Context, db *sql.DB, id int) (*models.Project, e
 	return project, nil
 }
 
-// GetAllProjects retrieves all projects ordered by name
-func GetAllProjects(ctx context.Context, db *sql.DB) ([]*models.Project, error) {
-	rows, err := db.QueryContext(ctx, `SELECT id, name, description, created_at, updated_at FROM projects ORDER BY id`)
+// GetAll retrieves all projects ordered by ID
+func (r *ProjectRepo) GetAll(ctx context.Context) ([]*models.Project, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT id, name, description, created_at, updated_at FROM projects ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -123,18 +124,18 @@ func GetAllProjects(ctx context.Context, db *sql.DB) ([]*models.Project, error) 
 	return projects, rows.Err()
 }
 
-// UpdateProject updates a project's name and description
-func UpdateProject(ctx context.Context, db *sql.DB, id int, name, description string) error {
-	_, err := db.ExecContext(ctx,
+// Update updates a project's name and description
+func (r *ProjectRepo) Update(ctx context.Context, id int, name, description string) error {
+	_, err := r.db.ExecContext(ctx,
 		`UPDATE projects SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
 		name, description, id,
 	)
 	return err
 }
 
-// DeleteProject removes a project and all its columns and tasks (cascade)
-func DeleteProject(ctx context.Context, db *sql.DB, id int) error {
-	tx, err := db.BeginTx(ctx, nil)
+// Delete removes a project and all its columns and tasks (cascade)
+func (r *ProjectRepo) Delete(ctx context.Context, id int) error {
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -186,10 +187,10 @@ func DeleteProject(ctx context.Context, db *sql.DB, id int) error {
 	return tx.Commit()
 }
 
-// GetProjectTaskCount returns the total number of tasks in a project
-func GetProjectTaskCount(ctx context.Context, db *sql.DB, projectID int) (int, error) {
+// GetTaskCount returns the total number of tasks in a project
+func (r *ProjectRepo) GetTaskCount(ctx context.Context, projectID int) (int, error) {
 	var count int
-	err := db.QueryRowContext(ctx, `
+	err := r.db.QueryRowContext(ctx, `
 		SELECT COUNT(*)
 		FROM tasks t
 		JOIN columns c ON t.column_id = c.id
@@ -199,8 +200,8 @@ func GetProjectTaskCount(ctx context.Context, db *sql.DB, projectID int) (int, e
 }
 
 // GetNextTicketNumber returns and increments the next ticket number for a project
-func GetNextTicketNumber(ctx context.Context, db *sql.DB, projectID int) (int, error) {
-	tx, err := db.BeginTx(ctx, nil)
+func (r *ProjectRepo) GetNextTicketNumber(ctx context.Context, projectID int) (int, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
