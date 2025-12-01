@@ -19,7 +19,7 @@ type ColumnRepo struct {
 func (r *ColumnRepo) CreateColumn(ctx context.Context, name string, projectID int, afterColumnID *int) (*models.Column, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -31,7 +31,7 @@ func (r *ColumnRepo) CreateColumn(ctx context.Context, name string, projectID in
 		var tailID sql.NullInt64
 		err = tx.QueryRowContext(ctx, `SELECT id FROM columns WHERE next_id IS NULL AND project_id = ? LIMIT 1`, projectID).Scan(&tailID)
 		if err != nil && err != sql.ErrNoRows {
-			return nil, err
+			return nil, fmt.Errorf("failed to find tail column for project %d: %w", projectID, err)
 		}
 
 		if tailID.Valid {
@@ -52,7 +52,7 @@ func (r *ColumnRepo) CreateColumn(ctx context.Context, name string, projectID in
 		var currentNextID sql.NullInt64
 		err = tx.QueryRowContext(ctx, `SELECT next_id FROM columns WHERE id = ?`, *afterColumnID).Scan(&currentNextID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get next_id for column %d: %w", *afterColumnID, err)
 		}
 
 		if currentNextID.Valid {
@@ -67,12 +67,12 @@ func (r *ColumnRepo) CreateColumn(ctx context.Context, name string, projectID in
 		name, projectID, prevID, nextID,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to insert column: %w", err)
 	}
 
 	newID, err := result.LastInsertId()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get last insert ID: %w", err)
 	}
 	newIDInt := int(newID)
 
@@ -80,7 +80,7 @@ func (r *ColumnRepo) CreateColumn(ctx context.Context, name string, projectID in
 	if prevID != nil {
 		_, err = tx.ExecContext(ctx, `UPDATE columns SET next_id = ? WHERE id = ?`, newIDInt, *prevID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to update prev column %d: %w", *prevID, err)
 		}
 	}
 
@@ -88,12 +88,12 @@ func (r *ColumnRepo) CreateColumn(ctx context.Context, name string, projectID in
 	if nextID != nil {
 		_, err = tx.ExecContext(ctx, `UPDATE columns SET prev_id = ? WHERE id = ?`, newIDInt, *nextID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to update next column %d: %w", *nextID, err)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return &models.Column{
@@ -161,7 +161,7 @@ func (r *ColumnRepo) GetColumnsByProject(ctx context.Context, projectID int) ([]
 	}
 
 	// Traverse the linked list in memory using the map
-	var columns []*models.Column
+	columns := make([]*models.Column, 0, len(columnMap))
 	currentID := *headID
 
 	for {
