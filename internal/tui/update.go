@@ -65,6 +65,107 @@ func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// ticketFormValues holds the extracted values from a completed ticket form
+type ticketFormValues struct {
+	title       string
+	description string
+	confirm     bool
+	labelIDs    []int
+}
+
+// extractTicketFormValues extracts and returns form values from the ticket form
+func (m Model) extractTicketFormValues() ticketFormValues {
+	title := m.formState.TicketForm.GetString("title")
+	description := m.formState.TicketForm.GetString("description")
+
+	confirm := true
+	if c := m.formState.TicketForm.Get("confirm"); c != nil {
+		if b, ok := c.(bool); ok {
+			confirm = b
+		}
+	}
+
+	var labelIDs []int
+	if labels := m.formState.TicketForm.Get("labels"); labels != nil {
+		if ids, ok := labels.([]int); ok {
+			labelIDs = ids
+		}
+	}
+
+	return ticketFormValues{
+		title:       strings.TrimSpace(title),
+		description: strings.TrimSpace(description),
+		confirm:     confirm,
+		labelIDs:    labelIDs,
+	}
+}
+
+// createNewTaskWithLabels creates a new task and sets its labels
+func (m Model) createNewTaskWithLabels(values ticketFormValues) {
+	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+	task, err := m.repo.CreateTask(context.Background(),
+		values.title,
+		values.description,
+		currentCol.ID,
+		len(m.appState.Tasks()[currentCol.ID]),
+	)
+	if err != nil {
+		log.Printf("Error creating task: %v", err)
+		m.errorState.Set("Error creating task")
+		return
+	}
+
+	// Set labels
+	if len(values.labelIDs) > 0 {
+		err = m.repo.SetTaskLabels(context.Background(), task.ID, values.labelIDs)
+		if err != nil {
+			log.Printf("Error setting labels: %v", err)
+		}
+	}
+
+	// Reload task summary with labels
+	summaries, err := m.repo.GetTaskSummariesByColumn(context.Background(), currentCol.ID)
+	if err != nil {
+		log.Printf("Error reloading tasks: %v", err)
+	} else {
+		m.appState.Tasks()[currentCol.ID] = summaries
+	}
+}
+
+// updateExistingTaskWithLabels updates an existing task and its labels
+func (m Model) updateExistingTaskWithLabels(values ticketFormValues) {
+	err := m.repo.UpdateTask(context.Background(), m.formState.EditingTaskID, values.title, values.description)
+	if err != nil {
+		log.Printf("Error updating task: %v", err)
+		m.errorState.Set("Error updating task")
+		return
+	}
+
+	// Update labels
+	err = m.repo.SetTaskLabels(context.Background(), m.formState.EditingTaskID, values.labelIDs)
+	if err != nil {
+		log.Printf("Error setting labels: %v", err)
+	}
+
+	// Reload task summaries for the column
+	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+	summaries, err := m.repo.GetTaskSummariesByColumn(context.Background(), currentCol.ID)
+	if err != nil {
+		log.Printf("Error reloading tasks: %v", err)
+	} else {
+		m.appState.Tasks()[currentCol.ID] = summaries
+	}
+}
+
+// finishTicketForm cleans up form state and returns to normal mode
+func (m Model) finishTicketForm() (tea.Model, tea.Cmd) {
+	m.uiState.SetMode(state.NormalMode)
+	m.formState.TicketForm = nil
+	m.formState.EditingTaskID = 0
+	m.formState.ClearTicketForm()
+	return m, tea.ClearScreen
+}
+
 // updateTicketForm handles all messages when in TicketFormMode
 // This is separated out because huh forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -92,100 +193,28 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Check if form is complete
 	if m.formState.TicketForm.State == huh.StateCompleted {
-		// Read values directly from the form (not from bound pointers which point to stale model copies)
-		title := m.formState.TicketForm.GetString("title")
-		description := m.formState.TicketForm.GetString("description")
-
-		confirm := true
-		if c := m.formState.TicketForm.Get("confirm"); c != nil {
-			if b, ok := c.(bool); ok {
-				confirm = b
-			}
-		}
-
-		// Get label IDs - need type assertion since it's a generic Get
-		var labelIDs []int
-		if labels := m.formState.TicketForm.Get("labels"); labels != nil {
-			if ids, ok := labels.([]int); ok {
-				labelIDs = ids
-			}
-		}
+		values := m.extractTicketFormValues()
 
 		// Form submitted - check confirmation and save the task
-		if !confirm {
+		if !values.confirm {
 			// User selected "No" on confirmation
-			m.uiState.SetMode(state.NormalMode)
-			m.formState.TicketForm = nil
-			m.formState.EditingTaskID = 0
-			m.formState.ClearTicketForm()
-			return m, tea.ClearScreen
+			return m.finishTicketForm()
 		}
-		if strings.TrimSpace(title) != "" {
+
+		if values.title != "" {
 			if m.formState.EditingTaskID == 0 {
-				// Create new task
-				currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
-				task, err := m.repo.CreateTask(context.Background(),
-					strings.TrimSpace(title),
-					strings.TrimSpace(description),
-					currentCol.ID,
-					len(m.appState.Tasks()[currentCol.ID]),
-				)
-				if err != nil {
-					log.Printf("Error creating task: %v", err)
-					m.errorState.Set("Error creating task")
-				} else {
-					// Set labels
-					if len(labelIDs) > 0 {
-						err = m.repo.SetTaskLabels(context.Background(), task.ID, labelIDs)
-						if err != nil {
-							log.Printf("Error setting labels: %v", err)
-						}
-					}
-					// Reload task summary with labels
-					summaries, err := m.repo.GetTaskSummariesByColumn(context.Background(), currentCol.ID)
-					if err != nil {
-						log.Printf("Error reloading tasks: %v", err)
-					} else {
-						m.appState.Tasks()[currentCol.ID] = summaries
-					}
-				}
+				m.createNewTaskWithLabels(values)
 			} else {
-				// Update existing task
-				err := m.repo.UpdateTask(context.Background(), m.formState.EditingTaskID, strings.TrimSpace(title), strings.TrimSpace(description))
-				if err != nil {
-					log.Printf("Error updating task: %v", err)
-					m.errorState.Set("Error updating task")
-				} else {
-					// Update labels
-					err = m.repo.SetTaskLabels(context.Background(), m.formState.EditingTaskID, labelIDs)
-					if err != nil {
-						log.Printf("Error setting labels: %v", err)
-					}
-					// Reload task summaries for the column
-					currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
-					summaries, err := m.repo.GetTaskSummariesByColumn(context.Background(), currentCol.ID)
-					if err != nil {
-						log.Printf("Error reloading tasks: %v", err)
-					} else {
-						m.appState.Tasks()[currentCol.ID] = summaries
-					}
-				}
+				m.updateExistingTaskWithLabels(values)
 			}
 		}
-		m.uiState.SetMode(state.NormalMode)
-		m.formState.TicketForm = nil
-		m.formState.EditingTaskID = 0
-		m.formState.ClearTicketForm()
-		return m, tea.ClearScreen
+
+		return m.finishTicketForm()
 	}
 
 	// Check if form was aborted
 	if m.formState.TicketForm.State == huh.StateAborted {
-		m.uiState.SetMode(state.NormalMode)
-		m.formState.TicketForm = nil
-		m.formState.EditingTaskID = 0
-		m.formState.ClearTicketForm()
-		return m, tea.ClearScreen
+		return m.finishTicketForm()
 	}
 
 	return m, tea.Batch(cmds...)
