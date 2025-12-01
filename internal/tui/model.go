@@ -95,6 +95,9 @@ func (m Model) getCurrentTasks() []*models.TaskSummary {
 	if len(m.appState.Columns()) == 0 {
 		return []*models.TaskSummary{}
 	}
+	if m.uiState.SelectedColumn() >= len(m.appState.Columns()) {
+		return []*models.TaskSummary{}
+	}
 	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 	tasks := m.appState.Tasks()[currentCol.ID]
 	if tasks == nil {
