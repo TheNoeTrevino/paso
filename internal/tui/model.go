@@ -119,7 +119,7 @@ func (m Model) getCurrentTask() *models.TaskSummary {
 // removeCurrentTask removes the currently selected task from the model's local state
 // This should be called after successfully deleting a task from the database
 // It adjusts the selectedTask index if necessary to keep it within bounds
-func (m *Model) removeCurrentTask() {
+func (m Model) removeCurrentTask() {
 	if len(m.appState.Columns()) == 0 {
 		return
 	}
@@ -157,7 +157,7 @@ func (m Model) getCurrentColumn() *models.Column {
 // This should be called after successfully deleting a column from the database
 // It adjusts the selectedColumn index if necessary to keep it within bounds
 // It also adjusts the viewportOffset if needed
-func (m *Model) removeCurrentColumn() {
+func (m Model) removeCurrentColumn() {
 	columns := m.appState.Columns()
 	selectedCol := m.uiState.SelectedColumn()
 
@@ -183,7 +183,7 @@ func (m *Model) removeCurrentColumn() {
 // moveTaskRight moves the currently selected task to the next column (right)
 // Updates both the local state and the database using the linked list structure
 // The selection follows the moved task and the viewport scrolls if needed
-func (m *Model) moveTaskRight() {
+func (m Model) moveTaskRight() {
 	// Get the current task
 	task := m.getCurrentTask()
 	if task == nil {
@@ -228,7 +228,7 @@ func (m *Model) moveTaskRight() {
 // moveTaskLeft moves the currently selected task to the previous column (left)
 // Updates both the local state and the database using the linked list structure
 // The selection follows the moved task and the viewport scrolls if needed
-func (m *Model) moveTaskLeft() {
+func (m Model) moveTaskLeft() {
 	// Get the current task
 	task := m.getCurrentTask()
 	if task == nil {
@@ -277,7 +277,7 @@ func (m Model) getCurrentProject() *models.Project {
 }
 
 // switchToProject switches to a different project by index and reloads columns/tasks/labels
-func (m *Model) switchToProject(projectIndex int) {
+func (m Model) switchToProject(projectIndex int) {
 	if projectIndex < 0 || projectIndex >= len(m.appState.Projects()) {
 		return
 	}
@@ -320,7 +320,7 @@ func (m *Model) switchToProject(projectIndex int) {
 }
 
 // reloadProjects reloads the projects list from the database
-func (m *Model) reloadProjects() {
+func (m Model) reloadProjects() {
 	projects, err := m.repo.GetAllProjects(context.Background())
 	if err != nil {
 		log.Printf("Error reloading projects: %v", err)
@@ -330,7 +330,7 @@ func (m *Model) reloadProjects() {
 }
 
 // reloadLabels reloads the labels for the current project from the database
-func (m *Model) reloadLabels() {
+func (m Model) reloadLabels() {
 	project := m.getCurrentProject()
 	if project == nil {
 		m.appState.SetLabels([]*models.Label{})
@@ -347,7 +347,7 @@ func (m *Model) reloadLabels() {
 
 // initLabelPicker initializes the label picker for a task
 // Returns false if there's no task to edit
-func (m *Model) initLabelPicker(taskID int) bool {
+func (m Model) initLabelPicker(taskID int) bool {
 	if taskID == 0 {
 		return false
 	}
