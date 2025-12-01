@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/thenoetrevino/paso/internal/models"
@@ -156,7 +157,7 @@ func TestHandleAddTask_NoColumns(t *testing.T) {
 	}
 
 	expectedError := "Cannot add task: No columns exist"
-	if !contains(m.errorState.Get(), expectedError) {
+	if !strings.Contains(m.errorState.Get(), expectedError) {
 		t.Errorf("Error message = %q, want to contain %q", m.errorState.Get(), expectedError)
 	}
 
@@ -256,18 +257,4 @@ func TestHandleScrollRight_SelectionFollows(t *testing.T) {
 	if m.uiState.SelectedTask() != 0 {
 		t.Errorf("SelectedTask after scroll adjustment = %d, want 0", m.uiState.SelectedTask())
 	}
-}
-
-// contains checks if a string contains a substring.
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || containsMiddle(s, substr)))
-}
-
-func containsMiddle(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
