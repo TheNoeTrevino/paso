@@ -339,6 +339,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						err := m.repo.RemoveLabelFromTask(context.Background(), m.labelPickerState.TaskID, item.Label.ID)
 						if err != nil {
 							log.Printf("Error removing label: %v", err)
+							m.errorState.Set("Failed to remove label from task")
 						} else {
 							m.labelPickerState.Items[i].Selected = false
 						}
@@ -347,6 +348,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						err := m.repo.AddLabelToTask(context.Background(), m.labelPickerState.TaskID, item.Label.ID)
 						if err != nil {
 							log.Printf("Error adding label: %v", err)
+							m.errorState.Set("Failed to add label to task")
 						} else {
 							m.labelPickerState.Items[i].Selected = true
 						}
@@ -430,6 +432,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		label, err := m.repo.CreateLabel(context.Background(), project.ID, m.formState.FormLabelName, color)
 		if err != nil {
 			log.Printf("Error creating label: %v", err)
+			m.errorState.Set("Failed to create label")
 			m.labelPickerState.CreateMode = false
 			return m, nil
 		}
@@ -447,6 +450,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		err = m.repo.AddLabelToTask(context.Background(), m.labelPickerState.TaskID, label.ID)
 		if err != nil {
 			log.Printf("Error assigning new label to task: %v", err)
+			m.errorState.Set("Failed to assign label to task")
 		}
 
 		// Reload task detail to update the view
