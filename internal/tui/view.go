@@ -122,37 +122,7 @@ func (m Model) View() string {
 
 	// Handle help mode: show keyboard shortcuts
 	if m.uiState.Mode() == state.HelpMode {
-		helpContent := `PASO - Keyboard Shortcuts
-
-TASKS
-  a     Add new task
-  e     Edit selected task
-  d     Delete selected task
-  <     Move task to previous column
-  >     Move task to next column
-  space View task details
-  l     Edit labels (when viewing task)
-
-COLUMNS
-  C     Create new column (after current)
-  R     Rename current column
-  X     Delete current column
-
-NAVIGATION
-  h     Move to previous column
-  l     Move to next column
-  k     Move to previous task
-  j     Move to next task
-  [     Scroll viewport left
-  ]     Scroll viewport right
-  {     Move to next project
-  }     Move to prev project
-
-OTHER
-  ?     Show this help screen
-  q     Quit application
-
-Press any key to close`
+		helpContent := helpText
 
 		helpBox := HelpBoxStyle.
 			Width(50).
@@ -277,19 +247,15 @@ Press any key to close`
 		columns = append(columns, RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight))
 	}
 
-	// Add scroll indicators
-	leftArrow := " "
-	rightArrow := " "
-	if m.uiState.ViewportOffset() > 0 {
-		leftArrow = "◀"
-	}
-	if m.uiState.ViewportOffset()+m.uiState.ViewportSize() < len(m.appState.Columns()) {
-		rightArrow = "▶"
-	}
+	scrollIndicators := GetScrollIndicators(
+		m.uiState.ViewportOffset(),
+		m.uiState.ViewportSize(),
+		len(m.appState.Columns()),
+	)
 
 	// Layout columns horizontally with scroll indicators
 	columnsView := lipgloss.JoinHorizontal(lipgloss.Top, columns...)
-	board := lipgloss.JoinHorizontal(lipgloss.Top, leftArrow, " ", columnsView, " ", rightArrow)
+	board := lipgloss.JoinHorizontal(lipgloss.Top, scrollIndicators.Left, " ", columnsView, " ", scrollIndicators.Right)
 
 	// Get cached total task count
 	totalTasks := m.appState.TotalTaskCount()
@@ -304,27 +270,16 @@ Press any key to close`
 	}
 	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width())
 
-	// Create header with status bar
 	header := TitleStyle.Render("PASO - Your Tasks")
-	statusBar := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).
-		Render(fmt.Sprintf("%d columns  |  %d tasks  |  Press ? for help", len(m.appState.Columns()), totalTasks))
+	statusBar := RenderStatusBar(len(m.appState.Columns()), totalTasks)
 
-	// Create error banner if there's an error
+	// error notification
 	var errorBanner string
 	if m.errorState.HasError() {
-		errorBanner = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("196")).
-			Background(lipgloss.Color("52")).
-			Bold(true).
-			Padding(0, 1).
-			Render("⚠ " + m.errorState.Get())
+		errorBanner = RenderErrorBanner(m.errorState.Get())
 	}
 
-	// Create footer with keyboard shortcuts
-	footer := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).
-		Render("[a]dd  [e]dit  [d]elete  [C]ol  [R]ename  [X]delete  [hjkl]nav  [[]]scroll  [?]help  [q]uit")
+	footer := RenderFooter()
 
 	// Combine all elements vertically
 	elements := []string{tabBar, "", header, statusBar}
@@ -335,3 +290,35 @@ Press any key to close`
 
 	return lipgloss.JoinVertical(lipgloss.Left, elements...)
 }
+
+const helpText = `PASO - Keyboard Shortcuts
+
+TASKS
+  a     Add new task
+  e     Edit selected task
+  d     Delete selected task
+  <     Move task to previous column
+  >     Move task to next column
+  space View task details
+  l     Edit labels (when viewing task)
+
+COLUMNS
+  C     Create new column (after current)
+  R     Rename current column
+  X     Delete current column
+
+NAVIGATION
+  h     Move to previous column
+  l     Move to next column
+  k     Move to previous task
+  j     Move to next task
+  [     Scroll viewport left
+  ]     Scroll viewport right
+  {     Move to next project
+  }     Move to prev project
+
+OTHER
+  ?     Show this help screen
+  q     Quit application
+
+Press any key to close`
