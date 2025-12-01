@@ -12,6 +12,9 @@ type AppState struct {
 	// columns contains all columns for the current project, ordered by linked list traversal
 	columns []*models.Column
 
+	// columnByID provides O(1) lookup of columns by ID
+	columnByID map[int]*models.Column
+
 	// tasks maps column IDs to their task summaries (includes labels)
 	tasks map[int][]*models.TaskSummary
 
@@ -46,6 +49,7 @@ func NewAppState(
 		projects:        projects,
 		selectedProject: selectedProject,
 		columns:         columns,
+		columnByID:      buildColumnByIDMap(columns),
 		tasks:           tasks,
 		labels:          labels,
 		totalTaskCount:  calculateTotalTaskCount(tasks),
@@ -59,6 +63,15 @@ func calculateTotalTaskCount(tasks map[int][]*models.TaskSummary) int {
 		total += len(columnTasks)
 	}
 	return total
+}
+
+// buildColumnByIDMap creates a map for O(1) column lookup by ID
+func buildColumnByIDMap(columns []*models.Column) map[int]*models.Column {
+	m := make(map[int]*models.Column, len(columns))
+	for _, col := range columns {
+		m[col.ID] = col
+	}
+	return m
 }
 
 // GetCurrentProject returns the currently selected project.
@@ -94,6 +107,13 @@ func (s *AppState) Columns() []*models.Column {
 // This should be called after reloading columns from the database.
 func (s *AppState) SetColumns(columns []*models.Column) {
 	s.columns = columns
+	s.columnByID = buildColumnByIDMap(columns)
+}
+
+// GetColumnByID returns a column by its ID with O(1) lookup.
+// Returns nil if the column is not found.
+func (s *AppState) GetColumnByID(id int) *models.Column {
+	return s.columnByID[id]
 }
 
 // Tasks returns the tasks map.
