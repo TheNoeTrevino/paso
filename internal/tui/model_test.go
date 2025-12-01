@@ -46,19 +46,11 @@ func TestGetCurrentTasks_SelectedColumnOutOfBounds(t *testing.T) {
 	// Set selected column out of bounds
 	m.uiState.SetSelectedColumn(5)
 
-	// This should panic with current implementation due to line 99 in model.go
-	// However, we're testing expected behavior (which would be to return empty slice)
-	// Note: This test documents the current bug - getCurrentTasks doesn't bounds-check
-	defer func() {
-		if r := recover(); r != nil {
-			// Expected: panic due to index out of bounds
-			// The bug is that getCurrentTasks doesn't check selectedColumn bounds
-			t.Logf("getCurrentTasks() panicked as expected with out-of-bounds index: %v", r)
-		}
-	}()
-
+	// Should return empty slice safely without panic
 	result := m.getCurrentTasks()
-	// If we reach here without panic, the bug was fixed
+	if result == nil {
+		t.Error("getCurrentTasks() with out-of-bounds index = nil, want empty slice")
+	}
 	if len(result) != 0 {
 		t.Errorf("getCurrentTasks() with invalid selectedColumn = %d tasks, want 0", len(result))
 	}
