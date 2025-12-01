@@ -16,191 +16,225 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
-	// Handle ticket form mode: show huh form in centered dialog
-	if m.uiState.Mode() == state.TicketFormMode && m.formState.TicketForm != nil {
-		formView := m.formState.TicketForm.View()
+	// Dispatch to appropriate view handler based on mode
+	switch m.uiState.Mode() {
+	case state.TicketFormMode:
+		return m.viewTicketForm()
+	case state.ProjectFormMode:
+		return m.viewProjectForm()
+	case state.AddColumnMode, state.EditColumnMode:
+		return m.viewColumnInput()
+	case state.DeleteConfirmMode:
+		return m.viewDeleteTaskConfirm()
+	case state.DeleteColumnConfirmMode:
+		return m.viewDeleteColumnConfirm()
+	case state.HelpMode:
+		return m.viewHelp()
+	case state.LabelPickerMode:
+		return m.viewLabelPicker()
+	case state.ViewTaskMode:
+		return m.viewTaskDetail()
+	default:
+		return m.viewKanbanBoard()
+	}
+}
 
-		// Wrap form in a styled container
-		formBox := FormBoxStyle.
+// viewTicketForm renders the ticket creation/edit form modal
+func (m Model) viewTicketForm() string {
+	if m.formState.TicketForm == nil {
+		return ""
+	}
+
+	formView := m.formState.TicketForm.View()
+
+	// Wrap form in a styled container
+	formBox := FormBoxStyle.
+		Width(m.uiState.Width() / 2).
+		Height(m.uiState.Height() / 2).
+		Render(formView)
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		formBox,
+	)
+}
+
+// viewProjectForm renders the project creation form modal
+func (m Model) viewProjectForm() string {
+	if m.formState.ProjectForm == nil {
+		return ""
+	}
+
+	formView := m.formState.ProjectForm.View()
+
+	// Wrap form in a styled container with green border for creation
+	formBox := ProjectFormBoxStyle.
+		Width(m.uiState.Width() / 2).
+		Height(m.uiState.Height() / 3).
+		Render("New Project\n\n" + formView)
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		formBox,
+	)
+}
+
+// viewColumnInput renders the column name input dialog (create or edit mode)
+func (m Model) viewColumnInput() string {
+	var inputBox string
+	if m.uiState.Mode() == state.AddColumnMode {
+		inputBox = CreateInputBoxStyle.
+			Width(50).
+			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
+	} else {
+		// EditColumnMode
+		inputBox = EditInputBoxStyle.
+			Width(50).
+			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
+	}
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		inputBox,
+	)
+}
+
+// viewDeleteTaskConfirm renders the task deletion confirmation dialog
+func (m Model) viewDeleteTaskConfirm() string {
+	task := m.getCurrentTask()
+	if task == nil {
+		return ""
+	}
+
+	confirmBox := DeleteConfirmBoxStyle.
+		Width(50).
+		Render(fmt.Sprintf("Delete '%s'?\n\n[y]es  [n]o", task.Title))
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		confirmBox,
+	)
+}
+
+// viewDeleteColumnConfirm renders the column deletion confirmation with task count warning
+func (m Model) viewDeleteColumnConfirm() string {
+	column := m.getCurrentColumn()
+	if column == nil {
+		return ""
+	}
+
+	var content string
+	taskCount := m.inputState.DeleteColumnTaskCount
+	if taskCount > 0 {
+		content = fmt.Sprintf(
+			"Delete column '%s'?\nThis will also delete %d task(s).\n\n[y]es  [n]o",
+			column.Name,
+			taskCount,
+		)
+	} else {
+		content = fmt.Sprintf("Delete column '%s'?\n\n[y]es  [n]o", column.Name)
+	}
+
+	confirmBox := DeleteConfirmBoxStyle.
+		Width(50).
+		Render(content)
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		confirmBox,
+	)
+}
+
+// viewHelp renders the keyboard shortcuts help screen
+func (m Model) viewHelp() string {
+	helpBox := HelpBoxStyle.
+		Width(50).
+		Render(helpText)
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		helpBox,
+	)
+}
+
+// viewLabelPicker renders the label picker modal (select or create mode)
+func (m Model) viewLabelPicker() string {
+	// Render the label picker content
+	var pickerContent string
+	if m.labelPickerState.CreateMode {
+		// Show color picker
+		pickerContent = RenderLabelColorPicker(
+			GetDefaultLabelColors(),
+			m.labelPickerState.ColorIdx,
+			m.formState.FormLabelName,
+			m.uiState.Width()/2-8,
+		)
+	} else {
+		// Show label list (use filtered items from state)
+		pickerContent = RenderLabelPicker(
+			m.getFilteredLabelPickerItems(),
+			m.labelPickerState.Cursor,
+			m.labelPickerState.Filter,
+			true, // show create option
+			m.uiState.Width()/2-8,
+			m.uiState.Height()/2-4,
+		)
+	}
+
+	// Wrap in styled container - use different style for create mode
+	var pickerBox string
+	if m.labelPickerState.CreateMode {
+		pickerBox = LabelPickerCreateBoxStyle.
 			Width(m.uiState.Width() / 2).
 			Height(m.uiState.Height() / 2).
-			Render(formView)
-
-		return lipgloss.Place(
-			m.uiState.Width(), m.uiState.Height(),
-			lipgloss.Center, lipgloss.Center,
-			formBox,
-		)
-	}
-
-	// Handle project form mode: show huh form in centered dialog
-	if m.uiState.Mode() == state.ProjectFormMode && m.formState.ProjectForm != nil {
-		formView := m.formState.ProjectForm.View()
-
-		// Wrap form in a styled container with green border for creation
-		formBox := ProjectFormBoxStyle.
+			Render(pickerContent)
+	} else {
+		pickerBox = LabelPickerBoxStyle.
 			Width(m.uiState.Width() / 2).
-			Height(m.uiState.Height() / 3).
-			Render("New Project\n\n" + formView)
-
-		return lipgloss.Place(
-			m.uiState.Width(), m.uiState.Height(),
-			lipgloss.Center, lipgloss.Center,
-			formBox,
-		)
+			Height(m.uiState.Height() / 2).
+			Render(pickerContent)
 	}
 
-	// Handle column creation mode: show centered dialog with green border
-	if m.uiState.Mode() == state.AddColumnMode {
-		inputBox := CreateInputBoxStyle.
-			Width(50).
-			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		pickerBox,
+	)
+}
 
-		return lipgloss.Place(
-			m.uiState.Width(), m.uiState.Height(),
-			lipgloss.Center, lipgloss.Center,
-			inputBox,
-		)
+// viewTaskDetail renders the full task details modal
+func (m Model) viewTaskDetail() string {
+	if m.uiState.ViewingTask() == nil {
+		return ""
 	}
 
-	// Handle column edit mode: show centered dialog with blue border
-	if m.uiState.Mode() == state.EditColumnMode {
-		inputBox := EditInputBoxStyle.
-			Width(50).
-			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
-
-		return lipgloss.Place(
-			m.uiState.Width(), m.uiState.Height(),
-			lipgloss.Center, lipgloss.Center,
-			inputBox,
-		)
-	}
-
-	// Handle delete confirmation mode: show centered dialog
-	if m.uiState.Mode() == state.DeleteConfirmMode {
-		task := m.getCurrentTask()
-		if task != nil {
-			confirmBox := DeleteConfirmBoxStyle.
-				Width(50).
-				Render(fmt.Sprintf("Delete '%s'?\n\n[y]es  [n]o", task.Title))
-
-			return lipgloss.Place(
-				m.uiState.Width(), m.uiState.Height(),
-				lipgloss.Center, lipgloss.Center,
-				confirmBox,
-			)
+	// Find the column name for the task
+	columnName := "Unknown"
+	for _, col := range m.appState.Columns() {
+		if col.ID == m.uiState.ViewingTask().ColumnID {
+			columnName = col.Name
+			break
 		}
 	}
 
-	// Handle delete column confirmation mode: show centered dialog with task count warning
-	if m.uiState.Mode() == state.DeleteColumnConfirmMode {
-		column := m.getCurrentColumn()
-		if column != nil {
-			var content string
-			taskCount := m.inputState.DeleteColumnTaskCount
-			if taskCount > 0 {
-				content = fmt.Sprintf(
-					"Delete column '%s'?\nThis will also delete %d task(s).\n\n[y]es  [n]o",
-					column.Name,
-					taskCount,
-				)
-			} else {
-				content = fmt.Sprintf("Delete column '%s'?\n\n[y]es  [n]o", column.Name)
-			}
+	return components.RenderTaskView(components.TaskViewProps{
+		Task:         m.uiState.ViewingTask(),
+		ColumnName:   columnName,
+		PopupWidth:   m.uiState.Width() / 2,
+		PopupHeight:  m.uiState.Height() / 2,
+		ScreenWidth:  m.uiState.Width(),
+		ScreenHeight: m.uiState.Height(),
+	})
+}
 
-			confirmBox := DeleteConfirmBoxStyle.
-				Width(50).
-				Render(content)
-
-			return lipgloss.Place(
-				m.uiState.Width(), m.uiState.Height(),
-				lipgloss.Center, lipgloss.Center,
-				confirmBox,
-			)
-		}
-	}
-
-	// Handle help mode: show keyboard shortcuts
-	if m.uiState.Mode() == state.HelpMode {
-		helpContent := helpText
-
-		helpBox := HelpBoxStyle.
-			Width(50).
-			Render(helpContent)
-
-		return lipgloss.Place(
-			m.uiState.Width(), m.uiState.Height(),
-			lipgloss.Center, lipgloss.Center,
-			helpBox,
-		)
-	}
-
-	// Handle label picker mode: show picker over task view
-	if m.uiState.Mode() == state.LabelPickerMode {
-		// Render the label picker content
-		var pickerContent string
-		if m.labelPickerState.CreateMode {
-			// Show color picker
-			pickerContent = RenderLabelColorPicker(
-				GetDefaultLabelColors(),
-				m.labelPickerState.ColorIdx,
-				m.formState.FormLabelName,
-				m.uiState.Width()/2-8,
-			)
-		} else {
-			// Show label list (use filtered items from state)
-			pickerContent = RenderLabelPicker(
-				m.getFilteredLabelPickerItems(),
-				m.labelPickerState.Cursor,
-				m.labelPickerState.Filter,
-				true, // show create option
-				m.uiState.Width()/2-8,
-				m.uiState.Height()/2-4,
-			)
-		}
-
-		// Wrap in styled container - use different style for create mode
-		var pickerBox string
-		if m.labelPickerState.CreateMode {
-			pickerBox = LabelPickerCreateBoxStyle.
-				Width(m.uiState.Width() / 2).
-				Height(m.uiState.Height() / 2).
-				Render(pickerContent)
-		} else {
-			pickerBox = LabelPickerBoxStyle.
-				Width(m.uiState.Width() / 2).
-				Height(m.uiState.Height() / 2).
-				Render(pickerContent)
-		}
-
-		return lipgloss.Place(
-			m.uiState.Width(), m.uiState.Height(),
-			lipgloss.Center, lipgloss.Center,
-			pickerBox,
-		)
-	}
-
-	if m.uiState.Mode() == state.ViewTaskMode && m.uiState.ViewingTask() != nil {
-		// Find the column name for the task
-		columnName := "Unknown"
-		for _, col := range m.appState.Columns() {
-			if col.ID == m.uiState.ViewingTask().ColumnID {
-				columnName = col.Name
-				break
-			}
-		}
-
-		return components.RenderTaskView(components.TaskViewProps{
-			Task:         m.uiState.ViewingTask(),
-			ColumnName:   columnName,
-			PopupWidth:   m.uiState.Width() / 2,
-			PopupHeight:  m.uiState.Height() / 2,
-			ScreenWidth:  m.uiState.Width(),
-			ScreenHeight: m.uiState.Height(),
-		})
-	}
-
-	// Normal mode: render kanban board
+// viewKanbanBoard renders the main kanban board (normal mode)
+func (m Model) viewKanbanBoard() string {
 	// Handle empty column list edge case
 	if len(m.appState.Columns()) == 0 {
 		header := TitleStyle.Render("PASO - Your Tasks")
