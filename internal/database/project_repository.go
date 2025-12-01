@@ -113,7 +113,7 @@ func (r *ProjectRepo) GetAllProjects(ctx context.Context) ([]*models.Project, er
 	}
 	defer rows.Close()
 
-	var projects []*models.Project
+	projects := make([]*models.Project, 0, 10)
 	for rows.Next() {
 		project := &models.Project{}
 		if err := rows.Scan(&project.ID, &project.Name, &project.Description, &project.CreatedAt, &project.UpdatedAt); err != nil {
@@ -148,29 +148,10 @@ func (r *ProjectRepo) DeleteProject(ctx context.Context, id int) error {
 	}
 	defer tx.Rollback()
 
-	// Get all columns for this project
-	rows, err := tx.QueryContext(ctx, `SELECT id FROM columns WHERE project_id = ?`, id)
+	// Delete all tasks for columns in this project (using subquery)
+	_, err = tx.ExecContext(ctx, `DELETE FROM tasks WHERE column_id IN (SELECT id FROM columns WHERE project_id = ?)`, id)
 	if err != nil {
-		return fmt.Errorf("failed to query columns for project %d deletion: %w", id, err)
-	}
-
-	var columnIDs []int
-	for rows.Next() {
-		var colID int
-		if err := rows.Scan(&colID); err != nil {
-			rows.Close()
-			return fmt.Errorf("failed to scan column ID during project %d deletion: %w", id, err)
-		}
-		columnIDs = append(columnIDs, colID)
-	}
-	rows.Close()
-
-	// Delete all tasks in those columns
-	for _, colID := range columnIDs {
-		_, err = tx.ExecContext(ctx, `DELETE FROM tasks WHERE column_id = ?`, colID)
-		if err != nil {
-			return fmt.Errorf("failed to delete tasks for column %d during project %d deletion: %w", colID, id, err)
-		}
+		return fmt.Errorf("failed to delete tasks for project %d: %w", id, err)
 	}
 
 	// Delete all columns for this project

@@ -47,7 +47,7 @@ func (r *LabelRepo) GetLabelsByProject(ctx context.Context, projectID int) ([]*m
 	}
 	defer rows.Close()
 
-	var labels []*models.Label
+	labels := make([]*models.Label, 0, 20)
 	for rows.Next() {
 		label := &models.Label{}
 		if err := rows.Scan(&label.ID, &label.Name, &label.Color, &label.ProjectID); err != nil {
@@ -76,7 +76,7 @@ func (r *LabelRepo) GetLabelsForTask(ctx context.Context, taskID int) ([]*models
 	}
 	defer rows.Close()
 
-	var labels []*models.Label
+	labels := make([]*models.Label, 0, 10)
 	for rows.Next() {
 		label := &models.Label{}
 		if err := rows.Scan(&label.ID, &label.Name, &label.Color, &label.ProjectID); err != nil {
