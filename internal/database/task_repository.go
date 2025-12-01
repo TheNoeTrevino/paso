@@ -61,7 +61,7 @@ func (r *TaskRepo) GetTasksByColumn(ctx context.Context, columnID int) ([]*model
 	}
 	defer rows.Close()
 
-	var tasks []*models.Task
+	tasks := make([]*models.Task, 0, 50)
 	for rows.Next() {
 		task := &models.Task{}
 		if err := rows.Scan(
@@ -83,15 +83,16 @@ func (r *TaskRepo) GetTasksByColumn(ctx context.Context, columnID int) ([]*model
 func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) ([]*models.TaskSummary, error) {
 	// Single query with LEFT JOIN to fetch tasks and their labels
 	// GROUP_CONCAT aggregates labels for each task
+	// Use ASCII Unit Separator (0x1F) as delimiter to avoid conflicts with user data
 	query := `
 		SELECT
 			t.id,
 			t.title,
 			t.column_id,
 			t.position,
-			GROUP_CONCAT(l.id, '|') as label_ids,
-			GROUP_CONCAT(l.name, '|') as label_names,
-			GROUP_CONCAT(l.color, '|') as label_colors
+			GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
+			GROUP_CONCAT(l.name, CHAR(31)) as label_names,
+			GROUP_CONCAT(l.color, CHAR(31)) as label_colors
 		FROM tasks t
 		LEFT JOIN task_labels tl ON t.id = tl.task_id
 		LEFT JOIN labels l ON tl.label_id = l.id
@@ -105,7 +106,7 @@ func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) (
 	}
 	defer rows.Close()
 
-	var summaries []*models.TaskSummary
+	summaries := make([]*models.TaskSummary, 0, 50)
 	for rows.Next() {
 		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
 		summary := &models.TaskSummary{}
@@ -161,7 +162,7 @@ func (r *TaskRepo) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskD
 	}
 	defer rows.Close()
 
-	var labels []*models.Label
+	labels := make([]*models.Label, 0, 10)
 	for rows.Next() {
 		label := &models.Label{}
 		if err := rows.Scan(&label.ID, &label.Name, &label.Color, &label.ProjectID); err != nil {
@@ -232,7 +233,7 @@ func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 
 	// 3. Check if there's a next column
 	if !nextColumnID.Valid {
-		return sql.ErrNoRows // Already at last column
+		return models.ErrNoNextColumn
 	}
 
 	// 4. Get the number of tasks in the next column to determine position
@@ -293,7 +294,7 @@ func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 
 	// 3. Check if there's a previous column
 	if !prevColumnID.Valid {
-		return sql.ErrNoRows // Already at first column
+		return models.ErrNoPrevColumn
 	}
 
 	// 4. Get the number of tasks in the previous column to determine position
@@ -332,17 +333,18 @@ func (r *TaskRepo) DeleteTask(ctx context.Context, taskID int) error {
 	return nil
 }
 
-// parseLabelStrings parses pipe-delimited label data from GROUP_CONCAT
+// parseLabelStrings parses label data from GROUP_CONCAT (delimited by ASCII Unit Separator)
 func parseLabelStrings(labelIDsStr, labelNamesStr, labelColorsStr sql.NullString) []*models.Label {
 	// If no labels exist for this task, return empty slice
 	if !labelIDsStr.Valid || !labelNamesStr.Valid || !labelColorsStr.Valid {
 		return []*models.Label{}
 	}
 
-	// Split the concatenated strings
-	ids := strings.Split(labelIDsStr.String, "|")
-	names := strings.Split(labelNamesStr.String, "|")
-	colors := strings.Split(labelColorsStr.String, "|")
+	// Split the concatenated strings using ASCII Unit Separator (0x1F)
+	const delimiter = "\x1F"
+	ids := strings.Split(labelIDsStr.String, delimiter)
+	names := strings.Split(labelNamesStr.String, delimiter)
+	colors := strings.Split(labelColorsStr.String, delimiter)
 
 	// Ensure all arrays have the same length
 	if len(ids) != len(names) || len(ids) != len(colors) {
