@@ -10,141 +10,10 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// createTestDB creates an in-memory database and runs migrations
-func createTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	// Enable foreign key constraints
-	_, err = db.Exec("PRAGMA foreign_keys = ON")
-	if err != nil {
-		t.Fatalf("Failed to enable foreign keys: %v", err)
-	}
-
-	if err := runMigrations(db); err != nil {
-		t.Fatalf("Failed to run migrations: %v", err)
-	}
-
-	// Clear default seeded columns for fresh tests
-	_, err = db.Exec("DELETE FROM columns")
-	if err != nil {
-		t.Fatalf("Failed to clear columns: %v", err)
-	}
-
-	return db
-}
-
-// createTestDBFile creates a file-based database for testing persistence across restarts
-func createTestDBFile(t *testing.T) (*sql.DB, string) {
-	t.Helper()
-	tmpfile, err := os.CreateTemp("", "paso-test-*.db")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	tmpfile.Close()
-
-	db, err := sql.Open("sqlite", tmpfile.Name())
-	if err != nil {
-		os.Remove(tmpfile.Name())
-		t.Fatalf("Failed to open test database: %v", err)
-	}
-
-	// Enable foreign key constraints
-	_, err = db.Exec("PRAGMA foreign_keys = ON")
-	if err != nil {
-		db.Close()
-		os.Remove(tmpfile.Name())
-		t.Fatalf("Failed to enable foreign keys: %v", err)
-	}
-
-	if err := runMigrations(db); err != nil {
-		db.Close()
-		os.Remove(tmpfile.Name())
-		t.Fatalf("Failed to run migrations: %v", err)
-	}
-
-	// Clear default seeded columns for fresh tests
-	_, err = db.Exec("DELETE FROM columns")
-	if err != nil {
-		db.Close()
-		os.Remove(tmpfile.Name())
-		t.Fatalf("Failed to clear columns: %v", err)
-	}
-
-	return db, tmpfile.Name()
-}
-
-// closeAndReopenDB simulates app restart by closing and reopening the database
-func closeAndReopenDB(t *testing.T, db *sql.DB, dbPath string) *sql.DB {
-	t.Helper()
-	if err := db.Close(); err != nil {
-		t.Fatalf("Failed to close database: %v", err)
-	}
-
-	newDB, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		t.Fatalf("Failed to reopen database: %v", err)
-	}
-
-	// Enable foreign key constraints
-	_, err = newDB.Exec("PRAGMA foreign_keys = ON")
-	if err != nil {
-		t.Fatalf("Failed to enable foreign keys: %v", err)
-	}
-
-	return newDB
-}
-
-// verifyLinkedListIntegrity checks that all columns are properly linked
-func verifyLinkedListIntegrity(t *testing.T, db *sql.DB) {
-	t.Helper()
-	columns, err := GetAllColumns(context.Background(), db)
-	if err != nil {
-		t.Fatalf("Failed to get columns: %v", err)
-	}
-
-	if len(columns) == 0 {
-		return // Empty list is valid
-	}
-
-	// Verify first column has nil prev_id
-	if columns[0].PrevID != nil {
-		t.Error("First column should have nil PrevID")
-	}
-
-	// Verify last column has nil next_id
-	if columns[len(columns)-1].NextID != nil {
-		t.Error("Last column should have nil NextID")
-	}
-
-	// Verify all middle columns have both pointers
-	for i := 1; i < len(columns)-1; i++ {
-		if columns[i].PrevID == nil {
-			t.Errorf("Middle column %d should have non-nil PrevID", i)
-		}
-		if columns[i].NextID == nil {
-			t.Errorf("Middle column %d should have non-nil NextID", i)
-		}
-	}
-
-	// Verify pointers form valid chain
-	for i := 0; i < len(columns)-1; i++ {
-		if columns[i].NextID == nil || *columns[i].NextID != columns[i+1].ID {
-			t.Errorf("Column %d NextID should point to column %d", i, i+1)
-		}
-		if columns[i+1].PrevID == nil || *columns[i+1].PrevID != columns[i].ID {
-			t.Errorf("Column %d PrevID should point to column %d", i+1, i)
-		}
-	}
-}
-
 // Test 1: Task CRUD Persistence
 func TestTaskCRUDPersistence(t *testing.T) {
 	t.Parallel()
-	db := createTestDB(t)
+	db := setupTestDB(t)
 	defer db.Close()
 
 	// Create a column (using default project ID 1)
@@ -219,7 +88,7 @@ func TestTaskCRUDPersistence(t *testing.T) {
 
 // Test 2: Column CRUD Persistence with Linked List
 func TestColumnCRUDPersistence(t *testing.T) {
-	db, dbPath := createTestDBFile(t)
+	db, dbPath := setupTestDBFile(t)
 	defer os.Remove(dbPath)
 
 	// Create 3 columns (using default project ID 1)
@@ -315,7 +184,7 @@ func TestColumnCRUDPersistence(t *testing.T) {
 
 // Test 3: Task Movement Persistence
 func TestTaskMovementPersistence(t *testing.T) {
-	db, dbPath := createTestDBFile(t)
+	db, dbPath := setupTestDBFile(t)
 	defer os.Remove(dbPath)
 
 	// Create database with 3 columns (using default project ID 1)
@@ -387,7 +256,7 @@ func TestTaskMovementPersistence(t *testing.T) {
 
 // Test 4: Column Insertion Persistence
 func TestColumnInsertionPersistence(t *testing.T) {
-	db, dbPath := createTestDBFile(t)
+	db, dbPath := setupTestDBFile(t)
 	defer os.Remove(dbPath)
 
 	// Create database with 2 columns (A, B) using default project ID 1
@@ -461,7 +330,7 @@ func TestColumnInsertionPersistence(t *testing.T) {
 
 // Test 5: Cascade Deletion
 func TestCascadeDeletion(t *testing.T) {
-	db, dbPath := createTestDBFile(t)
+	db, dbPath := setupTestDBFile(t)
 	defer os.Remove(dbPath)
 
 	// Create database with 1 column (using default project ID 1)
@@ -518,7 +387,7 @@ func TestCascadeDeletion(t *testing.T) {
 // Test 6: Transaction Rollback on Error
 func TestTransactionRollback(t *testing.T) {
 	t.Parallel()
-	db := createTestDB(t)
+	db := setupTestDB(t)
 	defer db.Close()
 
 	// Create 2 columns (using default project ID 1)
@@ -555,7 +424,7 @@ func TestTransactionRollback(t *testing.T) {
 // Note: Tests creating many tasks rapidly (realistic for TUI event-driven app)
 func TestSequentialBulkOperations(t *testing.T) {
 	t.Parallel()
-	db := createTestDB(t)
+	db := setupTestDB(t)
 	defer db.Close()
 
 	// Create a column (using default project ID 1)
@@ -618,7 +487,7 @@ func TestSequentialBulkOperations(t *testing.T) {
 
 // Test 8: Reload Full State
 func TestReloadFullState(t *testing.T) {
-	db, dbPath := createTestDBFile(t)
+	db, dbPath := setupTestDBFile(t)
 	defer os.Remove(dbPath)
 
 	// Create database with complex state:
@@ -707,7 +576,7 @@ func TestReloadFullState(t *testing.T) {
 
 // Test 9: Migration Idempotency
 func TestMigrationIdempotency(t *testing.T) {
-	db, dbPath := createTestDBFile(t)
+	db, dbPath := setupTestDBFile(t)
 	defer os.Remove(dbPath)
 
 	// Create some data (using default project ID 1)
@@ -834,7 +703,7 @@ func TestEmptyDatabaseReload(t *testing.T) {
 
 // Test 11: Timestamps Persistence
 func TestTimestampsPersistence(t *testing.T) {
-	db, dbPath := createTestDBFile(t)
+	db, dbPath := setupTestDBFile(t)
 	defer os.Remove(dbPath)
 
 	// Create column and task (using default project ID 1)
@@ -893,7 +762,7 @@ func TestTimestampsPersistence(t *testing.T) {
 
 // Test 12: Complex Movement Sequence Persistence
 func TestComplexMovementSequencePersistence(t *testing.T) {
-	db, dbPath := createTestDBFile(t)
+	db, dbPath := setupTestDBFile(t)
 	defer os.Remove(dbPath)
 
 	// Create 4 columns (using default project ID 1)
@@ -949,7 +818,7 @@ func TestComplexMovementSequencePersistence(t *testing.T) {
 
 // Test 13: Column Reordering Persistence
 func TestColumnReorderingPersistence(t *testing.T) {
-	db, dbPath := createTestDBFile(t)
+	db, dbPath := setupTestDBFile(t)
 	defer os.Remove(dbPath)
 
 	// Create 3 columns: A, B, C (using default project ID 1)
@@ -995,7 +864,7 @@ func TestColumnReorderingPersistence(t *testing.T) {
 // Test 14: Update Task Column Directly
 func TestUpdateTaskColumnDirectly(t *testing.T) {
 	t.Parallel()
-	db := createTestDB(t)
+	db := setupTestDB(t)
 	defer db.Close()
 
 	// Create 2 columns (using default project ID 1)
@@ -1027,7 +896,7 @@ func TestUpdateTaskColumnDirectly(t *testing.T) {
 // Test 15: Multiple Tasks in Column Order
 func TestMultipleTasksInColumnOrder(t *testing.T) {
 	t.Parallel()
-	db := createTestDB(t)
+	db := setupTestDB(t)
 	defer db.Close()
 
 	col, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
