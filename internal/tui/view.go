@@ -214,13 +214,10 @@ func (m Model) viewTaskDetail() string {
 		return ""
 	}
 
-	// Find the column name for the task
+	// Find the column name for the task (O(1) lookup)
 	columnName := "Unknown"
-	for _, col := range m.appState.Columns() {
-		if col.ID == m.uiState.ViewingTask().ColumnID {
-			columnName = col.Name
-			break
-		}
+	if col := m.appState.GetColumnByID(m.uiState.ViewingTask().ColumnID); col != nil {
+		columnName = col.Name
 	}
 
 	return components.RenderTaskView(components.TaskViewProps{

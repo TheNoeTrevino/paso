@@ -104,3 +104,96 @@ func TestNewAppState_NilTasks(t *testing.T) {
 		t.Error("SetTasks(nil) resulted in nil map, want initialized empty map")
 	}
 }
+
+// TestGetColumnByID_ValidColumn ensures O(1) column lookup works correctly.
+// Performance value: Verifies the columnByID map provides correct lookups.
+func TestGetColumnByID_ValidColumn(t *testing.T) {
+	columns := []*models.Column{
+		{ID: 1, Name: "Todo"},
+		{ID: 2, Name: "In Progress"},
+		{ID: 3, Name: "Done"},
+	}
+
+	state := NewAppState(nil, 0, columns, nil, nil)
+
+	// Test valid lookups
+	col := state.GetColumnByID(2)
+	if col == nil {
+		t.Fatal("GetColumnByID(2) = nil, want non-nil")
+	}
+	if col.ID != 2 {
+		t.Errorf("GetColumnByID(2) returned column with ID=%d, want 2", col.ID)
+	}
+	if col.Name != "In Progress" {
+		t.Errorf("GetColumnByID(2) returned column with Name=%s, want 'In Progress'", col.Name)
+	}
+}
+
+// TestGetColumnByID_InvalidColumn ensures lookup for non-existent column returns nil.
+// Edge case: Querying for a column ID that doesn't exist.
+// Security value: Prevents nil pointer dereference.
+func TestGetColumnByID_InvalidColumn(t *testing.T) {
+	columns := []*models.Column{
+		{ID: 1, Name: "Todo"},
+		{ID: 2, Name: "Done"},
+	}
+
+	state := NewAppState(nil, 0, columns, nil, nil)
+
+	// Test invalid lookup
+	col := state.GetColumnByID(999)
+	if col != nil {
+		t.Errorf("GetColumnByID(999) = %v, want nil", col)
+	}
+}
+
+// TestGetColumnByID_EmptyColumns ensures lookup with no columns returns nil.
+// Edge case: Application state with no columns loaded.
+// Security value: Prevents nil pointer dereference.
+func TestGetColumnByID_EmptyColumns(t *testing.T) {
+	state := NewAppState(nil, 0, []*models.Column{}, nil, nil)
+
+	col := state.GetColumnByID(1)
+	if col != nil {
+		t.Errorf("GetColumnByID(1) with empty columns = %v, want nil", col)
+	}
+}
+
+// TestSetColumns_UpdatesMap ensures SetColumns rebuilds the columnByID map.
+// Performance value: Verifies map stays in sync when columns change.
+func TestSetColumns_UpdatesMap(t *testing.T) {
+	initialColumns := []*models.Column{
+		{ID: 1, Name: "Original"},
+	}
+	state := NewAppState(nil, 0, initialColumns, nil, nil)
+
+	// Verify initial state
+	col := state.GetColumnByID(1)
+	if col == nil || col.Name != "Original" {
+		t.Fatal("Initial column lookup failed")
+	}
+
+	// Update columns
+	newColumns := []*models.Column{
+		{ID: 2, Name: "Updated"},
+		{ID: 3, Name: "New"},
+	}
+	state.SetColumns(newColumns)
+
+	// Old column should no longer be found
+	col = state.GetColumnByID(1)
+	if col != nil {
+		t.Error("GetColumnByID(1) after SetColumns should return nil, map not updated")
+	}
+
+	// New columns should be found
+	col = state.GetColumnByID(2)
+	if col == nil || col.Name != "Updated" {
+		t.Error("GetColumnByID(2) after SetColumns failed, map not rebuilt")
+	}
+
+	col = state.GetColumnByID(3)
+	if col == nil || col.Name != "New" {
+		t.Error("GetColumnByID(3) after SetColumns failed, map not rebuilt")
+	}
+}
