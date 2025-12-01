@@ -11,26 +11,27 @@ import (
 func TestMoveTaskBetweenColumns(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Create columns
-	col1, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
-	col2, _ := CreateColumn(context.Background(), db, "In Progress", 1, nil)
-	col3, _ := CreateColumn(context.Background(), db, "Done", 1, nil)
+	col1, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
+	col2, _ := repo.CreateColumn(context.Background(), "In Progress", 1, nil)
+	col3, _ := repo.CreateColumn(context.Background(), "Done", 1, nil)
 
 	// Create a task in the first column
-	task, err := CreateTask(context.Background(), db, "Test Task", "Description", col1.ID, 0)
+	task, err := repo.CreateTask(context.Background(), "Test Task", "Description", col1.ID, 0)
 	if err != nil {
 		t.Fatalf("Failed to create task: %v", err)
 	}
 
 	// Move task to next column (col1 -> col2)
-	err = MoveTaskToNextColumn(context.Background(), db, task.ID)
+	err = repo.MoveTaskToNextColumn(context.Background(), task.ID)
 	if err != nil {
 		t.Fatalf("Failed to move task to next column: %v", err)
 	}
 
 	// Verify task is now in col2
-	tasks, err := GetTasksByColumn(context.Background(), db, col2.ID)
+	tasks, err := repo.GetTasksByColumn(context.Background(), col2.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}
@@ -39,7 +40,7 @@ func TestMoveTaskBetweenColumns(t *testing.T) {
 	}
 
 	// Verify task is not in col1
-	tasks, err = GetTasksByColumn(context.Background(), db, col1.ID)
+	tasks, err = repo.GetTasksByColumn(context.Background(), col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}
@@ -48,13 +49,13 @@ func TestMoveTaskBetweenColumns(t *testing.T) {
 	}
 
 	// Move task to next column (col2 -> col3)
-	err = MoveTaskToNextColumn(context.Background(), db, task.ID)
+	err = repo.MoveTaskToNextColumn(context.Background(), task.ID)
 	if err != nil {
 		t.Fatalf("Failed to move task to third column: %v", err)
 	}
 
 	// Verify task is now in col3
-	tasks, err = GetTasksByColumn(context.Background(), db, col3.ID)
+	tasks, err = repo.GetTasksByColumn(context.Background(), col3.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}
@@ -63,19 +64,19 @@ func TestMoveTaskBetweenColumns(t *testing.T) {
 	}
 
 	// Try to move beyond last column (should fail)
-	err = MoveTaskToNextColumn(context.Background(), db, task.ID)
+	err = repo.MoveTaskToNextColumn(context.Background(), task.ID)
 	if err == nil {
 		t.Error("Should not be able to move task beyond last column")
 	}
 
 	// Move task back (col3 -> col2)
-	err = MoveTaskToPrevColumn(context.Background(), db, task.ID)
+	err = repo.MoveTaskToPrevColumn(context.Background(), task.ID)
 	if err != nil {
 		t.Fatalf("Failed to move task to previous column: %v", err)
 	}
 
 	// Verify task is back in col2
-	tasks, err = GetTasksByColumn(context.Background(), db, col2.ID)
+	tasks, err = repo.GetTasksByColumn(context.Background(), col2.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}
@@ -84,13 +85,13 @@ func TestMoveTaskBetweenColumns(t *testing.T) {
 	}
 
 	// Move task back to col1
-	err = MoveTaskToPrevColumn(context.Background(), db, task.ID)
+	err = repo.MoveTaskToPrevColumn(context.Background(), task.ID)
 	if err != nil {
 		t.Fatalf("Failed to move task to first column: %v", err)
 	}
 
 	// Try to move before first column (should fail)
-	err = MoveTaskToPrevColumn(context.Background(), db, task.ID)
+	err = repo.MoveTaskToPrevColumn(context.Background(), task.ID)
 	if err == nil {
 		t.Error("Should not be able to move task before first column")
 	}
@@ -100,15 +101,16 @@ func TestMoveTaskBetweenColumns(t *testing.T) {
 func TestTaskCreationPersistence(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Create a column first
-	col, err := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	col, err := repo.CreateColumn(context.Background(), "Todo", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column: %v", err)
 	}
 
 	// Create a task with title and description
-	task, err := CreateTask(context.Background(), db, "Test Task Title", "This is a test description", col.ID, 0)
+	task, err := repo.CreateTask(context.Background(), "Test Task Title", "This is a test description", col.ID, 0)
 	if err != nil {
 		t.Fatalf("Failed to create task: %v", err)
 	}
@@ -128,7 +130,7 @@ func TestTaskCreationPersistence(t *testing.T) {
 	}
 
 	// Verify task can be retrieved from database
-	tasks, err := GetTasksByColumn(context.Background(), db, col.ID)
+	tasks, err := repo.GetTasksByColumn(context.Background(), col.ID)
 	if err != nil {
 		t.Fatalf("Failed to get tasks: %v", err)
 	}
@@ -147,19 +149,20 @@ func TestTaskCreationPersistence(t *testing.T) {
 func TestTaskUpdatePersistence(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Create column and task
-	col, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
-	task, _ := CreateTask(context.Background(), db, "Original Title", "Original Description", col.ID, 0)
+	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
+	task, _ := repo.CreateTask(context.Background(), "Original Title", "Original Description", col.ID, 0)
 
 	// Update the task
-	err := UpdateTask(context.Background(), db, task.ID, "Updated Title", "Updated Description")
+	err := repo.UpdateTask(context.Background(), task.ID, "Updated Title", "Updated Description")
 	if err != nil {
 		t.Fatalf("Failed to update task: %v", err)
 	}
 
 	// Retrieve and verify the update persisted
-	detail, err := GetTaskDetail(context.Background(), db, task.ID)
+	detail, err := repo.GetTaskDetail(context.Background(), task.ID)
 	if err != nil {
 		t.Fatalf("Failed to get task detail: %v", err)
 	}
@@ -175,15 +178,16 @@ func TestTaskUpdatePersistence(t *testing.T) {
 func TestTaskDetailIncludesAllFields(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Create column, task with description, and labels
-	col, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
-	task, _ := CreateTask(context.Background(), db, "Full Task", "A complete description with details", col.ID, 0)
-	label, _ := CreateLabel(context.Background(), db, 1, "Important", "#FFD700")
-	SetTaskLabels(context.Background(), db, task.ID, []int{label.ID})
+	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
+	task, _ := repo.CreateTask(context.Background(), "Full Task", "A complete description with details", col.ID, 0)
+	label, _ := repo.CreateLabel(context.Background(), 1, "Important", "#FFD700")
+	repo.SetTaskLabels(context.Background(), task.ID, []int{label.ID})
 
 	// Get full detail
-	detail, err := GetTaskDetail(context.Background(), db, task.ID)
+	detail, err := repo.GetTaskDetail(context.Background(), task.ID)
 	if err != nil {
 		t.Fatalf("Failed to get task detail: %v", err)
 	}

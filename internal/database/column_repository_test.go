@@ -11,25 +11,26 @@ import (
 func TestLinkedListTraversal(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Create 3 columns
-	col1, err := CreateColumn(context.Background(), db, "Todo", 1, nil)
+	col1, err := repo.CreateColumn(context.Background(), "Todo", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 1: %v", err)
 	}
 
-	col2, err := CreateColumn(context.Background(), db, "In Progress", 1, nil)
+	col2, err := repo.CreateColumn(context.Background(), "In Progress", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 2: %v", err)
 	}
 
-	col3, err := CreateColumn(context.Background(), db, "Done", 1, nil)
+	col3, err := repo.CreateColumn(context.Background(), "Done", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create column 3: %v", err)
 	}
 
 	// Retrieve all columns and verify order
-	columns, err := GetAllColumns(context.Background(), db)
+	columns, err := repo.GetColumnsByProject(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -74,19 +75,20 @@ func TestLinkedListTraversal(t *testing.T) {
 func TestInsertColumnMiddle(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Create initial columns
-	col1, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
-	col3, _ := CreateColumn(context.Background(), db, "Done", 1, nil)
+	col1, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
+	col3, _ := repo.CreateColumn(context.Background(), "Done", 1, nil)
 
 	// Insert a column in the middle (after col1)
-	col2, err := CreateColumn(context.Background(), db, "In Progress", 1, &col1.ID)
+	col2, err := repo.CreateColumn(context.Background(), "In Progress", 1, &col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to insert column in middle: %v", err)
 	}
 
 	// Verify the linked list structure
-	columns, err := GetAllColumns(context.Background(), db)
+	columns, err := repo.GetColumnsByProject(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -119,19 +121,20 @@ func TestInsertColumnMiddle(t *testing.T) {
 func TestInsertColumnEnd(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Create initial columns
-	_, _ = CreateColumn(context.Background(), db, "Todo", 1, nil)
-	col2, _ := CreateColumn(context.Background(), db, "In Progress", 1, nil)
+	_, _ = repo.CreateColumn(context.Background(), "Todo", 1, nil)
+	col2, _ := repo.CreateColumn(context.Background(), "In Progress", 1, nil)
 
 	// Append a column to the end (pass nil for afterColumnID)
-	col3, err := CreateColumn(context.Background(), db, "Done", 1, nil)
+	col3, err := repo.CreateColumn(context.Background(), "Done", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to append column: %v", err)
 	}
 
 	// Verify the linked list structure
-	columns, err := GetAllColumns(context.Background(), db)
+	columns, err := repo.GetColumnsByProject(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -157,20 +160,21 @@ func TestInsertColumnEnd(t *testing.T) {
 func TestDeleteColumnMiddle(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Create three columns
-	col1, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
-	col2, _ := CreateColumn(context.Background(), db, "In Progress", 1, nil)
-	col3, _ := CreateColumn(context.Background(), db, "Done", 1, nil)
+	col1, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
+	col2, _ := repo.CreateColumn(context.Background(), "In Progress", 1, nil)
+	col3, _ := repo.CreateColumn(context.Background(), "Done", 1, nil)
 
 	// Delete the middle column
-	err := DeleteColumn(context.Background(), db, col2.ID)
+	err := repo.DeleteColumn(context.Background(), col2.ID)
 	if err != nil {
 		t.Fatalf("Failed to delete column: %v", err)
 	}
 
 	// Verify only two columns remain
-	columns, err := GetAllColumns(context.Background(), db)
+	columns, err := repo.GetColumnsByProject(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -197,20 +201,21 @@ func TestDeleteColumnMiddle(t *testing.T) {
 func TestDeleteColumnHead(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Create three columns
-	col1, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
-	col2, _ := CreateColumn(context.Background(), db, "In Progress", 1, nil)
-	col3, _ := CreateColumn(context.Background(), db, "Done", 1, nil)
+	col1, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
+	col2, _ := repo.CreateColumn(context.Background(), "In Progress", 1, nil)
+	col3, _ := repo.CreateColumn(context.Background(), "Done", 1, nil)
 
 	// Delete the head column
-	err := DeleteColumn(context.Background(), db, col1.ID)
+	err := repo.DeleteColumn(context.Background(), col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to delete head column: %v", err)
 	}
 
 	// Verify two columns remain
-	columns, err := GetAllColumns(context.Background(), db)
+	columns, err := repo.GetColumnsByProject(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -235,20 +240,21 @@ func TestDeleteColumnHead(t *testing.T) {
 func TestDeleteColumnTail(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Create three columns
-	col1, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
-	col2, _ := CreateColumn(context.Background(), db, "In Progress", 1, nil)
-	col3, _ := CreateColumn(context.Background(), db, "Done", 1, nil)
+	col1, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
+	col2, _ := repo.CreateColumn(context.Background(), "In Progress", 1, nil)
+	col3, _ := repo.CreateColumn(context.Background(), "Done", 1, nil)
 
 	// Delete the tail column
-	err := DeleteColumn(context.Background(), db, col3.ID)
+	err := repo.DeleteColumn(context.Background(), col3.ID)
 	if err != nil {
 		t.Fatalf("Failed to delete tail column: %v", err)
 	}
 
 	// Verify two columns remain
-	columns, err := GetAllColumns(context.Background(), db)
+	columns, err := repo.GetColumnsByProject(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -273,9 +279,10 @@ func TestDeleteColumnTail(t *testing.T) {
 func TestEmptyList(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Get columns from empty database
-	columns, err := GetAllColumns(context.Background(), db)
+	columns, err := repo.GetColumnsByProject(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("Failed to get columns from empty DB: %v", err)
 	}
@@ -289,9 +296,10 @@ func TestEmptyList(t *testing.T) {
 func TestSingleColumn(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Create single column
-	col, err := CreateColumn(context.Background(), db, "Only Column", 1, nil)
+	col, err := repo.CreateColumn(context.Background(), "Only Column", 1, nil)
 	if err != nil {
 		t.Fatalf("Failed to create single column: %v", err)
 	}
@@ -302,7 +310,7 @@ func TestSingleColumn(t *testing.T) {
 	}
 
 	// Get all columns
-	columns, err := GetAllColumns(context.Background(), db)
+	columns, err := repo.GetColumnsByProject(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -312,14 +320,14 @@ func TestSingleColumn(t *testing.T) {
 	}
 
 	// Create a task and try to move it (should fail in both directions)
-	task, _ := CreateTask(context.Background(), db, "Test Task", "", col.ID, 0)
+	task, _ := repo.CreateTask(context.Background(), "Test Task", "", col.ID, 0)
 
-	err = MoveTaskToNextColumn(context.Background(), db, task.ID)
+	err = repo.MoveTaskToNextColumn(context.Background(), task.ID)
 	if err == nil {
 		t.Error("Should not be able to move task right from single column")
 	}
 
-	err = MoveTaskToPrevColumn(context.Background(), db, task.ID)
+	err = repo.MoveTaskToPrevColumn(context.Background(), task.ID)
 	if err == nil {
 		t.Error("Should not be able to move task left from single column")
 	}

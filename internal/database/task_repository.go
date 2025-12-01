@@ -14,8 +14,8 @@ type TaskRepo struct {
 	db *sql.DB
 }
 
-// Create creates a new task in the database
-func (r *TaskRepo) Create(ctx context.Context, title, description string, columnID, position int) (*models.Task, error) {
+// CreateTask creates a new task in the database
+func (r *TaskRepo) CreateTask(ctx context.Context, title, description string, columnID, position int) (*models.Task, error) {
 	result, err := r.db.ExecContext(ctx,
 		`INSERT INTO tasks (title, description, column_id, position)
 		 VALUES (?, ?, ?, ?)`,
@@ -47,9 +47,9 @@ func (r *TaskRepo) Create(ctx context.Context, title, description string, column
 	return task, nil
 }
 
-// GetByColumn retrieves all tasks for a column with full details
+// GetTasksByColumn retrieves all tasks for a column with full details
 // This is primarily used for testing and admin purposes
-func (r *TaskRepo) GetByColumn(ctx context.Context, columnID int) ([]*models.Task, error) {
+func (r *TaskRepo) GetTasksByColumn(ctx context.Context, columnID int) ([]*models.Task, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, title, description, column_id, position, created_at, updated_at
 		 FROM tasks WHERE column_id = ? ORDER BY position`,
@@ -74,9 +74,9 @@ func (r *TaskRepo) GetByColumn(ctx context.Context, columnID int) ([]*models.Tas
 	return tasks, rows.Err()
 }
 
-// GetSummariesByColumn retrieves task summaries for a column, including labels
+// GetTaskSummariesByColumn retrieves task summaries for a column, including labels
 // Uses a single query with LEFT JOIN to avoid N+1 query pattern
-func (r *TaskRepo) GetSummariesByColumn(ctx context.Context, columnID int) ([]*models.TaskSummary, error) {
+func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) ([]*models.TaskSummary, error) {
 	// Single query with LEFT JOIN to fetch tasks and their labels
 	// GROUP_CONCAT aggregates labels for each task
 	query := `
@@ -126,8 +126,8 @@ func (r *TaskRepo) GetSummariesByColumn(ctx context.Context, columnID int) ([]*m
 	return summaries, rows.Err()
 }
 
-// GetDetail retrieves full task details including description, timestamps, and labels
-func (r *TaskRepo) GetDetail(ctx context.Context, taskID int) (*models.TaskDetail, error) {
+// GetTaskDetail retrieves full task details including description, timestamps, and labels
+func (r *TaskRepo) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error) {
 	detail := &models.TaskDetail{}
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, title, description, column_id, position, created_at, updated_at
@@ -170,8 +170,8 @@ func (r *TaskRepo) GetDetail(ctx context.Context, taskID int) (*models.TaskDetai
 	return detail, nil
 }
 
-// GetCountByColumn returns the number of tasks in a specific column
-func (r *TaskRepo) GetCountByColumn(ctx context.Context, columnID int) (int, error) {
+// GetTaskCountByColumn returns the number of tasks in a specific column
+func (r *TaskRepo) GetTaskCountByColumn(ctx context.Context, columnID int) (int, error) {
 	var count int
 	err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks WHERE column_id = ?", columnID).Scan(&count)
 	if err != nil {
@@ -180,8 +180,8 @@ func (r *TaskRepo) GetCountByColumn(ctx context.Context, columnID int) (int, err
 	return count, nil
 }
 
-// Update updates a task's title and description
-func (r *TaskRepo) Update(ctx context.Context, taskID int, title, description string) error {
+// UpdateTask updates a task's title and description
+func (r *TaskRepo) UpdateTask(ctx context.Context, taskID int, title, description string) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE tasks
 		 SET title = ?, description = ?, updated_at = CURRENT_TIMESTAMP
@@ -191,9 +191,9 @@ func (r *TaskRepo) Update(ctx context.Context, taskID int, title, description st
 	return err
 }
 
-// MoveToNextColumn moves a task from its current column to the next column in the linked list
+// MoveTaskToNextColumn moves a task from its current column to the next column in the linked list
 // Returns an error if the task doesn't exist or if there's no next column
-func (r *TaskRepo) MoveToNextColumn(ctx context.Context, taskID int) error {
+func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -249,9 +249,9 @@ func (r *TaskRepo) MoveToNextColumn(ctx context.Context, taskID int) error {
 	return tx.Commit()
 }
 
-// MoveToPrevColumn moves a task from its current column to the previous column in the linked list
+// MoveTaskToPrevColumn moves a task from its current column to the previous column in the linked list
 // Returns an error if the task doesn't exist or if there's no previous column
-func (r *TaskRepo) MoveToPrevColumn(ctx context.Context, taskID int) error {
+func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -307,8 +307,8 @@ func (r *TaskRepo) MoveToPrevColumn(ctx context.Context, taskID int) error {
 	return tx.Commit()
 }
 
-// Delete removes a task from the database
-func (r *TaskRepo) Delete(ctx context.Context, taskID int) error {
+// DeleteTask removes a task from the database
+func (r *TaskRepo) DeleteTask(ctx context.Context, taskID int) error {
 	_, err := r.db.ExecContext(ctx, "DELETE FROM tasks WHERE id = ?", taskID)
 	return err
 }

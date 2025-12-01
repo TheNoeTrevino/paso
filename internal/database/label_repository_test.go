@@ -11,9 +11,10 @@ import (
 func TestLabelPersistence(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Create a label (projectID 1 is created by migrations)
-	label, err := CreateLabel(context.Background(), db, 1, "Bug", "#FF0000")
+	label, err := repo.CreateLabel(context.Background(), 1, "Bug", "#FF0000")
 	if err != nil {
 		t.Fatalf("Failed to create label: %v", err)
 	}
@@ -32,7 +33,7 @@ func TestLabelPersistence(t *testing.T) {
 	}
 
 	// Retrieve all labels
-	labels, err := GetAllLabels(context.Background(), db)
+	labels, err := repo.GetLabelsByProject(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("Failed to get labels: %v", err)
 	}
@@ -48,21 +49,22 @@ func TestLabelPersistence(t *testing.T) {
 func TestTaskLabelAssociation(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Create column, task, and labels
-	col, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
-	task, _ := CreateTask(context.Background(), db, "Test Task", "Description", col.ID, 0)
-	label1, _ := CreateLabel(context.Background(), db, 1, "Bug", "#FF0000")
-	label2, _ := CreateLabel(context.Background(), db, 1, "Feature", "#00FF00")
+	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
+	task, _ := repo.CreateTask(context.Background(), "Test Task", "Description", col.ID, 0)
+	label1, _ := repo.CreateLabel(context.Background(), 1, "Bug", "#FF0000")
+	label2, _ := repo.CreateLabel(context.Background(), 1, "Feature", "#00FF00")
 
 	// Associate labels with task
-	err := SetTaskLabels(context.Background(), db, task.ID, []int{label1.ID, label2.ID})
+	err := repo.SetTaskLabels(context.Background(), task.ID, []int{label1.ID, label2.ID})
 	if err != nil {
 		t.Fatalf("Failed to set task labels: %v", err)
 	}
 
 	// Retrieve labels for task
-	labels, err := GetLabelsForTask(context.Background(), db, task.ID)
+	labels, err := repo.GetLabelsForTask(context.Background(), task.ID)
 	if err != nil {
 		t.Fatalf("Failed to get labels for task: %v", err)
 	}
@@ -71,7 +73,7 @@ func TestTaskLabelAssociation(t *testing.T) {
 	}
 
 	// Verify task summary includes labels
-	summaries, err := GetTaskSummariesByColumn(context.Background(), db, col.ID)
+	summaries, err := repo.GetTaskSummariesByColumn(context.Background(), col.ID)
 	if err != nil {
 		t.Fatalf("Failed to get task summaries: %v", err)
 	}
@@ -83,7 +85,7 @@ func TestTaskLabelAssociation(t *testing.T) {
 	}
 
 	// Verify task detail includes labels
-	detail, err := GetTaskDetail(context.Background(), db, task.ID)
+	detail, err := repo.GetTaskDetail(context.Background(), task.ID)
 	if err != nil {
 		t.Fatalf("Failed to get task detail: %v", err)
 	}
@@ -96,25 +98,26 @@ func TestTaskLabelAssociation(t *testing.T) {
 func TestSetTaskLabelsReplaces(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Create column, task, and labels
-	col, _ := CreateColumn(context.Background(), db, "Todo", 1, nil)
-	task, _ := CreateTask(context.Background(), db, "Test Task", "", col.ID, 0)
-	label1, _ := CreateLabel(context.Background(), db, 1, "Bug", "#FF0000")
-	label2, _ := CreateLabel(context.Background(), db, 1, "Feature", "#00FF00")
-	label3, _ := CreateLabel(context.Background(), db, 1, "Enhancement", "#0000FF")
+	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
+	task, _ := repo.CreateTask(context.Background(), "Test Task", "", col.ID, 0)
+	label1, _ := repo.CreateLabel(context.Background(), 1, "Bug", "#FF0000")
+	label2, _ := repo.CreateLabel(context.Background(), 1, "Feature", "#00FF00")
+	label3, _ := repo.CreateLabel(context.Background(), 1, "Enhancement", "#0000FF")
 
 	// Set initial labels
-	SetTaskLabels(context.Background(), db, task.ID, []int{label1.ID, label2.ID})
+	repo.SetTaskLabels(context.Background(), task.ID, []int{label1.ID, label2.ID})
 
 	// Replace with different labels
-	err := SetTaskLabels(context.Background(), db, task.ID, []int{label3.ID})
+	err := repo.SetTaskLabels(context.Background(), task.ID, []int{label3.ID})
 	if err != nil {
 		t.Fatalf("Failed to replace task labels: %v", err)
 	}
 
 	// Verify only the new label is associated
-	labels, err := GetLabelsForTask(context.Background(), db, task.ID)
+	labels, err := repo.GetLabelsForTask(context.Background(), task.ID)
 	if err != nil {
 		t.Fatalf("Failed to get labels: %v", err)
 	}
@@ -130,16 +133,17 @@ func TestSetTaskLabelsReplaces(t *testing.T) {
 func TestProjectSpecificLabels(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
+	repo := NewRepository(db)
 
 	// Project 1 is already created by migrations
 	// Create a second project
-	project2, err := CreateProject(context.Background(), db, "Project 2", "Second project")
+	project2, err := repo.CreateProject(context.Background(), "Project 2", "Second project")
 	if err != nil {
 		t.Fatalf("Failed to create project 2: %v", err)
 	}
 
 	// Create labels for project 1
-	label1, err := CreateLabel(context.Background(), db, 1, "Bug", "#FF0000")
+	label1, err := repo.CreateLabel(context.Background(), 1, "Bug", "#FF0000")
 	if err != nil {
 		t.Fatalf("Failed to create label for project 1: %v", err)
 	}
@@ -148,7 +152,7 @@ func TestProjectSpecificLabels(t *testing.T) {
 	}
 
 	// Create labels for project 2
-	label2, err := CreateLabel(context.Background(), db, project2.ID, "Feature", "#00FF00")
+	label2, err := repo.CreateLabel(context.Background(), project2.ID, "Feature", "#00FF00")
 	if err != nil {
 		t.Fatalf("Failed to create label for project 2: %v", err)
 	}
@@ -157,7 +161,7 @@ func TestProjectSpecificLabels(t *testing.T) {
 	}
 
 	// GetLabelsByProject should return only project-specific labels
-	labelsP1, err := GetLabelsByProject(context.Background(), db, 1)
+	labelsP1, err := repo.GetLabelsByProject(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("Failed to get labels for project 1: %v", err)
 	}
@@ -168,7 +172,7 @@ func TestProjectSpecificLabels(t *testing.T) {
 		t.Errorf("Expected label 'Bug', got '%s'", labelsP1[0].Name)
 	}
 
-	labelsP2, err := GetLabelsByProject(context.Background(), db, project2.ID)
+	labelsP2, err := repo.GetLabelsByProject(context.Background(), project2.ID)
 	if err != nil {
 		t.Fatalf("Failed to get labels for project 2: %v", err)
 	}
@@ -177,14 +181,5 @@ func TestProjectSpecificLabels(t *testing.T) {
 	}
 	if labelsP2[0].Name != "Feature" {
 		t.Errorf("Expected label 'Feature', got '%s'", labelsP2[0].Name)
-	}
-
-	// GetAllLabels should return all labels
-	allLabels, err := GetAllLabels(context.Background(), db)
-	if err != nil {
-		t.Fatalf("Failed to get all labels: %v", err)
-	}
-	if len(allLabels) != 2 {
-		t.Errorf("Expected 2 total labels, got %d", len(allLabels))
 	}
 }

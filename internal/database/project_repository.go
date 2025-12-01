@@ -13,8 +13,8 @@ type ProjectRepo struct {
 	db *sql.DB
 }
 
-// Create creates a new project with default columns (Todo, In Progress, Done)
-func (r *ProjectRepo) Create(ctx context.Context, name, description string) (*models.Project, error) {
+// CreateProject creates a new project with default columns (Todo, In Progress, Done)
+func (r *ProjectRepo) CreateProject(ctx context.Context, name, description string) (*models.Project, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction for project creation: %w", err)
@@ -89,11 +89,11 @@ func (r *ProjectRepo) Create(ctx context.Context, name, description string) (*mo
 	}
 
 	// Retrieve the created project
-	return r.GetByID(ctx, int(projectID))
+	return r.GetProjectByID(ctx, int(projectID))
 }
 
-// GetByID retrieves a project by its ID
-func (r *ProjectRepo) GetByID(ctx context.Context, id int) (*models.Project, error) {
+// GetProjectByID retrieves a project by its ID
+func (r *ProjectRepo) GetProjectByID(ctx context.Context, id int) (*models.Project, error) {
 	project := &models.Project{}
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, name, description, created_at, updated_at FROM projects WHERE id = ?`,
@@ -105,8 +105,8 @@ func (r *ProjectRepo) GetByID(ctx context.Context, id int) (*models.Project, err
 	return project, nil
 }
 
-// GetAll retrieves all projects ordered by ID
-func (r *ProjectRepo) GetAll(ctx context.Context) ([]*models.Project, error) {
+// GetAllProjects retrieves all projects ordered by ID
+func (r *ProjectRepo) GetAllProjects(ctx context.Context) ([]*models.Project, error) {
 	rows, err := r.db.QueryContext(ctx, `SELECT id, name, description, created_at, updated_at FROM projects ORDER BY id`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query all projects: %w", err)
@@ -128,8 +128,8 @@ func (r *ProjectRepo) GetAll(ctx context.Context) ([]*models.Project, error) {
 	return projects, nil
 }
 
-// Update updates a project's name and description
-func (r *ProjectRepo) Update(ctx context.Context, id int, name, description string) error {
+// UpdateProject updates a project's name and description
+func (r *ProjectRepo) UpdateProject(ctx context.Context, id int, name, description string) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE projects SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
 		name, description, id,
@@ -140,8 +140,8 @@ func (r *ProjectRepo) Update(ctx context.Context, id int, name, description stri
 	return nil
 }
 
-// Delete removes a project and all its columns and tasks (cascade)
-func (r *ProjectRepo) Delete(ctx context.Context, id int) error {
+// DeleteProject removes a project and all its columns and tasks (cascade)
+func (r *ProjectRepo) DeleteProject(ctx context.Context, id int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction for project %d deletion: %w", id, err)
