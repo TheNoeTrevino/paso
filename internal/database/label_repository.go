@@ -13,8 +13,8 @@ type LabelRepo struct {
 	db *sql.DB
 }
 
-// Create creates a new label in the database for a specific project
-func (r *LabelRepo) Create(ctx context.Context, projectID int, name, color string) (*models.Label, error) {
+// CreateLabel creates a new label in the database for a specific project
+func (r *LabelRepo) CreateLabel(ctx context.Context, projectID int, name, color string) (*models.Label, error) {
 	result, err := r.db.ExecContext(ctx,
 		`INSERT INTO labels (name, color, project_id) VALUES (?, ?, ?)`,
 		name, color, projectID,
@@ -36,8 +36,8 @@ func (r *LabelRepo) Create(ctx context.Context, projectID int, name, color strin
 	}, nil
 }
 
-// GetByProject retrieves all labels for a specific project
-func (r *LabelRepo) GetByProject(ctx context.Context, projectID int) ([]*models.Label, error) {
+// GetLabelsByProject retrieves all labels for a specific project
+func (r *LabelRepo) GetLabelsByProject(ctx context.Context, projectID int) ([]*models.Label, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, name, color, project_id FROM labels WHERE project_id = ? ORDER BY name`,
 		projectID,
@@ -62,8 +62,8 @@ func (r *LabelRepo) GetByProject(ctx context.Context, projectID int) ([]*models.
 	return labels, nil
 }
 
-// GetForTask retrieves all labels associated with a task
-func (r *LabelRepo) GetForTask(ctx context.Context, taskID int) ([]*models.Label, error) {
+// GetLabelsForTask retrieves all labels associated with a task
+func (r *LabelRepo) GetLabelsForTask(ctx context.Context, taskID int) ([]*models.Label, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT l.id, l.name, l.color, l.project_id
 		FROM labels l
@@ -91,8 +91,8 @@ func (r *LabelRepo) GetForTask(ctx context.Context, taskID int) ([]*models.Label
 	return labels, nil
 }
 
-// Update updates an existing label's name and color
-func (r *LabelRepo) Update(ctx context.Context, labelID int, name, color string) error {
+// UpdateLabel updates an existing label's name and color
+func (r *LabelRepo) UpdateLabel(ctx context.Context, labelID int, name, color string) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE labels SET name = ?, color = ? WHERE id = ?`,
 		name, color, labelID,
@@ -103,8 +103,8 @@ func (r *LabelRepo) Update(ctx context.Context, labelID int, name, color string)
 	return nil
 }
 
-// Delete removes a label from the database (cascade removes task associations)
-func (r *LabelRepo) Delete(ctx context.Context, labelID int) error {
+// DeleteLabel removes a label from the database (cascade removes task associations)
+func (r *LabelRepo) DeleteLabel(ctx context.Context, labelID int) error {
 	_, err := r.db.ExecContext(ctx, "DELETE FROM labels WHERE id = ?", labelID)
 	if err != nil {
 		return fmt.Errorf("failed to delete label %d: %w", labelID, err)
@@ -112,8 +112,8 @@ func (r *LabelRepo) Delete(ctx context.Context, labelID int) error {
 	return nil
 }
 
-// AddToTask associates a label with a task
-func (r *LabelRepo) AddToTask(ctx context.Context, taskID, labelID int) error {
+// AddLabelToTask associates a label with a task
+func (r *LabelRepo) AddLabelToTask(ctx context.Context, taskID, labelID int) error {
 	_, err := r.db.ExecContext(ctx,
 		`INSERT OR IGNORE INTO task_labels (task_id, label_id) VALUES (?, ?)`,
 		taskID, labelID,
@@ -124,8 +124,8 @@ func (r *LabelRepo) AddToTask(ctx context.Context, taskID, labelID int) error {
 	return nil
 }
 
-// RemoveFromTask removes the association between a label and a task
-func (r *LabelRepo) RemoveFromTask(ctx context.Context, taskID, labelID int) error {
+// RemoveLabelFromTask removes the association between a label and a task
+func (r *LabelRepo) RemoveLabelFromTask(ctx context.Context, taskID, labelID int) error {
 	_, err := r.db.ExecContext(ctx,
 		`DELETE FROM task_labels WHERE task_id = ? AND label_id = ?`,
 		taskID, labelID,
@@ -136,8 +136,8 @@ func (r *LabelRepo) RemoveFromTask(ctx context.Context, taskID, labelID int) err
 	return nil
 }
 
-// SetForTask replaces all labels for a task with the given label IDs
-func (r *LabelRepo) SetForTask(ctx context.Context, taskID int, labelIDs []int) error {
+// SetTaskLabels replaces all labels for a task with the given label IDs
+func (r *LabelRepo) SetTaskLabels(ctx context.Context, taskID int, labelIDs []int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction for setting labels on task %d: %w", taskID, err)

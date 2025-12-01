@@ -12,7 +12,7 @@ import (
 
 // Model represents the application state for the TUI
 type Model struct {
-	repo             *database.Repository
+	repo             database.DataStore
 	appState         *state.AppState
 	uiState          *state.UIState
 	inputState       *state.InputState
@@ -22,7 +22,7 @@ type Model struct {
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
-func InitialModel(repo *database.Repository) Model {
+func InitialModel(repo database.DataStore) Model {
 	ctx := context.Background()
 
 	// Load all projects

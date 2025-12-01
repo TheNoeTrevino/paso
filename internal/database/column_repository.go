@@ -13,10 +13,10 @@ type ColumnRepo struct {
 	db *sql.DB
 }
 
-// Create creates a new column in the database for a specific project
+// CreateColumn creates a new column in the database for a specific project
 // If afterColumnID is nil, the column is appended to the end of the project's list
 // Otherwise, it's inserted after the specified column
-func (r *ColumnRepo) Create(ctx context.Context, name string, projectID int, afterColumnID *int) (*models.Column, error) {
+func (r *ColumnRepo) CreateColumn(ctx context.Context, name string, projectID int, afterColumnID *int) (*models.Column, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -105,9 +105,9 @@ func (r *ColumnRepo) Create(ctx context.Context, name string, projectID int, aft
 	}, nil
 }
 
-// GetByProject retrieves all columns for a specific project by traversing the linked list
+// GetColumnsByProject retrieves all columns for a specific project by traversing the linked list
 // Returns columns in order from head to tail
-func (r *ColumnRepo) GetByProject(ctx context.Context, projectID int) ([]*models.Column, error) {
+func (r *ColumnRepo) GetColumnsByProject(ctx context.Context, projectID int) ([]*models.Column, error) {
 	// Fetch ALL columns for the project in a single query (fixes N+1 problem)
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, name, project_id, prev_id, next_id FROM columns WHERE project_id = ?`,
@@ -183,8 +183,8 @@ func (r *ColumnRepo) GetByProject(ctx context.Context, projectID int) ([]*models
 	return columns, nil
 }
 
-// GetByID retrieves a column by its ID
-func (r *ColumnRepo) GetByID(ctx context.Context, columnID int) (*models.Column, error) {
+// GetColumnByID retrieves a column by its ID
+func (r *ColumnRepo) GetColumnByID(ctx context.Context, columnID int) (*models.Column, error) {
 	column := &models.Column{}
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, name, project_id, prev_id, next_id FROM columns WHERE id = ?`,
@@ -196,8 +196,8 @@ func (r *ColumnRepo) GetByID(ctx context.Context, columnID int) (*models.Column,
 	return column, nil
 }
 
-// UpdateName updates the name of an existing column
-func (r *ColumnRepo) UpdateName(ctx context.Context, columnID int, name string) error {
+// UpdateColumnName updates the name of an existing column
+func (r *ColumnRepo) UpdateColumnName(ctx context.Context, columnID int, name string) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE columns SET name = ? WHERE id = ?`,
 		name, columnID,
@@ -205,9 +205,9 @@ func (r *ColumnRepo) UpdateName(ctx context.Context, columnID int, name string) 
 	return err
 }
 
-// Delete removes a column and all its tasks from the database
+// DeleteColumn removes a column and all its tasks from the database
 // This operation maintains the linked list structure by updating adjacent columns
-func (r *ColumnRepo) Delete(ctx context.Context, columnID int) error {
+func (r *ColumnRepo) DeleteColumn(ctx context.Context, columnID int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
