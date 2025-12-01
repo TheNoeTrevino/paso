@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -16,7 +17,7 @@ type ProjectRepo struct {
 func (r *ProjectRepo) Create(ctx context.Context, name, description string) (*models.Project, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to begin transaction for project creation: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -26,12 +27,12 @@ func (r *ProjectRepo) Create(ctx context.Context, name, description string) (*mo
 		name, description,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to insert project '%s': %w", name, err)
 	}
 
 	projectID, err := result.LastInsertId()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get project ID after insert: %w", err)
 	}
 
 	// Initialize the project counter
@@ -40,7 +41,7 @@ func (r *ProjectRepo) Create(ctx context.Context, name, description string) (*mo
 		projectID,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize project counter for project %d: %w", projectID, err)
 	}
 
 	// Create default columns for the project (as a linked list)
@@ -63,12 +64,12 @@ func (r *ProjectRepo) Create(ctx context.Context, name, description string) (*mo
 			)
 		}
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create default column '%s' for project %d: %w", colName, projectID, err)
 		}
 
 		colID, err := colResult.LastInsertId()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get column ID for '%s': %w", colName, err)
 		}
 		colIDInt := int(colID)
 
@@ -76,7 +77,7 @@ func (r *ProjectRepo) Create(ctx context.Context, name, description string) (*mo
 		if prevColID != nil {
 			_, err = tx.ExecContext(ctx, `UPDATE columns SET next_id = ? WHERE id = ?`, colIDInt, *prevColID)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to link columns for project %d: %w", projectID, err)
 			}
 		}
 
@@ -84,7 +85,7 @@ func (r *ProjectRepo) Create(ctx context.Context, name, description string) (*mo
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to commit project creation transaction: %w", err)
 	}
 
 	// Retrieve the created project
@@ -99,7 +100,7 @@ func (r *ProjectRepo) GetByID(ctx context.Context, id int) (*models.Project, err
 		id,
 	).Scan(&project.ID, &project.Name, &project.Description, &project.CreatedAt, &project.UpdatedAt)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get project %d: %w", id, err)
 	}
 	return project, nil
 }
@@ -108,7 +109,7 @@ func (r *ProjectRepo) GetByID(ctx context.Context, id int) (*models.Project, err
 func (r *ProjectRepo) GetAll(ctx context.Context) ([]*models.Project, error) {
 	rows, err := r.db.QueryContext(ctx, `SELECT id, name, description, created_at, updated_at FROM projects ORDER BY id`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query all projects: %w", err)
 	}
 	defer rows.Close()
 
@@ -116,12 +117,15 @@ func (r *ProjectRepo) GetAll(ctx context.Context) ([]*models.Project, error) {
 	for rows.Next() {
 		project := &models.Project{}
 		if err := rows.Scan(&project.ID, &project.Name, &project.Description, &project.CreatedAt, &project.UpdatedAt); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan project row: %w", err)
 		}
 		projects = append(projects, project)
 	}
 
-	return projects, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating project rows: %w", err)
+	}
+	return projects, nil
 }
 
 // Update updates a project's name and description
@@ -130,21 +134,24 @@ func (r *ProjectRepo) Update(ctx context.Context, id int, name, description stri
 		`UPDATE projects SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
 		name, description, id,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to update project %d: %w", id, err)
+	}
+	return nil
 }
 
 // Delete removes a project and all its columns and tasks (cascade)
 func (r *ProjectRepo) Delete(ctx context.Context, id int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin transaction for project %d deletion: %w", id, err)
 	}
 	defer tx.Rollback()
 
 	// Get all columns for this project
 	rows, err := tx.QueryContext(ctx, `SELECT id FROM columns WHERE project_id = ?`, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to query columns for project %d deletion: %w", id, err)
 	}
 
 	var columnIDs []int
@@ -152,7 +159,7 @@ func (r *ProjectRepo) Delete(ctx context.Context, id int) error {
 		var colID int
 		if err := rows.Scan(&colID); err != nil {
 			rows.Close()
-			return err
+			return fmt.Errorf("failed to scan column ID during project %d deletion: %w", id, err)
 		}
 		columnIDs = append(columnIDs, colID)
 	}
@@ -162,29 +169,32 @@ func (r *ProjectRepo) Delete(ctx context.Context, id int) error {
 	for _, colID := range columnIDs {
 		_, err = tx.ExecContext(ctx, `DELETE FROM tasks WHERE column_id = ?`, colID)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to delete tasks for column %d during project %d deletion: %w", colID, id, err)
 		}
 	}
 
 	// Delete all columns for this project
 	_, err = tx.ExecContext(ctx, `DELETE FROM columns WHERE project_id = ?`, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete columns for project %d: %w", id, err)
 	}
 
 	// Delete the project counter
 	_, err = tx.ExecContext(ctx, `DELETE FROM project_counters WHERE project_id = ?`, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete counter for project %d: %w", id, err)
 	}
 
 	// Delete the project
 	_, err = tx.ExecContext(ctx, `DELETE FROM projects WHERE id = ?`, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete project %d: %w", id, err)
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit project %d deletion: %w", id, err)
+	}
+	return nil
 }
 
 // GetTaskCount returns the total number of tasks in a project
@@ -196,14 +206,17 @@ func (r *ProjectRepo) GetTaskCount(ctx context.Context, projectID int) (int, err
 		JOIN columns c ON t.column_id = c.id
 		WHERE c.project_id = ?
 	`, projectID).Scan(&count)
-	return count, err
+	if err != nil {
+		return 0, fmt.Errorf("failed to get task count for project %d: %w", projectID, err)
+	}
+	return count, nil
 }
 
 // GetNextTicketNumber returns and increments the next ticket number for a project
 func (r *ProjectRepo) GetNextTicketNumber(ctx context.Context, projectID int) (int, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to begin transaction for ticket number: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -214,7 +227,7 @@ func (r *ProjectRepo) GetNextTicketNumber(ctx context.Context, projectID int) (i
 		projectID,
 	).Scan(&ticketNumber)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to get next ticket number for project %d: %w", projectID, err)
 	}
 
 	// Increment counter
@@ -223,11 +236,11 @@ func (r *ProjectRepo) GetNextTicketNumber(ctx context.Context, projectID int) (i
 		projectID,
 	)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to increment ticket counter for project %d: %w", projectID, err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to commit ticket number transaction: %w", err)
 	}
 
 	return ticketNumber, nil
