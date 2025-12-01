@@ -130,3 +130,48 @@ func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected b
 
 	return style.Render(content)
 }
+
+// ScrollIndicators holds the left and right scroll arrow indicators
+type ScrollIndicators struct {
+	Left  string
+	Right string
+}
+
+// GetScrollIndicators returns the appropriate scroll arrows based on viewport position
+func GetScrollIndicators(viewportOffset, viewportSize, columnCount int) ScrollIndicators {
+	return ScrollIndicators{
+		Left:  getLeftArrow(viewportOffset),
+		Right: getRightArrow(viewportOffset, viewportSize, columnCount),
+	}
+}
+
+// getLeftArrow returns "◀" if there are columns to the left, otherwise space
+func getLeftArrow(viewportOffset int) string {
+	if viewportOffset > 0 {
+		return "◀"
+	}
+	return " "
+}
+
+// getRightArrow returns "▶" if there are columns to the right, otherwise space
+func getRightArrow(viewportOffset, viewportSize, columnCount int) string {
+	if viewportOffset+viewportSize < columnCount {
+		return "▶"
+	}
+	return " "
+}
+
+// RenderStatusBar renders the status bar showing column and task count
+func RenderStatusBar(columnCount, taskCount int) string {
+	return StatusBarStyle.Render(fmt.Sprintf("%d columns  |  %d tasks  |  Press ? for help", columnCount, taskCount))
+}
+
+// RenderErrorBanner renders the error banner with the given error message
+func RenderErrorBanner(message string) string {
+	return ErrorBannerStyle.Render("⚠ " + message)
+}
+
+// RenderFooter renders the keyboard shortcuts footer
+func RenderFooter() string {
+	return FooterStyle.Render("[a]dd  [e]dit  [d]elete  [C]ol  [R]ename  [X]delete  [hjkl]nav  [[]]scroll  [?]help  [q]uit")
+}
