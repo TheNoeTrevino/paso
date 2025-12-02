@@ -45,15 +45,12 @@ func InitialModel(repo database.DataStore) Model {
 		columns = []*models.Column{}
 	}
 
-	// Load task summaries for each column (includes labels)
-	tasks := make(map[int][]*models.TaskSummary)
-	for _, col := range columns {
-		columnTasks, err := repo.GetTaskSummariesByColumn(ctx, col.ID)
-		if err != nil {
-			log.Printf("Error loading tasks for column %d: %v", col.ID, err)
-			columnTasks = []*models.TaskSummary{}
-		}
-		tasks[col.ID] = columnTasks
+	// Load task summaries for the entire project (includes labels)
+	// Uses batch query to avoid N+1 pattern
+	tasks, err := repo.GetTaskSummariesByProject(ctx, currentProjectID)
+	if err != nil {
+		log.Printf("Error loading tasks for project %d: %v", currentProjectID, err)
+		tasks = make(map[int][]*models.TaskSummary)
 	}
 
 	// Load labels for the current project
@@ -142,7 +139,6 @@ func (m Model) removeCurrentTask() {
 		m.uiState.SetSelectedTask(m.uiState.SelectedTask() - 1)
 	}
 }
-
 
 // getCurrentColumn returns the currently selected column
 // Returns nil if there are no columns
@@ -300,15 +296,11 @@ func (m Model) switchToProject(projectIndex int) {
 	}
 	m.appState.SetColumns(columns)
 
-	// Reload task summaries for each column
-	tasks := make(map[int][]*models.TaskSummary)
-	for _, col := range columns {
-		columnTasks, err := m.repo.GetTaskSummariesByColumn(context.Background(), col.ID)
-		if err != nil {
-			log.Printf("Error loading tasks for column %d: %v", col.ID, err)
-			columnTasks = []*models.TaskSummary{}
-		}
-		tasks[col.ID] = columnTasks
+	// Reload task summaries for the entire project
+	tasks, err := m.repo.GetTaskSummariesByProject(context.Background(), project.ID)
+	if err != nil {
+		log.Printf("Error loading tasks for project %d: %v", project.ID, err)
+		tasks = make(map[int][]*models.TaskSummary)
 	}
 	m.appState.SetTasks(tasks)
 
