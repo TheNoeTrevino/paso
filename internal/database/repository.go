@@ -25,8 +25,10 @@ func NewRepository(db *sql.DB) *Repository {
 }
 
 // Compile-time verification that Repository implements all interfaces
-var _ DataStore = (*Repository)(nil)
-var _ ProjectRepository = (*Repository)(nil)
-var _ ColumnRepository = (*Repository)(nil)
-var _ TaskRepository = (*Repository)(nil)
-var _ LabelRepository = (*Repository)(nil)
+var (
+	_ DataStore         = (*Repository)(nil)
+	_ ProjectRepository = (*Repository)(nil)
+	_ ColumnRepository  = (*Repository)(nil)
+	_ TaskRepository    = (*Repository)(nil)
+	_ LabelRepository   = (*Repository)(nil)
+)
