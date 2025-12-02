@@ -9,6 +9,7 @@ import (
 // TaskReader defines read operations for tasks.
 type TaskReader interface {
 	GetTaskSummariesByColumn(ctx context.Context, columnID int) ([]*models.TaskSummary, error)
+	GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error)
 	GetTasksByColumn(ctx context.Context, columnID int) ([]*models.Task, error)
 	GetTaskDetail(ctx context.Context, id int) (*models.TaskDetail, error)
 	GetTaskCountByColumn(ctx context.Context, columnID int) (int, error)
