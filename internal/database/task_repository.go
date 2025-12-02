@@ -134,6 +134,64 @@ func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) (
 	return summaries, nil
 }
 
+// GetTaskSummariesByProject retrieves all task summaries for a project, grouped by column
+// This prevents N+1 queries by fetching all tasks at once
+func (r *TaskRepo) GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error) {
+	// Use ASCII Unit Separator (0x1F) as delimiter to avoid conflicts with user data
+	query := `
+		SELECT
+			t.id,
+			t.title,
+			t.column_id,
+			t.position,
+			GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
+			GROUP_CONCAT(l.name, CHAR(31)) as label_names,
+			GROUP_CONCAT(l.color, CHAR(31)) as label_colors
+		FROM tasks t
+		INNER JOIN columns c ON t.column_id = c.id
+		LEFT JOIN task_labels tl ON t.id = tl.task_id
+		LEFT JOIN labels l ON tl.label_id = l.id
+		WHERE c.project_id = ?
+		GROUP BY t.id, t.title, t.column_id, t.position
+		ORDER BY t.position`
+
+	rows, err := r.db.QueryContext(ctx, query, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query task summaries for project %d: %w", projectID, err)
+	}
+	defer rows.Close()
+
+	// Group tasks by column_id
+	tasksByColumn := make(map[int][]*models.TaskSummary)
+	for rows.Next() {
+		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
+		summary := &models.TaskSummary{}
+
+		if err := rows.Scan(
+			&summary.ID,
+			&summary.Title,
+			&summary.ColumnID,
+			&summary.Position,
+			&labelIDsStr,
+			&labelNamesStr,
+			&labelColorsStr,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan task summary for project %d: %w", projectID, err)
+		}
+
+		// Parse concatenated label data
+		summary.Labels = parseLabelStrings(labelIDsStr, labelNamesStr, labelColorsStr)
+
+		// Append to the appropriate column slice
+		tasksByColumn[summary.ColumnID] = append(tasksByColumn[summary.ColumnID], summary)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating task summaries for project %d: %w", projectID, err)
+	}
+	return tasksByColumn, nil
+}
+
 // GetTaskDetail retrieves full task details including description, timestamps, and labels
 func (r *TaskRepo) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error) {
 	detail := &models.TaskDetail{}
