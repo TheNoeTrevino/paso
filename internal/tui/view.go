@@ -234,12 +234,12 @@ func (m Model) viewTaskDetail() string {
 func (m Model) viewKanbanBoard() string {
 	// Handle empty column list edge case
 	if len(m.appState.Columns()) == 0 {
-		header := TitleStyle.Render("PASO - Your Tasks")
 		emptyMsg := "No columns found. Please check database initialization."
-		footer := "[q] quit"
+		footer := components.RenderStatusBar(components.StatusBarProps{
+			Width: m.uiState.Width(),
+		})
 		return lipgloss.JoinVertical(
 			lipgloss.Left,
-			header,
 			"",
 			emptyMsg,
 			"",
@@ -251,9 +251,9 @@ func (m Model) viewKanbanBoard() string {
 	endIdx := min(m.uiState.ViewportOffset()+m.uiState.ViewportSize(), len(m.appState.Columns()))
 	visibleColumns := m.appState.Columns()[m.uiState.ViewportOffset():endIdx]
 
-	// Calculate column height: terminal height minus tabs, header, status bar, footer, and margins
-	// Tab bar (3) + empty line (1) + Header (1) + status bar (1) + empty line (1) + empty line (1) + footer (1) + margins (2) = ~11
-	columnHeight := m.uiState.Height() - 11
+	// Calculate column height: terminal height minus tabs, footer, and margins
+	// Tab bar (3) + empty line (1) + empty line before footer (1) + footer (1) + margins (2) = ~8
+	columnHeight := m.uiState.Height() - 8
 	if columnHeight < 10 {
 		columnHeight = 10 // Minimum height
 	}
@@ -288,9 +288,6 @@ func (m Model) viewKanbanBoard() string {
 	columnsView := lipgloss.JoinHorizontal(lipgloss.Top, columns...)
 	board := lipgloss.JoinHorizontal(lipgloss.Top, scrollIndicators.Left, " ", columnsView, " ", scrollIndicators.Right)
 
-	// Get cached total task count
-	totalTasks := m.appState.TotalTaskCount()
-
 	// Create project tabs from actual project data
 	var projectTabs []string
 	for _, project := range m.appState.Projects() {
@@ -301,23 +298,22 @@ func (m Model) viewKanbanBoard() string {
 	}
 	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width())
 
-	header := TitleStyle.Render("PASO - Your Tasks")
-	statusBar := RenderStatusBar(len(m.appState.Columns()), totalTasks)
-
 	// error notification
 	var errorBanner string
 	if m.errorState.HasError() {
 		errorBanner = RenderErrorBanner(m.errorState.Get())
 	}
 
-	footer := RenderFooter()
+	footer := components.RenderStatusBar(components.StatusBarProps{
+		Width: m.uiState.Width(),
+	})
 
 	// Combine all elements vertically
-	elements := []string{tabBar, "", header, statusBar}
+	elements := []string{tabBar, ""}
 	if errorBanner != "" {
 		elements = append(elements, errorBanner)
 	}
-	elements = append(elements, "", board, "", footer)
+	elements = append(elements, board, "", footer)
 
 	return lipgloss.JoinVertical(lipgloss.Left, elements...)
 }
