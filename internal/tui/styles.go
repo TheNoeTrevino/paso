@@ -119,18 +119,10 @@ var (
 					BorderForeground(lipgloss.Color("42")).
 					Padding(1, 2)
 
-	// StatusBarStyle defines the appearance of the status bar (column/task count)
-	StatusBarStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240"))
-
 	// ErrorBannerStyle defines the appearance of error messages
 	ErrorBannerStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("196")).
 		Background(lipgloss.Color("52")).
 		Bold(true).
 		Padding(0, 1)
-
-	// FooterStyle defines the appearance of the keyboard shortcuts footer
-	FooterStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240"))
 )
