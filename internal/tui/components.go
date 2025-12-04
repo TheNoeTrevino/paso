@@ -161,17 +161,7 @@ func getRightArrow(viewportOffset, viewportSize, columnCount int) string {
 	return " "
 }
 
-// RenderStatusBar renders the status bar showing column and task count
-func RenderStatusBar(columnCount, taskCount int) string {
-	return StatusBarStyle.Render(fmt.Sprintf("%d columns  |  %d tasks  |  Press ? for help", columnCount, taskCount))
-}
-
 // RenderErrorBanner renders the error banner with the given error message
 func RenderErrorBanner(message string) string {
 	return ErrorBannerStyle.Render("⚠ " + message)
-}
-
-// RenderFooter renders the keyboard shortcuts footer
-func RenderFooter() string {
-	return FooterStyle.Render("[a]dd  [e]dit  [d]elete  [C]ol  [R]ename  [X]delete  [hjkl]nav  [[]]scroll  [?]help  [q]uit")
 }
