@@ -119,10 +119,24 @@ var (
 					BorderForeground(lipgloss.Color("42")).
 					Padding(1, 2)
 
-	// ErrorBannerStyle defines the appearance of error messages
+	// InfoBannerStyle defines the appearance of info notifications (blue)
+	InfoBannerStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("39")).  // Bright blue
+		Background(lipgloss.Color("17")).  // Dark blue
+		Bold(true).
+		Padding(0, 1)
+
+	// WarningBannerStyle defines the appearance of warning notifications (yellow)
+	WarningBannerStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("220")). // Yellow
+		Background(lipgloss.Color("94")).  // Dark yellow/brown
+		Bold(true).
+		Padding(0, 1)
+
+	// ErrorBannerStyle defines the appearance of error messages (red)
 	ErrorBannerStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("196")).
-		Background(lipgloss.Color("52")).
+		Foreground(lipgloss.Color("196")). // Bright red
+		Background(lipgloss.Color("52")).  // Dark red
 		Bold(true).
 		Padding(0, 1)
 )

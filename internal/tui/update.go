@@ -111,7 +111,7 @@ func (m Model) createNewTaskWithLabels(values ticketFormValues) {
 	)
 	if err != nil {
 		log.Printf("Error creating task: %v", err)
-		m.errorState.Set("Error creating task")
+		m.notificationState.Add(state.LevelError, "Error creating task")
 		return
 	}
 
@@ -137,7 +137,7 @@ func (m Model) updateExistingTaskWithLabels(values ticketFormValues) {
 	err := m.repo.UpdateTask(context.Background(), m.formState.EditingTaskID, values.title, values.description)
 	if err != nil {
 		log.Printf("Error updating task: %v", err)
-		m.errorState.Set("Error updating task")
+		m.notificationState.Add(state.LevelError, "Error updating task")
 		return
 	}
 
@@ -260,7 +260,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				project, err := m.repo.CreateProject(context.Background(), strings.TrimSpace(name), strings.TrimSpace(description))
 				if err != nil {
 					log.Printf("Error creating project: %v", err)
-					m.errorState.Set("Error creating project")
+					m.notificationState.Add(state.LevelError, "Error creating project")
 				} else {
 					// Reload projects list
 					m.reloadProjects()
@@ -330,7 +330,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						err := m.repo.RemoveLabelFromTask(context.Background(), m.labelPickerState.TaskID, item.Label.ID)
 						if err != nil {
 							log.Printf("Error removing label: %v", err)
-							m.errorState.Set("Failed to remove label from task")
+							m.notificationState.Add(state.LevelError, "Failed to remove label from task")
 						} else {
 							m.labelPickerState.Items[i].Selected = false
 						}
@@ -339,7 +339,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						err := m.repo.AddLabelToTask(context.Background(), m.labelPickerState.TaskID, item.Label.ID)
 						if err != nil {
 							log.Printf("Error adding label: %v", err)
-							m.errorState.Set("Failed to add label to task")
+							m.notificationState.Add(state.LevelError, "Failed to add label to task")
 						} else {
 							m.labelPickerState.Items[i].Selected = true
 						}
@@ -423,7 +423,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		label, err := m.repo.CreateLabel(context.Background(), project.ID, m.formState.FormLabelName, color)
 		if err != nil {
 			log.Printf("Error creating label: %v", err)
-			m.errorState.Set("Failed to create label")
+			m.notificationState.Add(state.LevelError, "Failed to create label")
 			m.labelPickerState.CreateMode = false
 			return m, nil
 		}
@@ -441,7 +441,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		err = m.repo.AddLabelToTask(context.Background(), m.labelPickerState.TaskID, label.ID)
 		if err != nil {
 			log.Printf("Error assigning new label to task: %v", err)
-			m.errorState.Set("Failed to assign label to task")
+			m.notificationState.Add(state.LevelError, "Failed to assign label to task")
 		}
 
 		// Reload task detail to update the view

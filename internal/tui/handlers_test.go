@@ -18,7 +18,7 @@ func setupTestModel(columns []*models.Column, tasks map[int][]*models.TaskSummar
 		inputState:       state.NewInputState(),
 		formState:        state.NewFormState(),
 		labelPickerState: state.NewLabelPickerState(),
-		errorState:       state.NewErrorState(),
+		notificationState: state.NewNotificationState(),
 	}
 }
 
@@ -151,14 +151,15 @@ func TestHandleAddTask_NoColumns(t *testing.T) {
 	newModel, _ := m.handleAddTask()
 	m = newModel.(Model)
 
-	// Should set error message
-	if !m.errorState.HasError() {
-		t.Error("handleAddTask with no columns should set error, but HasError() = false")
+	// Should set notification
+	if !m.notificationState.HasAny() {
+		t.Error("handleAddTask with no columns should set notification, but HasAny() = false")
 	}
 
 	expectedError := "Cannot add task: No columns exist"
-	if !strings.Contains(m.errorState.Get(), expectedError) {
-		t.Errorf("Error message = %q, want to contain %q", m.errorState.Get(), expectedError)
+	notifications := m.notificationState.All()
+	if len(notifications) == 0 || !strings.Contains(notifications[0].Message, expectedError) {
+		t.Errorf("Notification message = %q, want to contain %q", notifications[0].Message, expectedError)
 	}
 
 	// Should not change mode
@@ -180,14 +181,15 @@ func TestHandleEditTask_NoTask(t *testing.T) {
 	newModel, _ := m.handleEditTask()
 	m = newModel.(Model)
 
-	// Should set error message (getCurrentTask returns nil, so error is set)
-	if !m.errorState.HasError() {
-		t.Error("handleEditTask with no task should set error, but HasError() = false")
+	// Should set notification (getCurrentTask returns nil, so notification is set)
+	if !m.notificationState.HasAny() {
+		t.Error("handleEditTask with no task should set notification, but HasAny() = false")
 	}
 
 	expectedError := "No task selected to edit"
-	if m.errorState.Get() != expectedError {
-		t.Errorf("Error message = %q, want %q", m.errorState.Get(), expectedError)
+	notifications := m.notificationState.All()
+	if len(notifications) == 0 || notifications[0].Message != expectedError {
+		t.Errorf("Notification message = %q, want %q", notifications[0].Message, expectedError)
 	}
 
 	// Should not change mode
@@ -207,14 +209,15 @@ func TestHandleDeleteTask_NoTask(t *testing.T) {
 	newModel, _ := m.handleDeleteTask()
 	m = newModel.(Model)
 
-	// Should set error message
-	if !m.errorState.HasError() {
-		t.Error("handleDeleteTask with no task should set error, but HasError() = false")
+	// Should set notification
+	if !m.notificationState.HasAny() {
+		t.Error("handleDeleteTask with no task should set notification, but HasAny() = false")
 	}
 
 	expectedError := "No task selected to delete"
-	if m.errorState.Get() != expectedError {
-		t.Errorf("Error message = %q, want %q", m.errorState.Get(), expectedError)
+	notifications := m.notificationState.All()
+	if len(notifications) == 0 || notifications[0].Message != expectedError {
+		t.Errorf("Notification message = %q, want %q", notifications[0].Message, expectedError)
 	}
 
 	// Should not enter delete confirm mode
