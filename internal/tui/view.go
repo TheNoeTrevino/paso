@@ -324,8 +324,10 @@ TASKS
   a     Add new task
   e     Edit selected task
   d     Delete selected task
-  <     Move task to previous column
-  >     Move task to next column
+  L     Move task to previous column
+  H     Move task to next column
+  K     Move task up in column
+  J     Move task down in column
   space View task details
   l     Edit labels (when viewing task)
 
