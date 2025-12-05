@@ -39,6 +39,12 @@ func GetPreset(name string) *ColorScheme {
 	switch name {
 	case "monochrome":
 		return Monochrome()
+	case "wave":
+		return Wave()
+	case "dragon":
+		return Dragon()
+	case "lotus":
+		return Lotus()
 	case "default", "":
 		return Default()
 	default:
