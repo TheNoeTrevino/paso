@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -291,7 +292,7 @@ func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 
 	// 3. Check if there's a next column
 	if !nextColumnID.Valid {
-		return models.ErrNoNextColumn
+		return errors.New("task is already in the last column")
 	}
 
 	// 4. Get the number of tasks in the next column to determine position
@@ -352,7 +353,7 @@ func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 
 	// 3. Check if there's a previous column
 	if !prevColumnID.Valid {
-		return models.ErrNoPrevColumn
+		return errors.New("task is already in the first column")
 	}
 
 	// 4. Get the number of tasks in the previous column to determine position
