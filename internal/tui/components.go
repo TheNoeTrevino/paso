@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -27,10 +27,7 @@ func RenderTabs(tabs []string, selectedIdx int, width int) string {
 	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
 
 	// Fill remaining space with gap
-	gapWidth := width - lipgloss.Width(row) - 2
-	if gapWidth < 0 {
-		gapWidth = 0
-	}
+	gapWidth := max(width-lipgloss.Width(row)-2, 0)
 	gap := TabGapStyle.Render(strings.Repeat(" ", gapWidth))
 
 	return lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap)
