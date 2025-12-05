@@ -215,3 +215,144 @@ func TestTaskDetailIncludesAllFields(t *testing.T) {
 		t.Error("UpdatedAt should not be zero")
 	}
 }
+
+// TestSwapTaskUp tests moving tasks up within a column
+func TestSwapTaskUp(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+	repo := NewRepository(db)
+
+	// Create a column
+	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
+
+	// Create three tasks
+	task1, _ := repo.CreateTask(context.Background(), "Task 1", "", col.ID, 0)
+	task2, _ := repo.CreateTask(context.Background(), "Task 2", "", col.ID, 1)
+	task3, _ := repo.CreateTask(context.Background(), "Task 3", "", col.ID, 2)
+
+	// Move task2 up (should swap with task1)
+	err := repo.SwapTaskUp(context.Background(), task2.ID)
+	if err != nil {
+		t.Fatalf("Failed to swap task up: %v", err)
+	}
+
+	// Verify new order: task2, task1, task3
+	tasks, _ := repo.GetTasksByColumn(context.Background(), col.ID)
+	if len(tasks) != 3 {
+		t.Fatalf("Expected 3 tasks, got %d", len(tasks))
+	}
+	if tasks[0].ID != task2.ID {
+		t.Errorf("Expected task2 at position 0, got task %d", tasks[0].ID)
+	}
+	if tasks[1].ID != task1.ID {
+		t.Errorf("Expected task1 at position 1, got task %d", tasks[1].ID)
+	}
+	if tasks[2].ID != task3.ID {
+		t.Errorf("Expected task3 at position 2, got task %d", tasks[2].ID)
+	}
+
+	// Verify positions are correct
+	if tasks[0].Position != 0 {
+		t.Errorf("Task at index 0 should have position 0, got %d", tasks[0].Position)
+	}
+	if tasks[1].Position != 1 {
+		t.Errorf("Task at index 1 should have position 1, got %d", tasks[1].Position)
+	}
+	if tasks[2].Position != 2 {
+		t.Errorf("Task at index 2 should have position 2, got %d", tasks[2].Position)
+	}
+
+	// Try to move task2 up again (now at top, should fail)
+	err = repo.SwapTaskUp(context.Background(), task2.ID)
+	if err == nil {
+		t.Error("Expected error when swapping up from top position")
+	}
+}
+
+// TestSwapTaskDown tests moving tasks down within a column
+func TestSwapTaskDown(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+	repo := NewRepository(db)
+
+	// Create a column
+	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
+
+	// Create three tasks
+	task1, _ := repo.CreateTask(context.Background(), "Task 1", "", col.ID, 0)
+	task2, _ := repo.CreateTask(context.Background(), "Task 2", "", col.ID, 1)
+	task3, _ := repo.CreateTask(context.Background(), "Task 3", "", col.ID, 2)
+
+	// Move task2 down (should swap with task3)
+	err := repo.SwapTaskDown(context.Background(), task2.ID)
+	if err != nil {
+		t.Fatalf("Failed to swap task down: %v", err)
+	}
+
+	// Verify new order: task1, task3, task2
+	tasks, _ := repo.GetTasksByColumn(context.Background(), col.ID)
+	if len(tasks) != 3 {
+		t.Fatalf("Expected 3 tasks, got %d", len(tasks))
+	}
+	if tasks[0].ID != task1.ID {
+		t.Errorf("Expected task1 at position 0, got task %d", tasks[0].ID)
+	}
+	if tasks[1].ID != task3.ID {
+		t.Errorf("Expected task3 at position 1, got task %d", tasks[1].ID)
+	}
+	if tasks[2].ID != task2.ID {
+		t.Errorf("Expected task2 at position 2, got task %d", tasks[2].ID)
+	}
+
+	// Verify positions are correct
+	if tasks[0].Position != 0 {
+		t.Errorf("Task at index 0 should have position 0, got %d", tasks[0].Position)
+	}
+	if tasks[1].Position != 1 {
+		t.Errorf("Task at index 1 should have position 1, got %d", tasks[1].Position)
+	}
+	if tasks[2].Position != 2 {
+		t.Errorf("Task at index 2 should have position 2, got %d", tasks[2].Position)
+	}
+
+	// Try to move task2 down again (now at bottom, should fail)
+	err = repo.SwapTaskDown(context.Background(), task2.ID)
+	if err == nil {
+		t.Error("Expected error when swapping down from bottom position")
+	}
+}
+
+// TestSwapTaskUpAndDown tests multiple swap operations
+func TestSwapTaskUpAndDown(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+	repo := NewRepository(db)
+
+	// Create a column
+	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
+
+	// Create four tasks
+	task1, _ := repo.CreateTask(context.Background(), "Task 1", "", col.ID, 0)
+	task2, _ := repo.CreateTask(context.Background(), "Task 2", "", col.ID, 1)
+	task3, _ := repo.CreateTask(context.Background(), "Task 3", "", col.ID, 2)
+	task4, _ := repo.CreateTask(context.Background(), "Task 4", "", col.ID, 3)
+
+	// Move task3 up twice (should end up at position 0)
+	repo.SwapTaskUp(context.Background(), task3.ID)
+	repo.SwapTaskUp(context.Background(), task3.ID)
+
+	// Verify order: task3, task1, task2, task4
+	tasks, _ := repo.GetTasksByColumn(context.Background(), col.ID)
+	if tasks[0].ID != task3.ID || tasks[1].ID != task1.ID || tasks[2].ID != task2.ID || tasks[3].ID != task4.ID {
+		t.Error("Tasks not in expected order after moving up")
+	}
+
+	// Move task2 down (should swap with task4)
+	repo.SwapTaskDown(context.Background(), task2.ID)
+
+	// Verify order: task3, task1, task4, task2
+	tasks, _ = repo.GetTasksByColumn(context.Background(), col.ID)
+	if tasks[0].ID != task3.ID || tasks[1].ID != task1.ID || tasks[2].ID != task4.ID || tasks[3].ID != task2.ID {
+		t.Error("Tasks not in expected order after moving down")
+	}
+}

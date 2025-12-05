@@ -53,6 +53,10 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleMoveTaskRight()
 	case "<", "H":
 		return m.handleMoveTaskLeft()
+	case "K":
+		return m.handleMoveTaskUp()
+	case "J":
+		return m.handleMoveTaskDown()
 	case "{":
 		return m.handlePrevProject()
 	case "}":
@@ -233,6 +237,22 @@ func (m Model) handleMoveTaskRight() (tea.Model, tea.Cmd) {
 func (m Model) handleMoveTaskLeft() (tea.Model, tea.Cmd) {
 	if m.getCurrentTask() != nil {
 		m.moveTaskLeft()
+	}
+	return m, nil
+}
+
+// handleMoveTaskUp moves the task up within its column.
+func (m Model) handleMoveTaskUp() (tea.Model, tea.Cmd) {
+	if m.getCurrentTask() != nil {
+		m.moveTaskUp()
+	}
+	return m, nil
+}
+
+// handleMoveTaskDown moves the task down within its column.
+func (m Model) handleMoveTaskDown() (tea.Model, tea.Cmd) {
+	if m.getCurrentTask() != nil {
+		m.moveTaskDown()
 	}
 	return m, nil
 }
