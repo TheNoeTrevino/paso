@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
+import "github.com/charmbracelet/lipgloss/v2"
 
 // Style definitions for the kanban board UI
 // These styles follow Lipgloss conventions for composable terminal styling
