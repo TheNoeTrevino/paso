@@ -1,5 +1,7 @@
 package state
 
+import "charm.land/lipgloss/v2"
+
 // NotificationLevel represents the severity/type of a notification.
 type NotificationLevel int
 
@@ -24,12 +26,18 @@ type Notification struct {
 type NotificationState struct {
 	// notifications contains the list of current notifications to display
 	notifications []Notification
+	// windowWidth tracks the current window width for positioning
+	windowWidth int
+	// windowHeight tracks the current window height for positioning
+	windowHeight int
 }
 
 // NewNotificationState creates a new NotificationState with no notifications.
 func NewNotificationState() *NotificationState {
 	return &NotificationState{
 		notifications: []Notification{},
+		windowWidth:   0,
+		windowHeight:  0,
 	}
 }
 
@@ -72,4 +80,51 @@ func (s *NotificationState) All() []Notification {
 // HasAny returns true if there are any notifications.
 func (s *NotificationState) HasAny() bool {
 	return len(s.notifications) > 0
+}
+
+// SetWindowSize updates the window dimensions for positioning calculations.
+func (s *NotificationState) SetWindowSize(width, height int) {
+	s.windowWidth = width
+	s.windowHeight = height
+}
+
+// GetLayers creates floating layers for all active notifications.
+// Notifications are stacked vertically in the top-right corner of the screen.
+func (s *NotificationState) GetLayers(renderFunc func(Notification) string) []*lipgloss.Layer {
+	layers := []*lipgloss.Layer{}
+
+	// If window dimensions not set, can't position properly
+	if s.windowWidth == 0 {
+		return layers
+	}
+
+	for i, notification := range s.notifications {
+		notificationView := renderFunc(notification)
+		notifWidth := lipgloss.Width(notificationView)
+		notifHeight := lipgloss.Height(notificationView)
+
+		// Stack vertically from top-right
+		// Calculate row based on accumulated heights of previous notifications
+		row := 0
+		for j := 0; j < i; j++ {
+			prevNotif := renderFunc(s.notifications[j])
+			row += lipgloss.Height(prevNotif) + 1 // +1 for spacing
+		}
+		
+		col := s.windowWidth - notifWidth - 1 // 1 char padding from right edge
+
+		// Ensure we don't go off screen
+		if col < 0 {
+			col = 0
+		}
+		if row+notifHeight >= s.windowHeight {
+			// Don't render notifications that would go off screen
+			break
+		}
+
+		layers = append(layers,
+			lipgloss.NewLayer(notificationView).X(col).Y(row))
+	}
+
+	return layers
 }
