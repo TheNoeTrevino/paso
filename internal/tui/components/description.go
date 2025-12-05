@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/lipgloss/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type DescriptionProps struct {

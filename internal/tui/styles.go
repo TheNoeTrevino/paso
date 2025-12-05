@@ -1,14 +1,14 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss/v2"
+import "charm.land/lipgloss/v2"
 
 // Style definitions for the kanban board UI
 // These styles follow Lipgloss conventions for composable terminal styling
 
 var (
 	// Tab colors
-	highlight = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
-	subtle    = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
+	highlight = lipgloss.Color("#874BFD")
+	subtle    = lipgloss.Color("#D9DCCF")
 
 	// Tab borders - active tab has no bottom border to "open" into content
 	activeTabBorder = lipgloss.Border{
@@ -121,22 +121,22 @@ var (
 
 	// InfoBannerStyle defines the appearance of info notifications (blue)
 	InfoBannerStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("39")).  // Bright blue
-		Background(lipgloss.Color("17")).  // Dark blue
-		Bold(true).
-		Padding(0, 1)
+			Foreground(lipgloss.Color("39")). // Bright blue
+			Background(lipgloss.Color("17")). // Dark blue
+			Bold(true).
+			Padding(0, 1)
 
 	// WarningBannerStyle defines the appearance of warning notifications (yellow)
 	WarningBannerStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("220")). // Yellow
-		Background(lipgloss.Color("94")).  // Dark yellow/brown
-		Bold(true).
-		Padding(0, 1)
+				Foreground(lipgloss.Color("220")). // Yellow
+				Background(lipgloss.Color("94")).  // Dark yellow/brown
+				Bold(true).
+				Padding(0, 1)
 
 	// ErrorBannerStyle defines the appearance of error messages (red)
 	ErrorBannerStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("196")). // Bright red
-		Background(lipgloss.Color("52")).  // Dark red
-		Bold(true).
-		Padding(0, 1)
+				Foreground(lipgloss.Color("196")). // Bright red
+				Background(lipgloss.Color("52")).  // Dark red
+				Bold(true).
+				Padding(0, 1)
 )

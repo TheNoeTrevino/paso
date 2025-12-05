@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
-	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
 // RenderTabs renders a tab bar with the given tab names
@@ -157,33 +156,4 @@ func getRightArrow(viewportOffset, viewportSize, columnCount int) string {
 		return "▶"
 	}
 	return " "
-}
-
-// RenderInfoBanner renders an info notification banner with the given message
-func RenderInfoBanner(message string) string {
-	return InfoBannerStyle.Render("🔔 " + message)
-}
-
-// RenderWarningBanner renders a warning notification banner with the given message
-func RenderWarningBanner(message string) string {
-	return WarningBannerStyle.Render("⚠ " + message)
-}
-
-// RenderErrorBanner renders the error banner with the given error message
-func RenderErrorBanner(message string) string {
-	return ErrorBannerStyle.Render("✕ " + message)
-}
-
-// RenderNotificationBanner renders a notification banner based on its level
-func RenderNotificationBanner(n state.Notification) string {
-	switch n.Level {
-	case state.LevelInfo:
-		return RenderInfoBanner(n.Message)
-	case state.LevelWarning:
-		return RenderWarningBanner(n.Message)
-	case state.LevelError:
-		return RenderErrorBanner(n.Message)
-	default:
-		return RenderInfoBanner(n.Message)
-	}
 }

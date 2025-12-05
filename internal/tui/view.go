@@ -3,40 +3,48 @@ package tui
 import (
 	"fmt"
 
-	"github.com/charmbracelet/lipgloss/v2"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/notifications"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
 // View renders the current state of the application
 // This implements the "View" part of the Model-View-Update pattern
-func (m Model) View() string {
+func (m Model) View() tea.View {
+	var view tea.View
+	view.AltScreen = true // Use alternate screen buffer
+
 	// Wait for terminal size to be initialized
 	if m.uiState.Width() == 0 {
-		return "Loading..."
+		view.Content = "Loading..."
+		return view
 	}
 
 	// Dispatch to appropriate view handler based on mode
 	switch m.uiState.Mode() {
 	case state.TicketFormMode:
-		return m.viewTicketForm()
+		view.Content = m.viewTicketForm()
 	case state.ProjectFormMode:
-		return m.viewProjectForm()
+		view.Content = m.viewProjectForm()
 	case state.AddColumnMode, state.EditColumnMode:
-		return m.viewColumnInput()
+		view.Content = m.viewColumnInput()
 	case state.DeleteConfirmMode:
-		return m.viewDeleteTaskConfirm()
+		view.Content = m.viewDeleteTaskConfirm()
 	case state.DeleteColumnConfirmMode:
-		return m.viewDeleteColumnConfirm()
+		view.Content = m.viewDeleteColumnConfirm()
 	case state.HelpMode:
-		return m.viewHelp()
+		view.Content = m.viewHelp()
 	case state.LabelPickerMode:
-		return m.viewLabelPicker()
+		view.Content = m.viewLabelPicker()
 	case state.ViewTaskMode:
-		return m.viewTaskDetail()
+		view.Content = m.viewTaskDetail()
 	default:
-		return m.viewKanbanBoard()
+		view.Content = m.viewKanbanBoard()
 	}
+
+	return view
 }
 
 // viewTicketForm renders the ticket creation/edit form modal
@@ -298,31 +306,30 @@ func (m Model) viewKanbanBoard() string {
 	}
 	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width())
 
-	// Render all notifications (stacked vertically, right-aligned)
-	var notificationBanners []string
-	if m.notificationState.HasAny() {
-		for _, notification := range m.notificationState.All() {
-			banner := RenderNotificationBanner(notification)
-			// Right-align each notification
-			alignedBanner := lipgloss.NewStyle().
-				Width(m.uiState.Width()).
-				Align(lipgloss.Right).
-				Render(banner)
-			notificationBanners = append(notificationBanners, alignedBanner)
-		}
-	}
-
 	footer := components.RenderStatusBar(components.StatusBarProps{
 		Width: m.uiState.Width(),
 	})
 
-	// Combine all elements vertically
-	elements := []string{tabBar, ""}
-	// Add all notification banners
-	elements = append(elements, notificationBanners...)
-	elements = append(elements, board, "", footer)
+	// Build base view
+	baseView := lipgloss.JoinVertical(lipgloss.Left, tabBar, "", board, "", footer)
 
-	return lipgloss.JoinVertical(lipgloss.Left, elements...)
+	// If no notifications, return base view directly
+	if !m.notificationState.HasAny() {
+		return baseView
+	}
+
+	// Start layer stack with base view
+	layers := []*lipgloss.Layer{
+		lipgloss.NewLayer(baseView),
+	}
+
+	// Add notification layers
+	notificationLayers := m.notificationState.GetLayers(notifications.RenderFromState)
+	layers = append(layers, notificationLayers...)
+
+	// Combine all layers into canvas
+	canvas := lipgloss.NewCanvas(layers...)
+	return canvas.Render()
 }
 
 const helpText = `PASO - Keyboard Shortcuts

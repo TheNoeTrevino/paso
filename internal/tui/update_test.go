@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/huh"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -27,7 +27,7 @@ func TestModeDispatch_TicketFormMode(t *testing.T) {
 	)
 
 	// Send a key message
-	keyMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}}
+	keyMsg := tea.KeyPressMsg(tea.Key{Text: "a", Code: 'a'})
 
 	// Update should route to updateTicketForm
 	newModel, cmd := m.Update(keyMsg)
@@ -57,7 +57,7 @@ func TestModeDispatch_NormalMode(t *testing.T) {
 	m.uiState.SetSelectedColumn(0)
 
 	// Send a navigation key (right arrow)
-	keyMsg := tea.KeyMsg{Type: tea.KeyRight}
+	keyMsg := tea.KeyPressMsg(tea.Key{Code: tea.KeyRight})
 
 	newModel, _ := m.Update(keyMsg)
 	m = newModel.(Model)
@@ -91,7 +91,7 @@ func TestUpdateTicketForm_EscapeCancels(t *testing.T) {
 	)
 
 	// Send ESC key
-	keyMsg := tea.KeyMsg{Type: tea.KeyEsc}
+	keyMsg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})
 
 	newModel, cmd := m.Update(keyMsg)
 	m = newModel.(Model)

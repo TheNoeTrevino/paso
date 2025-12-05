@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/tui"
 )
@@ -23,9 +23,8 @@ func main() {
 	// Create initial TUI model with repository
 	model := tui.InitialModel(repo)
 
-	// Create and run Bubble Tea program with alternate screen
-	// This clears the screen and restores it on exit (like vim, htop, etc.)
-	p := tea.NewProgram(model, tea.WithAltScreen())
+	// Create and run Bubble Tea program
+	p := tea.NewProgram(model)
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error running program: %v\n", err)
 		log.Fatal(err)

@@ -5,7 +5,7 @@ import (
 	"log"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -85,6 +85,8 @@ func (m Model) handleNavigateLeft() (tea.Model, tea.Cmd) {
 		m.uiState.SetSelectedColumn(m.uiState.SelectedColumn() - 1)
 		m.uiState.SetSelectedTask(0)
 		m.uiState.EnsureSelectionVisible(m.uiState.SelectedColumn())
+	} else {
+		m.notificationState.Add(state.LevelInfo, "Already at the first column")
 	}
 	return m, nil
 }
@@ -95,6 +97,8 @@ func (m Model) handleNavigateRight() (tea.Model, tea.Cmd) {
 		m.uiState.SetSelectedColumn(m.uiState.SelectedColumn() + 1)
 		m.uiState.SetSelectedTask(0)
 		m.uiState.EnsureSelectionVisible(m.uiState.SelectedColumn())
+	} else {
+		m.notificationState.Add(state.LevelInfo, "Already at the last column")
 	}
 	return m, nil
 }
@@ -103,6 +107,8 @@ func (m Model) handleNavigateRight() (tea.Model, tea.Cmd) {
 func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 	if m.uiState.SelectedTask() > 0 {
 		m.uiState.SetSelectedTask(m.uiState.SelectedTask() - 1)
+	} else {
+		m.notificationState.Add(state.LevelInfo, "Already at the first task")
 	}
 	return m, nil
 }
@@ -112,6 +118,8 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 	currentTasks := m.getCurrentTasks()
 	if len(currentTasks) > 0 && m.uiState.SelectedTask() < len(currentTasks)-1 {
 		m.uiState.SetSelectedTask(m.uiState.SelectedTask() + 1)
+	} else if len(currentTasks) > 0 {
+		m.notificationState.Add(state.LevelInfo, "Already at the last task")
 	}
 	return m, nil
 }
@@ -124,6 +132,8 @@ func (m Model) handleScrollRight() (tea.Model, tea.Cmd) {
 			m.uiState.SetSelectedColumn(m.uiState.ViewportOffset())
 			m.uiState.SetSelectedTask(0)
 		}
+	} else {
+		m.notificationState.Add(state.LevelInfo, "Already at the rightmost view")
 	}
 	return m, nil
 }
@@ -136,6 +146,8 @@ func (m Model) handleScrollLeft() (tea.Model, tea.Cmd) {
 			m.uiState.SetSelectedColumn(m.uiState.ViewportOffset() + m.uiState.ViewportSize() - 1)
 			m.uiState.SetSelectedTask(0)
 		}
+	} else {
+		m.notificationState.Add(state.LevelInfo, "Already at the leftmost view")
 	}
 	return m, nil
 }
@@ -159,7 +171,7 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 		&m.formState.FormConfirm,
 	)
 	m.uiState.SetMode(state.TicketFormMode)
-	return m, m.formState.TicketForm.Init()
+	return m, wrapV1Cmd(m.formState.TicketForm.Init())
 }
 
 // handleEditTask initiates editing the selected task.
@@ -193,7 +205,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		&m.formState.FormConfirm,
 	)
 	m.uiState.SetMode(state.TicketFormMode)
-	return m, m.formState.TicketForm.Init()
+	return m, wrapV1Cmd(m.formState.TicketForm.Init())
 }
 
 // handleDeleteTask initiates task deletion confirmation.
@@ -300,6 +312,8 @@ func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 func (m Model) handlePrevProject() (tea.Model, tea.Cmd) {
 	if m.appState.SelectedProject() > 0 {
 		m.switchToProject(m.appState.SelectedProject() - 1)
+	} else {
+		m.notificationState.Add(state.LevelInfo, "Already at the first project")
 	}
 	return m, nil
 }
@@ -308,6 +322,8 @@ func (m Model) handlePrevProject() (tea.Model, tea.Cmd) {
 func (m Model) handleNextProject() (tea.Model, tea.Cmd) {
 	if m.appState.SelectedProject() < len(m.appState.Projects())-1 {
 		m.switchToProject(m.appState.SelectedProject() + 1)
+	} else {
+		m.notificationState.Add(state.LevelInfo, "Already at the last project")
 	}
 	return m, nil
 }
@@ -321,7 +337,7 @@ func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
 		&m.formState.FormProjectDescription,
 	)
 	m.uiState.SetMode(state.ProjectFormMode)
-	return m, m.formState.ProjectForm.Init()
+	return m, wrapV1Cmd(m.formState.ProjectForm.Init())
 }
 
 // ============================================================================

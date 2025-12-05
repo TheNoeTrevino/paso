@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -285,7 +285,8 @@ func (m Model) moveTaskUp() {
 
 	// Check if already at top (edge case handled here for quick feedback)
 	if m.uiState.SelectedTask() == 0 {
-		return // Already at top, no-op
+		m.notificationState.Add(state.LevelInfo, "Task is already at the top")
+		return
 	}
 
 	// Call database swap
@@ -330,7 +331,8 @@ func (m Model) moveTaskDown() {
 
 	// Check if already at bottom
 	if selectedIdx >= len(tasks)-1 {
-		return // Already at bottom, no-op
+		m.notificationState.Add(state.LevelInfo, "Task is already at the bottom")
+		return
 	}
 
 	// Call database swap

@@ -5,7 +5,7 @@ import (
 	"log"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/huh"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -57,6 +57,9 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.uiState.SetWidth(msg.Width)
 	m.uiState.SetHeight(msg.Height)
+
+	// Update notification state with new window dimensions
+	m.notificationState.SetWindowSize(msg.Width, msg.Height)
 
 	// Ensure viewport offset is still valid after resize
 	if m.uiState.ViewportOffset()+m.uiState.ViewportSize() > len(m.appState.Columns()) {
@@ -184,7 +187,7 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 	form, cmd := cfg.form.Update(msg)
 	if f, ok := form.(*huh.Form); ok {
 		cfg.setForm(f)
-		cmds = append(cmds, cmd)
+		cmds = append(cmds, wrapV1Cmd(cmd))
 	}
 
 	// Check completion
