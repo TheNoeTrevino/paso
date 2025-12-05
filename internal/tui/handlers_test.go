@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -11,13 +12,18 @@ import (
 // setupTestModel creates a Model with test data for handlers testing.
 // No database connection needed for pure state transformations.
 func setupTestModel(columns []*models.Column, tasks map[int][]*models.TaskSummary) Model {
+	cfg := &config.Config{
+		KeyMappings: config.DefaultKeyMappings(),
+	}
+
 	return Model{
-		repo:             nil, // No repo needed for navigation handlers
-		appState:         state.NewAppState(nil, 0, columns, tasks, nil),
-		uiState:          state.NewUIState(),
-		inputState:       state.NewInputState(),
-		formState:        state.NewFormState(),
-		labelPickerState: state.NewLabelPickerState(),
+		repo:              nil, // No repo needed for navigation handlers
+		config:            cfg,
+		appState:          state.NewAppState(nil, 0, columns, tasks, nil),
+		uiState:           state.NewUIState(),
+		inputState:        state.NewInputState(),
+		formState:         state.NewFormState(),
+		labelPickerState:  state.NewLabelPickerState(),
 		notificationState: state.NewNotificationState(),
 	}
 }

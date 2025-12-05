@@ -5,11 +5,18 @@ import (
 	"log"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/tui"
 )
 
 func main() {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
 	// Initialize database
 	db, err := database.InitDB()
 	if err != nil {
@@ -20,8 +27,8 @@ func main() {
 	// Create repository wrapping the database
 	repo := database.NewRepository(db)
 
-	// Create initial TUI model with repository
-	model := tui.InitialModel(repo)
+	// Create initial TUI model with repository and config
+	model := tui.InitialModel(repo, cfg)
 
 	// Create and run Bubble Tea program
 	p := tea.NewProgram(model)
