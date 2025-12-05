@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
 type StatusBarProps struct {
@@ -17,7 +18,7 @@ func RenderStatusBar(props StatusBarProps) string {
 	leftText := "Paso - Task Management"
 	rightText := "press ? for help"
 
-	style := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
 
 	leftRendered := style.Render(leftText)
 	rightRendered := style.Render(rightText)

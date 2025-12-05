@@ -71,6 +71,9 @@ func InitialModel(repo database.DataStore, cfg *config.Config) Model {
 	labelPickerState := state.NewLabelPickerState()
 	notificationState := state.NewNotificationState()
 
+	// Initialize styles with color scheme from config
+	InitStyles(cfg.ColorScheme)
+
 	return Model{
 		repo:              repo,
 		config:            cfg,

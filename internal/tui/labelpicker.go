@@ -5,6 +5,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/tui/state"
+	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
 // RenderLabelPicker renders the label picker popup
@@ -21,26 +22,26 @@ func RenderLabelPicker(
 	var content strings.Builder
 
 	// Title
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("170"))
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Highlight))
 	content.WriteString(titleStyle.Render("Labels") + "\n\n")
 
 	// Filter input
 	filterStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		BorderForeground(lipgloss.Color(theme.Subtle)).
 		Padding(0, 1).
 		Width(width - 8)
 
 	filterDisplay := filterText
 	if filterDisplay == "" {
-		filterDisplay = lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Filter labels...")
+		filterDisplay = lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("Filter labels...")
 	}
 	content.WriteString(filterStyle.Render(filterDisplay) + "\n\n")
 
 	// Label list
-	normalStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
-	selectedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("170")).Bold(true)
-	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	normalStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
+	selectedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight)).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
 
 	// Render each label item (already filtered by caller)
 	for i, item := range filteredItems {
@@ -107,13 +108,13 @@ func RenderLabelColorPicker(
 	var content strings.Builder
 
 	// Title
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("42")) // Green for creation
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Create))
 	content.WriteString(titleStyle.Render("New Label: "+labelName) + "\n\n")
 
 	// Color options
-	normalStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
-	selectedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("170")).Bold(true)
-	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	normalStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
+	selectedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight)).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
 
 	content.WriteString("Select a color:\n\n")
 

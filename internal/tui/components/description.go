@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/glamour"
 	"charm.land/lipgloss/v2"
+	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
 type DescriptionProps struct {
@@ -52,7 +53,7 @@ func RenderDescription(props DescriptionProps) string {
 	}
 
 	return lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).
+		Foreground(lipgloss.Color(theme.Subtle)).
 		Italic(true).
 		Render("No description")
 }

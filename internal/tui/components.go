@@ -7,6 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
 // RenderTabs renders a tab bar with the given tab names
@@ -66,8 +67,8 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 	style := TaskStyle
 	if selected {
 		style = style.
-			BorderForeground(lipgloss.Color("170")). // Purple border when selected
-			Background(lipgloss.Color("237")).       // Lighter background when selected
+			BorderForeground(lipgloss.Color(theme.SelectedBorder)).
+			Background(lipgloss.Color(theme.SelectedBg)).
 			BorderStyle(lipgloss.ThickBorder())
 	}
 
@@ -100,7 +101,7 @@ func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected b
 	if len(tasks) == 0 {
 		// Empty column - show helpful message
 		emptyStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240")).
+			Foreground(lipgloss.Color(theme.Subtle)).
 			Italic(true).
 			Padding(1, 0)
 		content += emptyStyle.Render("No tasks")
@@ -119,7 +120,7 @@ func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected b
 	// Apply column styling with selection highlight and fixed height
 	style := ColumnStyle
 	if selected {
-		style = style.BorderForeground(lipgloss.Color("170"))
+		style = style.BorderForeground(lipgloss.Color(theme.SelectedBorder))
 	}
 	if height > 0 {
 		style = style.Height(height)
