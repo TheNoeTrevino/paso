@@ -15,4 +15,10 @@ var (
 
 	// ErrAlreadyLastColumn indicates an attempt to move to next when already at last
 	ErrAlreadyLastColumn = errors.New("already at last column")
+
+	// ErrAlreadyFirstTask indicates that the task is already at the top of the column
+	ErrAlreadyFirstTask = errors.New("task is already at the top of the column")
+
+	// ErrAlreadyLastTask indicates that the task is already at the bottom of the column
+	ErrAlreadyLastTask = errors.New("task is already at the bottom of the column")
 )

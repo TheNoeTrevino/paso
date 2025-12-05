@@ -271,6 +271,86 @@ func (m Model) moveTaskLeft() {
 	}
 }
 
+// moveTaskUp moves the currently selected task up within its column
+// Updates both the local state and the database
+// The selection follows the moved task
+func (m Model) moveTaskUp() {
+	task := m.getCurrentTask()
+	if task == nil {
+		return
+	}
+
+	// Check if already at top (edge case handled here for quick feedback)
+	if m.uiState.SelectedTask() == 0 {
+		return // Already at top, no-op
+	}
+
+	// Call database swap
+	err := m.repo.SwapTaskUp(context.Background(), task.ID)
+	if err != nil {
+		log.Printf("Error moving task up: %v", err)
+		if err != models.ErrAlreadyFirstTask {
+			m.errorState.Set("Failed to move task up")
+		}
+		return
+	}
+
+	// Update local state: swap tasks in slice
+	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+	tasks := m.appState.Tasks()[currentCol.ID]
+	selectedIdx := m.uiState.SelectedTask()
+
+	// Swap positions in slice
+	tasks[selectedIdx], tasks[selectedIdx-1] = tasks[selectedIdx-1], tasks[selectedIdx]
+
+	// Update position values on the task objects
+	tasks[selectedIdx].Position = selectedIdx
+	tasks[selectedIdx-1].Position = selectedIdx - 1
+
+	// Move selection to follow the task
+	m.uiState.SetSelectedTask(selectedIdx - 1)
+}
+
+// moveTaskDown moves the currently selected task down within its column
+// Updates both the local state and the database
+// The selection follows the moved task
+func (m Model) moveTaskDown() {
+	task := m.getCurrentTask()
+	if task == nil {
+		return
+	}
+
+	// Get current tasks for edge case check
+	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+	tasks := m.appState.Tasks()[currentCol.ID]
+	selectedIdx := m.uiState.SelectedTask()
+
+	// Check if already at bottom
+	if selectedIdx >= len(tasks)-1 {
+		return // Already at bottom, no-op
+	}
+
+	// Call database swap
+	err := m.repo.SwapTaskDown(context.Background(), task.ID)
+	if err != nil {
+		log.Printf("Error moving task down: %v", err)
+		if err != models.ErrAlreadyLastTask {
+			m.errorState.Set("Failed to move task down")
+		}
+		return
+	}
+
+	// Update local state: swap tasks in slice
+	tasks[selectedIdx], tasks[selectedIdx+1] = tasks[selectedIdx+1], tasks[selectedIdx]
+
+	// Update position values on the task objects
+	tasks[selectedIdx].Position = selectedIdx
+	tasks[selectedIdx+1].Position = selectedIdx + 1
+
+	// Move selection to follow the task
+	m.uiState.SetSelectedTask(selectedIdx + 1)
+}
+
 // getCurrentProject returns the currently selected project
 // Returns nil if there are no projects
 func (m Model) getCurrentProject() *models.Project {

@@ -22,10 +22,12 @@ type TaskWriter interface {
 	DeleteTask(ctx context.Context, id int) error
 }
 
-// TaskMover defines operations for moving tasks between columns.
+// TaskMover defines operations for moving tasks between columns and within columns.
 type TaskMover interface {
 	MoveTaskToNextColumn(ctx context.Context, taskID int) error
 	MoveTaskToPrevColumn(ctx context.Context, taskID int) error
+	SwapTaskUp(ctx context.Context, taskID int) error
+	SwapTaskDown(ctx context.Context, taskID int) error
 }
 
 // TaskRepository combines all task-related operations.
