@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -289,7 +290,7 @@ func (m Model) moveTaskUp() {
 	err := m.repo.SwapTaskUp(context.Background(), task.ID)
 	if err != nil {
 		log.Printf("Error moving task up: %v", err)
-		if err != models.ErrAlreadyFirstTask {
+		if err != errors.New("task is already at the top of the column") {
 			m.errorState.Set("Failed to move task up")
 		}
 		return
