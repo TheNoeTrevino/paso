@@ -31,3 +31,44 @@ key_mappings:
   # Other
   show_help: "?"
   quit: "q"
+
+theme:
+  # Preset: "default" or "monochrome"
+  # Use a preset and optionally override specific colors
+  preset: "default"
+
+  # Uncomment and customize any colors you want to override
+  # All colors use hexadecimal format (#RRGGBB)
+
+  # Primary accent color
+  # accent: "#874BFD"
+
+  # Semantic colors
+  # create: "#5FD75F"  # Green - creation dialogs
+  # edit: "#5F87D7"    # Blue - edit/help dialogs
+  # delete: "#FF0000"  # Red - delete confirmations
+
+  # UI element colors
+  # column_border: "#5F87D7"
+  # task_border: "#585858"
+  # task_background: "#262626"
+  # selected_border: "#D75FD7"
+  # selected_bg: "#3A3A3A"
+
+  # Text colors
+  # title: "#D75FD7"
+  # subtle: "#585858"  # Muted/placeholder text
+  # normal: "#D0D0D0"
+
+  # Notification colors
+  # info_fg: "#00AFFF"
+  # info_bg: "#00005F"
+  # warning_fg: "#FFD700"
+  # warning_bg: "#875F00"
+  # error_fg: "#FF0000"
+  # error_bg: "#5F0000"
+
+# Example: Monochrome preset with custom accent color
+# color_scheme:
+#   preset: "monochrome"
+#   accent: "#87CEEB"  # Override accent to sky blue
