@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
 type TaskViewProps struct {
@@ -41,13 +42,13 @@ func RenderTaskView(props TaskViewProps) string {
 
 	taskIDStyle := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color("170"))
+		Foreground(lipgloss.Color(theme.Highlight))
 	leftParts = append(leftParts, taskIDStyle.Render(fmt.Sprintf("Task #%d", task.ID)))
 	leftParts = append(leftParts, "")
 
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color("170"))
+		Foreground(lipgloss.Color(theme.Highlight))
 	leftParts = append(leftParts, titleStyle.Render(task.Title))
 	leftParts = append(leftParts, "")
 
@@ -55,7 +56,7 @@ func RenderTaskView(props TaskViewProps) string {
 
 	leftParts = append(leftParts, "")
 	leftParts = append(leftParts, "")
-	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
 	leftParts = append(leftParts, footerStyle.Render("[l] labels  [Esc/Space] close"))
 
 	leftFullContent := strings.Join(leftParts, "\n")
@@ -75,7 +76,7 @@ func RenderTaskView(props TaskViewProps) string {
 
 	taskBox := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("170")).
+		BorderForeground(lipgloss.Color(theme.Highlight)).
 		Padding(1, 2).
 		Width(props.PopupWidth).
 		Height(props.PopupHeight).

@@ -1,5 +1,7 @@
 package notifications
 
+import "github.com/thenoetrevino/paso/internal/tui/theme"
+
 type style struct {
 	icon             string
 	title            string
@@ -14,33 +16,33 @@ func (s Severity) style() style {
 		return style{
 			icon:             "🔔",
 			title:            "Info",
-			foreground:       "39",
-			background:       "17",
-			borderForeground: "17",
+			foreground:       theme.InfoFg,
+			background:       theme.InfoBg,
+			borderForeground: theme.InfoBg,
 		}
 	case Warning:
 		return style{
 			icon:             "⚠",
 			title:            "Warning",
-			foreground:       "220",
-			background:       "94",
-			borderForeground: "94",
+			foreground:       theme.WarningFg,
+			background:       theme.WarningBg,
+			borderForeground: theme.WarningBg,
 		}
 	case Error:
 		return style{
 			icon:             "✕",
 			title:            "Error",
-			foreground:       "196",
-			background:       "52",
-			borderForeground: "52",
+			foreground:       theme.ErrorFg,
+			background:       theme.ErrorBg,
+			borderForeground: theme.ErrorBg,
 		}
 	default:
 		return style{
 			icon:             "🔔",
 			title:            "Info",
-			foreground:       "39",
-			background:       "17",
-			borderForeground: "17",
+			foreground:       theme.InfoFg,
+			background:       theme.InfoBg,
+			borderForeground: theme.InfoBg,
 		}
 	}
 }

@@ -5,6 +5,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
 type MetadataColumnProps struct {
@@ -18,7 +19,7 @@ func RenderMetadataColumn(props MetadataColumnProps) string {
 	var parts []string
 
 	labelHeaderStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).
+		Foreground(lipgloss.Color(theme.Subtle)).
 		Bold(true)
 
 	// Status section
@@ -41,7 +42,7 @@ func RenderMetadataColumn(props MetadataColumnProps) string {
 		parts = append(parts, "")
 	} else {
 		parts = append(parts, labelHeaderStyle.Render("Labels"))
-		emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+		emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
 		parts = append(parts, emptyStyle.Render("No labels"))
 		parts = append(parts, "")
 	}
@@ -58,7 +59,7 @@ func RenderMetadataColumn(props MetadataColumnProps) string {
 			BorderStyle(lipgloss.Border{
 				Left: "│",
 			}).
-			BorderForeground(lipgloss.Color("240"))
+			BorderForeground(lipgloss.Color(theme.Subtle))
 	}
 
 	return style.Render(content)
@@ -66,11 +67,11 @@ func RenderMetadataColumn(props MetadataColumnProps) string {
 
 func renderMetadataSection(label string, value string) string {
 	labelStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).
+		Foreground(lipgloss.Color(theme.Subtle)).
 		Bold(true)
 
 	valueStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252"))
+		Foreground(lipgloss.Color(theme.Normal))
 
 	return labelStyle.Render(label) + "\n" + valueStyle.Render(value) + "\n"
 }
