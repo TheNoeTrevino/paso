@@ -1,0 +1,33 @@
+# Example configuration file for PASO
+# Copy this file to ~/.config/paso/config.yaml and customize to your liking
+
+key_mappings:
+  # Task operations
+  add_task: "a"
+  edit_task: "e"
+  delete_task: "d"
+  move_task_left: "L"
+  move_task_right: "H"
+  move_task_up: "K"
+  move_task_down: "J"
+  view_task: " "  # space key
+  edit_labels: "l"
+
+  # Column operations
+  create_column: "C"
+  rename_column: "R"
+  delete_column: "X"
+
+  # Navigation
+  prev_column: "h"
+  next_column: "l"
+  prev_task: "k"
+  next_task: "j"
+  scroll_viewport_left: "["
+  scroll_viewport_right: "]"
+  next_project: "{"
+  prev_project: "}"
+
+  # Other
+  show_help: "?"
+  quit: "q"
