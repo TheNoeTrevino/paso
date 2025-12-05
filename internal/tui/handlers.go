@@ -16,7 +16,7 @@ import (
 
 // handleNormalMode dispatches key events in NormalMode to specific handlers.
 func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	m.errorState.Clear()
+	m.notificationState.Clear()
 
 	switch msg.String() {
 	case "q", "ctrl+c":
@@ -143,7 +143,7 @@ func (m Model) handleScrollLeft() (tea.Model, tea.Cmd) {
 // handleAddTask initiates adding a new task.
 func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 	if len(m.appState.Columns()) == 0 {
-		m.errorState.Set("Cannot add task: No columns exist. Create a column first with 'C'")
+		m.notificationState.Add(state.LevelError, "Cannot add task: No columns exist. Create a column first with 'C'")
 		return m, nil
 	}
 	m.formState.FormTitle = ""
@@ -166,14 +166,14 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 	task := m.getCurrentTask()
 	if task == nil {
-		m.errorState.Set("No task selected to edit")
+		m.notificationState.Add(state.LevelError, "No task selected to edit")
 		return m, nil
 	}
 
 	taskDetail, err := m.repo.GetTaskDetail(context.Background(), task.ID)
 	if err != nil {
 		log.Printf("Error loading task details: %v", err)
-		m.errorState.Set("Error loading task details")
+		m.notificationState.Add(state.LevelError, "Error loading task details")
 		return m, nil
 	}
 
@@ -199,7 +199,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 // handleDeleteTask initiates task deletion confirmation.
 func (m Model) handleDeleteTask() (tea.Model, tea.Cmd) {
 	if m.getCurrentTask() == nil {
-		m.errorState.Set("No task selected to delete")
+		m.notificationState.Add(state.LevelError, "No task selected to delete")
 		return m, nil
 	}
 	m.uiState.SetMode(state.DeleteConfirmMode)
@@ -210,14 +210,14 @@ func (m Model) handleDeleteTask() (tea.Model, tea.Cmd) {
 func (m Model) handleViewTask() (tea.Model, tea.Cmd) {
 	task := m.getCurrentTask()
 	if task == nil {
-		m.errorState.Set("No task selected to view")
+		m.notificationState.Add(state.LevelError, "No task selected to view")
 		return m, nil
 	}
 
 	taskDetail, err := m.repo.GetTaskDetail(context.Background(), task.ID)
 	if err != nil {
 		log.Printf("Error loading task details: %v", err)
-		m.errorState.Set("Error loading task details")
+		m.notificationState.Add(state.LevelError, "Error loading task details")
 		return m, nil
 	}
 	m.uiState.SetViewingTask(taskDetail)
@@ -269,7 +269,7 @@ func (m Model) handleCreateColumn() (tea.Model, tea.Cmd) {
 func (m Model) handleRenameColumn() (tea.Model, tea.Cmd) {
 	column := m.getCurrentColumn()
 	if column == nil {
-		m.errorState.Set("No column selected to rename")
+		m.notificationState.Add(state.LevelError, "No column selected to rename")
 		return m, nil
 	}
 	m.uiState.SetMode(state.EditColumnMode)
@@ -282,13 +282,13 @@ func (m Model) handleRenameColumn() (tea.Model, tea.Cmd) {
 func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 	column := m.getCurrentColumn()
 	if column == nil {
-		m.errorState.Set("No column selected to delete")
+		m.notificationState.Add(state.LevelError, "No column selected to delete")
 		return m, nil
 	}
 	taskCount, err := m.repo.GetTaskCountByColumn(context.Background(), column.ID)
 	if err != nil {
 		log.Printf("Error getting task count: %v", err)
-		m.errorState.Set("Error getting column info")
+		m.notificationState.Add(state.LevelError, "Error getting column info")
 		return m, nil
 	}
 	m.inputState.DeleteColumnTaskCount = taskCount
@@ -384,12 +384,12 @@ func (m Model) createColumn() (tea.Model, tea.Cmd) {
 	column, err := m.repo.CreateColumn(context.Background(), strings.TrimSpace(m.inputState.Buffer), projectID, afterColumnID)
 	if err != nil {
 		log.Printf("Error creating column: %v", err)
-		m.errorState.Set("Failed to create column")
+		m.notificationState.Add(state.LevelError, "Failed to create column")
 	} else {
 		columns, err := m.repo.GetColumnsByProject(context.Background(), projectID)
 		if err != nil {
 			log.Printf("Error reloading columns: %v", err)
-			m.errorState.Set("Failed to reload columns")
+			m.notificationState.Add(state.LevelError, "Failed to reload columns")
 		}
 		m.appState.SetColumns(columns)
 		m.appState.Tasks()[column.ID] = []*models.TaskSummary{}
@@ -410,7 +410,7 @@ func (m Model) renameColumn() (tea.Model, tea.Cmd) {
 		err := m.repo.UpdateColumnName(context.Background(), column.ID, strings.TrimSpace(m.inputState.Buffer))
 		if err != nil {
 			log.Printf("Error updating column: %v", err)
-			m.errorState.Set("Failed to rename column")
+			m.notificationState.Add(state.LevelError, "Failed to rename column")
 		} else {
 			column.Name = strings.TrimSpace(m.inputState.Buffer)
 		}
@@ -444,7 +444,7 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 		err := m.repo.DeleteTask(context.Background(), task.ID)
 		if err != nil {
 			log.Printf("Error deleting task: %v", err)
-			m.errorState.Set("Failed to delete task")
+			m.notificationState.Add(state.LevelError, "Failed to delete task")
 		} else {
 			m.removeCurrentTask()
 		}
@@ -472,7 +472,7 @@ func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 		err := m.repo.DeleteColumn(context.Background(), column.ID)
 		if err != nil {
 			log.Printf("Error deleting column: %v", err)
-			m.errorState.Set("Failed to delete column")
+			m.notificationState.Add(state.LevelError, "Failed to delete column")
 		} else {
 			delete(m.appState.Tasks(), column.ID)
 			m.removeCurrentColumn()
