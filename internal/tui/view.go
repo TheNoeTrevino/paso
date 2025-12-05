@@ -298,10 +298,18 @@ func (m Model) viewKanbanBoard() string {
 	}
 	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width())
 
-	// error notification
-	var errorBanner string
-	if m.errorState.HasError() {
-		errorBanner = RenderErrorBanner(m.errorState.Get())
+	// Render all notifications (stacked vertically, right-aligned)
+	var notificationBanners []string
+	if m.notificationState.HasAny() {
+		for _, notification := range m.notificationState.All() {
+			banner := RenderNotificationBanner(notification)
+			// Right-align each notification
+			alignedBanner := lipgloss.NewStyle().
+				Width(m.uiState.Width()).
+				Align(lipgloss.Right).
+				Render(banner)
+			notificationBanners = append(notificationBanners, alignedBanner)
+		}
 	}
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
@@ -310,9 +318,8 @@ func (m Model) viewKanbanBoard() string {
 
 	// Combine all elements vertically
 	elements := []string{tabBar, ""}
-	if errorBanner != "" {
-		elements = append(elements, errorBanner)
-	}
+	// Add all notification banners
+	elements = append(elements, notificationBanners...)
 	elements = append(elements, board, "", footer)
 
 	return lipgloss.JoinVertical(lipgloss.Left, elements...)

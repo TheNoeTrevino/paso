@@ -19,7 +19,7 @@ type Model struct {
 	inputState       *state.InputState
 	formState        *state.FormState
 	labelPickerState *state.LabelPickerState
-	errorState       *state.ErrorState
+	notificationState *state.NotificationState
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
@@ -67,7 +67,7 @@ func InitialModel(repo database.DataStore) Model {
 	inputState := state.NewInputState()
 	formState := state.NewFormState()
 	labelPickerState := state.NewLabelPickerState()
-	errorState := state.NewErrorState()
+	notificationState := state.NewNotificationState()
 
 	return Model{
 		repo:             repo,
@@ -76,7 +76,7 @@ func InitialModel(repo database.DataStore) Model {
 		inputState:       inputState,
 		formState:        formState,
 		labelPickerState: labelPickerState,
-		errorState:       errorState,
+		notificationState: notificationState,
 	}
 }
 
@@ -193,7 +193,8 @@ func (m Model) moveTaskRight() {
 	// Check if there's a next column using the linked list
 	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 	if currentCol.NextID == nil {
-		// Already at last column
+		// Already at last column - show notification
+		m.notificationState.Add(state.LevelInfo, "There are no more columns to move to.")
 		return
 	}
 
@@ -201,7 +202,7 @@ func (m Model) moveTaskRight() {
 	err := m.repo.MoveTaskToNextColumn(context.Background(), task.ID)
 	if err != nil {
 		log.Printf("Error moving task to next column: %v", err)
-		m.errorState.Set("Failed to move task to next column")
+		m.notificationState.Add(state.LevelError, "Failed to move task to next column")
 		return
 	}
 
@@ -239,7 +240,8 @@ func (m Model) moveTaskLeft() {
 	// Check if there's a previous column using the linked list
 	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 	if currentCol.PrevID == nil {
-		// Already at first column
+		// Already at first column - show notification
+		m.notificationState.Add(state.LevelInfo, "There are no more columns to move to.")
 		return
 	}
 
@@ -247,7 +249,7 @@ func (m Model) moveTaskLeft() {
 	err := m.repo.MoveTaskToPrevColumn(context.Background(), task.ID)
 	if err != nil {
 		log.Printf("Error moving task to previous column: %v", err)
-		m.errorState.Set("Failed to move task to previous column")
+		m.notificationState.Add(state.LevelError, "Failed to move task to previous column")
 		return
 	}
 
@@ -291,7 +293,7 @@ func (m Model) moveTaskUp() {
 	if err != nil {
 		log.Printf("Error moving task up: %v", err)
 		if err != errors.New("task is already at the top of the column") {
-			m.errorState.Set("Failed to move task up")
+			m.notificationState.Add(state.LevelError, "Failed to move task up")
 		}
 		return
 	}
@@ -336,7 +338,7 @@ func (m Model) moveTaskDown() {
 	if err != nil {
 		log.Printf("Error moving task down: %v", err)
 		if err != models.ErrAlreadyLastTask {
-			m.errorState.Set("Failed to move task down")
+			m.notificationState.Add(state.LevelError, "Failed to move task down")
 		}
 		return
 	}
