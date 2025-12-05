@@ -18,48 +18,51 @@ import (
 func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.notificationState.Clear()
 
-	switch msg.String() {
-	case "q", "ctrl+c":
+	key := msg.String()
+	km := m.config.KeyMappings
+
+	switch key {
+	case km.Quit, "ctrl+c":
 		return m.handleQuit()
-	case "?":
+	case km.ShowHelp:
 		return m.handleShowHelp()
-	case "a":
+	case km.AddTask:
 		return m.handleAddTask()
-	case "e":
+	case km.EditTask:
 		return m.handleEditTask()
-	case "d":
+	case km.DeleteTask:
 		return m.handleDeleteTask()
-	case " ":
+	case km.ViewTask:
 		return m.handleViewTask()
-	case "C":
+	case km.CreateColumn:
 		return m.handleCreateColumn()
-	case "R":
+	case km.RenameColumn:
 		return m.handleRenameColumn()
-	case "X":
+	case km.DeleteColumn:
 		return m.handleDeleteColumn()
-	case "]":
+	case km.ScrollViewportRight:
 		return m.handleScrollRight()
-	case "[":
+	case km.ScrollViewportLeft:
 		return m.handleScrollLeft()
-	case "h", "left":
+	case km.PrevColumn, "left":
 		return m.handleNavigateLeft()
-	case "l", "right":
+	case km.NextColumn, "right":
 		return m.handleNavigateRight()
-	case "j", "down":
+	case km.NextTask, "down":
 		return m.handleNavigateDown()
-	case "k", "up":
+	case km.PrevTask, "up":
 		return m.handleNavigateUp()
-	case ">", "L":
+	case km.MoveTaskRight:
 		return m.handleMoveTaskRight()
-	case "<", "H":
+	case km.MoveTaskLeft:
 		return m.handleMoveTaskLeft()
-	case "K":
+	case km.MoveTaskUp:
 		return m.handleMoveTaskUp()
-	case "J":
+	case km.MoveTaskDown:
 		return m.handleMoveTaskDown()
-	case "{":
+	case km.PrevProject:
 		return m.handlePrevProject()
-	case "}":
+	case km.NextProject:
 		return m.handleNextProject()
 	case "ctrl+p":
 		return m.handleCreateProject()
@@ -505,7 +508,7 @@ func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 // handleHelpMode handles input in the help screen.
 func (m Model) handleHelpMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "?", "q", "esc", "enter", " ":
+	case m.config.KeyMappings.ShowHelp, m.config.KeyMappings.Quit, "esc", "enter", " ":
 		m.uiState.SetMode(state.NormalMode)
 		return m, nil
 	}
@@ -514,12 +517,15 @@ func (m Model) handleHelpMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleViewTaskMode handles input when viewing task details.
 func (m Model) handleViewTaskMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc", " ", "q":
+	key := msg.String()
+	km := m.config.KeyMappings
+
+	switch key {
+	case "esc", km.ViewTask, km.Quit:
 		m.uiState.SetMode(state.NormalMode)
 		m.uiState.SetViewingTask(nil)
 		return m, nil
-	case "l":
+	case km.EditLabels:
 		if m.uiState.ViewingTask() != nil {
 			if m.initLabelPicker(m.uiState.ViewingTask().ID) {
 				m.uiState.SetMode(state.LabelPickerMode)

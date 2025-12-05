@@ -6,6 +6,7 @@ import (
 	"log"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -13,17 +14,18 @@ import (
 
 // Model represents the application state for the TUI
 type Model struct {
-	repo             database.DataStore
-	appState         *state.AppState
-	uiState          *state.UIState
-	inputState       *state.InputState
-	formState        *state.FormState
-	labelPickerState *state.LabelPickerState
+	repo              database.DataStore
+	config            *config.Config
+	appState          *state.AppState
+	uiState           *state.UIState
+	inputState        *state.InputState
+	formState         *state.FormState
+	labelPickerState  *state.LabelPickerState
 	notificationState *state.NotificationState
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
-func InitialModel(repo database.DataStore) Model {
+func InitialModel(repo database.DataStore, cfg *config.Config) Model {
 	ctx := context.Background()
 
 	// Load all projects
@@ -70,12 +72,13 @@ func InitialModel(repo database.DataStore) Model {
 	notificationState := state.NewNotificationState()
 
 	return Model{
-		repo:             repo,
-		appState:         appState,
-		uiState:          uiState,
-		inputState:       inputState,
-		formState:        formState,
-		labelPickerState: labelPickerState,
+		repo:              repo,
+		config:            cfg,
+		appState:          appState,
+		uiState:           uiState,
+		inputState:        inputState,
+		formState:         formState,
+		labelPickerState:  labelPickerState,
 		notificationState: notificationState,
 	}
 }

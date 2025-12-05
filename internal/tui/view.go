@@ -162,13 +162,70 @@ func (m Model) viewDeleteColumnConfirm() string {
 func (m Model) viewHelp() string {
 	helpBox := HelpBoxStyle.
 		Width(50).
-		Render(helpText)
+		Render(m.generateHelpText())
 
 	return lipgloss.Place(
 		m.uiState.Width(), m.uiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		helpBox,
 	)
+}
+
+// generateHelpText creates help text based on current key mappings
+func (m Model) generateHelpText() string {
+	km := m.config.KeyMappings
+	return fmt.Sprintf(`PASO - Keyboard Shortcuts
+
+TASKS
+  %s     Add new task
+  %s     Edit selected task
+  %s     Delete selected task
+  %s     Move task to previous column
+  %s     Move task to next column
+  %s     Move task up in column
+  %s     Move task down in column
+  %s     View task details
+  %s     Edit labels (when viewing task)
+
+COLUMNS
+  %s     Create new column (after current)
+  %s     Rename current column
+  %s     Delete current column
+
+NAVIGATION
+  %s     Move to previous column
+  %s     Move to next column
+  %s     Move to previous task
+  %s     Move to next task
+  %s     Scroll viewport left
+  %s     Scroll viewport right
+  %s     Move to next project
+  %s     Move to prev project
+
+OTHER
+  %s     Show this help screen
+  %s     Quit application
+
+Press any key to close`,
+		km.AddTask, km.EditTask, km.DeleteTask,
+		km.MoveTaskLeft, km.MoveTaskRight,
+		km.MoveTaskUp, km.MoveTaskDown,
+		formatKey(km.ViewTask), km.EditLabels,
+		km.CreateColumn, km.RenameColumn, km.DeleteColumn,
+		km.PrevColumn, km.NextColumn,
+		km.PrevTask, km.NextTask,
+		km.ScrollViewportLeft, km.ScrollViewportRight,
+		km.NextProject, km.PrevProject,
+		km.ShowHelp, km.Quit,
+	)
+}
+
+// formatKey formats special keys for display
+func formatKey(key string) string {
+	if key == " " {
+		return "space"
+	}
+	return key
 }
 
 // viewLabelPicker renders the label picker modal (select or create mode)
@@ -331,37 +388,3 @@ func (m Model) viewKanbanBoard() string {
 	canvas := lipgloss.NewCanvas(layers...)
 	return canvas.Render()
 }
-
-const helpText = `PASO - Keyboard Shortcuts
-
-TASKS
-  a     Add new task
-  e     Edit selected task
-  d     Delete selected task
-  L     Move task to previous column
-  H     Move task to next column
-  K     Move task up in column
-  J     Move task down in column
-  space View task details
-  l     Edit labels (when viewing task)
-
-COLUMNS
-  C     Create new column (after current)
-  R     Rename current column
-  X     Delete current column
-
-NAVIGATION
-  h     Move to previous column
-  l     Move to next column
-  k     Move to previous task
-  j     Move to next task
-  [     Scroll viewport left
-  ]     Scroll viewport right
-  {     Move to next project
-  }     Move to prev project
-
-OTHER
-  ?     Show this help screen
-  q     Quit application
-
-Press any key to close`
