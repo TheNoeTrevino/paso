@@ -82,6 +82,5 @@ func RenderLabelChip(label *models.Label) string {
 		Background(lipgloss.Color(label.Color)).
 		Foreground(lipgloss.Color("#FFFFFF")).
 		Padding(0, 1).
-		MarginRight(1).
 		Render(label.Name)
 }
