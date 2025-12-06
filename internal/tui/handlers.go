@@ -174,7 +174,7 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 		&m.formState.FormConfirm,
 	)
 	m.uiState.SetMode(state.TicketFormMode)
-	return m, wrapV1Cmd(m.formState.TicketForm.Init())
+	return m, m.formState.TicketForm.Init()
 }
 
 // handleEditTask initiates editing the selected task.
@@ -208,7 +208,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		&m.formState.FormConfirm,
 	)
 	m.uiState.SetMode(state.TicketFormMode)
-	return m, wrapV1Cmd(m.formState.TicketForm.Init())
+	return m, m.formState.TicketForm.Init()
 }
 
 // handleDeleteTask initiates task deletion confirmation.
@@ -340,7 +340,7 @@ func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
 		&m.formState.FormProjectDescription,
 	)
 	m.uiState.SetMode(state.ProjectFormMode)
-	return m, wrapV1Cmd(m.formState.ProjectForm.Init())
+	return m, m.formState.ProjectForm.Init()
 }
 
 // ============================================================================
