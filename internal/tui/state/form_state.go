@@ -1,7 +1,7 @@
 package state
 
 import (
-	"github.com/thenoetrevino/paso/internal/tui/forms"
+	"charm.land/huh/v2"
 )
 
 // FormState manages all form-related state for the application.
@@ -9,25 +9,26 @@ import (
 // as well as their associated field values and editing state.
 type FormState struct {
 	// Ticket form fields (for creating/editing tasks)
-	TicketForm      *forms.Form // The form instance
-	EditingTaskID   int         // ID of task being edited (0 for new task)
-	FormTitle       string      // Form field: task title
-	FormDescription string      // Form field: task description
-	FormLabelIDs    []int       // Form field: selected label IDs
-	FormConfirm     bool        // Form field: confirmation (submit vs cancel)
+	TicketForm      *huh.Form // The form instance
+	EditingTaskID   int       // ID of task being edited (0 for new task)
+	FormTitle       string    // Form field: task title
+	FormDescription string    // Form field: task description
+	FormLabelIDs    []int     // Form field: selected label IDs
+	FormConfirm     bool      // Form field: confirmation (submit vs cancel)
 
 	// Project form fields (for creating projects)
-	ProjectForm            *forms.Form // The form instance
-	FormProjectName        string      // Form field: project name
-	FormProjectDescription string      // Form field: project description
+	ProjectForm            *huh.Form // The form instance
+	FormProjectName        string    // Form field: project name
+	FormProjectDescription string    // Form field: project description
+	FormProjectConfirm     bool      // Form field: confirmation (submit vs cancel)
 
 	// Label form fields (for creating/editing labels)
-	LabelForm         *forms.Form // The form instance
-	EditingLabelID    int         // ID of label being edited (0 for new label)
-	FormLabelName     string      // Form field: label name
-	FormLabelColor    string      // Form field: label color (hex code)
-	SelectedLabelIdx  int         // Index of selected label in label list
-	LabelListMode     string      // Sub-mode: "list", "add", "edit", "delete"
+	LabelForm        *huh.Form // The form instance
+	EditingLabelID   int       // ID of label being edited (0 for new label)
+	FormLabelName    string    // Form field: label name
+	FormLabelColor   string    // Form field: label color (hex code)
+	SelectedLabelIdx int       // Index of selected label in label list
+	LabelListMode    string    // Sub-mode: "list", "add", "edit", "delete"
 
 	// Label assignment fields (for quick label toggling)
 	AssigningLabelIDs []int // Currently selected labels for assignment
@@ -45,6 +46,7 @@ func NewFormState() *FormState {
 		ProjectForm:            nil,
 		FormProjectName:        "",
 		FormProjectDescription: "",
+		FormProjectConfirm:     true,
 		LabelForm:              nil,
 		EditingLabelID:         0,
 		FormLabelName:          "",
@@ -79,6 +81,7 @@ func (s *FormState) ClearProjectForm() {
 	s.ProjectForm = nil
 	s.FormProjectName = ""
 	s.FormProjectDescription = ""
+	s.FormProjectConfirm = true
 }
 
 // IsProjectFormActive returns true if a project form is currently active.
