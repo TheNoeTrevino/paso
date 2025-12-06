@@ -3,15 +3,15 @@ package config
 // KeyMappings defines all configurable key bindings
 type KeyMappings struct {
 	// Tasks
-	AddTask        string `yaml:"add_task"`
-	EditTask       string `yaml:"edit_task"`
-	DeleteTask     string `yaml:"delete_task"`
-	MoveTaskLeft   string `yaml:"move_task_left"`
-	MoveTaskRight  string `yaml:"move_task_right"`
-	MoveTaskUp     string `yaml:"move_task_up"`
-	MoveTaskDown   string `yaml:"move_task_down"`
-	ViewTask       string `yaml:"view_task"`
-	EditLabels     string `yaml:"edit_labels"`
+	AddTask       string `yaml:"add_task"`
+	EditTask      string `yaml:"edit_task"`
+	DeleteTask    string `yaml:"delete_task"`
+	MoveTaskLeft  string `yaml:"move_task_left"`
+	MoveTaskRight string `yaml:"move_task_right"`
+	MoveTaskUp    string `yaml:"move_task_up"`
+	MoveTaskDown  string `yaml:"move_task_down"`
+	ViewTask      string `yaml:"view_task"`
+	EditLabels    string `yaml:"edit_labels"`
 
 	// Columns
 	CreateColumn string `yaml:"create_column"`
@@ -65,8 +65,8 @@ func DefaultKeyMappings() KeyMappings {
 		NextTask:            "j",
 		ScrollViewportLeft:  "[",
 		ScrollViewportRight: "]",
-		NextProject:         "{",
-		PrevProject:         "}",
+		NextProject:         "}",
+		PrevProject:         "{",
 
 		// Other
 		ShowHelp: "?",
