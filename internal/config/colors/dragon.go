@@ -8,17 +8,20 @@ func Dragon() *ColorScheme {
 		// Primary accent color
 		Accent: palette.dragonViolet,
 
+		Background: palette.dragonBlack1,
+
 		// Semantic colors
 		Create: palette.dragonGreen2,
 		Edit:   palette.dragonBlue2,
 		Delete: palette.dragonRed,
 
 		// UI element colors
-		ColumnBorder:   palette.dragonBlack6,
-		TaskBorder:     palette.dragonBlack4,
-		TaskBackground: palette.dragonBlack3,
-		SelectedBorder: palette.dragonAqua,
-		SelectedBg:     palette.waveBlue1,
+		ColumnBorder:     palette.dragonBlack6,
+		ColumnBackground: palette.roninYellow,
+		TaskBorder:       palette.dragonBlack4,
+		TaskBackground:   palette.dragonBlack3,
+		SelectedBorder:   palette.dragonAqua,
+		SelectedBg:       palette.waveBlue1,
 
 		// Text colors
 		Title:  palette.dragonBlue2,

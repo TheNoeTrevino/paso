@@ -8,9 +8,11 @@ var (
 	Subtle         string
 	Normal         string
 	Create         string
+	Background     string
 	SelectedBorder string
 	SelectedBg     string
 	TaskBg         string
+	ColumnBg       string
 	InfoFg         string
 	InfoBg         string
 	WarningFg      string
@@ -25,9 +27,11 @@ func Init(colors config.ColorScheme) {
 	Subtle = colors.Subtle
 	Normal = colors.Normal
 	Create = colors.Create
+	Background = colors.Background
 	SelectedBorder = colors.SelectedBorder
 	SelectedBg = colors.SelectedBg
 	TaskBg = colors.TaskBackground
+	ColumnBg = colors.ColumnBackground
 	InfoFg = colors.InfoFg
 	InfoBg = colors.InfoBg
 	WarningFg = colors.WarningFg

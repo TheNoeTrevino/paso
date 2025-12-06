@@ -8,6 +8,10 @@ func Default() *ColorScheme {
 		// Primary
 		Accent: "#874BFD",
 
+		// Background
+		Background:       "#1C1C1C",
+		ColumnBackground: "#262626",
+
 		// Semantic
 		Create: "#5FD75F",
 		Edit:   "#5F87D7",
