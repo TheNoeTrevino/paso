@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -166,13 +167,13 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 	m.formState.FormLabelIDs = []int{}
 	m.formState.FormConfirm = true
 	m.formState.EditingTaskID = 0
-	m.formState.TicketForm = CreateTicketForm(
+	m.formState.TicketForm = huhforms.CreateTicketForm(
 		&m.formState.FormTitle,
 		&m.formState.FormDescription,
 		&m.formState.FormLabelIDs,
 		m.appState.Labels(),
 		&m.formState.FormConfirm,
-	)
+	).WithTheme(huhforms.CreatePasoTheme(m.config.ColorScheme))
 	m.uiState.SetMode(state.TicketFormMode)
 	return m, m.formState.TicketForm.Init()
 }
@@ -200,13 +201,13 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 	}
 	m.formState.FormConfirm = true
 	m.formState.EditingTaskID = task.ID
-	m.formState.TicketForm = CreateTicketForm(
+	m.formState.TicketForm = huhforms.CreateTicketForm(
 		&m.formState.FormTitle,
 		&m.formState.FormDescription,
 		&m.formState.FormLabelIDs,
 		m.appState.Labels(),
 		&m.formState.FormConfirm,
-	)
+	).WithTheme(huhforms.CreatePasoTheme(m.config.ColorScheme))
 	m.uiState.SetMode(state.TicketFormMode)
 	return m, m.formState.TicketForm.Init()
 }
@@ -335,10 +336,12 @@ func (m Model) handleNextProject() (tea.Model, tea.Cmd) {
 func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
 	m.formState.FormProjectName = ""
 	m.formState.FormProjectDescription = ""
-	m.formState.ProjectForm = CreateProjectForm(
+	m.formState.FormProjectConfirm = true
+	m.formState.ProjectForm = huhforms.CreateProjectForm(
 		&m.formState.FormProjectName,
 		&m.formState.FormProjectDescription,
-	)
+		&m.formState.FormProjectConfirm,
+	).WithTheme(huhforms.CreatePasoTheme(m.config.ColorScheme))
 	m.uiState.SetMode(state.ProjectFormMode)
 	return m, m.formState.ProjectForm.Init()
 }
