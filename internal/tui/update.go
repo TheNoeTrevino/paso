@@ -5,8 +5,8 @@ import (
 	"log"
 	"strings"
 
+	"charm.land/huh/v2"
 	tea "charm.land/bubbletea/v2"
-	"github.com/thenoetrevino/paso/internal/tui/forms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -146,8 +146,8 @@ func (m Model) updateExistingTaskWithLabels(values ticketFormValues) {
 
 // formConfig holds configuration for generic form handling
 type formConfig struct {
-	form       *forms.Form
-	setForm    func(*forms.Form)
+	form       *huh.Form
+	setForm    func(*huh.Form)
 	clearForm  func()
 	onComplete func() // Called when form completes successfully
 }
@@ -160,11 +160,11 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 	}
 
 	// Forward to form
-	form, cmd := cfg.form.Update(msg)
-	cfg.setForm(form)
+	model, cmd := cfg.form.Update(msg)
+	cfg.setForm(model.(*huh.Form))
 
 	// Check completion
-	if cfg.form.State() == forms.StateCompleted {
+	if cfg.form.State == huh.StateCompleted {
 		cfg.onComplete()
 		m.uiState.SetMode(state.NormalMode)
 		cfg.setForm(nil)
@@ -173,7 +173,7 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 	}
 
 	// Check abort
-	if cfg.form.State() == forms.StateAborted {
+	if cfg.form.State == huh.StateAborted {
 		m.uiState.SetMode(state.NormalMode)
 		cfg.setForm(nil)
 		cfg.clearForm()
@@ -188,7 +188,7 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m.handleFormUpdate(msg, formConfig{
 		form: m.formState.TicketForm,
-		setForm: func(f *forms.Form) {
+		setForm: func(f *huh.Form) {
 			m.formState.TicketForm = f
 		},
 		clearForm: func() {
@@ -220,7 +220,7 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m.handleFormUpdate(msg, formConfig{
 		form: m.formState.ProjectForm,
-		setForm: func(f *forms.Form) {
+		setForm: func(f *huh.Form) {
 			m.formState.ProjectForm = f
 		},
 		clearForm: func() {
@@ -230,8 +230,14 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Read values from form state (forms update pointers in place)
 			name := strings.TrimSpace(m.formState.FormProjectName)
 			description := strings.TrimSpace(m.formState.FormProjectDescription)
+			confirm := m.formState.FormProjectConfirm
 
-			// Form submitted - create the project
+			// Form submitted - check confirmation and create the project
+			if !confirm {
+				// User selected "No" on confirmation
+				return
+			}
+
 			if name != "" {
 				project, err := m.repo.CreateProject(context.Background(), name, description)
 				if err != nil {
