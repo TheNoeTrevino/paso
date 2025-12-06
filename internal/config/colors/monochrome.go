@@ -8,6 +8,10 @@ func Monochrome() *ColorScheme {
 		// Primary
 		Accent: "#FFFFFF",
 
+		// Background
+		Background:       "#121212",
+		ColumnBackground: "#1C1C1C",
+
 		// Semantic
 		Create: "#FFFFFF",
 		Edit:   "#FFFFFF",
