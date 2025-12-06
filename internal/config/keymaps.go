@@ -18,6 +18,9 @@ type KeyMappings struct {
 	RenameColumn string `yaml:"rename_column"`
 	DeleteColumn string `yaml:"delete_column"`
 
+	// Projects
+	CreateProject string `yaml:"create_project"`
+
 	// Navigation
 	PrevColumn          string `yaml:"prev_column"`
 	NextColumn          string `yaml:"next_column"`
@@ -51,6 +54,9 @@ func DefaultKeyMappings() KeyMappings {
 		CreateColumn: "C",
 		RenameColumn: "R",
 		DeleteColumn: "X",
+
+		// Projects
+		CreateProject: "P",
 
 		// Navigation
 		PrevColumn:          "h",
@@ -107,6 +113,9 @@ func (k *KeyMappings) applyDefaults() {
 	}
 	if k.DeleteColumn == "" {
 		k.DeleteColumn = defaults.DeleteColumn
+	}
+	if k.CreateProject == "" {
+		k.CreateProject = defaults.CreateProject
 	}
 	if k.PrevColumn == "" {
 		k.PrevColumn = defaults.PrevColumn

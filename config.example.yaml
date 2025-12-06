@@ -18,6 +18,9 @@ key_mappings:
   rename_column: "R"
   delete_column: "X"
 
+  # Project operations
+  create_project: "P"
+
   # Navigation
   prev_column: "h"
   next_column: "l"
