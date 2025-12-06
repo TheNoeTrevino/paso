@@ -16,12 +16,49 @@ type TaskRepo struct {
 	db *sql.DB
 }
 
-// CreateTask creates a new task in the database
+// CreateTask creates a new task in the database with an auto-assigned ticket number
 func (r *TaskRepo) CreateTask(ctx context.Context, title, description string, columnID, position int) (*models.Task, error) {
-	result, err := r.db.ExecContext(ctx,
-		`INSERT INTO tasks (title, description, column_id, position)
-		 VALUES (?, ?, ?, ?)`,
-		title, description, columnID, position,
+	// Get project ID from column
+	var projectID int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT project_id FROM columns WHERE id = ?`,
+		columnID,
+	).Scan(&projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project for column %d: %w", columnID, err)
+	}
+
+	// Start transaction for ticket number allocation and task creation
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Get next ticket number for this project
+	var ticketNumber int
+	err = tx.QueryRowContext(ctx,
+		`SELECT next_ticket_number FROM project_counters WHERE project_id = ?`,
+		projectID,
+	).Scan(&ticketNumber)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ticket number for project %d: %w", projectID, err)
+	}
+
+	// Increment ticket counter
+	_, err = tx.ExecContext(ctx,
+		`UPDATE project_counters SET next_ticket_number = next_ticket_number + 1 WHERE project_id = ?`,
+		projectID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to increment ticket counter for project %d: %w", projectID, err)
+	}
+
+	// Insert task with ticket number
+	result, err := tx.ExecContext(ctx,
+		`INSERT INTO tasks (title, description, column_id, position, ticket_number)
+		 VALUES (?, ?, ?, ?, ?)`,
+		title, description, columnID, position, ticketNumber,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert task: %w", err)
@@ -30,6 +67,11 @@ func (r *TaskRepo) CreateTask(ctx context.Context, title, description string, co
 	id, err := result.LastInsertId()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get last insert ID for task: %w", err)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit task creation transaction: %w", err)
 	}
 
 	// Retrieve the created task to get timestamps
