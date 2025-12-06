@@ -13,25 +13,54 @@ type Config struct {
 	ColorScheme ColorScheme `yaml:"theme"`
 }
 
+// loadThemeFile loads and merges theme from PASO_THEME_FILE environment variable
+func loadThemeFile(config *Config) {
+	themeFile := os.Getenv("PASO_THEME_FILE")
+	if themeFile == "" {
+		return
+	}
+
+	if _, err := os.Stat(themeFile); err != nil {
+		return
+	}
+
+	themeData, err := os.ReadFile(themeFile)
+	if err != nil {
+		return
+	}
+
+	var themeConfig struct {
+		Theme ColorScheme `yaml:"theme"`
+	}
+
+	if yaml.Unmarshal(themeData, &themeConfig) == nil {
+		config.ColorScheme.MergeFrom(themeConfig.Theme)
+	}
+}
+
 // Load loads config from the user's config directory
 // Returns default config if file doesn't exist
 func Load() (*Config, error) {
 	configPath, err := getConfigPath()
 	if err != nil {
 		// Return default config if we can't determine config path
-		return &Config{
+		config := &Config{
 			KeyMappings: DefaultKeyMappings(),
 			ColorScheme: DefaultColorScheme(),
-		}, nil
+		}
+		loadThemeFile(config)
+		return config, nil
 	}
 
 	// Check if config file exists
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		// Return default config if file doesn't exist
-		return &Config{
+		config := &Config{
 			KeyMappings: DefaultKeyMappings(),
 			ColorScheme: DefaultColorScheme(),
-		}, nil
+		}
+		loadThemeFile(config)
+		return config, nil
 	}
 
 	// Read config file
@@ -45,6 +74,9 @@ func Load() (*Config, error) {
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, err
 	}
+
+	// Load theme from PASO_THEME_FILE if set
+	loadThemeFile(&config)
 
 	// Fill in any missing values with defaults
 	config.applyDefaults()
