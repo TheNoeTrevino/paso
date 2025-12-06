@@ -58,7 +58,7 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 		for _, label := range task.Labels {
 			chips = append(chips, components.RenderLabelChip(label))
 		}
-		labelChips = "\n" + strings.Join(chips, "")
+		labelChips = "\n\n" + strings.Join(chips, "")
 	}
 
 	content := title + labelChips
