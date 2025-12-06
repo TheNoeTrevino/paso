@@ -64,7 +64,7 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handlePrevProject()
 	case km.NextProject:
 		return m.handleNextProject()
-	case "ctrl+p":
+	case km.CreateProject:
 		return m.handleCreateProject()
 	}
 
