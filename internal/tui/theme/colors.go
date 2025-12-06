@@ -10,6 +10,7 @@ var (
 	Create         string
 	SelectedBorder string
 	SelectedBg     string
+	TaskBg         string
 	InfoFg         string
 	InfoBg         string
 	WarningFg      string
@@ -26,6 +27,7 @@ func Init(colors config.ColorScheme) {
 	Create = colors.Create
 	SelectedBorder = colors.SelectedBorder
 	SelectedBg = colors.SelectedBg
+	TaskBg = colors.TaskBackground
 	InfoFg = colors.InfoFg
 	InfoBg = colors.InfoBg
 	WarningFg = colors.WarningFg

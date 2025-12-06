@@ -52,6 +52,68 @@ func GetPreset(name string) *ColorScheme {
 	}
 }
 
+// MergeFrom merges non-empty color values from another ColorScheme
+// Non-empty values from 'other' will override this scheme's values
+func (c *ColorScheme) MergeFrom(other ColorScheme) {
+	if other.Preset != "" {
+		c.Preset = other.Preset
+	}
+	if other.Accent != "" {
+		c.Accent = other.Accent
+	}
+	if other.Create != "" {
+		c.Create = other.Create
+	}
+	if other.Edit != "" {
+		c.Edit = other.Edit
+	}
+	if other.Delete != "" {
+		c.Delete = other.Delete
+	}
+	if other.ColumnBorder != "" {
+		c.ColumnBorder = other.ColumnBorder
+	}
+	if other.TaskBorder != "" {
+		c.TaskBorder = other.TaskBorder
+	}
+	if other.TaskBackground != "" {
+		c.TaskBackground = other.TaskBackground
+	}
+	if other.SelectedBorder != "" {
+		c.SelectedBorder = other.SelectedBorder
+	}
+	if other.SelectedBg != "" {
+		c.SelectedBg = other.SelectedBg
+	}
+	if other.Title != "" {
+		c.Title = other.Title
+	}
+	if other.Subtle != "" {
+		c.Subtle = other.Subtle
+	}
+	if other.Normal != "" {
+		c.Normal = other.Normal
+	}
+	if other.InfoFg != "" {
+		c.InfoFg = other.InfoFg
+	}
+	if other.InfoBg != "" {
+		c.InfoBg = other.InfoBg
+	}
+	if other.WarningFg != "" {
+		c.WarningFg = other.WarningFg
+	}
+	if other.WarningBg != "" {
+		c.WarningBg = other.WarningBg
+	}
+	if other.ErrorFg != "" {
+		c.ErrorFg = other.ErrorFg
+	}
+	if other.ErrorBg != "" {
+		c.ErrorBg = other.ErrorBg
+	}
+}
+
 // ApplyDefaults fills in missing color values using the preset as base
 // If preset is specified, loads that preset first, then overrides with custom values
 func (c *ColorScheme) ApplyDefaults() {

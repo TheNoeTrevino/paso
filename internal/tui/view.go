@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/layers"
 	"github.com/thenoetrevino/paso/internal/tui/notifications"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -22,35 +23,72 @@ func (m Model) View() tea.View {
 		return view
 	}
 
-	// Dispatch to appropriate view handler based on mode
-	switch m.uiState.Mode() {
-	case state.TicketFormMode:
-		view.Content = m.viewTicketForm()
-	case state.ProjectFormMode:
-		view.Content = m.viewProjectForm()
-	case state.AddColumnMode, state.EditColumnMode:
-		view.Content = m.viewColumnInput()
-	case state.DeleteConfirmMode:
-		view.Content = m.viewDeleteTaskConfirm()
-	case state.DeleteColumnConfirmMode:
-		view.Content = m.viewDeleteColumnConfirm()
-	case state.HelpMode:
-		view.Content = m.viewHelp()
-	case state.LabelPickerMode:
-		view.Content = m.viewLabelPicker()
-	case state.ViewTaskMode:
-		view.Content = m.viewTaskDetail()
-	default:
-		view.Content = m.viewKanbanBoard()
+	// Check if current mode uses layer-based rendering
+	usesLayers := m.uiState.Mode() == state.TicketFormMode ||
+		m.uiState.Mode() == state.ProjectFormMode ||
+		m.uiState.Mode() == state.AddColumnMode ||
+		m.uiState.Mode() == state.EditColumnMode ||
+		m.uiState.Mode() == state.HelpMode ||
+		m.uiState.Mode() == state.NormalMode
+
+	if usesLayers {
+		// Layer-based rendering: always show base board with modal overlays
+		baseView := m.viewKanbanBoard()
+
+		// Start layer stack with base view
+		layers := []*lipgloss.Layer{
+			lipgloss.NewLayer(baseView),
+		}
+
+		// Add modal overlay based on mode
+		var modalLayer *lipgloss.Layer
+		switch m.uiState.Mode() {
+		case state.TicketFormMode:
+			modalLayer = m.renderTicketFormLayer()
+		case state.ProjectFormMode:
+			modalLayer = m.renderProjectFormLayer()
+		case state.AddColumnMode, state.EditColumnMode:
+			modalLayer = m.renderColumnInputLayer()
+		case state.HelpMode:
+			modalLayer = m.renderHelpLayer()
+		}
+
+		if modalLayer != nil {
+			layers = append(layers, modalLayer)
+		}
+
+		// Add notification layers (always on top)
+		if m.notificationState.HasAny() {
+			notificationLayers := m.notificationState.GetLayers(notifications.RenderFromState)
+			layers = append(layers, notificationLayers...)
+		}
+
+		// Combine all layers into canvas
+		canvas := lipgloss.NewCanvas(layers...)
+		view.Content = canvas.Render()
+	} else {
+		// Legacy full-screen rendering for modes not yet converted to layers
+		switch m.uiState.Mode() {
+		case state.DeleteConfirmMode:
+			view.Content = m.viewDeleteTaskConfirm()
+		case state.DeleteColumnConfirmMode:
+			view.Content = m.viewDeleteColumnConfirm()
+		case state.LabelPickerMode:
+			view.Content = m.viewLabelPicker()
+		case state.ViewTaskMode:
+			view.Content = m.viewTaskDetail()
+		default:
+			view.Content = m.viewKanbanBoard()
+		}
 	}
 
 	return view
 }
 
-// viewTicketForm renders the ticket creation/edit form modal
-func (m Model) viewTicketForm() string {
+// renderTicketFormLayer renders the ticket creation/edit form modal as a layer
+func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 	if m.formState.TicketForm == nil {
-		return ""
+		return nil
 	}
 
 	formView := m.formState.TicketForm.View()
@@ -61,17 +99,13 @@ func (m Model) viewTicketForm() string {
 		Height(m.uiState.Height() / 2).
 		Render(formView)
 
-	return lipgloss.Place(
-		m.uiState.Width(), m.uiState.Height(),
-		lipgloss.Center, lipgloss.Center,
-		formBox,
-	)
+	return layers.CreateCenteredLayer(formBox, m.uiState.Width(), m.uiState.Height())
 }
 
-// viewProjectForm renders the project creation form modal
-func (m Model) viewProjectForm() string {
+// renderProjectFormLayer renders the project creation form modal as a layer
+func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 	if m.formState.ProjectForm == nil {
-		return ""
+		return nil
 	}
 
 	formView := m.formState.ProjectForm.View()
@@ -82,15 +116,11 @@ func (m Model) viewProjectForm() string {
 		Height(m.uiState.Height() / 3).
 		Render("New Project\n\n" + formView)
 
-	return lipgloss.Place(
-		m.uiState.Width(), m.uiState.Height(),
-		lipgloss.Center, lipgloss.Center,
-		formBox,
-	)
+	return layers.CreateCenteredLayer(formBox, m.uiState.Width(), m.uiState.Height())
 }
 
-// viewColumnInput renders the column name input dialog (create or edit mode)
-func (m Model) viewColumnInput() string {
+// renderColumnInputLayer renders the column name input dialog (create or edit mode) as a layer
+func (m Model) renderColumnInputLayer() *lipgloss.Layer {
 	var inputBox string
 	if m.uiState.Mode() == state.AddColumnMode {
 		inputBox = CreateInputBoxStyle.
@@ -103,11 +133,7 @@ func (m Model) viewColumnInput() string {
 			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
 	}
 
-	return lipgloss.Place(
-		m.uiState.Width(), m.uiState.Height(),
-		lipgloss.Center, lipgloss.Center,
-		inputBox,
-	)
+	return layers.CreateCenteredLayer(inputBox, m.uiState.Width(), m.uiState.Height())
 }
 
 // viewDeleteTaskConfirm renders the task deletion confirmation dialog
@@ -158,17 +184,13 @@ func (m Model) viewDeleteColumnConfirm() string {
 	)
 }
 
-// viewHelp renders the keyboard shortcuts help screen
-func (m Model) viewHelp() string {
+// renderHelpLayer renders the keyboard shortcuts help screen as a layer
+func (m Model) renderHelpLayer() *lipgloss.Layer {
 	helpBox := HelpBoxStyle.
 		Width(50).
 		Render(m.generateHelpText())
 
-	return lipgloss.Place(
-		m.uiState.Width(), m.uiState.Height(),
-		lipgloss.Center, lipgloss.Center,
-		helpBox,
-	)
+	return layers.CreateCenteredLayer(helpBox, m.uiState.Width(), m.uiState.Height())
 }
 
 // generateHelpText creates help text based on current key mappings
