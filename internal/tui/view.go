@@ -99,8 +99,8 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 
 	// Wrap form in a styled container
 	formBox := FormBoxStyle.
-		Width(m.uiState.Width() / 2).
-		Height(m.uiState.Height() / 2).
+		Width(m.uiState.Width() * 3 / 4).
+		Height(m.uiState.Height() * 3 / 4).
 		Render(formView)
 
 	return layers.CreateCenteredLayer(formBox, m.uiState.Width(), m.uiState.Height())
@@ -116,7 +116,7 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 
 	// Wrap form in a styled container with green border for creation
 	formBox := ProjectFormBoxStyle.
-		Width(m.uiState.Width() / 2).
+		Width(m.uiState.Width() * 3 / 4).
 		Height(m.uiState.Height() / 3).
 		Render("New Project\n\n" + formView)
 
@@ -264,7 +264,7 @@ func (m Model) viewLabelPicker() string {
 			GetDefaultLabelColors(),
 			m.labelPickerState.ColorIdx,
 			m.formState.FormLabelName,
-			m.uiState.Width()/2-8,
+			m.uiState.Width()*3/4-8,
 		)
 	} else {
 		// Show label list (use filtered items from state)
@@ -273,8 +273,8 @@ func (m Model) viewLabelPicker() string {
 			m.labelPickerState.Cursor,
 			m.labelPickerState.Filter,
 			true, // show create option
-			m.uiState.Width()/2-8,
-			m.uiState.Height()/2-4,
+			m.uiState.Width()*3/4-8,
+			m.uiState.Height()*3/4-4,
 		)
 	}
 
@@ -282,13 +282,13 @@ func (m Model) viewLabelPicker() string {
 	var pickerBox string
 	if m.labelPickerState.CreateMode {
 		pickerBox = LabelPickerCreateBoxStyle.
-			Width(m.uiState.Width() / 2).
-			Height(m.uiState.Height() / 2).
+			Width(m.uiState.Width() * 3 / 4).
+			Height(m.uiState.Height() * 3 / 4).
 			Render(pickerContent)
 	} else {
 		pickerBox = LabelPickerBoxStyle.
-			Width(m.uiState.Width() / 2).
-			Height(m.uiState.Height() / 2).
+			Width(m.uiState.Width() * 3 / 4).
+			Height(m.uiState.Height() * 3 / 4).
 			Render(pickerContent)
 	}
 
@@ -314,8 +314,8 @@ func (m Model) viewTaskDetail() string {
 	return components.RenderTaskView(components.TaskViewProps{
 		Task:         m.uiState.ViewingTask(),
 		ColumnName:   columnName,
-		PopupWidth:   m.uiState.Width() / 2,
-		PopupHeight:  m.uiState.Height() / 2,
+		PopupWidth:   m.uiState.Width() * 3 / 4,
+		PopupHeight:  m.uiState.Height() * 3 / 4,
 		ScreenWidth:  m.uiState.Width(),
 		ScreenHeight: m.uiState.Height(),
 	})
