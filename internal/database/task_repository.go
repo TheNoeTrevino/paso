@@ -193,16 +193,16 @@ func (r *TaskRepo) GetTaskSummariesByProject(ctx context.Context, projectID int)
 	return tasksByColumn, nil
 }
 
-// GetTaskDetail retrieves full task details including description, timestamps, and labels
+// GetTaskDetail retrieves full task details including description, timestamps, labels, and subtasks
 func (r *TaskRepo) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error) {
 	detail := &models.TaskDetail{}
 	err := r.db.QueryRowContext(ctx,
-		`SELECT id, title, description, column_id, position, created_at, updated_at
+		`SELECT id, title, description, column_id, position, ticket_number, created_at, updated_at
 		 FROM tasks WHERE id = ?`,
 		taskID,
 	).Scan(
 		&detail.ID, &detail.Title, &detail.Description,
-		&detail.ColumnID, &detail.Position, &detail.CreatedAt, &detail.UpdatedAt,
+		&detail.ColumnID, &detail.Position, &detail.TicketNumber, &detail.CreatedAt, &detail.UpdatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task detail for task %d: %w", taskID, err)
@@ -234,6 +234,21 @@ func (r *TaskRepo) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskD
 	}
 
 	detail.Labels = labels
+
+	// Get parent tasks (tasks that depend on this task)
+	parentTasks, err := r.GetParentTasks(ctx, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get parent tasks for task %d: %w", taskID, err)
+	}
+	detail.ParentTasks = parentTasks
+
+	// Get child tasks (tasks this task depends on)
+	childTasks, err := r.GetChildTasks(ctx, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get child tasks for task %d: %w", taskID, err)
+	}
+	detail.ChildTasks = childTasks
+
 	return detail, nil
 }
 
@@ -533,6 +548,96 @@ func (r *TaskRepo) DeleteTask(ctx context.Context, taskID int) error {
 	_, err := r.db.ExecContext(ctx, "DELETE FROM tasks WHERE id = ?", taskID)
 	if err != nil {
 		return fmt.Errorf("failed to delete task %d: %w", taskID, err)
+	}
+	return nil
+}
+
+// GetParentTasks retrieves tasks that depend on this task (parent issues)
+// Returns lightweight TaskReference structs with project name for display
+func (r *TaskRepo) GetParentTasks(ctx context.Context, taskID int) ([]*models.TaskReference, error) {
+	query := `
+		SELECT t.id, t.ticket_number, t.title, p.name
+		FROM tasks t
+		INNER JOIN task_subtasks ts ON t.id = ts.parent_id
+		INNER JOIN columns c ON t.column_id = c.id
+		INNER JOIN projects p ON c.project_id = p.id
+		WHERE ts.child_id = ?
+		ORDER BY p.name, t.ticket_number`
+
+	rows, err := r.db.QueryContext(ctx, query, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query parent tasks for task %d: %w", taskID, err)
+	}
+	defer rows.Close()
+
+	references := make([]*models.TaskReference, 0, 10)
+	for rows.Next() {
+		ref := &models.TaskReference{}
+		if err := rows.Scan(&ref.ID, &ref.TicketNumber, &ref.Title, &ref.ProjectName); err != nil {
+			return nil, fmt.Errorf("failed to scan parent task for task %d: %w", taskID, err)
+		}
+		references = append(references, ref)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating parent tasks for task %d: %w", taskID, err)
+	}
+	return references, nil
+}
+
+// GetChildTasks retrieves tasks that must be done before this one (child issues)
+// Returns lightweight TaskReference structs with project name for display
+func (r *TaskRepo) GetChildTasks(ctx context.Context, taskID int) ([]*models.TaskReference, error) {
+	query := `
+		SELECT t.id, t.ticket_number, t.title, p.name
+		FROM tasks t
+		INNER JOIN task_subtasks ts ON t.id = ts.child_id
+		INNER JOIN columns c ON t.column_id = c.id
+		INNER JOIN projects p ON c.project_id = p.id
+		WHERE ts.parent_id = ?
+		ORDER BY p.name, t.ticket_number`
+
+	rows, err := r.db.QueryContext(ctx, query, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query child tasks for task %d: %w", taskID, err)
+	}
+	defer rows.Close()
+
+	references := make([]*models.TaskReference, 0, 10)
+	for rows.Next() {
+		ref := &models.TaskReference{}
+		if err := rows.Scan(&ref.ID, &ref.TicketNumber, &ref.Title, &ref.ProjectName); err != nil {
+			return nil, fmt.Errorf("failed to scan child task for task %d: %w", taskID, err)
+		}
+		references = append(references, ref)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating child tasks for task %d: %w", taskID, err)
+	}
+	return references, nil
+}
+
+// AddSubtask creates a parent-child relationship between tasks
+func (r *TaskRepo) AddSubtask(ctx context.Context, parentID, childID int) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT OR IGNORE INTO task_subtasks (parent_id, child_id) VALUES (?, ?)`,
+		parentID, childID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to add subtask relationship (parent: %d, child: %d): %w", parentID, childID, err)
+	}
+	return nil
+}
+
+// RemoveSubtask removes a parent-child relationship between tasks
+func (r *TaskRepo) RemoveSubtask(ctx context.Context, parentID, childID int) error {
+	_, err := r.db.ExecContext(ctx,
+		`DELETE FROM task_subtasks WHERE parent_id = ? AND child_id = ?`,
+		parentID, childID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to remove subtask relationship (parent: %d, child: %d): %w", parentID, childID, err)
 	}
 	return nil
 }

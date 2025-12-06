@@ -127,6 +127,11 @@ func runMigrations(db *sql.DB) error {
 		return err
 	}
 
+	// Migrate task_subtasks table for parent/child relationships
+	if err := migrateTaskSubtasks(db); err != nil {
+		return err
+	}
+
 	// Create indexes AFTER all table/column migrations are complete
 	// Index on columns.project_id for efficient project-based queries
 	_, err = db.Exec(`
@@ -595,4 +600,62 @@ func seedDefaultLabels(db *sql.DB) error {
 	}
 
 	return nil
+}
+
+// migrateTaskSubtasks creates the task_subtasks join table for parent/child task relationships
+func migrateTaskSubtasks(db *sql.DB) error {
+	// Check if task_subtasks table already exists
+	var count int
+	err := db.QueryRow(`
+		SELECT COUNT(*) FROM sqlite_master
+		WHERE type='table' AND name='task_subtasks'
+	`).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	// If table exists, skip migration
+	if count > 0 {
+		return nil
+	}
+
+	// Start transaction
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Create task_subtasks join table
+	_, err = tx.Exec(`
+		CREATE TABLE IF NOT EXISTS task_subtasks (
+			parent_id INTEGER NOT NULL,
+			child_id INTEGER NOT NULL,
+			PRIMARY KEY (parent_id, child_id),
+			FOREIGN KEY (parent_id) REFERENCES tasks(id) ON DELETE CASCADE,
+			FOREIGN KEY (child_id) REFERENCES tasks(id) ON DELETE CASCADE
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
+	// Create indexes for efficient lookups
+	_, err = tx.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_task_subtasks_parent
+		ON task_subtasks(parent_id)
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_task_subtasks_child
+		ON task_subtasks(child_id)
+	`)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
