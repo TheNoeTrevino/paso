@@ -81,6 +81,9 @@ nano ~/.config/paso/config.yaml
 - `R` - Rename current column
 - `X` - Delete current column
 
+#### Projects
+- `P` - Create new project
+
 #### Navigation
 - `h` - Move to previous column
 - `l` - Move to next column

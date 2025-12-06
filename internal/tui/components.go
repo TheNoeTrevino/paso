@@ -50,6 +50,11 @@ func RenderTabs(tabs []string, selectedIdx int, width int) string {
 func RenderTask(task *models.TaskSummary, selected bool) string {
 	// Format task content with title
 	title := lipgloss.NewStyle().Bold(true).Render(task.Title)
+	text := lipgloss.NewStyle().Background(lipgloss.Color(theme.TaskBg)).Render("  ")
+
+	if selected {
+		text = lipgloss.NewStyle().Background(lipgloss.Color(theme.SelectedBg)).Render("  ")
+	}
 
 	// Render label chips
 	var labelChips string
@@ -58,7 +63,7 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 		for _, label := range task.Labels {
 			chips = append(chips, components.RenderLabelChip(label))
 		}
-		labelChips = "\n" + strings.Join(chips, "")
+		labelChips = "\n\n" + strings.Join(chips, text)
 	}
 
 	content := title + labelChips
