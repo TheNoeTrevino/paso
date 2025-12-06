@@ -46,6 +46,9 @@ theme:
   # Primary accent color
   # accent: "#874BFD"
 
+  # Background (tansparent by default)
+  # background: ""
+
   # Semantic colors
   # create: "#5FD75F"  # Green - creation dialogs
   # edit: "#5F87D7"    # Blue - edit/help dialogs
