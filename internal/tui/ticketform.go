@@ -1,12 +1,11 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/huh"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/forms"
 )
 
-// CreateTicketForm creates a huh form for adding/editing a ticket
+// CreateTicketForm creates a form for adding/editing a ticket
 // The form uses pointers to the model's fields so they're updated in place
 func CreateTicketForm(
 	title *string,
@@ -14,136 +13,99 @@ func CreateTicketForm(
 	labelIDs *[]int,
 	labels []*models.Label,
 	confirm *bool,
-) *huh.Form {
-	// Convert labels to huh options
-	var labelOptions []huh.Option[int]
-	for _, label := range labels {
-		labelOptions = append(labelOptions, huh.NewOption(label.Name, label.ID))
-	}
-
+) *forms.Form {
 	// Build form fields
-	var formFields []huh.Field
+	var formFields []forms.Field
 
 	formFields = append(formFields,
-		huh.NewInput().
-			Key("title").
-			Title("Title").
-			Placeholder("Enter task title...").
-			Value(title),
-
-		huh.NewText().
-			Key("description").
-			Title("Description").
-			Placeholder("Enter task description...").
-			CharLimit(500).
-			Value(description),
+		forms.NewTextInput("title", "Title", "Enter task title...", title),
+		forms.NewTextArea("description", "Description", "Enter task description...", 500, description),
 	)
 
 	// Only add label multi-select if there are labels available
-	if len(labelOptions) > 0 {
+	if len(labels) > 0 {
+		var labelOptions []forms.Option
+		for _, label := range labels {
+			labelOptions = append(labelOptions, forms.Option{
+				Label: label.Name,
+				Value: label.ID,
+			})
+		}
+
 		formFields = append(formFields,
-			huh.NewMultiSelect[int]().
-				Key("labels").
-				Title("Labels").
-				Options(labelOptions...).
-				Value(labelIDs),
+			forms.NewMultiSelect("labels", "Labels (space to toggle, up/down to navigate)", labelOptions, labelIDs),
 		)
 	}
 
 	// Add confirmation at the end
 	formFields = append(formFields,
-		huh.NewConfirm().
-			Key("confirm").
-			Title("Submit this ticket?").
-			Affirmative("Yes").
-			Negative("No").
-			Value(confirm),
+		forms.NewConfirm("confirm", "Submit this ticket?", "Yes", "No", confirm),
 	)
 
-	// Create custom keymap where Enter creates newlines in Text field
-	// and Tab moves between fields
-	customKeyMap := huh.NewDefaultKeyMap()
-
-	// Override Text field keybindings:
-	// - Enter creates a new line (instead of moving to next field)
-	// - Tab moves to next field
-	customKeyMap.Text.Next = key.NewBinding(
-		key.WithKeys("tab"),
-		key.WithHelp("tab", "next"),
-	)
-	customKeyMap.Text.NewLine = key.NewBinding(
-		key.WithKeys("enter", "ctrl+j"),
-		key.WithHelp("enter", "new line"),
-	)
-
-	form := huh.NewForm(
-		huh.NewGroup(formFields...),
-	).WithTheme(huh.ThemeDracula()).
-		WithKeyMap(customKeyMap)
-
-	return form
+	return forms.NewForm(formFields...)
 }
 
-// CreateProjectForm creates a huh form for adding a new project
+// CreateProjectForm creates a form for adding a new project
 func CreateProjectForm(
 	name *string,
 	description *string,
-) *huh.Form {
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewInput().
-				Key("name").
-				Title("Project Name").
-				Placeholder("Enter project name...").
-				Value(name),
+) *forms.Form {
+	formFields := []forms.Field{
+		forms.NewTextInput("name", "Project Name", "Enter project name...", name),
+		forms.NewTextArea("description", "Description (optional)", "Enter project description...", 500, description),
+	}
 
-			huh.NewText().
-				Key("description").
-				Title("Description (optional)").
-				Placeholder("Enter project description...").
-				CharLimit(500).
-				Value(description),
-		),
-	).WithTheme(huh.ThemeDracula())
-
-	return form
+	return forms.NewForm(formFields...)
 }
 
 // LabelColorOptions returns the available color options for labels
-func LabelColorOptions() []huh.Option[string] {
-	return []huh.Option[string]{
-		huh.NewOption("Purple", "#7D56F4"),
-		huh.NewOption("Blue", "#3B82F6"),
-		huh.NewOption("Green", "#22C55E"),
-		huh.NewOption("Yellow", "#EAB308"),
-		huh.NewOption("Orange", "#F97316"),
-		huh.NewOption("Red", "#EF4444"),
-		huh.NewOption("Pink", "#EC4899"),
-		huh.NewOption("Cyan", "#06B6D4"),
-		huh.NewOption("Gray", "#6B7280"),
+func LabelColorOptions() []forms.Option {
+	return []forms.Option{
+		{Label: "Purple", Value: 0},
+		{Label: "Blue", Value: 1},
+		{Label: "Green", Value: 2},
+		{Label: "Yellow", Value: 3},
+		{Label: "Orange", Value: 4},
+		{Label: "Red", Value: 5},
+		{Label: "Pink", Value: 6},
+		{Label: "Cyan", Value: 7},
+		{Label: "Gray", Value: 8},
 	}
 }
 
-// CreateLabelForm creates a huh form for adding/editing a label
+// LabelColorValues maps option values to hex colors
+func LabelColorValues() map[int]string {
+	return map[int]string{
+		0: "#7D56F4", // Purple
+		1: "#3B82F6", // Blue
+		2: "#22C55E", // Green
+		3: "#EAB308", // Yellow
+		4: "#F97316", // Orange
+		5: "#EF4444", // Red
+		6: "#EC4899", // Pink
+		7: "#06B6D4", // Cyan
+		8: "#6B7280", // Gray
+	}
+}
+
+// CreateLabelForm creates a form for adding/editing a label
+// Note: For labels, we'll use a single-select implemented as a MultiSelect with max 1
 func CreateLabelForm(
 	name *string,
-	color *string,
-) *huh.Form {
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewInput().
-				Key("name").
-				Title("Label Name").
-				Placeholder("Enter label name...").
-				Value(name),
+	colorIndex *int,
+) *forms.Form {
+	if colorIndex == nil {
+		defaultIdx := 0
+		colorIndex = &defaultIdx
+	}
 
-			huh.NewSelect[string]().
-				Key("color").
-				Title("Color").
-				Options(LabelColorOptions()...).
-				Value(color),
-		),
-	).WithTheme(huh.ThemeDracula())
+	// Convert colorIndex to []int for multiselect (we'll only allow 1 selection)
+	selectedColors := []int{*colorIndex}
 
-	return form
+	formFields := []forms.Field{
+		forms.NewTextInput("name", "Label Name", "Enter label name...", name),
+		forms.NewMultiSelect("color", "Color (select one)", LabelColorOptions(), &selectedColors),
+	}
+
+	return forms.NewForm(formFields...)
 }
