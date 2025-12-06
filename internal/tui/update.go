@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/huh"
+	"github.com/thenoetrevino/paso/internal/tui/forms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -77,29 +77,13 @@ type ticketFormValues struct {
 }
 
 // extractTicketFormValues extracts and returns form values from the ticket form
+// Since our forms update pointers in place, we can just read from formState
 func (m Model) extractTicketFormValues() ticketFormValues {
-	title := m.formState.TicketForm.GetString("title")
-	description := m.formState.TicketForm.GetString("description")
-
-	confirm := true
-	if c := m.formState.TicketForm.Get("confirm"); c != nil {
-		if b, ok := c.(bool); ok {
-			confirm = b
-		}
-	}
-
-	var labelIDs []int
-	if labels := m.formState.TicketForm.Get("labels"); labels != nil {
-		if ids, ok := labels.([]int); ok {
-			labelIDs = ids
-		}
-	}
-
 	return ticketFormValues{
-		title:       strings.TrimSpace(title),
-		description: strings.TrimSpace(description),
-		confirm:     confirm,
-		labelIDs:    labelIDs,
+		title:       strings.TrimSpace(m.formState.FormTitle),
+		description: strings.TrimSpace(m.formState.FormDescription),
+		confirm:     m.formState.FormConfirm,
+		labelIDs:    m.formState.FormLabelIDs,
 	}
 }
 
@@ -162,8 +146,8 @@ func (m Model) updateExistingTaskWithLabels(values ticketFormValues) {
 
 // formConfig holds configuration for generic form handling
 type formConfig struct {
-	form       *huh.Form
-	setForm    func(*huh.Form)
+	form       *forms.Form
+	setForm    func(*forms.Form)
 	clearForm  func()
 	onComplete func() // Called when form completes successfully
 }
@@ -175,23 +159,12 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 		return m, nil
 	}
 
-	// Escape key handling
-	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == "esc" {
-		m.uiState.SetMode(state.NormalMode)
-		cfg.setForm(nil)
-		return m, nil
-	}
-
 	// Forward to form
-	var cmds []tea.Cmd
 	form, cmd := cfg.form.Update(msg)
-	if f, ok := form.(*huh.Form); ok {
-		cfg.setForm(f)
-		cmds = append(cmds, wrapV1Cmd(cmd))
-	}
+	cfg.setForm(form)
 
 	// Check completion
-	if cfg.form.State == huh.StateCompleted {
+	if cfg.form.State() == forms.StateCompleted {
 		cfg.onComplete()
 		m.uiState.SetMode(state.NormalMode)
 		cfg.setForm(nil)
@@ -200,22 +173,22 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 	}
 
 	// Check abort
-	if cfg.form.State == huh.StateAborted {
+	if cfg.form.State() == forms.StateAborted {
 		m.uiState.SetMode(state.NormalMode)
 		cfg.setForm(nil)
 		cfg.clearForm()
 		return m, tea.ClearScreen
 	}
 
-	return m, tea.Batch(cmds...)
+	return m, cmd
 }
 
 // updateTicketForm handles all messages when in TicketFormMode
-// This is separated out because huh forms need to receive ALL messages, not just KeyMsg
+// This is separated out because forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m.handleFormUpdate(msg, formConfig{
 		form: m.formState.TicketForm,
-		setForm: func(f *huh.Form) {
+		setForm: func(f *forms.Form) {
 			m.formState.TicketForm = f
 		},
 		clearForm: func() {
@@ -243,24 +216,24 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // updateProjectForm handles all messages when in ProjectFormMode
-// This is separated out because huh forms need to receive ALL messages, not just KeyMsg
+// This is separated out because forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m.handleFormUpdate(msg, formConfig{
 		form: m.formState.ProjectForm,
-		setForm: func(f *huh.Form) {
+		setForm: func(f *forms.Form) {
 			m.formState.ProjectForm = f
 		},
 		clearForm: func() {
 			m.formState.ClearProjectForm()
 		},
 		onComplete: func() {
-			// Read values directly from the form using GetString
-			name := m.formState.ProjectForm.GetString("name")
-			description := m.formState.ProjectForm.GetString("description")
+			// Read values from form state (forms update pointers in place)
+			name := strings.TrimSpace(m.formState.FormProjectName)
+			description := strings.TrimSpace(m.formState.FormProjectDescription)
 
 			// Form submitted - create the project
-			if strings.TrimSpace(name) != "" {
-				project, err := m.repo.CreateProject(context.Background(), strings.TrimSpace(name), strings.TrimSpace(description))
+			if name != "" {
+				project, err := m.repo.CreateProject(context.Background(), name, description)
 				if err != nil {
 					log.Printf("Error creating project: %v", err)
 					m.notificationState.Add(state.LevelError, "Error creating project")

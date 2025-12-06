@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/huh"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/forms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -18,12 +18,9 @@ func TestModeDispatch_TicketFormMode(t *testing.T) {
 
 	// Create a simple form (will be nil initially, but mode is what matters)
 	m.uiState.SetMode(state.TicketFormMode)
-	m.formState.TicketForm = huh.NewForm(
-		huh.NewGroup(
-			huh.NewInput().
-				Key("title").
-				Title("Title"),
-		),
+	title := ""
+	m.formState.TicketForm = forms.NewForm(
+		forms.NewTextInput("title", "Title", "Enter title...", &title),
 	)
 
 	// Send a key message
@@ -82,12 +79,9 @@ func TestUpdateTicketForm_EscapeCancels(t *testing.T) {
 
 	// Set up form mode
 	m.uiState.SetMode(state.TicketFormMode)
-	m.formState.TicketForm = huh.NewForm(
-		huh.NewGroup(
-			huh.NewInput().
-				Key("title").
-				Title("Title"),
-		),
+	title := ""
+	m.formState.TicketForm = forms.NewForm(
+		forms.NewTextInput("title", "Title", "Enter title...", &title),
 	)
 
 	// Send ESC key
@@ -118,8 +112,8 @@ func TestUpdateTicketForm_EscapeCancels(t *testing.T) {
 // Note: This test documents expected behavior - actual validation happens in update.go:124
 func TestUpdateTicketForm_EmptyTitleNoOp(t *testing.T) {
 	// This test requires the form to actually complete, which is complex
-	// to simulate without running the full huh form lifecycle.
-	// Instead, we document the validation exists at update.go:124:
+	// to simulate without running the full form lifecycle.
+	// Instead, we document the validation exists in update.go:
 	// if strings.TrimSpace(title) != "" { ... }
 	//
 	// The validation ensures:
@@ -127,7 +121,7 @@ func TestUpdateTicketForm_EmptyTitleNoOp(t *testing.T) {
 	// 2. Whitespace-only titles are treated as empty
 	// 3. Form exits cleanly without error
 
-	t.Log("Empty title validation exists at update.go:124")
+	t.Log("Empty title validation exists in update.go")
 	t.Log("Validation: strings.TrimSpace(title) != \"\" before database write")
 	t.Log("Security value: Prevents empty task titles in database")
 }
