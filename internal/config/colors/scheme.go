@@ -8,17 +8,21 @@ type ColorScheme struct {
 	// Primary accent color (used for selections, titles, highlights)
 	Accent string `yaml:"accent"`
 
+	// Background color
+	Background string `yaml:"background"`
+
 	// Semantic colors
 	Create string `yaml:"create"` // Green - creation dialogs
 	Edit   string `yaml:"edit"`   // Blue - edit dialogs
 	Delete string `yaml:"delete"` // Red - delete confirmations
 
 	// UI element colors
-	ColumnBorder    string `yaml:"column_border"`
-	TaskBorder      string `yaml:"task_border"`
-	TaskBackground  string `yaml:"task_background"`
-	SelectedBorder  string `yaml:"selected_border"`
-	SelectedBg      string `yaml:"selected_bg"`
+	ColumnBorder     string `yaml:"column_border"`
+	ColumnBackground string `yaml:"column_background"`
+	TaskBorder       string `yaml:"task_border"`
+	TaskBackground   string `yaml:"task_background"`
+	SelectedBorder   string `yaml:"selected_border"`
+	SelectedBg       string `yaml:"selected_bg"`
 
 	// Text colors
 	Title  string `yaml:"title"`
@@ -58,6 +62,9 @@ func (c *ColorScheme) MergeFrom(other ColorScheme) {
 	if other.Preset != "" {
 		c.Preset = other.Preset
 	}
+	if other.Background == "" {
+		c.Background = other.Background
+	}
 	if other.Accent != "" {
 		c.Accent = other.Accent
 	}
@@ -72,6 +79,9 @@ func (c *ColorScheme) MergeFrom(other ColorScheme) {
 	}
 	if other.ColumnBorder != "" {
 		c.ColumnBorder = other.ColumnBorder
+	}
+	if other.ColumnBackground != "" {
+		c.ColumnBackground = other.ColumnBackground
 	}
 	if other.TaskBorder != "" {
 		c.TaskBorder = other.TaskBorder
@@ -124,6 +134,9 @@ func (c *ColorScheme) ApplyDefaults() {
 	if c.Accent == "" {
 		c.Accent = preset.Accent
 	}
+	if c.Background == "" {
+		c.Background = preset.Background
+	}
 	if c.Create == "" {
 		c.Create = preset.Create
 	}
@@ -135,6 +148,9 @@ func (c *ColorScheme) ApplyDefaults() {
 	}
 	if c.ColumnBorder == "" {
 		c.ColumnBorder = preset.ColumnBorder
+	}
+	if c.ColumnBackground != "" {
+		c.ColumnBackground = preset.ColumnBackground
 	}
 	if c.TaskBorder == "" {
 		c.TaskBorder = preset.TaskBorder

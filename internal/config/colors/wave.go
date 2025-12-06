@@ -8,6 +8,10 @@ func Wave() *ColorScheme {
 		// Primary accent color
 		Accent: palette.oniViolet,
 
+		// Background colors
+		Background:       palette.sumiInk1,
+		ColumnBackground: palette.sumiInk2,
+
 		// Semantic colors
 		Create: palette.springGreen,
 		Edit:   palette.crystalBlue,

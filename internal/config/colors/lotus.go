@@ -8,6 +8,10 @@ func Lotus() *ColorScheme {
 		// Primary accent color
 		Accent: palette.lotusViolet4,
 
+		// Background colors
+		Background:       palette.lotusWhite0,
+		ColumnBackground: palette.lotusWhite2,
+
 		// Semantic colors
 		Create: palette.lotusGreen,
 		Edit:   palette.lotusBlue4,
