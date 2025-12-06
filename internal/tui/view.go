@@ -9,13 +9,15 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/layers"
 	"github.com/thenoetrevino/paso/internal/tui/notifications"
 	"github.com/thenoetrevino/paso/internal/tui/state"
+	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
 // View renders the current state of the application
 // This implements the "View" part of the Model-View-Update pattern
 func (m Model) View() tea.View {
 	var view tea.View
-	view.AltScreen = true // Use alternate screen buffer
+	view.AltScreen = true                                 // Use alternate screen buffer
+	view.BackgroundColor = lipgloss.Color(theme.Background) // Set root background color
 
 	// Wait for terminal size to be initialized
 	if m.uiState.Width() == 0 {
@@ -68,18 +70,20 @@ func (m Model) View() tea.View {
 		view.Content = canvas.Render()
 	} else {
 		// Legacy full-screen rendering for modes not yet converted to layers
+		var content string
 		switch m.uiState.Mode() {
 		case state.DeleteConfirmMode:
-			view.Content = m.viewDeleteTaskConfirm()
+			content = m.viewDeleteTaskConfirm()
 		case state.DeleteColumnConfirmMode:
-			view.Content = m.viewDeleteColumnConfirm()
+			content = m.viewDeleteColumnConfirm()
 		case state.LabelPickerMode:
-			view.Content = m.viewLabelPicker()
+			content = m.viewLabelPicker()
 		case state.ViewTaskMode:
-			view.Content = m.viewTaskDetail()
+			content = m.viewTaskDetail()
 		default:
-			view.Content = m.viewKanbanBoard()
+			content = m.viewKanbanBoard()
 		}
+		view.Content = content
 	}
 
 	return view
