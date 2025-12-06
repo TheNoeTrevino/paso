@@ -1,33 +1,33 @@
 package state
 
 import (
-	"github.com/charmbracelet/huh"
+	"github.com/thenoetrevino/paso/internal/tui/forms"
 )
 
 // FormState manages all form-related state for the application.
-// This includes the huh forms for tickets, projects, and labels,
+// This includes the custom forms for tickets, projects, and labels,
 // as well as their associated field values and editing state.
 type FormState struct {
 	// Ticket form fields (for creating/editing tasks)
-	TicketForm      *huh.Form // The huh form instance
-	EditingTaskID   int       // ID of task being edited (0 for new task)
-	FormTitle       string    // Form field: task title
-	FormDescription string    // Form field: task description
-	FormLabelIDs    []int     // Form field: selected label IDs
-	FormConfirm     bool      // Form field: confirmation (submit vs cancel)
+	TicketForm      *forms.Form // The form instance
+	EditingTaskID   int         // ID of task being edited (0 for new task)
+	FormTitle       string      // Form field: task title
+	FormDescription string      // Form field: task description
+	FormLabelIDs    []int       // Form field: selected label IDs
+	FormConfirm     bool        // Form field: confirmation (submit vs cancel)
 
 	// Project form fields (for creating projects)
-	ProjectForm            *huh.Form // The huh form instance
-	FormProjectName        string    // Form field: project name
-	FormProjectDescription string    // Form field: project description
+	ProjectForm            *forms.Form // The form instance
+	FormProjectName        string      // Form field: project name
+	FormProjectDescription string      // Form field: project description
 
 	// Label form fields (for creating/editing labels)
-	LabelForm         *huh.Form // The huh form instance
-	EditingLabelID    int       // ID of label being edited (0 for new label)
-	FormLabelName     string    // Form field: label name
-	FormLabelColor    string    // Form field: label color (hex code)
-	SelectedLabelIdx  int       // Index of selected label in label list
-	LabelListMode     string    // Sub-mode: "list", "add", "edit", "delete"
+	LabelForm         *forms.Form // The form instance
+	EditingLabelID    int         // ID of label being edited (0 for new label)
+	FormLabelName     string      // Form field: label name
+	FormLabelColor    string      // Form field: label color (hex code)
+	SelectedLabelIdx  int         // Index of selected label in label list
+	LabelListMode     string      // Sub-mode: "list", "add", "edit", "delete"
 
 	// Label assignment fields (for quick label toggling)
 	AssigningLabelIDs []int // Currently selected labels for assignment
