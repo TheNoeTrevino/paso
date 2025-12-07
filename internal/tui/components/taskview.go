@@ -69,7 +69,7 @@ func RenderTaskView(props TaskViewProps) string {
 	leftParts = append(leftParts, "")
 	leftParts = append(leftParts, "")
 	footerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-	leftParts = append(leftParts, footerStyle.Render("[l] labels  [Esc/Space] close"))
+	leftParts = append(leftParts, footerStyle.Render("[l] labels  [p] parents  [c] children  [Esc/Space] close"))
 
 	leftFullContent := strings.Join(leftParts, "\n")
 

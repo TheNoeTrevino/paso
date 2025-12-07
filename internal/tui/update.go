@@ -49,6 +49,10 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleViewTaskMode(msg)
 	case state.LabelPickerMode:
 		return m.updateLabelPicker(msg)
+	case state.ParentPickerMode:
+		return m.updateParentPicker(msg)
+	case state.ChildPickerMode:
+		return m.updateChildPicker(msg)
 	}
 	return m, nil
 }
@@ -440,6 +444,218 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// updateParentPicker handles keyboard input in the parent picker mode.
+// This function processes navigation (up/down), filtering, and selection toggling.
+//
+// CRITICAL - Database Parameter Ordering:
+// Parent picker uses the selected task as the parent of the current task.
+// When toggling relationships:
+//   - AddSubtask(selectedTaskID, currentTaskID) - selected becomes parent of current
+//   - RemoveSubtask(selectedTaskID, currentTaskID)
+// This means: selectedTask BLOCKS ON currentTask (selected depends on current).
+func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	// Get filtered items to determine bounds
+	filteredItems := m.parentPickerState.GetFilteredItems()
+	maxIdx := len(filteredItems) - 1
+
+	switch keyMsg.String() {
+	case "esc":
+		// Close picker and return to ViewTaskMode
+		m.uiState.SetMode(state.ViewTaskMode)
+		m.parentPickerState.Filter = ""
+		m.parentPickerState.Cursor = 0
+		return m, nil
+
+	case "up", "k":
+		// Move cursor up
+		m.parentPickerState.MoveCursorUp()
+		return m, nil
+
+	case "down", "j":
+		// Move cursor down
+		m.parentPickerState.MoveCursorDown(maxIdx)
+		return m, nil
+
+	case "enter":
+		// Toggle parent relationship
+		if m.parentPickerState.Cursor < len(filteredItems) {
+			// Toggle this parent relationship
+			item := filteredItems[m.parentPickerState.Cursor]
+
+			// Find the index in the unfiltered list
+			for i, pi := range m.parentPickerState.Items {
+				if pi.TaskRef.ID == item.TaskRef.ID {
+					ctx := context.Background()
+					if m.parentPickerState.Items[i].Selected {
+						// Remove parent relationship
+						// CRITICAL: RemoveSubtask(parentID, childID)
+						// selectedTask (parent) blocks on currentTask (child)
+						err := m.repo.RemoveSubtask(ctx, item.TaskRef.ID, m.parentPickerState.TaskID)
+						if err != nil {
+							log.Printf("Error removing parent: %v", err)
+							m.notificationState.Add(state.LevelError, "Failed to remove parent from task")
+						} else {
+							m.parentPickerState.Items[i].Selected = false
+						}
+					} else {
+						// Add parent relationship - selected task becomes parent of current task
+						// CRITICAL: AddSubtask(parentID, childID)
+						// This makes selectedTask (parent) block on currentTask (child)
+						// Meaning: selectedTask depends on completion of currentTask
+						err := m.repo.AddSubtask(ctx, item.TaskRef.ID, m.parentPickerState.TaskID)
+						if err != nil {
+							log.Printf("Error adding parent: %v", err)
+							m.notificationState.Add(state.LevelError, "Failed to add parent to task")
+						} else {
+							m.parentPickerState.Items[i].Selected = true
+						}
+					}
+					break
+				}
+			}
+
+			// Reload task detail to update the view
+			m.reloadViewingTask()
+			// Reload task summaries for the current column
+			m.reloadCurrentColumnTasks()
+		}
+		return m, nil
+
+	case "backspace", "ctrl+h":
+		// Remove last character from filter
+		m.parentPickerState.BackspaceFilter()
+		// Reset cursor if it's out of bounds after filter change
+		newFiltered := m.parentPickerState.GetFilteredItems()
+		if m.parentPickerState.Cursor >= len(newFiltered) && len(newFiltered) > 0 {
+			m.parentPickerState.Cursor = len(newFiltered) - 1
+		} else if len(newFiltered) == 0 {
+			m.parentPickerState.Cursor = 0
+		}
+		return m, nil
+
+	default:
+		// Type to filter/search
+		key := keyMsg.String()
+		if len(key) == 1 {
+			m.parentPickerState.AppendFilter(rune(key[0]))
+			// Reset cursor to 0 when filter changes
+			m.parentPickerState.Cursor = 0
+		}
+		return m, nil
+	}
+}
+
+// updateChildPicker handles keyboard input in the child picker mode.
+// This function processes navigation (up/down), filtering, and selection toggling.
+//
+// CRITICAL - Database Parameter Ordering (REVERSED from parent picker):
+// Child picker uses the current task as the parent of the selected task.
+// When toggling relationships:
+//   - AddSubtask(currentTaskID, selectedTaskID) - current becomes parent of selected
+//   - RemoveSubtask(currentTaskID, selectedTaskID)
+// This means: currentTask BLOCKS ON selectedTask (current depends on selected).
+func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	// Get filtered items to determine bounds
+	filteredItems := m.childPickerState.GetFilteredItems()
+	maxIdx := len(filteredItems) - 1
+
+	switch keyMsg.String() {
+	case "esc":
+		// Close picker and return to ViewTaskMode
+		m.uiState.SetMode(state.ViewTaskMode)
+		m.childPickerState.Filter = ""
+		m.childPickerState.Cursor = 0
+		return m, nil
+
+	case "up", "k":
+		// Move cursor up
+		m.childPickerState.MoveCursorUp()
+		return m, nil
+
+	case "down", "j":
+		// Move cursor down
+		m.childPickerState.MoveCursorDown(maxIdx)
+		return m, nil
+
+	case "enter":
+		// Toggle child relationship
+		if m.childPickerState.Cursor < len(filteredItems) {
+			// Toggle this child relationship
+			item := filteredItems[m.childPickerState.Cursor]
+
+			// Find the index in the unfiltered list
+			for i, pi := range m.childPickerState.Items {
+				if pi.TaskRef.ID == item.TaskRef.ID {
+					ctx := context.Background()
+					if m.childPickerState.Items[i].Selected {
+						// Remove child relationship
+						// CRITICAL: RemoveSubtask(parentID, childID) - REVERSED parameter order from parent picker
+						// currentTask (parent) blocks on selectedTask (child)
+						err := m.repo.RemoveSubtask(ctx, m.childPickerState.TaskID, item.TaskRef.ID)
+						if err != nil {
+							log.Printf("Error removing child: %v", err)
+							m.notificationState.Add(state.LevelError, "Failed to remove child from task")
+						} else {
+							m.childPickerState.Items[i].Selected = false
+						}
+					} else {
+						// Add child relationship - current task becomes parent of selected task
+						// CRITICAL: AddSubtask(parentID, childID) - REVERSED parameter order from parent picker
+						// This makes currentTask (parent) block on selectedTask (child)
+						// Meaning: currentTask depends on completion of selectedTask
+						err := m.repo.AddSubtask(ctx, m.childPickerState.TaskID, item.TaskRef.ID)
+						if err != nil {
+							log.Printf("Error adding child: %v", err)
+							m.notificationState.Add(state.LevelError, "Failed to add child to task")
+						} else {
+							m.childPickerState.Items[i].Selected = true
+						}
+					}
+					break
+				}
+			}
+
+			// Reload task detail to update the view
+			m.reloadViewingTask()
+			// Reload task summaries for the current column
+			m.reloadCurrentColumnTasks()
+		}
+		return m, nil
+
+	case "backspace", "ctrl+h":
+		// Remove last character from filter
+		m.childPickerState.BackspaceFilter()
+		// Reset cursor if it's out of bounds after filter change
+		newFiltered := m.childPickerState.GetFilteredItems()
+		if m.childPickerState.Cursor >= len(newFiltered) && len(newFiltered) > 0 {
+			m.childPickerState.Cursor = len(newFiltered) - 1
+		} else if len(newFiltered) == 0 {
+			m.childPickerState.Cursor = 0
+		}
+		return m, nil
+
+	default:
+		// Type to filter/search
+		key := keyMsg.String()
+		if len(key) == 1 {
+			m.childPickerState.AppendFilter(rune(key[0]))
+			// Reset cursor to 0 when filter changes
+			m.childPickerState.Cursor = 0
+		}
+		return m, nil
+	}
 }
 
 // reloadViewingTask reloads the task detail being viewed
