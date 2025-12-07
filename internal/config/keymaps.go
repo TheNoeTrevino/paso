@@ -15,6 +15,9 @@ type KeyMappings struct {
 	EditParentTask string `yaml:"edit_parent_task"`
 	EditChildTask  string `yaml:"edit_child_task"`
 
+	// Forms
+	SaveForm string `yaml:"save_form"`
+
 	// Columns
 	CreateColumn string `yaml:"create_column"`
 	RenameColumn string `yaml:"rename_column"`
@@ -53,6 +56,7 @@ func DefaultKeyMappings() KeyMappings {
 		EditLabels:    "l",
 		EditParentTask: "p",
 		EditChildTask:  "c",
+		SaveForm:       "ctrl+s",
 
 		// Columns
 		CreateColumn: "C",
@@ -114,6 +118,9 @@ func (k *KeyMappings) applyDefaults() {
 	}
 	if k.EditChildTask == "" {
 		k.EditChildTask = defaults.EditChildTask
+	}
+	if k.SaveForm == "" {
+		k.SaveForm = defaults.SaveForm
 	}
 	if k.CreateColumn == "" {
 		k.CreateColumn = defaults.CreateColumn

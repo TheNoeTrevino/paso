@@ -316,6 +316,7 @@ type formConfig struct {
 	setForm    func(*huh.Form)
 	clearForm  func()
 	onComplete func() // Called when form completes successfully
+	confirmPtr *bool  // Pointer to confirmation field for quick save
 }
 
 // handleFormUpdate processes form messages generically
@@ -349,6 +350,33 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 	return m, cmd
 }
 
+// handleFormSave handles the C-s save shortcut for forms.
+// Sets confirmation to true and completes the form, triggering the save flow.
+func (m Model) handleFormSave(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd) {
+	if cfg.form == nil {
+		m.uiState.SetMode(state.NormalMode)
+		return m, nil
+	}
+
+	// Set confirmation to true (user wants to save)
+	if cfg.confirmPtr != nil {
+		*cfg.confirmPtr = true
+	}
+
+	// Mark form as completed to trigger onComplete callback
+	cfg.form.State = huh.StateCompleted
+
+	// Trigger the save logic
+	cfg.onComplete()
+
+	// Clean up and return to normal mode
+	m.uiState.SetMode(state.NormalMode)
+	cfg.setForm(nil)
+	cfg.clearForm()
+
+	return m, tea.ClearScreen
+}
+
 // updateTicketForm handles all messages when in TicketFormMode
 // This is separated out because forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -368,6 +396,33 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.uiState.SetMode(state.ChildPickerMode)
 			}
 			return m, nil
+
+		case m.config.KeyMappings.SaveForm:
+			// Quick save via C-s
+			return m.handleFormSave(msg, formConfig{
+				form: m.formState.TicketForm,
+				setForm: func(f *huh.Form) {
+					m.formState.TicketForm = f
+				},
+				clearForm: func() {
+					m.formState.ClearTicketForm()
+					m.formState.EditingTaskID = 0
+				},
+				onComplete: func() {
+					values := m.extractTicketFormValues()
+					if !values.confirm {
+						return
+					}
+					if values.title != "" {
+						if m.formState.EditingTaskID == 0 {
+							m.createNewTaskWithLabelsAndRelationships(values)
+						} else {
+							m.updateExistingTaskWithLabelsAndRelationships(values)
+						}
+					}
+				},
+				confirmPtr: &m.formState.FormConfirm,
+			})
 		}
 	}
 
@@ -404,6 +459,47 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 // updateProjectForm handles all messages when in ProjectFormMode
 // This is separated out because forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Check for C-s save shortcut
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg.String() == m.config.KeyMappings.SaveForm {
+			return m.handleFormSave(msg, formConfig{
+				form: m.formState.ProjectForm,
+				setForm: func(f *huh.Form) {
+					m.formState.ProjectForm = f
+				},
+				clearForm: func() {
+					m.formState.ClearProjectForm()
+				},
+				onComplete: func() {
+					name := strings.TrimSpace(m.formState.FormProjectName)
+					description := strings.TrimSpace(m.formState.FormProjectDescription)
+					confirm := m.formState.FormProjectConfirm
+
+					if !confirm {
+						return
+					}
+
+					if name != "" {
+						project, err := m.repo.CreateProject(context.Background(), name, description)
+						if err != nil {
+							log.Printf("Error creating project: %v", err)
+							m.notificationState.Add(state.LevelError, "Error creating project")
+						} else {
+							m.reloadProjects()
+							for i, p := range m.appState.Projects() {
+								if p.ID == project.ID {
+									m.switchToProject(i)
+									break
+								}
+							}
+						}
+					}
+				},
+				confirmPtr: &m.formState.FormProjectConfirm,
+			})
+		}
+	}
+
 	return m.handleFormUpdate(msg, formConfig{
 		form: m.formState.ProjectForm,
 		setForm: func(f *huh.Form) {
