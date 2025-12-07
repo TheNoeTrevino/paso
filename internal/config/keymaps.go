@@ -12,6 +12,8 @@ type KeyMappings struct {
 	MoveTaskDown  string `yaml:"move_task_down"`
 	ViewTask      string `yaml:"view_task"`
 	EditLabels    string `yaml:"edit_labels"`
+	EditParentTask string `yaml:"edit_parent_task"`
+	EditChildTask  string `yaml:"edit_child_task"`
 
 	// Columns
 	CreateColumn string `yaml:"create_column"`
@@ -49,6 +51,8 @@ func DefaultKeyMappings() KeyMappings {
 		MoveTaskDown:  "J",
 		ViewTask:      " ",
 		EditLabels:    "l",
+		EditParentTask: "p",
+		EditChildTask:  "c",
 
 		// Columns
 		CreateColumn: "C",
@@ -104,6 +108,12 @@ func (k *KeyMappings) applyDefaults() {
 	}
 	if k.EditLabels == "" {
 		k.EditLabels = defaults.EditLabels
+	}
+	if k.EditParentTask == "" {
+		k.EditParentTask = defaults.EditParentTask
+	}
+	if k.EditChildTask == "" {
+		k.EditChildTask = defaults.EditChildTask
 	}
 	if k.CreateColumn == "" {
 		k.CreateColumn = defaults.CreateColumn

@@ -529,9 +529,28 @@ func (m Model) handleViewTaskMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.uiState.SetViewingTask(nil)
 		return m, nil
 	case km.EditLabels:
+		// Open label picker to add/remove labels from the current task
 		if m.uiState.ViewingTask() != nil {
 			if m.initLabelPicker(m.uiState.ViewingTask().ID) {
 				m.uiState.SetMode(state.LabelPickerMode)
+			}
+		}
+		return m, nil
+	case "p":
+		// Open parent task picker to manage parent relationships
+		// Parent tasks are tasks that depend on (block on) the current task
+		if m.uiState.ViewingTask() != nil {
+			if m.initParentPicker(m.uiState.ViewingTask().ID) {
+				m.uiState.SetMode(state.ParentPickerMode)
+			}
+		}
+		return m, nil
+	case "c":
+		// Open child task picker to manage child relationships
+		// Child tasks are tasks that the current task depends on (must be completed first)
+		if m.uiState.ViewingTask() != nil {
+			if m.initChildPicker(m.uiState.ViewingTask().ID) {
+				m.uiState.SetMode(state.ChildPickerMode)
 			}
 		}
 		return m, nil

@@ -78,6 +78,10 @@ func (m Model) View() tea.View {
 			content = m.viewDeleteColumnConfirm()
 		case state.LabelPickerMode:
 			content = m.viewLabelPicker()
+		case state.ParentPickerMode:
+			content = m.viewParentPicker()
+		case state.ChildPickerMode:
+			content = m.viewChildPicker()
 		case state.ViewTaskMode:
 			content = m.viewTaskDetail()
 		default:
@@ -212,6 +216,8 @@ TASKS
   %s     Move task down in column
   %s     View task details
   %s     Edit labels (when viewing task)
+  %s     Edit parent tasks (when viewing task)
+  %s     Edit child tasks (when viewing task)
 
 COLUMNS
   %s     Create new column (after current)
@@ -237,6 +243,7 @@ Press any key to close`,
 		km.MoveTaskLeft, km.MoveTaskRight,
 		km.MoveTaskUp, km.MoveTaskDown,
 		formatKey(km.ViewTask), km.EditLabels,
+		km.EditParentTask, km.EditChildTask,
 		km.CreateColumn, km.RenameColumn, km.DeleteColumn,
 		km.PrevColumn, km.NextColumn,
 		km.PrevTask, km.NextTask,
@@ -291,6 +298,58 @@ func (m Model) viewLabelPicker() string {
 			Height(m.uiState.Height() * 3 / 4).
 			Render(pickerContent)
 	}
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		pickerBox,
+	)
+}
+
+// viewParentPicker renders the parent task picker modal.
+// Parent tasks are tasks that depend on (block on) the current task.
+// The picker displays all tasks in the project with checkboxes indicating current selections.
+func (m Model) viewParentPicker() string {
+	pickerContent := RenderTaskPicker(
+		m.parentPickerState.GetFilteredItems(),
+		m.parentPickerState.Cursor,
+		m.parentPickerState.Filter,
+		"Parent Issues",
+		m.uiState.Width()*3/4-8,
+		m.uiState.Height()*3/4-4,
+	)
+
+	// Wrap in styled container (reuse LabelPickerBoxStyle)
+	pickerBox := LabelPickerBoxStyle.
+		Width(m.uiState.Width() * 3 / 4).
+		Height(m.uiState.Height() * 3 / 4).
+		Render(pickerContent)
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		pickerBox,
+	)
+}
+
+// viewChildPicker renders the child task picker modal.
+// Child tasks are tasks that the current task depends on (must be completed first).
+// The picker displays all tasks in the project with checkboxes indicating current selections.
+func (m Model) viewChildPicker() string {
+	pickerContent := RenderTaskPicker(
+		m.childPickerState.GetFilteredItems(),
+		m.childPickerState.Cursor,
+		m.childPickerState.Filter,
+		"Child Issues",
+		m.uiState.Width()*3/4-8,
+		m.uiState.Height()*3/4-4,
+	)
+
+	// Wrap in styled container (reuse LabelPickerBoxStyle)
+	pickerBox := LabelPickerBoxStyle.
+		Width(m.uiState.Width() * 3 / 4).
+		Height(m.uiState.Height() * 3 / 4).
+		Render(pickerContent)
 
 	return lipgloss.Place(
 		m.uiState.Width(), m.uiState.Height(),

@@ -660,7 +660,58 @@ func (r *TaskRepo) GetChildTasks(ctx context.Context, taskID int) ([]*models.Tas
 	return references, nil
 }
 
-// AddSubtask creates a parent-child relationship between tasks
+// GetTaskReferencesForProject retrieves all task references for a project.
+// This is used by the parent/child task pickers to display all available tasks.
+// Returns lightweight TaskReference structs with project name for display in PROJ-123 format.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - projectID: The ID of the project to query
+//
+// Returns:
+//   - A slice of TaskReference objects ordered by project name and ticket number
+//   - An error if the query fails
+func (r *TaskRepo) GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error) {
+	query := `
+		SELECT t.id, t.ticket_number, t.title, p.name
+		FROM tasks t
+		INNER JOIN columns c ON t.column_id = c.id
+		INNER JOIN projects p ON c.project_id = p.id
+		WHERE p.id = ?
+		ORDER BY p.name, t.ticket_number`
+
+	rows, err := r.db.QueryContext(ctx, query, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query task references for project %d: %w", projectID, err)
+	}
+	defer rows.Close()
+
+	references := make([]*models.TaskReference, 0, 10)
+	for rows.Next() {
+		ref := &models.TaskReference{}
+		if err := rows.Scan(&ref.ID, &ref.TicketNumber, &ref.Title, &ref.ProjectName); err != nil {
+			return nil, fmt.Errorf("failed to scan task reference for project %d: %w", projectID, err)
+		}
+		references = append(references, ref)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating task references for project %d: %w", projectID, err)
+	}
+	return references, nil
+}
+
+// AddSubtask creates a parent-child relationship between tasks.
+// This establishes a dependency where the parent task blocks on (depends on) the child task.
+// In other words: the parent cannot be completed until the child is completed.
+//
+// CRITICAL - Parameter Ordering:
+//   - parentID: The task that will block on the child (the dependent task)
+//   - childID: The task that must be completed first (the dependency)
+//
+// Example: AddSubtask(taskA, taskB) means taskA depends on taskB being completed first.
+//
+// The function uses INSERT OR IGNORE to prevent duplicate relationships.
 func (r *TaskRepo) AddSubtask(ctx context.Context, parentID, childID int) error {
 	_, err := r.db.ExecContext(ctx,
 		`INSERT OR IGNORE INTO task_subtasks (parent_id, child_id) VALUES (?, ?)`,
@@ -672,7 +723,14 @@ func (r *TaskRepo) AddSubtask(ctx context.Context, parentID, childID int) error 
 	return nil
 }
 
-// RemoveSubtask removes a parent-child relationship between tasks
+// RemoveSubtask removes a parent-child relationship between tasks.
+// This removes the dependency where the parent task blocks on the child task.
+//
+// CRITICAL - Parameter Ordering:
+//   - parentID: The task that currently blocks on the child (the dependent task)
+//   - childID: The task that the parent depends on (the dependency)
+//
+// Example: RemoveSubtask(taskA, taskB) removes the dependency of taskA on taskB.
 func (r *TaskRepo) RemoveSubtask(ctx context.Context, parentID, childID int) error {
 	_, err := r.db.ExecContext(ctx,
 		`DELETE FROM task_subtasks WHERE parent_id = ? AND child_id = ?`,

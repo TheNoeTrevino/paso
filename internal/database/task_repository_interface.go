@@ -34,6 +34,7 @@ type TaskMover interface {
 type TaskRelationshipReader interface {
 	GetParentTasks(ctx context.Context, taskID int) ([]*models.TaskReference, error)
 	GetChildTasks(ctx context.Context, taskID int) ([]*models.TaskReference, error)
+	GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error)
 }
 
 // TaskRelationshipWriter defines write operations for task relationships.
