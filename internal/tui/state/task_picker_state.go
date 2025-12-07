@@ -38,6 +38,10 @@ type TaskPickerState struct {
 
 	// PickerType indicates whether this is a parent or child picker
 	PickerType string
+
+	// ReturnMode specifies which mode to return to when closing picker
+	// Can be ViewTaskMode or TicketFormMode
+	ReturnMode Mode
 }
 
 // NewTaskPickerState creates a new TaskPickerState with default values.
@@ -48,6 +52,7 @@ func NewTaskPickerState() *TaskPickerState {
 		Filter:     "",
 		TaskID:     0,
 		PickerType: "",
+		ReturnMode: NormalMode,
 	}
 }
 
@@ -84,6 +89,7 @@ func (s *TaskPickerState) Clear() {
 	s.Filter = ""
 	s.TaskID = 0
 	s.PickerType = ""
+	s.ReturnMode = NormalMode
 }
 
 // MoveCursorUp moves the cursor up one position if possible.

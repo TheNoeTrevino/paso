@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -99,13 +100,34 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 		return nil
 	}
 
-	formView := m.formState.TicketForm.View()
+	var contentBuilder strings.Builder
+
+	// Title
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Highlight))
+	if m.formState.EditingTaskID == 0 {
+		contentBuilder.WriteString(titleStyle.Render("Create New Task") + "\n\n")
+	} else {
+		contentBuilder.WriteString(titleStyle.Render("Edit Task") + "\n\n")
+	}
+
+	// Parent tasks section
+	contentBuilder.WriteString(m.renderFormParentList())
+
+	// Child tasks section
+	contentBuilder.WriteString(m.renderFormChildList())
+
+	// Help text for shortcuts
+	helpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+	contentBuilder.WriteString(helpStyle.Render("Ctrl+P: edit parents  Ctrl+C: edit children") + "\n\n")
+
+	// Render the huh form
+	contentBuilder.WriteString(m.formState.TicketForm.View())
 
 	// Wrap form in a styled container
 	formBox := FormBoxStyle.
 		Width(m.uiState.Width() * 3 / 4).
 		Height(m.uiState.Height() * 3 / 4).
-		Render(formView)
+		Render(contentBuilder.String())
 
 	return layers.CreateCenteredLayer(formBox, m.uiState.Width(), m.uiState.Height())
 }
@@ -472,4 +494,52 @@ func (m Model) viewKanbanBoard() string {
 	// Combine all layers into canvas
 	canvas := lipgloss.NewCanvas(layers...)
 	return canvas.Render()
+}
+
+// renderFormParentList renders the read-only parent tasks list in the form
+func (m Model) renderFormParentList() string {
+	var b strings.Builder
+
+	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+	taskStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
+
+	b.WriteString(labelStyle.Render("Parents:") + " ")
+
+	if len(m.formState.FormParentRefs) == 0 {
+		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("None"))
+	} else {
+		tags := make([]string, len(m.formState.FormParentRefs))
+		for i, parent := range m.formState.FormParentRefs {
+			ticketNum := fmt.Sprintf("%s-%d", parent.ProjectName, parent.TicketNumber)
+			tags[i] = taskStyle.Render(ticketNum)
+		}
+		b.WriteString(strings.Join(tags, ", "))
+	}
+
+	b.WriteString("\n")
+	return b.String()
+}
+
+// renderFormChildList renders the read-only child tasks list in the form
+func (m Model) renderFormChildList() string {
+	var b strings.Builder
+
+	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+	taskStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
+
+	b.WriteString(labelStyle.Render("Children:") + " ")
+
+	if len(m.formState.FormChildRefs) == 0 {
+		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("None"))
+	} else {
+		tags := make([]string, len(m.formState.FormChildRefs))
+		for i, child := range m.formState.FormChildRefs {
+			ticketNum := fmt.Sprintf("%s-%d", child.ProjectName, child.TicketNumber)
+			tags[i] = taskStyle.Render(ticketNum)
+		}
+		b.WriteString(strings.Join(tags, ", "))
+	}
+
+	b.WriteString("\n")
+	return b.String()
 }
