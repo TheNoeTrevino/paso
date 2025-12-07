@@ -599,6 +599,102 @@ func (m *Model) initChildPicker(taskID int) bool {
 	return true
 }
 
+// initParentPickerForForm initializes the parent picker for use in TicketFormMode.
+// In edit mode: loads existing parent relationships from FormState.
+// In create mode: starts with empty selection (relationships applied after task creation).
+//
+// Returns false if there's no current project.
+func (m *Model) initParentPickerForForm() bool {
+	project := m.getCurrentProject()
+	if project == nil {
+		return false
+	}
+
+	// Get all task references for the entire project
+	allTasks, err := m.repo.GetTaskReferencesForProject(context.Background(), project.ID)
+	if err != nil {
+		log.Printf("Error loading project tasks: %v", err)
+		return false
+	}
+
+	// Build map of currently selected parent task IDs from form state
+	parentTaskMap := make(map[int]bool)
+	for _, parentID := range m.formState.FormParentIDs {
+		parentTaskMap[parentID] = true
+	}
+
+	// Build picker items from all tasks, excluding current task (if editing)
+	items := make([]state.TaskPickerItem, 0, len(allTasks))
+	for _, task := range allTasks {
+		// In edit mode, exclude the task being edited
+		if m.formState.EditingTaskID != 0 && task.ID == m.formState.EditingTaskID {
+			continue
+		}
+		items = append(items, state.TaskPickerItem{
+			TaskRef:  task,
+			Selected: parentTaskMap[task.ID],
+		})
+	}
+
+	// Initialize ParentPickerState
+	m.parentPickerState.Items = items
+	m.parentPickerState.TaskID = m.formState.EditingTaskID // 0 for create mode
+	m.parentPickerState.Cursor = 0
+	m.parentPickerState.Filter = ""
+	m.parentPickerState.PickerType = "parent"
+	m.parentPickerState.ReturnMode = state.TicketFormMode
+
+	return true
+}
+
+// initChildPickerForForm initializes the child picker for use in TicketFormMode.
+// In edit mode: loads existing child relationships from FormState.
+// In create mode: starts with empty selection (relationships applied after task creation).
+//
+// Returns false if there's no current project.
+func (m *Model) initChildPickerForForm() bool {
+	project := m.getCurrentProject()
+	if project == nil {
+		return false
+	}
+
+	// Get all task references for the entire project
+	allTasks, err := m.repo.GetTaskReferencesForProject(context.Background(), project.ID)
+	if err != nil {
+		log.Printf("Error loading project tasks: %v", err)
+		return false
+	}
+
+	// Build map of currently selected child task IDs from form state
+	childTaskMap := make(map[int]bool)
+	for _, childID := range m.formState.FormChildIDs {
+		childTaskMap[childID] = true
+	}
+
+	// Build picker items from all tasks, excluding current task (if editing)
+	items := make([]state.TaskPickerItem, 0, len(allTasks))
+	for _, task := range allTasks {
+		// In edit mode, exclude the task being edited
+		if m.formState.EditingTaskID != 0 && task.ID == m.formState.EditingTaskID {
+			continue
+		}
+		items = append(items, state.TaskPickerItem{
+			TaskRef:  task,
+			Selected: childTaskMap[task.ID],
+		})
+	}
+
+	// Initialize ChildPickerState
+	m.childPickerState.Items = items
+	m.childPickerState.TaskID = m.formState.EditingTaskID // 0 for create mode
+	m.childPickerState.Cursor = 0
+	m.childPickerState.Filter = ""
+	m.childPickerState.PickerType = "child"
+	m.childPickerState.ReturnMode = state.TicketFormMode
+
+	return true
+}
+
 // getFilteredLabelPickerItems returns label picker items filtered by the current filter text
 func (m *Model) getFilteredLabelPickerItems() []state.LabelPickerItem {
 	// Delegate to LabelPickerState which now owns this logic
