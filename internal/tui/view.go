@@ -73,6 +73,8 @@ func (m Model) View() tea.View {
 		// Legacy full-screen rendering for modes not yet converted to layers
 		var content string
 		switch m.uiState.Mode() {
+		case state.DiscardConfirmMode:
+			content = m.viewDiscardConfirm()
 		case state.DeleteConfirmMode:
 			content = m.viewDeleteTaskConfirm()
 		case state.DeleteColumnConfirmMode:
@@ -206,6 +208,25 @@ func (m Model) viewDeleteColumnConfirm() string {
 	confirmBox := DeleteConfirmBoxStyle.
 		Width(50).
 		Render(content)
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		confirmBox,
+	)
+}
+
+// viewDiscardConfirm renders the discard confirmation dialog with context-aware message
+func (m Model) viewDiscardConfirm() string {
+	ctx := m.uiState.DiscardContext()
+	if ctx == nil {
+		return ""
+	}
+
+	// Use context message for personalized prompt
+	confirmBox := DeleteConfirmBoxStyle.
+		Width(50).
+		Render(fmt.Sprintf("%s\n\n[y]es  [n]o", ctx.Message))
 
 	return lipgloss.Place(
 		m.uiState.Width(), m.uiState.Height(),

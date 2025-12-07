@@ -40,6 +40,8 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleNormalMode(msg)
 	case state.AddColumnMode, state.EditColumnMode:
 		return m.handleInputMode(msg)
+	case state.DiscardConfirmMode:
+		return m.handleDiscardConfirm(msg)
 	case state.DeleteConfirmMode:
 		return m.handleDeleteConfirm(msg)
 	case state.DeleteColumnConfirmMode:
@@ -339,13 +341,8 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 		return m, tea.ClearScreen
 	}
 
-	// Check abort
-	if cfg.form.State == huh.StateAborted {
-		m.uiState.SetMode(state.NormalMode)
-		cfg.setForm(nil)
-		cfg.clearForm()
-		return m, tea.ClearScreen
-	}
+	// Note: StateAborted handling removed - ESC is now intercepted in updateTicketForm/updateProjectForm
+	// to allow for change detection and discard confirmation
 
 	return m, cmd
 }
@@ -383,6 +380,22 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check for keyboard shortcuts before passing to form
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		switch keyMsg.String() {
+		case "esc":
+			// Check for changes before allowing abort
+			if m.formState.HasTicketFormChanges() {
+				// Show discard confirmation
+				m.uiState.SetDiscardContext(&state.DiscardContext{
+					SourceMode: state.TicketFormMode,
+					Message:    "Discard task?",
+				})
+				m.uiState.SetMode(state.DiscardConfirmMode)
+				return m, nil
+			}
+			// No changes - allow immediate close
+			m.uiState.SetMode(state.NormalMode)
+			m.formState.ClearTicketForm()
+			return m, tea.ClearScreen
+
 		case "ctrl+p":
 			// Open parent picker
 			if m.initParentPickerForForm() {
@@ -459,9 +472,26 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 // updateProjectForm handles all messages when in ProjectFormMode
 // This is separated out because forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Check for C-s save shortcut
+	// Check for keyboard shortcuts before passing to form
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
-		if keyMsg.String() == m.config.KeyMappings.SaveForm {
+		switch keyMsg.String() {
+		case "esc":
+			// Check for changes before allowing abort
+			if m.formState.HasProjectFormChanges() {
+				// Show discard confirmation
+				m.uiState.SetDiscardContext(&state.DiscardContext{
+					SourceMode: state.ProjectFormMode,
+					Message:    "Discard project?",
+				})
+				m.uiState.SetMode(state.DiscardConfirmMode)
+				return m, nil
+			}
+			// No changes - allow immediate close
+			m.uiState.SetMode(state.NormalMode)
+			m.formState.ClearProjectForm()
+			return m, tea.ClearScreen
+
+		case m.config.KeyMappings.SaveForm:
 			return m.handleFormSave(msg, formConfig{
 				form: m.formState.ProjectForm,
 				setForm: func(f *huh.Form) {

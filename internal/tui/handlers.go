@@ -178,6 +178,7 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 		m.appState.Labels(),
 		&m.formState.FormConfirm,
 	).WithTheme(huhforms.CreatePasoTheme(m.config.ColorScheme))
+	m.formState.SnapshotTicketFormInitialValues() // Snapshot for change detection
 	m.uiState.SetMode(state.TicketFormMode)
 	return m, m.formState.TicketForm.Init()
 }
@@ -227,6 +228,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		m.appState.Labels(),
 		&m.formState.FormConfirm,
 	).WithTheme(huhforms.CreatePasoTheme(m.config.ColorScheme))
+	m.formState.SnapshotTicketFormInitialValues() // Snapshot for change detection
 	m.uiState.SetMode(state.TicketFormMode)
 	return m, m.formState.TicketForm.Init()
 }
@@ -310,6 +312,7 @@ func (m Model) handleRenameColumn() (tea.Model, tea.Cmd) {
 	m.uiState.SetMode(state.EditColumnMode)
 	m.inputState.Buffer = column.Name
 	m.inputState.Prompt = "Rename column:"
+	m.inputState.SnapshotInitialBuffer() // Snapshot for change detection
 	return m, nil
 }
 
@@ -361,6 +364,7 @@ func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
 		&m.formState.FormProjectDescription,
 		&m.formState.FormProjectConfirm,
 	).WithTheme(huhforms.CreatePasoTheme(m.config.ColorScheme))
+	m.formState.SnapshotProjectFormInitialValues() // Snapshot for change detection
 	m.uiState.SetMode(state.ProjectFormMode)
 	return m, m.formState.ProjectForm.Init()
 }
@@ -375,6 +379,30 @@ func (m Model) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		return m.handleInputConfirm()
 	case "esc":
+		// Check for changes before closing
+		shouldConfirm := false
+		contextMsg := ""
+
+		if m.uiState.Mode() == state.AddColumnMode {
+			// AddColumnMode: confirm if user typed anything
+			shouldConfirm = !m.inputState.IsEmpty()
+			contextMsg = "Discard column?"
+		} else if m.uiState.Mode() == state.EditColumnMode {
+			// EditColumnMode: confirm if text changed from original
+			shouldConfirm = m.inputState.HasInputChanges()
+			contextMsg = "Discard changes?"
+		}
+
+		if shouldConfirm {
+			m.uiState.SetDiscardContext(&state.DiscardContext{
+				SourceMode: m.uiState.Mode(),
+				Message:    contextMsg,
+			})
+			m.uiState.SetMode(state.DiscardConfirmMode)
+			return m, nil
+		}
+
+		// No changes - immediate close
 		return m.handleInputCancel()
 	case "backspace", "ctrl+h":
 		m.inputState.Backspace()
@@ -492,6 +520,58 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 	}
 	m.uiState.SetMode(state.NormalMode)
 	return m, nil
+}
+
+// handleDiscardConfirm handles discard confirmation for forms and inputs.
+// This provides a generic Y/N/ESC handler that works for all discard scenarios.
+func (m Model) handleDiscardConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	ctx := m.uiState.DiscardContext()
+	if ctx == nil {
+		// Safety: if context is missing, return to normal mode
+		m.uiState.SetMode(state.NormalMode)
+		return m, nil
+	}
+
+	switch msg.String() {
+	case "y", "Y":
+		// User confirmed discard - clear form/input and return to normal mode
+		return m.confirmDiscard()
+
+	case "n", "N", "esc":
+		// User cancelled - return to source mode without clearing
+		m.uiState.SetMode(ctx.SourceMode)
+		m.uiState.ClearDiscardContext()
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// confirmDiscard performs the actual discard operation based on context.
+func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
+	ctx := m.uiState.DiscardContext()
+	if ctx == nil {
+		m.uiState.SetMode(state.NormalMode)
+		return m, nil
+	}
+
+	// Clear the appropriate form/input based on source mode
+	switch ctx.SourceMode {
+	case state.TicketFormMode:
+		m.formState.ClearTicketForm()
+
+	case state.ProjectFormMode:
+		m.formState.ClearProjectForm()
+
+	case state.AddColumnMode, state.EditColumnMode:
+		m.inputState.Clear()
+	}
+
+	// Always return to normal mode after discard
+	m.uiState.SetMode(state.NormalMode)
+	m.uiState.ClearDiscardContext()
+
+	return m, tea.ClearScreen
 }
 
 // handleDeleteColumnConfirm handles column deletion confirmation.
