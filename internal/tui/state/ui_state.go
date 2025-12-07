@@ -21,6 +21,8 @@ const (
 	LabelManagementMode                 // Managing labels (create/edit/delete)
 	LabelAssignMode                     // Quick label assignment to task
 	LabelPickerMode                     // GitHub-style label picker popup
+	ParentPickerMode                    // Parent issue picker popup
+	ChildPickerMode                     // Child issue picker popup
 )
 
 // UIState manages the user interface state.

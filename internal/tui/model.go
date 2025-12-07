@@ -21,6 +21,8 @@ type Model struct {
 	inputState        *state.InputState
 	formState         *state.FormState
 	labelPickerState  *state.LabelPickerState
+	parentPickerState *state.TaskPickerState
+	childPickerState  *state.TaskPickerState
 	notificationState *state.NotificationState
 }
 
@@ -69,6 +71,8 @@ func InitialModel(repo database.DataStore, cfg *config.Config) Model {
 	inputState := state.NewInputState()
 	formState := state.NewFormState()
 	labelPickerState := state.NewLabelPickerState()
+	parentPickerState := state.NewTaskPickerState()
+	childPickerState := state.NewTaskPickerState()
 	notificationState := state.NewNotificationState()
 
 	// Initialize styles with color scheme from config
@@ -82,6 +86,8 @@ func InitialModel(repo database.DataStore, cfg *config.Config) Model {
 		inputState:        inputState,
 		formState:         formState,
 		labelPickerState:  labelPickerState,
+		parentPickerState: parentPickerState,
+		childPickerState:  childPickerState,
 		notificationState: notificationState,
 	}
 }
@@ -469,6 +475,126 @@ func (m Model) initLabelPicker(taskID int) bool {
 	m.labelPickerState.Filter = ""
 	m.labelPickerState.CreateMode = false
 	m.labelPickerState.ColorIdx = 0
+
+	return true
+}
+
+// initParentPicker initializes the parent task picker for a task.
+// Parent tasks are tasks that depend on (block on) the current task.
+// In the relationship: Parent -> Current, the parent cannot be completed until current is done.
+//
+// This function loads all tasks in the project (excluding the current task to prevent self-reference),
+// marks which tasks are already parents, and prepares the picker state for user interaction.
+//
+// Returns false if there's no task to edit or no project.
+func (m *Model) initParentPicker(taskID int) bool {
+	if taskID == 0 {
+		return false
+	}
+
+	project := m.getCurrentProject()
+	if project == nil {
+		return false
+	}
+
+	// Get all task references for the entire project
+	allTasks, err := m.repo.GetTaskReferencesForProject(context.Background(), project.ID)
+	if err != nil {
+		log.Printf("Error loading project tasks: %v", err)
+		return false
+	}
+
+	// Get current parent tasks for this task
+	parentTasks, err := m.repo.GetParentTasks(context.Background(), taskID)
+	if err != nil {
+		log.Printf("Error loading parent tasks: %v", err)
+		parentTasks = []*models.TaskReference{}
+	}
+
+	// Build map of parent task IDs for quick lookup
+	parentTaskMap := make(map[int]bool)
+	for _, parent := range parentTasks {
+		parentTaskMap[parent.ID] = true
+	}
+
+	// Build picker items from all tasks, excluding current task
+	items := make([]state.TaskPickerItem, 0, len(allTasks)-1)
+	for _, task := range allTasks {
+		if task.ID == taskID {
+			continue  // Cannot be parent of itself
+		}
+		items = append(items, state.TaskPickerItem{
+			TaskRef:  task,
+			Selected: parentTaskMap[task.ID],
+		})
+	}
+
+	// Initialize ParentPickerState
+	m.parentPickerState.Items = items
+	m.parentPickerState.TaskID = taskID
+	m.parentPickerState.Cursor = 0
+	m.parentPickerState.Filter = ""
+	m.parentPickerState.PickerType = "parent"
+
+	return true
+}
+
+// initChildPicker initializes the child task picker for a task.
+// Child tasks are tasks that the current task depends on (must be completed before current).
+// In the relationship: Current -> Child, current cannot be completed until child is done.
+//
+// This function loads all tasks in the project (excluding the current task to prevent self-reference),
+// marks which tasks are already children, and prepares the picker state for user interaction.
+//
+// Returns false if there's no task to edit or no project.
+func (m *Model) initChildPicker(taskID int) bool {
+	if taskID == 0 {
+		return false
+	}
+
+	project := m.getCurrentProject()
+	if project == nil {
+		return false
+	}
+
+	// Get all task references for the entire project
+	allTasks, err := m.repo.GetTaskReferencesForProject(context.Background(), project.ID)
+	if err != nil {
+		log.Printf("Error loading project tasks: %v", err)
+		return false
+	}
+
+	// Get current child tasks for this task
+	childTasks, err := m.repo.GetChildTasks(context.Background(), taskID)
+	if err != nil {
+		log.Printf("Error loading child tasks: %v", err)
+		childTasks = []*models.TaskReference{}
+	}
+
+	// Build map of child task IDs for quick lookup
+	childTaskMap := make(map[int]bool)
+	for _, child := range childTasks {
+		childTaskMap[child.ID] = true
+	}
+
+	// Build picker items from all tasks, excluding current task
+	items := make([]state.TaskPickerItem, 0, len(allTasks)-1)
+	for _, task := range allTasks {
+		if task.ID == taskID {
+			continue  // Cannot be child of itself
+		}
+		items = append(items, state.TaskPickerItem{
+			TaskRef:  task,
+			Selected: childTaskMap[task.ID],
+		})
+	}
+
+	// Initialize ChildPickerState
+	m.childPickerState.Items = items
+	m.childPickerState.TaskID = taskID
+	m.childPickerState.Cursor = 0
+	m.childPickerState.Filter = ""
+	m.childPickerState.PickerType = "child"
 
 	return true
 }
