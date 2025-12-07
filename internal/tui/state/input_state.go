@@ -15,6 +15,9 @@ type InputState struct {
 	// DeleteColumnTaskCount stores the number of tasks in a column being deleted
 	// This is used to show a warning message in the delete confirmation dialog
 	DeleteColumnTaskCount int
+
+	// InitialBuffer stores the original buffer value for change detection (EditColumnMode)
+	InitialBuffer string
 }
 
 // NewInputState creates a new InputState with empty values.
@@ -31,6 +34,7 @@ func NewInputState() *InputState {
 func (s *InputState) Clear() {
 	s.Buffer = ""
 	s.Prompt = ""
+	s.InitialBuffer = ""
 }
 
 // AppendChar appends a character to the input buffer if within max length.
@@ -71,4 +75,16 @@ func (s *InputState) IsEmpty() bool {
 // TrimmedBuffer returns the input buffer with leading and trailing whitespace removed.
 func (s *InputState) TrimmedBuffer() string {
 	return strings.TrimSpace(s.Buffer)
+}
+
+// HasInputChanges returns true if the buffer differs from initial value.
+// Used for EditColumnMode to detect changes.
+func (s *InputState) HasInputChanges() bool {
+	return strings.TrimSpace(s.Buffer) != strings.TrimSpace(s.InitialBuffer)
+}
+
+// SnapshotInitialBuffer stores current buffer as initial value.
+// Call this when entering EditColumnMode to track the original column name.
+func (s *InputState) SnapshotInitialBuffer() {
+	s.InitialBuffer = s.Buffer
 }
