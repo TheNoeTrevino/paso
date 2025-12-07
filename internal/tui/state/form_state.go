@@ -2,6 +2,7 @@ package state
 
 import (
 	"charm.land/huh/v2"
+	"github.com/thenoetrevino/paso/internal/models"
 )
 
 // FormState manages all form-related state for the application.
@@ -15,6 +16,12 @@ type FormState struct {
 	FormDescription string    // Form field: task description
 	FormLabelIDs    []int     // Form field: selected label IDs
 	FormConfirm     bool      // Form field: confirmation (submit vs cancel)
+
+	// Parent/child issue tracking for ticket form
+	FormParentIDs  []int                      // Selected parent task IDs
+	FormChildIDs   []int                      // Selected child task IDs
+	FormParentRefs []*models.TaskReference    // Parent task references for display
+	FormChildRefs  []*models.TaskReference    // Child task references for display
 
 	// Project form fields (for creating projects)
 	ProjectForm            *huh.Form // The form instance
@@ -43,6 +50,10 @@ func NewFormState() *FormState {
 		FormDescription:        "",
 		FormLabelIDs:           []int{},
 		FormConfirm:            true,
+		FormParentIDs:          []int{},
+		FormChildIDs:           []int{},
+		FormParentRefs:         []*models.TaskReference{},
+		FormChildRefs:          []*models.TaskReference{},
 		ProjectForm:            nil,
 		FormProjectName:        "",
 		FormProjectDescription: "",
@@ -67,6 +78,10 @@ func (s *FormState) ClearTicketForm() {
 	s.FormDescription = ""
 	s.FormLabelIDs = []int{}
 	s.FormConfirm = true
+	s.FormParentIDs = []int{}
+	s.FormChildIDs = []int{}
+	s.FormParentRefs = []*models.TaskReference{}
+	s.FormChildRefs = []*models.TaskReference{}
 }
 
 // IsTicketFormActive returns true if a ticket form is currently active.

@@ -165,6 +165,10 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 	m.formState.FormTitle = ""
 	m.formState.FormDescription = ""
 	m.formState.FormLabelIDs = []int{}
+	m.formState.FormParentIDs = []int{}
+	m.formState.FormChildIDs = []int{}
+	m.formState.FormParentRefs = []*models.TaskReference{}
+	m.formState.FormChildRefs = []*models.TaskReference{}
 	m.formState.FormConfirm = true
 	m.formState.EditingTaskID = 0
 	m.formState.TicketForm = huhforms.CreateTicketForm(
@@ -199,6 +203,21 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 	for i, label := range taskDetail.Labels {
 		m.formState.FormLabelIDs[i] = label.ID
 	}
+
+	// Load parent relationships
+	m.formState.FormParentIDs = make([]int, len(taskDetail.ParentTasks))
+	m.formState.FormParentRefs = taskDetail.ParentTasks
+	for i, parent := range taskDetail.ParentTasks {
+		m.formState.FormParentIDs[i] = parent.ID
+	}
+
+	// Load child relationships
+	m.formState.FormChildIDs = make([]int, len(taskDetail.ChildTasks))
+	m.formState.FormChildRefs = taskDetail.ChildTasks
+	for i, child := range taskDetail.ChildTasks {
+		m.formState.FormChildIDs[i] = child.ID
+	}
+
 	m.formState.FormConfirm = true
 	m.formState.EditingTaskID = task.ID
 	m.formState.TicketForm = huhforms.CreateTicketForm(
