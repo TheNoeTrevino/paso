@@ -24,6 +24,7 @@ type Model struct {
 	parentPickerState *state.TaskPickerState
 	childPickerState  *state.TaskPickerState
 	notificationState *state.NotificationState
+	searchState       *state.SearchState
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
@@ -74,6 +75,7 @@ func InitialModel(repo database.DataStore, cfg *config.Config) Model {
 	parentPickerState := state.NewTaskPickerState()
 	childPickerState := state.NewTaskPickerState()
 	notificationState := state.NewNotificationState()
+	searchState := state.NewSearchState()
 
 	// Initialize styles with color scheme from config
 	InitStyles(cfg.ColorScheme)
@@ -89,6 +91,7 @@ func InitialModel(repo database.DataStore, cfg *config.Config) Model {
 		parentPickerState: parentPickerState,
 		childPickerState:  childPickerState,
 		notificationState: notificationState,
+		searchState:       searchState,
 	}
 }
 

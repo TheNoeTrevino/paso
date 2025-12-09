@@ -8,14 +8,21 @@ import (
 )
 
 type StatusBarProps struct {
-	Width int
+	Width       int
+	SearchMode  bool
+	SearchQuery string
 }
 
 // RenderStatusBar renders a status bar with left and right aligned text
-// Left side: "Paso - Task Management"
+// Left side: "Paso - Task Management" or "/search-query" when searching
 // Right side: "press ? for help"
 func RenderStatusBar(props StatusBarProps) string {
-	leftText := "Paso - Task Management"
+	var leftText string
+	if props.SearchMode {
+		leftText = "/" + props.SearchQuery
+	} else {
+		leftText = "Paso - Task Management"
+	}
 	rightText := "press ? for help"
 
 	style := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
