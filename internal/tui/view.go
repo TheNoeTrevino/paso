@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -31,7 +32,8 @@ func (m Model) View() tea.View {
 		m.uiState.Mode() == state.AddColumnMode ||
 		m.uiState.Mode() == state.EditColumnMode ||
 		m.uiState.Mode() == state.HelpMode ||
-		m.uiState.Mode() == state.NormalMode
+		m.uiState.Mode() == state.NormalMode ||
+		m.uiState.Mode() == state.SearchMode
 
 	if usesLayers {
 		// Layer-based rendering: always show base board with modal overlays
@@ -72,12 +74,18 @@ func (m Model) View() tea.View {
 		// Legacy full-screen rendering for modes not yet converted to layers
 		var content string
 		switch m.uiState.Mode() {
+		case state.DiscardConfirmMode:
+			content = m.viewDiscardConfirm()
 		case state.DeleteConfirmMode:
 			content = m.viewDeleteTaskConfirm()
 		case state.DeleteColumnConfirmMode:
 			content = m.viewDeleteColumnConfirm()
 		case state.LabelPickerMode:
 			content = m.viewLabelPicker()
+		case state.ParentPickerMode:
+			content = m.viewParentPicker()
+		case state.ChildPickerMode:
+			content = m.viewChildPicker()
 		case state.ViewTaskMode:
 			content = m.viewTaskDetail()
 		default:
@@ -95,13 +103,34 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 		return nil
 	}
 
-	formView := m.formState.TicketForm.View()
+	var contentBuilder strings.Builder
+
+	// Title
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Highlight))
+	if m.formState.EditingTaskID == 0 {
+		contentBuilder.WriteString(titleStyle.Render("Create New Task") + "\n\n")
+	} else {
+		contentBuilder.WriteString(titleStyle.Render("Edit Task") + "\n\n")
+	}
+
+	// Parent tasks section
+	contentBuilder.WriteString(m.renderFormParentList())
+
+	// Child tasks section
+	contentBuilder.WriteString(m.renderFormChildList())
+
+	// Help text for shortcuts
+	helpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+	contentBuilder.WriteString(helpStyle.Render("Ctrl+P: edit parents  Ctrl+C: edit children") + "\n\n")
+
+	// Render the huh form
+	contentBuilder.WriteString(m.formState.TicketForm.View())
 
 	// Wrap form in a styled container
 	formBox := FormBoxStyle.
-		Width(m.uiState.Width() / 2).
-		Height(m.uiState.Height() / 2).
-		Render(formView)
+		Width(m.uiState.Width() * 3 / 4).
+		Height(m.uiState.Height() * 3 / 4).
+		Render(contentBuilder.String())
 
 	return layers.CreateCenteredLayer(formBox, m.uiState.Width(), m.uiState.Height())
 }
@@ -116,7 +145,7 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 
 	// Wrap form in a styled container with green border for creation
 	formBox := ProjectFormBoxStyle.
-		Width(m.uiState.Width() / 2).
+		Width(m.uiState.Width() * 3 / 4).
 		Height(m.uiState.Height() / 3).
 		Render("New Project\n\n" + formView)
 
@@ -188,6 +217,25 @@ func (m Model) viewDeleteColumnConfirm() string {
 	)
 }
 
+// viewDiscardConfirm renders the discard confirmation dialog with context-aware message
+func (m Model) viewDiscardConfirm() string {
+	ctx := m.uiState.DiscardContext()
+	if ctx == nil {
+		return ""
+	}
+
+	// Use context message for personalized prompt
+	confirmBox := DeleteConfirmBoxStyle.
+		Width(50).
+		Render(fmt.Sprintf("%s\n\n[y]es  [n]o", ctx.Message))
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		confirmBox,
+	)
+}
+
 // renderHelpLayer renders the keyboard shortcuts help screen as a layer
 func (m Model) renderHelpLayer() *lipgloss.Layer {
 	helpBox := HelpBoxStyle.
@@ -212,6 +260,8 @@ TASKS
   %s     Move task down in column
   %s     View task details
   %s     Edit labels (when viewing task)
+  %s     Edit parent tasks (when viewing task)
+  %s     Edit child tasks (when viewing task)
 
 COLUMNS
   %s     Create new column (after current)
@@ -237,6 +287,7 @@ Press any key to close`,
 		km.MoveTaskLeft, km.MoveTaskRight,
 		km.MoveTaskUp, km.MoveTaskDown,
 		formatKey(km.ViewTask), km.EditLabels,
+		km.EditParentTask, km.EditChildTask,
 		km.CreateColumn, km.RenameColumn, km.DeleteColumn,
 		km.PrevColumn, km.NextColumn,
 		km.PrevTask, km.NextTask,
@@ -264,7 +315,7 @@ func (m Model) viewLabelPicker() string {
 			GetDefaultLabelColors(),
 			m.labelPickerState.ColorIdx,
 			m.formState.FormLabelName,
-			m.uiState.Width()/2-8,
+			m.uiState.Width()*3/4-8,
 		)
 	} else {
 		// Show label list (use filtered items from state)
@@ -273,8 +324,8 @@ func (m Model) viewLabelPicker() string {
 			m.labelPickerState.Cursor,
 			m.labelPickerState.Filter,
 			true, // show create option
-			m.uiState.Width()/2-8,
-			m.uiState.Height()/2-4,
+			m.uiState.Width()*3/4-8,
+			m.uiState.Height()*3/4-4,
 		)
 	}
 
@@ -282,15 +333,67 @@ func (m Model) viewLabelPicker() string {
 	var pickerBox string
 	if m.labelPickerState.CreateMode {
 		pickerBox = LabelPickerCreateBoxStyle.
-			Width(m.uiState.Width() / 2).
-			Height(m.uiState.Height() / 2).
+			Width(m.uiState.Width() * 3 / 4).
+			Height(m.uiState.Height() * 3 / 4).
 			Render(pickerContent)
 	} else {
 		pickerBox = LabelPickerBoxStyle.
-			Width(m.uiState.Width() / 2).
-			Height(m.uiState.Height() / 2).
+			Width(m.uiState.Width() * 3 / 4).
+			Height(m.uiState.Height() * 3 / 4).
 			Render(pickerContent)
 	}
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		pickerBox,
+	)
+}
+
+// viewParentPicker renders the parent task picker modal.
+// Parent tasks are tasks that depend on (block on) the current task.
+// The picker displays all tasks in the project with checkboxes indicating current selections.
+func (m Model) viewParentPicker() string {
+	pickerContent := RenderTaskPicker(
+		m.parentPickerState.GetFilteredItems(),
+		m.parentPickerState.Cursor,
+		m.parentPickerState.Filter,
+		"Parent Issues",
+		m.uiState.Width()*3/4-8,
+		m.uiState.Height()*3/4-4,
+	)
+
+	// Wrap in styled container (reuse LabelPickerBoxStyle)
+	pickerBox := LabelPickerBoxStyle.
+		Width(m.uiState.Width() * 3 / 4).
+		Height(m.uiState.Height() * 3 / 4).
+		Render(pickerContent)
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		pickerBox,
+	)
+}
+
+// viewChildPicker renders the child task picker modal.
+// Child tasks are tasks that the current task depends on (must be completed first).
+// The picker displays all tasks in the project with checkboxes indicating current selections.
+func (m Model) viewChildPicker() string {
+	pickerContent := RenderTaskPicker(
+		m.childPickerState.GetFilteredItems(),
+		m.childPickerState.Cursor,
+		m.childPickerState.Filter,
+		"Child Issues",
+		m.uiState.Width()*3/4-8,
+		m.uiState.Height()*3/4-4,
+	)
+
+	// Wrap in styled container (reuse LabelPickerBoxStyle)
+	pickerBox := LabelPickerBoxStyle.
+		Width(m.uiState.Width() * 3 / 4).
+		Height(m.uiState.Height() * 3 / 4).
+		Render(pickerContent)
 
 	return lipgloss.Place(
 		m.uiState.Width(), m.uiState.Height(),
@@ -314,8 +417,8 @@ func (m Model) viewTaskDetail() string {
 	return components.RenderTaskView(components.TaskViewProps{
 		Task:         m.uiState.ViewingTask(),
 		ColumnName:   columnName,
-		PopupWidth:   m.uiState.Width() / 2,
-		PopupHeight:  m.uiState.Height() / 2,
+		PopupWidth:   m.uiState.Width() * 3 / 4,
+		PopupHeight:  m.uiState.Height() * 3 / 4,
 		ScreenWidth:  m.uiState.Width(),
 		ScreenHeight: m.uiState.Height(),
 	})
@@ -390,7 +493,9 @@ func (m Model) viewKanbanBoard() string {
 	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width())
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
-		Width: m.uiState.Width(),
+		Width:       m.uiState.Width(),
+		SearchMode:  m.uiState.Mode() == state.SearchMode || m.searchState.IsActive,
+		SearchQuery: m.searchState.Query,
 	})
 
 	// Build base view
@@ -413,4 +518,52 @@ func (m Model) viewKanbanBoard() string {
 	// Combine all layers into canvas
 	canvas := lipgloss.NewCanvas(layers...)
 	return canvas.Render()
+}
+
+// renderFormParentList renders the read-only parent tasks list in the form
+func (m Model) renderFormParentList() string {
+	var b strings.Builder
+
+	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+	taskStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
+
+	b.WriteString(labelStyle.Render("Parents:") + " ")
+
+	if len(m.formState.FormParentRefs) == 0 {
+		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("None"))
+	} else {
+		tags := make([]string, len(m.formState.FormParentRefs))
+		for i, parent := range m.formState.FormParentRefs {
+			ticketNum := fmt.Sprintf("%s-%d", parent.ProjectName, parent.TicketNumber)
+			tags[i] = taskStyle.Render(ticketNum)
+		}
+		b.WriteString(strings.Join(tags, ", "))
+	}
+
+	b.WriteString("\n")
+	return b.String()
+}
+
+// renderFormChildList renders the read-only child tasks list in the form
+func (m Model) renderFormChildList() string {
+	var b strings.Builder
+
+	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+	taskStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
+
+	b.WriteString(labelStyle.Render("Children:") + " ")
+
+	if len(m.formState.FormChildRefs) == 0 {
+		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("None"))
+	} else {
+		tags := make([]string, len(m.formState.FormChildRefs))
+		for i, child := range m.formState.FormChildRefs {
+			ticketNum := fmt.Sprintf("%s-%d", child.ProjectName, child.TicketNumber)
+			tags[i] = taskStyle.Render(ticketNum)
+		}
+		b.WriteString(strings.Join(tags, ", "))
+	}
+
+	b.WriteString("\n")
+	return b.String()
 }
