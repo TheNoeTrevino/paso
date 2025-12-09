@@ -10,12 +10,10 @@ import (
 )
 
 type TaskViewProps struct {
-	Task         *models.TaskDetail
-	ColumnName   string
-	PopupWidth   int
-	PopupHeight  int
-	ScreenWidth  int
-	ScreenHeight int
+	Task        *models.TaskDetail
+	ColumnName  string
+	PopupWidth  int
+	PopupHeight int
 }
 
 func RenderTaskView(props TaskViewProps) string {
@@ -94,11 +92,7 @@ func RenderTaskView(props TaskViewProps) string {
 		Height(props.PopupHeight).
 		Render(fullContent)
 
-	return lipgloss.Place(
-		props.ScreenWidth, props.ScreenHeight,
-		lipgloss.Center, lipgloss.Center,
-		taskBox,
-	)
+	return taskBox
 }
 
 // RenderSubtaskRow renders a single subtask reference in the format "PROJ-12: Fix the thing"
