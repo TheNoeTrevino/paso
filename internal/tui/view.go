@@ -32,7 +32,8 @@ func (m Model) View() tea.View {
 		m.uiState.Mode() == state.AddColumnMode ||
 		m.uiState.Mode() == state.EditColumnMode ||
 		m.uiState.Mode() == state.HelpMode ||
-		m.uiState.Mode() == state.NormalMode
+		m.uiState.Mode() == state.NormalMode ||
+		m.uiState.Mode() == state.SearchMode
 
 	if usesLayers {
 		// Layer-based rendering: always show base board with modal overlays
@@ -492,7 +493,9 @@ func (m Model) viewKanbanBoard() string {
 	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width())
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
-		Width: m.uiState.Width(),
+		Width:       m.uiState.Width(),
+		SearchMode:  m.uiState.Mode() == state.SearchMode || m.searchState.IsActive,
+		SearchQuery: m.searchState.Query,
 	})
 
 	// Build base view
