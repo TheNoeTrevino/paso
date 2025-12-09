@@ -32,6 +32,7 @@ func (m Model) View() tea.View {
 		m.uiState.Mode() == state.AddColumnMode ||
 		m.uiState.Mode() == state.EditColumnMode ||
 		m.uiState.Mode() == state.HelpMode ||
+		m.uiState.Mode() == state.ViewTaskMode ||
 		m.uiState.Mode() == state.NormalMode ||
 		m.uiState.Mode() == state.SearchMode
 
@@ -55,6 +56,8 @@ func (m Model) View() tea.View {
 			modalLayer = m.renderColumnInputLayer()
 		case state.HelpMode:
 			modalLayer = m.renderHelpLayer()
+		case state.ViewTaskMode:
+			modalLayer = m.renderTaskDetailLayer()
 		}
 
 		if modalLayer != nil {
@@ -86,8 +89,6 @@ func (m Model) View() tea.View {
 			content = m.viewParentPicker()
 		case state.ChildPickerMode:
 			content = m.viewChildPicker()
-		case state.ViewTaskMode:
-			content = m.viewTaskDetail()
 		default:
 			content = m.viewKanbanBoard()
 		}
@@ -245,6 +246,29 @@ func (m Model) renderHelpLayer() *lipgloss.Layer {
 	return layers.CreateCenteredLayer(helpBox, m.uiState.Width(), m.uiState.Height())
 }
 
+// renderTaskDetailLayer renders the task detail view as a centered layer
+func (m Model) renderTaskDetailLayer() *lipgloss.Layer {
+	if m.uiState.ViewingTask() == nil {
+		return nil
+	}
+
+	// Find the column name for the task
+	columnName := "Unknown"
+	if col := m.appState.GetColumnByID(m.uiState.ViewingTask().ColumnID); col != nil {
+		columnName = col.Name
+	}
+
+	// Render task view content (without positioning)
+	taskViewContent := components.RenderTaskView(components.TaskViewProps{
+		Task:        m.uiState.ViewingTask(),
+		ColumnName:  columnName,
+		PopupWidth:  m.uiState.Width() * 3 / 4,
+		PopupHeight: m.uiState.Height() * 3 / 4,
+	})
+
+	return layers.CreateCenteredLayer(taskViewContent, m.uiState.Width(), m.uiState.Height())
+}
+
 // generateHelpText creates help text based on current key mappings
 func (m Model) generateHelpText() string {
 	km := m.config.KeyMappings
@@ -400,28 +424,6 @@ func (m Model) viewChildPicker() string {
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)
-}
-
-// viewTaskDetail renders the full task details modal
-func (m Model) viewTaskDetail() string {
-	if m.uiState.ViewingTask() == nil {
-		return ""
-	}
-
-	// Find the column name for the task (O(1) lookup)
-	columnName := "Unknown"
-	if col := m.appState.GetColumnByID(m.uiState.ViewingTask().ColumnID); col != nil {
-		columnName = col.Name
-	}
-
-	return components.RenderTaskView(components.TaskViewProps{
-		Task:         m.uiState.ViewingTask(),
-		ColumnName:   columnName,
-		PopupWidth:   m.uiState.Width() * 3 / 4,
-		PopupHeight:  m.uiState.Height() * 3 / 4,
-		ScreenWidth:  m.uiState.Width(),
-		ScreenHeight: m.uiState.Height(),
-	})
 }
 
 // viewKanbanBoard renders the main kanban board (normal mode)
