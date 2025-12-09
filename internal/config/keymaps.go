@@ -3,15 +3,20 @@ package config
 // KeyMappings defines all configurable key bindings
 type KeyMappings struct {
 	// Tasks
-	AddTask        string `yaml:"add_task"`
-	EditTask       string `yaml:"edit_task"`
-	DeleteTask     string `yaml:"delete_task"`
-	MoveTaskLeft   string `yaml:"move_task_left"`
-	MoveTaskRight  string `yaml:"move_task_right"`
-	MoveTaskUp     string `yaml:"move_task_up"`
-	MoveTaskDown   string `yaml:"move_task_down"`
-	ViewTask       string `yaml:"view_task"`
-	EditLabels     string `yaml:"edit_labels"`
+	AddTask       string `yaml:"add_task"`
+	EditTask      string `yaml:"edit_task"`
+	DeleteTask    string `yaml:"delete_task"`
+	MoveTaskLeft  string `yaml:"move_task_left"`
+	MoveTaskRight string `yaml:"move_task_right"`
+	MoveTaskUp    string `yaml:"move_task_up"`
+	MoveTaskDown  string `yaml:"move_task_down"`
+	ViewTask      string `yaml:"view_task"`
+	EditLabels    string `yaml:"edit_labels"`
+	EditParentTask string `yaml:"edit_parent_task"`
+	EditChildTask  string `yaml:"edit_child_task"`
+
+	// Forms
+	SaveForm string `yaml:"save_form"`
 
 	// Columns
 	CreateColumn string `yaml:"create_column"`
@@ -49,6 +54,9 @@ func DefaultKeyMappings() KeyMappings {
 		MoveTaskDown:  "J",
 		ViewTask:      " ",
 		EditLabels:    "l",
+		EditParentTask: "p",
+		EditChildTask:  "c",
+		SaveForm:       "ctrl+s",
 
 		// Columns
 		CreateColumn: "C",
@@ -65,8 +73,8 @@ func DefaultKeyMappings() KeyMappings {
 		NextTask:            "j",
 		ScrollViewportLeft:  "[",
 		ScrollViewportRight: "]",
-		NextProject:         "{",
-		PrevProject:         "}",
+		NextProject:         "}",
+		PrevProject:         "{",
 
 		// Other
 		ShowHelp: "?",
@@ -104,6 +112,15 @@ func (k *KeyMappings) applyDefaults() {
 	}
 	if k.EditLabels == "" {
 		k.EditLabels = defaults.EditLabels
+	}
+	if k.EditParentTask == "" {
+		k.EditParentTask = defaults.EditParentTask
+	}
+	if k.EditChildTask == "" {
+		k.EditChildTask = defaults.EditChildTask
+	}
+	if k.SaveForm == "" {
+		k.SaveForm = defaults.SaveForm
 	}
 	if k.CreateColumn == "" {
 		k.CreateColumn = defaults.CreateColumn

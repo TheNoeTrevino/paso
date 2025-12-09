@@ -11,6 +11,7 @@ type Mode int
 const (
 	NormalMode              Mode = iota // Default navigation mode
 	DeleteConfirmMode                   // Confirming task deletion
+	DiscardConfirmMode                  // Confirming discard of form/input changes
 	AddColumnMode                       // Creating a new column
 	EditColumnMode                      // Renaming an existing column
 	DeleteColumnConfirmMode             // Confirming column deletion
@@ -21,7 +22,17 @@ const (
 	LabelManagementMode                 // Managing labels (create/edit/delete)
 	LabelAssignMode                     // Quick label assignment to task
 	LabelPickerMode                     // GitHub-style label picker popup
+	ParentPickerMode                    // Parent issue picker popup
+	ChildPickerMode                     // Child issue picker popup
+	SearchMode                          // Vim-style search mode (/)
 )
+
+// DiscardContext tracks information for discard confirmation dialogs.
+// It stores the mode to return to if the user cancels, and a context-specific message.
+type DiscardContext struct {
+	SourceMode Mode   // The mode to return to if user cancels discard (N/ESC)
+	Message    string // Context-specific message (e.g., "Discard task?", "Discard project?")
+}
 
 // UIState manages the user interface state.
 // This includes navigation (column/task selection), viewport scrolling,
@@ -50,6 +61,9 @@ type UIState struct {
 
 	// viewingTask is the full task detail currently being viewed (nil if not in ViewTaskMode)
 	viewingTask *models.TaskDetail
+
+	// discardContext holds context for discard confirmation dialogs
+	discardContext *DiscardContext
 }
 
 // NewUIState creates a new UIState with default values.
@@ -234,5 +248,20 @@ func (s *UIState) ResetSelection() {
 	s.selectedColumn = 0
 	s.selectedTask = 0
 	s.viewportOffset = 0
+}
+
+// DiscardContext returns the current discard context.
+func (s *UIState) DiscardContext() *DiscardContext {
+	return s.discardContext
+}
+
+// SetDiscardContext updates the discard context.
+func (s *UIState) SetDiscardContext(ctx *DiscardContext) {
+	s.discardContext = ctx
+}
+
+// ClearDiscardContext resets the discard context to nil.
+func (s *UIState) ClearDiscardContext() {
+	s.discardContext = nil
 }
 

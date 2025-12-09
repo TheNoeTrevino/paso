@@ -67,6 +67,8 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleNextProject()
 	case km.CreateProject:
 		return m.handleCreateProject()
+	case "/":
+		return m.handleEnterSearch()
 	}
 
 	return m, nil
@@ -165,6 +167,10 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 	m.formState.FormTitle = ""
 	m.formState.FormDescription = ""
 	m.formState.FormLabelIDs = []int{}
+	m.formState.FormParentIDs = []int{}
+	m.formState.FormChildIDs = []int{}
+	m.formState.FormParentRefs = []*models.TaskReference{}
+	m.formState.FormChildRefs = []*models.TaskReference{}
 	m.formState.FormConfirm = true
 	m.formState.EditingTaskID = 0
 	m.formState.TicketForm = huhforms.CreateTicketForm(
@@ -174,6 +180,7 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 		m.appState.Labels(),
 		&m.formState.FormConfirm,
 	).WithTheme(huhforms.CreatePasoTheme(m.config.ColorScheme))
+	m.formState.SnapshotTicketFormInitialValues() // Snapshot for change detection
 	m.uiState.SetMode(state.TicketFormMode)
 	return m, m.formState.TicketForm.Init()
 }
@@ -199,6 +206,21 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 	for i, label := range taskDetail.Labels {
 		m.formState.FormLabelIDs[i] = label.ID
 	}
+
+	// Load parent relationships
+	m.formState.FormParentIDs = make([]int, len(taskDetail.ParentTasks))
+	m.formState.FormParentRefs = taskDetail.ParentTasks
+	for i, parent := range taskDetail.ParentTasks {
+		m.formState.FormParentIDs[i] = parent.ID
+	}
+
+	// Load child relationships
+	m.formState.FormChildIDs = make([]int, len(taskDetail.ChildTasks))
+	m.formState.FormChildRefs = taskDetail.ChildTasks
+	for i, child := range taskDetail.ChildTasks {
+		m.formState.FormChildIDs[i] = child.ID
+	}
+
 	m.formState.FormConfirm = true
 	m.formState.EditingTaskID = task.ID
 	m.formState.TicketForm = huhforms.CreateTicketForm(
@@ -208,6 +230,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		m.appState.Labels(),
 		&m.formState.FormConfirm,
 	).WithTheme(huhforms.CreatePasoTheme(m.config.ColorScheme))
+	m.formState.SnapshotTicketFormInitialValues() // Snapshot for change detection
 	m.uiState.SetMode(state.TicketFormMode)
 	return m, m.formState.TicketForm.Init()
 }
@@ -291,6 +314,7 @@ func (m Model) handleRenameColumn() (tea.Model, tea.Cmd) {
 	m.uiState.SetMode(state.EditColumnMode)
 	m.inputState.Buffer = column.Name
 	m.inputState.Prompt = "Rename column:"
+	m.inputState.SnapshotInitialBuffer() // Snapshot for change detection
 	return m, nil
 }
 
@@ -342,6 +366,7 @@ func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
 		&m.formState.FormProjectDescription,
 		&m.formState.FormProjectConfirm,
 	).WithTheme(huhforms.CreatePasoTheme(m.config.ColorScheme))
+	m.formState.SnapshotProjectFormInitialValues() // Snapshot for change detection
 	m.uiState.SetMode(state.ProjectFormMode)
 	return m, m.formState.ProjectForm.Init()
 }
@@ -356,6 +381,30 @@ func (m Model) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		return m.handleInputConfirm()
 	case "esc":
+		// Check for changes before closing
+		shouldConfirm := false
+		contextMsg := ""
+
+		if m.uiState.Mode() == state.AddColumnMode {
+			// AddColumnMode: confirm if user typed anything
+			shouldConfirm = !m.inputState.IsEmpty()
+			contextMsg = "Discard column?"
+		} else if m.uiState.Mode() == state.EditColumnMode {
+			// EditColumnMode: confirm if text changed from original
+			shouldConfirm = m.inputState.HasInputChanges()
+			contextMsg = "Discard changes?"
+		}
+
+		if shouldConfirm {
+			m.uiState.SetDiscardContext(&state.DiscardContext{
+				SourceMode: m.uiState.Mode(),
+				Message:    contextMsg,
+			})
+			m.uiState.SetMode(state.DiscardConfirmMode)
+			return m, nil
+		}
+
+		// No changes - immediate close
 		return m.handleInputCancel()
 	case "backspace", "ctrl+h":
 		m.inputState.Backspace()
@@ -475,6 +524,58 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleDiscardConfirm handles discard confirmation for forms and inputs.
+// This provides a generic Y/N/ESC handler that works for all discard scenarios.
+func (m Model) handleDiscardConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	ctx := m.uiState.DiscardContext()
+	if ctx == nil {
+		// Safety: if context is missing, return to normal mode
+		m.uiState.SetMode(state.NormalMode)
+		return m, nil
+	}
+
+	switch msg.String() {
+	case "y", "Y":
+		// User confirmed discard - clear form/input and return to normal mode
+		return m.confirmDiscard()
+
+	case "n", "N", "esc":
+		// User cancelled - return to source mode without clearing
+		m.uiState.SetMode(ctx.SourceMode)
+		m.uiState.ClearDiscardContext()
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// confirmDiscard performs the actual discard operation based on context.
+func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
+	ctx := m.uiState.DiscardContext()
+	if ctx == nil {
+		m.uiState.SetMode(state.NormalMode)
+		return m, nil
+	}
+
+	// Clear the appropriate form/input based on source mode
+	switch ctx.SourceMode {
+	case state.TicketFormMode:
+		m.formState.ClearTicketForm()
+
+	case state.ProjectFormMode:
+		m.formState.ClearProjectForm()
+
+	case state.AddColumnMode, state.EditColumnMode:
+		m.inputState.Clear()
+	}
+
+	// Always return to normal mode after discard
+	m.uiState.SetMode(state.NormalMode)
+	m.uiState.ClearDiscardContext()
+
+	return m, tea.ClearScreen
+}
+
 // handleDeleteColumnConfirm handles column deletion confirmation.
 func (m Model) handleDeleteColumnConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
@@ -529,12 +630,113 @@ func (m Model) handleViewTaskMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.uiState.SetViewingTask(nil)
 		return m, nil
 	case km.EditLabels:
+		// Open label picker to add/remove labels from the current task
 		if m.uiState.ViewingTask() != nil {
 			if m.initLabelPicker(m.uiState.ViewingTask().ID) {
 				m.uiState.SetMode(state.LabelPickerMode)
 			}
 		}
 		return m, nil
+	case "p":
+		// Open parent task picker to manage parent relationships
+		// Parent tasks are tasks that depend on (block on) the current task
+		if m.uiState.ViewingTask() != nil {
+			if m.initParentPicker(m.uiState.ViewingTask().ID) {
+				m.uiState.SetMode(state.ParentPickerMode)
+			}
+		}
+		return m, nil
+	case "c":
+		// Open child task picker to manage child relationships
+		// Child tasks are tasks that the current task depends on (must be completed first)
+		if m.uiState.ViewingTask() != nil {
+			if m.initChildPicker(m.uiState.ViewingTask().ID) {
+				m.uiState.SetMode(state.ChildPickerMode)
+			}
+		}
+		return m, nil
 	}
+	return m, nil
+}
+
+// ============================================================================
+// SEARCH MODE HANDLERS
+// ============================================================================
+
+// handleEnterSearch enters search mode and clears any previous search state.
+func (m Model) handleEnterSearch() (tea.Model, tea.Cmd) {
+	m.searchState.Clear()
+	m.searchState.Deactivate()
+	m.uiState.SetMode(state.SearchMode)
+	return m, nil
+}
+
+// handleSearchMode handles keyboard input in search mode.
+func (m Model) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		return m.handleSearchConfirm()
+	case "esc":
+		return m.handleSearchCancel()
+	case "backspace", "ctrl+h":
+		if m.searchState.Backspace() {
+			return m.executeSearch()
+		}
+		return m, nil
+	default:
+		key := msg.String()
+		if len(key) == 1 {
+			if m.searchState.AppendChar(rune(key[0])) {
+				return m.executeSearch()
+			}
+		}
+		return m, nil
+	}
+}
+
+// handleSearchConfirm activates the filter and returns to normal mode.
+// The search query persists and continues to filter the kanban view.
+func (m Model) handleSearchConfirm() (tea.Model, tea.Cmd) {
+	m.searchState.Activate()
+	m.uiState.SetMode(state.NormalMode)
+	return m, nil
+}
+
+// handleSearchCancel clears the search and returns to normal mode.
+// All tasks are shown again.
+func (m Model) handleSearchCancel() (tea.Model, tea.Cmd) {
+	m.searchState.Clear()
+	m.searchState.Deactivate()
+	m.uiState.SetMode(state.NormalMode)
+	return m.executeSearch() // Reload all tasks
+}
+
+// executeSearch runs the search query and updates the task list.
+// If the query is empty, all tasks are loaded. Otherwise, only matching tasks are loaded.
+func (m Model) executeSearch() (tea.Model, tea.Cmd) {
+	project := m.getCurrentProject()
+	if project == nil {
+		return m, nil
+	}
+
+	ctx := context.Background()
+	var tasksByColumn map[int][]*models.TaskSummary
+	var err error
+
+	if m.searchState.Query == "" {
+		tasksByColumn, err = m.repo.GetTaskSummariesByProject(ctx, project.ID)
+	} else {
+		tasksByColumn, err = m.repo.GetTaskSummariesByProjectFiltered(ctx, project.ID, m.searchState.Query)
+	}
+
+	if err != nil {
+		log.Printf("Error filtering tasks: %v", err)
+		return m, nil
+	}
+
+	m.appState.SetTasks(tasksByColumn)
+	// Reset task selection to 0 to avoid out-of-bounds
+	m.uiState.SetSelectedTask(0)
+
 	return m, nil
 }
