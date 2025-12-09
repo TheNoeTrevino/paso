@@ -5,8 +5,9 @@ import (
 	"log"
 	"strings"
 
-	"charm.land/huh/v2"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/huh/v2"
+	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -39,6 +40,8 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleNormalMode(msg)
 	case state.AddColumnMode, state.EditColumnMode:
 		return m.handleInputMode(msg)
+	case state.DiscardConfirmMode:
+		return m.handleDiscardConfirm(msg)
 	case state.DeleteConfirmMode:
 		return m.handleDeleteConfirm(msg)
 	case state.DeleteColumnConfirmMode:
@@ -49,6 +52,12 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleViewTaskMode(msg)
 	case state.LabelPickerMode:
 		return m.updateLabelPicker(msg)
+	case state.ParentPickerMode:
+		return m.updateParentPicker(msg)
+	case state.ChildPickerMode:
+		return m.updateChildPicker(msg)
+	case state.SearchMode:
+		return m.handleSearchMode(msg)
 	}
 	return m, nil
 }
@@ -144,12 +153,174 @@ func (m Model) updateExistingTaskWithLabels(values ticketFormValues) {
 	}
 }
 
+// createNewTaskWithLabelsAndRelationships creates a new task, sets labels, and applies parent/child relationships
+func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues) {
+	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+
+	// 1. Create the task
+	task, err := m.repo.CreateTask(context.Background(),
+		values.title,
+		values.description,
+		currentCol.ID,
+		len(m.appState.Tasks()[currentCol.ID]),
+	)
+	if err != nil {
+		log.Printf("Error creating task: %v", err)
+		m.notificationState.Add(state.LevelError, "Error creating task")
+		return
+	}
+
+	// 2. Set labels
+	if len(values.labelIDs) > 0 {
+		err = m.repo.SetTaskLabels(context.Background(), task.ID, values.labelIDs)
+		if err != nil {
+			log.Printf("Error setting labels: %v", err)
+		}
+	}
+
+	ctx := context.Background()
+
+	// 3. Apply parent relationships
+	// CRITICAL: Parent picker means selected task BLOCKS ON current task
+	// So: AddSubtask(parentID, currentTaskID)
+	for _, parentID := range m.formState.FormParentIDs {
+		err = m.repo.AddSubtask(ctx, parentID, task.ID)
+		if err != nil {
+			log.Printf("Error adding parent relationship: %v", err)
+		}
+	}
+
+	// 4. Apply child relationships
+	// CRITICAL: Child picker means current task BLOCKS ON selected task
+	// So: AddSubtask(currentTaskID, childID)
+	for _, childID := range m.formState.FormChildIDs {
+		err = m.repo.AddSubtask(ctx, task.ID, childID)
+		if err != nil {
+			log.Printf("Error adding child relationship: %v", err)
+		}
+	}
+
+	// 5. Reload task summaries with labels
+	summaries, err := m.repo.GetTaskSummariesByColumn(context.Background(), currentCol.ID)
+	if err != nil {
+		log.Printf("Error reloading tasks: %v", err)
+	} else {
+		m.appState.Tasks()[currentCol.ID] = summaries
+	}
+}
+
+// updateExistingTaskWithLabelsAndRelationships updates task, labels, and parent/child relationships
+func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormValues) {
+	ctx := context.Background()
+	taskID := m.formState.EditingTaskID
+
+	// 1. Update task basic fields
+	err := m.repo.UpdateTask(ctx, taskID, values.title, values.description)
+	if err != nil {
+		log.Printf("Error updating task: %v", err)
+		m.notificationState.Add(state.LevelError, "Error updating task")
+		return
+	}
+
+	// 2. Update labels
+	err = m.repo.SetTaskLabels(ctx, taskID, values.labelIDs)
+	if err != nil {
+		log.Printf("Error setting labels: %v", err)
+	}
+
+	// 3. Sync parent relationships
+	// Get current parents from database
+	currentParents, err := m.repo.GetParentTasks(ctx, taskID)
+	if err != nil {
+		log.Printf("Error getting current parents: %v", err)
+		currentParents = []*models.TaskReference{}
+	}
+
+	// Build sets for comparison
+	currentParentIDs := make(map[int]bool)
+	for _, p := range currentParents {
+		currentParentIDs[p.ID] = true
+	}
+
+	newParentIDs := make(map[int]bool)
+	for _, id := range m.formState.FormParentIDs {
+		newParentIDs[id] = true
+	}
+
+	// Remove parents that are no longer selected
+	for parentID := range currentParentIDs {
+		if !newParentIDs[parentID] {
+			err = m.repo.RemoveSubtask(ctx, parentID, taskID)
+			if err != nil {
+				log.Printf("Error removing parent %d: %v", parentID, err)
+			}
+		}
+	}
+
+	// Add new parents
+	for parentID := range newParentIDs {
+		if !currentParentIDs[parentID] {
+			err = m.repo.AddSubtask(ctx, parentID, taskID)
+			if err != nil {
+				log.Printf("Error adding parent %d: %v", parentID, err)
+			}
+		}
+	}
+
+	// 4. Sync child relationships (same pattern)
+	currentChildren, err := m.repo.GetChildTasks(ctx, taskID)
+	if err != nil {
+		log.Printf("Error getting current children: %v", err)
+		currentChildren = []*models.TaskReference{}
+	}
+
+	currentChildIDs := make(map[int]bool)
+	for _, c := range currentChildren {
+		currentChildIDs[c.ID] = true
+	}
+
+	newChildIDs := make(map[int]bool)
+	for _, id := range m.formState.FormChildIDs {
+		newChildIDs[id] = true
+	}
+
+	// Remove children that are no longer selected
+	for childID := range currentChildIDs {
+		if !newChildIDs[childID] {
+			err = m.repo.RemoveSubtask(ctx, taskID, childID)
+			if err != nil {
+				log.Printf("Error removing child %d: %v", childID, err)
+			}
+		}
+	}
+
+	// Add new children
+	for childID := range newChildIDs {
+		if !currentChildIDs[childID] {
+			err = m.repo.AddSubtask(ctx, taskID, childID)
+			if err != nil {
+				log.Printf("Error adding child %d: %v", childID, err)
+			}
+		}
+	}
+
+	// 5. Reload task summaries for the column
+	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+	summaries, err := m.repo.GetTaskSummariesByColumn(ctx, currentCol.ID)
+	if err != nil {
+		log.Printf("Error reloading tasks: %v", err)
+	} else {
+		m.appState.Tasks()[currentCol.ID] = summaries
+	}
+}
+
 // formConfig holds configuration for generic form handling
 type formConfig struct {
 	form       *huh.Form
 	setForm    func(*huh.Form)
 	clearForm  func()
 	onComplete func() // Called when form completes successfully
+	confirmPtr *bool  // Pointer to confirmation field for quick save
 }
 
 // handleFormUpdate processes form messages generically
@@ -172,20 +343,105 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 		return m, tea.ClearScreen
 	}
 
-	// Check abort
-	if cfg.form.State == huh.StateAborted {
-		m.uiState.SetMode(state.NormalMode)
-		cfg.setForm(nil)
-		cfg.clearForm()
-		return m, tea.ClearScreen
-	}
+	// Note: StateAborted handling removed - ESC is now intercepted in updateTicketForm/updateProjectForm
+	// to allow for change detection and discard confirmation
 
 	return m, cmd
+}
+
+// handleFormSave handles the C-s save shortcut for forms.
+// Sets confirmation to true and completes the form, triggering the save flow.
+func (m Model) handleFormSave(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd) {
+	if cfg.form == nil {
+		m.uiState.SetMode(state.NormalMode)
+		return m, nil
+	}
+
+	// Set confirmation to true (user wants to save)
+	if cfg.confirmPtr != nil {
+		*cfg.confirmPtr = true
+	}
+
+	// Mark form as completed to trigger onComplete callback
+	cfg.form.State = huh.StateCompleted
+
+	// Trigger the save logic
+	cfg.onComplete()
+
+	// Clean up and return to normal mode
+	m.uiState.SetMode(state.NormalMode)
+	cfg.setForm(nil)
+	cfg.clearForm()
+
+	return m, tea.ClearScreen
 }
 
 // updateTicketForm handles all messages when in TicketFormMode
 // This is separated out because forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Check for keyboard shortcuts before passing to form
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		switch keyMsg.String() {
+		case "esc":
+			// Check for changes before allowing abort
+			if m.formState.HasTicketFormChanges() {
+				// Show discard confirmation
+				m.uiState.SetDiscardContext(&state.DiscardContext{
+					SourceMode: state.TicketFormMode,
+					Message:    "Discard task?",
+				})
+				m.uiState.SetMode(state.DiscardConfirmMode)
+				return m, nil
+			}
+			// No changes - allow immediate close
+			m.uiState.SetMode(state.NormalMode)
+			m.formState.ClearTicketForm()
+			return m, tea.ClearScreen
+
+		case "ctrl+p":
+			// Open parent picker
+			if m.initParentPickerForForm() {
+				m.uiState.SetMode(state.ParentPickerMode)
+			}
+			return m, nil
+
+		case "ctrl+c":
+			// Open child picker
+			if m.initChildPickerForForm() {
+				m.uiState.SetMode(state.ChildPickerMode)
+			}
+			return m, nil
+
+		case m.config.KeyMappings.SaveForm:
+			// Quick save via C-s
+			return m.handleFormSave(msg, formConfig{
+				form: m.formState.TicketForm,
+				setForm: func(f *huh.Form) {
+					m.formState.TicketForm = f
+				},
+				clearForm: func() {
+					m.formState.ClearTicketForm()
+					m.formState.EditingTaskID = 0
+				},
+				onComplete: func() {
+					values := m.extractTicketFormValues()
+					if !values.confirm {
+						return
+					}
+					if values.title != "" {
+						if m.formState.EditingTaskID == 0 {
+							m.createNewTaskWithLabelsAndRelationships(values)
+						} else {
+							m.updateExistingTaskWithLabelsAndRelationships(values)
+						}
+					}
+				},
+				confirmPtr: &m.formState.FormConfirm,
+			})
+		}
+	}
+
+	// Pass through to existing form handler
 	return m.handleFormUpdate(msg, formConfig{
 		form: m.formState.TicketForm,
 		setForm: func(f *huh.Form) {
@@ -206,9 +462,9 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if values.title != "" {
 				if m.formState.EditingTaskID == 0 {
-					m.createNewTaskWithLabels(values)
+					m.createNewTaskWithLabelsAndRelationships(values)
 				} else {
-					m.updateExistingTaskWithLabels(values)
+					m.updateExistingTaskWithLabelsAndRelationships(values)
 				}
 			}
 		},
@@ -218,6 +474,64 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 // updateProjectForm handles all messages when in ProjectFormMode
 // This is separated out because forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Check for keyboard shortcuts before passing to form
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		switch keyMsg.String() {
+		case "esc":
+			// Check for changes before allowing abort
+			if m.formState.HasProjectFormChanges() {
+				// Show discard confirmation
+				m.uiState.SetDiscardContext(&state.DiscardContext{
+					SourceMode: state.ProjectFormMode,
+					Message:    "Discard project?",
+				})
+				m.uiState.SetMode(state.DiscardConfirmMode)
+				return m, nil
+			}
+			// No changes - allow immediate close
+			m.uiState.SetMode(state.NormalMode)
+			m.formState.ClearProjectForm()
+			return m, tea.ClearScreen
+
+		case m.config.KeyMappings.SaveForm:
+			return m.handleFormSave(msg, formConfig{
+				form: m.formState.ProjectForm,
+				setForm: func(f *huh.Form) {
+					m.formState.ProjectForm = f
+				},
+				clearForm: func() {
+					m.formState.ClearProjectForm()
+				},
+				onComplete: func() {
+					name := strings.TrimSpace(m.formState.FormProjectName)
+					description := strings.TrimSpace(m.formState.FormProjectDescription)
+					confirm := m.formState.FormProjectConfirm
+
+					if !confirm {
+						return
+					}
+
+					if name != "" {
+						project, err := m.repo.CreateProject(context.Background(), name, description)
+						if err != nil {
+							log.Printf("Error creating project: %v", err)
+							m.notificationState.Add(state.LevelError, "Error creating project")
+						} else {
+							m.reloadProjects()
+							for i, p := range m.appState.Projects() {
+								if p.ID == project.ID {
+									m.switchToProject(i)
+									break
+								}
+							}
+						}
+					}
+				},
+				confirmPtr: &m.formState.FormProjectConfirm,
+			})
+		}
+	}
+
 	return m.handleFormUpdate(msg, formConfig{
 		form: m.formState.ProjectForm,
 		setForm: func(f *huh.Form) {
@@ -440,6 +754,286 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// updateParentPicker handles keyboard input in the parent picker mode.
+// This function processes navigation (up/down), filtering, and selection toggling.
+//
+// CRITICAL - Database Parameter Ordering:
+// Parent picker uses the selected task as the parent of the current task.
+// When toggling relationships:
+//   - AddSubtask(selectedTaskID, currentTaskID) - selected becomes parent of current
+//   - RemoveSubtask(selectedTaskID, currentTaskID)
+//
+// This means: selectedTask BLOCKS ON currentTask (selected depends on current).
+func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	// Get filtered items to determine bounds
+	filteredItems := m.parentPickerState.GetFilteredItems()
+	maxIdx := len(filteredItems) - 1
+
+	switch keyMsg.String() {
+	case "esc":
+		// Return to the mode specified by ReturnMode
+		returnMode := m.parentPickerState.ReturnMode
+		if returnMode == state.Mode(0) { // Default to ViewTaskMode for backward compat
+			returnMode = state.ViewTaskMode
+		}
+
+		// If returning to TicketFormMode, sync selections back to FormState
+		if returnMode == state.TicketFormMode {
+			m.syncParentPickerToFormState()
+		}
+
+		m.uiState.SetMode(returnMode)
+		m.parentPickerState.Filter = ""
+		m.parentPickerState.Cursor = 0
+		return m, nil
+
+	case "up", "k":
+		// Move cursor up
+		m.parentPickerState.MoveCursorUp()
+		return m, nil
+
+	case "down", "j":
+		// Move cursor down
+		m.parentPickerState.MoveCursorDown(maxIdx)
+		return m, nil
+
+	case "enter":
+		// Toggle parent relationship
+		if m.parentPickerState.Cursor < len(filteredItems) {
+			item := filteredItems[m.parentPickerState.Cursor]
+
+			// Find the index in the unfiltered list
+			for i, pi := range m.parentPickerState.Items {
+				if pi.TaskRef.ID == item.TaskRef.ID {
+					// Determine if we're in form mode or view mode
+					if m.parentPickerState.ReturnMode == state.TicketFormMode {
+						// Form mode: just toggle the selection state
+						// Actual database changes happen on form submission
+						m.parentPickerState.Items[i].Selected = !m.parentPickerState.Items[i].Selected
+					} else {
+						// View mode: apply changes to database immediately (existing behavior)
+						ctx := context.Background()
+						if m.parentPickerState.Items[i].Selected {
+							// Remove parent relationship
+							// CRITICAL: RemoveSubtask(parentID, childID)
+							// selectedTask (parent) blocks on currentTask (child)
+							err := m.repo.RemoveSubtask(ctx, item.TaskRef.ID, m.parentPickerState.TaskID)
+							if err != nil {
+								log.Printf("Error removing parent: %v", err)
+								m.notificationState.Add(state.LevelError, "Failed to remove parent from task")
+							} else {
+								m.parentPickerState.Items[i].Selected = false
+							}
+						} else {
+							// Add parent relationship - selected task becomes parent of current task
+							// CRITICAL: AddSubtask(parentID, childID)
+							// This makes selectedTask (parent) block on currentTask (child)
+							// Meaning: selectedTask depends on completion of currentTask
+							err := m.repo.AddSubtask(ctx, item.TaskRef.ID, m.parentPickerState.TaskID)
+							if err != nil {
+								log.Printf("Error adding parent: %v", err)
+								m.notificationState.Add(state.LevelError, "Failed to add parent to task")
+							} else {
+								m.parentPickerState.Items[i].Selected = true
+							}
+						}
+
+						// Reload task detail and summaries (only in view mode)
+						m.reloadViewingTask()
+						m.reloadCurrentColumnTasks()
+					}
+					break
+				}
+			}
+		}
+		return m, nil
+
+	case "backspace", "ctrl+h":
+		// Remove last character from filter
+		m.parentPickerState.BackspaceFilter()
+		// Reset cursor if it's out of bounds after filter change
+		newFiltered := m.parentPickerState.GetFilteredItems()
+		if m.parentPickerState.Cursor >= len(newFiltered) && len(newFiltered) > 0 {
+			m.parentPickerState.Cursor = len(newFiltered) - 1
+		} else if len(newFiltered) == 0 {
+			m.parentPickerState.Cursor = 0
+		}
+		return m, nil
+
+	default:
+		// Type to filter/search
+		key := keyMsg.String()
+		if len(key) == 1 {
+			m.parentPickerState.AppendFilter(rune(key[0]))
+			// Reset cursor to 0 when filter changes
+			m.parentPickerState.Cursor = 0
+		}
+		return m, nil
+	}
+}
+
+// updateChildPicker handles keyboard input in the child picker mode.
+// This function processes navigation (up/down), filtering, and selection toggling.
+//
+// CRITICAL - Database Parameter Ordering (REVERSED from parent picker):
+// Child picker uses the current task as the parent of the selected task.
+// When toggling relationships:
+//   - AddSubtask(currentTaskID, selectedTaskID) - current becomes parent of selected
+//   - RemoveSubtask(currentTaskID, selectedTaskID)
+//
+// This means: currentTask BLOCKS ON selectedTask (current depends on selected).
+func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	// Get filtered items to determine bounds
+	filteredItems := m.childPickerState.GetFilteredItems()
+	maxIdx := len(filteredItems) - 1
+
+	switch keyMsg.String() {
+	case "esc":
+		// Return to the mode specified by ReturnMode
+		returnMode := m.childPickerState.ReturnMode
+		if returnMode == state.Mode(0) { // Default to ViewTaskMode for backward compat
+			returnMode = state.ViewTaskMode
+		}
+
+		// If returning to TicketFormMode, sync selections back to FormState
+		if returnMode == state.TicketFormMode {
+			m.syncChildPickerToFormState()
+		}
+
+		m.uiState.SetMode(returnMode)
+		m.childPickerState.Filter = ""
+		m.childPickerState.Cursor = 0
+		return m, nil
+
+	case "up", "k":
+		// Move cursor up
+		m.childPickerState.MoveCursorUp()
+		return m, nil
+
+	case "down", "j":
+		// Move cursor down
+		m.childPickerState.MoveCursorDown(maxIdx)
+		return m, nil
+
+	case "enter":
+		// Toggle child relationship
+		if m.childPickerState.Cursor < len(filteredItems) {
+			item := filteredItems[m.childPickerState.Cursor]
+
+			// Find the index in the unfiltered list
+			for i, pi := range m.childPickerState.Items {
+				if pi.TaskRef.ID == item.TaskRef.ID {
+					// Determine if we're in form mode or view mode
+					if m.childPickerState.ReturnMode == state.TicketFormMode {
+						// Form mode: just toggle the selection state
+						// Actual database changes happen on form submission
+						m.childPickerState.Items[i].Selected = !m.childPickerState.Items[i].Selected
+					} else {
+						// View mode: apply changes to database immediately (existing behavior)
+						ctx := context.Background()
+						if m.childPickerState.Items[i].Selected {
+							// Remove child relationship
+							// CRITICAL: RemoveSubtask(parentID, childID) - REVERSED parameter order from parent picker
+							// currentTask (parent) blocks on selectedTask (child)
+							err := m.repo.RemoveSubtask(ctx, m.childPickerState.TaskID, item.TaskRef.ID)
+							if err != nil {
+								log.Printf("Error removing child: %v", err)
+								m.notificationState.Add(state.LevelError, "Failed to remove child from task")
+							} else {
+								m.childPickerState.Items[i].Selected = false
+							}
+						} else {
+							// Add child relationship - current task becomes parent of selected task
+							// CRITICAL: AddSubtask(parentID, childID) - REVERSED parameter order from parent picker
+							// This makes currentTask (parent) block on selectedTask (child)
+							// Meaning: currentTask depends on completion of selectedTask
+							err := m.repo.AddSubtask(ctx, m.childPickerState.TaskID, item.TaskRef.ID)
+							if err != nil {
+								log.Printf("Error adding child: %v", err)
+								m.notificationState.Add(state.LevelError, "Failed to add child to task")
+							} else {
+								m.childPickerState.Items[i].Selected = true
+							}
+						}
+
+						// Reload task detail and summaries (only in view mode)
+						m.reloadViewingTask()
+						m.reloadCurrentColumnTasks()
+					}
+					break
+				}
+			}
+		}
+		return m, nil
+
+	case "backspace", "ctrl+h":
+		// Remove last character from filter
+		m.childPickerState.BackspaceFilter()
+		// Reset cursor if it's out of bounds after filter change
+		newFiltered := m.childPickerState.GetFilteredItems()
+		if m.childPickerState.Cursor >= len(newFiltered) && len(newFiltered) > 0 {
+			m.childPickerState.Cursor = len(newFiltered) - 1
+		} else if len(newFiltered) == 0 {
+			m.childPickerState.Cursor = 0
+		}
+		return m, nil
+
+	default:
+		// Type to filter/search
+		key := keyMsg.String()
+		if len(key) == 1 {
+			m.childPickerState.AppendFilter(rune(key[0]))
+			// Reset cursor to 0 when filter changes
+			m.childPickerState.Cursor = 0
+		}
+		return m, nil
+	}
+}
+
+// syncParentPickerToFormState syncs parent picker selections back to form state.
+// Extracts all selected task IDs and references from the picker and updates FormState.
+func (m *Model) syncParentPickerToFormState() {
+	var parentIDs []int
+	var parentRefs []*models.TaskReference
+
+	for _, item := range m.parentPickerState.Items {
+		if item.Selected {
+			parentIDs = append(parentIDs, item.TaskRef.ID)
+			parentRefs = append(parentRefs, item.TaskRef)
+		}
+	}
+
+	m.formState.FormParentIDs = parentIDs
+	m.formState.FormParentRefs = parentRefs
+}
+
+// syncChildPickerToFormState syncs child picker selections back to form state.
+// Extracts all selected task IDs and references from the picker and updates FormState.
+func (m *Model) syncChildPickerToFormState() {
+	var childIDs []int
+	var childRefs []*models.TaskReference
+
+	for _, item := range m.childPickerState.Items {
+		if item.Selected {
+			childIDs = append(childIDs, item.TaskRef.ID)
+			childRefs = append(childRefs, item.TaskRef)
+		}
+	}
+
+	m.formState.FormChildIDs = childIDs
+	m.formState.FormChildRefs = childRefs
 }
 
 // reloadViewingTask reloads the task detail being viewed
