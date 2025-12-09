@@ -24,6 +24,7 @@ const (
 	LabelPickerMode                     // GitHub-style label picker popup
 	ParentPickerMode                    // Parent issue picker popup
 	ChildPickerMode                     // Child issue picker popup
+	SearchMode                          // Vim-style search mode (/)
 )
 
 // DiscardContext tracks information for discard confirmation dialogs.
