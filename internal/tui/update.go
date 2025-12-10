@@ -410,6 +410,13 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		case "ctrl+l":
+			// Open label picker
+			if m.initLabelPickerForForm() {
+				m.uiState.SetMode(state.LabelPickerMode)
+			}
+			return m, nil
+
 		case m.config.KeyMappings.SaveForm:
 			// Quick save via C-s
 			return m.handleFormSave(msg, formConfig{
@@ -590,8 +597,15 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch keyMsg.String() {
 	case "esc":
-		// Close picker and return to NormalMode
-		m.uiState.SetMode(state.NormalMode)
+		// Close picker and return to appropriate mode
+		if m.labelPickerState.ReturnMode == state.TicketFormMode {
+			// In form mode: sync selections and return to form
+			m.syncLabelPickerToFormState()
+			m.uiState.SetMode(state.TicketFormMode)
+		} else {
+			// In view mode: return to NormalMode
+			m.uiState.SetMode(state.NormalMode)
+		}
 		m.labelPickerState.Filter = ""
 		m.labelPickerState.Cursor = 0
 		return m, nil
@@ -619,31 +633,36 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Find the index in the unfiltered list
 			for i, pi := range m.labelPickerState.Items {
 				if pi.Label.ID == item.Label.ID {
-					if m.labelPickerState.Items[i].Selected {
-						// Remove label from task
-						err := m.repo.RemoveLabelFromTask(context.Background(), m.labelPickerState.TaskID, item.Label.ID)
-						if err != nil {
-							log.Printf("Error removing label: %v", err)
-							m.notificationState.Add(state.LevelError, "Failed to remove label from task")
-						} else {
-							m.labelPickerState.Items[i].Selected = false
-						}
+					if m.labelPickerState.ReturnMode == state.TicketFormMode {
+						// In form mode: just toggle selection state, don't update database
+						m.labelPickerState.Items[i].Selected = !m.labelPickerState.Items[i].Selected
 					} else {
-						// Add label to task
-						err := m.repo.AddLabelToTask(context.Background(), m.labelPickerState.TaskID, item.Label.ID)
-						if err != nil {
-							log.Printf("Error adding label: %v", err)
-							m.notificationState.Add(state.LevelError, "Failed to add label to task")
+						// In view mode: update database immediately
+						if m.labelPickerState.Items[i].Selected {
+							// Remove label from task
+							err := m.repo.RemoveLabelFromTask(context.Background(), m.labelPickerState.TaskID, item.Label.ID)
+							if err != nil {
+								log.Printf("Error removing label: %v", err)
+								m.notificationState.Add(state.LevelError, "Failed to remove label from task")
+							} else {
+								m.labelPickerState.Items[i].Selected = false
+							}
 						} else {
-							m.labelPickerState.Items[i].Selected = true
+							// Add label to task
+							err := m.repo.AddLabelToTask(context.Background(), m.labelPickerState.TaskID, item.Label.ID)
+							if err != nil {
+								log.Printf("Error adding label: %v", err)
+								m.notificationState.Add(state.LevelError, "Failed to add label to task")
+							} else {
+								m.labelPickerState.Items[i].Selected = true
+							}
 						}
+						// Reload task summaries for the current column
+						m.reloadCurrentColumnTasks()
 					}
 					break
 				}
 			}
-
-			// Reload task summaries for the current column
-			m.reloadCurrentColumnTasks()
 		} else {
 			// Create new label - switch to color picker sub-mode
 			if strings.TrimSpace(m.labelPickerState.Filter) != "" {
@@ -1026,6 +1045,20 @@ func (m *Model) syncChildPickerToFormState() {
 
 	m.formState.FormChildIDs = childIDs
 	m.formState.FormChildRefs = childRefs
+}
+
+// syncLabelPickerToFormState syncs label picker selections back to form state.
+// Extracts all selected label IDs from the picker and updates FormState.
+func (m *Model) syncLabelPickerToFormState() {
+	var labelIDs []int
+
+	for _, item := range m.labelPickerState.Items {
+		if item.Selected {
+			labelIDs = append(labelIDs, item.Label.ID)
+		}
+	}
+
+	m.formState.FormLabelIDs = labelIDs
 }
 
 // reloadCurrentColumnTasks reloads task summaries for the current column

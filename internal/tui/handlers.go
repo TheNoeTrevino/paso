@@ -173,12 +173,15 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 	m.formState.FormChildRefs = []*models.TaskReference{}
 	m.formState.FormConfirm = true
 	m.formState.EditingTaskID = 0
+
+	// Calculate description height (will be dynamic in Phase 4)
+	descriptionLines := 10
+
 	m.formState.TicketForm = huhforms.CreateTicketForm(
 		&m.formState.FormTitle,
 		&m.formState.FormDescription,
-		&m.formState.FormLabelIDs,
-		m.appState.Labels(),
 		&m.formState.FormConfirm,
+		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.config.ColorScheme))
 	m.formState.SnapshotTicketFormInitialValues() // Snapshot for change detection
 	m.uiState.SetMode(state.TicketFormMode)
@@ -221,14 +224,21 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		m.formState.FormChildIDs[i] = child.ID
 	}
 
+	// Load timestamps for metadata display
+	m.formState.FormCreatedAt = taskDetail.CreatedAt
+	m.formState.FormUpdatedAt = taskDetail.UpdatedAt
+
 	m.formState.FormConfirm = true
 	m.formState.EditingTaskID = task.ID
+
+	// Calculate description height (will be dynamic in Phase 4)
+	descriptionLines := 10
+
 	m.formState.TicketForm = huhforms.CreateTicketForm(
 		&m.formState.FormTitle,
 		&m.formState.FormDescription,
-		&m.formState.FormLabelIDs,
-		m.appState.Labels(),
 		&m.formState.FormConfirm,
+		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.config.ColorScheme))
 	m.formState.SnapshotTicketFormInitialValues() // Snapshot for change detection
 	m.uiState.SetMode(state.TicketFormMode)
