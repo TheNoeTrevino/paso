@@ -34,7 +34,7 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case km.DeleteTask:
 		return m.handleDeleteTask()
 	case km.ViewTask:
-		return m.handleViewTask()
+		return m.handleEditTask()
 	case km.CreateColumn:
 		return m.handleCreateColumn()
 	case km.RenameColumn:
@@ -173,12 +173,15 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 	m.formState.FormChildRefs = []*models.TaskReference{}
 	m.formState.FormConfirm = true
 	m.formState.EditingTaskID = 0
+
+	// Calculate description height (will be dynamic in Phase 4)
+	descriptionLines := 10
+
 	m.formState.TicketForm = huhforms.CreateTicketForm(
 		&m.formState.FormTitle,
 		&m.formState.FormDescription,
-		&m.formState.FormLabelIDs,
-		m.appState.Labels(),
 		&m.formState.FormConfirm,
+		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.config.ColorScheme))
 	m.formState.SnapshotTicketFormInitialValues() // Snapshot for change detection
 	m.uiState.SetMode(state.TicketFormMode)
@@ -221,14 +224,21 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		m.formState.FormChildIDs[i] = child.ID
 	}
 
+	// Load timestamps for metadata display
+	m.formState.FormCreatedAt = taskDetail.CreatedAt
+	m.formState.FormUpdatedAt = taskDetail.UpdatedAt
+
 	m.formState.FormConfirm = true
 	m.formState.EditingTaskID = task.ID
+
+	// Calculate description height (will be dynamic in Phase 4)
+	descriptionLines := 10
+
 	m.formState.TicketForm = huhforms.CreateTicketForm(
 		&m.formState.FormTitle,
 		&m.formState.FormDescription,
-		&m.formState.FormLabelIDs,
-		m.appState.Labels(),
 		&m.formState.FormConfirm,
+		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.config.ColorScheme))
 	m.formState.SnapshotTicketFormInitialValues() // Snapshot for change detection
 	m.uiState.SetMode(state.TicketFormMode)
@@ -242,25 +252,6 @@ func (m Model) handleDeleteTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.uiState.SetMode(state.DeleteConfirmMode)
-	return m, nil
-}
-
-// handleViewTask shows the task detail popup.
-func (m Model) handleViewTask() (tea.Model, tea.Cmd) {
-	task := m.getCurrentTask()
-	if task == nil {
-		m.notificationState.Add(state.LevelError, "No task selected to view")
-		return m, nil
-	}
-
-	taskDetail, err := m.repo.GetTaskDetail(context.Background(), task.ID)
-	if err != nil {
-		log.Printf("Error loading task details: %v", err)
-		m.notificationState.Add(state.LevelError, "Error loading task details")
-		return m, nil
-	}
-	m.uiState.SetViewingTask(taskDetail)
-	m.uiState.SetMode(state.ViewTaskMode)
 	return m, nil
 }
 
@@ -614,46 +605,6 @@ func (m Model) handleHelpMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case m.config.KeyMappings.ShowHelp, m.config.KeyMappings.Quit, "esc", "enter", " ":
 		m.uiState.SetMode(state.NormalMode)
-		return m, nil
-	}
-	return m, nil
-}
-
-// handleViewTaskMode handles input when viewing task details.
-func (m Model) handleViewTaskMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	key := msg.String()
-	km := m.config.KeyMappings
-
-	switch key {
-	case "esc", km.ViewTask, km.Quit:
-		m.uiState.SetMode(state.NormalMode)
-		m.uiState.SetViewingTask(nil)
-		return m, nil
-	case km.EditLabels:
-		// Open label picker to add/remove labels from the current task
-		if m.uiState.ViewingTask() != nil {
-			if m.initLabelPicker(m.uiState.ViewingTask().ID) {
-				m.uiState.SetMode(state.LabelPickerMode)
-			}
-		}
-		return m, nil
-	case "p":
-		// Open parent task picker to manage parent relationships
-		// Parent tasks are tasks that depend on (block on) the current task
-		if m.uiState.ViewingTask() != nil {
-			if m.initParentPicker(m.uiState.ViewingTask().ID) {
-				m.uiState.SetMode(state.ParentPickerMode)
-			}
-		}
-		return m, nil
-	case "c":
-		// Open child task picker to manage child relationships
-		// Child tasks are tasks that the current task depends on (must be completed first)
-		if m.uiState.ViewingTask() != nil {
-			if m.initChildPicker(m.uiState.ViewingTask().ID) {
-				m.uiState.SetMode(state.ChildPickerMode)
-			}
-		}
 		return m, nil
 	}
 	return m, nil
