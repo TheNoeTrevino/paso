@@ -48,8 +48,6 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDeleteColumnConfirm(msg)
 	case state.HelpMode:
 		return m.handleHelpMode(msg)
-	case state.ViewTaskMode:
-		return m.handleViewTaskMode(msg)
 	case state.LabelPickerMode:
 		return m.updateLabelPicker(msg)
 	case state.ParentPickerMode:
@@ -592,8 +590,8 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch keyMsg.String() {
 	case "esc":
-		// Close picker and return to ViewTaskMode
-		m.uiState.SetMode(state.ViewTaskMode)
+		// Close picker and return to NormalMode
+		m.uiState.SetMode(state.NormalMode)
 		m.labelPickerState.Filter = ""
 		m.labelPickerState.Cursor = 0
 		return m, nil
@@ -644,8 +642,6 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-			// Reload task detail to update the view
-			m.reloadViewingTask()
 			// Reload task summaries for the current column
 			m.reloadCurrentColumnTasks()
 		} else {
@@ -740,8 +736,6 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.notificationState.Add(state.LevelError, "Failed to assign label to task")
 		}
 
-		// Reload task detail to update the view
-		m.reloadViewingTask()
 		// Reload task summaries for the current column
 		m.reloadCurrentColumnTasks()
 
@@ -780,8 +774,8 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "esc":
 		// Return to the mode specified by ReturnMode
 		returnMode := m.parentPickerState.ReturnMode
-		if returnMode == state.Mode(0) { // Default to ViewTaskMode for backward compat
-			returnMode = state.ViewTaskMode
+		if returnMode == state.Mode(0) { // Default to NormalMode
+			returnMode = state.NormalMode
 		}
 
 		// If returning to TicketFormMode, sync selections back to FormState
@@ -845,8 +839,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							}
 						}
 
-						// Reload task detail and summaries (only in view mode)
-						m.reloadViewingTask()
+						// Reload task summaries
 						m.reloadCurrentColumnTasks()
 					}
 					break
@@ -903,8 +896,8 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "esc":
 		// Return to the mode specified by ReturnMode
 		returnMode := m.childPickerState.ReturnMode
-		if returnMode == state.Mode(0) { // Default to ViewTaskMode for backward compat
-			returnMode = state.ViewTaskMode
+		if returnMode == state.Mode(0) { // Default to NormalMode
+			returnMode = state.NormalMode
 		}
 
 		// If returning to TicketFormMode, sync selections back to FormState
@@ -968,8 +961,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							}
 						}
 
-						// Reload task detail and summaries (only in view mode)
-						m.reloadViewingTask()
+						// Reload task summaries
 						m.reloadCurrentColumnTasks()
 					}
 					break
@@ -1034,20 +1026,6 @@ func (m *Model) syncChildPickerToFormState() {
 
 	m.formState.FormChildIDs = childIDs
 	m.formState.FormChildRefs = childRefs
-}
-
-// reloadViewingTask reloads the task detail being viewed
-func (m *Model) reloadViewingTask() {
-	if m.uiState.ViewingTask() == nil {
-		return
-	}
-
-	taskDetail, err := m.repo.GetTaskDetail(context.Background(), m.uiState.ViewingTask().ID)
-	if err != nil {
-		log.Printf("Error reloading task detail: %v", err)
-		return
-	}
-	m.uiState.SetViewingTask(taskDetail)
 }
 
 // reloadCurrentColumnTasks reloads task summaries for the current column
