@@ -15,6 +15,8 @@ type TaskRepo struct {
 	db *sql.DB
 }
 
+const defaultTaskCapacity = 50
+
 // CreateTask creates a new task in the database with an auto-assigned ticket number
 func (r *TaskRepo) CreateTask(ctx context.Context, title, description string, columnID, position int) (*models.Task, error) {
 	// Get project ID from column
@@ -103,7 +105,7 @@ func (r *TaskRepo) GetTasksByColumn(ctx context.Context, columnID int) ([]*model
 	}
 	defer rows.Close()
 
-	tasks := make([]*models.Task, 0, 50)
+	tasks := make([]*models.Task, 0, defaultTaskCapacity)
 	for rows.Next() {
 		task := &models.Task{}
 		if err := rows.Scan(
@@ -148,7 +150,7 @@ func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) (
 	}
 	defer rows.Close()
 
-	summaries := make([]*models.TaskSummary, 0, 50)
+	summaries := make([]*models.TaskSummary, 0, defaultTaskCapacity)
 	for rows.Next() {
 		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
 		summary := &models.TaskSummary{}
