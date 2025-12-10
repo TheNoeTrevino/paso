@@ -2,6 +2,7 @@ package state
 
 import (
 	"strings"
+	"time"
 
 	"charm.land/huh/v2"
 	"github.com/thenoetrevino/paso/internal/models"
@@ -24,6 +25,10 @@ type FormState struct {
 	FormChildIDs   []int                      // Selected child task IDs
 	FormParentRefs []*models.TaskReference    // Parent task references for display
 	FormChildRefs  []*models.TaskReference    // Child task references for display
+
+	// Task metadata for display (edit mode only)
+	FormCreatedAt time.Time // Task creation timestamp (only populated in edit mode)
+	FormUpdatedAt time.Time // Task last update timestamp (only populated in edit mode)
 
 	// Ticket form initial values (for change detection)
 	InitialFormTitle       string // Initial title value when form was created
