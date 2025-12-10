@@ -37,6 +37,9 @@ type LabelPickerState struct {
 
 	// CreateMode indicates whether we're in color selection mode for new label creation
 	CreateMode bool
+
+	// ReturnMode is the mode to return to after label selection
+	ReturnMode Mode
 }
 
 // NewLabelPickerState creates a new LabelPickerState with default values.
@@ -48,6 +51,7 @@ func NewLabelPickerState() *LabelPickerState {
 		TaskID:     0,
 		ColorIdx:   0,
 		CreateMode: false,
+		ReturnMode: NormalMode,
 	}
 }
 
@@ -76,6 +80,7 @@ func (s *LabelPickerState) Clear() {
 	s.TaskID = 0
 	s.ColorIdx = 0
 	s.CreateMode = false
+	s.ReturnMode = NormalMode
 }
 
 // MoveCursorUp moves the cursor up one position if possible.
