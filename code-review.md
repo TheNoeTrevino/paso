@@ -157,29 +157,7 @@ All database methods accept `context.Context` for cancellation support.
 
 ### ⚠️ **Anti-Patterns & Issues**
 
-#### 2.6 String Comparison for Error Checking ❌
-**File:** `internal/tui/model.go:311`
-
-```go
-if err != errors.New("task is already at the top of the column") {  // WRONG!
-```
-
-**Problem:** Creates new error object for comparison. Will NEVER match.
-
-**Correct Approach:**
-```go
-// In models/errors.go:
-var ErrAlreadyFirstTask = errors.New("task is already at the top")
-
-// In model.go:
-if !errors.Is(err, models.ErrAlreadyFirstTask) {
-```
-
-**Impact:** Critical bug - error handling not working as intended.
-
----
-
-#### 2.7 Missing Bounds Checking on Slice Operations
+#### Missing Bounds Checking on Slice Operations
 **File:** `internal/tui/model.go:various`
 
 ```go
@@ -246,19 +224,6 @@ func (m Model) handleAddTask() (Model, tea.Cmd) {
 **Problem:** TUI layer logs database errors. Logging should happen at repository layer or be returned as domain events.
 
 **Better Approach:** Return structured error, let repository log, TUI displays notification.
-
----
-
-#### 2.11 Magic Numbers Without Constants
-```go
-make([]*models.TaskSummary, 0, 50)  // Why 50?
-```
-
-Should be:
-```go
-const defaultTaskCapacity = 50
-make([]*models.TaskSummary, 0, defaultTaskCapacity)
-```
 
 ---
 
