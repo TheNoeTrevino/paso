@@ -2,7 +2,6 @@ package tui
 
 import (
 	"context"
-	"errors"
 	"log"
 
 	tea "charm.land/bubbletea/v2"
@@ -217,7 +216,9 @@ func (m Model) moveTaskRight() {
 	err := m.repo.MoveTaskToNextColumn(context.Background(), task.ID)
 	if err != nil {
 		log.Printf("Error moving task to next column: %v", err)
-		m.notificationState.Add(state.LevelError, "Failed to move task to next column")
+		if err != models.ErrAlreadyLastColumn {
+			m.notificationState.Add(state.LevelError, "Failed to move task to next column")
+		}
 		return
 	}
 
@@ -264,7 +265,9 @@ func (m Model) moveTaskLeft() {
 	err := m.repo.MoveTaskToPrevColumn(context.Background(), task.ID)
 	if err != nil {
 		log.Printf("Error moving task to previous column: %v", err)
-		m.notificationState.Add(state.LevelError, "Failed to move task to previous column")
+		if err != models.ErrAlreadyFirstColumn {
+			m.notificationState.Add(state.LevelError, "Failed to move task to previous column")
+		}
 		return
 	}
 
@@ -308,7 +311,7 @@ func (m Model) moveTaskUp() {
 	err := m.repo.SwapTaskUp(context.Background(), task.ID)
 	if err != nil {
 		log.Printf("Error moving task up: %v", err)
-		if err != errors.New("task is already at the top of the column") {
+		if err != models.ErrAlreadyFirstTask {
 			m.notificationState.Add(state.LevelError, "Failed to move task up")
 		}
 		return
