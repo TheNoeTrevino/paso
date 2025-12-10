@@ -452,7 +452,11 @@ func (m Model) viewKanbanBoard() string {
 		// Calculate global index for selection check
 		globalIndex := m.uiState.ViewportOffset() + i
 
-		tasks := m.appState.Tasks()[col.ID]
+		// Safe map access with defensive check
+		tasks, ok := m.appState.Tasks()[col.ID]
+		if !ok {
+			tasks = []*models.TaskSummary{}
+		}
 
 		// Determine selection state for this column
 		isSelected := (globalIndex == m.uiState.SelectedColumn())
