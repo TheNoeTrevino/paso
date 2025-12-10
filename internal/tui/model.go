@@ -538,6 +538,42 @@ func (m *Model) initChildPickerForForm() bool {
 	return true
 }
 
+// initLabelPickerForForm initializes the label picker for use in TicketFormMode.
+// In edit mode: loads existing label selections from FormState.
+// In create mode: starts with empty selection (labels applied on form submission).
+//
+// Returns false if there's no current project.
+func (m *Model) initLabelPickerForForm() bool {
+	project := m.getCurrentProject()
+	if project == nil {
+		return false
+	}
+
+	// Build map of currently selected label IDs from form state
+	labelIDMap := make(map[int]bool)
+	for _, labelID := range m.formState.FormLabelIDs {
+		labelIDMap[labelID] = true
+	}
+
+	// Build picker items from all available labels
+	var items []state.LabelPickerItem
+	for _, label := range m.appState.Labels() {
+		items = append(items, state.LabelPickerItem{
+			Label:    label,
+			Selected: labelIDMap[label.ID],
+		})
+	}
+
+	// Initialize LabelPickerState
+	m.labelPickerState.Items = items
+	m.labelPickerState.TaskID = m.formState.EditingTaskID // 0 for create mode
+	m.labelPickerState.Cursor = 0
+	m.labelPickerState.Filter = ""
+	m.labelPickerState.ReturnMode = state.TicketFormMode
+
+	return true
+}
+
 // getFilteredLabelPickerItems returns label picker items filtered by the current filter text
 func (m *Model) getFilteredLabelPickerItems() []state.LabelPickerItem {
 	// Delegate to LabelPickerState which now owns this logic
