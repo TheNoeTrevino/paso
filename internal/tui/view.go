@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/layers"
 	"github.com/thenoetrevino/paso/internal/tui/notifications"
@@ -101,34 +102,55 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 		return nil
 	}
 
-	var contentBuilder strings.Builder
+	// Calculate layer dimensions (80% of screen)
+	layerWidth := m.uiState.Width() * 4 / 5
+	layerHeight := m.uiState.Height() * 4 / 5
 
-	// Title
+	// Calculate zone dimensions
+	leftColumnWidth := layerWidth * 7 / 10   // 70% of layer width
+	rightColumnWidth := layerWidth * 3 / 10  // 30% of layer width
+	topHeight := layerHeight * 6 / 10        // 60% of layer height
+	bottomHeight := layerHeight * 4 / 10     // 40% of layer height
+
+	// Render the three zones
+	topLeftZone := m.renderFormTitleDescriptionZone(leftColumnWidth, topHeight)
+	bottomLeftZone := m.renderFormAssociationsZone(leftColumnWidth, bottomHeight)
+	rightZone := m.renderFormMetadataZone(rightColumnWidth, layerHeight)
+
+	// Compose left column (top + bottom)
+	leftColumn := lipgloss.JoinVertical(lipgloss.Top, topLeftZone, bottomLeftZone)
+
+	// Compose full content (left + right)
+	content := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, rightZone)
+
+	// Add form title
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Highlight))
+	var formTitle string
 	if m.formState.EditingTaskID == 0 {
-		contentBuilder.WriteString(titleStyle.Render("Create New Task") + "\n\n")
+		formTitle = titleStyle.Render("Create New Task")
 	} else {
-		contentBuilder.WriteString(titleStyle.Render("Edit Task") + "\n\n")
+		formTitle = titleStyle.Render("Edit Task")
 	}
 
-	// Parent tasks section
-	contentBuilder.WriteString(m.renderFormParentList())
-
-	// Child tasks section
-	contentBuilder.WriteString(m.renderFormChildList())
-
-	// Help text for shortcuts
+	// Add help text for shortcuts
 	helpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-	contentBuilder.WriteString(helpStyle.Render("Ctrl+P: edit parents  Ctrl+C: edit children") + "\n\n")
+	helpText := helpStyle.Render("Ctrl+L: edit labels  Ctrl+P: edit parents  Ctrl+C: edit children")
 
-	// Render the huh form
-	contentBuilder.WriteString(m.formState.TicketForm.View())
+	// Combine title + content + help
+	fullContent := lipgloss.JoinVertical(
+		lipgloss.Left,
+		formTitle,
+		"",
+		content,
+		"",
+		helpText,
+	)
 
-	// Wrap form in a styled container
+	// Wrap in form box style
 	formBox := FormBoxStyle.
-		Width(m.uiState.Width() * 3 / 4).
-		Height(m.uiState.Height() * 3 / 4).
-		Render(contentBuilder.String())
+		Width(layerWidth).
+		Height(layerHeight).
+		Render(fullContent)
 
 	return layers.CreateCenteredLayer(formBox, m.uiState.Width(), m.uiState.Height())
 }
@@ -538,4 +560,149 @@ func (m Model) renderFormChildList() string {
 
 	b.WriteString("\n")
 	return b.String()
+}
+
+// renderFormTitleDescriptionZone renders the top-left zone with title and description fields
+func (m Model) renderFormTitleDescriptionZone(width, height int) string {
+	if m.formState.TicketForm == nil {
+		return ""
+	}
+
+	// Render the form view (which includes title and description)
+	formView := m.formState.TicketForm.View()
+
+	style := lipgloss.NewStyle().
+		Width(width).
+		Height(height)
+
+	return style.Render(formView)
+}
+
+// renderFormMetadataZone renders the right column with metadata
+func (m Model) renderFormMetadataZone(width, height int) string {
+	var parts []string
+
+	labelHeaderStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle)).
+		Bold(true)
+
+	subtleStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle))
+
+	// Get current timestamps - for create mode, show placeholders
+	var createdStr, updatedStr string
+	if m.formState.EditingTaskID == 0 {
+		createdStr = subtleStyle.Render("(not created yet)")
+		updatedStr = subtleStyle.Render("(not created yet)")
+	} else {
+		// In edit mode, show actual timestamps from FormState
+		createdStr = m.formState.FormCreatedAt.Format("Jan 2, 2006 3:04 PM")
+		updatedStr = m.formState.FormUpdatedAt.Format("Jan 2, 2006 3:04 PM")
+	}
+
+	// Created timestamp
+	parts = append(parts, labelHeaderStyle.Render("Created"))
+	parts = append(parts, createdStr)
+	parts = append(parts, "")
+
+	// Updated timestamp
+	parts = append(parts, labelHeaderStyle.Render("Updated"))
+	parts = append(parts, updatedStr)
+	parts = append(parts, "")
+
+	// Edited indicator (unsaved changes)
+	parts = append(parts, labelHeaderStyle.Render("Status"))
+	if m.formState.HasTicketFormChanges() {
+		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight))
+		parts = append(parts, warningStyle.Render("● Unsaved Changes"))
+	} else {
+		parts = append(parts, subtleStyle.Render("○ No Changes"))
+	}
+	parts = append(parts, "")
+
+	// Labels section
+	parts = append(parts, labelHeaderStyle.Render("Labels"))
+	if len(m.formState.FormLabelIDs) == 0 {
+		parts = append(parts, subtleStyle.Render("No labels"))
+	} else {
+		// Get label objects from IDs
+		labelMap := make(map[int]*models.Label)
+		for _, label := range m.appState.Labels() {
+			labelMap[label.ID] = label
+		}
+
+		for _, labelID := range m.formState.FormLabelIDs {
+			if label, ok := labelMap[labelID]; ok {
+				parts = append(parts, components.RenderLabelChip(label))
+			}
+		}
+	}
+	parts = append(parts, "")
+
+	content := strings.Join(parts, "\n")
+
+	style := lipgloss.NewStyle().
+		Width(width).
+		Height(height).
+		Padding(0, 1).
+		BorderLeft(true).
+		BorderStyle(lipgloss.Border{
+			Left: "│",
+		}).
+		BorderForeground(lipgloss.Color(theme.Subtle))
+
+	return style.Render(content)
+}
+
+// renderFormAssociationsZone renders the bottom-left zone with parent and child tasks
+func (m Model) renderFormAssociationsZone(width, height int) string {
+	var parts []string
+
+	headerStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle)).
+		Bold(true)
+
+	subtleStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle)).
+		Italic(true)
+
+	taskStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Normal))
+
+	// Parent Tasks section
+	parts = append(parts, headerStyle.Render("Parent Tasks"))
+	if len(m.formState.FormParentRefs) == 0 {
+		parts = append(parts, subtleStyle.Render("No Parent Tasks Found"))
+	} else {
+		for _, parent := range m.formState.FormParentRefs {
+			taskLine := fmt.Sprintf("%s-%d %s", parent.ProjectName, parent.TicketNumber, parent.Title)
+			parts = append(parts, taskStyle.Render(taskLine))
+		}
+	}
+	parts = append(parts, "")
+
+	// Child Tasks section
+	parts = append(parts, headerStyle.Render("Child Tasks"))
+	if len(m.formState.FormChildRefs) == 0 {
+		parts = append(parts, subtleStyle.Render("No Child Tasks Found"))
+	} else {
+		for _, child := range m.formState.FormChildRefs {
+			taskLine := fmt.Sprintf("%s-%d %s", child.ProjectName, child.TicketNumber, child.Title)
+			parts = append(parts, taskStyle.Render(taskLine))
+		}
+	}
+
+	content := strings.Join(parts, "\n")
+
+	style := lipgloss.NewStyle().
+		Width(width).
+		Height(height).
+		Padding(1).
+		BorderTop(true).
+		BorderStyle(lipgloss.Border{
+			Top: "─",
+		}).
+		BorderForeground(lipgloss.Color(theme.Subtle))
+
+	return style.Render(content)
 }

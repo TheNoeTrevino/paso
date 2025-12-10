@@ -2,17 +2,16 @@ package huhforms
 
 import (
 	"charm.land/huh/v2"
-	"github.com/thenoetrevino/paso/internal/models"
 )
 
 // CreateTicketForm creates a huh form for adding/editing a ticket
 // The form uses pointers to update values in place, matching the existing pattern
+// Labels are now edited via Ctrl+L in the form view
 func CreateTicketForm(
 	title *string,
 	description *string,
-	labelIDs *[]int,
-	labels []*models.Label,
 	confirm *bool,
+	descriptionLines int,
 ) *huh.Form {
 	var fields []huh.Field
 
@@ -25,34 +24,16 @@ func CreateTicketForm(
 			Value(title),
 	)
 
-	// Description text area field
+	// Description text area field with dynamic height
 	fields = append(fields,
 		huh.NewText().
 			Key("description").
 			Title("Description").
 			Placeholder("Enter task description...").
 			CharLimit(500).
-			Lines(5).
+			Lines(descriptionLines).
 			Value(description),
 	)
-
-	// Labels multi-select (only if labels exist)
-	if len(labels) > 0 {
-		var labelOptions []huh.Option[int]
-		for _, label := range labels {
-			labelOptions = append(labelOptions, huh.NewOption(label.Name, label.ID))
-		}
-
-		fields = append(fields,
-			huh.NewMultiSelect[int]().
-				Key("labels").
-				Title("Labels").
-				Description("Space to toggle, / to filter").
-				Options(labelOptions...).
-				Value(labelIDs).
-				Filterable(true),
-		)
-	}
 
 	// Confirmation
 	fields = append(fields,
