@@ -1,9 +1,5 @@
 package state
 
-import (
-	"github.com/thenoetrevino/paso/internal/models"
-)
-
 // Mode represents the current interaction mode of the TUI.
 // Each mode determines which keyboard shortcuts are active and what UI is displayed.
 type Mode int
@@ -16,7 +12,6 @@ const (
 	EditColumnMode                      // Renaming an existing column
 	DeleteColumnConfirmMode             // Confirming column deletion
 	HelpMode                            // Displaying help screen
-	ViewTaskMode                        // Viewing full task details
 	TicketFormMode                      // Full ticket form with huh
 	ProjectFormMode                     // Creating a new project with huh
 	LabelManagementMode                 // Managing labels (create/edit/delete)
@@ -59,9 +54,6 @@ type UIState struct {
 	// viewportSize is the number of columns that fit on the screen
 	viewportSize int
 
-	// viewingTask is the full task detail currently being viewed (nil if not in ViewTaskMode)
-	viewingTask *models.TaskDetail
-
 	// discardContext holds context for discard confirmation dialogs
 	discardContext *DiscardContext
 }
@@ -76,7 +68,6 @@ func NewUIState() *UIState {
 		mode:           NormalMode,
 		viewportOffset: 0,
 		viewportSize:   1, // Default to 1, will be recalculated when width is set
-		viewingTask:    nil,
 	}
 }
 
@@ -144,16 +135,6 @@ func (s *UIState) SetViewportOffset(offset int) {
 // ViewportSize returns the number of columns that fit on screen.
 func (s *UIState) ViewportSize() int {
 	return s.viewportSize
-}
-
-// ViewingTask returns the task currently being viewed in detail.
-func (s *UIState) ViewingTask() *models.TaskDetail {
-	return s.viewingTask
-}
-
-// SetViewingTask updates the task being viewed.
-func (s *UIState) SetViewingTask(task *models.TaskDetail) {
-	s.viewingTask = task
 }
 
 // calculateViewportSize calculates how many columns can fit in the terminal width.

@@ -32,7 +32,6 @@ func (m Model) View() tea.View {
 		m.uiState.Mode() == state.AddColumnMode ||
 		m.uiState.Mode() == state.EditColumnMode ||
 		m.uiState.Mode() == state.HelpMode ||
-		m.uiState.Mode() == state.ViewTaskMode ||
 		m.uiState.Mode() == state.NormalMode ||
 		m.uiState.Mode() == state.SearchMode
 
@@ -56,8 +55,6 @@ func (m Model) View() tea.View {
 			modalLayer = m.renderColumnInputLayer()
 		case state.HelpMode:
 			modalLayer = m.renderHelpLayer()
-		case state.ViewTaskMode:
-			modalLayer = m.renderTaskDetailLayer()
 		}
 
 		if modalLayer != nil {
@@ -246,29 +243,6 @@ func (m Model) renderHelpLayer() *lipgloss.Layer {
 	return layers.CreateCenteredLayer(helpBox, m.uiState.Width(), m.uiState.Height())
 }
 
-// renderTaskDetailLayer renders the task detail view as a centered layer
-func (m Model) renderTaskDetailLayer() *lipgloss.Layer {
-	if m.uiState.ViewingTask() == nil {
-		return nil
-	}
-
-	// Find the column name for the task
-	columnName := "Unknown"
-	if col := m.appState.GetColumnByID(m.uiState.ViewingTask().ColumnID); col != nil {
-		columnName = col.Name
-	}
-
-	// Render task view content (without positioning)
-	taskViewContent := components.RenderTaskView(components.TaskViewProps{
-		Task:        m.uiState.ViewingTask(),
-		ColumnName:  columnName,
-		PopupWidth:  m.uiState.Width() * 3 / 4,
-		PopupHeight: m.uiState.Height() * 3 / 4,
-	})
-
-	return layers.CreateCenteredLayer(taskViewContent, m.uiState.Width(), m.uiState.Height())
-}
-
 // generateHelpText creates help text based on current key mappings
 func (m Model) generateHelpText() string {
 	km := m.config.KeyMappings
@@ -282,10 +256,7 @@ TASKS
   %s     Move task to next column
   %s     Move task up in column
   %s     Move task down in column
-  %s     View task details
-  %s     Edit labels (when viewing task)
-  %s     Edit parent tasks (when viewing task)
-  %s     Edit child tasks (when viewing task)
+  %s     Edit task details
 
 COLUMNS
   %s     Create new column (after current)
@@ -310,8 +281,7 @@ Press any key to close`,
 		km.AddTask, km.EditTask, km.DeleteTask,
 		km.MoveTaskLeft, km.MoveTaskRight,
 		km.MoveTaskUp, km.MoveTaskDown,
-		formatKey(km.ViewTask), km.EditLabels,
-		km.EditParentTask, km.EditChildTask,
+		formatKey(km.ViewTask),
 		km.CreateColumn, km.RenameColumn, km.DeleteColumn,
 		km.PrevColumn, km.NextColumn,
 		km.PrevTask, km.NextTask,
