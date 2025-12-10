@@ -434,8 +434,10 @@ func (m Model) handleInputCancel() (tea.Model, tea.Cmd) {
 func (m Model) createColumn() (tea.Model, tea.Cmd) {
 	var afterColumnID *int
 	if len(m.appState.Columns()) > 0 {
-		currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
-		afterColumnID = &currentCol.ID
+		currentCol := m.getCurrentColumn()
+		if currentCol != nil {
+			afterColumnID = &currentCol.ID
+		}
 	}
 
 	projectID := 0
