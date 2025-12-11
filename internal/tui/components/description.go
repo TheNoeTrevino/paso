@@ -4,8 +4,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/charmbracelet/glamour"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/glamour"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 

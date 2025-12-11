@@ -21,10 +21,10 @@ type FormState struct {
 	FormConfirm     bool      // Form field: confirmation (submit vs cancel)
 
 	// Parent/child issue tracking for ticket form
-	FormParentIDs  []int                      // Selected parent task IDs
-	FormChildIDs   []int                      // Selected child task IDs
-	FormParentRefs []*models.TaskReference    // Parent task references for display
-	FormChildRefs  []*models.TaskReference    // Child task references for display
+	FormParentIDs  []int                   // Selected parent task IDs
+	FormChildIDs   []int                   // Selected child task IDs
+	FormParentRefs []*models.TaskReference // Parent task references for display
+	FormChildRefs  []*models.TaskReference // Child task references for display
 
 	// Task metadata for display (edit mode only)
 	FormCreatedAt time.Time // Task creation timestamp (only populated in edit mode)
@@ -209,9 +209,9 @@ func (s *FormState) HasProjectFormChanges() bool {
 func (s *FormState) SnapshotTicketFormInitialValues() {
 	s.InitialFormTitle = s.FormTitle
 	s.InitialFormDescription = s.FormDescription
-	s.InitialFormLabelIDs = append([]int{}, s.FormLabelIDs...)     // Copy slice
-	s.InitialFormParentIDs = append([]int{}, s.FormParentIDs...)   // Copy slice
-	s.InitialFormChildIDs = append([]int{}, s.FormChildIDs...)     // Copy slice
+	s.InitialFormLabelIDs = append([]int{}, s.FormLabelIDs...)   // Copy slice
+	s.InitialFormParentIDs = append([]int{}, s.FormParentIDs...) // Copy slice
+	s.InitialFormChildIDs = append([]int{}, s.FormChildIDs...)   // Copy slice
 }
 
 // SnapshotProjectFormInitialValues stores current project form values as initial state.

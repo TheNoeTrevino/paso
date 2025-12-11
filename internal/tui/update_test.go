@@ -5,7 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/models"
-	"github.com/thenoetrevino/paso/internal/tui/forms"
+	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -19,9 +19,9 @@ func TestModeDispatch_TicketFormMode(t *testing.T) {
 	// Create a simple form (will be nil initially, but mode is what matters)
 	m.uiState.SetMode(state.TicketFormMode)
 	title := ""
-	m.formState.TicketForm = forms.NewForm(
-		forms.NewTextInput("title", "Title", "Enter title...", &title),
-	)
+	description := ""
+	confirm := false
+	m.formState.TicketForm = huhforms.CreateTicketForm(&title, &description, &confirm, 5)
 
 	// Send a key message
 	keyMsg := tea.KeyPressMsg(tea.Key{Text: "a", Code: 'a'})
@@ -80,9 +80,9 @@ func TestUpdateTicketForm_EscapeCancels(t *testing.T) {
 	// Set up form mode
 	m.uiState.SetMode(state.TicketFormMode)
 	title := ""
-	m.formState.TicketForm = forms.NewForm(
-		forms.NewTextInput("title", "Title", "Enter title...", &title),
-	)
+	description := ""
+	confirm := false
+	m.formState.TicketForm = huhforms.CreateTicketForm(&title, &description, &confirm, 5)
 
 	// Send ESC key
 	keyMsg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})

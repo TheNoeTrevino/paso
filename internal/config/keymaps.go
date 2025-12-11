@@ -3,15 +3,15 @@ package config
 // KeyMappings defines all configurable key bindings
 type KeyMappings struct {
 	// Tasks
-	AddTask       string `yaml:"add_task"`
-	EditTask      string `yaml:"edit_task"`
-	DeleteTask    string `yaml:"delete_task"`
-	MoveTaskLeft  string `yaml:"move_task_left"`
-	MoveTaskRight string `yaml:"move_task_right"`
-	MoveTaskUp    string `yaml:"move_task_up"`
-	MoveTaskDown  string `yaml:"move_task_down"`
-	ViewTask      string `yaml:"view_task"`
-	EditLabels    string `yaml:"edit_labels"`
+	AddTask        string `yaml:"add_task"`
+	EditTask       string `yaml:"edit_task"`
+	DeleteTask     string `yaml:"delete_task"`
+	MoveTaskLeft   string `yaml:"move_task_left"`
+	MoveTaskRight  string `yaml:"move_task_right"`
+	MoveTaskUp     string `yaml:"move_task_up"`
+	MoveTaskDown   string `yaml:"move_task_down"`
+	ViewTask       string `yaml:"view_task"`
+	EditLabels     string `yaml:"edit_labels"`
 	EditParentTask string `yaml:"edit_parent_task"`
 	EditChildTask  string `yaml:"edit_child_task"`
 
@@ -45,15 +45,15 @@ type KeyMappings struct {
 func DefaultKeyMappings() KeyMappings {
 	return KeyMappings{
 		// Tasks
-		AddTask:       "a",
-		EditTask:      "e",
-		DeleteTask:    "d",
-		MoveTaskLeft:  "L",
-		MoveTaskRight: "H",
-		MoveTaskUp:    "K",
-		MoveTaskDown:  "J",
-		ViewTask:      " ",
-		EditLabels:    "l",
+		AddTask:        "a",
+		EditTask:       "e",
+		DeleteTask:     "d",
+		MoveTaskLeft:   "L",
+		MoveTaskRight:  "H",
+		MoveTaskUp:     "K",
+		MoveTaskDown:   "J",
+		ViewTask:       " ",
+		EditLabels:     "l",
 		EditParentTask: "p",
 		EditChildTask:  "c",
 		SaveForm:       "ctrl+s",
