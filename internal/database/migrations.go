@@ -1,11 +1,14 @@
 package database
 
-import "database/sql"
+import (
+	"context"
+	"database/sql"
+)
 
 // runMigrations creates the database schema and seeds default data if needed
-func runMigrations(db *sql.DB) error {
+func runMigrations(ctx context.Context, db *sql.DB) error {
 	// Create projects table
-	_, err := db.Exec(`
+	_, err := db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS projects (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL,
@@ -19,7 +22,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Create project_counters table for ticket numbering per project
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS project_counters (
 			project_id INTEGER PRIMARY KEY,
 			next_ticket_number INTEGER DEFAULT 1,
@@ -31,7 +34,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Create columns table
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS columns (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL,
@@ -43,7 +46,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Create tasks table
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS tasks (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			title TEXT NOT NULL,
@@ -60,7 +63,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Create index for efficient task queries
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE INDEX IF NOT EXISTS idx_tasks_column
 		ON tasks(column_id, position)
 	`)
@@ -69,7 +72,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Create labels table (project-specific)
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS labels (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL,
@@ -84,7 +87,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Create task_labels join table (many-to-many)
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS task_labels (
 			task_id INTEGER NOT NULL,
 			label_id INTEGER NOT NULL,
@@ -98,43 +101,43 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Seed default project if no projects exist
-	if err := seedDefaultProject(db); err != nil {
+	if err := seedDefaultProject(ctx, db); err != nil {
 		return err
 	}
 
 	// Seed default columns if the table is empty
-	if err := seedDefaultColumns(db); err != nil {
+	if err := seedDefaultColumns(ctx, db); err != nil {
 		return err
 	}
 
 	// Migrate to linked list structure
-	if err := migrateToLinkedList(db); err != nil {
+	if err := migrateToLinkedList(ctx, db); err != nil {
 		return err
 	}
 
 	// Migrate columns to include project_id
-	if err := migrateColumnsToProject(db); err != nil {
+	if err := migrateColumnsToProject(ctx, db); err != nil {
 		return err
 	}
 
 	// Migrate tasks to include ticket_number
-	if err := migrateTasksTicketNumber(db); err != nil {
+	if err := migrateTasksTicketNumber(ctx, db); err != nil {
 		return err
 	}
 
 	// Migrate labels to include project_id and seed default labels
-	if err := migrateLabelsToProject(db); err != nil {
+	if err := migrateLabelsToProject(ctx, db); err != nil {
 		return err
 	}
 
 	// Migrate task_subtasks table for parent/child relationships
-	if err := migrateTaskSubtasks(db); err != nil {
+	if err := migrateTaskSubtasks(ctx, db); err != nil {
 		return err
 	}
 
 	// Create indexes AFTER all table/column migrations are complete
 	// Index on columns.project_id for efficient project-based queries
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE INDEX IF NOT EXISTS idx_columns_project
 		ON columns(project_id)
 	`)
@@ -143,7 +146,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Index on labels.project_id for efficient project-based label queries
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE INDEX IF NOT EXISTS idx_labels_project
 		ON labels(project_id)
 	`)
@@ -152,7 +155,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Index on task_labels.label_id for efficient label lookups
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE INDEX IF NOT EXISTS idx_task_labels_label
 		ON task_labels(label_id)
 	`)
@@ -164,7 +167,7 @@ func runMigrations(db *sql.DB) error {
 }
 
 // seedDefaultColumns inserts default columns if the columns table is empty
-func seedDefaultColumns(db *sql.DB) error {
+func seedDefaultColumns(ctx context.Context, db *sql.DB) error {
 	// Check if columns table is empty
 	var count int
 	err := db.QueryRow("SELECT COUNT(*) FROM columns").Scan(&count)
@@ -188,7 +191,7 @@ func seedDefaultColumns(db *sql.DB) error {
 	}
 
 	for _, col := range defaultColumns {
-		_, err := db.Exec(
+		_, err := db.ExecContext(ctx,
 			"INSERT INTO columns (name, position) VALUES (?, ?)",
 			col.name, col.position,
 		)
@@ -202,7 +205,7 @@ func seedDefaultColumns(db *sql.DB) error {
 
 // migrateToLinkedList converts the position-based column ordering to a linked list structure
 // This migration is idempotent and can be run multiple times safely
-func migrateToLinkedList(db *sql.DB) error {
+func migrateToLinkedList(ctx context.Context, db *sql.DB) error {
 	// Check if prev_id column already exists
 	var count int
 	err := db.QueryRow(`
@@ -319,7 +322,7 @@ func migrateToLinkedList(db *sql.DB) error {
 }
 
 // seedDefaultProject creates a default project if no projects exist
-func seedDefaultProject(db *sql.DB) error {
+func seedDefaultProject(ctx context.Context, db *sql.DB) error {
 	// Check if projects table is empty
 	var count int
 	err := db.QueryRow("SELECT COUNT(*) FROM projects").Scan(&count)
@@ -333,7 +336,7 @@ func seedDefaultProject(db *sql.DB) error {
 	}
 
 	// Insert default project
-	result, err := db.Exec(
+	result, err := db.ExecContext(ctx,
 		`INSERT INTO projects (name, description) VALUES (?, ?)`,
 		"Default", "Default project",
 	)
@@ -347,7 +350,7 @@ func seedDefaultProject(db *sql.DB) error {
 		return err
 	}
 
-	_, err = db.Exec(
+	_, err = db.ExecContext(ctx,
 		`INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)`,
 		projectID,
 	)
@@ -355,7 +358,7 @@ func seedDefaultProject(db *sql.DB) error {
 }
 
 // migrateColumnsToProject adds project_id column to columns table and associates existing columns with default project
-func migrateColumnsToProject(db *sql.DB) error {
+func migrateColumnsToProject(ctx context.Context, db *sql.DB) error {
 	// Check if project_id column already exists
 	var count int
 	err := db.QueryRow(`
@@ -401,7 +404,7 @@ func migrateColumnsToProject(db *sql.DB) error {
 }
 
 // migrateTasksTicketNumber adds ticket_number column to tasks table
-func migrateTasksTicketNumber(db *sql.DB) error {
+func migrateTasksTicketNumber(ctx context.Context, db *sql.DB) error {
 	// Check if ticket_number column already exists
 	var count int
 	err := db.QueryRow(`
@@ -489,7 +492,7 @@ func migrateTasksTicketNumber(db *sql.DB) error {
 }
 
 // migrateLabelsToProject adds project_id column to labels table and seeds default labels
-func migrateLabelsToProject(db *sql.DB) error {
+func migrateLabelsToProject(ctx context.Context, db *sql.DB) error {
 	// Check if project_id column already exists
 	var count int
 	err := db.QueryRow(`
@@ -539,11 +542,11 @@ func migrateLabelsToProject(db *sql.DB) error {
 	}
 
 	// Seed default labels for all projects that don't have labels yet
-	return seedDefaultLabels(db)
+	return seedDefaultLabels(ctx, db)
 }
 
 // seedDefaultLabels seeds default GitHub-style labels for projects that don't have any labels
-func seedDefaultLabels(db *sql.DB) error {
+func seedDefaultLabels(ctx context.Context, db *sql.DB) error {
 	// Default labels (GitHub-style)
 	defaultLabels := []struct {
 		name  string
@@ -588,7 +591,7 @@ func seedDefaultLabels(db *sql.DB) error {
 		// Only seed if project has no labels
 		if labelCount == 0 {
 			for _, label := range defaultLabels {
-				_, err := db.Exec(
+				_, err := db.ExecContext(ctx,
 					`INSERT OR IGNORE INTO labels (name, color, project_id) VALUES (?, ?, ?)`,
 					label.name, label.color, projectID,
 				)
@@ -603,7 +606,7 @@ func seedDefaultLabels(db *sql.DB) error {
 }
 
 // migrateTaskSubtasks creates the task_subtasks join table for parent/child task relationships
-func migrateTaskSubtasks(db *sql.DB) error {
+func migrateTaskSubtasks(ctx context.Context, db *sql.DB) error {
 	// Check if task_subtasks table already exists
 	var count int
 	err := db.QueryRow(`

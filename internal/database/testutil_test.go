@@ -23,21 +23,21 @@ func setupTestDB(t *testing.T) *sql.DB {
 	}
 
 	// Enable foreign key constraints
-	_, err = db.Exec("PRAGMA foreign_keys = ON")
+	_, err = db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
 	if err != nil {
 		t.Fatalf("Failed to enable foreign keys: %v", err)
 	}
 
-	if err := runMigrations(db); err != nil {
+	if err := runMigrations(context.Background(), db); err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
 
 	// Clear seeded data for fresh tests
-	_, err = db.Exec("DELETE FROM columns")
+	_, err = db.ExecContext(context.Background(), "DELETE FROM columns")
 	if err != nil {
 		t.Fatalf("Failed to clear columns: %v", err)
 	}
-	_, err = db.Exec("DELETE FROM labels")
+	_, err = db.ExecContext(context.Background(), "DELETE FROM labels")
 	if err != nil {
 		t.Fatalf("Failed to clear labels: %v", err)
 	}
@@ -61,21 +61,21 @@ func setupTestDBFile(t *testing.T) (*sql.DB, string) {
 	}
 
 	// Enable foreign key constraints
-	_, err = db.Exec("PRAGMA foreign_keys = ON")
+	_, err = db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
 	if err != nil {
 		db.Close()
 		os.Remove(tmpfile.Name())
 		t.Fatalf("Failed to enable foreign keys: %v", err)
 	}
 
-	if err := runMigrations(db); err != nil {
+	if err := runMigrations(context.Background(), db); err != nil {
 		db.Close()
 		os.Remove(tmpfile.Name())
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
 
 	// Clear default seeded columns for fresh tests
-	_, err = db.Exec("DELETE FROM columns")
+	_, err = db.ExecContext(context.Background(), "DELETE FROM columns")
 	if err != nil {
 		db.Close()
 		os.Remove(tmpfile.Name())
@@ -98,7 +98,7 @@ func closeAndReopenDB(t *testing.T, db *sql.DB, dbPath string) *sql.DB {
 	}
 
 	// Enable foreign key constraints
-	_, err = newDB.Exec("PRAGMA foreign_keys = ON")
+	_, err = newDB.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
 	if err != nil {
 		t.Fatalf("Failed to enable foreign keys: %v", err)
 	}
@@ -111,9 +111,9 @@ func closeAndReopenDB(t *testing.T, db *sql.DB, dbPath string) *sql.DB {
 // ============================================================================
 
 // verifyLinkedListIntegrity checks that all columns are properly linked
-func verifyLinkedListIntegrity(t *testing.T, repo *Repository, projectID int) {
+func verifyLinkedListIntegrity(t *testing.T, ctx context.Context, repo *Repository, projectID int) {
 	t.Helper()
-	columns, err := repo.GetColumnsByProject(context.Background(), projectID)
+	columns, err := repo.GetColumnsByProject(ctx, projectID)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
