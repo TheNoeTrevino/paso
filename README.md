@@ -149,6 +149,14 @@ Phase 2 will implement the Bubble Tea TUI framework to create the interactive te
 
 ## Running Tests
 
+### Go concurrent runner
+
+``` bash
+go run ./cmd/ci
+```
+
+### Manually
+
 Run all tests in all packages
 
 ``` bash

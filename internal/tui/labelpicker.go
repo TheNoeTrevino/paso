@@ -61,15 +61,15 @@ func RenderLabelPicker(
 
 		// Apply cursor styling
 		if i == cursorIdx {
-			content.WriteString(selectedStyle.Render("> " + line) + "\n")
+			content.WriteString(selectedStyle.Render("> "+line) + "\n")
 		} else {
-			content.WriteString(normalStyle.Render("  " + line) + "\n")
+			content.WriteString(normalStyle.Render("  "+line) + "\n")
 		}
 	}
 
 	// Show "no results" if filter matched nothing
 	if len(filteredItems) == 0 && filterText != "" {
-		content.WriteString(dimStyle.Render("  No labels match \"" + filterText + "\"") + "\n")
+		content.WriteString(dimStyle.Render("  No labels match \""+filterText+"\"") + "\n")
 	}
 
 	// Create new label option
@@ -82,9 +82,9 @@ func RenderLabelPicker(
 		}
 
 		if cursorIdx == createOptionIdx {
-			content.WriteString(selectedStyle.Render("> " + createText) + "\n")
+			content.WriteString(selectedStyle.Render("> "+createText) + "\n")
 		} else {
-			content.WriteString(normalStyle.Render("  " + createText) + "\n")
+			content.WriteString(normalStyle.Render("  "+createText) + "\n")
 		}
 	}
 
@@ -127,9 +127,9 @@ func RenderLabelColorPicker(
 		line := colorBlock + " " + c.Name
 
 		if i == cursorIdx {
-			content.WriteString(selectedStyle.Render("> " + line) + "\n")
+			content.WriteString(selectedStyle.Render("> "+line) + "\n")
 		} else {
-			content.WriteString(normalStyle.Render("  " + line) + "\n")
+			content.WriteString(normalStyle.Render("  "+line) + "\n")
 		}
 	}
 
