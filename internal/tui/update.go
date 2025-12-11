@@ -96,12 +96,17 @@ func (m Model) extractTicketFormValues() ticketFormValues {
 
 // createNewTaskWithLabels creates a new task and sets its labels
 func (m Model) createNewTaskWithLabels(values ticketFormValues) {
-	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+	currentCol := m.getCurrentColumn()
+	if currentCol == nil {
+		m.notificationState.Add(state.LevelError, "No column selected")
+		return
+	}
+
 	task, err := m.repo.CreateTask(context.Background(),
 		values.title,
 		values.description,
 		currentCol.ID,
-		len(m.appState.Tasks()[currentCol.ID]),
+		len(m.getTasksForColumn(currentCol.ID)),
 	)
 	if err != nil {
 		log.Printf("Error creating task: %v", err)
@@ -142,7 +147,11 @@ func (m Model) updateExistingTaskWithLabels(values ticketFormValues) {
 	}
 
 	// Reload task summaries for the column
-	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+	currentCol := m.getCurrentColumn()
+	if currentCol == nil {
+		return
+	}
+
 	summaries, err := m.repo.GetTaskSummariesByColumn(context.Background(), currentCol.ID)
 	if err != nil {
 		log.Printf("Error reloading tasks: %v", err)
@@ -153,14 +162,18 @@ func (m Model) updateExistingTaskWithLabels(values ticketFormValues) {
 
 // createNewTaskWithLabelsAndRelationships creates a new task, sets labels, and applies parent/child relationships
 func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues) {
-	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+	currentCol := m.getCurrentColumn()
+	if currentCol == nil {
+		m.notificationState.Add(state.LevelError, "No column selected")
+		return
+	}
 
 	// 1. Create the task
 	task, err := m.repo.CreateTask(context.Background(),
 		values.title,
 		values.description,
 		currentCol.ID,
-		len(m.appState.Tasks()[currentCol.ID]),
+		len(m.getTasksForColumn(currentCol.ID)),
 	)
 	if err != nil {
 		log.Printf("Error creating task: %v", err)
@@ -303,7 +316,11 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	}
 
 	// 5. Reload task summaries for the column
-	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+	currentCol := m.getCurrentColumn()
+	if currentCol == nil {
+		return
+	}
+
 	summaries, err := m.repo.GetTaskSummariesByColumn(ctx, currentCol.ID)
 	if err != nil {
 		log.Printf("Error reloading tasks: %v", err)
@@ -1063,11 +1080,11 @@ func (m *Model) syncLabelPickerToFormState() {
 
 // reloadCurrentColumnTasks reloads task summaries for the current column
 func (m *Model) reloadCurrentColumnTasks() {
-	if len(m.appState.Columns()) == 0 || m.uiState.SelectedColumn() >= len(m.appState.Columns()) {
+	currentCol := m.getCurrentColumn()
+	if currentCol == nil {
 		return
 	}
 
-	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 	summaries, err := m.repo.GetTaskSummariesByColumn(context.Background(), currentCol.ID)
 	if err != nil {
 		log.Printf("Error reloading column tasks: %v", err)

@@ -110,7 +110,7 @@ func (s *NotificationState) GetLayers(renderFunc func(Notification) string) []*l
 			prevNotif := renderFunc(s.notifications[j])
 			row += lipgloss.Height(prevNotif) + 1 // +1 for spacing
 		}
-		
+
 		col := s.windowWidth - notifWidth - 1 // 1 char padding from right edge
 
 		// Ensure we don't go off screen

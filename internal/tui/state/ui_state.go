@@ -154,7 +154,7 @@ func (s *UIState) calculateViewportSize() {
 		return
 	}
 
-	const columnWidth = 46 // 40 content + 2 padding + 2 border + 2 spacing
+	const columnWidth = 46  // 40 content + 2 padding + 2 border + 2 spacing
 	const reservedWidth = 4 // margins and scroll indicators
 
 	availableWidth := s.width - reservedWidth
@@ -245,4 +245,3 @@ func (s *UIState) SetDiscardContext(ctx *DiscardContext) {
 func (s *UIState) ClearDiscardContext() {
 	s.discardContext = nil
 }
-

@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -15,6 +14,8 @@ import (
 type TaskRepo struct {
 	db *sql.DB
 }
+
+const defaultTaskCapacity = 50
 
 // CreateTask creates a new task in the database with an auto-assigned ticket number
 func (r *TaskRepo) CreateTask(ctx context.Context, title, description string, columnID, position int) (*models.Task, error) {
@@ -104,7 +105,7 @@ func (r *TaskRepo) GetTasksByColumn(ctx context.Context, columnID int) ([]*model
 	}
 	defer rows.Close()
 
-	tasks := make([]*models.Task, 0, 50)
+	tasks := make([]*models.Task, 0, defaultTaskCapacity)
 	for rows.Next() {
 		task := &models.Task{}
 		if err := rows.Scan(
@@ -149,7 +150,7 @@ func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) (
 	}
 	defer rows.Close()
 
-	summaries := make([]*models.TaskSummary, 0, 50)
+	summaries := make([]*models.TaskSummary, 0, defaultTaskCapacity)
 	for rows.Next() {
 		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
 		summary := &models.TaskSummary{}
@@ -407,7 +408,7 @@ func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 
 	// 3. Check if there's a next column
 	if !nextColumnID.Valid {
-		return errors.New("task is already in the last column")
+		return models.ErrAlreadyLastColumn
 	}
 
 	// 4. Get the number of tasks in the next column to determine position
@@ -468,7 +469,7 @@ func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 
 	// 3. Check if there's a previous column
 	if !prevColumnID.Valid {
-		return errors.New("task is already in the first column")
+		return models.ErrAlreadyFirstColumn
 	}
 
 	// 4. Get the number of tasks in the previous column to determine position

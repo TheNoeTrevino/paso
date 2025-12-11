@@ -2,7 +2,6 @@ package tui
 
 import (
 	"context"
-	"errors"
 	"log"
 
 	tea "charm.land/bubbletea/v2"
@@ -136,12 +135,12 @@ func (m Model) getCurrentTask() *models.TaskSummary {
 // This should be called after successfully deleting a task from the database
 // It adjusts the selectedTask index if necessary to keep it within bounds
 func (m Model) removeCurrentTask() {
-	if len(m.appState.Columns()) == 0 {
+	currentCol := m.getCurrentColumn()
+	if currentCol == nil {
 		return
 	}
 
-	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
-	tasks := m.appState.Tasks()[currentCol.ID]
+	tasks := m.getTasksForColumn(currentCol.ID)
 
 	if len(tasks) == 0 || m.uiState.SelectedTask() >= len(tasks) {
 		return
@@ -162,10 +161,36 @@ func (m Model) getCurrentColumn() *models.Column {
 	if len(m.appState.Columns()) == 0 {
 		return nil
 	}
-	if m.uiState.SelectedColumn() >= len(m.appState.Columns()) {
+	selectedIdx := m.uiState.SelectedColumn()
+	if selectedIdx < 0 || selectedIdx >= len(m.appState.Columns()) {
 		return nil
 	}
-	return m.appState.Columns()[m.uiState.SelectedColumn()]
+	return m.appState.Columns()[selectedIdx]
+}
+
+// getTasksForColumn returns tasks for a specific column ID with safe map access.
+// Returns an empty slice if the column ID doesn't exist in the tasks map.
+func (m Model) getTasksForColumn(columnID int) []*models.TaskSummary {
+	tasks, ok := m.appState.Tasks()[columnID]
+	if !ok || tasks == nil {
+		return []*models.TaskSummary{}
+	}
+	return tasks
+}
+
+// getColumnAtIndex returns the column at the specified index with bounds checking.
+// Returns nil if index is out of bounds.
+func (m Model) getColumnAtIndex(index int) *models.Column {
+	if index < 0 || index >= len(m.appState.Columns()) {
+		return nil
+	}
+	return m.appState.Columns()[index]
+}
+
+// getCurrentColumnTasks returns tasks for the currently selected column.
+// Returns an empty slice if there's no current column or it has no tasks.
+func (m Model) getCurrentColumnTasks() []*models.TaskSummary {
+	return m.getCurrentTasks()
 }
 
 // removeCurrentColumn removes the currently selected column from the model's local state
@@ -206,7 +231,10 @@ func (m Model) moveTaskRight() {
 	}
 
 	// Check if there's a next column using the linked list
-	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+	currentCol := m.getCurrentColumn()
+	if currentCol == nil {
+		return
+	}
 	if currentCol.NextID == nil {
 		// Already at last column - show notification
 		m.notificationState.Add(state.LevelInfo, "There are no more columns to move to.")
@@ -217,7 +245,9 @@ func (m Model) moveTaskRight() {
 	err := m.repo.MoveTaskToNextColumn(context.Background(), task.ID)
 	if err != nil {
 		log.Printf("Error moving task to next column: %v", err)
-		m.notificationState.Add(state.LevelError, "Failed to move task to next column")
+		if err != models.ErrAlreadyLastColumn {
+			m.notificationState.Add(state.LevelError, "Failed to move task to next column")
+		}
 		return
 	}
 
@@ -253,7 +283,10 @@ func (m Model) moveTaskLeft() {
 	}
 
 	// Check if there's a previous column using the linked list
-	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+	currentCol := m.getCurrentColumn()
+	if currentCol == nil {
+		return
+	}
 	if currentCol.PrevID == nil {
 		// Already at first column - show notification
 		m.notificationState.Add(state.LevelInfo, "There are no more columns to move to.")
@@ -264,7 +297,9 @@ func (m Model) moveTaskLeft() {
 	err := m.repo.MoveTaskToPrevColumn(context.Background(), task.ID)
 	if err != nil {
 		log.Printf("Error moving task to previous column: %v", err)
-		m.notificationState.Add(state.LevelError, "Failed to move task to previous column")
+		if err != models.ErrAlreadyFirstColumn {
+			m.notificationState.Add(state.LevelError, "Failed to move task to previous column")
+		}
 		return
 	}
 
@@ -308,16 +343,27 @@ func (m Model) moveTaskUp() {
 	err := m.repo.SwapTaskUp(context.Background(), task.ID)
 	if err != nil {
 		log.Printf("Error moving task up: %v", err)
-		if err != errors.New("task is already at the top of the column") {
+		if err != models.ErrAlreadyFirstTask {
 			m.notificationState.Add(state.LevelError, "Failed to move task up")
 		}
 		return
 	}
 
 	// Update local state: swap tasks in slice
-	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
-	tasks := m.appState.Tasks()[currentCol.ID]
+	currentCol := m.getCurrentColumn()
+	if currentCol == nil {
+		return
+	}
+
+	tasks := m.getTasksForColumn(currentCol.ID)
+	if len(tasks) < 2 {
+		return
+	}
+
 	selectedIdx := m.uiState.SelectedTask()
+	if selectedIdx == 0 || selectedIdx >= len(tasks) {
+		return
+	}
 
 	// Swap positions in slice
 	tasks[selectedIdx], tasks[selectedIdx-1] = tasks[selectedIdx-1], tasks[selectedIdx]
@@ -340,8 +386,12 @@ func (m Model) moveTaskDown() {
 	}
 
 	// Get current tasks for edge case check
-	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
-	tasks := m.appState.Tasks()[currentCol.ID]
+	currentCol := m.getCurrentColumn()
+	if currentCol == nil {
+		return
+	}
+
+	tasks := m.getTasksForColumn(currentCol.ID)
 	selectedIdx := m.uiState.SelectedTask()
 
 	// Check if already at bottom

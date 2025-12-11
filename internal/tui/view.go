@@ -18,7 +18,7 @@ import (
 // This implements the "View" part of the Model-View-Update pattern
 func (m Model) View() tea.View {
 	var view tea.View
-	view.AltScreen = true                                 // Use alternate screen buffer
+	view.AltScreen = true                                   // Use alternate screen buffer
 	view.BackgroundColor = lipgloss.Color(theme.Background) // Set root background color
 
 	// Wait for terminal size to be initialized
@@ -107,10 +107,10 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 	layerHeight := m.uiState.Height() * 4 / 5
 
 	// Calculate zone dimensions
-	leftColumnWidth := layerWidth * 7 / 10   // 70% of layer width
-	rightColumnWidth := layerWidth * 3 / 10  // 30% of layer width
-	topHeight := layerHeight * 6 / 10        // 60% of layer height
-	bottomHeight := layerHeight * 4 / 10     // 40% of layer height
+	leftColumnWidth := layerWidth * 7 / 10  // 70% of layer width
+	rightColumnWidth := layerWidth * 3 / 10 // 30% of layer width
+	topHeight := layerHeight * 6 / 10       // 60% of layer height
+	bottomHeight := layerHeight * 4 / 10    // 40% of layer height
 
 	// Render the three zones
 	topLeftZone := m.renderFormTitleDescriptionZone(leftColumnWidth, topHeight)
@@ -452,7 +452,11 @@ func (m Model) viewKanbanBoard() string {
 		// Calculate global index for selection check
 		globalIndex := m.uiState.ViewportOffset() + i
 
-		tasks := m.appState.Tasks()[col.ID]
+		// Safe map access with defensive check
+		tasks, ok := m.appState.Tasks()[col.ID]
+		if !ok {
+			tasks = []*models.TaskSummary{}
+		}
 
 		// Determine selection state for this column
 		isSelected := (globalIndex == m.uiState.SelectedColumn())

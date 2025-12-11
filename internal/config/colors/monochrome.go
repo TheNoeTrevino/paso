@@ -18,11 +18,11 @@ func Monochrome() *ColorScheme {
 		Delete: "#FFFFFF",
 
 		// UI elements
-		ColumnBorder:    "#FFFFFF",
-		TaskBorder:      "#585858",
-		TaskBackground:  "#1C1C1C",
-		SelectedBorder:  "#FFFFFF",
-		SelectedBg:      "#3A3A3A",
+		ColumnBorder:   "#FFFFFF",
+		TaskBorder:     "#585858",
+		TaskBackground: "#1C1C1C",
+		SelectedBorder: "#FFFFFF",
+		SelectedBg:     "#3A3A3A",
 
 		// Text
 		Title:  "#FFFFFF",
