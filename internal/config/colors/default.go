@@ -18,11 +18,11 @@ func Default() *ColorScheme {
 		Delete: "#FF0000",
 
 		// UI elements
-		ColumnBorder:    "#5F87D7",
-		TaskBorder:      "#585858",
-		TaskBackground:  "#262626",
-		SelectedBorder:  "#D75FD7",
-		SelectedBg:      "#3A3A3A",
+		ColumnBorder:   "#5F87D7",
+		TaskBorder:     "#585858",
+		TaskBackground: "#262626",
+		SelectedBorder: "#D75FD7",
+		SelectedBg:     "#3A3A3A",
 
 		// Text
 		Title:  "#D75FD7",

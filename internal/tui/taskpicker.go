@@ -85,15 +85,15 @@ func RenderTaskPicker(
 
 		// Apply cursor styling
 		if i == cursorIdx {
-			content.WriteString(selectedStyle.Render("> " + line) + "\n")
+			content.WriteString(selectedStyle.Render("> "+line) + "\n")
 		} else {
-			content.WriteString(normalStyle.Render("  " + line) + "\n")
+			content.WriteString(normalStyle.Render("  "+line) + "\n")
 		}
 	}
 
 	// Show "no results" if filter matched nothing
 	if len(filteredItems) == 0 && filterText != "" {
-		content.WriteString(dimStyle.Render("  No tasks match \"" + filterText + "\"") + "\n")
+		content.WriteString(dimStyle.Render("  No tasks match \""+filterText+"\"") + "\n")
 	}
 
 	// Show "no tasks" if no items exist (and no filter)
