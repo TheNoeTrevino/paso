@@ -110,7 +110,7 @@ func TestColumnCRUDPersistence(t *testing.T) {
 	}
 
 	// Verify linked list pointers are correct
-	verifyLinkedListIntegrity(t, repo, 1)
+	verifyLinkedListIntegrity(t, context.Background(), repo, 1)
 
 	columns, err := repo.GetColumnsByProject(context.Background(), 1)
 	if err != nil {
@@ -145,7 +145,7 @@ func TestColumnCRUDPersistence(t *testing.T) {
 		t.Error("Columns not in expected order after reload")
 	}
 
-	verifyLinkedListIntegrity(t, repo, 1)
+	verifyLinkedListIntegrity(t, context.Background(), repo, 1)
 
 	// Delete middle column
 	if err := repo.DeleteColumn(context.Background(), col2.ID); err != nil {
@@ -162,7 +162,7 @@ func TestColumnCRUDPersistence(t *testing.T) {
 		t.Fatalf("Expected 2 columns after delete, got %d", len(columns))
 	}
 
-	verifyLinkedListIntegrity(t, repo, 1)
+	verifyLinkedListIntegrity(t, context.Background(), repo, 1)
 
 	// Close and reopen
 	db = closeAndReopenDB(t, db, dbPath)
@@ -183,7 +183,7 @@ func TestColumnCRUDPersistence(t *testing.T) {
 		t.Error("Remaining columns not as expected")
 	}
 
-	verifyLinkedListIntegrity(t, repo, 1)
+	verifyLinkedListIntegrity(t, context.Background(), repo, 1)
 }
 
 // Test 3: Task Movement Persistence
@@ -311,7 +311,7 @@ func TestColumnInsertionPersistence(t *testing.T) {
 		t.Error("Column B's PrevID should point to Column C")
 	}
 
-	verifyLinkedListIntegrity(t, repo, 1)
+	verifyLinkedListIntegrity(t, context.Background(), repo, 1)
 
 	// Close and reopen database
 	db = closeAndReopenDB(t, db, dbPath)
@@ -333,7 +333,7 @@ func TestColumnInsertionPersistence(t *testing.T) {
 	}
 
 	// Verify pointers are correct
-	verifyLinkedListIntegrity(t, repo, 1)
+	verifyLinkedListIntegrity(t, context.Background(), repo, 1)
 }
 
 // Test 5: Cascade Deletion
@@ -529,7 +529,7 @@ func TestReloadFullState(t *testing.T) {
 	}
 
 	// Verify linked list integrity before close
-	verifyLinkedListIntegrity(t, repo, 1)
+	verifyLinkedListIntegrity(t, context.Background(), repo, 1)
 
 	// Close database
 	db = closeAndReopenDB(t, db, dbPath)
@@ -579,7 +579,7 @@ func TestReloadFullState(t *testing.T) {
 	}
 
 	// Verify linked list integrity after reload
-	verifyLinkedListIntegrity(t, repo, 1)
+	verifyLinkedListIntegrity(t, context.Background(), repo, 1)
 
 	// Verify foreign keys intact by trying to create task with invalid column
 	_, err = repo.CreateTask(context.Background(), "Invalid", "Description", 99999, 0)
@@ -599,7 +599,7 @@ func TestMigrationIdempotency(t *testing.T) {
 	_, _ = repo.CreateTask(context.Background(), "Task", "Description", col.ID, 0)
 
 	// Run migrations again
-	if err := runMigrations(db); err != nil {
+	if err := runMigrations(context.Background(), db); err != nil {
 		t.Fatalf("Failed to run migrations second time: %v", err)
 	}
 
@@ -619,7 +619,7 @@ func TestMigrationIdempotency(t *testing.T) {
 	}
 
 	// Run migrations a third time
-	if err := runMigrations(db); err != nil {
+	if err := runMigrations(context.Background(), db); err != nil {
 		t.Fatalf("Failed to run migrations third time: %v", err)
 	}
 
@@ -657,7 +657,7 @@ func TestEmptyDatabaseReload(t *testing.T) {
 		t.Fatalf("Failed to enable foreign keys: %v", err)
 	}
 
-	if err := runMigrations(db); err != nil {
+	if err := runMigrations(context.Background(), db); err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
 
@@ -701,7 +701,7 @@ func TestEmptyDatabaseReload(t *testing.T) {
 	}
 
 	// Verify linked list is correct
-	verifyLinkedListIntegrity(t, repo, 1)
+	verifyLinkedListIntegrity(t, context.Background(), repo, 1)
 
 	// Verify column names are defaults
 	expectedNames := map[string]bool{
@@ -880,7 +880,7 @@ func TestColumnReorderingPersistence(t *testing.T) {
 		}
 	}
 
-	verifyLinkedListIntegrity(t, repo, 1)
+	verifyLinkedListIntegrity(t, context.Background(), repo, 1)
 }
 
 // Test 14: Update Task Column Directly

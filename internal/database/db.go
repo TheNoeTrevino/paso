@@ -2,6 +2,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -42,7 +43,7 @@ func InitDB() (*sql.DB, error) {
 		return nil, fmt.Errorf("database ping failed: %w", err)
 	}
 
-	if err := runMigrations(db); err != nil {
+	if err := runMigrations(context.Background(), db); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
