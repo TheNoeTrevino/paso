@@ -178,21 +178,6 @@ func (m Model) getTasksForColumn(columnID int) []*models.TaskSummary {
 	return tasks
 }
 
-// getColumnAtIndex returns the column at the specified index with bounds checking.
-// Returns nil if index is out of bounds.
-func (m Model) getColumnAtIndex(index int) *models.Column {
-	if index < 0 || index >= len(m.appState.Columns()) {
-		return nil
-	}
-	return m.appState.Columns()[index]
-}
-
-// getCurrentColumnTasks returns tasks for the currently selected column.
-// Returns an empty slice if there's no current column or it has no tasks.
-func (m Model) getCurrentColumnTasks() []*models.TaskSummary {
-	return m.getCurrentTasks()
-}
-
 // removeCurrentColumn removes the currently selected column from the model's local state
 // This should be called after successfully deleting a column from the database
 // It adjusts the selectedColumn index if necessary to keep it within bounds
@@ -474,22 +459,6 @@ func (m Model) reloadProjects() {
 		return
 	}
 	m.appState.SetProjects(projects)
-}
-
-// reloadLabels reloads the labels for the current project from the database
-func (m Model) reloadLabels() {
-	project := m.getCurrentProject()
-	if project == nil {
-		m.appState.SetLabels([]*models.Label{})
-		return
-	}
-
-	labels, err := m.repo.GetLabelsByProject(context.Background(), project.ID)
-	if err != nil {
-		log.Printf("Error reloading labels: %v", err)
-		return
-	}
-	m.appState.SetLabels(labels)
 }
 
 // initParentPickerForForm initializes the parent picker for use in TicketFormMode.
