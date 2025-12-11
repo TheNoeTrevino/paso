@@ -24,11 +24,17 @@ func TestDefaultKeyMappings(t *testing.T) {
 func TestLoadConfigWithoutFile(t *testing.T) {
 	// Save original env
 	origXDG := os.Getenv("XDG_CONFIG_HOME")
-	defer os.Setenv("XDG_CONFIG_HOME", origXDG)
+	defer func() {
+		if err := os.Setenv("XDG_CONFIG_HOME", origXDG); err != nil {
+			t.Logf("Failed to restore XDG_CONFIG_HOME: %v", err)
+		}
+	}()
 
 	// Set to a temp dir that doesn't have a config
 	tempDir := t.TempDir()
-	os.Setenv("XDG_CONFIG_HOME", tempDir)
+	if err := os.Setenv("XDG_CONFIG_HOME", tempDir); err != nil {
+		t.Fatalf("Failed to set XDG_CONFIG_HOME: %v", err)
+	}
 
 	cfg, err := Load()
 	if err != nil {
@@ -44,11 +50,17 @@ func TestLoadConfigWithoutFile(t *testing.T) {
 func TestLoadConfigWithFile(t *testing.T) {
 	// Save original env
 	origXDG := os.Getenv("XDG_CONFIG_HOME")
-	defer os.Setenv("XDG_CONFIG_HOME", origXDG)
+	defer func() {
+		if err := os.Setenv("XDG_CONFIG_HOME", origXDG); err != nil {
+			t.Logf("Failed to restore XDG_CONFIG_HOME: %v", err)
+		}
+	}()
 
 	// Create temp dir with config
 	tempDir := t.TempDir()
-	os.Setenv("XDG_CONFIG_HOME", tempDir)
+	if err := os.Setenv("XDG_CONFIG_HOME", tempDir); err != nil {
+		t.Fatalf("Failed to set XDG_CONFIG_HOME: %v", err)
+	}
 
 	configDir := filepath.Join(tempDir, "paso")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
@@ -91,11 +103,17 @@ func TestLoadConfigWithFile(t *testing.T) {
 func TestSaveConfig(t *testing.T) {
 	// Save original env
 	origXDG := os.Getenv("XDG_CONFIG_HOME")
-	defer os.Setenv("XDG_CONFIG_HOME", origXDG)
+	defer func() {
+		if err := os.Setenv("XDG_CONFIG_HOME", origXDG); err != nil {
+			t.Logf("Failed to restore XDG_CONFIG_HOME: %v", err)
+		}
+	}()
 
 	// Create temp dir
 	tempDir := t.TempDir()
-	os.Setenv("XDG_CONFIG_HOME", tempDir)
+	if err := os.Setenv("XDG_CONFIG_HOME", tempDir); err != nil {
+		t.Fatalf("Failed to set XDG_CONFIG_HOME: %v", err)
+	}
 
 	cfg := &Config{
 		KeyMappings: KeyMappings{
