@@ -190,7 +190,14 @@ func (r *Runner) checkCoverage() {
 		if strings.Contains(line, "total:") {
 			fields := strings.Fields(line)
 			if len(fields) >= 3 {
-				fmt.Sscanf(fields[2], "%f%%", &coverage)
+				if _, err := fmt.Sscanf(fields[2], "%f%%", &coverage); err != nil {
+					r.addResult(StepResult{
+						Name:    "Coverage Threshold",
+						Passed:  false,
+						Message: fmt.Sprintf("Failed to parse coverage value: %v", err),
+					})
+					return
+				}
 			}
 		}
 	}
