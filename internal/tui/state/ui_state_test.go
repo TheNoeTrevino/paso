@@ -54,7 +54,7 @@ func TestScrollViewportLeft_AtBoundary(t *testing.T) {
 // Security value: Prevents offset beyond column count.
 func TestScrollViewportRight_AtBoundary(t *testing.T) {
 	state := NewUIState()
-	state.SetWidth(300) // Large enough for 6 columns
+	state.SetWidth(300)        // Large enough for 6 columns
 	state.SetViewportOffset(2) // Offset at position 2
 
 	// Total columns = 5, viewport size = 6, so offset=0 already shows all columns
