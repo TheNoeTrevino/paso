@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"log"
 	"os"
 	"testing"
 
@@ -52,33 +53,45 @@ func setupTestDBFile(t *testing.T) (*sql.DB, string) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	tmpfile.Close()
+	if err := tmpfile.Close(); err != nil {
+		log.Printf("failed to close temp file: %v", err)
+	}
 
 	db, err := sql.Open("sqlite", tmpfile.Name())
 	if err != nil {
-		os.Remove(tmpfile.Name())
+		if removeErr := os.Remove(tmpfile.Name()); removeErr != nil {
+			log.Printf("failed to remove temp file: %v", removeErr)
+		}
 		t.Fatalf("Failed to open test database: %v", err)
 	}
 
 	// Enable foreign key constraints
 	_, err = db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
 	if err != nil {
-		db.Close()
-		os.Remove(tmpfile.Name())
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("failed to close database: %v", closeErr)
+		}
+		if removeErr := os.Remove(tmpfile.Name()); removeErr != nil {
+			log.Printf("failed to remove temp file: %v", removeErr)
+		}
 		t.Fatalf("Failed to enable foreign keys: %v", err)
 	}
 
 	if err := runMigrations(context.Background(), db); err != nil {
-		db.Close()
-		os.Remove(tmpfile.Name())
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("failed to close database: %v", closeErr)
+		}
+		if removeErr := os.Remove(tmpfile.Name()); removeErr != nil {
+			log.Printf("failed to remove temp file: %v", removeErr)
+		}
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
 
 	// Clear default seeded columns for fresh tests
 	_, err = db.ExecContext(context.Background(), "DELETE FROM columns")
 	if err != nil {
-		db.Close()
-		os.Remove(tmpfile.Name())
+		_ = db.Close()
+		_ = os.Remove(tmpfile.Name())
 		t.Fatalf("Failed to clear columns: %v", err)
 	}
 

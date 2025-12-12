@@ -34,17 +34,23 @@ func InitDB() (*sql.DB, error) {
 	_, err = db.Exec("PRAGMA foreign_keys = ON")
 	if err != nil {
 		log.Printf("Failed to enable foreign keys: %v", err)
-		db.Close()
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("error closing db: %v", closeErr)
+		}
 		return nil, err
 	}
 
 	if err := db.Ping(); err != nil {
-		db.Close()
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("error closing db: %v", closeErr)
+		}
 		return nil, fmt.Errorf("database ping failed: %w", err)
 	}
 
 	if err := runMigrations(context.Background(), db); err != nil {
-		db.Close()
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("error closing db: %v", closeErr)
+		}
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
