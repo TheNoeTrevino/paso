@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	"github.com/thenoetrevino/paso/internal/ci"
@@ -8,6 +9,6 @@ import (
 
 func main() {
 	runner := ci.NewRunner()
-	exitCode := runner.Run()
+	exitCode := runner.Run(context.Background())
 	os.Exit(exitCode)
 }

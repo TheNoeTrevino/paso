@@ -7,6 +7,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/thenoetrevino/paso/internal/database"
@@ -14,7 +15,7 @@ import (
 
 func main() {
 	// Initialize database
-	db, err := database.InitDB()
+	db, err := database.InitDB(context.Background())
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
