@@ -2,6 +2,8 @@ package tui
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -119,6 +121,31 @@ func (m *Model) dbContext() (context.Context, context.CancelFunc) {
 // uiContext creates a context for UI operations with 10s timeout
 func (m *Model) uiContext() (context.Context, context.CancelFunc) {
 	return m.withTimeout(timeoutUI)
+}
+
+// handleDBError handles database errors with context-aware messages
+// It distinguishes between cancellation, timeout, and other errors,
+// providing appropriate user feedback for each case.
+func (m *Model) handleDBError(err error, operation string) {
+	if err == nil {
+		return
+	}
+
+	if errors.Is(err, context.Canceled) {
+		// Operation was cancelled - this is expected during shutdown
+		// Don't show error notification, just log for debugging
+		log.Printf("%s cancelled by user", operation)
+		return
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) {
+		// Operation timed out - show user-friendly message
+		m.notificationState.Add(state.LevelError, fmt.Sprintf("%s timed out. Please try again.", operation))
+		return
+	}
+
+	// Other errors - show detailed error message
+	m.notificationState.Add(state.LevelError, fmt.Sprintf("%s failed: %v", operation, err))
 }
 
 // Init initializes the Bubble Tea application
