@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"log"
 	"strings"
 
@@ -196,7 +195,9 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	taskDetail, err := m.repo.GetTaskDetail(context.Background(), task.ID)
+	ctx, cancel := m.dbContext()
+	defer cancel()
+	taskDetail, err := m.repo.GetTaskDetail(ctx, task.ID)
 	if err != nil {
 		log.Printf("Error loading task details: %v", err)
 		m.notificationState.Add(state.LevelError, "Error loading task details")
@@ -316,7 +317,9 @@ func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 		m.notificationState.Add(state.LevelError, "No column selected to delete")
 		return m, nil
 	}
-	taskCount, err := m.repo.GetTaskCountByColumn(context.Background(), column.ID)
+	ctx, cancel := m.dbContext()
+	defer cancel()
+	taskCount, err := m.repo.GetTaskCountByColumn(ctx, column.ID)
 	if err != nil {
 		log.Printf("Error getting task count: %v", err)
 		m.notificationState.Add(state.LevelError, "Error getting column info")
@@ -445,12 +448,14 @@ func (m Model) createColumn() (tea.Model, tea.Cmd) {
 		projectID = project.ID
 	}
 
-	column, err := m.repo.CreateColumn(context.Background(), strings.TrimSpace(m.inputState.Buffer), projectID, afterColumnID)
+	ctx, cancel := m.dbContext()
+	defer cancel()
+	column, err := m.repo.CreateColumn(ctx, strings.TrimSpace(m.inputState.Buffer), projectID, afterColumnID)
 	if err != nil {
 		log.Printf("Error creating column: %v", err)
 		m.notificationState.Add(state.LevelError, "Failed to create column")
 	} else {
-		columns, err := m.repo.GetColumnsByProject(context.Background(), projectID)
+		columns, err := m.repo.GetColumnsByProject(ctx, projectID)
 		if err != nil {
 			log.Printf("Error reloading columns: %v", err)
 			m.notificationState.Add(state.LevelError, "Failed to reload columns")
@@ -471,7 +476,9 @@ func (m Model) createColumn() (tea.Model, tea.Cmd) {
 func (m Model) renameColumn() (tea.Model, tea.Cmd) {
 	column := m.getCurrentColumn()
 	if column != nil {
-		err := m.repo.UpdateColumnName(context.Background(), column.ID, strings.TrimSpace(m.inputState.Buffer))
+		ctx, cancel := m.dbContext()
+		defer cancel()
+		err := m.repo.UpdateColumnName(ctx, column.ID, strings.TrimSpace(m.inputState.Buffer))
 		if err != nil {
 			log.Printf("Error updating column: %v", err)
 			m.notificationState.Add(state.LevelError, "Failed to rename column")
@@ -505,7 +512,9 @@ func (m Model) handleDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 	task := m.getCurrentTask()
 	if task != nil {
-		err := m.repo.DeleteTask(context.Background(), task.ID)
+		ctx, cancel := m.dbContext()
+		defer cancel()
+		err := m.repo.DeleteTask(ctx, task.ID)
 		if err != nil {
 			log.Printf("Error deleting task: %v", err)
 			m.notificationState.Add(state.LevelError, "Failed to delete task")
@@ -585,7 +594,9 @@ func (m Model) handleDeleteColumnConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 	column := m.getCurrentColumn()
 	if column != nil {
-		err := m.repo.DeleteColumn(context.Background(), column.ID)
+		ctx, cancel := m.dbContext()
+		defer cancel()
+		err := m.repo.DeleteColumn(ctx, column.ID)
 		if err != nil {
 			log.Printf("Error deleting column: %v", err)
 			m.notificationState.Add(state.LevelError, "Failed to delete column")
@@ -672,7 +683,8 @@ func (m Model) executeSearch() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	ctx := context.Background()
+	ctx, cancel := m.dbContext()
+	defer cancel()
 	var tasksByColumn map[int][]*models.TaskSummary
 	var err error
 
