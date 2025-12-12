@@ -229,7 +229,11 @@ func migrateToLinkedList(ctx context.Context, db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	defer func() { if err := tx.Rollback(); err != nil && err != sql.ErrTxDone { log.Printf("failed to rollback transaction: %v", err) } }()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// 1. Add new columns for linked list structure
 	_, err = tx.ExecContext(ctx, `ALTER TABLE columns ADD COLUMN prev_id INTEGER NULL`)
@@ -247,20 +251,22 @@ func migrateToLinkedList(ctx context.Context, db *sql.DB) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	var columnIDs []int
 	for rows.Next() {
 		var id int
 		if err := rows.Scan(&id); err != nil {
-			if closeErr := rows.Close(); closeErr != nil {
-				log.Printf("failed to close rows: %v", closeErr)
-			}
 			return err
 		}
 		columnIDs = append(columnIDs, id)
 	}
-	if err := rows.Close(); err != nil {
-		log.Printf("failed to close rows: %v", err)
+	if err := rows.Err(); err != nil {
+		return err
 	}
 
 	// 3. Build linked list by setting prev_id and next_id
@@ -384,7 +390,11 @@ func migrateColumnsToProject(ctx context.Context, db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	defer func() { if err := tx.Rollback(); err != nil && err != sql.ErrTxDone { log.Printf("failed to rollback transaction: %v", err) } }()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// Get the default project ID
 	var defaultProjectID int
@@ -430,7 +440,11 @@ func migrateTasksTicketNumber(ctx context.Context, db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	defer func() { if err := tx.Rollback(); err != nil && err != sql.ErrTxDone { log.Printf("failed to rollback transaction: %v", err) } }()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// Add ticket_number column
 	_, err = tx.ExecContext(ctx, `ALTER TABLE tasks ADD COLUMN ticket_number INTEGER`)
@@ -449,6 +463,11 @@ func migrateTasksTicketNumber(ctx context.Context, db *sql.DB) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	// Track counters per project
 	projectCounters := make(map[int]int)
@@ -461,9 +480,6 @@ func migrateTasksTicketNumber(ctx context.Context, db *sql.DB) error {
 	for rows.Next() {
 		var taskID, projectID int
 		if err := rows.Scan(&taskID, &projectID); err != nil {
-			if closeErr := rows.Close(); closeErr != nil {
-				log.Printf("failed to close rows: %v", closeErr)
-			}
 			return err
 		}
 
@@ -474,8 +490,8 @@ func migrateTasksTicketNumber(ctx context.Context, db *sql.DB) error {
 
 		updates = append(updates, taskUpdate{id: taskID, ticketNumber: counter})
 	}
-	if err := rows.Close(); err != nil {
-		log.Printf("failed to close rows: %v", err)
+	if err := rows.Err(); err != nil {
+		return err
 	}
 
 	// Apply updates
@@ -519,7 +535,11 @@ func migrateLabelsToProject(ctx context.Context, db *sql.DB) error {
 		if err != nil {
 			return err
 		}
-		defer func() { if err := tx.Rollback(); err != nil && err != sql.ErrTxDone { log.Printf("failed to rollback transaction: %v", err) } }()
+		defer func() {
+			if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+				log.Printf("failed to rollback transaction: %v", err)
+			}
+		}()
 
 		// Get the default project ID
 		var defaultProjectID int
@@ -640,7 +660,11 @@ func migrateTaskSubtasks(ctx context.Context, db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	defer func() { if err := tx.Rollback(); err != nil && err != sql.ErrTxDone { log.Printf("failed to rollback transaction: %v", err) } }()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// Create task_subtasks join table
 	_, err = tx.ExecContext(ctx, `

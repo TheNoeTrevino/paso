@@ -11,7 +11,11 @@ import (
 // TestLabelPersistence tests that labels are properly saved and retrieved
 func TestLabelPersistence(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create a label (projectID 1 is created by migrations)
@@ -49,7 +53,11 @@ func TestLabelPersistence(t *testing.T) {
 // TestTaskLabelAssociation tests the many-to-many relationship between tasks and labels
 func TestTaskLabelAssociation(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create column, task, and labels
@@ -98,7 +106,11 @@ func TestTaskLabelAssociation(t *testing.T) {
 // TestSetTaskLabelsReplaces tests that SetTaskLabels replaces existing labels
 func TestSetTaskLabelsReplaces(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create column, task, and labels
@@ -135,7 +147,11 @@ func TestSetTaskLabelsReplaces(t *testing.T) {
 // TestProjectSpecificLabels tests that labels are properly scoped to projects
 func TestProjectSpecificLabels(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Project 1 is already created by migrations

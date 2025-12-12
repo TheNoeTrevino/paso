@@ -23,7 +23,7 @@ const (
 
 // Model represents the application state for the TUI
 type Model struct {
-	ctx               context.Context    // Application context for cancellation and timeouts
+	ctx               context.Context // Application context for cancellation and timeouts
 	repo              database.DataStore
 	config            *config.Config
 	appState          *state.AppState
