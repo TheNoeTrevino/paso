@@ -13,6 +13,15 @@ import (
 // Update handles all messages and updates the model accordingly
 // This implements the "Update" part of the Model-View-Update pattern
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Check if context is cancelled (graceful shutdown)
+	select {
+	case <-m.ctx.Done():
+		// Context cancelled, initiate graceful shutdown
+		return m, tea.Quit
+	default:
+		// Continue normal processing
+	}
+
 	// Handle form modes first - forms need ALL messages
 	if m.uiState.Mode() == state.TicketFormMode {
 		return m.updateTicketForm(msg)
