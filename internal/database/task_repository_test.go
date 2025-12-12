@@ -11,7 +11,11 @@ import (
 // TestMoveTaskBetweenColumns tests moving tasks using the linked list functions
 func TestMoveTaskBetweenColumns(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create columns
@@ -101,7 +105,11 @@ func TestMoveTaskBetweenColumns(t *testing.T) {
 // TestTaskCreationPersistence tests that tasks are properly saved to the database
 func TestTaskCreationPersistence(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create a column first
@@ -149,7 +157,11 @@ func TestTaskCreationPersistence(t *testing.T) {
 // TestTaskUpdatePersistence tests that task updates are properly saved
 func TestTaskUpdatePersistence(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create column and task
@@ -178,7 +190,11 @@ func TestTaskUpdatePersistence(t *testing.T) {
 // TestTaskDetailIncludesAllFields tests that GetTaskDetail returns all fields
 func TestTaskDetailIncludesAllFields(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create column, task with description, and labels
@@ -222,7 +238,11 @@ func TestTaskDetailIncludesAllFields(t *testing.T) {
 // TestSwapTaskUp tests moving tasks up within a column
 func TestSwapTaskUp(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create a column
@@ -275,7 +295,11 @@ func TestSwapTaskUp(t *testing.T) {
 // TestSwapTaskDown tests moving tasks down within a column
 func TestSwapTaskDown(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create a column
@@ -328,7 +352,11 @@ func TestSwapTaskDown(t *testing.T) {
 // TestSwapTaskUpAndDown tests multiple swap operations
 func TestSwapTaskUpAndDown(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create a column
