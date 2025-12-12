@@ -107,22 +107,16 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 }
 
 // withTimeout creates a child context with appropriate timeout for operation type
-//
-//nolint:unused // Will be used in Phase 3 for database operations
 func (m *Model) withTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(m.ctx, timeout)
 }
 
 // dbContext creates a context for database operations with 30s timeout
-//
-//nolint:unused // Will be used in Phase 3 for database operations
 func (m *Model) dbContext() (context.Context, context.CancelFunc) {
 	return m.withTimeout(timeoutDB)
 }
 
 // uiContext creates a context for UI operations with 10s timeout
-//
-//nolint:unused // Will be used in Phase 3 for UI operations
 func (m *Model) uiContext() (context.Context, context.CancelFunc) {
 	return m.withTimeout(timeoutUI)
 }
