@@ -260,7 +260,9 @@ func (m Model) moveTaskRight() {
 	}
 
 	// Use the new database function to move task
-	err := m.repo.MoveTaskToNextColumn(context.Background(), task.ID)
+	ctx, cancel := m.uiContext()
+	defer cancel()
+	err := m.repo.MoveTaskToNextColumn(ctx, task.ID)
 	if err != nil {
 		log.Printf("Error moving task to next column: %v", err)
 		if err != models.ErrAlreadyLastColumn {
@@ -312,7 +314,9 @@ func (m Model) moveTaskLeft() {
 	}
 
 	// Use the new database function to move task
-	err := m.repo.MoveTaskToPrevColumn(context.Background(), task.ID)
+	ctx, cancel := m.uiContext()
+	defer cancel()
+	err := m.repo.MoveTaskToPrevColumn(ctx, task.ID)
 	if err != nil {
 		log.Printf("Error moving task to previous column: %v", err)
 		if err != models.ErrAlreadyFirstColumn {
@@ -358,7 +362,9 @@ func (m Model) moveTaskUp() {
 	}
 
 	// Call database swap
-	err := m.repo.SwapTaskUp(context.Background(), task.ID)
+	ctx, cancel := m.uiContext()
+	defer cancel()
+	err := m.repo.SwapTaskUp(ctx, task.ID)
 	if err != nil {
 		log.Printf("Error moving task up: %v", err)
 		if err != models.ErrAlreadyFirstTask {
@@ -419,7 +425,9 @@ func (m Model) moveTaskDown() {
 	}
 
 	// Call database swap
-	err := m.repo.SwapTaskDown(context.Background(), task.ID)
+	ctx, cancel := m.uiContext()
+	defer cancel()
+	err := m.repo.SwapTaskDown(ctx, task.ID)
 	if err != nil {
 		log.Printf("Error moving task down: %v", err)
 		if err != models.ErrAlreadyLastTask {
@@ -456,8 +464,12 @@ func (m Model) switchToProject(projectIndex int) {
 
 	project := m.appState.Projects()[projectIndex]
 
+	// Create context for database operations
+	ctx, cancel := m.dbContext()
+	defer cancel()
+
 	// Reload columns for this project
-	columns, err := m.repo.GetColumnsByProject(context.Background(), project.ID)
+	columns, err := m.repo.GetColumnsByProject(ctx, project.ID)
 	if err != nil {
 		log.Printf("Error loading columns for project %d: %v", project.ID, err)
 		columns = []*models.Column{}
@@ -465,7 +477,7 @@ func (m Model) switchToProject(projectIndex int) {
 	m.appState.SetColumns(columns)
 
 	// Reload task summaries for the entire project
-	tasks, err := m.repo.GetTaskSummariesByProject(context.Background(), project.ID)
+	tasks, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
 		log.Printf("Error loading tasks for project %d: %v", project.ID, err)
 		tasks = make(map[int][]*models.TaskSummary)
@@ -473,7 +485,7 @@ func (m Model) switchToProject(projectIndex int) {
 	m.appState.SetTasks(tasks)
 
 	// Reload labels for this project
-	labels, err := m.repo.GetLabelsByProject(context.Background(), project.ID)
+	labels, err := m.repo.GetLabelsByProject(ctx, project.ID)
 	if err != nil {
 		log.Printf("Error loading labels for project %d: %v", project.ID, err)
 		labels = []*models.Label{}
@@ -486,7 +498,9 @@ func (m Model) switchToProject(projectIndex int) {
 
 // reloadProjects reloads the projects list from the database
 func (m Model) reloadProjects() {
-	projects, err := m.repo.GetAllProjects(context.Background())
+	ctx, cancel := m.dbContext()
+	defer cancel()
+	projects, err := m.repo.GetAllProjects(ctx)
 	if err != nil {
 		log.Printf("Error reloading projects: %v", err)
 		return
@@ -506,7 +520,9 @@ func (m *Model) initParentPickerForForm() bool {
 	}
 
 	// Get all task references for the entire project
-	allTasks, err := m.repo.GetTaskReferencesForProject(context.Background(), project.ID)
+	ctx, cancel := m.dbContext()
+	defer cancel()
+	allTasks, err := m.repo.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
 		log.Printf("Error loading project tasks: %v", err)
 		return false
@@ -554,7 +570,9 @@ func (m *Model) initChildPickerForForm() bool {
 	}
 
 	// Get all task references for the entire project
-	allTasks, err := m.repo.GetTaskReferencesForProject(context.Background(), project.ID)
+	ctx, cancel := m.dbContext()
+	defer cancel()
+	allTasks, err := m.repo.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
 		log.Printf("Error loading project tasks: %v", err)
 		return false
