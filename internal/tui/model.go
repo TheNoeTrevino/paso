@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"log"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/config"
@@ -11,8 +12,16 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
+// Timeout constants for context operations
+const (
+	timeoutInitialLoad = 30 * time.Second
+	timeoutUI          = 10 * time.Second
+	timeoutDB          = 30 * time.Second
+)
+
 // Model represents the application state for the TUI
 type Model struct {
+	ctx               context.Context    // Application context for cancellation and timeouts
 	repo              database.DataStore
 	config            *config.Config
 	appState          *state.AppState
@@ -27,11 +36,13 @@ type Model struct {
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
-func InitialModel(repo database.DataStore, cfg *config.Config) Model {
-	ctx := context.Background()
+func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Config) Model {
+	// Create child context with timeout for initial loading
+	loadCtx, cancel := context.WithTimeout(ctx, timeoutInitialLoad)
+	defer cancel()
 
 	// Load all projects
-	projects, err := repo.GetAllProjects(ctx)
+	projects, err := repo.GetAllProjects(loadCtx)
 	if err != nil {
 		log.Printf("Error loading projects: %v", err)
 		projects = []*models.Project{}
@@ -44,7 +55,7 @@ func InitialModel(repo database.DataStore, cfg *config.Config) Model {
 	}
 
 	// Load columns for the current project
-	columns, err := repo.GetColumnsByProject(ctx, currentProjectID)
+	columns, err := repo.GetColumnsByProject(loadCtx, currentProjectID)
 	if err != nil {
 		log.Printf("Error loading columns: %v", err)
 		columns = []*models.Column{}
@@ -52,14 +63,14 @@ func InitialModel(repo database.DataStore, cfg *config.Config) Model {
 
 	// Load task summaries for the entire project (includes labels)
 	// Uses batch query to avoid N+1 pattern
-	tasks, err := repo.GetTaskSummariesByProject(ctx, currentProjectID)
+	tasks, err := repo.GetTaskSummariesByProject(loadCtx, currentProjectID)
 	if err != nil {
 		log.Printf("Error loading tasks for project %d: %v", currentProjectID, err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
 
 	// Load labels for the current project
-	labels, err := repo.GetLabelsByProject(ctx, currentProjectID)
+	labels, err := repo.GetLabelsByProject(loadCtx, currentProjectID)
 	if err != nil {
 		log.Printf("Error loading labels: %v", err)
 		labels = []*models.Label{}
@@ -80,6 +91,7 @@ func InitialModel(repo database.DataStore, cfg *config.Config) Model {
 	InitStyles(cfg.ColorScheme)
 
 	return Model{
+		ctx:               ctx, // Store root context
 		repo:              repo,
 		config:            cfg,
 		appState:          appState,
@@ -92,6 +104,27 @@ func InitialModel(repo database.DataStore, cfg *config.Config) Model {
 		notificationState: notificationState,
 		searchState:       searchState,
 	}
+}
+
+// withTimeout creates a child context with appropriate timeout for operation type
+//
+//nolint:unused // Will be used in Phase 3 for database operations
+func (m *Model) withTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(m.ctx, timeout)
+}
+
+// dbContext creates a context for database operations with 30s timeout
+//
+//nolint:unused // Will be used in Phase 3 for database operations
+func (m *Model) dbContext() (context.Context, context.CancelFunc) {
+	return m.withTimeout(timeoutDB)
+}
+
+// uiContext creates a context for UI operations with 10s timeout
+//
+//nolint:unused // Will be used in Phase 3 for UI operations
+func (m *Model) uiContext() (context.Context, context.CancelFunc) {
+	return m.withTimeout(timeoutUI)
 }
 
 // Init initializes the Bubble Tea application

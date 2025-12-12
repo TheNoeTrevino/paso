@@ -61,7 +61,7 @@ func main() {
 	repo := database.NewRepository(db)
 
 	// Create initial TUI model with root context
-	model := tui.InitialModel(repo, cfg)
+	model := tui.InitialModel(ctx, repo, cfg)
 
 	// Create Bubble Tea program with context support
 	p := tea.NewProgram(model, tea.WithContext(ctx))
