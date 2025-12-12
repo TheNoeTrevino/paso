@@ -556,16 +556,6 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 		updatedStr = m.formState.FormUpdatedAt.Format("Jan 2, 2006 3:04 PM")
 	}
 
-	// Created timestamp
-	parts = append(parts, labelHeaderStyle.Render("Created"))
-	parts = append(parts, createdStr)
-	parts = append(parts, "")
-
-	// Updated timestamp
-	parts = append(parts, labelHeaderStyle.Render("Updated"))
-	parts = append(parts, updatedStr)
-	parts = append(parts, "")
-
 	// Edited indicator (unsaved changes)
 	parts = append(parts, labelHeaderStyle.Render("Status"))
 	if m.formState.HasTicketFormChanges() {
@@ -574,6 +564,16 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 	} else {
 		parts = append(parts, subtleStyle.Render("○ No Changes"))
 	}
+	parts = append(parts, "")
+
+	// Created timestamp
+	parts = append(parts, labelHeaderStyle.Render("Created"))
+	parts = append(parts, createdStr)
+	parts = append(parts, "")
+
+	// Updated timestamp
+	parts = append(parts, labelHeaderStyle.Render("Updated"))
+	parts = append(parts, updatedStr)
 	parts = append(parts, "")
 
 	// Labels section
