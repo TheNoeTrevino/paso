@@ -11,7 +11,11 @@ import (
 // TestLinkedListTraversal tests that columns are created and traversed in correct order
 func TestLinkedListTraversal(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create 3 columns
@@ -75,7 +79,11 @@ func TestLinkedListTraversal(t *testing.T) {
 // TestInsertColumnMiddle tests inserting a column in the middle of the list
 func TestInsertColumnMiddle(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create initial columns
@@ -121,7 +129,11 @@ func TestInsertColumnMiddle(t *testing.T) {
 // TestInsertColumnEnd tests appending a column to the end
 func TestInsertColumnEnd(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create initial columns
@@ -160,7 +172,11 @@ func TestInsertColumnEnd(t *testing.T) {
 // TestDeleteColumnMiddle tests deleting a middle column
 func TestDeleteColumnMiddle(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create three columns
@@ -201,7 +217,11 @@ func TestDeleteColumnMiddle(t *testing.T) {
 // TestDeleteColumnHead tests deleting the head column
 func TestDeleteColumnHead(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create three columns
@@ -240,7 +260,11 @@ func TestDeleteColumnHead(t *testing.T) {
 // TestDeleteColumnTail tests deleting the tail column
 func TestDeleteColumnTail(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create three columns
@@ -279,7 +303,11 @@ func TestDeleteColumnTail(t *testing.T) {
 // TestEmptyList tests operations on an empty column list
 func TestEmptyList(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Get columns from empty database
@@ -296,7 +324,11 @@ func TestEmptyList(t *testing.T) {
 // TestSingleColumn tests operations with a single column
 func TestSingleColumn(t *testing.T) {
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create single column

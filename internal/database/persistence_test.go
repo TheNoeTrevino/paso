@@ -15,7 +15,11 @@ import (
 func TestTaskCRUDPersistence(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create a column (using default project ID 1)
@@ -91,7 +95,11 @@ func TestTaskCRUDPersistence(t *testing.T) {
 // Test 2: Column CRUD Persistence with Linked List
 func TestColumnCRUDPersistence(t *testing.T) {
 	db, dbPath := setupTestDBFile(t)
-	defer func() { if err := os.Remove(dbPath); err != nil { log.Printf("failed to remove file: %v", err) } }()
+	defer func() {
+		if err := os.Remove(dbPath); err != nil {
+			log.Printf("failed to remove file: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create 3 columns (using default project ID 1)
@@ -129,7 +137,11 @@ func TestColumnCRUDPersistence(t *testing.T) {
 
 	// Close and reopen database
 	db = closeAndReopenDB(t, db, dbPath)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo = NewRepository(db)
 
 	// Verify columns reload with correct order
@@ -167,7 +179,11 @@ func TestColumnCRUDPersistence(t *testing.T) {
 
 	// Close and reopen
 	db = closeAndReopenDB(t, db, dbPath)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo = NewRepository(db)
 
 	// Verify deletion persisted
@@ -190,7 +206,11 @@ func TestColumnCRUDPersistence(t *testing.T) {
 // Test 3: Task Movement Persistence
 func TestTaskMovementPersistence(t *testing.T) {
 	db, dbPath := setupTestDBFile(t)
-	defer func() { if err := os.Remove(dbPath); err != nil { log.Printf("failed to remove file: %v", err) } }()
+	defer func() {
+		if err := os.Remove(dbPath); err != nil {
+			log.Printf("failed to remove file: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create database with 3 columns (using default project ID 1)
@@ -221,7 +241,11 @@ func TestTaskMovementPersistence(t *testing.T) {
 
 	// Close and reopen database
 	db = closeAndReopenDB(t, db, dbPath)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo = NewRepository(db)
 
 	// Verify task is still in correct column
@@ -264,7 +288,11 @@ func TestTaskMovementPersistence(t *testing.T) {
 // Test 4: Column Insertion Persistence
 func TestColumnInsertionPersistence(t *testing.T) {
 	db, dbPath := setupTestDBFile(t)
-	defer func() { if err := os.Remove(dbPath); err != nil { log.Printf("failed to remove file: %v", err) } }()
+	defer func() {
+		if err := os.Remove(dbPath); err != nil {
+			log.Printf("failed to remove file: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create database with 2 columns (A, B) using default project ID 1
@@ -316,7 +344,11 @@ func TestColumnInsertionPersistence(t *testing.T) {
 
 	// Close and reopen database
 	db = closeAndReopenDB(t, db, dbPath)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo = NewRepository(db)
 
 	// Verify order is still A, C, B
@@ -340,7 +372,11 @@ func TestColumnInsertionPersistence(t *testing.T) {
 // Test 5: Cascade Deletion
 func TestCascadeDeletion(t *testing.T) {
 	db, dbPath := setupTestDBFile(t)
-	defer func() { if err := os.Remove(dbPath); err != nil { log.Printf("failed to remove file: %v", err) } }()
+	defer func() {
+		if err := os.Remove(dbPath); err != nil {
+			log.Printf("failed to remove file: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create database with 1 column (using default project ID 1)
@@ -379,7 +415,11 @@ func TestCascadeDeletion(t *testing.T) {
 
 	// Close and reopen database
 	db = closeAndReopenDB(t, db, dbPath)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo = NewRepository(db)
 
 	// Verify column and tasks don't exist
@@ -399,7 +439,11 @@ func TestCascadeDeletion(t *testing.T) {
 func TestTransactionRollback(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create 2 columns (using default project ID 1)
@@ -437,7 +481,11 @@ func TestTransactionRollback(t *testing.T) {
 func TestSequentialBulkOperations(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create a column (using default project ID 1)
@@ -501,7 +549,11 @@ func TestSequentialBulkOperations(t *testing.T) {
 // Test 8: Reload Full State
 func TestReloadFullState(t *testing.T) {
 	db, dbPath := setupTestDBFile(t)
-	defer func() { if err := os.Remove(dbPath); err != nil { log.Printf("failed to remove file: %v", err) } }()
+	defer func() {
+		if err := os.Remove(dbPath); err != nil {
+			log.Printf("failed to remove file: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create database with complex state:
@@ -534,7 +586,11 @@ func TestReloadFullState(t *testing.T) {
 
 	// Close database
 	db = closeAndReopenDB(t, db, dbPath)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo = NewRepository(db)
 
 	// Load all columns (verify order)
@@ -592,7 +648,11 @@ func TestReloadFullState(t *testing.T) {
 // Test 9: Migration Idempotency
 func TestMigrationIdempotency(t *testing.T) {
 	db, dbPath := setupTestDBFile(t)
-	defer func() { if err := os.Remove(dbPath); err != nil { log.Printf("failed to remove file: %v", err) } }()
+	defer func() {
+		if err := os.Remove(dbPath); err != nil {
+			log.Printf("failed to remove file: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create some data (using default project ID 1)
@@ -646,7 +706,11 @@ func TestEmptyDatabaseReload(t *testing.T) {
 		log.Printf("failed to close temp file: %v", err)
 	}
 	dbPath := tmpfile.Name()
-	defer func() { if err := os.Remove(dbPath); err != nil { log.Printf("failed to remove file: %v", err) } }()
+	defer func() {
+		if err := os.Remove(dbPath); err != nil {
+			log.Printf("failed to remove file: %v", err)
+		}
+	}()
 
 	// First open: initialize with migrations
 	db, err := sql.Open("sqlite", dbPath)
@@ -674,7 +738,11 @@ func TestEmptyDatabaseReload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to reopen database: %v", err)
 	}
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Enable foreign key constraints
@@ -725,7 +793,11 @@ func TestEmptyDatabaseReload(t *testing.T) {
 // Test 11: Timestamps Persistence
 func TestTimestampsPersistence(t *testing.T) {
 	db, dbPath := setupTestDBFile(t)
-	defer func() { if err := os.Remove(dbPath); err != nil { log.Printf("failed to remove file: %v", err) } }()
+	defer func() {
+		if err := os.Remove(dbPath); err != nil {
+			log.Printf("failed to remove file: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create column and task (using default project ID 1)
@@ -762,7 +834,11 @@ func TestTimestampsPersistence(t *testing.T) {
 
 	// Close and reopen database
 	db = closeAndReopenDB(t, db, dbPath)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo = NewRepository(db)
 
 	// Verify timestamps persisted correctly
@@ -786,7 +862,11 @@ func TestTimestampsPersistence(t *testing.T) {
 // Test 12: Complex Movement Sequence Persistence
 func TestComplexMovementSequencePersistence(t *testing.T) {
 	db, dbPath := setupTestDBFile(t)
-	defer func() { if err := os.Remove(dbPath); err != nil { log.Printf("failed to remove file: %v", err) } }()
+	defer func() {
+		if err := os.Remove(dbPath); err != nil {
+			log.Printf("failed to remove file: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create 4 columns (using default project ID 1)
@@ -826,7 +906,11 @@ func TestComplexMovementSequencePersistence(t *testing.T) {
 
 	// Close and reopen
 	db = closeAndReopenDB(t, db, dbPath)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo = NewRepository(db)
 
 	// Verify state persisted
@@ -844,7 +928,11 @@ func TestComplexMovementSequencePersistence(t *testing.T) {
 // Test 13: Column Reordering Persistence
 func TestColumnReorderingPersistence(t *testing.T) {
 	db, dbPath := setupTestDBFile(t)
-	defer func() { if err := os.Remove(dbPath); err != nil { log.Printf("failed to remove file: %v", err) } }()
+	defer func() {
+		if err := os.Remove(dbPath); err != nil {
+			log.Printf("failed to remove file: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create 3 columns: A, B, C (using default project ID 1)
@@ -870,7 +958,11 @@ func TestColumnReorderingPersistence(t *testing.T) {
 
 	// Close and reopen
 	db = closeAndReopenDB(t, db, dbPath)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo = NewRepository(db)
 
 	// Verify order persisted
@@ -892,7 +984,11 @@ func TestColumnReorderingPersistence(t *testing.T) {
 func TestUpdateTaskColumnDirectly(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	// Create 2 columns (using default project ID 1)
@@ -927,7 +1023,11 @@ func TestUpdateTaskColumnDirectly(t *testing.T) {
 func TestMultipleTasksInColumnOrder(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
-	defer func() { if err := db.Close(); err != nil { log.Printf("failed to close database: %v", err) } }()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database: %v", err)
+		}
+	}()
 	repo := NewRepository(db)
 
 	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
