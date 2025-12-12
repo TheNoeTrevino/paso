@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -45,7 +46,11 @@ func (r *LabelRepo) GetLabelsByProject(ctx context.Context, projectID int) ([]*m
 	if err != nil {
 		return nil, fmt.Errorf("failed to query labels for project %d: %w", projectID, err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	labels := make([]*models.Label, 0, 20)
 	for rows.Next() {
@@ -74,7 +79,11 @@ func (r *LabelRepo) GetLabelsForTask(ctx context.Context, taskID int) ([]*models
 	if err != nil {
 		return nil, fmt.Errorf("failed to query labels for task %d: %w", taskID, err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	labels := make([]*models.Label, 0, 10)
 	for rows.Next() {
@@ -142,7 +151,11 @@ func (r *LabelRepo) SetTaskLabels(ctx context.Context, taskID int, labelIDs []in
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction for setting labels on task %d: %w", taskID, err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// Remove all existing labels
 	_, err = tx.ExecContext(ctx, `DELETE FROM task_labels WHERE task_id = ?`, taskID)
