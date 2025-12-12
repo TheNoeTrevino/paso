@@ -655,7 +655,7 @@ func TestEmptyDatabaseReload(t *testing.T) {
 	}
 
 	// Enable foreign key constraints
-	_, err = db.Exec("PRAGMA foreign_keys = ON")
+	_, err = db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
 	if err != nil {
 		t.Fatalf("Failed to enable foreign keys: %v", err)
 	}
@@ -678,14 +678,14 @@ func TestEmptyDatabaseReload(t *testing.T) {
 	repo := NewRepository(db)
 
 	// Enable foreign key constraints
-	_, err = db.Exec("PRAGMA foreign_keys = ON")
+	_, err = db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
 	if err != nil {
 		t.Fatalf("Failed to enable foreign keys: %v", err)
 	}
 
 	// Verify default columns exist (from initial migration)
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM columns").Scan(&count)
+	err = db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM columns").Scan(&count)
 	if err != nil {
 		t.Fatalf("Failed to query columns: %v", err)
 	}
