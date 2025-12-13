@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -21,7 +22,11 @@ func (r *ColumnRepo) CreateColumn(ctx context.Context, name string, projectID in
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	var prevID *int
 	var nextID *int
@@ -115,7 +120,11 @@ func (r *ColumnRepo) GetColumnsByProject(ctx context.Context, projectID int) ([]
 	if err != nil {
 		return nil, fmt.Errorf("querying columns for project: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	// Build a map for O(1) lookups and find the head
 	columnMap := make(map[int]*models.Column)
@@ -212,7 +221,11 @@ func (r *ColumnRepo) DeleteColumn(ctx context.Context, columnID int) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// 1. Get the column's prev_id and next_id
 	var prevID, nextID sql.NullInt64
