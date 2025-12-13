@@ -2,7 +2,10 @@ package tui
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/config"
@@ -11,8 +14,16 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
+// Timeout constants for context operations
+const (
+	timeoutInitialLoad = 30 * time.Second
+	timeoutUI          = 10 * time.Second
+	timeoutDB          = 30 * time.Second
+)
+
 // Model represents the application state for the TUI
 type Model struct {
+	ctx               context.Context // Application context for cancellation and timeouts
 	repo              database.DataStore
 	config            *config.Config
 	appState          *state.AppState
@@ -27,11 +38,13 @@ type Model struct {
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
-func InitialModel(repo database.DataStore, cfg *config.Config) Model {
-	ctx := context.Background()
+func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Config) Model {
+	// Create child context with timeout for initial loading
+	loadCtx, cancel := context.WithTimeout(ctx, timeoutInitialLoad)
+	defer cancel()
 
 	// Load all projects
-	projects, err := repo.GetAllProjects(ctx)
+	projects, err := repo.GetAllProjects(loadCtx)
 	if err != nil {
 		log.Printf("Error loading projects: %v", err)
 		projects = []*models.Project{}
@@ -44,7 +57,7 @@ func InitialModel(repo database.DataStore, cfg *config.Config) Model {
 	}
 
 	// Load columns for the current project
-	columns, err := repo.GetColumnsByProject(ctx, currentProjectID)
+	columns, err := repo.GetColumnsByProject(loadCtx, currentProjectID)
 	if err != nil {
 		log.Printf("Error loading columns: %v", err)
 		columns = []*models.Column{}
@@ -52,14 +65,14 @@ func InitialModel(repo database.DataStore, cfg *config.Config) Model {
 
 	// Load task summaries for the entire project (includes labels)
 	// Uses batch query to avoid N+1 pattern
-	tasks, err := repo.GetTaskSummariesByProject(ctx, currentProjectID)
+	tasks, err := repo.GetTaskSummariesByProject(loadCtx, currentProjectID)
 	if err != nil {
 		log.Printf("Error loading tasks for project %d: %v", currentProjectID, err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
 
 	// Load labels for the current project
-	labels, err := repo.GetLabelsByProject(ctx, currentProjectID)
+	labels, err := repo.GetLabelsByProject(loadCtx, currentProjectID)
 	if err != nil {
 		log.Printf("Error loading labels: %v", err)
 		labels = []*models.Label{}
@@ -80,6 +93,7 @@ func InitialModel(repo database.DataStore, cfg *config.Config) Model {
 	InitStyles(cfg.ColorScheme)
 
 	return Model{
+		ctx:               ctx, // Store root context
 		repo:              repo,
 		config:            cfg,
 		appState:          appState,
@@ -92,6 +106,46 @@ func InitialModel(repo database.DataStore, cfg *config.Config) Model {
 		notificationState: notificationState,
 		searchState:       searchState,
 	}
+}
+
+// withTimeout creates a child context with appropriate timeout for operation type
+func (m *Model) withTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(m.ctx, timeout)
+}
+
+// dbContext creates a context for database operations with 30s timeout
+func (m *Model) dbContext() (context.Context, context.CancelFunc) {
+	return m.withTimeout(timeoutDB)
+}
+
+// uiContext creates a context for UI operations with 10s timeout
+func (m *Model) uiContext() (context.Context, context.CancelFunc) {
+	return m.withTimeout(timeoutUI)
+}
+
+// handleDBError handles database errors with context-aware messages
+// It distinguishes between cancellation, timeout, and other errors,
+// providing appropriate user feedback for each case.
+func (m *Model) handleDBError(err error, operation string) {
+	if err == nil {
+		return
+	}
+
+	if errors.Is(err, context.Canceled) {
+		// Operation was cancelled - this is expected during shutdown
+		// Don't show error notification, just log for debugging
+		log.Printf("%s cancelled by user", operation)
+		return
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) {
+		// Operation timed out - show user-friendly message
+		m.notificationState.Add(state.LevelError, fmt.Sprintf("%s timed out. Please try again.", operation))
+		return
+	}
+
+	// Other errors - show detailed error message
+	m.notificationState.Add(state.LevelError, fmt.Sprintf("%s failed: %v", operation, err))
 }
 
 // Init initializes the Bubble Tea application
@@ -178,21 +232,6 @@ func (m Model) getTasksForColumn(columnID int) []*models.TaskSummary {
 	return tasks
 }
 
-// getColumnAtIndex returns the column at the specified index with bounds checking.
-// Returns nil if index is out of bounds.
-func (m Model) getColumnAtIndex(index int) *models.Column {
-	if index < 0 || index >= len(m.appState.Columns()) {
-		return nil
-	}
-	return m.appState.Columns()[index]
-}
-
-// getCurrentColumnTasks returns tasks for the currently selected column.
-// Returns an empty slice if there's no current column or it has no tasks.
-func (m Model) getCurrentColumnTasks() []*models.TaskSummary {
-	return m.getCurrentTasks()
-}
-
 // removeCurrentColumn removes the currently selected column from the model's local state
 // This should be called after successfully deleting a column from the database
 // It adjusts the selectedColumn index if necessary to keep it within bounds
@@ -242,7 +281,9 @@ func (m Model) moveTaskRight() {
 	}
 
 	// Use the new database function to move task
-	err := m.repo.MoveTaskToNextColumn(context.Background(), task.ID)
+	ctx, cancel := m.uiContext()
+	defer cancel()
+	err := m.repo.MoveTaskToNextColumn(ctx, task.ID)
 	if err != nil {
 		log.Printf("Error moving task to next column: %v", err)
 		if err != models.ErrAlreadyLastColumn {
@@ -294,7 +335,9 @@ func (m Model) moveTaskLeft() {
 	}
 
 	// Use the new database function to move task
-	err := m.repo.MoveTaskToPrevColumn(context.Background(), task.ID)
+	ctx, cancel := m.uiContext()
+	defer cancel()
+	err := m.repo.MoveTaskToPrevColumn(ctx, task.ID)
 	if err != nil {
 		log.Printf("Error moving task to previous column: %v", err)
 		if err != models.ErrAlreadyFirstColumn {
@@ -340,7 +383,9 @@ func (m Model) moveTaskUp() {
 	}
 
 	// Call database swap
-	err := m.repo.SwapTaskUp(context.Background(), task.ID)
+	ctx, cancel := m.uiContext()
+	defer cancel()
+	err := m.repo.SwapTaskUp(ctx, task.ID)
 	if err != nil {
 		log.Printf("Error moving task up: %v", err)
 		if err != models.ErrAlreadyFirstTask {
@@ -401,7 +446,9 @@ func (m Model) moveTaskDown() {
 	}
 
 	// Call database swap
-	err := m.repo.SwapTaskDown(context.Background(), task.ID)
+	ctx, cancel := m.uiContext()
+	defer cancel()
+	err := m.repo.SwapTaskDown(ctx, task.ID)
 	if err != nil {
 		log.Printf("Error moving task down: %v", err)
 		if err != models.ErrAlreadyLastTask {
@@ -438,8 +485,12 @@ func (m Model) switchToProject(projectIndex int) {
 
 	project := m.appState.Projects()[projectIndex]
 
+	// Create context for database operations
+	ctx, cancel := m.dbContext()
+	defer cancel()
+
 	// Reload columns for this project
-	columns, err := m.repo.GetColumnsByProject(context.Background(), project.ID)
+	columns, err := m.repo.GetColumnsByProject(ctx, project.ID)
 	if err != nil {
 		log.Printf("Error loading columns for project %d: %v", project.ID, err)
 		columns = []*models.Column{}
@@ -447,7 +498,7 @@ func (m Model) switchToProject(projectIndex int) {
 	m.appState.SetColumns(columns)
 
 	// Reload task summaries for the entire project
-	tasks, err := m.repo.GetTaskSummariesByProject(context.Background(), project.ID)
+	tasks, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
 		log.Printf("Error loading tasks for project %d: %v", project.ID, err)
 		tasks = make(map[int][]*models.TaskSummary)
@@ -455,7 +506,7 @@ func (m Model) switchToProject(projectIndex int) {
 	m.appState.SetTasks(tasks)
 
 	// Reload labels for this project
-	labels, err := m.repo.GetLabelsByProject(context.Background(), project.ID)
+	labels, err := m.repo.GetLabelsByProject(ctx, project.ID)
 	if err != nil {
 		log.Printf("Error loading labels for project %d: %v", project.ID, err)
 		labels = []*models.Label{}
@@ -468,28 +519,14 @@ func (m Model) switchToProject(projectIndex int) {
 
 // reloadProjects reloads the projects list from the database
 func (m Model) reloadProjects() {
-	projects, err := m.repo.GetAllProjects(context.Background())
+	ctx, cancel := m.dbContext()
+	defer cancel()
+	projects, err := m.repo.GetAllProjects(ctx)
 	if err != nil {
 		log.Printf("Error reloading projects: %v", err)
 		return
 	}
 	m.appState.SetProjects(projects)
-}
-
-// reloadLabels reloads the labels for the current project from the database
-func (m Model) reloadLabels() {
-	project := m.getCurrentProject()
-	if project == nil {
-		m.appState.SetLabels([]*models.Label{})
-		return
-	}
-
-	labels, err := m.repo.GetLabelsByProject(context.Background(), project.ID)
-	if err != nil {
-		log.Printf("Error reloading labels: %v", err)
-		return
-	}
-	m.appState.SetLabels(labels)
 }
 
 // initParentPickerForForm initializes the parent picker for use in TicketFormMode.
@@ -504,7 +541,9 @@ func (m *Model) initParentPickerForForm() bool {
 	}
 
 	// Get all task references for the entire project
-	allTasks, err := m.repo.GetTaskReferencesForProject(context.Background(), project.ID)
+	ctx, cancel := m.dbContext()
+	defer cancel()
+	allTasks, err := m.repo.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
 		log.Printf("Error loading project tasks: %v", err)
 		return false
@@ -552,7 +591,9 @@ func (m *Model) initChildPickerForForm() bool {
 	}
 
 	// Get all task references for the entire project
-	allTasks, err := m.repo.GetTaskReferencesForProject(context.Background(), project.ID)
+	ctx, cancel := m.dbContext()
+	defer cancel()
+	allTasks, err := m.repo.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
 		log.Printf("Error loading project tasks: %v", err)
 		return false

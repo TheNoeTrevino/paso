@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"log"
 	"strings"
 
@@ -14,6 +13,15 @@ import (
 // Update handles all messages and updates the model accordingly
 // This implements the "Update" part of the Model-View-Update pattern
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Check if context is cancelled (graceful shutdown)
+	select {
+	case <-m.ctx.Done():
+		// Context cancelled, initiate graceful shutdown
+		return m, tea.Quit
+	default:
+		// Continue normal processing
+	}
+
 	// Handle form modes first - forms need ALL messages
 	if m.uiState.Mode() == state.TicketFormMode {
 		return m.updateTicketForm(msg)
@@ -94,72 +102,6 @@ func (m Model) extractTicketFormValues() ticketFormValues {
 	}
 }
 
-// createNewTaskWithLabels creates a new task and sets its labels
-func (m Model) createNewTaskWithLabels(values ticketFormValues) {
-	currentCol := m.getCurrentColumn()
-	if currentCol == nil {
-		m.notificationState.Add(state.LevelError, "No column selected")
-		return
-	}
-
-	task, err := m.repo.CreateTask(context.Background(),
-		values.title,
-		values.description,
-		currentCol.ID,
-		len(m.getTasksForColumn(currentCol.ID)),
-	)
-	if err != nil {
-		log.Printf("Error creating task: %v", err)
-		m.notificationState.Add(state.LevelError, "Error creating task")
-		return
-	}
-
-	// Set labels
-	if len(values.labelIDs) > 0 {
-		err = m.repo.SetTaskLabels(context.Background(), task.ID, values.labelIDs)
-		if err != nil {
-			log.Printf("Error setting labels: %v", err)
-		}
-	}
-
-	// Reload task summary with labels
-	summaries, err := m.repo.GetTaskSummariesByColumn(context.Background(), currentCol.ID)
-	if err != nil {
-		log.Printf("Error reloading tasks: %v", err)
-	} else {
-		m.appState.Tasks()[currentCol.ID] = summaries
-	}
-}
-
-// updateExistingTaskWithLabels updates an existing task and its labels
-func (m Model) updateExistingTaskWithLabels(values ticketFormValues) {
-	err := m.repo.UpdateTask(context.Background(), m.formState.EditingTaskID, values.title, values.description)
-	if err != nil {
-		log.Printf("Error updating task: %v", err)
-		m.notificationState.Add(state.LevelError, "Error updating task")
-		return
-	}
-
-	// Update labels
-	err = m.repo.SetTaskLabels(context.Background(), m.formState.EditingTaskID, values.labelIDs)
-	if err != nil {
-		log.Printf("Error setting labels: %v", err)
-	}
-
-	// Reload task summaries for the column
-	currentCol := m.getCurrentColumn()
-	if currentCol == nil {
-		return
-	}
-
-	summaries, err := m.repo.GetTaskSummariesByColumn(context.Background(), currentCol.ID)
-	if err != nil {
-		log.Printf("Error reloading tasks: %v", err)
-	} else {
-		m.appState.Tasks()[currentCol.ID] = summaries
-	}
-}
-
 // createNewTaskWithLabelsAndRelationships creates a new task, sets labels, and applies parent/child relationships
 func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues) {
 	currentCol := m.getCurrentColumn()
@@ -168,8 +110,12 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 		return
 	}
 
+	// Create context for database operations
+	ctx, cancel := m.dbContext()
+	defer cancel()
+
 	// 1. Create the task
-	task, err := m.repo.CreateTask(context.Background(),
+	task, err := m.repo.CreateTask(ctx,
 		values.title,
 		values.description,
 		currentCol.ID,
@@ -183,13 +129,11 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 
 	// 2. Set labels
 	if len(values.labelIDs) > 0 {
-		err = m.repo.SetTaskLabels(context.Background(), task.ID, values.labelIDs)
+		err = m.repo.SetTaskLabels(ctx, task.ID, values.labelIDs)
 		if err != nil {
 			log.Printf("Error setting labels: %v", err)
 		}
 	}
-
-	ctx := context.Background()
 
 	// 3. Apply parent relationships
 	// CRITICAL: Parent picker means selected task BLOCKS ON current task
@@ -212,7 +156,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 	}
 
 	// 5. Reload task summaries with labels
-	summaries, err := m.repo.GetTaskSummariesByColumn(context.Background(), currentCol.ID)
+	summaries, err := m.repo.GetTaskSummariesByColumn(ctx, currentCol.ID)
 	if err != nil {
 		log.Printf("Error reloading tasks: %v", err)
 	} else {
@@ -222,7 +166,9 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 
 // updateExistingTaskWithLabelsAndRelationships updates task, labels, and parent/child relationships
 func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormValues) {
-	ctx := context.Background()
+	// Create context for database operations
+	ctx, cancel := m.dbContext()
+	defer cancel()
 	taskID := m.formState.EditingTaskID
 
 	// 1. Update task basic fields
@@ -534,7 +480,9 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 
 					if name != "" {
-						project, err := m.repo.CreateProject(context.Background(), name, description)
+						ctx, cancel := m.dbContext()
+						defer cancel()
+						project, err := m.repo.CreateProject(ctx, name, description)
 						if err != nil {
 							log.Printf("Error creating project: %v", err)
 							m.notificationState.Add(state.LevelError, "Error creating project")
@@ -575,7 +523,9 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if name != "" {
-				project, err := m.repo.CreateProject(context.Background(), name, description)
+				ctx, cancel := m.dbContext()
+				defer cancel()
+				project, err := m.repo.CreateProject(ctx, name, description)
 				if err != nil {
 					log.Printf("Error creating project: %v", err)
 					m.notificationState.Add(state.LevelError, "Error creating project")
@@ -655,9 +605,11 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.labelPickerState.Items[i].Selected = !m.labelPickerState.Items[i].Selected
 					} else {
 						// In view mode: update database immediately
+						ctx, cancel := m.uiContext()
+						defer cancel()
 						if m.labelPickerState.Items[i].Selected {
 							// Remove label from task
-							err := m.repo.RemoveLabelFromTask(context.Background(), m.labelPickerState.TaskID, item.Label.ID)
+							err := m.repo.RemoveLabelFromTask(ctx, m.labelPickerState.TaskID, item.Label.ID)
 							if err != nil {
 								log.Printf("Error removing label: %v", err)
 								m.notificationState.Add(state.LevelError, "Failed to remove label from task")
@@ -666,7 +618,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							}
 						} else {
 							// Add label to task
-							err := m.repo.AddLabelToTask(context.Background(), m.labelPickerState.TaskID, item.Label.ID)
+							err := m.repo.AddLabelToTask(ctx, m.labelPickerState.TaskID, item.Label.ID)
 							if err != nil {
 								log.Printf("Error adding label: %v", err)
 								m.notificationState.Add(state.LevelError, "Failed to add label to task")
@@ -748,7 +700,9 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		label, err := m.repo.CreateLabel(context.Background(), project.ID, m.formState.FormLabelName, color)
+		ctx, cancel := m.dbContext()
+		defer cancel()
+		label, err := m.repo.CreateLabel(ctx, project.ID, m.formState.FormLabelName, color)
 		if err != nil {
 			log.Printf("Error creating label: %v", err)
 			m.notificationState.Add(state.LevelError, "Failed to create label")
@@ -766,7 +720,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		})
 
 		// Assign to current task
-		err = m.repo.AddLabelToTask(context.Background(), m.labelPickerState.TaskID, label.ID)
+		err = m.repo.AddLabelToTask(ctx, m.labelPickerState.TaskID, label.ID)
 		if err != nil {
 			log.Printf("Error assigning new label to task: %v", err)
 			m.notificationState.Add(state.LevelError, "Failed to assign label to task")
@@ -849,7 +803,8 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.parentPickerState.Items[i].Selected = !m.parentPickerState.Items[i].Selected
 					} else {
 						// View mode: apply changes to database immediately (existing behavior)
-						ctx := context.Background()
+						ctx, cancel := m.uiContext()
+						defer cancel()
 						if m.parentPickerState.Items[i].Selected {
 							// Remove parent relationship
 							// CRITICAL: RemoveSubtask(parentID, childID)
@@ -971,7 +926,8 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.childPickerState.Items[i].Selected = !m.childPickerState.Items[i].Selected
 					} else {
 						// View mode: apply changes to database immediately (existing behavior)
-						ctx := context.Background()
+						ctx, cancel := m.uiContext()
+						defer cancel()
 						if m.childPickerState.Items[i].Selected {
 							// Remove child relationship
 							// CRITICAL: RemoveSubtask(parentID, childID) - REVERSED parameter order from parent picker
@@ -1085,7 +1041,9 @@ func (m *Model) reloadCurrentColumnTasks() {
 		return
 	}
 
-	summaries, err := m.repo.GetTaskSummariesByColumn(context.Background(), currentCol.ID)
+	ctx, cancel := m.dbContext()
+	defer cancel()
+	summaries, err := m.repo.GetTaskSummariesByColumn(ctx, currentCol.ID)
 	if err != nil {
 		log.Printf("Error reloading column tasks: %v", err)
 		return

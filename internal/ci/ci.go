@@ -2,11 +2,13 @@ package ci
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -41,14 +43,14 @@ func (r *Runner) addResult(result StepResult) {
 	r.results = append(r.results, result)
 }
 
-func (r *Runner) Run() int {
+func (r *Runner) Run(ctx context.Context) int {
 	fmt.Printf("%s======================================%s\n", colorBlue, colorReset)
 	fmt.Printf("%s     Running CI/CD Pipeline          %s\n", colorBlue, colorReset)
 	fmt.Printf("%s======================================%s\n", colorBlue, colorReset)
 	fmt.Println()
 
 	var wg sync.WaitGroup
-	steps := []func(){
+	steps := []func(context.Context){
 		r.checkFormat,
 		r.runLint,
 		r.runTests,
@@ -58,9 +60,9 @@ func (r *Runner) Run() int {
 
 	for _, step := range steps {
 		wg.Add(1)
-		go func(fn func()) {
+		go func(fn func(context.Context)) {
 			defer wg.Done()
-			fn()
+			fn(ctx)
 		}(step)
 	}
 
@@ -69,8 +71,11 @@ func (r *Runner) Run() int {
 	return r.printSummary()
 }
 
-func (r *Runner) checkFormat() {
-	cmd := exec.Command("gofmt", "-s", "-l", ".")
+func (r *Runner) checkFormat(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "gofmt", "-s", "-l", ".")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -110,7 +115,7 @@ func (r *Runner) checkFormat() {
 	}
 }
 
-func (r *Runner) runLint() {
+func (r *Runner) runLint(ctx context.Context) {
 	if _, err := exec.LookPath("golangci-lint"); err != nil {
 		r.addResult(StepResult{
 			Name:    "Lint",
@@ -120,7 +125,10 @@ func (r *Runner) runLint() {
 		return
 	}
 
-	cmd := exec.Command("golangci-lint", "run", "--timeout=5m")
+	ctx, cancel := context.WithTimeout(ctx, 6*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "golangci-lint", "run", "--timeout=5m")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -142,8 +150,11 @@ func (r *Runner) runLint() {
 	}
 }
 
-func (r *Runner) runTests() {
-	cmd := exec.Command("go", "test", "-race", "-coverprofile=coverage.out", "-covermode=atomic", "./...")
+func (r *Runner) runTests(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "go", "test", "-race", "-coverprofile=coverage.out", "-covermode=atomic", "./...")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -166,11 +177,14 @@ func (r *Runner) runTests() {
 	})
 
 	// Check coverage
-	r.checkCoverage()
+	r.checkCoverage(ctx)
 }
 
-func (r *Runner) checkCoverage() {
-	cmd := exec.Command("go", "tool", "cover", "-func=coverage.out")
+func (r *Runner) checkCoverage(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "go", "tool", "cover", "-func=coverage.out")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -190,7 +204,14 @@ func (r *Runner) checkCoverage() {
 		if strings.Contains(line, "total:") {
 			fields := strings.Fields(line)
 			if len(fields) >= 3 {
-				fmt.Sscanf(fields[2], "%f%%", &coverage)
+				if _, err := fmt.Sscanf(fields[2], "%f%%", &coverage); err != nil {
+					r.addResult(StepResult{
+						Name:    "Coverage Threshold",
+						Passed:  false,
+						Message: fmt.Sprintf("Failed to parse coverage value: %v", err),
+					})
+					return
+				}
 			}
 		}
 	}
@@ -210,7 +231,7 @@ func (r *Runner) checkCoverage() {
 	}
 }
 
-func (r *Runner) runSecurityScan() {
+func (r *Runner) runSecurityScan(ctx context.Context) {
 	if _, err := exec.LookPath("govulncheck"); err != nil {
 		r.addResult(StepResult{
 			Name:    "Security Scan",
@@ -220,7 +241,10 @@ func (r *Runner) runSecurityScan() {
 		return
 	}
 
-	cmd := exec.Command("govulncheck", "./...")
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "govulncheck", "./...")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -242,8 +266,11 @@ func (r *Runner) runSecurityScan() {
 	}
 }
 
-func (r *Runner) runBuild() {
-	cmd := exec.Command("go", "build", "-o", "bin/paso", ".")
+func (r *Runner) runBuild(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "go", "build", "-o", "bin/paso", ".")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
