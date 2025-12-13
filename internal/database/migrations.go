@@ -1,11 +1,15 @@
 package database
 
-import "database/sql"
+import (
+	"context"
+	"database/sql"
+	"log"
+)
 
 // runMigrations creates the database schema and seeds default data if needed
-func runMigrations(db *sql.DB) error {
+func runMigrations(ctx context.Context, db *sql.DB) error {
 	// Create projects table
-	_, err := db.Exec(`
+	_, err := db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS projects (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL,
@@ -19,7 +23,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Create project_counters table for ticket numbering per project
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS project_counters (
 			project_id INTEGER PRIMARY KEY,
 			next_ticket_number INTEGER DEFAULT 1,
@@ -31,7 +35,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Create columns table
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS columns (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL,
@@ -43,7 +47,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Create tasks table
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS tasks (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			title TEXT NOT NULL,
@@ -60,7 +64,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Create index for efficient task queries
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE INDEX IF NOT EXISTS idx_tasks_column
 		ON tasks(column_id, position)
 	`)
@@ -69,7 +73,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Create labels table (project-specific)
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS labels (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL,
@@ -84,7 +88,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Create task_labels join table (many-to-many)
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS task_labels (
 			task_id INTEGER NOT NULL,
 			label_id INTEGER NOT NULL,
@@ -98,43 +102,43 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Seed default project if no projects exist
-	if err := seedDefaultProject(db); err != nil {
+	if err := seedDefaultProject(ctx, db); err != nil {
 		return err
 	}
 
 	// Seed default columns if the table is empty
-	if err := seedDefaultColumns(db); err != nil {
+	if err := seedDefaultColumns(ctx, db); err != nil {
 		return err
 	}
 
 	// Migrate to linked list structure
-	if err := migrateToLinkedList(db); err != nil {
+	if err := migrateToLinkedList(ctx, db); err != nil {
 		return err
 	}
 
 	// Migrate columns to include project_id
-	if err := migrateColumnsToProject(db); err != nil {
+	if err := migrateColumnsToProject(ctx, db); err != nil {
 		return err
 	}
 
 	// Migrate tasks to include ticket_number
-	if err := migrateTasksTicketNumber(db); err != nil {
+	if err := migrateTasksTicketNumber(ctx, db); err != nil {
 		return err
 	}
 
 	// Migrate labels to include project_id and seed default labels
-	if err := migrateLabelsToProject(db); err != nil {
+	if err := migrateLabelsToProject(ctx, db); err != nil {
 		return err
 	}
 
 	// Migrate task_subtasks table for parent/child relationships
-	if err := migrateTaskSubtasks(db); err != nil {
+	if err := migrateTaskSubtasks(ctx, db); err != nil {
 		return err
 	}
 
 	// Create indexes AFTER all table/column migrations are complete
 	// Index on columns.project_id for efficient project-based queries
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE INDEX IF NOT EXISTS idx_columns_project
 		ON columns(project_id)
 	`)
@@ -143,7 +147,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Index on labels.project_id for efficient project-based label queries
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE INDEX IF NOT EXISTS idx_labels_project
 		ON labels(project_id)
 	`)
@@ -152,7 +156,7 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	// Index on task_labels.label_id for efficient label lookups
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE INDEX IF NOT EXISTS idx_task_labels_label
 		ON task_labels(label_id)
 	`)
@@ -164,10 +168,10 @@ func runMigrations(db *sql.DB) error {
 }
 
 // seedDefaultColumns inserts default columns if the columns table is empty
-func seedDefaultColumns(db *sql.DB) error {
+func seedDefaultColumns(ctx context.Context, db *sql.DB) error {
 	// Check if columns table is empty
 	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM columns").Scan(&count)
+	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM columns").Scan(&count)
 	if err != nil {
 		return err
 	}
@@ -188,7 +192,7 @@ func seedDefaultColumns(db *sql.DB) error {
 	}
 
 	for _, col := range defaultColumns {
-		_, err := db.Exec(
+		_, err := db.ExecContext(ctx,
 			"INSERT INTO columns (name, position) VALUES (?, ?)",
 			col.name, col.position,
 		)
@@ -202,10 +206,10 @@ func seedDefaultColumns(db *sql.DB) error {
 
 // migrateToLinkedList converts the position-based column ordering to a linked list structure
 // This migration is idempotent and can be run multiple times safely
-func migrateToLinkedList(db *sql.DB) error {
+func migrateToLinkedList(ctx context.Context, db *sql.DB) error {
 	// Check if prev_id column already exists
 	var count int
-	err := db.QueryRow(`
+	err := db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM pragma_table_info('columns')
 		WHERE name IN ('prev_id', 'next_id')
 	`).Scan(&count)
@@ -221,39 +225,49 @@ func migrateToLinkedList(db *sql.DB) error {
 	}
 
 	// Start transaction
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// 1. Add new columns for linked list structure
-	_, err = tx.Exec(`ALTER TABLE columns ADD COLUMN prev_id INTEGER NULL`)
+	_, err = tx.ExecContext(ctx, `ALTER TABLE columns ADD COLUMN prev_id INTEGER NULL`)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec(`ALTER TABLE columns ADD COLUMN next_id INTEGER NULL`)
+	_, err = tx.ExecContext(ctx, `ALTER TABLE columns ADD COLUMN next_id INTEGER NULL`)
 	if err != nil {
 		return err
 	}
 
 	// 2. Migrate existing data: query all columns ordered by position
-	rows, err := tx.Query(`SELECT id FROM columns ORDER BY position`)
+	rows, err := tx.QueryContext(ctx, `SELECT id FROM columns ORDER BY position`)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	var columnIDs []int
 	for rows.Next() {
 		var id int
 		if err := rows.Scan(&id); err != nil {
-			rows.Close()
 			return err
 		}
 		columnIDs = append(columnIDs, id)
 	}
-	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
 
 	// 3. Build linked list by setting prev_id and next_id
 	for i, id := range columnIDs {
@@ -271,7 +285,7 @@ func migrateToLinkedList(db *sql.DB) error {
 		}
 
 		// Update the column with linked list pointers
-		_, err = tx.Exec(`
+		_, err = tx.ExecContext(ctx, `
 			UPDATE columns
 			SET prev_id = ?, next_id = ?
 			WHERE id = ?
@@ -284,7 +298,7 @@ func migrateToLinkedList(db *sql.DB) error {
 	// 4. Drop the old position column
 	// SQLite doesn't support DROP COLUMN directly before version 3.35.0
 	// We'll create a new table and copy data
-	_, err = tx.Exec(`
+	_, err = tx.ExecContext(ctx, `
 		CREATE TABLE columns_new (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL,
@@ -296,7 +310,7 @@ func migrateToLinkedList(db *sql.DB) error {
 		return err
 	}
 
-	_, err = tx.Exec(`
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO columns_new (id, name, prev_id, next_id)
 		SELECT id, name, prev_id, next_id FROM columns
 	`)
@@ -304,12 +318,12 @@ func migrateToLinkedList(db *sql.DB) error {
 		return err
 	}
 
-	_, err = tx.Exec(`DROP TABLE columns`)
+	_, err = tx.ExecContext(ctx, `DROP TABLE columns`)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec(`ALTER TABLE columns_new RENAME TO columns`)
+	_, err = tx.ExecContext(ctx, `ALTER TABLE columns_new RENAME TO columns`)
 	if err != nil {
 		return err
 	}
@@ -319,10 +333,10 @@ func migrateToLinkedList(db *sql.DB) error {
 }
 
 // seedDefaultProject creates a default project if no projects exist
-func seedDefaultProject(db *sql.DB) error {
+func seedDefaultProject(ctx context.Context, db *sql.DB) error {
 	// Check if projects table is empty
 	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM projects").Scan(&count)
+	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM projects").Scan(&count)
 	if err != nil {
 		return err
 	}
@@ -333,7 +347,7 @@ func seedDefaultProject(db *sql.DB) error {
 	}
 
 	// Insert default project
-	result, err := db.Exec(
+	result, err := db.ExecContext(ctx,
 		`INSERT INTO projects (name, description) VALUES (?, ?)`,
 		"Default", "Default project",
 	)
@@ -347,7 +361,7 @@ func seedDefaultProject(db *sql.DB) error {
 		return err
 	}
 
-	_, err = db.Exec(
+	_, err = db.ExecContext(ctx,
 		`INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)`,
 		projectID,
 	)
@@ -355,10 +369,10 @@ func seedDefaultProject(db *sql.DB) error {
 }
 
 // migrateColumnsToProject adds project_id column to columns table and associates existing columns with default project
-func migrateColumnsToProject(db *sql.DB) error {
+func migrateColumnsToProject(ctx context.Context, db *sql.DB) error {
 	// Check if project_id column already exists
 	var count int
-	err := db.QueryRow(`
+	err := db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM pragma_table_info('columns')
 		WHERE name = 'project_id'
 	`).Scan(&count)
@@ -372,27 +386,31 @@ func migrateColumnsToProject(db *sql.DB) error {
 	}
 
 	// Start transaction
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// Get the default project ID
 	var defaultProjectID int
-	err = tx.QueryRow(`SELECT id FROM projects WHERE name = 'Default' LIMIT 1`).Scan(&defaultProjectID)
+	err = tx.QueryRowContext(ctx, `SELECT id FROM projects WHERE name = 'Default' LIMIT 1`).Scan(&defaultProjectID)
 	if err != nil {
 		return err
 	}
 
 	// Add project_id column
-	_, err = tx.Exec(`ALTER TABLE columns ADD COLUMN project_id INTEGER NOT NULL DEFAULT 1`)
+	_, err = tx.ExecContext(ctx, `ALTER TABLE columns ADD COLUMN project_id INTEGER NOT NULL DEFAULT 1`)
 	if err != nil {
 		return err
 	}
 
 	// Update all existing columns to belong to the default project
-	_, err = tx.Exec(`UPDATE columns SET project_id = ?`, defaultProjectID)
+	_, err = tx.ExecContext(ctx, `UPDATE columns SET project_id = ?`, defaultProjectID)
 	if err != nil {
 		return err
 	}
@@ -401,10 +419,10 @@ func migrateColumnsToProject(db *sql.DB) error {
 }
 
 // migrateTasksTicketNumber adds ticket_number column to tasks table
-func migrateTasksTicketNumber(db *sql.DB) error {
+func migrateTasksTicketNumber(ctx context.Context, db *sql.DB) error {
 	// Check if ticket_number column already exists
 	var count int
-	err := db.QueryRow(`
+	err := db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM pragma_table_info('tasks')
 		WHERE name = 'ticket_number'
 	`).Scan(&count)
@@ -418,21 +436,25 @@ func migrateTasksTicketNumber(db *sql.DB) error {
 	}
 
 	// Start transaction
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// Add ticket_number column
-	_, err = tx.Exec(`ALTER TABLE tasks ADD COLUMN ticket_number INTEGER`)
+	_, err = tx.ExecContext(ctx, `ALTER TABLE tasks ADD COLUMN ticket_number INTEGER`)
 	if err != nil {
 		return err
 	}
 
 	// Assign ticket numbers to existing tasks grouped by their project
 	// First, get all tasks ordered by id (oldest first) with their project info
-	rows, err := tx.Query(`
+	rows, err := tx.QueryContext(ctx, `
 		SELECT t.id, c.project_id
 		FROM tasks t
 		JOIN columns c ON t.column_id = c.id
@@ -441,6 +463,11 @@ func migrateTasksTicketNumber(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	// Track counters per project
 	projectCounters := make(map[int]int)
@@ -453,7 +480,6 @@ func migrateTasksTicketNumber(db *sql.DB) error {
 	for rows.Next() {
 		var taskID, projectID int
 		if err := rows.Scan(&taskID, &projectID); err != nil {
-			rows.Close()
 			return err
 		}
 
@@ -464,11 +490,13 @@ func migrateTasksTicketNumber(db *sql.DB) error {
 
 		updates = append(updates, taskUpdate{id: taskID, ticketNumber: counter})
 	}
-	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
 
 	// Apply updates
 	for _, u := range updates {
-		_, err = tx.Exec(`UPDATE tasks SET ticket_number = ? WHERE id = ?`, u.ticketNumber, u.id)
+		_, err = tx.ExecContext(ctx, `UPDATE tasks SET ticket_number = ? WHERE id = ?`, u.ticketNumber, u.id)
 		if err != nil {
 			return err
 		}
@@ -476,7 +504,7 @@ func migrateTasksTicketNumber(db *sql.DB) error {
 
 	// Update project counters to reflect the highest ticket number used
 	for projectID, counter := range projectCounters {
-		_, err = tx.Exec(`
+		_, err = tx.ExecContext(ctx, `
 			INSERT OR REPLACE INTO project_counters (project_id, next_ticket_number)
 			VALUES (?, ?)
 		`, projectID, counter+1)
@@ -489,10 +517,10 @@ func migrateTasksTicketNumber(db *sql.DB) error {
 }
 
 // migrateLabelsToProject adds project_id column to labels table and seeds default labels
-func migrateLabelsToProject(db *sql.DB) error {
+func migrateLabelsToProject(ctx context.Context, db *sql.DB) error {
 	// Check if project_id column already exists
 	var count int
-	err := db.QueryRow(`
+	err := db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM pragma_table_info('labels')
 		WHERE name = 'project_id'
 	`).Scan(&count)
@@ -503,18 +531,22 @@ func migrateLabelsToProject(db *sql.DB) error {
 	// If column doesn't exist, we need to migrate
 	if count == 0 {
 		// Start transaction
-		tx, err := db.Begin()
+		tx, err := db.BeginTx(ctx, nil)
 		if err != nil {
 			return err
 		}
-		defer tx.Rollback()
+		defer func() {
+			if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+				log.Printf("failed to rollback transaction: %v", err)
+			}
+		}()
 
 		// Get the default project ID
 		var defaultProjectID int
-		err = tx.QueryRow(`SELECT id FROM projects WHERE name = 'Default' LIMIT 1`).Scan(&defaultProjectID)
+		err = tx.QueryRowContext(ctx, `SELECT id FROM projects WHERE name = 'Default' LIMIT 1`).Scan(&defaultProjectID)
 		if err != nil {
 			// If no default project, try to get the first project
-			err = tx.QueryRow(`SELECT id FROM projects ORDER BY id LIMIT 1`).Scan(&defaultProjectID)
+			err = tx.QueryRowContext(ctx, `SELECT id FROM projects ORDER BY id LIMIT 1`).Scan(&defaultProjectID)
 			if err != nil {
 				// No projects exist yet, this will be handled when projects are created
 				return nil
@@ -522,13 +554,13 @@ func migrateLabelsToProject(db *sql.DB) error {
 		}
 
 		// Add project_id column
-		_, err = tx.Exec(`ALTER TABLE labels ADD COLUMN project_id INTEGER NOT NULL DEFAULT 1`)
+		_, err = tx.ExecContext(ctx, `ALTER TABLE labels ADD COLUMN project_id INTEGER NOT NULL DEFAULT 1`)
 		if err != nil {
 			return err
 		}
 
 		// Update all existing labels to belong to the default project
-		_, err = tx.Exec(`UPDATE labels SET project_id = ?`, defaultProjectID)
+		_, err = tx.ExecContext(ctx, `UPDATE labels SET project_id = ?`, defaultProjectID)
 		if err != nil {
 			return err
 		}
@@ -539,11 +571,11 @@ func migrateLabelsToProject(db *sql.DB) error {
 	}
 
 	// Seed default labels for all projects that don't have labels yet
-	return seedDefaultLabels(db)
+	return seedDefaultLabels(ctx, db)
 }
 
 // seedDefaultLabels seeds default GitHub-style labels for projects that don't have any labels
-func seedDefaultLabels(db *sql.DB) error {
+func seedDefaultLabels(ctx context.Context, db *sql.DB) error {
 	// Default labels (GitHub-style)
 	defaultLabels := []struct {
 		name  string
@@ -558,11 +590,15 @@ func seedDefaultLabels(db *sql.DB) error {
 	}
 
 	// Get all projects
-	rows, err := db.Query(`SELECT id FROM projects`)
+	rows, err := db.QueryContext(ctx, `SELECT id FROM projects`)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	var projectIDs []int
 	for rows.Next() {
@@ -580,7 +616,7 @@ func seedDefaultLabels(db *sql.DB) error {
 	// For each project, check if it has labels and seed if not
 	for _, projectID := range projectIDs {
 		var labelCount int
-		err := db.QueryRow(`SELECT COUNT(*) FROM labels WHERE project_id = ?`, projectID).Scan(&labelCount)
+		err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM labels WHERE project_id = ?`, projectID).Scan(&labelCount)
 		if err != nil {
 			return err
 		}
@@ -588,7 +624,7 @@ func seedDefaultLabels(db *sql.DB) error {
 		// Only seed if project has no labels
 		if labelCount == 0 {
 			for _, label := range defaultLabels {
-				_, err := db.Exec(
+				_, err := db.ExecContext(ctx,
 					`INSERT OR IGNORE INTO labels (name, color, project_id) VALUES (?, ?, ?)`,
 					label.name, label.color, projectID,
 				)
@@ -603,10 +639,10 @@ func seedDefaultLabels(db *sql.DB) error {
 }
 
 // migrateTaskSubtasks creates the task_subtasks join table for parent/child task relationships
-func migrateTaskSubtasks(db *sql.DB) error {
+func migrateTaskSubtasks(ctx context.Context, db *sql.DB) error {
 	// Check if task_subtasks table already exists
 	var count int
-	err := db.QueryRow(`
+	err := db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM sqlite_master
 		WHERE type='table' AND name='task_subtasks'
 	`).Scan(&count)
@@ -620,14 +656,18 @@ func migrateTaskSubtasks(db *sql.DB) error {
 	}
 
 	// Start transaction
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// Create task_subtasks join table
-	_, err = tx.Exec(`
+	_, err = tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS task_subtasks (
 			parent_id INTEGER NOT NULL,
 			child_id INTEGER NOT NULL,
@@ -641,7 +681,7 @@ func migrateTaskSubtasks(db *sql.DB) error {
 	}
 
 	// Create indexes for efficient lookups
-	_, err = tx.Exec(`
+	_, err = tx.ExecContext(ctx, `
 		CREATE INDEX IF NOT EXISTS idx_task_subtasks_parent
 		ON task_subtasks(parent_id)
 	`)
@@ -649,7 +689,7 @@ func migrateTaskSubtasks(db *sql.DB) error {
 		return err
 	}
 
-	_, err = tx.Exec(`
+	_, err = tx.ExecContext(ctx, `
 		CREATE INDEX IF NOT EXISTS idx_task_subtasks_child
 		ON task_subtasks(child_id)
 	`)

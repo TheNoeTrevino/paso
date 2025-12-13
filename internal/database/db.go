@@ -2,6 +2,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -11,7 +12,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func InitDB() (*sql.DB, error) {
+func InitDB(ctx context.Context) (*sql.DB, error) {
 	// adding paso database to the home dir
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -30,20 +31,26 @@ func InitDB() (*sql.DB, error) {
 	}
 
 	// Enable foreign key constraints (required for CASCADE deletions)
-	_, err = db.Exec("PRAGMA foreign_keys = ON")
+	_, err = db.ExecContext(ctx, "PRAGMA foreign_keys = ON")
 	if err != nil {
 		log.Printf("Failed to enable foreign keys: %v", err)
-		db.Close()
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("error closing db: %v", closeErr)
+		}
 		return nil, err
 	}
 
-	if err := db.Ping(); err != nil {
-		db.Close()
+	if err := db.PingContext(ctx); err != nil {
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("error closing db: %v", closeErr)
+		}
 		return nil, fmt.Errorf("database ping failed: %w", err)
 	}
 
-	if err := runMigrations(db); err != nil {
-		db.Close()
+	if err := runMigrations(ctx, db); err != nil {
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("error closing db: %v", closeErr)
+		}
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 

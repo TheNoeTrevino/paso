@@ -16,16 +16,28 @@ func TestThemeFileLoading(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() {
+		if err := os.Remove(tmpFile.Name()); err != nil {
+			t.Logf("Failed to remove temp file: %v", err)
+		}
+	}()
 
 	if _, err := tmpFile.Write(themeContent); err != nil {
 		t.Fatalf("Failed to write to temp file: %v", err)
 	}
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
 
 	// Set environment variable
-	os.Setenv("PASO_THEME_FILE", tmpFile.Name())
-	defer os.Unsetenv("PASO_THEME_FILE")
+	if err := os.Setenv("PASO_THEME_FILE", tmpFile.Name()); err != nil {
+		t.Fatalf("Failed to set environment variable: %v", err)
+	}
+	defer func() {
+		if err := os.Unsetenv("PASO_THEME_FILE"); err != nil {
+			t.Logf("Failed to unset environment variable: %v", err)
+		}
+	}()
 
 	// Load config
 	config, err := Load()

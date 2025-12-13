@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -34,7 +35,11 @@ func (r *TaskRepo) CreateTask(ctx context.Context, title, description string, co
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// Get next ticket number for this project
 	var ticketNumber int
@@ -103,7 +108,11 @@ func (r *TaskRepo) GetTasksByColumn(ctx context.Context, columnID int) ([]*model
 	if err != nil {
 		return nil, fmt.Errorf("failed to query tasks for column %d: %w", columnID, err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	tasks := make([]*models.Task, 0, defaultTaskCapacity)
 	for rows.Next() {
@@ -148,7 +157,11 @@ func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to query task summaries for column %d: %w", columnID, err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	summaries := make([]*models.TaskSummary, 0, defaultTaskCapacity)
 	for rows.Next() {
@@ -203,7 +216,11 @@ func (r *TaskRepo) GetTaskSummariesByProject(ctx context.Context, projectID int)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query task summaries for project %d: %w", projectID, err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	// Group tasks by column_id
 	tasksByColumn := make(map[int][]*models.TaskSummary)
@@ -261,7 +278,11 @@ func (r *TaskRepo) GetTaskSummariesByProjectFiltered(ctx context.Context, projec
 	if err != nil {
 		return nil, fmt.Errorf("failed to query filtered tasks for project %d: %w", projectID, err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	// Group tasks by column_id (same as GetTaskSummariesByProject)
 	tasksByColumn := make(map[int][]*models.TaskSummary)
@@ -320,7 +341,11 @@ func (r *TaskRepo) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskD
 	if err != nil {
 		return nil, fmt.Errorf("failed to query labels for task %d: %w", taskID, err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	labels := make([]*models.Label, 0, 10)
 	for rows.Next() {
@@ -384,7 +409,11 @@ func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction for moving task %d to next column: %w", taskID, err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// 1. Get the task's current column_id
 	var currentColumnID int
@@ -445,7 +474,11 @@ func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction for moving task %d to prev column: %w", taskID, err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// 1. Get the task's current column_id
 	var currentColumnID int
@@ -506,7 +539,11 @@ func (r *TaskRepo) SwapTaskUp(ctx context.Context, taskID int) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction for swapping task %d up: %w", taskID, err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// 1. Get the task's current column_id and position
 	var columnID, currentPos int
@@ -574,7 +611,11 @@ func (r *TaskRepo) SwapTaskDown(ctx context.Context, taskID int) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction for swapping task %d down: %w", taskID, err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// 1. Get the task's current column_id and position
 	var columnID, currentPos int
@@ -669,7 +710,11 @@ func (r *TaskRepo) GetParentTasks(ctx context.Context, taskID int) ([]*models.Ta
 	if err != nil {
 		return nil, fmt.Errorf("failed to query parent tasks for task %d: %w", taskID, err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	references := make([]*models.TaskReference, 0, 10)
 	for rows.Next() {
@@ -702,7 +747,11 @@ func (r *TaskRepo) GetChildTasks(ctx context.Context, taskID int) ([]*models.Tas
 	if err != nil {
 		return nil, fmt.Errorf("failed to query child tasks for task %d: %w", taskID, err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	references := make([]*models.TaskReference, 0, 10)
 	for rows.Next() {
@@ -743,7 +792,11 @@ func (r *TaskRepo) GetTaskReferencesForProject(ctx context.Context, projectID in
 	if err != nil {
 		return nil, fmt.Errorf("failed to query task references for project %d: %w", projectID, err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	references := make([]*models.TaskReference, 0, 10)
 	for rows.Next() {

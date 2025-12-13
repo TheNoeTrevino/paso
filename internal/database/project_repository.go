@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -19,7 +20,11 @@ func (r *ProjectRepo) CreateProject(ctx context.Context, name, description strin
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction for project creation: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// Insert the project
 	result, err := tx.ExecContext(ctx,
@@ -111,7 +116,11 @@ func (r *ProjectRepo) GetAllProjects(ctx context.Context) ([]*models.Project, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to query all projects: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
 
 	projects := make([]*models.Project, 0, 10)
 	for rows.Next() {
@@ -146,7 +155,11 @@ func (r *ProjectRepo) DeleteProject(ctx context.Context, id int) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction for project %d deletion: %w", id, err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// Delete all tasks for columns in this project (using subquery)
 	_, err = tx.ExecContext(ctx, `DELETE FROM tasks WHERE column_id IN (SELECT id FROM columns WHERE project_id = ?)`, id)
@@ -199,7 +212,11 @@ func (r *ProjectRepo) GetNextTicketNumber(ctx context.Context, projectID int) (i
 	if err != nil {
 		return 0, fmt.Errorf("failed to begin transaction for ticket number: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
 
 	// Get current counter
 	var ticketNumber int

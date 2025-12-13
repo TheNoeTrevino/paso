@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -17,6 +18,7 @@ func setupTestModel(columns []*models.Column, tasks map[int][]*models.TaskSummar
 	}
 
 	return Model{
+		ctx:               context.Background(),
 		repo:              nil, // No repo needed for navigation handlers
 		config:            cfg,
 		appState:          state.NewAppState(nil, 0, columns, tasks, nil),
@@ -24,7 +26,10 @@ func setupTestModel(columns []*models.Column, tasks map[int][]*models.TaskSummar
 		inputState:        state.NewInputState(),
 		formState:         state.NewFormState(),
 		labelPickerState:  state.NewLabelPickerState(),
+		parentPickerState: state.NewTaskPickerState(),
+		childPickerState:  state.NewTaskPickerState(),
 		notificationState: state.NewNotificationState(),
+		searchState:       state.NewSearchState(),
 	}
 }
 

@@ -518,54 +518,6 @@ func (m Model) viewKanbanBoard() string {
 	return canvas.Render()
 }
 
-// renderFormParentList renders the read-only parent tasks list in the form
-func (m Model) renderFormParentList() string {
-	var b strings.Builder
-
-	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-	taskStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
-
-	b.WriteString(labelStyle.Render("Parents:") + " ")
-
-	if len(m.formState.FormParentRefs) == 0 {
-		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("None"))
-	} else {
-		tags := make([]string, len(m.formState.FormParentRefs))
-		for i, parent := range m.formState.FormParentRefs {
-			ticketNum := fmt.Sprintf("%s-%d", parent.ProjectName, parent.TicketNumber)
-			tags[i] = taskStyle.Render(ticketNum)
-		}
-		b.WriteString(strings.Join(tags, ", "))
-	}
-
-	b.WriteString("\n")
-	return b.String()
-}
-
-// renderFormChildList renders the read-only child tasks list in the form
-func (m Model) renderFormChildList() string {
-	var b strings.Builder
-
-	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-	taskStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
-
-	b.WriteString(labelStyle.Render("Children:") + " ")
-
-	if len(m.formState.FormChildRefs) == 0 {
-		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("None"))
-	} else {
-		tags := make([]string, len(m.formState.FormChildRefs))
-		for i, child := range m.formState.FormChildRefs {
-			ticketNum := fmt.Sprintf("%s-%d", child.ProjectName, child.TicketNumber)
-			tags[i] = taskStyle.Render(ticketNum)
-		}
-		b.WriteString(strings.Join(tags, ", "))
-	}
-
-	b.WriteString("\n")
-	return b.String()
-}
-
 // renderFormTitleDescriptionZone renders the top-left zone with title and description fields
 func (m Model) renderFormTitleDescriptionZone(width, height int) string {
 	if m.formState.TicketForm == nil {
@@ -604,16 +556,6 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 		updatedStr = m.formState.FormUpdatedAt.Format("Jan 2, 2006 3:04 PM")
 	}
 
-	// Created timestamp
-	parts = append(parts, labelHeaderStyle.Render("Created"))
-	parts = append(parts, createdStr)
-	parts = append(parts, "")
-
-	// Updated timestamp
-	parts = append(parts, labelHeaderStyle.Render("Updated"))
-	parts = append(parts, updatedStr)
-	parts = append(parts, "")
-
 	// Edited indicator (unsaved changes)
 	parts = append(parts, labelHeaderStyle.Render("Status"))
 	if m.formState.HasTicketFormChanges() {
@@ -622,6 +564,16 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 	} else {
 		parts = append(parts, subtleStyle.Render("○ No Changes"))
 	}
+	parts = append(parts, "")
+
+	// Created timestamp
+	parts = append(parts, labelHeaderStyle.Render("Created"))
+	parts = append(parts, createdStr)
+	parts = append(parts, "")
+
+	// Updated timestamp
+	parts = append(parts, labelHeaderStyle.Render("Updated"))
+	parts = append(parts, updatedStr)
 	parts = append(parts, "")
 
 	// Labels section
