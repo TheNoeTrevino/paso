@@ -107,7 +107,10 @@ func InitStyles(colors config.ColorScheme) {
 	ColumnStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(colors.ColumnBorder)).
-		Padding(1).
+		PaddingTop(0).
+		PaddingBottom(1).
+		PaddingLeft(1).
+		PaddingRight(1).
 		Width(40)
 
 	// Task style

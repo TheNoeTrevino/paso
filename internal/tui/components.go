@@ -152,7 +152,7 @@ func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected b
 		content += emptyStyle.Render("No tasks")
 	} else {
 		// Calculate how many tasks fit
-		// Column overhead: header (3) + padding (2) + borders (2) + top indicator (1) + bottom indicator (1) = 11
+		// Column overhead: header (1) + borders (2) + top indicator (1) + bottom indicator (1) = 5
 		const columnOverhead = 5
 		availableHeight := height - columnOverhead
 		maxVisibleTasks := max(availableHeight/TaskCardHeight, 1)
@@ -162,9 +162,11 @@ func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected b
 			Foreground(lipgloss.Color(theme.Subtle)).
 			Align(lipgloss.Center)
 
-		// Show scroll indicator if scrolled down
+		// Always reserve space for top indicator
 		if scrollOffset > 0 {
 			content += indicatorStyle.Render("▲ more above") + "\n"
+		} else {
+			content += "\n" // Empty line to maintain consistent spacing
 		}
 
 		// Calculate visible task range
