@@ -314,7 +314,7 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 
 // handleFormSave handles the C-s save shortcut for forms.
 // Sets confirmation to true and completes the form, triggering the save flow.
-func (m Model) handleFormSave(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd) {
+func (m Model) handleFormSave(cfg formConfig) (tea.Model, tea.Cmd) {
 	if cfg.form == nil {
 		m.uiState.SetMode(state.NormalMode)
 		return m, nil
@@ -384,7 +384,7 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case m.config.KeyMappings.SaveForm:
 			// Quick save via C-s
-			return m.handleFormSave(msg, formConfig{
+			return m.handleFormSave(formConfig{
 				form: m.formState.TicketForm,
 				setForm: func(f *huh.Form) {
 					m.formState.TicketForm = f
@@ -464,7 +464,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.ClearScreen
 
 		case m.config.KeyMappings.SaveForm:
-			return m.handleFormSave(msg, formConfig{
+			return m.handleFormSave(formConfig{
 				form: m.formState.ProjectForm,
 				setForm: func(f *huh.Form) {
 					m.formState.ProjectForm = f
