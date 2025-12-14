@@ -79,16 +79,10 @@ func RenderListView(
 	// Calculate visible rows
 	// Reserve space for header (2 lines), help text (1 line), and some padding
 	const reservedHeight = 4
-	visibleHeight := height - reservedHeight
-	if visibleHeight < 1 {
-		visibleHeight = 1
-	}
+	visibleHeight := max(height-reservedHeight, 1)
 
 	// Calculate which rows to display
-	endIdx := scrollOffset + visibleHeight
-	if endIdx > len(rows) {
-		endIdx = len(rows)
-	}
+	endIdx := min(scrollOffset+visibleHeight, len(rows))
 
 	// Render visible rows
 	if len(rows) == 0 {
