@@ -15,6 +15,7 @@ type MetadataColumnProps struct {
 	HasBorder  bool
 }
 
+// is this never used?
 func RenderMetadataColumn(props MetadataColumnProps) string {
 	var parts []string
 
@@ -24,6 +25,13 @@ func RenderMetadataColumn(props MetadataColumnProps) string {
 
 	// Status section
 	parts = append(parts, renderMetadataSection("Status", props.ColumnName))
+
+	// Type section
+	typeStr := props.Task.TypeDescription
+	if typeStr == "" {
+		typeStr = "task"
+	}
+	parts = append(parts, renderMetadataSection("Type", typeStr))
 
 	// Created timestamp
 	createdStr := props.Task.CreatedAt.Format("Jan 2, 2006 3:04 PM")
@@ -37,7 +45,7 @@ func RenderMetadataColumn(props MetadataColumnProps) string {
 	if len(props.Task.Labels) > 0 {
 		parts = append(parts, labelHeaderStyle.Render("Labels"))
 		for _, label := range props.Task.Labels {
-			parts = append(parts, RenderLabelChip(label))
+			parts = append(parts, RenderLabelChip(label, ""))
 		}
 		parts = append(parts, "")
 	} else {
@@ -77,8 +85,9 @@ func renderMetadataSection(label string, value string) string {
 }
 
 // RenderLabelChip renders a single label as a small colored chip
-func RenderLabelChip(label *models.Label) string {
+func RenderLabelChip(label *models.Label, backgroundColor string) string {
 	return lipgloss.NewStyle().
 		Foreground(lipgloss.Color(label.Color)).
+		Background(lipgloss.Color(backgroundColor)).
 		Render(label.Name)
 }

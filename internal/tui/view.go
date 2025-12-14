@@ -688,6 +688,15 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 	}
 	parts = append(parts, "")
 
+	// Type section
+	parts = append(parts, labelHeaderStyle.Render("Type"))
+	if m.formState.FormTypeDescription != "" {
+		parts = append(parts, m.formState.FormTypeDescription)
+	} else {
+		parts = append(parts, subtleStyle.Render("task"))
+	}
+	parts = append(parts, "")
+
 	// Created timestamp
 	parts = append(parts, labelHeaderStyle.Render("Created"))
 	parts = append(parts, createdStr)
@@ -711,7 +720,7 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 
 		for _, labelID := range m.formState.FormLabelIDs {
 			if label, ok := labelMap[labelID]; ok {
-				parts = append(parts, components.RenderLabelChip(label))
+				parts = append(parts, components.RenderLabelChip(label, ""))
 			}
 		}
 	}
