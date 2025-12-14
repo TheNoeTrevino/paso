@@ -82,11 +82,13 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 
 	content := title + typeDisplay + labelChips
 
-	// Apply selection styling if this task is selected
+	// HACK: Make the selected look look like its focused
+	// Maybe we just make a selected task style instead?
 	style := TaskStyle
 	if selected {
 		style = style.
 			BorderForeground(lipgloss.Color(theme.SelectedBorder)).
+			BorderBackground(lipgloss.Color(theme.SelectedBg)).
 			Background(lipgloss.Color(theme.SelectedBg)).
 			BorderStyle(lipgloss.ThickBorder())
 	}
