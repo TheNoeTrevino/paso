@@ -120,15 +120,31 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 	if m.listViewState.IsListView() {
 		if m.listViewState.SelectedRow() > 0 {
 			m.listViewState.SetSelectedRow(m.listViewState.SelectedRow() - 1)
+
+			// Ensure row is visible by adjusting scroll offset
+			listHeight := m.uiState.ContentHeight()
+			const reservedHeight = 6
+			visibleRows := max(listHeight-reservedHeight, 1)
+			m.listViewState.EnsureRowVisible(visibleRows)
 		} else {
 			m.notificationState.Add(state.LevelInfo, "Already at the first task")
 		}
 		return m, nil
 	}
 
-	// Kanban navigation (existing code)
+	// Kanban navigation
 	if m.uiState.SelectedTask() > 0 {
 		m.uiState.SetSelectedTask(m.uiState.SelectedTask() - 1)
+
+		// Ensure task is visible by adjusting column scroll offset
+		if len(m.appState.Columns()) > 0 {
+			currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+			columnHeight := m.uiState.ContentHeight()
+			const taskCardHeight = 4
+			const columnOverhead = 5
+			maxTasksVisible := max((columnHeight-columnOverhead)/taskCardHeight, 1)
+			m.uiState.EnsureTaskVisible(currentCol.ID, m.uiState.SelectedTask(), maxTasksVisible)
+		}
 	} else {
 		m.notificationState.Add(state.LevelInfo, "Already at the first task")
 	}
@@ -142,16 +158,32 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 		rows := m.buildListViewRows()
 		if m.listViewState.SelectedRow() < len(rows)-1 {
 			m.listViewState.SetSelectedRow(m.listViewState.SelectedRow() + 1)
+
+			// Ensure row is visible by adjusting scroll offset
+			listHeight := m.uiState.ContentHeight()
+			const reservedHeight = 6
+			visibleRows := max(listHeight-reservedHeight, 1)
+			m.listViewState.EnsureRowVisible(visibleRows)
 		} else if len(rows) > 0 {
 			m.notificationState.Add(state.LevelInfo, "Already at the last task")
 		}
 		return m, nil
 	}
 
-	// Kanban navigation (existing code)
+	// Kanban navigation
 	currentTasks := m.getCurrentTasks()
 	if len(currentTasks) > 0 && m.uiState.SelectedTask() < len(currentTasks)-1 {
 		m.uiState.SetSelectedTask(m.uiState.SelectedTask() + 1)
+
+		// Ensure task is visible by adjusting column scroll offset
+		if len(m.appState.Columns()) > 0 {
+			currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+			columnHeight := m.uiState.ContentHeight()
+			const taskCardHeight = 4
+			const columnOverhead = 5
+			maxTasksVisible := max((columnHeight-columnOverhead)/taskCardHeight, 1)
+			m.uiState.EnsureTaskVisible(currentCol.ID, m.uiState.SelectedTask(), maxTasksVisible)
+		}
 	} else if len(currentTasks) > 0 {
 		m.notificationState.Add(state.LevelInfo, "Already at the last task")
 	}
