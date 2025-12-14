@@ -61,7 +61,11 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 	if len(task.Labels) > 0 {
 		var chips []string
 		for _, label := range task.Labels {
-			chips = append(chips, components.RenderLabelChip(label))
+			if selected {
+				chips = append(chips, components.RenderLabelChip(label, theme.SelectedBg))
+			} else {
+				chips = append(chips, components.RenderLabelChip(label, theme.TaskBg))
+			}
 		}
 		labelChips = "\n " + strings.Join(chips, text)
 	}

@@ -283,9 +283,10 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		m.formState.FormChildIDs[i] = child.ID
 	}
 
-	// Load timestamps for metadata display
+	// Load timestamps and type for metadata display
 	m.formState.FormCreatedAt = taskDetail.CreatedAt
 	m.formState.FormUpdatedAt = taskDetail.UpdatedAt
+	m.formState.FormTypeDescription = taskDetail.TypeDescription
 
 	m.formState.FormConfirm = true
 	m.formState.EditingTaskID = task.ID
