@@ -24,21 +24,18 @@ func main() {
 	)
 	defer cancel()
 
-	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Initialize database with non-cancellable context
-	// Migrations must complete to avoid partial schema states
 	initCtx := context.Background()
 	db, err := database.InitDB(initCtx)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 
-	// Database cleanup with graceful drain period
+	// database cleanup
 	defer func() {
 		// Create drain context with 5-second timeout
 		drainCtx, drainCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -57,16 +54,11 @@ func main() {
 		}
 	}()
 
-	// Create repository wrapping the database
 	repo := database.NewRepository(db)
-
-	// Create initial TUI model with root context
 	model := tui.InitialModel(ctx, repo, cfg)
-
-	// Create Bubble Tea program with context support
 	p := tea.NewProgram(model, tea.WithContext(ctx))
 
-	// Run program in goroutine to monitor cancellation
+	// goroutine to monitor cancellation
 	errChan := make(chan error, 1)
 	go func() {
 		_, err := p.Run()
@@ -82,7 +74,7 @@ func main() {
 		}
 	case <-ctx.Done():
 		log.Println("Shutdown signal received, cleaning up...")
-		// Give the program 5 seconds to clean up
+		// Give the program 5 seconds to clean up database queties still running
 		time.Sleep(5 * time.Second)
 	}
 }

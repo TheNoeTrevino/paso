@@ -415,7 +415,7 @@ func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		}
 	}()
 
-	// 1. Get the task's current column_id
+	//  Get the task's current column_id
 	var currentColumnID int
 	err = tx.QueryRowContext(ctx,
 		`SELECT column_id FROM tasks WHERE id = ?`,
@@ -425,7 +425,7 @@ func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to get current column for task %d: %w", taskID, err)
 	}
 
-	// 2. Get the next column's ID
+	// Get the next column's ID
 	var nextColumnID sql.NullInt64
 	err = tx.QueryRowContext(ctx,
 		`SELECT next_id FROM columns WHERE id = ?`,
@@ -435,12 +435,12 @@ func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to get next column for column %d: %w", currentColumnID, err)
 	}
 
-	// 3. Check if there's a next column
+	// Check if there's a next column
 	if !nextColumnID.Valid {
 		return models.ErrAlreadyLastColumn
 	}
 
-	// 4. Get the number of tasks in the next column to determine position
+	// Get the number of tasks in the next column to determine position
 	var taskCount int
 	err = tx.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM tasks WHERE column_id = ?`,
@@ -450,7 +450,7 @@ func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to count tasks in target column %d: %w", nextColumnID.Int64, err)
 	}
 
-	// 5. Move the task to the next column (append to end)
+	// Move the task to the next column (append to end)
 	_, err = tx.ExecContext(ctx,
 		`UPDATE tasks
 		 SET column_id = ?, position = ?, updated_at = CURRENT_TIMESTAMP
@@ -480,7 +480,7 @@ func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		}
 	}()
 
-	// 1. Get the task's current column_id
+	// Get the task's current column_id
 	var currentColumnID int
 	err = tx.QueryRowContext(ctx,
 		`SELECT column_id FROM tasks WHERE id = ?`,
@@ -490,7 +490,7 @@ func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to get current column for task %d: %w", taskID, err)
 	}
 
-	// 2. Get the previous column's ID
+	// Get the previous column's ID
 	var prevColumnID sql.NullInt64
 	err = tx.QueryRowContext(ctx,
 		`SELECT prev_id FROM columns WHERE id = ?`,
@@ -500,12 +500,12 @@ func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to get prev column for column %d: %w", currentColumnID, err)
 	}
 
-	// 3. Check if there's a previous column
+	// Check if there's a previous column
 	if !prevColumnID.Valid {
 		return models.ErrAlreadyFirstColumn
 	}
 
-	// 4. Get the number of tasks in the previous column to determine position
+	// Get the number of tasks in the previous column to determine position
 	var taskCount int
 	err = tx.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM tasks WHERE column_id = ?`,
@@ -515,7 +515,7 @@ func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to count tasks in target column %d: %w", prevColumnID.Int64, err)
 	}
 
-	// 5. Move the task to the previous column (append to end)
+	// Move the task to the previous column (append to end)
 	_, err = tx.ExecContext(ctx,
 		`UPDATE tasks
 		 SET column_id = ?, position = ?, updated_at = CURRENT_TIMESTAMP
@@ -532,8 +532,61 @@ func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 	return nil
 }
 
+// MoveTaskToColumn moves a task to a specific target column.
+// The task is appended to the end of the target column.
+func (r *TaskRepo) MoveTaskToColumn(ctx context.Context, taskID int, targetColumnID int) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction for moving task %d to column %d: %w", taskID, targetColumnID, err)
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
+
+	// Verify the target column exists
+	var exists int
+	err = tx.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM columns WHERE id = ?`,
+		targetColumnID,
+	).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to verify target column %d: %w", targetColumnID, err)
+	}
+	if exists == 0 {
+		return fmt.Errorf("target column %d does not exist", targetColumnID)
+	}
+
+	// Get the number of tasks in the target column to determine position
+	var taskCount int
+	err = tx.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM tasks WHERE column_id = ?`,
+		targetColumnID,
+	).Scan(&taskCount)
+	if err != nil {
+		return fmt.Errorf("failed to count tasks in target column %d: %w", targetColumnID, err)
+	}
+
+	// Move the task to the target column (append to end)
+	_, err = tx.ExecContext(ctx,
+		`UPDATE tasks
+		 SET column_id = ?, position = ?, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = ?`,
+		targetColumnID, taskCount, taskID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to move task %d to column %d: %w", taskID, targetColumnID, err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction for moving task %d: %w", taskID, err)
+	}
+	return nil
+}
+
 // SwapTaskUp moves a task up in its column by swapping positions with the task above it.
-// Returns ErrAlreadyFirstTask if the task is already at position 0.
+// Returns ErrAlreadyFirstTask if the task is already at position 0
 func (r *TaskRepo) SwapTaskUp(ctx context.Context, taskID int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -545,7 +598,7 @@ func (r *TaskRepo) SwapTaskUp(ctx context.Context, taskID int) error {
 		}
 	}()
 
-	// 1. Get the task's current column_id and position
+	// Get the task's current column_id and position
 	var columnID, currentPos int
 	err = tx.QueryRowContext(ctx,
 		`SELECT column_id, position FROM tasks WHERE id = ?`,
@@ -555,12 +608,12 @@ func (r *TaskRepo) SwapTaskUp(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to get task %d position: %w", taskID, err)
 	}
 
-	// 2. Check if already at top (position 0)
+	// Check if already at top (position 0)
 	if currentPos == 0 {
 		return models.ErrAlreadyFirstTask
 	}
 
-	// 3. Find the task above (position - 1)
+	// Find the task above (position - 1)
 	var aboveTaskID int
 	err = tx.QueryRowContext(ctx,
 		`SELECT id FROM tasks WHERE column_id = ? AND position = ?`,
@@ -570,7 +623,7 @@ func (r *TaskRepo) SwapTaskUp(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to find task above position %d: %w", currentPos, err)
 	}
 
-	// 4. Swap positions using a temporary value to avoid unique constraint violations
+	// Swap positions using a temporary value to avoid unique constraint violations
 	// Set current task to -1 temporarily
 	_, err = tx.ExecContext(ctx,
 		`UPDATE tasks SET position = -1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
@@ -617,7 +670,7 @@ func (r *TaskRepo) SwapTaskDown(ctx context.Context, taskID int) error {
 		}
 	}()
 
-	// 1. Get the task's current column_id and position
+	// Get the task's current column_id and position
 	var columnID, currentPos int
 	err = tx.QueryRowContext(ctx,
 		`SELECT column_id, position FROM tasks WHERE id = ?`,
@@ -627,7 +680,7 @@ func (r *TaskRepo) SwapTaskDown(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to get task %d position: %w", taskID, err)
 	}
 
-	// 2. Get max position in the column
+	// Get max position in the column
 	var maxPos int
 	err = tx.QueryRowContext(ctx,
 		`SELECT COALESCE(MAX(position), 0) FROM tasks WHERE column_id = ?`,
@@ -637,12 +690,12 @@ func (r *TaskRepo) SwapTaskDown(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to get max position in column %d: %w", columnID, err)
 	}
 
-	// 3. Check if already at bottom
+	// Check if already at bottom
 	if currentPos >= maxPos {
 		return models.ErrAlreadyLastTask
 	}
 
-	// 4. Find the task below (position + 1)
+	// Find the task below (position + 1)
 	var belowTaskID int
 	err = tx.QueryRowContext(ctx,
 		`SELECT id FROM tasks WHERE column_id = ? AND position = ?`,
@@ -652,7 +705,7 @@ func (r *TaskRepo) SwapTaskDown(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to find task below position %d: %w", currentPos, err)
 	}
 
-	// 5. Swap positions using a temporary value
+	// Swap positions using a temporary value
 	_, err = tx.ExecContext(ctx,
 		`UPDATE tasks SET position = -1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
 		taskID,
