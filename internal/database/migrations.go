@@ -141,6 +141,11 @@ func runMigrations(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
+	// Migrate priorities table and add priority_id to tasks
+	if err := migrateTaskPriorities(ctx, db); err != nil {
+		return err
+	}
+
 	// Create indexes AFTER all table/column migrations are complete
 	// Index on columns.project_id for efficient project-based queries
 	_, err = db.ExecContext(ctx, `
@@ -783,6 +788,96 @@ func migrateTaskTypes(ctx context.Context, db *sql.DB) error {
 
 	// Add type_id column with default value of 1 (task)
 	_, err = tx.ExecContext(ctx, `ALTER TABLE tasks ADD COLUMN type_id INTEGER NOT NULL DEFAULT 1`)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// migrateTaskPriorities creates the priorities table and adds priority_id column to tasks
+func migrateTaskPriorities(ctx context.Context, db *sql.DB) error {
+	// Check if priorities table already exists
+	var tableCount int
+	err := db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM sqlite_master
+		WHERE type='table' AND name='priorities'
+	`).Scan(&tableCount)
+	if err != nil {
+		return err
+	}
+
+	// If table doesn't exist, create it
+	if tableCount == 0 {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+				log.Printf("failed to rollback transaction: %v", err)
+			}
+		}()
+
+		// Create priorities table with color mapping
+		_, err = tx.ExecContext(ctx, `
+			CREATE TABLE priorities (
+				id INTEGER PRIMARY KEY,
+				description TEXT NOT NULL UNIQUE,
+				color TEXT NOT NULL
+			)
+		`)
+		if err != nil {
+			return err
+		}
+
+		// Seed priorities table with values and color mappings
+		// Colors go from blue -> yellow -> orange -> red
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO priorities (id, description, color) VALUES
+				(1, 'trivial', '#3B82F6'),
+				(2, 'low', '#22C55E'),
+				(3, 'medium', '#EAB308'),
+				(4, 'high', '#F97316'),
+				(5, 'critical', '#EF4444')
+		`)
+		if err != nil {
+			return err
+		}
+
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+
+	// Check if priority_id column already exists in tasks table
+	var columnCount int
+	err = db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM pragma_table_info('tasks')
+		WHERE name = 'priority_id'
+	`).Scan(&columnCount)
+	if err != nil {
+		return err
+	}
+
+	// If column exists, skip migration
+	if columnCount > 0 {
+		return nil
+	}
+
+	// Start transaction to add priority_id column
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
+
+	// Add priority_id column with default value of 3 (medium)
+	_, err = tx.ExecContext(ctx, `ALTER TABLE tasks ADD COLUMN priority_id INTEGER NOT NULL DEFAULT 3`)
 	if err != nil {
 		return err
 	}

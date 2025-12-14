@@ -144,15 +144,18 @@ func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) (
 			t.column_id,
 			t.position,
 			ty.description,
+			p.description,
+			p.color,
 			GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
 			GROUP_CONCAT(l.name, CHAR(31)) as label_names,
 			GROUP_CONCAT(l.color, CHAR(31)) as label_colors
 		FROM tasks t
 		LEFT JOIN types ty ON t.type_id = ty.id
+		LEFT JOIN priorities p ON t.priority_id = p.id
 		LEFT JOIN task_labels tl ON t.id = tl.task_id
 		LEFT JOIN labels l ON tl.label_id = l.id
 		WHERE t.column_id = ?
-		GROUP BY t.id, t.title, t.column_id, t.position, ty.description
+		GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
 		ORDER BY t.position`
 
 	rows, err := r.db.QueryContext(ctx, query, columnID)
@@ -168,7 +171,7 @@ func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) (
 	summaries := make([]*models.TaskSummary, 0, defaultTaskCapacity)
 	for rows.Next() {
 		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
-		var typeDesc sql.NullString
+		var typeDesc, priorityDesc, priorityColor sql.NullString
 		summary := &models.TaskSummary{}
 
 		if err := rows.Scan(
@@ -177,6 +180,8 @@ func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) (
 			&summary.ColumnID,
 			&summary.Position,
 			&typeDesc,
+			&priorityDesc,
+			&priorityColor,
 			&labelIDsStr,
 			&labelNamesStr,
 			&labelColorsStr,
@@ -187,6 +192,14 @@ func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) (
 		// Set type description (default to empty string if null)
 		if typeDesc.Valid {
 			summary.TypeDescription = typeDesc.String
+		}
+
+		// Set priority description and color (default to empty string if null)
+		if priorityDesc.Valid {
+			summary.PriorityDescription = priorityDesc.String
+		}
+		if priorityColor.Valid {
+			summary.PriorityColor = priorityColor.String
 		}
 
 		// Parse concatenated label data
@@ -211,16 +224,19 @@ func (r *TaskRepo) GetTaskSummariesByProject(ctx context.Context, projectID int)
 			t.column_id,
 			t.position,
 			ty.description,
+			p.description,
+			p.color,
 			GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
 			GROUP_CONCAT(l.name, CHAR(31)) as label_names,
 			GROUP_CONCAT(l.color, CHAR(31)) as label_colors
 		FROM tasks t
 		INNER JOIN columns c ON t.column_id = c.id
 		LEFT JOIN types ty ON t.type_id = ty.id
+		LEFT JOIN priorities p ON t.priority_id = p.id
 		LEFT JOIN task_labels tl ON t.id = tl.task_id
 		LEFT JOIN labels l ON tl.label_id = l.id
 		WHERE c.project_id = ?
-		GROUP BY t.id, t.title, t.column_id, t.position, ty.description
+		GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
 		ORDER BY t.position`
 
 	rows, err := r.db.QueryContext(ctx, query, projectID)
@@ -237,7 +253,7 @@ func (r *TaskRepo) GetTaskSummariesByProject(ctx context.Context, projectID int)
 	tasksByColumn := make(map[int][]*models.TaskSummary)
 	for rows.Next() {
 		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
-		var typeDesc sql.NullString
+		var typeDesc, priorityDesc, priorityColor sql.NullString
 		summary := &models.TaskSummary{}
 
 		if err := rows.Scan(
@@ -246,6 +262,8 @@ func (r *TaskRepo) GetTaskSummariesByProject(ctx context.Context, projectID int)
 			&summary.ColumnID,
 			&summary.Position,
 			&typeDesc,
+			&priorityDesc,
+			&priorityColor,
 			&labelIDsStr,
 			&labelNamesStr,
 			&labelColorsStr,
@@ -256,6 +274,14 @@ func (r *TaskRepo) GetTaskSummariesByProject(ctx context.Context, projectID int)
 		// Set type description (default to empty string if null)
 		if typeDesc.Valid {
 			summary.TypeDescription = typeDesc.String
+		}
+
+		// Set priority description and color (default to empty string if null)
+		if priorityDesc.Valid {
+			summary.PriorityDescription = priorityDesc.String
+		}
+		if priorityColor.Valid {
+			summary.PriorityColor = priorityColor.String
 		}
 
 		// Parse concatenated label data
@@ -282,16 +308,19 @@ func (r *TaskRepo) GetTaskSummariesByProjectFiltered(ctx context.Context, projec
 			t.column_id,
 			t.position,
 			ty.description,
+			p.description,
+			p.color,
 			GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
 			GROUP_CONCAT(l.name, CHAR(31)) as label_names,
 			GROUP_CONCAT(l.color, CHAR(31)) as label_colors
 		FROM tasks t
 		INNER JOIN columns c ON t.column_id = c.id
 		LEFT JOIN types ty ON t.type_id = ty.id
+		LEFT JOIN priorities p ON t.priority_id = p.id
 		LEFT JOIN task_labels tl ON t.id = tl.task_id
 		LEFT JOIN labels l ON tl.label_id = l.id
 		WHERE c.project_id = ? AND t.title LIKE ?
-		GROUP BY t.id, t.title, t.column_id, t.position, ty.description
+		GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
 		ORDER BY t.position`
 
 	rows, err := r.db.QueryContext(ctx, query, projectID, "%"+searchQuery+"%")
@@ -308,7 +337,7 @@ func (r *TaskRepo) GetTaskSummariesByProjectFiltered(ctx context.Context, projec
 	tasksByColumn := make(map[int][]*models.TaskSummary)
 	for rows.Next() {
 		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
-		var typeDesc sql.NullString
+		var typeDesc, priorityDesc, priorityColor sql.NullString
 		summary := &models.TaskSummary{}
 
 		if err := rows.Scan(
@@ -317,6 +346,8 @@ func (r *TaskRepo) GetTaskSummariesByProjectFiltered(ctx context.Context, projec
 			&summary.ColumnID,
 			&summary.Position,
 			&typeDesc,
+			&priorityDesc,
+			&priorityColor,
 			&labelIDsStr,
 			&labelNamesStr,
 			&labelColorsStr,
@@ -327,6 +358,14 @@ func (r *TaskRepo) GetTaskSummariesByProjectFiltered(ctx context.Context, projec
 		// Set type description (default to empty string if null)
 		if typeDesc.Valid {
 			summary.TypeDescription = typeDesc.String
+		}
+
+		// Set priority description and color (default to empty string if null)
+		if priorityDesc.Valid {
+			summary.PriorityDescription = priorityDesc.String
+		}
+		if priorityColor.Valid {
+			summary.PriorityColor = priorityColor.String
 		}
 
 		// Parse concatenated label data
@@ -345,16 +384,17 @@ func (r *TaskRepo) GetTaskSummariesByProjectFiltered(ctx context.Context, projec
 // GetTaskDetail retrieves full task details including description, timestamps, labels, and subtasks
 func (r *TaskRepo) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error) {
 	detail := &models.TaskDetail{}
-	var typeDesc sql.NullString
+	var typeDesc, priorityDesc, priorityColor sql.NullString
 	err := r.db.QueryRowContext(ctx,
-		`SELECT t.id, t.title, t.description, t.column_id, t.position, t.ticket_number, t.created_at, t.updated_at, ty.description
+		`SELECT t.id, t.title, t.description, t.column_id, t.position, t.ticket_number, t.created_at, t.updated_at, ty.description, p.description, p.color
 		 FROM tasks t
 		 LEFT JOIN types ty ON t.type_id = ty.id
+		 LEFT JOIN priorities p ON t.priority_id = p.id
 		 WHERE t.id = ?`,
 		taskID,
 	).Scan(
 		&detail.ID, &detail.Title, &detail.Description,
-		&detail.ColumnID, &detail.Position, &detail.TicketNumber, &detail.CreatedAt, &detail.UpdatedAt, &typeDesc,
+		&detail.ColumnID, &detail.Position, &detail.TicketNumber, &detail.CreatedAt, &detail.UpdatedAt, &typeDesc, &priorityDesc, &priorityColor,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task detail for task %d: %w", taskID, err)
@@ -363,6 +403,14 @@ func (r *TaskRepo) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskD
 	// Set type description (default to empty string if null)
 	if typeDesc.Valid {
 		detail.TypeDescription = typeDesc.String
+	}
+
+	// Set priority description and color (default to empty string if null)
+	if priorityDesc.Valid {
+		detail.PriorityDescription = priorityDesc.String
+	}
+	if priorityColor.Valid {
+		detail.PriorityColor = priorityColor.String
 	}
 
 	// Get labels for this task
@@ -433,6 +481,20 @@ func (r *TaskRepo) UpdateTask(ctx context.Context, taskID int, title, descriptio
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update task %d: %w", taskID, err)
+	}
+	return nil
+}
+
+// UpdateTaskPriority updates a task's priority
+func (r *TaskRepo) UpdateTaskPriority(ctx context.Context, taskID, priorityID int) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE tasks
+		 SET priority_id = ?, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = ?`,
+		priorityID, taskID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update task %d priority: %w", taskID, err)
 	}
 	return nil
 }
