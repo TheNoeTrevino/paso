@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sort"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -35,6 +37,8 @@ type Model struct {
 	childPickerState  *state.TaskPickerState
 	notificationState *state.NotificationState
 	searchState       *state.SearchState
+	listViewState     *state.ListViewState
+	statusPickerState *state.StatusPickerState
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
@@ -88,6 +92,8 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	childPickerState := state.NewTaskPickerState()
 	notificationState := state.NewNotificationState()
 	searchState := state.NewSearchState()
+	listViewState := state.NewListViewState()
+	statusPickerState := state.NewStatusPickerState()
 
 	// Initialize styles with color scheme from config
 	InitStyles(cfg.ColorScheme)
@@ -105,6 +111,8 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 		childPickerState:  childPickerState,
 		notificationState: notificationState,
 		searchState:       searchState,
+		listViewState:     listViewState,
+		statusPickerState: statusPickerState,
 	}
 }
 
@@ -669,4 +677,121 @@ func (m *Model) initLabelPickerForForm() bool {
 func (m *Model) getFilteredLabelPickerItems() []state.LabelPickerItem {
 	// Delegate to LabelPickerState which now owns this logic
 	return m.labelPickerState.GetFilteredItems()
+}
+
+// buildListViewRows creates a flat list of all tasks with their column names.
+// The list is sorted according to the current sort settings in listViewState.
+func (m Model) buildListViewRows() []ListViewRow {
+	var rows []ListViewRow
+	for _, col := range m.appState.Columns() {
+		tasks := m.appState.Tasks()[col.ID]
+		for _, task := range tasks {
+			rows = append(rows, ListViewRow{
+				Task:       task,
+				ColumnName: col.Name,
+				ColumnID:   col.ID,
+			})
+		}
+	}
+
+	// Apply sorting
+	m.sortListViewRows(rows)
+	return rows
+}
+
+// sortListViewRows sorts the rows based on current sort settings.
+func (m Model) sortListViewRows(rows []ListViewRow) {
+	if m.listViewState.SortField() == state.SortNone {
+		return
+	}
+
+	sort.Slice(rows, func(i, j int) bool {
+		var cmp int
+		switch m.listViewState.SortField() {
+		case state.SortByTitle:
+			cmp = strings.Compare(rows[i].Task.Title, rows[j].Task.Title)
+		case state.SortByStatus:
+			cmp = strings.Compare(rows[i].ColumnName, rows[j].ColumnName)
+		default:
+			return false
+		}
+
+		if m.listViewState.SortOrder() == state.SortDesc {
+			cmp = -cmp
+		}
+		return cmp < 0
+	})
+}
+
+// syncKanbanToListSelection maps the current kanban selection to a list row index.
+// This should be called when switching from kanban to list view.
+func (m *Model) syncKanbanToListSelection() {
+	rows := m.buildListViewRows()
+	if len(rows) == 0 {
+		m.listViewState.SetSelectedRow(0)
+		return
+	}
+
+	// Find the task that matches the current kanban selection
+	currentTask := m.getCurrentTask()
+	if currentTask == nil {
+		m.listViewState.SetSelectedRow(0)
+		return
+	}
+
+	for i, row := range rows {
+		if row.Task.ID == currentTask.ID {
+			m.listViewState.SetSelectedRow(i)
+			return
+		}
+	}
+	m.listViewState.SetSelectedRow(0)
+}
+
+// syncListToKanbanSelection maps the current list row to kanban column/task selection.
+// This should be called when switching from list to kanban view.
+func (m *Model) syncListToKanbanSelection() {
+	rows := m.buildListViewRows()
+	if len(rows) == 0 {
+		return
+	}
+
+	selectedRow := m.listViewState.SelectedRow()
+	if selectedRow >= len(rows) {
+		selectedRow = len(rows) - 1
+	}
+	if selectedRow < 0 {
+		return
+	}
+
+	selectedTask := rows[selectedRow].Task
+
+	// Find the column and task position in kanban view
+	for colIdx, col := range m.appState.Columns() {
+		tasks := m.appState.Tasks()[col.ID]
+		for taskIdx, task := range tasks {
+			if task.ID == selectedTask.ID {
+				m.uiState.SetSelectedColumn(colIdx)
+				m.uiState.SetSelectedTask(taskIdx)
+				m.uiState.EnsureSelectionVisible(colIdx)
+				return
+			}
+		}
+	}
+}
+
+// getTaskFromListRow returns the task at the given list row index.
+// Returns nil if the index is out of bounds or no tasks exist.
+func (m Model) getTaskFromListRow(rowIdx int) *models.TaskSummary {
+	rows := m.buildListViewRows()
+	if rowIdx < 0 || rowIdx >= len(rows) {
+		return nil
+	}
+	return rows[rowIdx].Task
+}
+
+// getSelectedListTask returns the currently selected task in list view.
+// This is a convenience method that uses getTaskFromListRow with the current selection.
+func (m Model) getSelectedListTask() *models.TaskSummary {
+	return m.getTaskFromListRow(m.listViewState.SelectedRow())
 }

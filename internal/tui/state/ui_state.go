@@ -20,6 +20,7 @@ const (
 	ParentPickerMode                    // Parent issue picker popup
 	ChildPickerMode                     // Child issue picker popup
 	SearchMode                          // Vim-style search mode (/)
+	StatusPickerMode                    // Status picker popup for list view
 )
 
 // DiscardContext tracks information for discard confirmation dialogs.

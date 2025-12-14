@@ -39,6 +39,11 @@ type KeyMappings struct {
 	// Other
 	ShowHelp string `yaml:"show_help"`
 	Quit     string `yaml:"quit"`
+
+	// Views
+	ToggleView   string `yaml:"toggle_view"`
+	ChangeStatus string `yaml:"change_status"`
+	SortList     string `yaml:"sort_list"`
 }
 
 // DefaultKeyMappings returns the default key mappings
@@ -79,6 +84,11 @@ func DefaultKeyMappings() KeyMappings {
 		// Other
 		ShowHelp: "?",
 		Quit:     "q",
+
+		// Views
+		ToggleView:   "v",
+		ChangeStatus: "s",
+		SortList:     "S",
 	}
 }
 
@@ -163,5 +173,14 @@ func (k *KeyMappings) applyDefaults() {
 	}
 	if k.Quit == "" {
 		k.Quit = defaults.Quit
+	}
+	if k.ToggleView == "" {
+		k.ToggleView = defaults.ToggleView
+	}
+	if k.ChangeStatus == "" {
+		k.ChangeStatus = defaults.ChangeStatus
+	}
+	if k.SortList == "" {
+		k.SortList = defaults.SortList
 	}
 }
