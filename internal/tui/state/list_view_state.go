@@ -159,3 +159,20 @@ func (s *ListViewState) CycleSort() {
 		s.sortOrder = SortAsc
 	}
 }
+
+// EnsureRowVisible adjusts scroll offset so the selected row is visible.
+// This should be called after navigation to keep the selection in view.
+//
+// Parameters:
+//   - visibleRows: number of rows that can be displayed at once
+func (s *ListViewState) EnsureRowVisible(visibleRows int) {
+	// If selection is above visible area, scroll up
+	if s.selectedRow < s.scrollOffset {
+		s.scrollOffset = s.selectedRow
+	}
+
+	// If selection is below visible area, scroll down
+	if s.selectedRow >= s.scrollOffset+visibleRows {
+		s.scrollOffset = s.selectedRow - visibleRows + 1
+	}
+}

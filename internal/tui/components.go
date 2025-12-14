@@ -86,10 +86,11 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 // Layout:
 //
 //	{Column Name} ({count})
-//
+//	▲ (if scrolled down)
 //	{Task 1}
 //	{Task 2}
 //	...
+//	▼ (if more tasks below)
 //
 // Parameters:
 //   - column: The column to render
@@ -97,7 +98,9 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 //   - selected: Whether this column is currently selected
 //   - selectedTaskIdx: Index of selected task in this column (-1 if not this column)
 //   - height: Fixed height for the column (0 for auto)
-func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected bool, selectedTaskIdx int, height int) string {
+//   - scrollOffset: Index of first visible task
+//   - maxVisibleTasks: Maximum number of tasks to display
+func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected bool, selectedTaskIdx int, height int, scrollOffset int, maxVisibleTasks int) string {
 	// Render column title with task count
 	header := fmt.Sprintf("%s (%d)", column.Name, len(tasks))
 	content := TitleStyle.Render(header) + "\n\n"
@@ -111,15 +114,40 @@ func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected b
 			Padding(1, 0)
 		content += emptyStyle.Render("No tasks")
 	} else {
+		// Add up indicator if scrolled down
+		if scrollOffset > 0 {
+			upIndicator := lipgloss.NewStyle().
+				Foreground(lipgloss.Color(theme.Subtle)).
+				Align(lipgloss.Center).
+				Render("▲ more above")
+			content += upIndicator + "\n"
+		}
+
+		// Calculate visible task range
+		endIdx := min(scrollOffset+maxVisibleTasks, len(tasks))
+		visibleTasks := tasks[scrollOffset:endIdx]
+
+		// Render visible tasks
 		var taskViews []string
-		for i, task := range tasks {
-			// Task is selected if this is the selected column and matches the index
-			isTaskSelected := selected && i == selectedTaskIdx
+		for i, task := range visibleTasks {
+			// Task is selected if this is the selected column and matches the actual index
+			actualIdx := scrollOffset + i
+			isTaskSelected := selected && actualIdx == selectedTaskIdx
 			taskViews = append(taskViews, RenderTask(task, isTaskSelected))
 		}
 
 		// Join tasks with newlines
 		content += strings.Join(taskViews, "\n")
+
+		// Add down indicator if more tasks below
+		if endIdx < len(tasks) {
+			content += "\n"
+			downIndicator := lipgloss.NewStyle().
+				Foreground(lipgloss.Color(theme.Subtle)).
+				Align(lipgloss.Center).
+				Render("▼ more below")
+			content += downIndicator
+		}
 	}
 
 	// Apply column styling with selection highlight and fixed height
