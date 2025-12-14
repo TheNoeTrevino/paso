@@ -48,24 +48,23 @@ func RenderTabs(tabs []string, selectedIdx int, width int) string {
 //   - Purple border color
 //   - Brighter background
 func RenderTask(task *models.TaskSummary, selected bool) string {
+	var bg string
+	if selected {
+		bg = theme.SelectedBg
+	} else {
+		bg = theme.TaskBg
+	}
+
 	// Format task content with title (add leading space for padding)
 	title := lipgloss.NewStyle().Bold(true).Render(" 󰗴 " + task.Title)
-	text := lipgloss.NewStyle().Background(lipgloss.Color(theme.TaskBg)).Render(" ")
-
-	if selected {
-		text = lipgloss.NewStyle().Background(lipgloss.Color(theme.SelectedBg)).Render(" ")
-	}
+	text := lipgloss.NewStyle().Background(lipgloss.Color(bg)).Render(" ")
 
 	// Render label chips
 	var labelChips string
 	if len(task.Labels) > 0 {
 		var chips []string
 		for _, label := range task.Labels {
-			if selected {
-				chips = append(chips, components.RenderLabelChip(label, theme.SelectedBg))
-			} else {
-				chips = append(chips, components.RenderLabelChip(label, theme.TaskBg))
-			}
+			chips = append(chips, components.RenderLabelChip(label, bg))
 		}
 		labelChips = "\n " + strings.Join(chips, text)
 	}
@@ -80,21 +79,22 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 		typeDisplay = typeStyle.Render(task.TypeDescription)
 	} else {
 		typeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-		typeDisplay = typeStyle.Render("task")
+		typeDisplay = typeStyle.Render("no task type found?") // TODO: defensive programming i guess
 	}
 
-	// Priority display with color
+	// Priority display with color.
+	// TODO: we can make this better!
 	if task.PriorityDescription != "" && task.PriorityColor != "" {
-		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(task.PriorityColor))
+		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(task.PriorityColor)).Background(lipgloss.Color(bg))
 		priorityDisplay = priorityStyle.Render(task.PriorityDescription)
 	} else {
 		// Default to medium priority if not set
-		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EAB308"))
+		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EAB308")).Background(lipgloss.Color(bg))
 		priorityDisplay = priorityStyle.Render("medium")
 	}
 
 	// Separator
-	separatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+	separatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Background(lipgloss.Color(bg))
 	separator := separatorStyle.Render(" │ ")
 
 	// Combine type and priority
@@ -104,14 +104,11 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 
 	// HACK: Make the selected look look like its focused
 	// Maybe we just make a selected task style instead?
-	style := TaskStyle
-	if selected {
-		style = style.
-			BorderForeground(lipgloss.Color(theme.SelectedBorder)).
-			BorderBackground(lipgloss.Color(theme.SelectedBg)).
-			Background(lipgloss.Color(theme.SelectedBg)).
-			BorderStyle(lipgloss.ThickBorder())
-	}
+	style := TaskStyle.
+		BorderForeground(lipgloss.Color(theme.SelectedBorder)).
+		BorderBackground(lipgloss.Color(bg)).
+		Background(lipgloss.Color(bg)).
+		BorderStyle(lipgloss.ThickBorder())
 
 	return style.Render(content)
 }
@@ -165,11 +162,9 @@ func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected b
 			Foreground(lipgloss.Color(theme.Subtle)).
 			Align(lipgloss.Center)
 
-		// Always reserve space for top indicator
+		// Show scroll indicator if scrolled down
 		if scrollOffset > 0 {
 			content += indicatorStyle.Render("▲ more above") + "\n"
-		} else {
-			content += "\n" // Empty line to maintain consistent spacing
 		}
 
 		// Calculate visible task range
