@@ -27,6 +27,7 @@ type TaskWriter interface {
 type TaskMover interface {
 	MoveTaskToNextColumn(ctx context.Context, taskID int) error
 	MoveTaskToPrevColumn(ctx context.Context, taskID int) error
+	MoveTaskToColumn(ctx context.Context, taskID int, targetColumnID int) error
 	SwapTaskUp(ctx context.Context, taskID int) error
 	SwapTaskDown(ctx context.Context, taskID int) error
 }
