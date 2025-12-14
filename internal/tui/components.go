@@ -70,17 +70,37 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 		labelChips = "\n " + strings.Join(chips, text)
 	}
 
-	// Render type on its own line
+	// Render type and priority on the same line, separated by │
 	var typeDisplay string
+	var priorityDisplay string
+
+	// Type display
 	if task.TypeDescription != "" {
 		typeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-		typeDisplay = "\n " + typeStyle.Render(task.TypeDescription)
+		typeDisplay = typeStyle.Render(task.TypeDescription)
 	} else {
 		typeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-		typeDisplay = "\n " + typeStyle.Render("task")
+		typeDisplay = typeStyle.Render("task")
 	}
 
-	content := title + typeDisplay + labelChips
+	// Priority display with color
+	if task.PriorityDescription != "" && task.PriorityColor != "" {
+		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(task.PriorityColor))
+		priorityDisplay = priorityStyle.Render(task.PriorityDescription)
+	} else {
+		// Default to medium priority if not set
+		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EAB308"))
+		priorityDisplay = priorityStyle.Render("medium")
+	}
+
+	// Separator
+	separatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+	separator := separatorStyle.Render(" │ ")
+
+	// Combine type and priority
+	metadataLine := "\n " + typeDisplay + separator + priorityDisplay
+
+	content := title + metadataLine + labelChips
 
 	// HACK: Make the selected look look like its focused
 	// Maybe we just make a selected task style instead?
@@ -123,7 +143,7 @@ const TaskCardHeight = 6
 func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected bool, selectedTaskIdx int, height int, scrollOffset int) string {
 	// Render column title with task count
 	header := fmt.Sprintf("%s (%d)", column.Name, len(tasks))
-	content := TitleStyle.Render(header) + "\n\n"
+	content := TitleStyle.Render(header) + "\n"
 
 	// Render all tasks in the column or show empty state
 	if len(tasks) == 0 {

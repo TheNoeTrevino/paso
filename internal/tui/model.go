@@ -27,18 +27,19 @@ const (
 type Model struct {
 	ctx               context.Context // Application context for cancellation and timeouts
 	repo              database.DataStore
-	config            *config.Config
-	appState          *state.AppState
-	uiState           *state.UIState
-	inputState        *state.InputState
-	formState         *state.FormState
-	labelPickerState  *state.LabelPickerState
-	parentPickerState *state.TaskPickerState
-	childPickerState  *state.TaskPickerState
-	notificationState *state.NotificationState
-	searchState       *state.SearchState
-	listViewState     *state.ListViewState
-	statusPickerState *state.StatusPickerState
+	config             *config.Config
+	appState           *state.AppState
+	uiState            *state.UIState
+	inputState         *state.InputState
+	formState          *state.FormState
+	labelPickerState   *state.LabelPickerState
+	parentPickerState  *state.TaskPickerState
+	childPickerState   *state.TaskPickerState
+	priorityPickerState *state.PriorityPickerState
+	notificationState  *state.NotificationState
+	searchState        *state.SearchState
+	listViewState      *state.ListViewState
+	statusPickerState  *state.StatusPickerState
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
@@ -90,6 +91,7 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	labelPickerState := state.NewLabelPickerState()
 	parentPickerState := state.NewTaskPickerState()
 	childPickerState := state.NewTaskPickerState()
+	priorityPickerState := state.NewPriorityPickerState()
 	notificationState := state.NewNotificationState()
 	searchState := state.NewSearchState()
 	listViewState := state.NewListViewState()
@@ -99,18 +101,19 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	InitStyles(cfg.ColorScheme)
 
 	return Model{
-		ctx:               ctx, // Store root context
-		repo:              repo,
-		config:            cfg,
-		appState:          appState,
-		uiState:           uiState,
-		inputState:        inputState,
-		formState:         formState,
-		labelPickerState:  labelPickerState,
-		parentPickerState: parentPickerState,
-		childPickerState:  childPickerState,
-		notificationState: notificationState,
-		searchState:       searchState,
+		ctx:                 ctx, // Store root context
+		repo:                repo,
+		config:              cfg,
+		appState:            appState,
+		uiState:             uiState,
+		inputState:          inputState,
+		formState:           formState,
+		labelPickerState:    labelPickerState,
+		parentPickerState:   parentPickerState,
+		childPickerState:    childPickerState,
+		priorityPickerState: priorityPickerState,
+		notificationState:   notificationState,
+		searchState:         searchState,
 		listViewState:     listViewState,
 		statusPickerState: statusPickerState,
 	}
@@ -677,6 +680,45 @@ func (m *Model) initLabelPickerForForm() bool {
 func (m *Model) getFilteredLabelPickerItems() []state.LabelPickerItem {
 	// Delegate to LabelPickerState which now owns this logic
 	return m.labelPickerState.GetFilteredItems()
+}
+
+// initPriorityPickerForForm initializes the priority picker for use in TicketFormMode.
+// Loads the current priority from the form state.
+func (m *Model) initPriorityPickerForForm() bool {
+	// Get current priority ID from form state
+	// If we're editing a task, get it from the task detail
+	// Otherwise, default to medium (id=3)
+	currentPriorityID := 3 // Default to medium
+
+	// If editing an existing task, we need to get the current priority from database
+	if m.formState.EditingTaskID != 0 {
+		ctx, cancel := m.dbContext()
+		defer cancel()
+
+		taskDetail, err := m.repo.GetTaskDetail(ctx, m.formState.EditingTaskID)
+		if err != nil {
+			log.Printf("Error loading task detail for priority picker: %v", err)
+			return false
+		}
+
+		// Find the priority ID from the priority description
+		// We need to match it against our priority options
+		priorities := GetPriorityOptions()
+		for _, p := range priorities {
+			if p.Description == taskDetail.PriorityDescription {
+				currentPriorityID = p.ID
+				break
+			}
+		}
+	}
+
+	// Initialize PriorityPickerState
+	m.priorityPickerState.SetSelectedPriorityID(currentPriorityID)
+	// Set cursor to match the selected priority (adjust for 0-indexing)
+	m.priorityPickerState.SetCursor(currentPriorityID - 1)
+	m.priorityPickerState.SetReturnMode(state.TicketFormMode)
+
+	return true
 }
 
 // buildListViewRows creates a flat list of all tasks with their column names.
