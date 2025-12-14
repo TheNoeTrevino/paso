@@ -48,8 +48,8 @@ func RenderTabs(tabs []string, selectedIdx int, width int) string {
 //   - Purple border color
 //   - Brighter background
 func RenderTask(task *models.TaskSummary, selected bool) string {
-	// Format task content with title
-	title := lipgloss.NewStyle().Bold(true).Render("󰗴 " + task.Title)
+	// Format task content with title (add leading space for padding)
+	title := lipgloss.NewStyle().Bold(true).Render(" 󰗴 " + task.Title)
 	text := lipgloss.NewStyle().Background(lipgloss.Color(theme.TaskBg)).Render(" ")
 
 	if selected {
@@ -70,7 +70,17 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 		labelChips = "\n " + strings.Join(chips, text)
 	}
 
-	content := title + labelChips
+	// Render type on its own line
+	var typeDisplay string
+	if task.TypeDescription != "" {
+		typeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+		typeDisplay = "\n " + typeStyle.Render(task.TypeDescription)
+	} else {
+		typeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+		typeDisplay = "\n " + typeStyle.Render("task")
+	}
+
+	content := title + typeDisplay + labelChips
 
 	// Apply selection styling if this task is selected
 	style := TaskStyle
