@@ -7,6 +7,7 @@ type Task struct {
 	ID          int
 	Title       string
 	Description string
+	Type        int
 	ColumnID    int
 	Position    int
 	CreatedAt   time.Time
