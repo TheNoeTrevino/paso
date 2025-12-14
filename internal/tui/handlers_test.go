@@ -30,6 +30,8 @@ func setupTestModel(columns []*models.Column, tasks map[int][]*models.TaskSummar
 		childPickerState:  state.NewTaskPickerState(),
 		notificationState: state.NewNotificationState(),
 		searchState:       state.NewSearchState(),
+		listViewState:     state.NewListViewState(),
+		statusPickerState: state.NewStatusPickerState(),
 	}
 }
 

@@ -66,6 +66,12 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleNextProject()
 	case km.CreateProject:
 		return m.handleCreateProject()
+	case km.ToggleView:
+		return m.handleToggleView()
+	case km.ChangeStatus:
+		return m.handleChangeStatus()
+	case km.SortList:
+		return m.handleSortList()
 	case "/":
 		return m.handleEnterSearch()
 	}
@@ -110,8 +116,34 @@ func (m Model) handleNavigateRight() (tea.Model, tea.Cmd) {
 
 // handleNavigateUp moves selection to the previous task.
 func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
+	// List view navigation
+	if m.listViewState.IsListView() {
+		if m.listViewState.SelectedRow() > 0 {
+			m.listViewState.SetSelectedRow(m.listViewState.SelectedRow() - 1)
+
+			// Ensure row is visible by adjusting scroll offset
+			listHeight := m.uiState.ContentHeight()
+			const reservedHeight = 6
+			visibleRows := max(listHeight-reservedHeight, 1)
+			m.listViewState.EnsureRowVisible(visibleRows)
+		} else {
+			m.notificationState.Add(state.LevelInfo, "Already at the first task")
+		}
+		return m, nil
+	}
+
+	// Kanban navigation
 	if m.uiState.SelectedTask() > 0 {
 		m.uiState.SetSelectedTask(m.uiState.SelectedTask() - 1)
+
+		// Ensure task is visible by adjusting column scroll offset
+		if m.uiState.SelectedColumn() < len(m.appState.Columns()) {
+			currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+			columnHeight := m.uiState.ContentHeight()
+			const columnOverhead = 11 // Includes reserved space for top and bottom indicators
+			maxTasksVisible := max((columnHeight-columnOverhead)/TaskCardHeight, 1)
+			m.uiState.EnsureTaskVisible(currentCol.ID, m.uiState.SelectedTask(), maxTasksVisible)
+		}
 	} else {
 		m.notificationState.Add(state.LevelInfo, "Already at the first task")
 	}
@@ -120,9 +152,36 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 
 // handleNavigateDown moves selection to the next task.
 func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
+	// List view navigation
+	if m.listViewState.IsListView() {
+		rows := m.buildListViewRows()
+		if m.listViewState.SelectedRow() < len(rows)-1 {
+			m.listViewState.SetSelectedRow(m.listViewState.SelectedRow() + 1)
+
+			// Ensure row is visible by adjusting scroll offset
+			listHeight := m.uiState.ContentHeight()
+			const reservedHeight = 6
+			visibleRows := max(listHeight-reservedHeight, 1)
+			m.listViewState.EnsureRowVisible(visibleRows)
+		} else if len(rows) > 0 {
+			m.notificationState.Add(state.LevelInfo, "Already at the last task")
+		}
+		return m, nil
+	}
+
+	// Kanban navigation
 	currentTasks := m.getCurrentTasks()
 	if len(currentTasks) > 0 && m.uiState.SelectedTask() < len(currentTasks)-1 {
 		m.uiState.SetSelectedTask(m.uiState.SelectedTask() + 1)
+
+		// Ensure task is visible by adjusting column scroll offset
+		if m.uiState.SelectedColumn() < len(m.appState.Columns()) {
+			currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
+			columnHeight := m.uiState.ContentHeight()
+			const columnOverhead = 11 // Includes reserved space for top and bottom indicators
+			maxTasksVisible := max((columnHeight-columnOverhead)/TaskCardHeight, 1)
+			m.uiState.EnsureTaskVisible(currentCol.ID, m.uiState.SelectedTask(), maxTasksVisible)
+		}
 	} else if len(currentTasks) > 0 {
 		m.notificationState.Add(state.LevelInfo, "Already at the last task")
 	}
@@ -702,5 +761,147 @@ func (m Model) executeSearch() (tea.Model, tea.Cmd) {
 	// Reset task selection to 0 to avoid out-of-bounds
 	m.uiState.SetSelectedTask(0)
 
+	return m, nil
+}
+
+// ============================================================================
+// LIST VIEW HANDLERS
+// ============================================================================
+
+// handleToggleView toggles between kanban and list view.
+func (m Model) handleToggleView() (tea.Model, tea.Cmd) {
+	m.listViewState.ToggleView()
+
+	// Sync selection when toggling views
+	if m.listViewState.IsListView() {
+		m.syncKanbanToListSelection()
+	} else {
+		m.syncListToKanbanSelection()
+	}
+	return m, nil
+}
+
+// handleChangeStatus opens the status picker for the selected task.
+// Only works in list view mode.
+func (m Model) handleChangeStatus() (tea.Model, tea.Cmd) {
+	if !m.listViewState.IsListView() {
+		return m, nil // Only works in list view
+	}
+
+	task := m.getSelectedListTask()
+	if task == nil {
+		m.notificationState.Add(state.LevelError, "No task selected")
+		return m, nil
+	}
+
+	// Initialize status picker with columns
+	m.statusPickerState.SetTaskID(task.ID)
+	m.statusPickerState.SetColumns(m.appState.Columns())
+
+	// Set cursor to current column
+	for i, col := range m.appState.Columns() {
+		if col.ID == task.ColumnID {
+			m.statusPickerState.SetCursor(i)
+			break
+		}
+	}
+
+	m.uiState.SetMode(state.StatusPickerMode)
+	return m, nil
+}
+
+// handleSortList cycles through sort options in list view.
+func (m Model) handleSortList() (tea.Model, tea.Cmd) {
+	if !m.listViewState.IsListView() {
+		return m, nil // Only works in list view
+	}
+	m.listViewState.CycleSort()
+	return m, nil
+}
+
+// handleStatusPickerMode handles key events in status picker mode.
+func (m Model) handleStatusPickerMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.statusPickerState.Reset()
+		m.uiState.SetMode(state.NormalMode)
+		return m, nil
+	case "enter":
+		return m.confirmStatusChange()
+	case "j", "down":
+		m.statusPickerState.MoveDown()
+		return m, nil
+	case "k", "up":
+		m.statusPickerState.MoveUp()
+		return m, nil
+	}
+	return m, nil
+}
+
+// confirmStatusChange moves the task to the selected column.
+func (m Model) confirmStatusChange() (tea.Model, tea.Cmd) {
+	selectedCol := m.statusPickerState.SelectedColumn()
+	taskID := m.statusPickerState.TaskID()
+
+	if selectedCol == nil {
+		m.statusPickerState.Reset()
+		m.uiState.SetMode(state.NormalMode)
+		return m, nil
+	}
+
+	// Find the current task and its column
+	var currentColumnID int
+	var taskToMove *models.TaskSummary
+	for colID, tasks := range m.appState.Tasks() {
+		for _, task := range tasks {
+			if task.ID == taskID {
+				currentColumnID = colID
+				taskToMove = task
+				break
+			}
+		}
+		if taskToMove != nil {
+			break
+		}
+	}
+
+	// If already in the target column, just close the picker
+	if currentColumnID == selectedCol.ID {
+		m.statusPickerState.Reset()
+		m.uiState.SetMode(state.NormalMode)
+		return m, nil
+	}
+
+	// Move task to new column in database
+	ctx, cancel := m.dbContext()
+	defer cancel()
+
+	err := m.repo.MoveTaskToColumn(ctx, taskID, selectedCol.ID)
+	if err != nil {
+		m.handleDBError(err, "Moving task to new status")
+		m.statusPickerState.Reset()
+		m.uiState.SetMode(state.NormalMode)
+		return m, nil
+	}
+
+	// Update local state: remove from current column
+	if taskToMove != nil {
+		currentTasks := m.appState.Tasks()[currentColumnID]
+		for i, t := range currentTasks {
+			if t.ID == taskID {
+				m.appState.Tasks()[currentColumnID] = append(currentTasks[:i], currentTasks[i+1:]...)
+				break
+			}
+		}
+
+		// Add to new column
+		newPosition := len(m.appState.Tasks()[selectedCol.ID])
+		taskToMove.ColumnID = selectedCol.ID
+		taskToMove.Position = newPosition
+		m.appState.Tasks()[selectedCol.ID] = append(m.appState.Tasks()[selectedCol.ID], taskToMove)
+	}
+
+	m.statusPickerState.Reset()
+	m.uiState.SetMode(state.NormalMode)
 	return m, nil
 }
