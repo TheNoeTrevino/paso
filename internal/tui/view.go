@@ -452,12 +452,15 @@ func (m Model) viewKanbanBoard() string {
 	endIdx := min(m.uiState.ViewportOffset()+m.uiState.ViewportSize(), len(m.appState.Columns()))
 	visibleColumns := m.appState.Columns()[m.uiState.ViewportOffset():endIdx]
 
-	// Calculate column height: terminal height minus tabs, footer, and margins
-	// Tab bar (3) + empty line (1) + empty line before footer (1) + footer (1) + margins (2) = ~8
-	columnHeight := m.uiState.Height() - 8
-	if columnHeight < 10 {
-		columnHeight = 10 // Minimum height
-	}
+	// Calculate fixed content height using shared method
+	columnHeight := m.uiState.ContentHeight()
+
+	// Calculate how many tasks can fit in a column
+	// Each task card is approximately 4 lines (border + padding + content)
+	// Column has header (3 lines) + padding + indicators (2 lines) = ~5 lines overhead
+	const taskCardHeight = 4
+	const columnOverhead = 5
+	maxTasksVisible := max((columnHeight-columnOverhead)/taskCardHeight, 1)
 
 	// Render only visible columns
 	var columns []string
@@ -480,7 +483,10 @@ func (m Model) viewKanbanBoard() string {
 			selectedTaskIdx = m.uiState.SelectedTask()
 		}
 
-		columns = append(columns, RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight))
+		// Get scroll offset for this column
+		scrollOffset := m.uiState.TaskScrollOffset(col.ID)
+
+		columns = append(columns, RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight, scrollOffset, maxTasksVisible))
 	}
 
 	scrollIndicators := GetScrollIndicators(
@@ -536,11 +542,8 @@ func (m Model) viewListView() string {
 	// Build rows from all tasks across columns (with sorting applied)
 	rows := m.buildListViewRows()
 
-	// Calculate available height for list
-	listHeight := m.uiState.Height() - 8
-	if listHeight < 10 {
-		listHeight = 10
-	}
+	// Calculate fixed content height using shared method
+	listHeight := m.uiState.ContentHeight()
 
 	// Render tab bar (same as kanban)
 	var projectTabs []string

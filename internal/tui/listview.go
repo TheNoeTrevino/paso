@@ -76,9 +76,18 @@ func RenderListView(
 	output.WriteString(separatorStyle.Render("  " + separator))
 	output.WriteString("\n")
 
+	// Add up indicator if scrolled down
+	if scrollOffset > 0 {
+		upIndicator := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Subtle)).
+			Render("  ▲ more above")
+		output.WriteString(upIndicator)
+		output.WriteString("\n")
+	}
+
 	// Calculate visible rows
-	// Reserve space for header (2 lines), help text (1 line), and some padding
-	const reservedHeight = 4
+	// Reserve space for header (2 lines), help text (2 lines), scroll indicators (up to 2 lines)
+	const reservedHeight = 6
 	visibleHeight := max(height-reservedHeight, 1)
 
 	// Calculate which rows to display
@@ -128,6 +137,15 @@ func RenderListView(
 			output.WriteString(rowStyle.Render(rowContent))
 			output.WriteString("\n")
 		}
+	}
+
+	// Add down indicator if more rows below
+	if len(rows) > 0 && endIdx < len(rows) {
+		output.WriteString("\n")
+		downIndicator := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Subtle)).
+			Render("  ▼ more below")
+		output.WriteString(downIndicator)
 	}
 
 	// Add help text at bottom

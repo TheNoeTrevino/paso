@@ -55,6 +55,10 @@ type UIState struct {
 	// viewportSize is the number of columns that fit on the screen
 	viewportSize int
 
+	// taskScrollOffsets tracks the vertical scroll offset for each column
+	// Key: columnID, Value: scroll offset (index of first visible task)
+	taskScrollOffsets map[int]int
+
 	// discardContext holds context for discard confirmation dialogs
 	discardContext *DiscardContext
 }
@@ -62,13 +66,14 @@ type UIState struct {
 // NewUIState creates a new UIState with default values.
 func NewUIState() *UIState {
 	return &UIState{
-		selectedColumn: 0,
-		selectedTask:   0,
-		width:          0,
-		height:         0,
-		mode:           NormalMode,
-		viewportOffset: 0,
-		viewportSize:   1, // Default to 1, will be recalculated when width is set
+		selectedColumn:    0,
+		selectedTask:      0,
+		width:             0,
+		height:            0,
+		mode:              NormalMode,
+		viewportOffset:    0,
+		viewportSize:      1, // Default to 1, will be recalculated when width is set
+		taskScrollOffsets: make(map[int]int),
 	}
 }
 
@@ -111,6 +116,14 @@ func (s *UIState) Height() int {
 // SetHeight updates the terminal height.
 func (s *UIState) SetHeight(height int) {
 	s.height = height
+}
+
+// ContentHeight returns the available height for the main content area.
+// This is terminal height minus tab bar and status bar, ensuring a minimum of 5.
+func (s *UIState) ContentHeight() int {
+	const tabBarHeight = 3    // tabs + gap line
+	const statusBarHeight = 2 // status bar + gap line
+	return max(s.height-tabBarHeight-statusBarHeight, 5)
 }
 
 // Mode returns the current interaction mode.
@@ -245,4 +258,67 @@ func (s *UIState) SetDiscardContext(ctx *DiscardContext) {
 // ClearDiscardContext resets the discard context to nil.
 func (s *UIState) ClearDiscardContext() {
 	s.discardContext = nil
+}
+
+// TaskScrollOffset returns the vertical scroll offset for a given column.
+// Returns 0 if the column has no scroll offset set.
+func (s *UIState) TaskScrollOffset(columnID int) int {
+	if offset, ok := s.taskScrollOffsets[columnID]; ok {
+		return offset
+	}
+	return 0
+}
+
+// SetTaskScrollOffset updates the vertical scroll offset for a given column.
+func (s *UIState) SetTaskScrollOffset(columnID int, offset int) {
+	s.taskScrollOffsets[columnID] = max(0, offset)
+}
+
+// ScrollTasksUp moves the scroll offset up (decreases it) for a column.
+// Returns true if scrolling occurred, false if already at top.
+func (s *UIState) ScrollTasksUp(columnID int) bool {
+	offset := s.TaskScrollOffset(columnID)
+	if offset > 0 {
+		s.taskScrollOffsets[columnID] = offset - 1
+		return true
+	}
+	return false
+}
+
+// ScrollTasksDown moves the scroll offset down (increases it) for a column.
+// Returns true if scrolling occurred, false if already at bottom.
+//
+// Parameters:
+//   - columnID: the column to scroll
+//   - taskCount: total number of tasks in the column
+//   - visibleCount: number of tasks that can be displayed at once
+func (s *UIState) ScrollTasksDown(columnID int, taskCount int, visibleCount int) bool {
+	offset := s.TaskScrollOffset(columnID)
+	maxOffset := max(0, taskCount-visibleCount)
+	if offset < maxOffset {
+		s.taskScrollOffsets[columnID] = offset + 1
+		return true
+	}
+	return false
+}
+
+// EnsureTaskVisible adjusts the scroll offset to ensure the selected task is visible.
+// This should be called after task navigation within a column.
+//
+// Parameters:
+//   - columnID: the column containing the task
+//   - selectedTaskIdx: index of the selected task within the column
+//   - visibleCount: number of tasks that can be displayed at once
+func (s *UIState) EnsureTaskVisible(columnID int, selectedTaskIdx int, visibleCount int) {
+	offset := s.TaskScrollOffset(columnID)
+
+	// If selection is above visible area, scroll up
+	if selectedTaskIdx < offset {
+		s.taskScrollOffsets[columnID] = selectedTaskIdx
+	}
+
+	// If selection is below visible area, scroll down
+	if selectedTaskIdx >= offset+visibleCount {
+		s.taskScrollOffsets[columnID] = selectedTaskIdx - visibleCount + 1
+	}
 }
