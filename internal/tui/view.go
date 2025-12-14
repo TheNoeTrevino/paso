@@ -455,13 +455,6 @@ func (m Model) viewKanbanBoard() string {
 	// Calculate fixed content height using shared method
 	columnHeight := m.uiState.ContentHeight()
 
-	// Calculate how many tasks can fit in a column
-	// Each task card is approximately 4 lines (border + padding + content)
-	// Column has header (3 lines) + padding + indicators (2 lines) = ~5 lines overhead
-	const taskCardHeight = 4
-	const columnOverhead = 5
-	maxTasksVisible := max((columnHeight-columnOverhead)/taskCardHeight, 1)
-
 	// Render only visible columns
 	var columns []string
 	for i, col := range visibleColumns {
@@ -486,7 +479,7 @@ func (m Model) viewKanbanBoard() string {
 		// Get scroll offset for this column
 		scrollOffset := m.uiState.TaskScrollOffset(col.ID)
 
-		columns = append(columns, RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight, scrollOffset, maxTasksVisible))
+		columns = append(columns, RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight, scrollOffset))
 	}
 
 	scrollIndicators := GetScrollIndicators(
@@ -515,8 +508,22 @@ func (m Model) viewKanbanBoard() string {
 		SearchQuery: m.searchState.Query,
 	})
 
-	// Build base view
-	baseView := lipgloss.JoinVertical(lipgloss.Left, tabBar, "", board, "", footer)
+	// Build content (everything except footer)
+	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, "", board, "")
+
+	// Constrain content to fit terminal height, leaving room for footer
+	contentLines := strings.Split(content, "\n")
+	maxContentLines := m.uiState.Height() - 1 // Reserve 1 line for footer
+	if maxContentLines < 1 {
+		maxContentLines = 1
+	}
+	if len(contentLines) > maxContentLines {
+		contentLines = contentLines[:maxContentLines]
+	}
+	constrainedContent := strings.Join(contentLines, "\n")
+
+	// Build base view with constrained content and footer always visible
+	baseView := constrainedContent + "\n" + footer
 
 	// If no notifications, return base view directly
 	if !m.notificationState.HasAny() {
@@ -573,7 +580,22 @@ func (m Model) viewListView() string {
 		SearchQuery: m.searchState.Query,
 	})
 
-	baseView := lipgloss.JoinVertical(lipgloss.Left, tabBar, "", listContent, "", footer)
+	// Build content (everything except footer)
+	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, "", listContent, "")
+
+	// Constrain content to fit terminal height, leaving room for footer
+	contentLines := strings.Split(content, "\n")
+	maxContentLines := m.uiState.Height() - 1 // Reserve 1 line for footer
+	if maxContentLines < 1 {
+		maxContentLines = 1
+	}
+	if len(contentLines) > maxContentLines {
+		contentLines = contentLines[:maxContentLines]
+	}
+	constrainedContent := strings.Join(contentLines, "\n")
+
+	// Build base view with constrained content and footer always visible
+	baseView := constrainedContent + "\n" + footer
 
 	// Add notifications if any
 	if !m.notificationState.HasAny() {

@@ -137,12 +137,11 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 		m.uiState.SetSelectedTask(m.uiState.SelectedTask() - 1)
 
 		// Ensure task is visible by adjusting column scroll offset
-		if len(m.appState.Columns()) > 0 {
+		if m.uiState.SelectedColumn() < len(m.appState.Columns()) {
 			currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 			columnHeight := m.uiState.ContentHeight()
-			const taskCardHeight = 4
-			const columnOverhead = 5
-			maxTasksVisible := max((columnHeight-columnOverhead)/taskCardHeight, 1)
+			const columnOverhead = 11 // Includes reserved space for top and bottom indicators
+			maxTasksVisible := max((columnHeight-columnOverhead)/TaskCardHeight, 1)
 			m.uiState.EnsureTaskVisible(currentCol.ID, m.uiState.SelectedTask(), maxTasksVisible)
 		}
 	} else {
@@ -176,12 +175,11 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 		m.uiState.SetSelectedTask(m.uiState.SelectedTask() + 1)
 
 		// Ensure task is visible by adjusting column scroll offset
-		if len(m.appState.Columns()) > 0 {
+		if m.uiState.SelectedColumn() < len(m.appState.Columns()) {
 			currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 			columnHeight := m.uiState.ContentHeight()
-			const taskCardHeight = 4
-			const columnOverhead = 5
-			maxTasksVisible := max((columnHeight-columnOverhead)/taskCardHeight, 1)
+			const columnOverhead = 11 // Includes reserved space for top and bottom indicators
+			maxTasksVisible := max((columnHeight-columnOverhead)/TaskCardHeight, 1)
 			m.uiState.EnsureTaskVisible(currentCol.ID, m.uiState.SelectedTask(), maxTasksVisible)
 		}
 	} else if len(currentTasks) > 0 {
