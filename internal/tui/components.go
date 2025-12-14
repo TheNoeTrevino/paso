@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
@@ -33,13 +34,13 @@ func RenderTabs(tabs []string, selectedIdx int, width int) string {
 }
 
 // RenderTask renders a single task as a card
-// This is a pure, reusable component that displays task title only.
-// Labels are not shown in kanban view - they're only visible in task detail view.
+// This is a pure, reusable component that displays task title and labels
 //
 // Format (as a card with border):
 //
 //	┌─────────────────────┐
 //	│ {Task Title}        │
+//	│ [label1] [label2]   │
 //	└─────────────────────┘
 //
 // When selected is true, the task is highlighted with:
@@ -47,9 +48,25 @@ func RenderTabs(tabs []string, selectedIdx int, width int) string {
 //   - Purple border color
 //   - Brighter background
 func RenderTask(task *models.TaskSummary, selected bool) string {
-	// Format task content with title only (no labels)
-	title := lipgloss.NewStyle().Bold(true).Render(task.Title)
-	content := title
+	// Format task content with title
+	title := lipgloss.NewStyle().Bold(true).Render("󰗴 " + task.Title)
+	text := lipgloss.NewStyle().Background(lipgloss.Color(theme.TaskBg)).Render(" ")
+
+	if selected {
+		text = lipgloss.NewStyle().Background(lipgloss.Color(theme.SelectedBg)).Render(" ")
+	}
+
+	// Render label chips
+	var labelChips string
+	if len(task.Labels) > 0 {
+		var chips []string
+		for _, label := range task.Labels {
+			chips = append(chips, components.RenderLabelChip(label))
+		}
+		labelChips = "\n " + strings.Join(chips, text)
+	}
+
+	content := title + labelChips
 
 	// Apply selection styling if this task is selected
 	style := TaskStyle

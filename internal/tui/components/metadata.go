@@ -79,8 +79,6 @@ func renderMetadataSection(label string, value string) string {
 // RenderLabelChip renders a single label as a small colored chip
 func RenderLabelChip(label *models.Label) string {
 	return lipgloss.NewStyle().
-		Background(lipgloss.Color(label.Color)).
-		Foreground(lipgloss.Color("#FFFFFF")).
-		Padding(0, 1).
+		Foreground(lipgloss.Color(label.Color)).
 		Render(label.Name)
 }

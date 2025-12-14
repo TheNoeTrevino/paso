@@ -753,7 +753,7 @@ func (m Model) renderFormAssociationsZone(width, height int) string {
 		parts = append(parts, subtleStyle.Render("No Parent Tasks Found"))
 	} else {
 		for _, parent := range m.formState.FormParentRefs {
-			taskLine := fmt.Sprintf("%s-%d %s", parent.ProjectName, parent.TicketNumber, parent.Title)
+			taskLine := fmt.Sprintf("#%d - %s", parent.TicketNumber, parent.Title)
 			parts = append(parts, taskStyle.Render(taskLine))
 		}
 	}
@@ -765,7 +765,7 @@ func (m Model) renderFormAssociationsZone(width, height int) string {
 		parts = append(parts, subtleStyle.Render("No Child Tasks Found"))
 	} else {
 		for _, child := range m.formState.FormChildRefs {
-			taskLine := fmt.Sprintf("%s-%d %s", child.ProjectName, child.TicketNumber, child.Title)
+			taskLine := fmt.Sprintf("#%d - %s", child.TicketNumber, child.Title)
 			parts = append(parts, taskStyle.Render(taskLine))
 		}
 	}
