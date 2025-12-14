@@ -6,7 +6,6 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
-	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
@@ -34,13 +33,13 @@ func RenderTabs(tabs []string, selectedIdx int, width int) string {
 }
 
 // RenderTask renders a single task as a card
-// This is a pure, reusable component that displays task title and labels
+// This is a pure, reusable component that displays task title only.
+// Labels are not shown in kanban view - they're only visible in task detail view.
 //
 // Format (as a card with border):
 //
 //	┌─────────────────────┐
 //	│ {Task Title}        │
-//	│ [label1] [label2]   │
 //	└─────────────────────┘
 //
 // When selected is true, the task is highlighted with:
@@ -48,25 +47,9 @@ func RenderTabs(tabs []string, selectedIdx int, width int) string {
 //   - Purple border color
 //   - Brighter background
 func RenderTask(task *models.TaskSummary, selected bool) string {
-	// Format task content with title
+	// Format task content with title only (no labels)
 	title := lipgloss.NewStyle().Bold(true).Render(task.Title)
-	text := lipgloss.NewStyle().Background(lipgloss.Color(theme.TaskBg)).Render("  ")
-
-	if selected {
-		text = lipgloss.NewStyle().Background(lipgloss.Color(theme.SelectedBg)).Render("  ")
-	}
-
-	// Render label chips
-	var labelChips string
-	if len(task.Labels) > 0 {
-		var chips []string
-		for _, label := range task.Labels {
-			chips = append(chips, components.RenderLabelChip(label))
-		}
-		labelChips = "\n\n" + strings.Join(chips, text)
-	}
-
-	content := title + labelChips
+	content := title
 
 	// Apply selection styling if this task is selected
 	style := TaskStyle
@@ -79,6 +62,11 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 
 	return style.Render(content)
 }
+
+// TaskCardHeight is the fixed height of a task card in lines.
+// Since labels are no longer shown in kanban view, all tasks have consistent height:
+// - Top border (1) + bottom border (1) + padding (2) + title (1) + margin (1) = 6 lines
+const TaskCardHeight = 6
 
 // RenderColumn renders a complete column with its title and tasks
 // This is a pure, reusable component that composes individual task components
@@ -99,8 +87,7 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 //   - selectedTaskIdx: Index of selected task in this column (-1 if not this column)
 //   - height: Fixed height for the column (0 for auto)
 //   - scrollOffset: Index of first visible task
-//   - maxVisibleTasks: Maximum number of tasks to display
-func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected bool, selectedTaskIdx int, height int, scrollOffset int, maxVisibleTasks int) string {
+func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected bool, selectedTaskIdx int, height int, scrollOffset int) string {
 	// Render column title with task count
 	header := fmt.Sprintf("%s (%d)", column.Name, len(tasks))
 	content := TitleStyle.Render(header) + "\n\n"
@@ -114,13 +101,22 @@ func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected b
 			Padding(1, 0)
 		content += emptyStyle.Render("No tasks")
 	} else {
-		// Add up indicator if scrolled down
+		// Calculate how many tasks fit
+		// Column overhead: header (3) + padding (2) + borders (2) + top indicator (1) + bottom indicator (1) = 11
+		const columnOverhead = 5
+		availableHeight := height - columnOverhead
+		maxVisibleTasks := max(availableHeight/TaskCardHeight, 1)
+
+		// Style for indicators
+		indicatorStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Subtle)).
+			Align(lipgloss.Center)
+
+		// Always reserve space for top indicator
 		if scrollOffset > 0 {
-			upIndicator := lipgloss.NewStyle().
-				Foreground(lipgloss.Color(theme.Subtle)).
-				Align(lipgloss.Center).
-				Render("▲ more above")
-			content += upIndicator + "\n"
+			content += indicatorStyle.Render("▲ more above") + "\n"
+		} else {
+			content += "\n" // Empty line to maintain consistent spacing
 		}
 
 		// Calculate visible task range
@@ -139,15 +135,12 @@ func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected b
 		// Join tasks with newlines
 		content += strings.Join(taskViews, "\n")
 
-		// Add down indicator if more tasks below
+		// Always reserve space for bottom indicator (sticky to bottom)
+		content += "\n"
 		if endIdx < len(tasks) {
-			content += "\n"
-			downIndicator := lipgloss.NewStyle().
-				Foreground(lipgloss.Color(theme.Subtle)).
-				Align(lipgloss.Center).
-				Render("▼ more below")
-			content += downIndicator
+			content += indicatorStyle.Render("▼ more below")
 		}
+		// Note: If no more tasks, we still added "\n" above, leaving empty space at bottom
 	}
 
 	// Apply column styling with selection highlight and fixed height
