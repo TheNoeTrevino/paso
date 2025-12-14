@@ -136,6 +136,11 @@ func runMigrations(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
+	// Migrate types table and add type_id to tasks
+	if err := migrateTaskTypes(ctx, db); err != nil {
+		return err
+	}
+
 	// Create indexes AFTER all table/column migrations are complete
 	// Index on columns.project_id for efficient project-based queries
 	_, err = db.ExecContext(ctx, `
@@ -693,6 +698,91 @@ func migrateTaskSubtasks(ctx context.Context, db *sql.DB) error {
 		CREATE INDEX IF NOT EXISTS idx_task_subtasks_child
 		ON task_subtasks(child_id)
 	`)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// migrateTaskTypes creates the types table and adds type_id column to tasks
+func migrateTaskTypes(ctx context.Context, db *sql.DB) error {
+	// Check if types table already exists
+	var tableCount int
+	err := db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM sqlite_master
+		WHERE type='table' AND name='types'
+	`).Scan(&tableCount)
+	if err != nil {
+		return err
+	}
+
+	// If table doesn't exist, create it
+	if tableCount == 0 {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+				log.Printf("failed to rollback transaction: %v", err)
+			}
+		}()
+
+		// Create types table
+		_, err = tx.ExecContext(ctx, `
+			CREATE TABLE types (
+				id INTEGER PRIMARY KEY,
+				description TEXT NOT NULL UNIQUE
+			)
+		`)
+		if err != nil {
+			return err
+		}
+
+		// Seed types table with task and feature
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO types (id, description) VALUES
+				(1, 'task'),
+				(2, 'feature')
+		`)
+		if err != nil {
+			return err
+		}
+
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+
+	// Check if type_id column already exists in tasks table
+	var columnCount int
+	err = db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM pragma_table_info('tasks')
+		WHERE name = 'type_id'
+	`).Scan(&columnCount)
+	if err != nil {
+		return err
+	}
+
+	// If column exists, skip migration
+	if columnCount > 0 {
+		return nil
+	}
+
+	// Start transaction to add type_id column
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
+
+	// Add type_id column with default value of 1 (task)
+	_, err = tx.ExecContext(ctx, `ALTER TABLE tasks ADD COLUMN type_id INTEGER NOT NULL DEFAULT 1`)
 	if err != nil {
 		return err
 	}
