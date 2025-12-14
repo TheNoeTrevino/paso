@@ -8,6 +8,7 @@ type Task struct {
 	Title       string
 	Description string
 	TypeID      int
+	PriorityID  int
 	ColumnID    int
 	Position    int
 	CreatedAt   time.Time
@@ -26,27 +27,31 @@ type TaskReference struct {
 // TaskSummary is a DTO for displaying tasks on the kanban board
 // Contains only the fields needed for the card view plus labels
 type TaskSummary struct {
-	ID              int
-	Title           string
-	Labels          []*Label
-	TypeDescription string
-	ColumnID        int
-	Position        int
+	ID                  int
+	Title               string
+	Labels              []*Label
+	TypeDescription     string
+	PriorityDescription string
+	PriorityColor       string
+	ColumnID            int
+	Position            int
 }
 
 // TaskDetail is a DTO for the full ticket view
 // Contains all task information including description and timestamps
 type TaskDetail struct {
-	ID              int
-	Title           string
-	Description     string
-	Labels          []*Label
-	ParentTasks     []*TaskReference // Tasks that depend on this task
-	ChildTasks      []*TaskReference // Tasks this task depends on
-	TypeDescription string
-	ColumnID        int
-	Position        int
-	TicketNumber    int // For display "PROJ-12"
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID                  int
+	Title               string
+	Description         string
+	Labels              []*Label
+	ParentTasks         []*TaskReference // Tasks that depend on this task
+	ChildTasks          []*TaskReference // Tasks this task depends on
+	TypeDescription     string
+	PriorityDescription string
+	PriorityColor       string
+	ColumnID            int
+	Position            int
+	TicketNumber        int // For display "PROJ-12"
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }

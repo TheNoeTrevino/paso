@@ -27,9 +27,11 @@ type FormState struct {
 	FormChildRefs  []*models.TaskReference // Child task references for display
 
 	// Task metadata for display (edit mode only)
-	FormCreatedAt       time.Time // Task creation timestamp (only populated in edit mode)
-	FormUpdatedAt       time.Time // Task last update timestamp (only populated in edit mode)
-	FormTypeDescription string    // Task type (e.g., "task", "feature")
+	FormCreatedAt           time.Time // Task creation timestamp (only populated in edit mode)
+	FormUpdatedAt           time.Time // Task last update timestamp (only populated in edit mode)
+	FormTypeDescription     string    // Task type (e.g., "task", "feature")
+	FormPriorityDescription string    // Task priority (e.g., "low", "high", "critical")
+	FormPriorityColor       string    // Task priority color (hex code)
 
 	// Ticket form initial values (for change detection)
 	InitialFormTitle       string // Initial title value when form was created

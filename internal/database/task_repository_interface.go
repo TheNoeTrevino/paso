@@ -20,6 +20,7 @@ type TaskReader interface {
 type TaskWriter interface {
 	CreateTask(ctx context.Context, title, description string, columnID, position int) (*models.Task, error)
 	UpdateTask(ctx context.Context, id int, title, description string) error
+	UpdateTaskPriority(ctx context.Context, taskID, priorityID int) error
 	DeleteTask(ctx context.Context, id int) error
 }
 
