@@ -112,10 +112,10 @@ func InitStyles(colors config.ColorScheme) {
 
 	// Task style
 	TaskStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
+		Border(lipgloss.OuterHalfBlockBorder()).
 		BorderForeground(lipgloss.Color(colors.TaskBorder)).
 		Background(lipgloss.Color(colors.TaskBackground)).
-		Padding(1).
+		Padding(0).
 		MarginBottom(1).
 		Width(36)
 
