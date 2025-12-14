@@ -64,6 +64,8 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateChildPicker(msg)
 	case state.SearchMode:
 		return m.handleSearchMode(msg)
+	case state.StatusPickerMode:
+		return m.handleStatusPickerMode(msg)
 	}
 	return m, nil
 }

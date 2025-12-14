@@ -87,6 +87,8 @@ func (m Model) View() tea.View {
 			content = m.viewParentPicker()
 		case state.ChildPickerMode:
 			content = m.viewChildPicker()
+		case state.StatusPickerMode:
+			content = m.viewStatusPicker()
 		default:
 			content = m.viewKanbanBoard()
 		}
@@ -295,6 +297,11 @@ NAVIGATION
   %s     Move to next project
   %s     Move to prev project
 
+VIEWS
+  %s     Toggle list/kanban view
+  %s     Change task status (list view)
+  %s     Cycle sort options (list view)
+
 OTHER
   %s     Show this help screen
   %s     Quit application
@@ -309,6 +316,7 @@ Press any key to close`,
 		km.PrevTask, km.NextTask,
 		km.ScrollViewportLeft, km.ScrollViewportRight,
 		km.NextProject, km.PrevProject,
+		km.ToggleView, km.ChangeStatus, km.SortList,
 		km.ShowHelp, km.Quit,
 	)
 }
@@ -420,6 +428,11 @@ func (m Model) viewChildPicker() string {
 
 // viewKanbanBoard renders the main kanban board (normal mode)
 func (m Model) viewKanbanBoard() string {
+	// Check if list view is active
+	if m.listViewState.IsListView() {
+		return m.viewListView()
+	}
+
 	// Handle empty column list edge case
 	if len(m.appState.Columns()) == 0 {
 		emptyMsg := "No columns found. Please check database initialization."
@@ -516,6 +529,90 @@ func (m Model) viewKanbanBoard() string {
 	// Combine all layers into canvas
 	canvas := lipgloss.NewCanvas(layers...)
 	return canvas.Render()
+}
+
+// viewListView renders the list/table view of all tasks.
+func (m Model) viewListView() string {
+	// Build rows from all tasks across columns (with sorting applied)
+	rows := m.buildListViewRows()
+
+	// Calculate available height for list
+	listHeight := m.uiState.Height() - 8
+	if listHeight < 10 {
+		listHeight = 10
+	}
+
+	// Render tab bar (same as kanban)
+	var projectTabs []string
+	for _, project := range m.appState.Projects() {
+		projectTabs = append(projectTabs, project.Name)
+	}
+	if len(projectTabs) == 0 {
+		projectTabs = []string{"No Projects"}
+	}
+	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width())
+
+	// Render list content with sort indicator
+	listContent := RenderListView(
+		rows,
+		m.listViewState.SelectedRow(),
+		m.listViewState.ScrollOffset(),
+		m.listViewState.SortField(),
+		m.listViewState.SortOrder(),
+		m.uiState.Width(),
+		listHeight,
+	)
+
+	// Render footer
+	footer := components.RenderStatusBar(components.StatusBarProps{
+		Width:       m.uiState.Width(),
+		SearchMode:  m.uiState.Mode() == state.SearchMode || m.searchState.IsActive,
+		SearchQuery: m.searchState.Query,
+	})
+
+	baseView := lipgloss.JoinVertical(lipgloss.Left, tabBar, "", listContent, "", footer)
+
+	// Add notifications if any
+	if !m.notificationState.HasAny() {
+		return baseView
+	}
+
+	layers := []*lipgloss.Layer{
+		lipgloss.NewLayer(baseView),
+	}
+	notificationLayers := m.notificationState.GetLayers(notifications.RenderFromState)
+	layers = append(layers, notificationLayers...)
+	canvas := lipgloss.NewCanvas(layers...)
+	return canvas.Render()
+}
+
+// viewStatusPicker renders the status/column selection picker.
+func (m Model) viewStatusPicker() string {
+	var items []string
+	columns := m.statusPickerState.Columns()
+	cursor := m.statusPickerState.Cursor()
+
+	for i, col := range columns {
+		prefix := "  "
+		if i == cursor {
+			prefix = "> "
+		}
+		items = append(items, prefix+col.Name)
+	}
+
+	content := "Select Status:\n\n" + strings.Join(items, "\n") + "\n\nEnter: confirm  Esc: cancel"
+
+	// Wrap in styled container
+	pickerBox := LabelPickerBoxStyle.
+		Width(40).
+		Height(len(columns) + 6).
+		Render(content)
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		pickerBox,
+	)
 }
 
 // renderFormTitleDescriptionZone renders the top-left zone with title and description fields
