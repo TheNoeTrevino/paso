@@ -6,9 +6,15 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
+	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
+
+// RefreshMsg is sent when data changes from other instances via the daemon
+type RefreshMsg struct {
+	Event events.Event
+}
 
 // Update handles all messages and updates the model accordingly
 // This implements the "Update" part of the Model-View-Update pattern
@@ -22,6 +28,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Continue normal processing
 	}
 
+	// Start listening for events on first update if not already started
+	var cmd tea.Cmd
+	if m.eventChan != nil && !m.subscriptionStarted {
+		m.subscriptionStarted = true
+		cmd = m.subscribeToEvents()
+	}
+
 	// Handle form modes first - forms need ALL messages
 	if m.uiState.Mode() == state.TicketFormMode {
 		return m.updateTicketForm(msg)
@@ -31,6 +44,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case RefreshMsg:
+		// log.Printf("Received refresh event for project %d", msg.Event.ProjectID)
+
+		// Only refresh if event is for current project
+		currentProject := m.appState.GetCurrentProject()
+		if currentProject != nil && msg.Event.ProjectID == currentProject.ID {
+			m.reloadCurrentProject()
+			// m.notificationState.Add(state.LevelInfo, "Synced with other instances")
+		}
+
+		// Continue listening for more events
+		cmd = m.subscribeToEvents()
+		return m, cmd
+
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
 
@@ -38,7 +65,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleWindowResize(msg)
 	}
 
-	return m, nil
+	return m, cmd
 }
 
 // handleKeyMsg dispatches key messages to the appropriate mode handler.

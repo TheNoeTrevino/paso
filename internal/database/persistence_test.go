@@ -20,7 +20,7 @@ func TestTaskCRUDPersistence(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create a column (using default project ID 1)
 	col, err := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -100,7 +100,7 @@ func TestColumnCRUDPersistence(t *testing.T) {
 			log.Printf("failed to remove file: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create 3 columns (using default project ID 1)
 	col1, err := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -142,7 +142,7 @@ func TestColumnCRUDPersistence(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo = NewRepository(db)
+	repo = NewRepository(db, nil)
 
 	// Verify columns reload with correct order
 	columns, err = repo.GetColumnsByProject(context.Background(), 1)
@@ -184,7 +184,7 @@ func TestColumnCRUDPersistence(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo = NewRepository(db)
+	repo = NewRepository(db, nil)
 
 	// Verify deletion persisted
 	columns, err = repo.GetColumnsByProject(context.Background(), 1)
@@ -211,7 +211,7 @@ func TestTaskMovementPersistence(t *testing.T) {
 			log.Printf("failed to remove file: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create database with 3 columns (using default project ID 1)
 	col1, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -246,7 +246,7 @@ func TestTaskMovementPersistence(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo = NewRepository(db)
+	repo = NewRepository(db, nil)
 
 	// Verify task is still in correct column
 	tasks, err = repo.GetTasksByColumn(context.Background(), col2.ID)
@@ -293,7 +293,7 @@ func TestColumnInsertionPersistence(t *testing.T) {
 			log.Printf("failed to remove file: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create database with 2 columns (A, B) using default project ID 1
 	colA, _ := repo.CreateColumn(context.Background(), "Column A", 1, nil)
@@ -349,7 +349,7 @@ func TestColumnInsertionPersistence(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo = NewRepository(db)
+	repo = NewRepository(db, nil)
 
 	// Verify order is still A, C, B
 	columns, err = repo.GetColumnsByProject(context.Background(), 1)
@@ -377,7 +377,7 @@ func TestCascadeDeletion(t *testing.T) {
 			log.Printf("failed to remove file: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create database with 1 column (using default project ID 1)
 	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -420,7 +420,7 @@ func TestCascadeDeletion(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo = NewRepository(db)
+	repo = NewRepository(db, nil)
 
 	// Verify column and tasks don't exist
 	columns, _ = repo.GetColumnsByProject(context.Background(), 1)
@@ -444,7 +444,7 @@ func TestTransactionRollback(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create 2 columns (using default project ID 1)
 	col1, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -486,7 +486,7 @@ func TestSequentialBulkOperations(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create a column (using default project ID 1)
 	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -554,7 +554,7 @@ func TestReloadFullState(t *testing.T) {
 			log.Printf("failed to remove file: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create database with complex state:
 	// - 5 columns with linked list
@@ -591,7 +591,7 @@ func TestReloadFullState(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo = NewRepository(db)
+	repo = NewRepository(db, nil)
 
 	// Load all columns (verify order)
 	columns, err := repo.GetColumnsByProject(context.Background(), 1)
@@ -653,7 +653,7 @@ func TestMigrationIdempotency(t *testing.T) {
 			log.Printf("failed to remove file: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create some data (using default project ID 1)
 	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -743,7 +743,7 @@ func TestEmptyDatabaseReload(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Enable foreign key constraints
 	_, err = db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
@@ -798,7 +798,7 @@ func TestTimestampsPersistence(t *testing.T) {
 			log.Printf("failed to remove file: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create column and task (using default project ID 1)
 	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -839,7 +839,7 @@ func TestTimestampsPersistence(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo = NewRepository(db)
+	repo = NewRepository(db, nil)
 
 	// Verify timestamps persisted correctly
 	tasks, _ = repo.GetTasksByColumn(context.Background(), col.ID)
@@ -867,7 +867,7 @@ func TestComplexMovementSequencePersistence(t *testing.T) {
 			log.Printf("failed to remove file: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create 4 columns (using default project ID 1)
 	col1, _ := repo.CreateColumn(context.Background(), "Col1", 1, nil)
@@ -911,7 +911,7 @@ func TestComplexMovementSequencePersistence(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo = NewRepository(db)
+	repo = NewRepository(db, nil)
 
 	// Verify state persisted
 	tasks1, _ = repo.GetTasksByColumn(context.Background(), col1.ID)
@@ -933,7 +933,7 @@ func TestColumnReorderingPersistence(t *testing.T) {
 			log.Printf("failed to remove file: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create 3 columns: A, B, C (using default project ID 1)
 	colA, _ := repo.CreateColumn(context.Background(), "A", 1, nil)
@@ -963,7 +963,7 @@ func TestColumnReorderingPersistence(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo = NewRepository(db)
+	repo = NewRepository(db, nil)
 
 	// Verify order persisted
 	columns, _ = repo.GetColumnsByProject(context.Background(), 1)
@@ -989,7 +989,7 @@ func TestUpdateTaskColumnDirectly(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create 2 columns (using default project ID 1)
 	col1, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -1028,7 +1028,7 @@ func TestMultipleTasksInColumnOrder(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
 
