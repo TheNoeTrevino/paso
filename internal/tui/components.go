@@ -40,9 +40,11 @@ func RenderTabs(tabs []string, selectedIdx int, width int) string {
 //
 //	┌─────────────────────┐
 //	│ {Task Title}        │
+//	│ type | priority     │
 //	│ [label1] [label2]   │
 //	└─────────────────────┘
 //
+// All three content lines are ALWAYS displayed to maintain consistent card height.
 // When selected is true, the task is highlighted with:
 //   - Bold text
 //   - Purple border color
@@ -59,51 +61,52 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 	title := lipgloss.NewStyle().Bold(true).Render(" 󰗴 " + task.Title)
 	text := lipgloss.NewStyle().Background(lipgloss.Color(bg)).Render(" ")
 
-	// Render label chips
-	var labelChips string
-	if len(task.Labels) > 0 {
-		var chips []string
-		for _, label := range task.Labels {
-			chips = append(chips, components.RenderLabelChip(label, bg))
-		}
-		labelChips = "\n " + strings.Join(chips, text)
-	}
-
 	// Render type and priority on the same line, separated by │
 	var typeDisplay string
 	var priorityDisplay string
 
-	// Type display
+	// Type display - always show, use placeholder if missing
 	if task.TypeDescription != "" {
 		typeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
 		typeDisplay = typeStyle.Render(task.TypeDescription)
 	} else {
-		typeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-		typeDisplay = typeStyle.Render("no task type found?") // TODO: defensive programming i guess
+		typeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Italic(true)
+		typeDisplay = typeStyle.Render("no type")
 	}
 
-	// Priority display with color.
-	// TODO: we can make this better!
+	// Priority display with color - always show, use placeholder if missing
 	if task.PriorityDescription != "" && task.PriorityColor != "" {
 		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(task.PriorityColor)).Background(lipgloss.Color(bg))
 		priorityDisplay = priorityStyle.Render(task.PriorityDescription)
 	} else {
-		// Default to medium priority if not set
-		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EAB308")).Background(lipgloss.Color(bg))
-		priorityDisplay = priorityStyle.Render("medium")
+		// Default placeholder if not set
+		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Background(lipgloss.Color(bg)).Italic(true)
+		priorityDisplay = priorityStyle.Render("no priority")
 	}
 
 	// Separator
 	separatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Background(lipgloss.Color(bg))
 	separator := separatorStyle.Render(" │ ")
 
-	// Combine type and priority
+	// Combine type and priority - always include this line
 	metadataLine := "\n " + typeDisplay + separator + priorityDisplay
+
+	// Render label chips - ALWAYS include this line even if empty to maintain fixed height
+	var labelChips string
+	if len(task.Labels) > 0 {
+		var chips []string
+		for _, label := range task.Labels {
+			chips = append(chips, components.RenderLabelChip(label, bg))
+		}
+		labelChips = "\n " + strings.Join(chips, text)
+	} else {
+		// place holder for no labels
+		emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Background(lipgloss.Color(bg)).Italic(true)
+		labelChips = "\n " + emptyStyle.Render("no labels")
+	}
 
 	content := title + metadataLine + labelChips
 
-	// HACK: Make the selected look look like its focused
-	// Maybe we just make a selected task style instead?
 	style := TaskStyle.
 		BorderForeground(lipgloss.Color(theme.SelectedBorder)).
 		BorderBackground(lipgloss.Color(bg)).
@@ -114,9 +117,10 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 }
 
 // TaskCardHeight is the fixed height of a task card in lines.
-// Since labels are no longer shown in kanban view, all tasks have consistent height:
-// - Top border (1) + bottom border (1) + padding (2) + title (1) + margin (1) = 6 lines
-const TaskCardHeight = 6
+// With the new consistent 3-line content (title, type|priority, labels),
+// all tasks have consistent height:
+// - Top border (1) + bottom border (1) + padding (2) + title (1) + metadata (1) + labels (1) = 7 lines
+const TaskCardHeight = 7
 
 // RenderColumn renders a complete column with its title and tasks
 // This is a pure, reusable component that composes individual task components
@@ -152,7 +156,12 @@ func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected b
 		content += emptyStyle.Render("No tasks")
 	} else {
 		// Calculate how many tasks fit
-		// Column overhead: header (1) + borders (2) + top indicator (1) + bottom indicator (1) = 5
+		// Column overhead breakdown:
+		// - Border + Padding: 3 lines (top border(1) + bottom padding(1) + bottom border(1))
+		// - Header: 1 line (column name and count)
+		// - Top indicator: 1 line (empty line or "▲ more above")
+		// - Bottom indicator: 1 line ("▼ more below" when present)
+		// Total: 6 lines
 		const columnOverhead = 5
 		availableHeight := height - columnOverhead
 		maxVisibleTasks := max(availableHeight/TaskCardHeight, 1)
@@ -173,24 +182,54 @@ func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected b
 		endIdx := min(scrollOffset+maxVisibleTasks, len(tasks))
 		visibleTasks := tasks[scrollOffset:endIdx]
 
-		// Render visible tasks
-		var taskViews []string
+		// Render visible tasks (no separators - tasks are adjacent)
 		for i, task := range visibleTasks {
 			// Task is selected if this is the selected column and matches the actual index
 			actualIdx := scrollOffset + i
 			isTaskSelected := selected && actualIdx == selectedTaskIdx
-			taskViews = append(taskViews, RenderTask(task, isTaskSelected))
+			content += RenderTask(task, isTaskSelected)
 		}
 
-		// Join tasks with newlines
-		content += strings.Join(taskViews, "\n")
+		// Calculate padding to push bottom indicator to the bottom.
+		//
+		// The height parameter is the TOTAL box height (including borders and padding).
+		// ColumnStyle adds: TopBorder(1) + BottomPadding(1) + BottomBorder(1) = 3 lines
+		// Therefore, available content height = height - 3
+		//
+		// Content lines used so far:
+		// - Header: 1 line
+		// - Top indicator: 1 line (empty or "▲ more above")
+		// - Tasks: len(visibleTasks) * TaskCardHeight lines
+		// - Bottom indicator: 1 line (if present) or 0 lines (if at end)
+		//
+		// We want to fill the remaining space with newlines to push the bottom
+		// indicator flush to the bottom padding area.
 
-		// Always reserve space for bottom indicator (sticky to bottom)
-		content += "\n"
-		if endIdx < len(tasks) {
-			content += indicatorStyle.Render("▼ more below")
+		usedLines := 1 + 1 + (len(visibleTasks) * TaskCardHeight)
+
+		// Determine if we need a bottom indicator
+		hasBottomIndicator := endIdx < len(tasks)
+		var bottomIndicatorLines int
+		if hasBottomIndicator {
+			bottomIndicatorLines = 2 // newline + indicator text
+		} else {
+			bottomIndicatorLines = 0
 		}
-		// Note: If no more tasks, we still added "\n" above, leaving empty space at bottom
+
+		// Calculate remaining space.
+		// Account for the 3 lines used by borders and padding (handled by lipgloss)
+		contentHeight := height - 3
+		remainingLines := contentHeight - usedLines - bottomIndicatorLines
+
+		// Add padding newlines to fill space
+		if remainingLines > 0 {
+			content += strings.Repeat("\n", remainingLines)
+		}
+
+		// Add bottom indicator if needed (newline + indicator text = 2 lines)
+		if hasBottomIndicator {
+			content += "\n" + indicatorStyle.Render("▼ more below")
+		}
 	}
 
 	// Apply column styling with selection highlight and fixed height
@@ -199,7 +238,8 @@ func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected b
 		style = style.BorderForeground(lipgloss.Color(theme.SelectedBorder))
 	}
 	if height > 0 {
-		style = style.Height(height)
+		// Subtract 2 for top and bottom borders since .Height() sets content area height
+		style = style.Height(height - 2)
 	}
 
 	return style.Render(content)
