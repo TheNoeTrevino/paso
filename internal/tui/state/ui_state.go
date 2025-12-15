@@ -19,6 +19,7 @@ const (
 	LabelPickerMode                     // GitHub-style label picker popup
 	ParentPickerMode                    // Parent issue picker popup
 	ChildPickerMode                     // Child issue picker popup
+	PriorityPickerMode                  // Priority picker popup
 	SearchMode                          // Vim-style search mode (/)
 	StatusPickerMode                    // Status picker popup for list view
 )

@@ -87,6 +87,8 @@ func (m Model) View() tea.View {
 			content = m.viewParentPicker()
 		case state.ChildPickerMode:
 			content = m.viewChildPicker()
+		case state.PriorityPickerMode:
+			content = m.viewPriorityPicker()
 		case state.StatusPickerMode:
 			content = m.viewStatusPicker()
 		default:
@@ -136,7 +138,7 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 
 	// Add help text for shortcuts
 	helpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-	helpText := helpStyle.Render("Ctrl+L: edit labels  Ctrl+P: edit parents  Ctrl+C: edit children")
+	helpText := helpStyle.Render("Ctrl+L: edit labels  Ctrl+P: edit parents  Ctrl+C: edit children  Ctrl+R: edit priority")
 
 	// Combine title + content + help
 	fullContent := lipgloss.JoinVertical(
@@ -426,6 +428,28 @@ func (m Model) viewChildPicker() string {
 	)
 }
 
+// viewPriorityPicker renders the priority picker popup
+func (m Model) viewPriorityPicker() string {
+	pickerContent := RenderPriorityPicker(
+		GetPriorityOptions(),
+		m.priorityPickerState.SelectedPriorityID(),
+		m.priorityPickerState.Cursor(),
+		m.uiState.Width()*3/4-8,
+	)
+
+	// Wrap in styled container (reuse LabelPickerBoxStyle)
+	pickerBox := LabelPickerBoxStyle.
+		Width(m.uiState.Width() * 3 / 4).
+		Height(m.uiState.Height() * 3 / 4).
+		Render(pickerContent)
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		pickerBox,
+	)
+}
+
 // viewKanbanBoard renders the main kanban board (normal mode)
 func (m Model) viewKanbanBoard() string {
 	// Check if list view is active
@@ -509,14 +533,13 @@ func (m Model) viewKanbanBoard() string {
 	})
 
 	// Build content (everything except footer)
-	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, "", board, "")
+	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, board, "")
 
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
-	maxContentLines := m.uiState.Height() - 1 // Reserve 1 line for footer
-	if maxContentLines < 1 {
-		maxContentLines = 1
-	}
+
+	maxContentLines := max(m.uiState.Height()-1, 1)
+
 	if len(contentLines) > maxContentLines {
 		contentLines = contentLines[:maxContentLines]
 	}
@@ -581,14 +604,12 @@ func (m Model) viewListView() string {
 	})
 
 	// Build content (everything except footer)
-	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, "", listContent, "")
+	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, listContent, "")
 
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
-	maxContentLines := m.uiState.Height() - 1 // Reserve 1 line for footer
-	if maxContentLines < 1 {
-		maxContentLines = 1
-	}
+	maxContentLines := max(m.uiState.Height()-1, 1)
+
 	if len(contentLines) > maxContentLines {
 		contentLines = contentLines[:maxContentLines]
 	}
@@ -688,6 +709,27 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 	}
 	parts = append(parts, "")
 
+	// Type section
+	parts = append(parts, labelHeaderStyle.Render("Type"))
+	if m.formState.FormTypeDescription != "" {
+		parts = append(parts, m.formState.FormTypeDescription)
+	} else {
+		parts = append(parts, subtleStyle.Render("task"))
+	}
+	parts = append(parts, "")
+
+	// Priority section
+	parts = append(parts, labelHeaderStyle.Render("Priority"))
+	if m.formState.FormPriorityDescription != "" && m.formState.FormPriorityColor != "" {
+		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.formState.FormPriorityColor))
+		parts = append(parts, priorityStyle.Render(m.formState.FormPriorityDescription))
+	} else {
+		// Default to medium priority if not set
+		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EAB308"))
+		parts = append(parts, priorityStyle.Render("medium"))
+	}
+	parts = append(parts, "")
+
 	// Created timestamp
 	parts = append(parts, labelHeaderStyle.Render("Created"))
 	parts = append(parts, createdStr)
@@ -711,7 +753,7 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 
 		for _, labelID := range m.formState.FormLabelIDs {
 			if label, ok := labelMap[labelID]; ok {
-				parts = append(parts, components.RenderLabelChip(label))
+				parts = append(parts, components.RenderLabelChip(label, ""))
 			}
 		}
 	}
@@ -753,7 +795,7 @@ func (m Model) renderFormAssociationsZone(width, height int) string {
 		parts = append(parts, subtleStyle.Render("No Parent Tasks Found"))
 	} else {
 		for _, parent := range m.formState.FormParentRefs {
-			taskLine := fmt.Sprintf("%s-%d %s", parent.ProjectName, parent.TicketNumber, parent.Title)
+			taskLine := fmt.Sprintf("#%d - %s", parent.TicketNumber, parent.Title)
 			parts = append(parts, taskStyle.Render(taskLine))
 		}
 	}
@@ -765,7 +807,7 @@ func (m Model) renderFormAssociationsZone(width, height int) string {
 		parts = append(parts, subtleStyle.Render("No Child Tasks Found"))
 	} else {
 		for _, child := range m.formState.FormChildRefs {
-			taskLine := fmt.Sprintf("%s-%d %s", child.ProjectName, child.TicketNumber, child.Title)
+			taskLine := fmt.Sprintf("#%d - %s", child.TicketNumber, child.Title)
 			parts = append(parts, taskStyle.Render(taskLine))
 		}
 	}
