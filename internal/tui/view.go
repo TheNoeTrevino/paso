@@ -533,14 +533,13 @@ func (m Model) viewKanbanBoard() string {
 	})
 
 	// Build content (everything except footer)
-	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, "", board, "")
+	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, board, "")
 
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
-	maxContentLines := m.uiState.Height() - 1 // Reserve 1 line for footer
-	if maxContentLines < 1 {
-		maxContentLines = 1
-	}
+
+	maxContentLines := max(m.uiState.Height()-1, 1)
+
 	if len(contentLines) > maxContentLines {
 		contentLines = contentLines[:maxContentLines]
 	}
@@ -605,14 +604,12 @@ func (m Model) viewListView() string {
 	})
 
 	// Build content (everything except footer)
-	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, "", listContent, "")
+	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, listContent, "")
 
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
-	maxContentLines := m.uiState.Height() - 1 // Reserve 1 line for footer
-	if maxContentLines < 1 {
-		maxContentLines = 1
-	}
+	maxContentLines := max(m.uiState.Height()-1, 1)
+
 	if len(contentLines) > maxContentLines {
 		contentLines = contentLines[:maxContentLines]
 	}
