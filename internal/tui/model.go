@@ -12,6 +12,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/database"
+	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -40,10 +41,13 @@ type Model struct {
 	searchState        *state.SearchState
 	listViewState      *state.ListViewState
 	statusPickerState  *state.StatusPickerState
+	eventClient        *events.Client       // Connection to daemon for live updates
+	eventChan          <-chan events.Event  // Channel for receiving events
+	subscriptionStarted bool                // Track if we've started listening
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
-func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Config) Model {
+func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Config, eventClient *events.Client) Model {
 	// Create child context with timeout for initial loading
 	loadCtx, cancel := context.WithTimeout(ctx, timeoutInitialLoad)
 	defer cancel()
@@ -100,6 +104,21 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	// Initialize styles with color scheme from config
 	InitStyles(cfg.ColorScheme)
 
+	// Start listening for events from daemon (optional - daemon may not be running)
+	var eventChan <-chan events.Event
+	if eventClient != nil {
+		var err error
+		eventChan, err = eventClient.Listen(ctx)
+		if err != nil {
+			log.Printf("Failed to listen for events: %v", err)
+		}
+
+		// Subscribe to current project's events
+		if currentProjectID > 0 {
+			eventClient.Subscribe(currentProjectID)
+		}
+	}
+
 	return Model{
 		ctx:                 ctx, // Store root context
 		repo:                repo,
@@ -114,8 +133,11 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 		priorityPickerState: priorityPickerState,
 		notificationState:   notificationState,
 		searchState:         searchState,
-		listViewState:     listViewState,
-		statusPickerState: statusPickerState,
+		listViewState:       listViewState,
+		statusPickerState:   statusPickerState,
+		eventClient:         eventClient,
+		eventChan:           eventChan,
+		subscriptionStarted: false,
 	}
 }
 
@@ -836,4 +858,65 @@ func (m Model) getTaskFromListRow(rowIdx int) *models.TaskSummary {
 // This is a convenience method that uses getTaskFromListRow with the current selection.
 func (m Model) getSelectedListTask() *models.TaskSummary {
 	return m.getTaskFromListRow(m.listViewState.SelectedRow())
+}
+
+// subscribeToEvents returns a command that listens for events from the daemon
+// and sends RefreshMsg when data changes
+func (m Model) subscribeToEvents() tea.Cmd {
+	if m.eventChan == nil {
+		return nil
+	}
+
+	return func() tea.Msg {
+		select {
+		case event, ok := <-m.eventChan:
+			if !ok {
+				// Channel closed, connection lost
+				return nil
+			}
+			return RefreshMsg{Event: event}
+		case <-m.ctx.Done():
+			return nil
+		}
+	}
+}
+
+// reloadCurrentProject refreshes columns, tasks, and labels for the current project
+func (m *Model) reloadCurrentProject() {
+	currentProject := m.appState.GetCurrentProject()
+	if currentProject == nil {
+		return
+	}
+
+	ctx, cancel := m.dbContext()
+	defer cancel()
+
+	// Reload columns
+	columns, err := m.repo.GetColumnsByProject(ctx, currentProject.ID)
+	if err != nil {
+		log.Printf("Error reloading columns: %v", err)
+		m.handleDBError(err, "reload columns")
+		return
+	}
+
+	// Reload tasks
+	tasks, err := m.repo.GetTaskSummariesByProject(ctx, currentProject.ID)
+	if err != nil {
+		log.Printf("Error reloading tasks: %v", err)
+		m.handleDBError(err, "reload tasks")
+		return
+	}
+
+	// Reload labels
+	labels, err := m.repo.GetLabelsByProject(ctx, currentProject.ID)
+	if err != nil {
+		log.Printf("Error reloading labels: %v", err)
+		m.handleDBError(err, "reload labels")
+		return
+	}
+
+	// Update state with new data (preserves cursor position)
+	m.appState.SetColumns(columns)
+	m.appState.SetTasks(tasks)
+	m.appState.SetLabels(labels)
 }

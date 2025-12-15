@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
 // ProjectRepo handles all project-related database operations.
 type ProjectRepo struct {
-	db *sql.DB
+	db          *sql.DB
+	eventClient *events.Client
 }
 
 // CreateProject creates a new project with default columns (Todo, In Progress, Done)
@@ -89,6 +91,9 @@ func (r *ProjectRepo) CreateProject(ctx context.Context, name, description strin
 		prevColID = &colIDInt
 	}
 
+	// Send event notification before commit
+	sendEvent(r.eventClient, int(projectID))
+
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("failed to commit project creation transaction: %w", err)
 	}
@@ -116,11 +121,7 @@ func (r *ProjectRepo) GetAllProjects(ctx context.Context) ([]*models.Project, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to query all projects: %w", err)
 	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Printf("failed to close rows: %v", err)
-		}
-	}()
+	defer closeRows(rows)
 
 	projects := make([]*models.Project, 0, 10)
 	for rows.Next() {
@@ -146,6 +147,10 @@ func (r *ProjectRepo) UpdateProject(ctx context.Context, id int, name, descripti
 	if err != nil {
 		return fmt.Errorf("failed to update project %d: %w", id, err)
 	}
+
+	// Send event notification
+	sendEvent(r.eventClient, id)
+
 	return nil
 }
 
@@ -184,6 +189,9 @@ func (r *ProjectRepo) DeleteProject(ctx context.Context, id int) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete project %d: %w", id, err)
 	}
+
+	// Send event notification before commit
+	sendEvent(r.eventClient, id)
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit project %d deletion: %w", id, err)
