@@ -62,6 +62,8 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateParentPicker(msg)
 	case state.ChildPickerMode:
 		return m.updateChildPicker(msg)
+	case state.PriorityPickerMode:
+		return m.updatePriorityPicker(msg)
 	case state.SearchMode:
 		return m.handleSearchMode(msg)
 	case state.StatusPickerMode:
@@ -379,6 +381,13 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Open label picker
 			if m.initLabelPickerForForm() {
 				m.uiState.SetMode(state.LabelPickerMode)
+			}
+			return m, nil
+
+		case "ctrl+r":
+			// Open priority picker
+			if m.initPriorityPickerForForm() {
+				m.uiState.SetMode(state.PriorityPickerMode)
 			}
 			return m, nil
 
@@ -986,6 +995,78 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+}
+
+// updatePriorityPicker handles keyboard input in the priority picker mode.
+// This function processes navigation (up/down) and selection.
+func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	switch keyMsg.String() {
+	case "esc":
+		// Return to ticket form mode without changing priority
+		m.uiState.SetMode(m.priorityPickerState.ReturnMode())
+		m.priorityPickerState.Reset()
+		return m, nil
+
+	case "up", "k":
+		// Move cursor up
+		m.priorityPickerState.MoveUp()
+		return m, nil
+
+	case "down", "j":
+		// Move cursor down
+		m.priorityPickerState.MoveDown()
+		return m, nil
+
+	case "enter":
+		// Select the priority at cursor position
+		priorities := GetPriorityOptions()
+		cursorIdx := m.priorityPickerState.Cursor()
+
+		if cursorIdx >= 0 && cursorIdx < len(priorities) {
+			selectedPriority := priorities[cursorIdx]
+
+			// If we're editing a task, update it in the database
+			if m.formState.EditingTaskID != 0 {
+				ctx, cancel := m.dbContext()
+				defer cancel()
+
+				// Update the task's priority_id in the database
+				err := m.repo.UpdateTaskPriority(ctx, m.formState.EditingTaskID, selectedPriority.ID)
+
+				if err != nil {
+					log.Printf("Error updating task priority: %v", err)
+					m.notificationState.Add(state.LevelError, "Failed to update priority")
+				} else {
+					// Update form state with new priority
+					m.formState.FormPriorityDescription = selectedPriority.Description
+					m.formState.FormPriorityColor = selectedPriority.Color
+					m.notificationState.Add(state.LevelInfo, "Priority updated to "+selectedPriority.Description)
+
+					// Reload tasks to reflect the change
+					m.reloadCurrentColumnTasks()
+				}
+			} else {
+				// For new tasks, just update the form state
+				m.formState.FormPriorityDescription = selectedPriority.Description
+				m.formState.FormPriorityColor = selectedPriority.Color
+				m.notificationState.Add(state.LevelInfo, "Priority set to "+selectedPriority.Description)
+			}
+
+			// Update the selected priority ID in picker state
+			m.priorityPickerState.SetSelectedPriorityID(selectedPriority.ID)
+		}
+
+		// Return to ticket form mode
+		m.uiState.SetMode(m.priorityPickerState.ReturnMode())
+		return m, nil
+	}
+
+	return m, nil
 }
 
 // syncParentPickerToFormState syncs parent picker selections back to form state.
