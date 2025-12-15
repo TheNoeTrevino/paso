@@ -16,7 +16,7 @@ func TestLabelPersistence(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create a label (projectID 1 is created by migrations)
 	label, err := repo.CreateLabel(context.Background(), 1, "Bug", "#FF0000")
@@ -58,7 +58,7 @@ func TestTaskLabelAssociation(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create column, task, and labels
 	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -111,7 +111,7 @@ func TestSetTaskLabelsReplaces(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create column, task, and labels
 	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -152,7 +152,7 @@ func TestProjectSpecificLabels(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Project 1 is already created by migrations
 	// Create a second project
