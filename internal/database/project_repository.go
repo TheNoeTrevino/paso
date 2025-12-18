@@ -121,7 +121,7 @@ func (r *ProjectRepo) GetAllProjects(ctx context.Context) ([]*models.Project, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to query all projects: %w", err)
 	}
-	defer closeRows(rows)
+	defer closeRows(rows, "GetAllProjects")
 
 	projects := make([]*models.Project, 0, 10)
 	for rows.Next() {

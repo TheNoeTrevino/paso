@@ -125,7 +125,7 @@ func (r *ColumnRepo) GetColumnsByProject(ctx context.Context, projectID int) ([]
 	if err != nil {
 		return nil, fmt.Errorf("querying columns for project: %w", err)
 	}
-	defer closeRows(rows)
+	defer closeRows(rows, "GetColumnsByProject")
 
 	// Build a map for O(1) lookups and find the head
 	columnMap := make(map[int]*models.Column)
