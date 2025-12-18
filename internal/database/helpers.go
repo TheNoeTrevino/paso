@@ -33,11 +33,11 @@ func withTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) error {
 	return nil
 }
 
-// closeRows safely closes sql.Rows and logs any errors.
+// closeRows safely closes sql.Rows and logs any errors with context.
 // Designed to be used with defer.
-func closeRows(rows *sql.Rows) {
+func closeRows(rows *sql.Rows, context string) {
 	if err := rows.Close(); err != nil {
-		log.Printf("failed to close rows: %v", err)
+		log.Printf("failed to close rows (%s): %v", context, err)
 	}
 }
 
@@ -74,33 +74,4 @@ func nullInt64ToPtr(nv sql.NullInt64) *int {
 		return &val
 	}
 	return nil
-}
-
-// nullStringToString converts sql.NullString to string.
-// Returns empty string if the value is not valid.
-func nullStringToString(nv sql.NullString) string {
-	if nv.Valid {
-		return nv.String
-	}
-	return ""
-}
-
-// scanRows is a generic helper for scanning rows into a slice.
-// The scanner function should scan one row into a single item.
-// Automatically handles rows.Err() check.
-func scanRows[T any](rows *sql.Rows, scanner func() (*T, error)) ([]*T, error) {
-	items := make([]*T, 0)
-	for rows.Next() {
-		item, err := scanner()
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, item)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return items, nil
 }
