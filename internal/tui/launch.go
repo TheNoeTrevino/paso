@@ -60,7 +60,9 @@ func Launch() error {
 	// Cleanup daemon connection on exit
 	defer func() {
 		if eventClient != nil {
-			eventClient.Close()
+			if err := eventClient.Close(); err != nil {
+				log.Printf("Error closing event client: %v", err)
+			}
 		}
 	}()
 

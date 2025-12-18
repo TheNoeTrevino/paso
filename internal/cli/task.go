@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 
@@ -71,10 +72,14 @@ Examples:
 
 	// Required flags
 	cmd.Flags().StringVar(&taskTitle, "title", "", "Task title (required)")
-	cmd.MarkFlagRequired("title")
+	if err := cmd.MarkFlagRequired("title"); err != nil {
+		log.Printf("Error marking flag as required: %v", err)
+	}
 
 	cmd.Flags().IntVar(&taskProject, "project", 0, "Project ID (required)")
-	cmd.MarkFlagRequired("project")
+	if err := cmd.MarkFlagRequired("project"); err != nil {
+		log.Printf("Error marking flag as required: %v", err)
+	}
 
 	// Optional flags
 	cmd.Flags().StringVar(&taskDescription, "description", "", "Task description (use - for stdin)")
@@ -97,26 +102,38 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 	// Initialize CLI
 	cli, err := NewCLI(ctx)
 	if err != nil {
-		formatter.Error("INITIALIZATION_ERROR", err.Error())
+		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		return err
 	}
-	defer cli.Close()
+	defer func() {
+		if err := cli.Close(); err != nil {
+			log.Printf("Error closing CLI: %v", err)
+		}
+	}()
 
 	// Validate project exists
 	project, err := cli.Repo.GetProjectByID(ctx, taskProject)
 	if err != nil {
-		formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", taskProject))
+		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", taskProject)); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		os.Exit(3) // Exit code 3 = not found
 	}
 
 	// Get columns for project
 	columns, err := cli.Repo.GetColumnsByProject(ctx, taskProject)
 	if err != nil {
-		formatter.Error("COLUMN_FETCH_ERROR", err.Error())
+		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		return err
 	}
 	if len(columns) == 0 {
-		formatter.Error("NO_COLUMNS", "project has no columns")
+		if fmtErr := formatter.Error("NO_COLUMNS", "project has no columns"); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		return fmt.Errorf("project has no columns")
 	}
 
@@ -134,7 +151,9 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if !found {
-			formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column '%s' not found", taskColumn))
+			if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column '%s' not found", taskColumn)); fmtErr != nil {
+				log.Printf("Error formatting error message: %v", fmtErr)
+			}
 			os.Exit(3)
 		}
 	}
@@ -144,7 +163,9 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 	if description == "-" {
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
-			formatter.Error("STDIN_READ_ERROR", err.Error())
+			if fmtErr := formatter.Error("STDIN_READ_ERROR", err.Error()); fmtErr != nil {
+				log.Printf("Error formatting error message: %v", fmtErr)
+			}
 			return err
 		}
 		description = string(data)
@@ -153,7 +174,9 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 	// Get position (append to end)
 	count, err := cli.Repo.GetTaskCountByColumn(ctx, targetColumnID)
 	if err != nil {
-		formatter.Error("COUNT_ERROR", err.Error())
+		if fmtErr := formatter.Error("COUNT_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		return err
 	}
 	position := count + 1
@@ -161,31 +184,38 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 	// Create task
 	task, err := cli.Repo.CreateTask(ctx, taskTitle, description, targetColumnID, position)
 	if err != nil {
-		formatter.Error("TASK_CREATE_ERROR", err.Error())
+		if fmtErr := formatter.Error("TASK_CREATE_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		return err
 	}
 
 	// Set type if not default
 	typeID, err := parseTaskType(taskType)
 	if err != nil {
-		formatter.Error("INVALID_TYPE", err.Error())
+		if fmtErr := formatter.Error("INVALID_TYPE", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		os.Exit(5) // Exit code 5 = validation error
 	}
-	if typeID != 1 {
-		// Note: UpdateTaskType doesn't exist yet - would need to add it
-		// For now, we'll skip this or use raw SQL
-		// TODO: Add UpdateTaskType to repository
-	}
+	// Note: UpdateTaskType doesn't exist yet - would need to add it
+	// For now, we'll skip this or use raw SQL
+	// TODO: Add UpdateTaskType to repository
+	_ = typeID // Suppress unused variable warning
 
 	// Set priority if not default
 	priorityID, err := parsePriority(taskPriority)
 	if err != nil {
-		formatter.Error("INVALID_PRIORITY", err.Error())
+		if fmtErr := formatter.Error("INVALID_PRIORITY", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		os.Exit(5)
 	}
 	if priorityID != 3 {
 		if err := cli.Repo.UpdateTaskPriority(ctx, task.ID, priorityID); err != nil {
-			formatter.Error("PRIORITY_UPDATE_ERROR", err.Error())
+			if fmtErr := formatter.Error("PRIORITY_UPDATE_ERROR", err.Error()); fmtErr != nil {
+				log.Printf("Error formatting error message: %v", fmtErr)
+			}
 			return err
 		}
 	}
@@ -193,7 +223,9 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 	// Add parent relationship if specified
 	if taskParent > 0 {
 		if err := cli.Repo.AddSubtask(ctx, taskParent, task.ID); err != nil {
-			formatter.Error("LINK_ERROR", err.Error())
+			if fmtErr := formatter.Error("LINK_ERROR", err.Error()); fmtErr != nil {
+				log.Printf("Error formatting error message: %v", fmtErr)
+			}
 			return err
 		}
 	}
@@ -273,7 +305,9 @@ func taskListCmd() *cobra.Command {
 
 	// Required flags
 	cmd.Flags().IntVar(&taskProject, "project", 0, "Project ID (required)")
-	cmd.MarkFlagRequired("project")
+	if err := cmd.MarkFlagRequired("project"); err != nil {
+		log.Printf("Error marking flag as required: %v", err)
+	}
 
 	// Agent-friendly flags
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
@@ -289,15 +323,23 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 	// Initialize CLI
 	cli, err := NewCLI(ctx)
 	if err != nil {
-		formatter.Error("INITIALIZATION_ERROR", err.Error())
+		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		return err
 	}
-	defer cli.Close()
+	defer func() {
+		if err := cli.Close(); err != nil {
+			log.Printf("Error closing CLI: %v", err)
+		}
+	}()
 
 	// Get tasks (returns map[columnID][]*TaskSummary)
 	tasksByColumn, err := cli.Repo.GetTaskSummariesByProject(ctx, taskProject)
 	if err != nil {
-		formatter.Error("TASK_FETCH_ERROR", err.Error())
+		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		return err
 	}
 
@@ -352,10 +394,16 @@ func taskUpdateCmd() *cobra.Command {
 			// Initialize CLI
 			cli, err := NewCLI(ctx)
 			if err != nil {
-				formatter.Error("INITIALIZATION_ERROR", err.Error())
+				if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
+					log.Printf("Error formatting error message: %v", fmtErr)
+				}
 				return err
 			}
-			defer cli.Close()
+			defer func() {
+		if err := cli.Close(); err != nil {
+			log.Printf("Error closing CLI: %v", err)
+		}
+	}()
 
 			// Get task ID flag
 			taskID, _ = cmd.Flags().GetInt("id")
@@ -366,14 +414,18 @@ func taskUpdateCmd() *cobra.Command {
 			priorityFlag := cmd.Flags().Lookup("priority")
 
 			if !titleFlag.Changed && !descFlag.Changed && !priorityFlag.Changed {
-				formatter.Error("NO_UPDATES", "at least one of --title, --description, or --priority must be specified")
+				if fmtErr := formatter.Error("NO_UPDATES", "at least one of --title, --description, or --priority must be specified"); fmtErr != nil {
+					log.Printf("Error formatting error message: %v", fmtErr)
+				}
 				os.Exit(2)
 			}
 
 			// Update title/description if provided
 			if titleFlag.Changed || descFlag.Changed {
 				if err := cli.Repo.UpdateTask(ctx, taskID, taskTitle, taskDescription); err != nil {
-					formatter.Error("UPDATE_ERROR", err.Error())
+					if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
+						log.Printf("Error formatting error message: %v", fmtErr)
+					}
 					return err
 				}
 			}
@@ -382,11 +434,15 @@ func taskUpdateCmd() *cobra.Command {
 			if priorityFlag.Changed {
 				priorityID, err := parsePriority(taskPriority)
 				if err != nil {
-					formatter.Error("INVALID_PRIORITY", err.Error())
+					if fmtErr := formatter.Error("INVALID_PRIORITY", err.Error()); fmtErr != nil {
+						log.Printf("Error formatting error message: %v", fmtErr)
+					}
 					os.Exit(5)
 				}
 				if err := cli.Repo.UpdateTaskPriority(ctx, taskID, priorityID); err != nil {
-					formatter.Error("PRIORITY_UPDATE_ERROR", err.Error())
+					if fmtErr := formatter.Error("PRIORITY_UPDATE_ERROR", err.Error()); fmtErr != nil {
+						log.Printf("Error formatting error message: %v", fmtErr)
+					}
 					return err
 				}
 			}
@@ -411,7 +467,9 @@ func taskUpdateCmd() *cobra.Command {
 
 	// Required flags
 	cmd.Flags().IntVar(&taskID, "id", 0, "Task ID (required)")
-	cmd.MarkFlagRequired("id")
+	if err := cmd.MarkFlagRequired("id"); err != nil {
+		log.Printf("Error marking flag as required: %v", err)
+	}
 
 	// Optional update flags
 	cmd.Flags().StringVar(&taskTitle, "title", "", "New task title")
@@ -441,10 +499,16 @@ func taskDeleteCmd() *cobra.Command {
 			// Initialize CLI
 			cli, err := NewCLI(ctx)
 			if err != nil {
-				formatter.Error("INITIALIZATION_ERROR", err.Error())
+				if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
+					log.Printf("Error formatting error message: %v", fmtErr)
+				}
 				return err
 			}
-			defer cli.Close()
+			defer func() {
+		if err := cli.Close(); err != nil {
+			log.Printf("Error closing CLI: %v", err)
+		}
+	}()
 
 			taskID, _ = cmd.Flags().GetInt("id")
 			force, _ = cmd.Flags().GetBool("force")
@@ -452,7 +516,9 @@ func taskDeleteCmd() *cobra.Command {
 			// Get task details for confirmation
 			task, err := cli.Repo.GetTaskDetail(ctx, taskID)
 			if err != nil {
-				formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID))
+				if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
+					log.Printf("Error formatting error message: %v", fmtErr)
+				}
 				os.Exit(3)
 			}
 
@@ -460,7 +526,9 @@ func taskDeleteCmd() *cobra.Command {
 			if !force && !quietMode {
 				fmt.Printf("Delete task #%d: '%s'? (y/N): ", taskID, task.Title)
 				var response string
-				fmt.Scanln(&response)
+				if _, err := fmt.Scanln(&response); err != nil {
+					log.Printf("Error reading user input: %v", err)
+				}
 				if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 					fmt.Println("Cancelled")
 					return nil
@@ -469,7 +537,9 @@ func taskDeleteCmd() *cobra.Command {
 
 			// Delete the task
 			if err := cli.Repo.DeleteTask(ctx, taskID); err != nil {
-				formatter.Error("DELETE_ERROR", err.Error())
+				if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
+					log.Printf("Error formatting error message: %v", fmtErr)
+				}
 				return err
 			}
 
@@ -492,7 +562,9 @@ func taskDeleteCmd() *cobra.Command {
 
 	// Required flags
 	cmd.Flags().IntVar(&taskID, "id", 0, "Task ID (required)")
-	cmd.MarkFlagRequired("id")
+	if err := cmd.MarkFlagRequired("id"); err != nil {
+		log.Printf("Error marking flag as required: %v", err)
+	}
 
 	// Optional flags
 	cmd.Flags().BoolVar(&force, "force", false, "Skip confirmation")
@@ -519,17 +591,25 @@ func taskLinkCmd() *cobra.Command {
 			// Initialize CLI
 			cli, err := NewCLI(ctx)
 			if err != nil {
-				formatter.Error("INITIALIZATION_ERROR", err.Error())
+				if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
+					log.Printf("Error formatting error message: %v", fmtErr)
+				}
 				return err
 			}
-			defer cli.Close()
+			defer func() {
+		if err := cli.Close(); err != nil {
+			log.Printf("Error closing CLI: %v", err)
+		}
+	}()
 
 			parentID, _ = cmd.Flags().GetInt("parent")
 			childID, _ = cmd.Flags().GetInt("child")
 
 			// Create the relationship
 			if err := cli.Repo.AddSubtask(ctx, parentID, childID); err != nil {
-				formatter.Error("LINK_ERROR", err.Error())
+				if fmtErr := formatter.Error("LINK_ERROR", err.Error()); fmtErr != nil {
+					log.Printf("Error formatting error message: %v", fmtErr)
+				}
 				return err
 			}
 
@@ -553,10 +633,14 @@ func taskLinkCmd() *cobra.Command {
 
 	// Required flags
 	cmd.Flags().IntVar(&parentID, "parent", 0, "Parent task ID (required)")
-	cmd.MarkFlagRequired("parent")
+	if err := cmd.MarkFlagRequired("parent"); err != nil {
+		log.Printf("Error marking flag as required: %v", err)
+	}
 
 	cmd.Flags().IntVar(&childID, "child", 0, "Child task ID (required)")
-	cmd.MarkFlagRequired("child")
+	if err := cmd.MarkFlagRequired("child"); err != nil {
+		log.Printf("Error marking flag as required: %v", err)
+	}
 
 	// Agent-friendly flags
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
