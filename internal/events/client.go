@@ -79,7 +79,8 @@ func (c *Client) Connect(ctx context.Context) error {
 	defer c.mu.Unlock()
 
 	// Dial the Unix domain socket
-	conn, err := net.Dial("unix", c.socketPath)
+	dialer := net.Dialer{}
+	conn, err := dialer.DialContext(ctx, "unix", c.socketPath)
 	if err != nil {
 		return fmt.Errorf("failed to dial daemon socket: %w", err)
 	}
@@ -96,7 +97,9 @@ func (c *Client) Connect(ctx context.Context) error {
 		},
 	}
 	if err := c.encoder.Encode(msg); err != nil {
-		conn.Close()
+		if closeErr := conn.Close(); closeErr != nil {
+			log.Printf("Error closing connection: %v", closeErr)
+		}
 		return fmt.Errorf("failed to send subscription: %w", err)
 	}
 
@@ -313,7 +316,9 @@ func (c *Client) reconnect(ctx context.Context) bool {
 			// Try to reconnect
 			c.mu.Lock()
 			if c.conn != nil {
-				c.conn.Close()
+				if err := c.conn.Close(); err != nil {
+					log.Printf("Error closing connection during reconnect: %v", err)
+				}
 			}
 			c.mu.Unlock()
 
