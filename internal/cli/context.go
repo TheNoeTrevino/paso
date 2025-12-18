@@ -12,8 +12,9 @@ import (
 
 // CLI represents the CLI application context
 type CLI struct {
-	Repo *database.Repository
-	ctx  context.Context
+	Repo        *database.Repository
+	eventClient *events.Client
+	ctx         context.Context
 }
 
 // NewCLI initializes the CLI with database and optional daemon connection
@@ -27,18 +28,29 @@ func NewCLI(ctx context.Context) (*CLI, error) {
 	// Try to connect to daemon (optional - silent fallback)
 	home, _ := os.UserHomeDir()
 	socketPath := filepath.Join(home, ".paso", "paso.sock")
-	eventClient, _ := events.NewClient(socketPath)
+
+	var eventClient *events.Client
+	client, err := events.NewClient(socketPath)
+	if err == nil {
+		// Try to connect - if it fails, daemon isn't running (graceful degradation)
+		if err := client.Connect(ctx); err == nil {
+			eventClient = client
+		}
+	}
 
 	repo := database.NewRepository(db, eventClient)
 
 	return &CLI{
-		Repo: repo,
-		ctx:  ctx,
+		Repo:        repo,
+		eventClient: eventClient,
+		ctx:         ctx,
 	}, nil
 }
 
 // Close cleans up CLI resources
 func (c *CLI) Close() error {
-	// Repository cleanup if needed
+	if c.eventClient != nil {
+		c.eventClient.Close()
+	}
 	return nil
 }
