@@ -115,7 +115,9 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 
 		// Subscribe to current project's events
 		if currentProjectID > 0 {
-			eventClient.Subscribe(currentProjectID)
+			if err := eventClient.Subscribe(currentProjectID); err != nil {
+				log.Printf("Error subscribing to project events: %v", err)
+			}
 		}
 	}
 

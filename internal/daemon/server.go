@@ -73,7 +73,8 @@ func NewServer(socketPath string) (*Server, error) {
 	}
 
 	// Create Unix domain socket listener
-	listener, err := net.Listen("unix", socketPath)
+	lc := net.ListenConfig{}
+	listener, err := lc.Listen(ctx, "unix", socketPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create socket listener: %w", err)
 	}
@@ -147,7 +148,9 @@ func (s *Server) acceptLoop(ctx context.Context) error {
 		}
 
 		// Set a read deadline so we can check for context cancellation
-		s.listener.(*net.UnixListener).SetDeadline(time.Now().Add(1 * time.Second))
+		if err := s.listener.(*net.UnixListener).SetDeadline(time.Now().Add(1 * time.Second)); err != nil {
+			log.Printf("Error setting listener deadline: %v", err)
+		}
 
 		conn, err := s.listener.Accept()
 		if err != nil {
@@ -352,13 +355,17 @@ func (s *Server) Shutdown() error {
 
 	// Close listener
 	if s.listener != nil {
-		s.listener.Close()
+		if err := s.listener.Close(); err != nil {
+			log.Printf("Error closing listener: %v", err)
+		}
 	}
 
 	// Close all client connections
 	s.mu.Lock()
 	for c := range s.clients {
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			log.Printf("Error closing client connection: %v", err)
+		}
 		close(c.send)
 	}
 	s.clients = make(map[*client]bool)
@@ -394,7 +401,9 @@ func (s *Server) removeClient(c *client) {
 	delete(s.clients, c)
 	s.mu.Unlock()
 
-	c.conn.Close()
+	if err := c.conn.Close(); err != nil {
+		log.Printf("Error closing client connection: %v", err)
+	}
 	close(c.send)
 
 	s.updateClientCount()
