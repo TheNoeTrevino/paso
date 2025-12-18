@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -55,7 +56,9 @@ Examples:
 
 	// Required flags
 	cmd.Flags().StringVar(&projectTitle, "title", "", "Project title (required)")
-	cmd.MarkFlagRequired("title")
+	if err := cmd.MarkFlagRequired("title"); err != nil {
+		log.Printf("Error marking flag as required: %v", err)
+	}
 
 	// Optional flags
 	cmd.Flags().StringVar(&projectDescription, "description", "", "Project description")
@@ -74,21 +77,31 @@ func runProjectCreate(cmd *cobra.Command, args []string) error {
 	// Initialize CLI
 	cli, err := NewCLI(ctx)
 	if err != nil {
-		formatter.Error("INITIALIZATION_ERROR", err.Error())
+		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		return err
 	}
-	defer cli.Close()
+	defer func() {
+		if err := cli.Close(); err != nil {
+			log.Printf("Error closing CLI: %v", err)
+		}
+	}()
 
 	// Validate title is not empty
 	if strings.TrimSpace(projectTitle) == "" {
-		formatter.Error("VALIDATION_ERROR", "project title cannot be empty")
+		if fmtErr := formatter.Error("VALIDATION_ERROR", "project title cannot be empty"); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		os.Exit(5) // Exit code 5 = validation error
 	}
 
 	// Create project
 	project, err := cli.Repo.CreateProject(ctx, projectTitle, projectDescription)
 	if err != nil {
-		formatter.Error("PROJECT_CREATE_ERROR", err.Error())
+		if fmtErr := formatter.Error("PROJECT_CREATE_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		return err
 	}
 
@@ -141,15 +154,23 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 	// Initialize CLI
 	cli, err := NewCLI(ctx)
 	if err != nil {
-		formatter.Error("INITIALIZATION_ERROR", err.Error())
+		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		return err
 	}
-	defer cli.Close()
+	defer func() {
+		if err := cli.Close(); err != nil {
+			log.Printf("Error closing CLI: %v", err)
+		}
+	}()
 
 	// Get all projects
 	projects, err := cli.Repo.GetAllProjects(ctx)
 	if err != nil {
-		formatter.Error("PROJECT_FETCH_ERROR", err.Error())
+		if fmtErr := formatter.Error("PROJECT_FETCH_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
 		return err
 	}
 
@@ -201,10 +222,16 @@ func projectDeleteCmd() *cobra.Command {
 			// Initialize CLI
 			cli, err := NewCLI(ctx)
 			if err != nil {
-				formatter.Error("INITIALIZATION_ERROR", err.Error())
+				if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
+					log.Printf("Error formatting error message: %v", fmtErr)
+				}
 				return err
 			}
-			defer cli.Close()
+			defer func() {
+				if err := cli.Close(); err != nil {
+					log.Printf("Error closing CLI: %v", err)
+				}
+			}()
 
 			projectID, _ = cmd.Flags().GetInt("id")
 			force, _ = cmd.Flags().GetBool("force")
@@ -212,7 +239,9 @@ func projectDeleteCmd() *cobra.Command {
 			// Get project details for confirmation
 			project, err := cli.Repo.GetProjectByID(ctx, projectID)
 			if err != nil {
-				formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", projectID))
+				if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", projectID)); fmtErr != nil {
+					log.Printf("Error formatting error message: %v", fmtErr)
+				}
 				os.Exit(3) // Exit code 3 = not found
 			}
 
@@ -220,7 +249,9 @@ func projectDeleteCmd() *cobra.Command {
 			if !force && !quietMode {
 				fmt.Printf("Delete project #%d: '%s'? (y/N): ", projectID, project.Name)
 				var response string
-				fmt.Scanln(&response)
+				if _, err := fmt.Scanln(&response); err != nil {
+					log.Printf("Error reading user input: %v", err)
+				}
 				if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 					fmt.Println("Cancelled")
 					return nil
@@ -229,7 +260,9 @@ func projectDeleteCmd() *cobra.Command {
 
 			// Delete the project
 			if err := cli.Repo.DeleteProject(ctx, projectID); err != nil {
-				formatter.Error("DELETE_ERROR", err.Error())
+				if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
+					log.Printf("Error formatting error message: %v", fmtErr)
+				}
 				return err
 			}
 
@@ -252,7 +285,9 @@ func projectDeleteCmd() *cobra.Command {
 
 	// Required flags
 	cmd.Flags().IntVar(&projectID, "id", 0, "Project ID (required)")
-	cmd.MarkFlagRequired("id")
+	if err := cmd.MarkFlagRequired("id"); err != nil {
+		log.Printf("Error marking flag as required: %v", err)
+	}
 
 	// Optional flags
 	cmd.Flags().BoolVar(&force, "force", false, "Skip confirmation")
