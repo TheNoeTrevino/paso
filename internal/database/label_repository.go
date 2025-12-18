@@ -50,7 +50,7 @@ func (r *LabelRepo) GetLabelsByProject(ctx context.Context, projectID int) ([]*m
 	if err != nil {
 		return nil, fmt.Errorf("failed to query labels for project %d: %w", projectID, err)
 	}
-	defer closeRows(rows)
+	defer closeRows(rows, "GetLabelsByProject")
 
 	labels := make([]*models.Label, 0, 20)
 	for rows.Next() {
@@ -79,7 +79,7 @@ func (r *LabelRepo) GetLabelsForTask(ctx context.Context, taskID int) ([]*models
 	if err != nil {
 		return nil, fmt.Errorf("failed to query labels for task %d: %w", taskID, err)
 	}
-	defer closeRows(rows)
+	defer closeRows(rows, "GetLabelsForTask")
 
 	labels := make([]*models.Label, 0, 10)
 	for rows.Next() {
