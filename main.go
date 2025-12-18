@@ -29,7 +29,8 @@ func main() {
 func init() {
 	// Add CLI subcommands
 	rootCmd.AddCommand(cli.TaskCmd())
-	// Project, Column, and Label commands will be added in later phases
+	rootCmd.AddCommand(cli.ProjectCmd())
+	// Column and Label commands will be added in later phases
 
 	// Add TUI subcommand
 	tuiCmd := &cobra.Command{
