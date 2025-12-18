@@ -25,6 +25,7 @@ type Client struct {
 	// Batching configuration
 	eventQueue chan Event
 	debounce   time.Duration
+	closed     bool // Prevent double-close panics
 
 	// Reconnection configuration
 	maxRetries int
@@ -134,12 +135,41 @@ func (c *Client) startBatcher() {
 	var projectID int
 	var hasMultipleProjects bool
 
+	// Helper to flush pending events
+	flushPending := func() {
+		if pending {
+			batchProjectID := projectID
+			if hasMultipleProjects {
+				batchProjectID = 0
+			}
+
+			if err := c.sendToSocket(Event{
+				Type:      EventDatabaseChanged,
+				ProjectID: batchProjectID,
+				Timestamp: time.Now(),
+			}); err != nil {
+				if !isConnectionError(err) {
+					log.Printf("Failed to send batched event: %v", err)
+				}
+			}
+			pending = false
+		}
+	}
+
 	for {
 		select {
 		case <-c.ctx.Done():
+			// Flush any pending events before exiting
+			flushPending()
 			return
 
-		case event := <-c.eventQueue:
+		case event, ok := <-c.eventQueue:
+			if !ok {
+				// Channel closed - flush and exit
+				flushPending()
+				return
+			}
+
 			// Mark that we have pending events to send
 			if !pending {
 				pending = true
@@ -155,7 +185,10 @@ func (c *Client) startBatcher() {
 		drainLoop:
 			for {
 				select {
-				case evt := <-c.eventQueue:
+				case evt, ok := <-c.eventQueue:
+					if !ok {
+						break drainLoop
+					}
 					// Check if we have events from different projects
 					if projectID != evt.ProjectID && evt.ProjectID != 0 {
 						hasMultipleProjects = true
@@ -166,25 +199,7 @@ func (c *Client) startBatcher() {
 			}
 
 		case <-ticker.C:
-			// Send batched event if any are pending
-			if pending {
-				batchProjectID := projectID
-				if hasMultipleProjects {
-					batchProjectID = 0 // Signal that multiple projects changed
-				}
-
-				if err := c.sendToSocket(Event{
-					Type:      EventDatabaseChanged,
-					ProjectID: batchProjectID,
-					Timestamp: time.Now(),
-				}); err != nil {
-					// Suppress connection errors during normal disconnection
-					if !isConnectionError(err) {
-						log.Printf("Failed to send batched event: %v", err)
-					}
-				}
-				pending = false
-			}
+			flushPending()
 		}
 	}
 }
@@ -359,9 +374,25 @@ func (c *Client) Subscribe(projectID int) error {
 
 // Close closes the connection to the daemon and stops all goroutines.
 func (c *Client) Close() error {
+	// Check if already closed
+	c.mu.Lock()
+	if c.closed {
+		c.mu.Unlock()
+		return nil
+	}
+	c.closed = true
+
+	// Close the event queue to signal no more events coming
+	// This allows batcher to flush pending events before exiting
+	if c.eventQueue != nil {
+		close(c.eventQueue)
+	}
+	c.mu.Unlock()
+
+	// Cancel context to stop other goroutines
 	c.cancel()
 
-	// Wait for batcher to finish
+	// Wait for batcher to finish (it will flush pending events)
 	<-c.batcherDone
 
 	c.mu.Lock()
