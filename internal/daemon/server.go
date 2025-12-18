@@ -74,7 +74,7 @@ func NewServer(socketPath string) (*Server, error) {
 
 	// Create Unix domain socket listener
 	lc := net.ListenConfig{}
-	listener, err := lc.Listen(ctx, "unix", socketPath)
+	listener, err := lc.Listen(context.Background(), "unix", socketPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create socket listener: %w", err)
 	}
