@@ -109,7 +109,7 @@ func (r *TaskRepo) GetTasksByColumn(ctx context.Context, columnID int) ([]*model
 	if err != nil {
 		return nil, fmt.Errorf("failed to query tasks for column %d: %w", columnID, err)
 	}
-	defer closeRows(rows)
+	defer closeRows(rows, "GetTasksByColumn")
 
 	tasks := make([]*models.Task, 0, defaultTaskCapacity)
 	for rows.Next() {
@@ -201,7 +201,7 @@ func (r *TaskRepo) getTaskSummaries(ctx context.Context, filter taskSummaryFilte
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to query task summaries: %w", err)
 	}
-	defer closeRows(rows)
+	defer closeRows(rows, "GetTaskSummaries")
 
 	var summaries []*models.TaskSummary
 	var tasksByColumn map[int][]*models.TaskSummary
@@ -336,7 +336,7 @@ func (r *TaskRepo) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskD
 	if err != nil {
 		return nil, fmt.Errorf("failed to query labels for task %d: %w", taskID, err)
 	}
-	defer closeRows(rows)
+	defer closeRows(rows, "GetTaskDetail labels")
 
 	labels := make([]*models.Label, 0, 10)
 	for rows.Next() {
@@ -456,7 +456,8 @@ func (r *TaskRepo) moveTaskToColumn(ctx context.Context, taskID int, moveType st
 	var finalTargetColumnID int
 	var currentColumnID int
 
-	if moveType == "next" || moveType == "prev" {
+	switch moveType {
+	case "next", "prev":
 		// Get the task's current column_id
 		err = tx.QueryRowContext(ctx,
 			`SELECT column_id FROM tasks WHERE id = ?`,
@@ -469,9 +470,10 @@ func (r *TaskRepo) moveTaskToColumn(ctx context.Context, taskID int, moveType st
 		// Get the adjacent column's ID
 		var adjacentColumnID sql.NullInt64
 		var columnField string
-		if moveType == "next" {
+		switch moveType {
+		case "next":
 			columnField = "next_id"
-		} else {
+		case "prev":
 			columnField = "prev_id"
 		}
 
@@ -485,14 +487,16 @@ func (r *TaskRepo) moveTaskToColumn(ctx context.Context, taskID int, moveType st
 
 		// Check if there's an adjacent column
 		if !adjacentColumnID.Valid {
-			if moveType == "next" {
+			switch moveType {
+			case "next":
 				return models.ErrAlreadyLastColumn
+			case "prev":
+				return models.ErrAlreadyFirstColumn
 			}
-			return models.ErrAlreadyFirstColumn
 		}
 
 		finalTargetColumnID = int(adjacentColumnID.Int64)
-	} else if moveType == "direct" {
+	case "direct":
 		// Verify the target column exists
 		var exists int
 		err = tx.QueryRowContext(ctx,
@@ -506,7 +510,7 @@ func (r *TaskRepo) moveTaskToColumn(ctx context.Context, taskID int, moveType st
 			return fmt.Errorf("target column %d does not exist", targetColumnID)
 		}
 		finalTargetColumnID = targetColumnID
-	} else {
+	default:
 		return fmt.Errorf("invalid move type: %s", moveType)
 	}
 
@@ -599,10 +603,11 @@ func (r *TaskRepo) swapTask(ctx context.Context, taskID int, direction string) e
 
 	var adjacentTaskID, newPos, adjacentPos int
 
-	if direction == "up" {
+	switch direction {
+	case "up":
 		// Find the task above (next smaller position)
 		err = tx.QueryRowContext(ctx,
-			`SELECT id, position FROM tasks 
+			`SELECT id, position FROM tasks
 			 WHERE column_id = ? AND position < ?
 			 ORDER BY position DESC LIMIT 1`,
 			columnID, currentPos,
@@ -614,10 +619,10 @@ func (r *TaskRepo) swapTask(ctx context.Context, taskID int, direction string) e
 			return fmt.Errorf("failed to find task above position %d: %w", currentPos, err)
 		}
 		newPos = adjacentPos
-	} else if direction == "down" {
+	case "down":
 		// Find the task below (next larger position)
 		err = tx.QueryRowContext(ctx,
-			`SELECT id, position FROM tasks 
+			`SELECT id, position FROM tasks
 			 WHERE column_id = ? AND position > ?
 			 ORDER BY position ASC LIMIT 1`,
 			columnID, currentPos,
@@ -629,7 +634,7 @@ func (r *TaskRepo) swapTask(ctx context.Context, taskID int, direction string) e
 			return fmt.Errorf("failed to find task below position %d: %w", currentPos, err)
 		}
 		newPos = adjacentPos
-	} else {
+	default:
 		return fmt.Errorf("invalid direction: %s", direction)
 	}
 
@@ -761,7 +766,7 @@ func (r *TaskRepo) getTaskReferences(ctx context.Context, refType string, id int
 	if err != nil {
 		return nil, fmt.Errorf("failed to query %s %d: %w", errorContext, id, err)
 	}
-	defer closeRows(rows)
+	defer closeRows(rows, fmt.Sprintf("GetTaskReferences: %s", refType))
 
 	references := make([]*models.TaskReference, 0, 10)
 	for rows.Next() {
