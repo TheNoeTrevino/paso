@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -174,7 +175,10 @@ func (c *Client) startBatcher() {
 					ProjectID: batchProjectID,
 					Timestamp: time.Now(),
 				}); err != nil {
-					log.Printf("Failed to send batched event: %v", err)
+					// Suppress connection errors during normal disconnection
+					if !isConnectionError(err) {
+						log.Printf("Failed to send batched event: %v", err)
+					}
 				}
 				pending = false
 			}
@@ -189,6 +193,11 @@ func (c *Client) sendToSocket(event Event) error {
 
 	if c.conn == nil {
 		return fmt.Errorf("not connected to daemon")
+	}
+
+	// Set a short write deadline to detect dead connections
+	if err := c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		return fmt.Errorf("connection error: %w", err)
 	}
 
 	msg := Message{
@@ -271,10 +280,24 @@ func (c *Client) readEvents(ctx context.Context, eventChan chan Event) error {
 		case "ping":
 			// Respond to daemon ping with pong
 			if err := c.sendToSocket(Event{Type: EventPong}); err != nil {
-				log.Printf("Failed to send pong: %v", err)
+				// Broken pipe/connection closed is expected during disconnection
+				if !isConnectionError(err) {
+					log.Printf("Failed to send pong: %v", err)
+				}
 			}
 		}
 	}
+}
+
+// isConnectionError checks if an error is a network connection error
+func isConnectionError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "broken pipe") ||
+		strings.Contains(errStr, "connection reset") ||
+		strings.Contains(errStr, "use of closed network connection")
 }
 
 // reconnect attempts to reconnect to the daemon with exponential backoff.
