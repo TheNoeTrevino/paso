@@ -600,47 +600,35 @@ func (r *TaskRepo) swapTask(ctx context.Context, taskID int, direction string) e
 	var adjacentTaskID, newPos, adjacentPos int
 
 	if direction == "up" {
-		// Check if already at top (position 0)
-		if currentPos == 0 {
-			return models.ErrAlreadyFirstTask
-		}
-
-		// Find the task above (position - 1)
-		adjacentPos = currentPos - 1
-		newPos = currentPos - 1
+		// Find the task above (next smaller position)
 		err = tx.QueryRowContext(ctx,
-			`SELECT id FROM tasks WHERE column_id = ? AND position = ?`,
-			columnID, adjacentPos,
-		).Scan(&adjacentTaskID)
+			`SELECT id, position FROM tasks 
+			 WHERE column_id = ? AND position < ?
+			 ORDER BY position DESC LIMIT 1`,
+			columnID, currentPos,
+		).Scan(&adjacentTaskID, &adjacentPos)
 		if err != nil {
+			if err == sql.ErrNoRows {
+				return models.ErrAlreadyFirstTask
+			}
 			return fmt.Errorf("failed to find task above position %d: %w", currentPos, err)
 		}
+		newPos = adjacentPos
 	} else if direction == "down" {
-		// Get max position in the column
-		var maxPos int
+		// Find the task below (next larger position)
 		err = tx.QueryRowContext(ctx,
-			`SELECT COALESCE(MAX(position), 0) FROM tasks WHERE column_id = ?`,
-			columnID,
-		).Scan(&maxPos)
+			`SELECT id, position FROM tasks 
+			 WHERE column_id = ? AND position > ?
+			 ORDER BY position ASC LIMIT 1`,
+			columnID, currentPos,
+		).Scan(&adjacentTaskID, &adjacentPos)
 		if err != nil {
-			return fmt.Errorf("failed to get max position in column %d: %w", columnID, err)
-		}
-
-		// Check if already at bottom
-		if currentPos >= maxPos {
-			return models.ErrAlreadyLastTask
-		}
-
-		// Find the task below (position + 1)
-		adjacentPos = currentPos + 1
-		newPos = currentPos + 1
-		err = tx.QueryRowContext(ctx,
-			`SELECT id FROM tasks WHERE column_id = ? AND position = ?`,
-			columnID, adjacentPos,
-		).Scan(&adjacentTaskID)
-		if err != nil {
+			if err == sql.ErrNoRows {
+				return models.ErrAlreadyLastTask
+			}
 			return fmt.Errorf("failed to find task below position %d: %w", currentPos, err)
 		}
+		newPos = adjacentPos
 	} else {
 		return fmt.Errorf("invalid direction: %s", direction)
 	}

@@ -186,12 +186,15 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 		}
 	}
 
-	// 5. Reload task summaries with labels
-	summaries, err := m.repo.GetTaskSummariesByColumn(ctx, currentCol.ID)
-	if err != nil {
-		log.Printf("Error reloading tasks: %v", err)
-	} else {
-		m.appState.Tasks()[currentCol.ID] = summaries
+	// 5. Reload all tasks for the project to keep state consistent
+	project := m.getCurrentProject()
+	if project != nil {
+		tasksByColumn, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
+		if err != nil {
+			log.Printf("Error reloading tasks: %v", err)
+		} else {
+			m.appState.SetTasks(tasksByColumn)
+		}
 	}
 }
 
@@ -292,17 +295,15 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 		}
 	}
 
-	// 5. Reload task summaries for the column
-	currentCol := m.getCurrentColumn()
-	if currentCol == nil {
-		return
-	}
-
-	summaries, err := m.repo.GetTaskSummariesByColumn(ctx, currentCol.ID)
-	if err != nil {
-		log.Printf("Error reloading tasks: %v", err)
-	} else {
-		m.appState.Tasks()[currentCol.ID] = summaries
+	// 5. Reload all tasks for the project to keep state consistent
+	project := m.getCurrentProject()
+	if project != nil {
+		tasksByColumn, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
+		if err != nil {
+			log.Printf("Error reloading tasks: %v", err)
+		} else {
+			m.appState.SetTasks(tasksByColumn)
+		}
 	}
 }
 
@@ -1144,19 +1145,19 @@ func (m *Model) syncLabelPickerToFormState() {
 	m.formState.FormLabelIDs = labelIDs
 }
 
-// reloadCurrentColumnTasks reloads task summaries for the current column
+// reloadCurrentColumnTasks reloads all task summaries for the project to keep state consistent
 func (m *Model) reloadCurrentColumnTasks() {
-	currentCol := m.getCurrentColumn()
-	if currentCol == nil {
+	project := m.getCurrentProject()
+	if project == nil {
 		return
 	}
 
 	ctx, cancel := m.dbContext()
 	defer cancel()
-	summaries, err := m.repo.GetTaskSummariesByColumn(ctx, currentCol.ID)
+	tasksByColumn, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
-		log.Printf("Error reloading column tasks: %v", err)
+		log.Printf("Error reloading tasks: %v", err)
 		return
 	}
-	m.appState.Tasks()[currentCol.ID] = summaries
+	m.appState.SetTasks(tasksByColumn)
 }
