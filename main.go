@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/tui"
 )
 
@@ -26,6 +27,10 @@ func main() {
 }
 
 func init() {
+	// Add CLI subcommands
+	rootCmd.AddCommand(cli.TaskCmd())
+	// Project, Column, and Label commands will be added in later phases
+
 	// Add TUI subcommand
 	tuiCmd := &cobra.Command{
 		Use:   "tui",

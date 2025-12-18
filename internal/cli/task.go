@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/models"
 )
 
 var (
@@ -32,11 +33,10 @@ func TaskCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(taskCreateCmd())
-	// Other subcommands will be added in later phases
-	// cmd.AddCommand(taskListCmd())
-	// cmd.AddCommand(taskUpdateCmd())
-	// cmd.AddCommand(taskDeleteCmd())
-	// cmd.AddCommand(taskLinkCmd())
+	cmd.AddCommand(taskListCmd())
+	cmd.AddCommand(taskUpdateCmd())
+	cmd.AddCommand(taskDeleteCmd())
+	cmd.AddCommand(taskLinkCmd())
 
 	return cmd
 }
@@ -260,4 +260,307 @@ func parsePriority(priority string) (int, error) {
 		return 0, fmt.Errorf("invalid priority '%s' (must be: trivial, low, medium, high, critical)", priority)
 	}
 	return id, nil
+}
+
+// taskListCmd returns the task list subcommand
+func taskListCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List tasks",
+		Long:  "List all tasks in a project.",
+		RunE:  runTaskList,
+	}
+
+	// Required flags
+	cmd.Flags().IntVar(&taskProject, "project", 0, "Project ID (required)")
+	cmd.MarkFlagRequired("project")
+
+	// Agent-friendly flags
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
+	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output (ID only)")
+
+	return cmd
+}
+
+func runTaskList(cmd *cobra.Command, args []string) error {
+	ctx := context.Background()
+	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+
+	// Initialize CLI
+	cli, err := NewCLI(ctx)
+	if err != nil {
+		formatter.Error("INITIALIZATION_ERROR", err.Error())
+		return err
+	}
+	defer cli.Close()
+
+	// Get tasks (returns map[columnID][]*TaskSummary)
+	tasksByColumn, err := cli.Repo.GetTaskSummariesByProject(ctx, taskProject)
+	if err != nil {
+		formatter.Error("TASK_FETCH_ERROR", err.Error())
+		return err
+	}
+
+	// Flatten tasks from all columns
+	var allTasks []*models.TaskSummary
+	for _, columnTasks := range tasksByColumn {
+		allTasks = append(allTasks, columnTasks...)
+	}
+
+	// Output in appropriate format
+	if quietMode {
+		// Just print IDs
+		for _, t := range allTasks {
+			fmt.Printf("%d\n", t.ID)
+		}
+		return nil
+	}
+
+	if jsonOutput {
+		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+			"success": true,
+			"tasks":   allTasks,
+		})
+	}
+
+	// Human-readable output
+	if len(allTasks) == 0 {
+		fmt.Println("No tasks found")
+		return nil
+	}
+
+	fmt.Printf("Found %d tasks:\n\n", len(allTasks))
+	for _, t := range allTasks {
+		fmt.Printf("  [%d] %s\n", t.ID, t.Title)
+	}
+
+	return nil
+}
+
+// taskUpdateCmd returns the task update subcommand
+func taskUpdateCmd() *cobra.Command {
+	var taskID int
+
+	cmd := &cobra.Command{
+		Use:   "update",
+		Short: "Update a task",
+		Long:  "Update task title, description, or priority.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := context.Background()
+			formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+
+			// Initialize CLI
+			cli, err := NewCLI(ctx)
+			if err != nil {
+				formatter.Error("INITIALIZATION_ERROR", err.Error())
+				return err
+			}
+			defer cli.Close()
+
+			// Get task ID flag
+			taskID, _ = cmd.Flags().GetInt("id")
+
+			// At least one update field must be provided
+			titleFlag := cmd.Flags().Lookup("title")
+			descFlag := cmd.Flags().Lookup("description")
+			priorityFlag := cmd.Flags().Lookup("priority")
+
+			if !titleFlag.Changed && !descFlag.Changed && !priorityFlag.Changed {
+				formatter.Error("NO_UPDATES", "at least one of --title, --description, or --priority must be specified")
+				os.Exit(2)
+			}
+
+			// Update title/description if provided
+			if titleFlag.Changed || descFlag.Changed {
+				if err := cli.Repo.UpdateTask(ctx, taskID, taskTitle, taskDescription); err != nil {
+					formatter.Error("UPDATE_ERROR", err.Error())
+					return err
+				}
+			}
+
+			// Update priority if provided
+			if priorityFlag.Changed {
+				priorityID, err := parsePriority(taskPriority)
+				if err != nil {
+					formatter.Error("INVALID_PRIORITY", err.Error())
+					os.Exit(5)
+				}
+				if err := cli.Repo.UpdateTaskPriority(ctx, taskID, priorityID); err != nil {
+					formatter.Error("PRIORITY_UPDATE_ERROR", err.Error())
+					return err
+				}
+			}
+
+			// Output success
+			if quietMode {
+				fmt.Printf("%d\n", taskID)
+				return nil
+			}
+
+			if jsonOutput {
+				return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+					"success": true,
+					"task_id": taskID,
+				})
+			}
+
+			fmt.Printf("✓ Task %d updated successfully\n", taskID)
+			return nil
+		},
+	}
+
+	// Required flags
+	cmd.Flags().IntVar(&taskID, "id", 0, "Task ID (required)")
+	cmd.MarkFlagRequired("id")
+
+	// Optional update flags
+	cmd.Flags().StringVar(&taskTitle, "title", "", "New task title")
+	cmd.Flags().StringVar(&taskDescription, "description", "", "New task description")
+	cmd.Flags().StringVar(&taskPriority, "priority", "", "New priority: trivial, low, medium, high, critical")
+
+	// Agent-friendly flags
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
+	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output (ID only)")
+
+	return cmd
+}
+
+// taskDeleteCmd returns the task delete subcommand
+func taskDeleteCmd() *cobra.Command {
+	var taskID int
+	var force bool
+
+	cmd := &cobra.Command{
+		Use:   "delete",
+		Short: "Delete a task",
+		Long:  "Delete a task by ID (requires confirmation unless --force or --quiet).",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := context.Background()
+			formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+
+			// Initialize CLI
+			cli, err := NewCLI(ctx)
+			if err != nil {
+				formatter.Error("INITIALIZATION_ERROR", err.Error())
+				return err
+			}
+			defer cli.Close()
+
+			taskID, _ = cmd.Flags().GetInt("id")
+			force, _ = cmd.Flags().GetBool("force")
+
+			// Get task details for confirmation
+			task, err := cli.Repo.GetTaskDetail(ctx, taskID)
+			if err != nil {
+				formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID))
+				os.Exit(3)
+			}
+
+			// Ask for confirmation unless force or quiet mode
+			if !force && !quietMode {
+				fmt.Printf("Delete task #%d: '%s'? (y/N): ", taskID, task.Title)
+				var response string
+				fmt.Scanln(&response)
+				if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+					fmt.Println("Cancelled")
+					return nil
+				}
+			}
+
+			// Delete the task
+			if err := cli.Repo.DeleteTask(ctx, taskID); err != nil {
+				formatter.Error("DELETE_ERROR", err.Error())
+				return err
+			}
+
+			// Output success
+			if quietMode {
+				return nil
+			}
+
+			if jsonOutput {
+				return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+					"success": true,
+					"task_id": taskID,
+				})
+			}
+
+			fmt.Printf("✓ Task %d deleted successfully\n", taskID)
+			return nil
+		},
+	}
+
+	// Required flags
+	cmd.Flags().IntVar(&taskID, "id", 0, "Task ID (required)")
+	cmd.MarkFlagRequired("id")
+
+	// Optional flags
+	cmd.Flags().BoolVar(&force, "force", false, "Skip confirmation")
+
+	// Agent-friendly flags
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
+	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output")
+
+	return cmd
+}
+
+// taskLinkCmd returns the task link subcommand
+func taskLinkCmd() *cobra.Command {
+	var parentID, childID int
+
+	cmd := &cobra.Command{
+		Use:   "link",
+		Short: "Link tasks (parent-child)",
+		Long:  "Create a parent-child relationship between tasks.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := context.Background()
+			formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+
+			// Initialize CLI
+			cli, err := NewCLI(ctx)
+			if err != nil {
+				formatter.Error("INITIALIZATION_ERROR", err.Error())
+				return err
+			}
+			defer cli.Close()
+
+			parentID, _ = cmd.Flags().GetInt("parent")
+			childID, _ = cmd.Flags().GetInt("child")
+
+			// Create the relationship
+			if err := cli.Repo.AddSubtask(ctx, parentID, childID); err != nil {
+				formatter.Error("LINK_ERROR", err.Error())
+				return err
+			}
+
+			// Output success
+			if quietMode {
+				return nil
+			}
+
+			if jsonOutput {
+				return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+					"success":   true,
+					"parent_id": parentID,
+					"child_id":  childID,
+				})
+			}
+
+			fmt.Printf("✓ Linked task %d as child of task %d\n", childID, parentID)
+			return nil
+		},
+	}
+
+	// Required flags
+	cmd.Flags().IntVar(&parentID, "parent", 0, "Parent task ID (required)")
+	cmd.MarkFlagRequired("parent")
+
+	cmd.Flags().IntVar(&childID, "child", 0, "Child task ID (required)")
+	cmd.MarkFlagRequired("child")
+
+	// Agent-friendly flags
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
+	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output")
+
+	return cmd
 }
