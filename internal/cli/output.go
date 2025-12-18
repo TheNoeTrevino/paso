@@ -3,50 +3,56 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 )
 
-type OutputMode string
-
-const (
-	OutputModeHuman OutputMode = "human"
-	OutputModeJSON  OutputMode = "json"
-	OutputModeQuiet OutputMode = "quiet"
-)
-
+// OutputFormatter handles three output modes: JSON, quiet, and human-readable
 type OutputFormatter struct {
-	mode   OutputMode
-	writer io.Writer
+	JSON  bool
+	Quiet bool
 }
 
-func NewOutputFormatter(mode OutputMode) *OutputFormatter {
-	return &OutputFormatter{
-		mode:   mode,
-		writer: os.Stdout,
+// Success outputs successful operation result
+func (f *OutputFormatter) Success(data interface{}) error {
+	if f.Quiet {
+		// Extract ID if possible
+		if idGetter, ok := data.(interface{ GetID() int }); ok {
+			fmt.Printf("%d\n", idGetter.GetID())
+			return nil
+		}
 	}
+
+	if f.JSON {
+		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+			"success": true,
+			"data":    data,
+		})
+	}
+
+	// Human-readable format
+	return f.prettyPrint(data)
 }
 
-func (f *OutputFormatter) Print(message string) {
-	if f.mode == OutputModeQuiet {
-		return
+// Error outputs error information
+func (f *OutputFormatter) Error(code string, message string) error {
+	if f.JSON {
+		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+			"success": false,
+			"error": map[string]interface{}{
+				"code":    code,
+				"message": message,
+			},
+		})
 	}
-	fmt.Fprintln(f.writer, message)
+
+	// Human-readable error
+	fmt.Fprintf(os.Stderr, "❌ Error: %s\n", message)
+	return nil
 }
 
-func (f *OutputFormatter) PrintJSON(data interface{}) error {
-	if f.mode == OutputModeQuiet {
-		return nil
-	}
-	encoder := json.NewEncoder(f.writer)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(data)
-}
-
-func (f *OutputFormatter) PrintID(id string) {
-	if f.mode == OutputModeHuman {
-		fmt.Fprintf(f.writer, "ID: %s\n", id)
-	} else {
-		fmt.Fprintln(f.writer, id)
-	}
+// prettyPrint formats data for human-readable output
+func (f *OutputFormatter) prettyPrint(data interface{}) error {
+	// Default implementation - can be enhanced per data type
+	fmt.Printf("%+v\n", data)
+	return nil
 }
