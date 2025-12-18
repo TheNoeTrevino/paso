@@ -16,7 +16,7 @@ func TestLinkedListTraversal(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create 3 columns
 	col1, err := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -84,7 +84,7 @@ func TestInsertColumnMiddle(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create initial columns
 	col1, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -134,7 +134,7 @@ func TestInsertColumnEnd(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create initial columns
 	_, _ = repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -177,7 +177,7 @@ func TestDeleteColumnMiddle(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create three columns
 	col1, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -222,7 +222,7 @@ func TestDeleteColumnHead(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create three columns
 	col1, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -265,7 +265,7 @@ func TestDeleteColumnTail(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create three columns
 	col1, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -308,7 +308,7 @@ func TestEmptyList(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Get columns from empty database
 	columns, err := repo.GetColumnsByProject(context.Background(), 1)
@@ -329,7 +329,7 @@ func TestSingleColumn(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create single column
 	col, err := repo.CreateColumn(context.Background(), "Only Column", 1, nil)
