@@ -184,7 +184,6 @@ Examples:
 
 func runLabelList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
-	s
 	labelProject, _ := cmd.Flags().GetInt("project")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
