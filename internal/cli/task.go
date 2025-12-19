@@ -201,7 +201,6 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Set type if not default
-	// Handle empty type (use default)
 	ttype := taskType
 	if ttype == "" {
 		ttype = "task"
@@ -214,10 +213,14 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 		}
 		os.Exit(5) // Exit code 5 = validation error
 	}
-	// Note: UpdateTaskType doesn't exist yet - would need to add it
-	// For now, we'll skip this or use raw SQL
-	// TODO: Add UpdateTaskType to repository
-	_ = typeID // Suppress unused variable warning
+	if typeID != 1 {
+		if err := cli.Repo.UpdateTaskType(ctx, task.ID, typeID); err != nil {
+			if fmtErr := formatter.Error("TYPE_UPDATE_ERROR", err.Error()); fmtErr != nil {
+				log.Printf("Error formatting error message: %v", fmtErr)
+			}
+			return err
+		}
+	}
 
 	// Set priority if not default
 	// Handle empty priority (use default)
