@@ -43,7 +43,7 @@ func closeRows(rows *sql.Rows, context string) {
 
 // sendEvent sends a database change event notification if the client is available.
 // Errors are logged but not returned (fire-and-forget pattern).
-func sendEvent(eventClient *events.Client, projectID int) {
+func sendEvent(eventClient events.EventPublisher, projectID int) {
 	if eventClient != nil {
 		if err := eventClient.SendEvent(events.Event{
 			Type:      events.EventDatabaseChanged,

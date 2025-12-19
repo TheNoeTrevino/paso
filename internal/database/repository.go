@@ -14,12 +14,12 @@ type Repository struct {
 	*ColumnRepo
 	*TaskRepo
 	*LabelRepo
-	eventClient *events.Client
+	eventClient events.EventPublisher
 }
 
 // NewRepository creates a new Repository instance wrapping the given database connection.
 // eventClient is optional and may be nil if the daemon is not running.
-func NewRepository(db *sql.DB, eventClient *events.Client) *Repository {
+func NewRepository(db *sql.DB, eventClient events.EventPublisher) *Repository {
 	return &Repository{
 		ProjectRepo: &ProjectRepo{db: db, eventClient: eventClient},
 		ColumnRepo:  &ColumnRepo{db: db, eventClient: eventClient},

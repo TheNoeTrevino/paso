@@ -15,7 +15,7 @@ import (
 // TaskRepo handles all task-related database operations.
 type TaskRepo struct {
 	db          *sql.DB
-	eventClient *events.Client
+	eventClient events.EventPublisher
 }
 
 const defaultTaskCapacity = 50

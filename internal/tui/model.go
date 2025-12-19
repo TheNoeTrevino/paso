@@ -26,28 +26,28 @@ const (
 
 // Model represents the application state for the TUI
 type Model struct {
-	ctx               context.Context // Application context for cancellation and timeouts
-	repo              database.DataStore
-	config             *config.Config
-	appState           *state.AppState
-	uiState            *state.UIState
-	inputState         *state.InputState
-	formState          *state.FormState
-	labelPickerState   *state.LabelPickerState
-	parentPickerState  *state.TaskPickerState
-	childPickerState   *state.TaskPickerState
+	ctx                 context.Context // Application context for cancellation and timeouts
+	repo                database.DataStore
+	config              *config.Config
+	appState            *state.AppState
+	uiState             *state.UIState
+	inputState          *state.InputState
+	formState           *state.FormState
+	labelPickerState    *state.LabelPickerState
+	parentPickerState   *state.TaskPickerState
+	childPickerState    *state.TaskPickerState
 	priorityPickerState *state.PriorityPickerState
-	notificationState  *state.NotificationState
-	searchState        *state.SearchState
-	listViewState      *state.ListViewState
-	statusPickerState  *state.StatusPickerState
-	eventClient        *events.Client       // Connection to daemon for live updates
-	eventChan          <-chan events.Event  // Channel for receiving events
-	subscriptionStarted bool                // Track if we've started listening
+	notificationState   *state.NotificationState
+	searchState         *state.SearchState
+	listViewState       *state.ListViewState
+	statusPickerState   *state.StatusPickerState
+	eventClient         events.EventPublisher // Connection to daemon for live updates
+	eventChan           <-chan events.Event   // Channel for receiving events
+	subscriptionStarted bool                  // Track if we've started listening
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
-func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Config, eventClient *events.Client) Model {
+func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Config, eventClient events.EventPublisher) Model {
 	// Create child context with timeout for initial loading
 	loadCtx, cancel := context.WithTimeout(ctx, timeoutInitialLoad)
 	defer cancel()

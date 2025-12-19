@@ -13,7 +13,7 @@ import (
 // ColumnRepo handles all column-related database operations.
 type ColumnRepo struct {
 	db          *sql.DB
-	eventClient *events.Client
+	eventClient events.EventPublisher
 }
 
 // CreateColumn creates a new column in the database for a specific project
