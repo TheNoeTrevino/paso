@@ -13,7 +13,7 @@ import (
 // ProjectRepo handles all project-related database operations.
 type ProjectRepo struct {
 	db          *sql.DB
-	eventClient *events.Client
+	eventClient events.EventPublisher
 }
 
 // CreateProject creates a new project with default columns (Todo, In Progress, Done)
