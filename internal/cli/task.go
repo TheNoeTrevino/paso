@@ -107,7 +107,7 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 			"Use 'paso project list' to see available projects or 'paso project create' to create a new one"); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(3) // Exit code 3 = not found
+		os.Exit(ExitNotFound)
 	}
 
 	// Get columns for project
@@ -150,7 +150,7 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 				fmt.Sprintf("Available columns: %s", strings.Join(availableColumns, ", "))); fmtErr != nil {
 				log.Printf("Error formatting error message: %v", fmtErr)
 			}
-			os.Exit(3)
+			os.Exit(ExitNotFound)
 		}
 	}
 
@@ -197,7 +197,7 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 			"Valid types are: task, feature"); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(5) // Exit code 5 = validation error
+		os.Exit(ExitValidation)
 	}
 	if typeID != 1 {
 		if err := cli.Repo.UpdateTaskType(ctx, task.ID, typeID); err != nil {
@@ -220,7 +220,7 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 			"Valid priorities are: trivial, low, medium, high, critical"); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(5)
+		os.Exit(ExitValidation)
 	}
 	if priorityID != 3 {
 		if err := cli.Repo.UpdateTaskPriority(ctx, task.ID, priorityID); err != nil {
@@ -428,7 +428,7 @@ func taskUpdateCmd() *cobra.Command {
 				if fmtErr := formatter.Error("NO_UPDATES", "at least one of --title, --description, or --priority must be specified"); fmtErr != nil {
 					log.Printf("Error formatting error message: %v", fmtErr)
 				}
-				os.Exit(2)
+				os.Exit(ExitUsage)
 			}
 
 			// Update title/description if provided
@@ -448,7 +448,7 @@ func taskUpdateCmd() *cobra.Command {
 					if fmtErr := formatter.Error("INVALID_PRIORITY", err.Error()); fmtErr != nil {
 						log.Printf("Error formatting error message: %v", fmtErr)
 					}
-					os.Exit(5)
+					os.Exit(ExitValidation)
 				}
 				if err := cli.Repo.UpdateTaskPriority(ctx, taskID, priorityID); err != nil {
 					if fmtErr := formatter.Error("PRIORITY_UPDATE_ERROR", err.Error()); fmtErr != nil {
@@ -530,7 +530,7 @@ func taskDeleteCmd() *cobra.Command {
 				if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
 					log.Printf("Error formatting error message: %v", fmtErr)
 				}
-				os.Exit(3)
+				os.Exit(ExitNotFound)
 			}
 
 			// Ask for confirmation unless force or quiet mode
