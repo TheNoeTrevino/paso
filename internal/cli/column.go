@@ -11,14 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	columnName    string
-	columnID      int
-	columnProject int
-	columnAfter   int
-	force         bool
-)
-
 // ColumnCmd returns the column parent command
 func ColumnCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -58,22 +50,22 @@ Examples:
 	}
 
 	// Required flags
-	cmd.Flags().StringVar(&columnName, "name", "", "Column name (required)")
+	cmd.Flags().String("name", "", "Column name (required)")
 	if err := cmd.MarkFlagRequired("name"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	cmd.Flags().IntVar(&columnProject, "project", 0, "Project ID (required)")
+	cmd.Flags().Int("project", 0, "Project ID (required)")
 	if err := cmd.MarkFlagRequired("project"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Optional flags
-	cmd.Flags().IntVar(&columnAfter, "after", 0, "Insert after column ID (0 = append to end)")
+	cmd.Flags().Int("after", 0, "Insert after column ID (0 = append to end)")
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output (ID only)")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
 
 	return cmd
 }
@@ -178,14 +170,14 @@ Examples:
 	}
 
 	// Required flags
-	cmd.Flags().IntVar(&columnProject, "project", 0, "Project ID (required)")
+	cmd.Flags().Int("project", 0, "Project ID (required)")
 	if err := cmd.MarkFlagRequired("project"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output (IDs only)")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output (IDs only)")
 
 	return cmd
 }
@@ -283,19 +275,19 @@ Examples:
 	}
 
 	// Required flags
-	cmd.Flags().IntVar(&columnID, "id", 0, "Column ID (required)")
+	cmd.Flags().Int("id", 0, "Column ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	cmd.Flags().StringVar(&columnName, "name", "", "New column name (required)")
+	cmd.Flags().String("name", "", "New column name (required)")
 	if err := cmd.MarkFlagRequired("name"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output")
 
 	return cmd
 }
@@ -382,17 +374,17 @@ Examples:
 	}
 
 	// Required flags
-	cmd.Flags().IntVar(&columnID, "id", 0, "Column ID (required)")
+	cmd.Flags().Int("id", 0, "Column ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Optional flags
-	cmd.Flags().BoolVar(&force, "force", false, "Skip confirmation")
+	cmd.Flags().Bool("force", false, "Skip confirmation")
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output")
 
 	return cmd
 }
