@@ -87,7 +87,7 @@ func runProjectCreate(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("VALIDATION_ERROR", "project title cannot be empty"); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(5) // Exit code 5 = validation error
+		os.Exit(ExitValidation)
 	}
 
 	// Create project
@@ -236,7 +236,7 @@ func projectDeleteCmd() *cobra.Command {
 				if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", projectID)); fmtErr != nil {
 					log.Printf("Error formatting error message: %v", fmtErr)
 				}
-				os.Exit(3) // Exit code 3 = not found
+				os.Exit(ExitNotFound)
 			}
 
 			// Ask for confirmation unless force or quiet mode
