@@ -66,6 +66,12 @@ Examples:
 
 func runProjectCreate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	projectTitle, _ := cmd.Flags().GetString("title")
+	projectDescription, _ := cmd.Flags().GetString("description")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
 	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
@@ -143,6 +149,10 @@ func projectListCmd() *cobra.Command {
 
 func runProjectList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
 	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
@@ -203,14 +213,18 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 }
 
 func projectDeleteCmd() *cobra.Command {
-	var force bool
-
 	cmd := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete a project",
 		Long:  "Delete a project by ID (requires confirmation unless --force or --quiet).",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+
+			projectID, _ := cmd.Flags().GetInt("id")
+			force, _ := cmd.Flags().GetBool("force")
+			jsonOutput, _ := cmd.Flags().GetBool("json")
+			quietMode, _ := cmd.Flags().GetBool("quiet")
+
 			formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 			// Initialize CLI
@@ -226,9 +240,6 @@ func projectDeleteCmd() *cobra.Command {
 					log.Printf("Error closing CLI: %v", err)
 				}
 			}()
-
-			projectID, _ = cmd.Flags().GetInt("id")
-			force, _ = cmd.Flags().GetBool("force")
 
 			// Get project details for confirmation
 			project, err := cli.Repo.GetProjectByID(ctx, projectID)
