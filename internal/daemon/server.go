@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -52,13 +53,7 @@ func getEnvInt(key string, defaultVal int) int {
 // NewServer creates a new daemon server
 func NewServer(socketPath string) (*Server, error) {
 	// Ensure the directory exists
-	dir := ""
-	for i := len(socketPath) - 1; i >= 0; i-- {
-		if socketPath[i] == '/' {
-			dir = socketPath[:i]
-			break
-		}
-	}
+	dir := filepath.Dir(socketPath)
 
 	if dir != "" {
 		if err := os.MkdirAll(dir, 0700); err != nil {
