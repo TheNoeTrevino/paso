@@ -72,6 +72,13 @@ Examples:
 
 func runColumnCreate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	columnName, _ := cmd.Flags().GetString("name")
+	columnProject, _ := cmd.Flags().GetInt("project")
+	columnAfter, _ := cmd.Flags().GetInt("after")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
 	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
@@ -184,6 +191,11 @@ Examples:
 
 func runColumnList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	columnProject, _ := cmd.Flags().GetInt("project")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
 	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
@@ -294,6 +306,12 @@ Examples:
 
 func runColumnUpdate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	columnID, _ := cmd.Flags().GetInt("id")
+	columnName, _ := cmd.Flags().GetString("name")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
 	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
@@ -391,6 +409,12 @@ Examples:
 
 func runColumnDelete(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	columnID, _ := cmd.Flags().GetInt("id")
+	force, _ := cmd.Flags().GetBool("force")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
 	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
