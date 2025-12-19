@@ -94,7 +94,7 @@ func runColumnCreate(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", columnProject)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(3) // Exit code 3 = not found
+		os.Exit(ExitNotFound)
 	}
 
 	// Validate after column if specified
@@ -105,14 +105,14 @@ func runColumnCreate(cmd *cobra.Command, args []string) error {
 			if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnAfter)); fmtErr != nil {
 				log.Printf("Error formatting error message: %v", fmtErr)
 			}
-			os.Exit(3)
+			os.Exit(ExitNotFound)
 		}
 		// Verify column belongs to same project
 		if afterCol.ProjectID != columnProject {
 			if fmtErr := formatter.Error("INVALID_COLUMN", fmt.Sprintf("column %d does not belong to project %d", columnAfter, columnProject)); fmtErr != nil {
 				log.Printf("Error formatting error message: %v", fmtErr)
 			}
-			os.Exit(5) // Exit code 5 = validation error
+			os.Exit(ExitValidation)
 		}
 		afterID = &columnAfter
 	}
@@ -206,7 +206,7 @@ func runColumnList(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", columnProject)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(3)
+		os.Exit(ExitNotFound)
 	}
 
 	// Get columns
@@ -316,7 +316,7 @@ func runColumnUpdate(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnID)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(3)
+		os.Exit(ExitNotFound)
 	}
 
 	oldName := column.Name
@@ -413,7 +413,7 @@ func runColumnDelete(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnID)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(3)
+		os.Exit(ExitNotFound)
 	}
 
 	// Ask for confirmation unless force or quiet mode
