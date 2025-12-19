@@ -202,8 +202,9 @@ func (s *Server) broadcastLoop(ctx context.Context) {
 
 				if isSubscribed {
 					msg := events.Message{
-						Type:  "event",
-						Event: &event,
+						Version: events.ProtocolVersion,
+						Type:    "event",
+						Event:   &event,
 					}
 
 					// Non-blocking send - if client is slow, skip
@@ -231,6 +232,11 @@ func (s *Server) handleClient(c *client) {
 
 		if err := decoder.Decode(&msg); err != nil {
 			return
+		}
+
+		// Check protocol version - log warning if mismatch
+		if msg.Version != 0 && msg.Version != events.ProtocolVersion {
+			log.Printf("Warning: received message with protocol version %d, expected %d", msg.Version, events.ProtocolVersion)
 		}
 
 		switch msg.Type {
@@ -295,7 +301,8 @@ func (s *Server) monitorHealth(ctx context.Context) {
 			s.mu.RUnlock()
 
 			pingMsg := events.Message{
-				Type: "ping",
+				Version: events.ProtocolVersion,
+				Type:    "ping",
 				Event: &events.Event{
 					Type: events.EventPing,
 				},
