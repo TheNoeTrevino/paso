@@ -99,12 +99,12 @@ func (r *ColumnRepo) CreateColumn(ctx context.Context, name string, projectID in
 		}
 	}
 
-	// Send event notification before commit
-	sendEvent(r.eventClient, projectID)
-
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
+
+	// Send event notification after commit
+	sendEvent(r.eventClient, projectID)
 
 	return &models.Column{
 		ID:        newIDInt,
@@ -288,8 +288,12 @@ func (r *ColumnRepo) DeleteColumn(ctx context.Context, columnID int) error {
 		return err
 	}
 
-	// Send event notification before commit
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	// Send event notification after commit
 	sendEvent(r.eventClient, projectID)
 
-	return tx.Commit()
+	return nil
 }
