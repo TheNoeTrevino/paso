@@ -13,7 +13,7 @@ import (
 // CLI represents the CLI application context
 type CLI struct {
 	Repo        *database.Repository
-	eventClient *events.Client
+	eventClient events.EventPublisher
 	ctx         context.Context
 }
 
