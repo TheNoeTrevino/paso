@@ -37,6 +37,7 @@ type Model struct {
 	parentPickerState   *state.TaskPickerState
 	childPickerState    *state.TaskPickerState
 	priorityPickerState *state.PriorityPickerState
+	typePickerState     *state.TypePickerState
 	notificationState   *state.NotificationState
 	searchState         *state.SearchState
 	listViewState       *state.ListViewState
@@ -96,6 +97,7 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	parentPickerState := state.NewTaskPickerState()
 	childPickerState := state.NewTaskPickerState()
 	priorityPickerState := state.NewPriorityPickerState()
+	typePickerState := state.NewTypePickerState()
 	notificationState := state.NewNotificationState()
 	searchState := state.NewSearchState()
 	listViewState := state.NewListViewState()
@@ -133,6 +135,7 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 		parentPickerState:   parentPickerState,
 		childPickerState:    childPickerState,
 		priorityPickerState: priorityPickerState,
+		typePickerState:     typePickerState,
 		notificationState:   notificationState,
 		searchState:         searchState,
 		listViewState:       listViewState,
@@ -741,6 +744,45 @@ func (m *Model) initPriorityPickerForForm() bool {
 	// Set cursor to match the selected priority (adjust for 0-indexing)
 	m.priorityPickerState.SetCursor(currentPriorityID - 1)
 	m.priorityPickerState.SetReturnMode(state.TicketFormMode)
+
+	return true
+}
+
+// initTypePickerForForm initializes the type picker for use in TicketFormMode.
+// Loads the current type from the form state.
+func (m *Model) initTypePickerForForm() bool {
+	// Get current type ID from form state
+	// If we're editing a task, get it from the task detail
+	// Otherwise, default to task (id=1)
+	currentTypeID := 1 // Default to task
+
+	// If editing an existing task, we need to get the current type from database
+	if m.formState.EditingTaskID != 0 {
+		ctx, cancel := m.dbContext()
+		defer cancel()
+
+		taskDetail, err := m.repo.GetTaskDetail(ctx, m.formState.EditingTaskID)
+		if err != nil {
+			log.Printf("Error loading task detail for type picker: %v", err)
+			return false
+		}
+
+		// Find the type ID from the type description
+		// We need to match it against our type options
+		types := GetTypeOptions()
+		for _, t := range types {
+			if t.Description == taskDetail.TypeDescription {
+				currentTypeID = t.ID
+				break
+			}
+		}
+	}
+
+	// Initialize TypePickerState
+	m.typePickerState.SetSelectedTypeID(currentTypeID)
+	// Set cursor to match the selected type (adjust for 0-indexing)
+	m.typePickerState.SetCursor(currentTypeID - 1)
+	m.typePickerState.SetReturnMode(state.TicketFormMode)
 
 	return true
 }

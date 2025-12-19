@@ -29,8 +29,8 @@ type SubscribeMessage struct {
 
 // Message wraps events and control messages for wire protocol
 type Message struct {
-	Version   int                // Protocol version (use ProtocolVersion constant)
-	Type      string             // "event", "subscribe", "ping", "pong"
-	Event     *Event             `json:",omitempty"`
-	Subscribe *SubscribeMessage  `json:",omitempty"`
+	Version   int               // Protocol version (use ProtocolVersion constant)
+	Type      string            // "event", "subscribe", "ping", "pong"
+	Event     *Event            `json:",omitempty"`
+	Subscribe *SubscribeMessage `json:",omitempty"`
 }

@@ -89,6 +89,8 @@ func (m Model) View() tea.View {
 			content = m.viewChildPicker()
 		case state.PriorityPickerMode:
 			content = m.viewPriorityPicker()
+		case state.TypePickerMode:
+			content = m.viewTypePicker()
 		case state.StatusPickerMode:
 			content = m.viewStatusPicker()
 		default:
@@ -434,6 +436,28 @@ func (m Model) viewPriorityPicker() string {
 		GetPriorityOptions(),
 		m.priorityPickerState.SelectedPriorityID(),
 		m.priorityPickerState.Cursor(),
+		m.uiState.Width()*3/4-8,
+	)
+
+	// Wrap in styled container (reuse LabelPickerBoxStyle)
+	pickerBox := LabelPickerBoxStyle.
+		Width(m.uiState.Width() * 3 / 4).
+		Height(m.uiState.Height() * 3 / 4).
+		Render(pickerContent)
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		pickerBox,
+	)
+}
+
+// viewTypePicker renders the type picker popup
+func (m Model) viewTypePicker() string {
+	pickerContent := RenderTypePicker(
+		GetTypeOptions(),
+		m.typePickerState.SelectedTypeID(),
+		m.typePickerState.Cursor(),
 		m.uiState.Width()*3/4-8,
 	)
 

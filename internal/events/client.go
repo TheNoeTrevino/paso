@@ -16,11 +16,11 @@ import (
 // Client represents a connection to the Paso daemon for receiving live updates.
 // It handles event sending, receiving, batching, reconnection, and subscriptions.
 type Client struct {
-	socketPath       string
-	conn             net.Conn
-	encoder          *json.Encoder
-	decoder          *json.Decoder
-	mu               sync.Mutex
+	socketPath string
+	conn       net.Conn
+	encoder    *json.Encoder
+	decoder    *json.Decoder
+	mu         sync.Mutex
 
 	// Batching configuration
 	eventQueue chan Event
