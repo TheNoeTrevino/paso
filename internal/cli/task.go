@@ -116,7 +116,9 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 	// Validate project exists
 	project, err := cli.Repo.GetProjectByID(ctx, taskProject)
 	if err != nil {
-		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", taskProject)); fmtErr != nil {
+		if fmtErr := formatter.ErrorWithSuggestion("PROJECT_NOT_FOUND",
+			fmt.Sprintf("project %d not found", taskProject),
+			"Use 'paso project list' to see available projects or 'paso project create' to create a new one"); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
 		os.Exit(3) // Exit code 3 = not found
@@ -131,7 +133,9 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if len(columns) == 0 {
-		if fmtErr := formatter.Error("NO_COLUMNS", "project has no columns"); fmtErr != nil {
+		if fmtErr := formatter.ErrorWithSuggestion("NO_COLUMNS",
+			"project has no columns",
+			"Create columns using 'paso column create --name=<name> --project="+fmt.Sprintf("%d", taskProject)+"'"); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
 		return fmt.Errorf("project has no columns")
@@ -151,7 +155,13 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if !found {
-			if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column '%s' not found", taskColumn)); fmtErr != nil {
+			availableColumns := make([]string, len(columns))
+			for i, col := range columns {
+				availableColumns[i] = col.Name
+			}
+			if fmtErr := formatter.ErrorWithSuggestion("COLUMN_NOT_FOUND",
+				fmt.Sprintf("column '%s' not found", taskColumn),
+				fmt.Sprintf("Available columns: %s", strings.Join(availableColumns, ", "))); fmtErr != nil {
 				log.Printf("Error formatting error message: %v", fmtErr)
 			}
 			os.Exit(3)
@@ -191,9 +201,15 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Set type if not default
-	typeID, err := parseTaskType(taskType)
+	// Handle empty type (use default)
+	ttype := taskType
+	if ttype == "" {
+		ttype = "task"
+	}
+	typeID, err := parseTaskType(ttype)
 	if err != nil {
-		if fmtErr := formatter.Error("INVALID_TYPE", err.Error()); fmtErr != nil {
+		if fmtErr := formatter.ErrorWithSuggestion("INVALID_TYPE", err.Error(),
+			"Valid types are: task, feature"); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
 		os.Exit(5) // Exit code 5 = validation error
@@ -204,9 +220,15 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 	_ = typeID // Suppress unused variable warning
 
 	// Set priority if not default
-	priorityID, err := parsePriority(taskPriority)
+	// Handle empty priority (use default)
+	priority := taskPriority
+	if priority == "" {
+		priority = "medium"
+	}
+	priorityID, err := parsePriority(priority)
 	if err != nil {
-		if fmtErr := formatter.Error("INVALID_PRIORITY", err.Error()); fmtErr != nil {
+		if fmtErr := formatter.ErrorWithSuggestion("INVALID_PRIORITY", err.Error(),
+			"Valid priorities are: trivial, low, medium, high, critical"); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
 		os.Exit(5)
