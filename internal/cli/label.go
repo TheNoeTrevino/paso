@@ -74,6 +74,14 @@ Examples:
 
 func runLabelCreate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	// Get flag values
+	labelName, _ := cmd.Flags().GetString("name")
+	labelColor, _ := cmd.Flags().GetString("color")
+	labelProject, _ := cmd.Flags().GetInt("project")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
 	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
@@ -162,20 +170,25 @@ Examples:
 	}
 
 	// Required flags
-	cmd.Flags().IntVar(&labelProject, "project", 0, "Project ID (required)")
+	cmd.Flags().Int("project", 0, "Project ID (required)")
 	if err := cmd.MarkFlagRequired("project"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output (IDs only)")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output (IDs only)")
 
 	return cmd
 }
 
 func runLabelList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+	s
+	labelProject, _ := cmd.Flags().GetInt("project")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
 	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
@@ -271,26 +284,27 @@ Examples:
 `,
 		RunE: runLabelUpdate,
 	}
-
-	// Required flags
-	cmd.Flags().IntVar(&labelID, "id", 0, "Label ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
+	cmd.Flags().String("name", "", "New label name")
+	cmd.Flags().String("color", "", "New label color in hex format #RRGGBB")
 
-	// Optional flags (at least one required)
-	cmd.Flags().StringVar(&labelName, "name", "", "New label name")
-	cmd.Flags().StringVar(&labelColor, "color", "", "New label color in hex format #RRGGBB")
-
-	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output")
 
 	return cmd
 }
 
 func runLabelUpdate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	labelID, _ := cmd.Flags().GetInt("id")
+	labelName, _ := cmd.Flags().GetString("name")
+	labelColor, _ := cmd.Flags().GetString("color")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
 	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
@@ -420,6 +434,12 @@ Examples:
 
 func runLabelDelete(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	labelID, _ := cmd.Flags().GetInt("id")
+	force, _ := cmd.Flags().GetBool("force")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
 	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
@@ -503,25 +523,31 @@ Examples:
 	}
 
 	// Required flags
-	cmd.Flags().IntVar(&taskID, "task", 0, "Task ID (required)")
+	cmd.Flags().Int("task", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("task"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	cmd.Flags().IntVar(&labelID, "label", 0, "Label ID (required)")
+	cmd.Flags().Int("label", 0, "Label ID (required)")
 	if err := cmd.MarkFlagRequired("label"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output")
 
 	return cmd
 }
 
 func runLabelAttach(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	taskID, _ := cmd.Flags().GetInt("task")
+	labelID, _ := cmd.Flags().GetInt("label")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
 	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
@@ -639,6 +665,12 @@ Examples:
 
 func runLabelDetach(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	taskID, _ := cmd.Flags().GetInt("task")
+	labelID, _ := cmd.Flags().GetInt("label")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
 	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
@@ -699,7 +731,8 @@ func getLabelByID(ctx context.Context, cli *CLI, labelID int) (*struct {
 	Name      string
 	Color     string
 	ProjectID int
-}, error) {
+}, error,
+) {
 	// Get all projects to search for the label
 	projects, err := cli.Repo.GetAllProjects(ctx)
 	if err != nil {
