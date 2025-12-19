@@ -83,6 +83,17 @@ Examples:
 
 func runTaskCreate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	taskTitle, _ := cmd.Flags().GetString("title")
+	taskDescription, _ := cmd.Flags().GetString("description")
+	taskType, _ := cmd.Flags().GetString("type")
+	taskPriority, _ := cmd.Flags().GetString("priority")
+	taskParent, _ := cmd.Flags().GetInt("parent")
+	taskColumn, _ := cmd.Flags().GetString("column")
+	taskProject, _ := cmd.Flags().GetInt("project")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
 	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
@@ -329,6 +340,11 @@ func taskListCmd() *cobra.Command {
 
 func runTaskList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	taskProject, _ := cmd.Flags().GetInt("project")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
 	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
@@ -392,14 +408,20 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 
 // taskUpdateCmd returns the task update subcommand
 func taskUpdateCmd() *cobra.Command {
-	var taskID int
-
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "Update a task",
 		Long:  "Update task title, description, or priority.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+
+			taskID, _ := cmd.Flags().GetInt("id")
+			taskTitle, _ := cmd.Flags().GetString("title")
+			taskDescription, _ := cmd.Flags().GetString("description")
+			taskPriority, _ := cmd.Flags().GetString("priority")
+			jsonOutput, _ := cmd.Flags().GetBool("json")
+			quietMode, _ := cmd.Flags().GetBool("quiet")
+
 			formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 			// Initialize CLI
@@ -411,13 +433,10 @@ func taskUpdateCmd() *cobra.Command {
 				return err
 			}
 			defer func() {
-		if err := cli.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
-		}
-	}()
-
-			// Get task ID flag
-			taskID, _ = cmd.Flags().GetInt("id")
+				if err := cli.Close(); err != nil {
+					log.Printf("Error closing CLI: %v", err)
+				}
+			}()
 
 			// At least one update field must be provided
 			titleFlag := cmd.Flags().Lookup("title")
@@ -496,15 +515,18 @@ func taskUpdateCmd() *cobra.Command {
 
 // taskDeleteCmd returns the task delete subcommand
 func taskDeleteCmd() *cobra.Command {
-	var taskID int
-	var force bool
-
 	cmd := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete a task",
 		Long:  "Delete a task by ID (requires confirmation unless --force or --quiet).",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+
+			taskID, _ := cmd.Flags().GetInt("id")
+			force, _ := cmd.Flags().GetBool("force")
+			jsonOutput, _ := cmd.Flags().GetBool("json")
+			quietMode, _ := cmd.Flags().GetBool("quiet")
+
 			formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 			// Initialize CLI
@@ -516,13 +538,10 @@ func taskDeleteCmd() *cobra.Command {
 				return err
 			}
 			defer func() {
-		if err := cli.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
-		}
-	}()
-
-			taskID, _ = cmd.Flags().GetInt("id")
-			force, _ = cmd.Flags().GetBool("force")
+				if err := cli.Close(); err != nil {
+					log.Printf("Error closing CLI: %v", err)
+				}
+			}()
 
 			// Get task details for confirmation
 			task, err := cli.Repo.GetTaskDetail(ctx, taskID)
@@ -571,32 +590,33 @@ func taskDeleteCmd() *cobra.Command {
 		},
 	}
 
-	// Required flags
-	cmd.Flags().IntVar(&taskID, "id", 0, "Task ID (required)")
+	cmd.Flags().Int("id", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	// Optional flags
-	cmd.Flags().BoolVar(&force, "force", false, "Skip confirmation")
+	cmd.Flags().Bool("force", false, "Skip confirmation")
 
-	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output")
 
 	return cmd
 }
 
 // taskLinkCmd returns the task link subcommand
 func taskLinkCmd() *cobra.Command {
-	var parentID, childID int
-
 	cmd := &cobra.Command{
 		Use:   "link",
 		Short: "Link tasks (parent-child)",
 		Long:  "Create a parent-child relationship between tasks.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+
+			parentID, _ := cmd.Flags().GetInt("parent")
+			childID, _ := cmd.Flags().GetInt("child")
+			jsonOutput, _ := cmd.Flags().GetBool("json")
+			quietMode, _ := cmd.Flags().GetBool("quiet")
+
 			formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 			// Initialize CLI
@@ -608,13 +628,10 @@ func taskLinkCmd() *cobra.Command {
 				return err
 			}
 			defer func() {
-		if err := cli.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
-		}
-	}()
-
-			parentID, _ = cmd.Flags().GetInt("parent")
-			childID, _ = cmd.Flags().GetInt("child")
+				if err := cli.Close(); err != nil {
+					log.Printf("Error closing CLI: %v", err)
+				}
+			}()
 
 			// Create the relationship
 			if err := cli.Repo.AddSubtask(ctx, parentID, childID); err != nil {
