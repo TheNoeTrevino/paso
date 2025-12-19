@@ -68,7 +68,7 @@ func InitDB(ctx context.Context) (*sql.DB, error) {
 	}
 
 	// Configure connection pool to reduce contention
-	db.SetMaxOpenConns(1)  // SQLite benefits from a single writer connection
+	db.SetMaxOpenConns(1) // SQLite benefits from a single writer connection
 	db.SetMaxIdleConns(1)
 
 	if err := runMigrations(ctx, db); err != nil {

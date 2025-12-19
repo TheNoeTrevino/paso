@@ -91,6 +91,8 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateChildPicker(msg)
 	case state.PriorityPickerMode:
 		return m.updatePriorityPicker(msg)
+	case state.TypePickerMode:
+		return m.updateTypePicker(msg)
 	case state.SearchMode:
 		return m.handleSearchMode(msg)
 	case state.StatusPickerMode:
@@ -416,6 +418,13 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Open priority picker
 			if m.initPriorityPickerForForm() {
 				m.uiState.SetMode(state.PriorityPickerMode)
+			}
+			return m, nil
+
+		case "ctrl+t":
+			// Open type picker
+			if m.initTypePickerForForm() {
+				m.uiState.SetMode(state.TypePickerMode)
 			}
 			return m, nil
 
@@ -1091,6 +1100,76 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Return to ticket form mode
 		m.uiState.SetMode(m.priorityPickerState.ReturnMode())
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// updateTypePicker handles keyboard input in the type picker mode.
+// This function processes navigation (up/down) and selection.
+func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	switch keyMsg.String() {
+	case "esc":
+		// Return to ticket form mode without changing type
+		m.uiState.SetMode(m.typePickerState.ReturnMode())
+		m.typePickerState.Reset()
+		return m, nil
+
+	case "up", "k":
+		// Move cursor up
+		m.typePickerState.MoveUp()
+		return m, nil
+
+	case "down", "j":
+		// Move cursor down
+		m.typePickerState.MoveDown()
+		return m, nil
+
+	case "enter":
+		// Select the type at cursor position
+		types := GetTypeOptions()
+		cursorIdx := m.typePickerState.Cursor()
+
+		if cursorIdx >= 0 && cursorIdx < len(types) {
+			selectedType := types[cursorIdx]
+
+			// If we're editing a task, update it in the database
+			if m.formState.EditingTaskID != 0 {
+				ctx, cancel := m.dbContext()
+				defer cancel()
+
+				// Update the task's type_id in the database
+				err := m.repo.UpdateTaskType(ctx, m.formState.EditingTaskID, selectedType.ID)
+
+				if err != nil {
+					log.Printf("Error updating task type: %v", err)
+					m.notificationState.Add(state.LevelError, "Failed to update type")
+				} else {
+					// Update form state with new type
+					m.formState.FormTypeDescription = selectedType.Description
+					m.notificationState.Add(state.LevelInfo, "Type updated to "+selectedType.Description)
+
+					// Reload tasks to reflect the change
+					m.reloadCurrentColumnTasks()
+				}
+			} else {
+				// For new tasks, just update the form state
+				m.formState.FormTypeDescription = selectedType.Description
+				m.notificationState.Add(state.LevelInfo, "Type set to "+selectedType.Description)
+			}
+
+			// Update the selected type ID in picker state
+			m.typePickerState.SetSelectedTypeID(selectedType.ID)
+		}
+
+		// Return to ticket form mode
+		m.uiState.SetMode(m.typePickerState.ReturnMode())
 		return m, nil
 	}
 
