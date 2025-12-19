@@ -25,7 +25,7 @@ type Client struct {
 	// Batching configuration
 	eventQueue chan Event
 	debounce   time.Duration
-	closed     bool // Prevent double-close panics
+	closeOnce  sync.Once // Ensure cleanup happens only once
 
 	// Reconnection configuration
 	maxRetries int
@@ -374,33 +374,24 @@ func (c *Client) Subscribe(projectID int) error {
 
 // Close closes the connection to the daemon and stops all goroutines.
 func (c *Client) Close() error {
-	// Check if already closed
-	c.mu.Lock()
-	if c.closed {
-		c.mu.Unlock()
-		return nil
-	}
-	c.closed = true
-
-	// Close the event queue to signal no more events coming
-	// This allows batcher to flush pending events before exiting
-	if c.eventQueue != nil {
+	var err error
+	c.closeOnce.Do(func() {
+		// Close the event queue to signal no more events coming
+		// This allows batcher to flush pending events before exiting
 		close(c.eventQueue)
-	}
-	c.mu.Unlock()
 
-	// Cancel context to stop other goroutines
-	c.cancel()
+		// Cancel context to stop other goroutines
+		c.cancel()
 
-	// Wait for batcher to finish (it will flush pending events)
-	<-c.batcherDone
+		// Wait for batcher to finish (it will flush pending events)
+		<-c.batcherDone
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.conn != nil {
-		return c.conn.Close()
-	}
-
-	return nil
+		// Close the connection
+		c.mu.Lock()
+		if c.conn != nil {
+			err = c.conn.Close()
+		}
+		c.mu.Unlock()
+	})
+	return err
 }

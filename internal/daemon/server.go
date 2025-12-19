@@ -22,6 +22,7 @@ type client struct {
 	subscription events.SubscribeMessage
 	lastPong     time.Time
 	mu           sync.Mutex // Protects subscription and lastPong
+	closeOnce    sync.Once  // Ensures send channel is closed only once
 }
 
 // Server represents the Paso event daemon
@@ -366,7 +367,9 @@ func (s *Server) Shutdown() error {
 		if err := c.conn.Close(); err != nil {
 			log.Printf("Error closing client connection: %v", err)
 		}
-		close(c.send)
+		c.closeOnce.Do(func() {
+			close(c.send)
+		})
 	}
 	s.clients = make(map[*client]bool)
 	s.mu.Unlock()
@@ -404,7 +407,9 @@ func (s *Server) removeClient(c *client) {
 	if err := c.conn.Close(); err != nil {
 		log.Printf("Error closing client connection: %v", err)
 	}
-	close(c.send)
+	c.closeOnce.Do(func() {
+		close(c.send)
+	})
 
 	s.updateClientCount()
 }
