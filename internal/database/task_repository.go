@@ -439,6 +439,36 @@ func (r *TaskRepo) UpdateTaskPriority(ctx context.Context, taskID, priorityID in
 	return nil
 }
 
+// UpdateTaskType updates a task's type
+func (r *TaskRepo) UpdateTaskType(ctx context.Context, taskID, typeID int) error {
+	// Get projectID for event notification
+	var projectID int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT c.project_id FROM tasks t
+		 INNER JOIN columns c ON t.column_id = c.id
+		 WHERE t.id = ?`,
+		taskID,
+	).Scan(&projectID)
+	if err != nil {
+		return fmt.Errorf("failed to get project for task %d: %w", taskID, err)
+	}
+
+	_, err = r.db.ExecContext(ctx,
+		`UPDATE tasks
+		 SET type_id = ?, updated_at = CURRENT_TIMESTAMP
+		 WHERE id = ?`,
+		typeID, taskID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update task %d type: %w", taskID, err)
+	}
+
+	// Send event notification
+	sendEvent(r.eventClient, projectID)
+
+	return nil
+}
+
 // moveTaskToColumn is a consolidated helper that moves a task to a column.
 // For moveType "next" or "prev", it uses the linked list to find the target column.
 // For moveType "direct", targetColumnID is used directly (pass 0 for targetColumnID when using "next"/"prev").
