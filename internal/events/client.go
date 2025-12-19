@@ -92,7 +92,8 @@ func (c *Client) Connect(ctx context.Context) error {
 
 	// Send initial subscription for all projects (ProjectID = 0)
 	msg := Message{
-		Type: "subscribe",
+		Version: ProtocolVersion,
+		Type:    "subscribe",
 		Subscribe: &SubscribeMessage{
 			ProjectID: 0,
 		},
@@ -219,8 +220,9 @@ func (c *Client) sendToSocket(event Event) error {
 	}
 
 	msg := Message{
-		Type:  "event",
-		Event: &event,
+		Version: ProtocolVersion,
+		Type:    "event",
+		Event:   &event,
 	}
 	return c.encoder.Encode(msg)
 }
@@ -279,6 +281,11 @@ func (c *Client) readEvents(ctx context.Context, eventChan chan Event) error {
 
 		if err := decoder.Decode(&msg); err != nil {
 			return fmt.Errorf("failed to decode message: %w", err)
+		}
+
+		// Check protocol version - log warning if mismatch
+		if msg.Version != 0 && msg.Version != ProtocolVersion {
+			log.Printf("Warning: received message with protocol version %d, expected %d", msg.Version, ProtocolVersion)
 		}
 
 		switch msg.Type {
@@ -359,7 +366,8 @@ func (c *Client) Subscribe(projectID int) error {
 	c.currentProjectID = projectID
 
 	msg := Message{
-		Type: "subscribe",
+		Version: ProtocolVersion,
+		Type:    "subscribe",
 		Subscribe: &SubscribeMessage{
 			ProjectID: projectID,
 		},
