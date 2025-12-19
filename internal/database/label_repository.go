@@ -12,7 +12,7 @@ import (
 // LabelRepo handles all label-related database operations.
 type LabelRepo struct {
 	db          *sql.DB
-	eventClient *events.Client
+	eventClient events.EventPublisher
 }
 
 // CreateLabel creates a new label in the database for a specific project
