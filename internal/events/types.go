@@ -2,6 +2,9 @@ package events
 
 import "time"
 
+// ProtocolVersion is the current wire protocol version
+const ProtocolVersion = 1
+
 // EventType indicates what kind of change occurred
 type EventType string
 
@@ -26,6 +29,7 @@ type SubscribeMessage struct {
 
 // Message wraps events and control messages for wire protocol
 type Message struct {
+	Version   int                // Protocol version (use ProtocolVersion constant)
 	Type      string             // "event", "subscribe", "ping", "pong"
 	Event     *Event             `json:",omitempty"`
 	Subscribe *SubscribeMessage  `json:",omitempty"`
