@@ -13,20 +13,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-var (
-	taskTitle       string
-	taskDescription string
-	taskType        string
-	taskPriority    string
-	taskParent      int
-	taskColumn      string
-	taskProject     int
-
-	// Agent-friendly flags (add to ALL commands)
-	jsonOutput bool
-	quietMode  bool
-)
-
 func TaskCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "task",
@@ -71,26 +57,26 @@ Examples:
 	}
 
 	// Required flags
-	cmd.Flags().StringVar(&taskTitle, "title", "", "Task title (required)")
+	cmd.Flags().String("title", "", "Task title (required)")
 	if err := cmd.MarkFlagRequired("title"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	cmd.Flags().IntVar(&taskProject, "project", 0, "Project ID (required)")
+	cmd.Flags().Int("project", 0, "Project ID (required)")
 	if err := cmd.MarkFlagRequired("project"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Optional flags
-	cmd.Flags().StringVar(&taskDescription, "description", "", "Task description (use - for stdin)")
-	cmd.Flags().StringVar(&taskType, "type", "task", "Task type: task or feature")
-	cmd.Flags().StringVar(&taskPriority, "priority", "medium", "Priority: trivial, low, medium, high, critical")
-	cmd.Flags().IntVar(&taskParent, "parent", 0, "Parent task ID (creates dependency)")
-	cmd.Flags().StringVar(&taskColumn, "column", "", "Column name (defaults to first column)")
+	cmd.Flags().String("description", "", "Task description (use - for stdin)")
+	cmd.Flags().String("type", "task", "Task type: task or feature")
+	cmd.Flags().String("priority", "medium", "Priority: trivial, low, medium, high, critical")
+	cmd.Flags().Int("parent", 0, "Parent task ID (creates dependency)")
+	cmd.Flags().String("column", "", "Column name (defaults to first column)")
 
 	// Agent-friendly flags (REQUIRED on all commands)
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output (ID only)")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
 
 	return cmd
 }
@@ -329,14 +315,14 @@ func taskListCmd() *cobra.Command {
 	}
 
 	// Required flags
-	cmd.Flags().IntVar(&taskProject, "project", 0, "Project ID (required)")
+	cmd.Flags().Int("project", 0, "Project ID (required)")
 	if err := cmd.MarkFlagRequired("project"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output (ID only)")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
 
 	return cmd
 }
@@ -491,19 +477,19 @@ func taskUpdateCmd() *cobra.Command {
 	}
 
 	// Required flags
-	cmd.Flags().IntVar(&taskID, "id", 0, "Task ID (required)")
+	cmd.Flags().Int("id", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Optional update flags
-	cmd.Flags().StringVar(&taskTitle, "title", "", "New task title")
-	cmd.Flags().StringVar(&taskDescription, "description", "", "New task description")
-	cmd.Flags().StringVar(&taskPriority, "priority", "", "New priority: trivial, low, medium, high, critical")
+	cmd.Flags().String("title", "", "New task title")
+	cmd.Flags().String("description", "", "New task description")
+	cmd.Flags().String("priority", "", "New priority: trivial, low, medium, high, critical")
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output (ID only)")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
 
 	return cmd
 }
@@ -657,19 +643,19 @@ func taskLinkCmd() *cobra.Command {
 	}
 
 	// Required flags
-	cmd.Flags().IntVar(&parentID, "parent", 0, "Parent task ID (required)")
+	cmd.Flags().Int("parent", 0, "Parent task ID (required)")
 	if err := cmd.MarkFlagRequired("parent"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	cmd.Flags().IntVar(&childID, "child", 0, "Child task ID (required)")
+	cmd.Flags().Int("child", 0, "Child task ID (required)")
 	if err := cmd.MarkFlagRequired("child"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output")
 
 	return cmd
 }

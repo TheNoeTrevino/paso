@@ -11,12 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	projectTitle       string
-	projectDescription string
-	projectID          int
-)
-
 func ProjectCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "project",
@@ -55,17 +49,17 @@ Examples:
 	}
 
 	// Required flags
-	cmd.Flags().StringVar(&projectTitle, "title", "", "Project title (required)")
+	cmd.Flags().String("title", "", "Project title (required)")
 	if err := cmd.MarkFlagRequired("title"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Optional flags
-	cmd.Flags().StringVar(&projectDescription, "description", "", "Project description")
+	cmd.Flags().String("description", "", "Project description")
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output (ID only)")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
 
 	return cmd
 }
@@ -141,8 +135,8 @@ func projectListCmd() *cobra.Command {
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output (IDs only)")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output (IDs only)")
 
 	return cmd
 }
@@ -284,17 +278,17 @@ func projectDeleteCmd() *cobra.Command {
 	}
 
 	// Required flags
-	cmd.Flags().IntVar(&projectID, "id", 0, "Project ID (required)")
+	cmd.Flags().Int("id", 0, "Project ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Optional flags
-	cmd.Flags().BoolVar(&force, "force", false, "Skip confirmation")
+	cmd.Flags().Bool("force", false, "Skip confirmation")
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output")
 
 	return cmd
 }
