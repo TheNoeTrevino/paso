@@ -12,14 +12,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	labelName    string
-	labelColor   string
-	labelID      int
-	labelProject int
-	taskID       int
-)
-
 // LabelCmd returns the label parent command
 func LabelCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -58,24 +50,24 @@ Examples:
 	}
 
 	// Required flags
-	cmd.Flags().StringVar(&labelName, "name", "", "Label name (required)")
+	cmd.Flags().String("name", "", "Label name (required)")
 	if err := cmd.MarkFlagRequired("name"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	cmd.Flags().StringVar(&labelColor, "color", "", "Label color in hex format #RRGGBB (required)")
+	cmd.Flags().String("color", "", "Label color in hex format #RRGGBB (required)")
 	if err := cmd.MarkFlagRequired("color"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	cmd.Flags().IntVar(&labelProject, "project", 0, "Project ID (required)")
+	cmd.Flags().Int("project", 0, "Project ID (required)")
 	if err := cmd.MarkFlagRequired("project"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output (ID only)")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
 
 	return cmd
 }
@@ -411,17 +403,17 @@ Examples:
 	}
 
 	// Required flags
-	cmd.Flags().IntVar(&labelID, "id", 0, "Label ID (required)")
+	cmd.Flags().Int("id", 0, "Label ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Optional flags
-	cmd.Flags().BoolVar(&force, "force", false, "Skip confirmation")
+	cmd.Flags().Bool("force", false, "Skip confirmation")
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output")
 
 	return cmd
 }
@@ -628,19 +620,19 @@ Examples:
 	}
 
 	// Required flags
-	cmd.Flags().IntVar(&taskID, "task", 0, "Task ID (required)")
+	cmd.Flags().Int("task", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("task"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	cmd.Flags().IntVar(&labelID, "label", 0, "Label ID (required)")
+	cmd.Flags().Int("label", 0, "Label ID (required)")
 	if err := cmd.MarkFlagRequired("label"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
-	cmd.Flags().BoolVar(&quietMode, "quiet", false, "Minimal output")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output")
 
 	return cmd
 }
