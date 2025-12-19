@@ -128,22 +128,10 @@ func (r *TaskRepo) GetTasksByColumn(ctx context.Context, columnID int) ([]*model
 	return tasks, nil
 }
 
-// taskSummaryFilter defines filtering options for querying task summaries
-type taskSummaryFilter struct {
-	filterType  string // "column", "project", or "project_filtered"
-	columnID    int
-	projectID   int
-	searchQuery string
-}
-
-// getTaskSummaries is a consolidated helper that retrieves task summaries based on filter criteria.
-// Returns a slice of summaries and optionally groups them by column_id for project-level queries.
-func (r *TaskRepo) getTaskSummaries(ctx context.Context, filter taskSummaryFilter) ([]*models.TaskSummary, map[int][]*models.TaskSummary, error) {
-	var query string
-	var args []interface{}
-	var groupByColumn bool
-
-	baseSelect := `
+// GetTaskSummariesByColumn retrieves task summaries for a column, including labels
+// Uses a single query with LEFT JOIN to avoid N+1 query pattern
+func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) ([]*models.TaskSummary, error) {
+	query := `
 		SELECT
 			t.id,
 			t.title,
@@ -155,11 +143,7 @@ func (r *TaskRepo) getTaskSummaries(ctx context.Context, filter taskSummaryFilte
 			GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
 			GROUP_CONCAT(l.name, CHAR(31)) as label_names,
 			GROUP_CONCAT(l.color, CHAR(31)) as label_colors
-		FROM tasks t`
-
-	switch filter.filterType {
-	case "column":
-		query = baseSelect + `
+		FROM tasks t
 		LEFT JOIN types ty ON t.type_id = ty.id
 		LEFT JOIN priorities p ON t.priority_id = p.id
 		LEFT JOIN task_labels tl ON t.id = tl.task_id
@@ -167,51 +151,14 @@ func (r *TaskRepo) getTaskSummaries(ctx context.Context, filter taskSummaryFilte
 		WHERE t.column_id = ?
 		GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
 		ORDER BY t.position`
-		args = []interface{}{filter.columnID}
-		groupByColumn = false
-	case "project":
-		query = baseSelect + `
-		INNER JOIN columns c ON t.column_id = c.id
-		LEFT JOIN types ty ON t.type_id = ty.id
-		LEFT JOIN priorities p ON t.priority_id = p.id
-		LEFT JOIN task_labels tl ON t.id = tl.task_id
-		LEFT JOIN labels l ON tl.label_id = l.id
-		WHERE c.project_id = ?
-		GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
-		ORDER BY t.position`
-		args = []interface{}{filter.projectID}
-		groupByColumn = true
-	case "project_filtered":
-		query = baseSelect + `
-		INNER JOIN columns c ON t.column_id = c.id
-		LEFT JOIN types ty ON t.type_id = ty.id
-		LEFT JOIN priorities p ON t.priority_id = p.id
-		LEFT JOIN task_labels tl ON t.id = tl.task_id
-		LEFT JOIN labels l ON tl.label_id = l.id
-		WHERE c.project_id = ? AND t.title LIKE ?
-		GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
-		ORDER BY t.position`
-		args = []interface{}{filter.projectID, "%" + filter.searchQuery + "%"}
-		groupByColumn = true
-	default:
-		return nil, nil, fmt.Errorf("invalid filter type: %s", filter.filterType)
-	}
 
-	rows, err := r.db.QueryContext(ctx, query, args...)
+	rows, err := r.db.QueryContext(ctx, query, columnID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to query task summaries: %w", err)
+		return nil, fmt.Errorf("failed to query task summaries for column %d: %w", columnID, err)
 	}
-	defer closeRows(rows, "GetTaskSummaries")
+	defer closeRows(rows, "GetTaskSummariesByColumn")
 
-	var summaries []*models.TaskSummary
-	var tasksByColumn map[int][]*models.TaskSummary
-
-	if groupByColumn {
-		tasksByColumn = make(map[int][]*models.TaskSummary)
-	} else {
-		summaries = make([]*models.TaskSummary, 0, defaultTaskCapacity)
-	}
-
+	summaries := make([]*models.TaskSummary, 0, defaultTaskCapacity)
 	for rows.Next() {
 		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
 		var typeDesc, priorityDesc, priorityColor sql.NullString
@@ -229,15 +176,12 @@ func (r *TaskRepo) getTaskSummaries(ctx context.Context, filter taskSummaryFilte
 			&labelNamesStr,
 			&labelColorsStr,
 		); err != nil {
-			return nil, nil, fmt.Errorf("failed to scan task summary: %w", err)
+			return nil, fmt.Errorf("failed to scan task summary: %w", err)
 		}
 
-		// Set type description (default to empty string if null)
 		if typeDesc.Valid {
 			summary.TypeDescription = typeDesc.String
 		}
-
-		// Set priority description and color (default to empty string if null)
 		if priorityDesc.Valid {
 			summary.PriorityDescription = priorityDesc.String
 		}
@@ -245,52 +189,161 @@ func (r *TaskRepo) getTaskSummaries(ctx context.Context, filter taskSummaryFilte
 			summary.PriorityColor = priorityColor.String
 		}
 
-		// Parse concatenated label data
 		summary.Labels = parseLabelStrings(labelIDsStr, labelNamesStr, labelColorsStr)
-
-		if groupByColumn {
-			tasksByColumn[summary.ColumnID] = append(tasksByColumn[summary.ColumnID], summary)
-		} else {
-			summaries = append(summaries, summary)
-		}
+		summaries = append(summaries, summary)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, nil, fmt.Errorf("error iterating task summaries: %w", err)
+		return nil, fmt.Errorf("error iterating task summaries: %w", err)
 	}
 
-	return summaries, tasksByColumn, nil
-}
-
-// GetTaskSummariesByColumn retrieves task summaries for a column, including labels
-// Uses a single query with LEFT JOIN to avoid N+1 query pattern
-func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) ([]*models.TaskSummary, error) {
-	summaries, _, err := r.getTaskSummaries(ctx, taskSummaryFilter{
-		filterType: "column",
-		columnID:   columnID,
-	})
-	return summaries, err
+	return summaries, nil
 }
 
 // GetTaskSummariesByProject retrieves all task summaries for a project, grouped by column
 // This prevents N+1 queries by fetching all tasks at once
 func (r *TaskRepo) GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error) {
-	_, tasksByColumn, err := r.getTaskSummaries(ctx, taskSummaryFilter{
-		filterType: "project",
-		projectID:  projectID,
-	})
-	return tasksByColumn, err
+	query := `
+		SELECT
+			t.id,
+			t.title,
+			t.column_id,
+			t.position,
+			ty.description,
+			p.description,
+			p.color,
+			GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
+			GROUP_CONCAT(l.name, CHAR(31)) as label_names,
+			GROUP_CONCAT(l.color, CHAR(31)) as label_colors
+		FROM tasks t
+		INNER JOIN columns c ON t.column_id = c.id
+		LEFT JOIN types ty ON t.type_id = ty.id
+		LEFT JOIN priorities p ON t.priority_id = p.id
+		LEFT JOIN task_labels tl ON t.id = tl.task_id
+		LEFT JOIN labels l ON tl.label_id = l.id
+		WHERE c.project_id = ?
+		GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
+		ORDER BY t.position`
+
+	rows, err := r.db.QueryContext(ctx, query, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query task summaries for project %d: %w", projectID, err)
+	}
+	defer closeRows(rows, "GetTaskSummariesByProject")
+
+	tasksByColumn := make(map[int][]*models.TaskSummary)
+	for rows.Next() {
+		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
+		var typeDesc, priorityDesc, priorityColor sql.NullString
+		summary := &models.TaskSummary{}
+
+		if err := rows.Scan(
+			&summary.ID,
+			&summary.Title,
+			&summary.ColumnID,
+			&summary.Position,
+			&typeDesc,
+			&priorityDesc,
+			&priorityColor,
+			&labelIDsStr,
+			&labelNamesStr,
+			&labelColorsStr,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan task summary: %w", err)
+		}
+
+		if typeDesc.Valid {
+			summary.TypeDescription = typeDesc.String
+		}
+		if priorityDesc.Valid {
+			summary.PriorityDescription = priorityDesc.String
+		}
+		if priorityColor.Valid {
+			summary.PriorityColor = priorityColor.String
+		}
+
+		summary.Labels = parseLabelStrings(labelIDsStr, labelNamesStr, labelColorsStr)
+		tasksByColumn[summary.ColumnID] = append(tasksByColumn[summary.ColumnID], summary)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating task summaries: %w", err)
+	}
+
+	return tasksByColumn, nil
 }
 
 // GetTaskSummariesByProjectFiltered retrieves task summaries for a project that match the search query
 // Uses case-insensitive LIKE search on task title
 func (r *TaskRepo) GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error) {
-	_, tasksByColumn, err := r.getTaskSummaries(ctx, taskSummaryFilter{
-		filterType:  "project_filtered",
-		projectID:   projectID,
-		searchQuery: searchQuery,
-	})
-	return tasksByColumn, err
+	query := `
+		SELECT
+			t.id,
+			t.title,
+			t.column_id,
+			t.position,
+			ty.description,
+			p.description,
+			p.color,
+			GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
+			GROUP_CONCAT(l.name, CHAR(31)) as label_names,
+			GROUP_CONCAT(l.color, CHAR(31)) as label_colors
+		FROM tasks t
+		INNER JOIN columns c ON t.column_id = c.id
+		LEFT JOIN types ty ON t.type_id = ty.id
+		LEFT JOIN priorities p ON t.priority_id = p.id
+		LEFT JOIN task_labels tl ON t.id = tl.task_id
+		LEFT JOIN labels l ON tl.label_id = l.id
+		WHERE c.project_id = ? AND t.title LIKE ?
+		GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
+		ORDER BY t.position`
+
+	rows, err := r.db.QueryContext(ctx, query, projectID, "%"+searchQuery+"%")
+	if err != nil {
+		return nil, fmt.Errorf("failed to query filtered task summaries for project %d: %w", projectID, err)
+	}
+	defer closeRows(rows, "GetTaskSummariesByProjectFiltered")
+
+	tasksByColumn := make(map[int][]*models.TaskSummary)
+	for rows.Next() {
+		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
+		var typeDesc, priorityDesc, priorityColor sql.NullString
+		summary := &models.TaskSummary{}
+
+		if err := rows.Scan(
+			&summary.ID,
+			&summary.Title,
+			&summary.ColumnID,
+			&summary.Position,
+			&typeDesc,
+			&priorityDesc,
+			&priorityColor,
+			&labelIDsStr,
+			&labelNamesStr,
+			&labelColorsStr,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan task summary: %w", err)
+		}
+
+		if typeDesc.Valid {
+			summary.TypeDescription = typeDesc.String
+		}
+		if priorityDesc.Valid {
+			summary.PriorityDescription = priorityDesc.String
+		}
+		if priorityColor.Valid {
+			summary.PriorityColor = priorityColor.String
+		}
+
+		summary.Labels = parseLabelStrings(labelIDsStr, labelNamesStr, labelColorsStr)
+		tasksByColumn[summary.ColumnID] = append(tasksByColumn[summary.ColumnID], summary)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating task summaries: %w", err)
+	}
+
+	return tasksByColumn, nil
 }
 
 // GetTaskDetail retrieves full task details including description, timestamps, labels, and subtasks
