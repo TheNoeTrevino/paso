@@ -73,13 +73,13 @@ func (r *TaskRepo) CreateTask(ctx context.Context, title, description string, co
 		return nil, fmt.Errorf("failed to get last insert ID for task: %w", err)
 	}
 
-	// Send event notification before commit
-	sendEvent(r.eventClient, projectID)
-
 	// Commit transaction
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("failed to commit task creation transaction: %w", err)
 	}
+
+	// Send event notification after commit
+	sendEvent(r.eventClient, projectID)
 
 	// Retrieve the created task to get timestamps
 	task := &models.Task{}
@@ -581,12 +581,13 @@ func (r *TaskRepo) moveTaskToColumn(ctx context.Context, taskID int, moveType st
 		return fmt.Errorf("failed to get project for column %d: %w", columnIDForProject, err)
 	}
 
-	// Send event notification before commit
-	sendEvent(r.eventClient, projectID)
-
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction for moving task %d: %w", taskID, err)
 	}
+
+	// Send event notification after commit
+	sendEvent(r.eventClient, projectID)
+
 	return nil
 }
 
@@ -706,12 +707,13 @@ func (r *TaskRepo) swapTask(ctx context.Context, taskID int, direction string) e
 		return fmt.Errorf("failed to get project for column %d: %w", columnID, err)
 	}
 
-	// Send event notification before commit
-	sendEvent(r.eventClient, projectID)
-
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction for swapping task %d %s: %w", taskID, direction, err)
 	}
+
+	// Send event notification after commit
+	sendEvent(r.eventClient, projectID)
+
 	return nil
 }
 

@@ -91,12 +91,12 @@ func (r *ProjectRepo) CreateProject(ctx context.Context, name, description strin
 		prevColID = &colIDInt
 	}
 
-	// Send event notification before commit
-	sendEvent(r.eventClient, int(projectID))
-
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("failed to commit project creation transaction: %w", err)
 	}
+
+	// Send event notification after commit
+	sendEvent(r.eventClient, int(projectID))
 
 	// Retrieve the created project
 	return r.GetProjectByID(ctx, int(projectID))
@@ -190,12 +190,13 @@ func (r *ProjectRepo) DeleteProject(ctx context.Context, id int) error {
 		return fmt.Errorf("failed to delete project %d: %w", id, err)
 	}
 
-	// Send event notification before commit
-	sendEvent(r.eventClient, id)
-
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit project %d deletion: %w", id, err)
 	}
+
+	// Send event notification after commit
+	sendEvent(r.eventClient, id)
+
 	return nil
 }
 
