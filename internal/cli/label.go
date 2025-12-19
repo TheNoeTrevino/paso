@@ -95,7 +95,7 @@ func runLabelCreate(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("INVALID_COLOR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(5) // Exit code 5 = validation error
+		os.Exit(ExitValidation)
 	}
 
 	// Validate project exists
@@ -104,7 +104,7 @@ func runLabelCreate(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", labelProject)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(3) // Exit code 3 = not found
+		os.Exit(ExitNotFound)
 	}
 
 	// Create label
@@ -198,7 +198,7 @@ func runLabelList(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", labelProject)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(3)
+		os.Exit(ExitNotFound)
 	}
 
 	// Get labels
@@ -315,7 +315,7 @@ func runLabelUpdate(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("MISSING_FLAGS", "at least one of --name or --color must be provided"); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(5)
+		os.Exit(ExitUsage)
 	}
 
 	// Get existing label to fetch current values
@@ -324,7 +324,7 @@ func runLabelUpdate(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("LABEL_NOT_FOUND", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(3)
+		os.Exit(ExitNotFound)
 	}
 
 	// Use existing values if not provided
@@ -340,7 +340,7 @@ func runLabelUpdate(cmd *cobra.Command, args []string) error {
 			if fmtErr := formatter.Error("INVALID_COLOR", err.Error()); fmtErr != nil {
 				log.Printf("Error formatting error message: %v", fmtErr)
 			}
-			os.Exit(5)
+			os.Exit(ExitValidation)
 		}
 		newColor = labelColor
 	}
@@ -442,7 +442,7 @@ func runLabelDelete(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("LABEL_NOT_FOUND", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(3)
+		os.Exit(ExitNotFound)
 	}
 
 	// Ask for confirmation unless force or quiet mode
@@ -544,7 +544,7 @@ func runLabelAttach(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(3)
+		os.Exit(ExitNotFound)
 	}
 
 	// Get task's project ID via column
@@ -563,7 +563,7 @@ func runLabelAttach(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("LABEL_NOT_FOUND", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(3)
+		os.Exit(ExitNotFound)
 	}
 
 	// Verify task and label belong to same project
@@ -571,7 +571,7 @@ func runLabelAttach(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("PROJECT_MISMATCH", fmt.Sprintf("task %d and label %d do not belong to the same project", taskID, labelID)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		os.Exit(5)
+		os.Exit(ExitValidation)
 	}
 
 	// Attach label to task
