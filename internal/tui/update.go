@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"log"
+	"log/slog"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -56,6 +56,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Continue listening for more events
 		cmd = m.subscribeToEvents()
+		return m, cmd
+
+	case events.NotificationMsg:
+		// Handle user-facing notification from events client
+		level := state.LevelInfo
+		if msg.Level == "error" {
+			level = state.LevelError
+		} else if msg.Level == "warning" {
+			level = state.LevelWarning
+		}
+		m.notificationState.Add(level, msg.Message)
+
+		// Continue listening for more notifications
+		cmd = m.listenForNotifications()
 		return m, cmd
 
 	case tea.KeyMsg:
@@ -155,7 +169,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 		len(m.getTasksForColumn(currentCol.ID)),
 	)
 	if err != nil {
-		log.Printf("Error creating task: %v", err)
+		slog.Error("Error creating task", "error", err)
 		m.notificationState.Add(state.LevelError, "Error creating task")
 		return
 	}
@@ -164,7 +178,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 	if len(values.labelIDs) > 0 {
 		err = m.repo.SetTaskLabels(ctx, task.ID, values.labelIDs)
 		if err != nil {
-			log.Printf("Error setting labels: %v", err)
+			slog.Error("Error setting labels", "error", err)
 		}
 	}
 
@@ -174,7 +188,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 	for _, parentID := range m.formState.FormParentIDs {
 		err = m.repo.AddSubtask(ctx, parentID, task.ID)
 		if err != nil {
-			log.Printf("Error adding parent relationship: %v", err)
+			slog.Error("Error adding parent relationship", "error", err)
 		}
 	}
 
@@ -184,7 +198,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 	for _, childID := range m.formState.FormChildIDs {
 		err = m.repo.AddSubtask(ctx, task.ID, childID)
 		if err != nil {
-			log.Printf("Error adding child relationship: %v", err)
+			slog.Error("Error adding child relationship", "error", err)
 		}
 	}
 
@@ -193,7 +207,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 	if project != nil {
 		tasksByColumn, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
 		if err != nil {
-			log.Printf("Error reloading tasks: %v", err)
+			slog.Error("Error reloading tasks", "error", err)
 		} else {
 			m.appState.SetTasks(tasksByColumn)
 		}
@@ -210,7 +224,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	// 1. Update task basic fields
 	err := m.repo.UpdateTask(ctx, taskID, values.title, values.description)
 	if err != nil {
-		log.Printf("Error updating task: %v", err)
+		slog.Error("Error updating task", "error", err)
 		m.notificationState.Add(state.LevelError, "Error updating task")
 		return
 	}
@@ -218,14 +232,14 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	// 2. Update labels
 	err = m.repo.SetTaskLabels(ctx, taskID, values.labelIDs)
 	if err != nil {
-		log.Printf("Error setting labels: %v", err)
+		slog.Error("Error setting labels", "error", err)
 	}
 
 	// 3. Sync parent relationships
 	// Get current parents from database
 	currentParents, err := m.repo.GetParentTasks(ctx, taskID)
 	if err != nil {
-		log.Printf("Error getting current parents: %v", err)
+		slog.Error("Error getting current parents", "error", err)
 		currentParents = []*models.TaskReference{}
 	}
 
@@ -245,7 +259,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 		if !newParentIDs[parentID] {
 			err = m.repo.RemoveSubtask(ctx, parentID, taskID)
 			if err != nil {
-				log.Printf("Error removing parent %d: %v", parentID, err)
+				slog.Error("Error removing parent %d", "error", parentID, err)
 			}
 		}
 	}
@@ -255,7 +269,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 		if !currentParentIDs[parentID] {
 			err = m.repo.AddSubtask(ctx, parentID, taskID)
 			if err != nil {
-				log.Printf("Error adding parent %d: %v", parentID, err)
+				slog.Error("Error adding parent %d", "error", parentID, err)
 			}
 		}
 	}
@@ -263,7 +277,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	// 4. Sync child relationships (same pattern)
 	currentChildren, err := m.repo.GetChildTasks(ctx, taskID)
 	if err != nil {
-		log.Printf("Error getting current children: %v", err)
+		slog.Error("Error getting current children", "error", err)
 		currentChildren = []*models.TaskReference{}
 	}
 
@@ -282,7 +296,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 		if !newChildIDs[childID] {
 			err = m.repo.RemoveSubtask(ctx, taskID, childID)
 			if err != nil {
-				log.Printf("Error removing child %d: %v", childID, err)
+				slog.Error("Error removing child %d", "error", childID, err)
 			}
 		}
 	}
@@ -292,7 +306,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 		if !currentChildIDs[childID] {
 			err = m.repo.AddSubtask(ctx, taskID, childID)
 			if err != nil {
-				log.Printf("Error adding child %d: %v", childID, err)
+				slog.Error("Error adding child %d", "error", childID, err)
 			}
 		}
 	}
@@ -302,7 +316,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	if project != nil {
 		tasksByColumn, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
 		if err != nil {
-			log.Printf("Error reloading tasks: %v", err)
+			slog.Error("Error reloading tasks", "error", err)
 		} else {
 			m.appState.SetTasks(tasksByColumn)
 		}
@@ -532,7 +546,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 						defer cancel()
 						project, err := m.repo.CreateProject(ctx, name, description)
 						if err != nil {
-							log.Printf("Error creating project: %v", err)
+							slog.Error("Error creating project", "error", err)
 							m.notificationState.Add(state.LevelError, "Error creating project")
 						} else {
 							m.reloadProjects()
@@ -575,7 +589,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				defer cancel()
 				project, err := m.repo.CreateProject(ctx, name, description)
 				if err != nil {
-					log.Printf("Error creating project: %v", err)
+					slog.Error("Error creating project", "error", err)
 					m.notificationState.Add(state.LevelError, "Error creating project")
 				} else {
 					// Reload projects list
@@ -659,7 +673,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Remove label from task
 							err := m.repo.RemoveLabelFromTask(ctx, m.labelPickerState.TaskID, item.Label.ID)
 							if err != nil {
-								log.Printf("Error removing label: %v", err)
+								slog.Error("Error removing label", "error", err)
 								m.notificationState.Add(state.LevelError, "Failed to remove label from task")
 							} else {
 								m.labelPickerState.Items[i].Selected = false
@@ -668,7 +682,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Add label to task
 							err := m.repo.AddLabelToTask(ctx, m.labelPickerState.TaskID, item.Label.ID)
 							if err != nil {
-								log.Printf("Error adding label: %v", err)
+								slog.Error("Error adding label", "error", err)
 								m.notificationState.Add(state.LevelError, "Failed to add label to task")
 							} else {
 								m.labelPickerState.Items[i].Selected = true
@@ -752,7 +766,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		defer cancel()
 		label, err := m.repo.CreateLabel(ctx, project.ID, m.formState.FormLabelName, color)
 		if err != nil {
-			log.Printf("Error creating label: %v", err)
+			slog.Error("Error creating label", "error", err)
 			m.notificationState.Add(state.LevelError, "Failed to create label")
 			m.labelPickerState.CreateMode = false
 			return m, nil
@@ -770,7 +784,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Assign to current task
 		err = m.repo.AddLabelToTask(ctx, m.labelPickerState.TaskID, label.ID)
 		if err != nil {
-			log.Printf("Error assigning new label to task: %v", err)
+			slog.Error("Error assigning new label to task", "error", err)
 			m.notificationState.Add(state.LevelError, "Failed to assign label to task")
 		}
 
@@ -859,7 +873,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// selectedTask (parent) blocks on currentTask (child)
 							err := m.repo.RemoveSubtask(ctx, item.TaskRef.ID, m.parentPickerState.TaskID)
 							if err != nil {
-								log.Printf("Error removing parent: %v", err)
+								slog.Error("Error removing parent", "error", err)
 								m.notificationState.Add(state.LevelError, "Failed to remove parent from task")
 							} else {
 								m.parentPickerState.Items[i].Selected = false
@@ -871,7 +885,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Meaning: selectedTask depends on completion of currentTask
 							err := m.repo.AddSubtask(ctx, item.TaskRef.ID, m.parentPickerState.TaskID)
 							if err != nil {
-								log.Printf("Error adding parent: %v", err)
+								slog.Error("Error adding parent", "error", err)
 								m.notificationState.Add(state.LevelError, "Failed to add parent to task")
 							} else {
 								m.parentPickerState.Items[i].Selected = true
@@ -982,7 +996,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// currentTask (parent) blocks on selectedTask (child)
 							err := m.repo.RemoveSubtask(ctx, m.childPickerState.TaskID, item.TaskRef.ID)
 							if err != nil {
-								log.Printf("Error removing child: %v", err)
+								slog.Error("Error removing child", "error", err)
 								m.notificationState.Add(state.LevelError, "Failed to remove child from task")
 							} else {
 								m.childPickerState.Items[i].Selected = false
@@ -994,7 +1008,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Meaning: currentTask depends on completion of selectedTask
 							err := m.repo.AddSubtask(ctx, m.childPickerState.TaskID, item.TaskRef.ID)
 							if err != nil {
-								log.Printf("Error adding child: %v", err)
+								slog.Error("Error adding child", "error", err)
 								m.notificationState.Add(state.LevelError, "Failed to add child to task")
 							} else {
 								m.childPickerState.Items[i].Selected = true
@@ -1076,7 +1090,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				err := m.repo.UpdateTaskPriority(ctx, m.formState.EditingTaskID, selectedPriority.ID)
 
 				if err != nil {
-					log.Printf("Error updating task priority: %v", err)
+					slog.Error("Error updating task priority", "error", err)
 					m.notificationState.Add(state.LevelError, "Failed to update priority")
 				} else {
 					// Update form state with new priority
@@ -1148,7 +1162,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				err := m.repo.UpdateTaskType(ctx, m.formState.EditingTaskID, selectedType.ID)
 
 				if err != nil {
-					log.Printf("Error updating task type: %v", err)
+					slog.Error("Error updating task type", "error", err)
 					m.notificationState.Add(state.LevelError, "Failed to update type")
 				} else {
 					// Update form state with new type
@@ -1235,7 +1249,7 @@ func (m *Model) reloadCurrentColumnTasks() {
 	defer cancel()
 	tasksByColumn, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
-		log.Printf("Error reloading tasks: %v", err)
+		slog.Error("Error reloading tasks", "error", err)
 		return
 	}
 	m.appState.SetTasks(tasksByColumn)
