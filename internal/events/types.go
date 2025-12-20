@@ -34,3 +34,9 @@ type Message struct {
 	Event     *Event            `json:",omitempty"`
 	Subscribe *SubscribeMessage `json:",omitempty"`
 }
+
+// NotificationMsg is sent from the events client to the TUI to display user-facing messages
+type NotificationMsg struct {
+	Level   string // "info", "warning", "error"
+	Message string
+}

@@ -13,7 +13,7 @@ import (
 // RenderTabs renders a tab bar with the given tab names
 // selectedIdx indicates which tab is active (0-indexed)
 // width is the total width to fill with the tab gap
-func RenderTabs(tabs []string, selectedIdx int, width int) string {
+func RenderTabs(tabs []string, selectedIdx int, width int, notificationContent string) string {
 	var renderedTabs []string
 
 	for i, tabName := range tabs {
@@ -26,10 +26,15 @@ func RenderTabs(tabs []string, selectedIdx int, width int) string {
 
 	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
 
-	// Fill remaining space with gap
-	gapWidth := max(width-lipgloss.Width(row)-2, 0)
+	// Calculate gap width accounting for notification if present
+	notificationWidth := lipgloss.Width(notificationContent)
+	gapWidth := max(width-lipgloss.Width(row)-notificationWidth-2, 0)
 	gap := TabGapStyle.Render(strings.Repeat(" ", gapWidth))
 
+	// Join: tabs + gap + notification
+	if notificationContent != "" {
+		return lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap, notificationContent)
+	}
 	return lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap)
 }
 

@@ -14,6 +14,20 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
+// getInlineNotification returns the inline notification content for the tab bar
+// Returns empty string if no notifications
+func (m Model) getInlineNotification() string {
+	if !m.notificationState.HasAny() {
+		return ""
+	}
+	// Get the first (most recent) notification
+	allNotifications := m.notificationState.All()
+	if len(allNotifications) == 0 {
+		return ""
+	}
+	return notifications.RenderInlineFromState(allNotifications[0])
+}
+
 // View renders the current state of the application
 // This implements the "View" part of the Model-View-Update pattern
 func (m Model) View() tea.View {
@@ -62,11 +76,7 @@ func (m Model) View() tea.View {
 			layers = append(layers, modalLayer)
 		}
 
-		// Add notification layers (always on top)
-		if m.notificationState.HasAny() {
-			notificationLayers := m.notificationState.GetLayers(notifications.RenderFromState)
-			layers = append(layers, notificationLayers...)
-		}
+		// Notifications are now rendered inline with tabs, no need for floating layers
 
 		// Combine all layers into canvas
 		canvas := lipgloss.NewCanvas(layers...)
@@ -493,6 +503,7 @@ func (m Model) viewKanbanBoard() string {
 			emptyMsg,
 			"",
 			footer,
+			notifications.RenderInline(notifications.Info, "hello"),
 		)
 	}
 
@@ -548,7 +559,9 @@ func (m Model) viewKanbanBoard() string {
 	if len(projectTabs) == 0 {
 		projectTabs = []string{"No Projects"}
 	}
-	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width())
+	// Get inline notification for tab bar
+	inlineNotification := m.getInlineNotification()
+	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width(), inlineNotification)
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
 		Width:       m.uiState.Width(),
@@ -582,9 +595,7 @@ func (m Model) viewKanbanBoard() string {
 		lipgloss.NewLayer(baseView),
 	}
 
-	// Add notification layers
-	notificationLayers := m.notificationState.GetLayers(notifications.RenderFromState)
-	layers = append(layers, notificationLayers...)
+	// Notifications are now rendered inline with tabs, no need for floating layers
 
 	// Combine all layers into canvas
 	canvas := lipgloss.NewCanvas(layers...)
@@ -607,7 +618,9 @@ func (m Model) viewListView() string {
 	if len(projectTabs) == 0 {
 		projectTabs = []string{"No Projects"}
 	}
-	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width())
+	// Get inline notification for tab bar
+	inlineNotification := m.getInlineNotification()
+	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width(), inlineNotification)
 
 	// Render list content with sort indicator
 	listContent := RenderListView(
@@ -642,18 +655,8 @@ func (m Model) viewListView() string {
 	// Build base view with constrained content and footer always visible
 	baseView := constrainedContent + "\n" + footer
 
-	// Add notifications if any
-	if !m.notificationState.HasAny() {
-		return baseView
-	}
-
-	layers := []*lipgloss.Layer{
-		lipgloss.NewLayer(baseView),
-	}
-	notificationLayers := m.notificationState.GetLayers(notifications.RenderFromState)
-	layers = append(layers, notificationLayers...)
-	canvas := lipgloss.NewCanvas(layers...)
-	return canvas.Render()
+	// Notifications are now rendered inline with tabs
+	return baseView
 }
 
 // viewStatusPicker renders the status/column selection picker.
