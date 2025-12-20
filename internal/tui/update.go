@@ -16,6 +16,15 @@ type RefreshMsg struct {
 	Event events.Event
 }
 
+// ConnectionEstablishedMsg is sent when connection to daemon is established
+type ConnectionEstablishedMsg struct{}
+
+// ConnectionLostMsg is sent when connection to daemon is lost
+type ConnectionLostMsg struct{}
+
+// ConnectionReconnectingMsg is sent when attempting to reconnect to daemon
+type ConnectionReconnectingMsg struct{}
+
 // Update handles all messages and updates the model accordingly
 // This implements the "Update" part of the Model-View-Update pattern
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -68,9 +77,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.notificationState.Add(level, msg.Message)
 
+		// Update connection status based on notification message
+		if strings.Contains(msg.Message, "Connection lost") || strings.Contains(msg.Message, "reconnecting") {
+			m.connectionState.SetStatus(state.Reconnecting)
+		} else if strings.Contains(msg.Message, "Reconnected") {
+			m.connectionState.SetStatus(state.Connected)
+		} else if strings.Contains(msg.Message, "Failed to reconnect") {
+			m.connectionState.SetStatus(state.Disconnected)
+		}
+
 		// Continue listening for more notifications
 		cmd = m.listenForNotifications()
 		return m, cmd
+
+	case ConnectionEstablishedMsg:
+		m.connectionState.SetStatus(state.Connected)
+		return m, nil
+
+	case ConnectionLostMsg:
+		m.connectionState.SetStatus(state.Disconnected)
+		return m, nil
+
+	case ConnectionReconnectingMsg:
+		m.connectionState.SetStatus(state.Reconnecting)
+		return m, nil
 
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
