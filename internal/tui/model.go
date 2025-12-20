@@ -42,6 +42,7 @@ type Model struct {
 	searchState         *state.SearchState
 	listViewState       *state.ListViewState
 	statusPickerState   *state.StatusPickerState
+	connectionState     *state.ConnectionState      // Connection status to daemon
 	eventClient         events.EventPublisher       // Connection to daemon for live updates
 	eventChan           <-chan events.Event         // Channel for receiving events
 	notifyChan          chan events.NotificationMsg // Channel for user-facing notifications from events
@@ -104,6 +105,13 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	listViewState := state.NewListViewState()
 	statusPickerState := state.NewStatusPickerState()
 
+	// Determine initial connection status based on event client availability
+	initialStatus := state.Disconnected
+	if eventClient != nil {
+		initialStatus = state.Connected
+	}
+	connectionState := state.NewConnectionState(initialStatus)
+
 	// Initialize styles with color scheme from config
 	InitStyles(cfg.ColorScheme)
 
@@ -154,6 +162,7 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 		searchState:         searchState,
 		listViewState:       listViewState,
 		statusPickerState:   statusPickerState,
+		connectionState:     connectionState,
 		eventClient:         eventClient,
 		eventChan:           eventChan,
 		notifyChan:          notifyChan,

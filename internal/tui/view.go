@@ -495,7 +495,8 @@ func (m Model) viewKanbanBoard() string {
 	if len(m.appState.Columns()) == 0 {
 		emptyMsg := "No columns found. Please check database initialization."
 		footer := components.RenderStatusBar(components.StatusBarProps{
-			Width: m.uiState.Width(),
+			Width:            m.uiState.Width(),
+			ConnectionStatus: m.connectionState.Status(),
 		})
 		return lipgloss.JoinVertical(
 			lipgloss.Left,
@@ -503,7 +504,6 @@ func (m Model) viewKanbanBoard() string {
 			emptyMsg,
 			"",
 			footer,
-			notifications.RenderInline(notifications.Info, "hello"),
 		)
 	}
 
@@ -564,9 +564,10 @@ func (m Model) viewKanbanBoard() string {
 	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width(), inlineNotification)
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
-		Width:       m.uiState.Width(),
-		SearchMode:  m.uiState.Mode() == state.SearchMode || m.searchState.IsActive,
-		SearchQuery: m.searchState.Query,
+		Width:            m.uiState.Width(),
+		SearchMode:       m.uiState.Mode() == state.SearchMode || m.searchState.IsActive,
+		SearchQuery:      m.searchState.Query,
+		ConnectionStatus: m.connectionState.Status(),
 	})
 
 	// Build content (everything except footer)
@@ -635,9 +636,10 @@ func (m Model) viewListView() string {
 
 	// Render footer
 	footer := components.RenderStatusBar(components.StatusBarProps{
-		Width:       m.uiState.Width(),
-		SearchMode:  m.uiState.Mode() == state.SearchMode || m.searchState.IsActive,
-		SearchQuery: m.searchState.Query,
+		Width:            m.uiState.Width(),
+		SearchMode:       m.uiState.Mode() == state.SearchMode || m.searchState.IsActive,
+		SearchQuery:      m.searchState.Query,
+		ConnectionStatus: m.connectionState.Status(),
 	})
 
 	// Build content (everything except footer)
