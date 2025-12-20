@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"os"
 	"strconv"
@@ -12,6 +12,9 @@ import (
 	"sync"
 	"time"
 )
+
+// NotifyFunc is a callback function for sending user-facing notifications to the TUI
+type NotifyFunc func(level, message string)
 
 // Client represents a connection to the Paso daemon for receiving live updates.
 // It handles event sending, receiving, batching, reconnection, and subscriptions.
@@ -43,6 +46,9 @@ type Client struct {
 
 	// Batching goroutine
 	batcherDone chan struct{}
+
+	// Notification callback for user-facing messages
+	onNotify NotifyFunc
 }
 
 // NewClient creates a new event client but does not connect.
@@ -73,6 +79,24 @@ func NewClient(socketPath string) (*Client, error) {
 	}, nil
 }
 
+// SetNotifyFunc sets the notification callback for user-facing messages
+func (c *Client) SetNotifyFunc(fn NotifyFunc) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.onNotify = fn
+}
+
+// notify calls the notification callback if it's set (thread-safe)
+func (c *Client) notify(level, message string) {
+	c.mu.Lock()
+	fn := c.onNotify
+	c.mu.Unlock()
+
+	if fn != nil {
+		fn(level, message)
+	}
+}
+
 // Connect establishes a connection to the daemon socket.
 // It sends an initial subscription message for all projects.
 func (c *Client) Connect(ctx context.Context) error {
@@ -100,7 +124,7 @@ func (c *Client) Connect(ctx context.Context) error {
 	}
 	if err := c.encoder.Encode(msg); err != nil {
 		if closeErr := conn.Close(); closeErr != nil {
-			log.Printf("Error closing connection: %v", closeErr)
+			slog.Debug("error closing connection", "error", closeErr)
 		}
 		return fmt.Errorf("failed to send subscription: %w", err)
 	}
@@ -150,7 +174,7 @@ func (c *Client) startBatcher() {
 				Timestamp: time.Now(),
 			}); err != nil {
 				if !isConnectionError(err) {
-					log.Printf("Failed to send batched event: %v", err)
+					slog.Error("failed to send batched event", "error", err)
 				}
 			}
 			pending = false
@@ -247,14 +271,17 @@ func (c *Client) listenLoop(ctx context.Context, eventChan chan Event) {
 		default:
 			err := c.readEvents(ctx, eventChan)
 			if err != nil {
-				log.Printf("Connection lost: %v, reconnecting...", err)
+				slog.Info("connection lost, reconnecting", "error", err)
+				c.notify("info", "Connection lost, reconnecting...")
 
 				if c.reconnect(ctx) {
-					log.Printf("Reconnected to daemon")
+					slog.Info("reconnected to daemon")
+					c.notify("info", "Reconnected to daemon")
 					continue
 				}
 
-				log.Printf("Failed to reconnect after %d attempts, giving up", c.maxRetries)
+				slog.Error("failed to reconnect after max attempts", "attempts", c.maxRetries)
+				c.notify("error", fmt.Sprintf("Failed to reconnect after %d attempts", c.maxRetries))
 				return
 			}
 		}
@@ -285,7 +312,7 @@ func (c *Client) readEvents(ctx context.Context, eventChan chan Event) error {
 
 		// Check protocol version - log warning if mismatch
 		if msg.Version != 0 && msg.Version != ProtocolVersion {
-			log.Printf("Warning: received message with protocol version %d, expected %d", msg.Version, ProtocolVersion)
+			slog.Warn("protocol version mismatch", "received", msg.Version, "expected", ProtocolVersion)
 		}
 
 		switch msg.Type {
@@ -307,7 +334,7 @@ func (c *Client) readEvents(ctx context.Context, eventChan chan Event) error {
 			if err := c.sendToSocket(Event{Type: EventPong}); err != nil {
 				// Broken pipe/connection closed is expected during disconnection
 				if !isConnectionError(err) {
-					log.Printf("Failed to send pong: %v", err)
+					slog.Debug("failed to send pong", "error", err)
 				}
 			}
 		}
@@ -339,17 +366,18 @@ func (c *Client) reconnect(ctx context.Context) bool {
 			c.mu.Lock()
 			if c.conn != nil {
 				if err := c.conn.Close(); err != nil {
-					log.Printf("Error closing connection during reconnect: %v", err)
+					slog.Debug("error closing connection during reconnect", "error", err)
 				}
 			}
 			c.mu.Unlock()
 
 			if err := c.Connect(ctx); err == nil {
-				log.Printf("Reconnected to daemon (attempt %d/%d)", i+1, c.maxRetries)
+				slog.Info("reconnected to daemon", "attempt", i+1, "max_retries", c.maxRetries)
+				c.notify("info", fmt.Sprintf("Reconnected (attempt %d/%d)", i+1, c.maxRetries))
 				return true
 			}
 
-			log.Printf("Reconnection attempt %d/%d failed, retrying in %v", i+1, c.maxRetries, delay)
+			slog.Info("reconnection attempt failed", "attempt", i+1, "max_retries", c.maxRetries, "retry_delay", delay)
 			delay *= 2 // Exponential backoff: 1s, 2s, 4s, 8s, 16s
 		}
 	}

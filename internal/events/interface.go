@@ -18,6 +18,9 @@ type EventPublisher interface {
 	// Subscribe changes the subscription to a specific project
 	Subscribe(projectID int) error
 
+	// SetNotifyFunc sets the callback for user-facing notification messages
+	SetNotifyFunc(fn NotifyFunc)
+
 	// Close closes the connection to the daemon and stops all goroutines
 	Close() error
 }
