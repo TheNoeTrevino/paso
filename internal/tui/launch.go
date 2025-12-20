@@ -3,7 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -14,10 +14,16 @@ import (
 	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
+	"github.com/thenoetrevino/paso/internal/logging"
 )
 
 // Launch starts the TUI application
 func Launch() error {
+	// Initialize logging to file before anything else
+	if err := logging.Init(); err != nil {
+		return fmt.Errorf("failed to initialize logging: %w", err)
+	}
+
 	// Create root context with signal handling for graceful shutdown
 	ctx, cancel := signal.NotifyContext(
 		context.Background(),
@@ -42,17 +48,15 @@ func Launch() error {
 	if err != nil {
 		// Daemon may not be available, log warning but continue
 		daemonErr := events.ClassifyDaemonError(err)
-		log.Printf("Warning: Failed to create daemon client: %s", daemonErr.Message)
-		log.Printf("Hint: %s", daemonErr.Hint)
-		log.Println("Continuing without live updates...")
+		slog.Warn("failed to create daemon client", "message", daemonErr.Message, "hint", daemonErr.Hint)
+		slog.Info("continuing without live updates")
 		eventClient = nil
 	} else {
 		// Try to connect to daemon
 		if err := eventClient.Connect(ctx); err != nil {
 			daemonErr := events.ClassifyDaemonError(err)
-			log.Printf("Warning: Failed to connect to daemon: %s", daemonErr.Message)
-			log.Printf("Hint: %s", daemonErr.Hint)
-			log.Println("Continuing without live updates...")
+			slog.Warn("failed to connect to daemon", "message", daemonErr.Message, "hint", daemonErr.Hint)
+			slog.Info("continuing without live updates")
 			eventClient = nil
 		}
 	}
@@ -61,7 +65,7 @@ func Launch() error {
 	defer func() {
 		if eventClient != nil {
 			if err := eventClient.Close(); err != nil {
-				log.Printf("Error closing event client: %v", err)
+				slog.Error("error closing event client", "error", err)
 			}
 		}
 	}()
@@ -81,13 +85,13 @@ func Launch() error {
 		// Allow time for in-flight operations to complete
 		select {
 		case <-drainCtx.Done():
-			log.Println("Drain period complete, closing database")
+			slog.Info("drain period complete, closing database")
 		case <-time.After(100 * time.Millisecond):
 			// Small delay to allow operations to wrap up
 		}
 
 		if err := db.Close(); err != nil {
-			log.Printf("Error closing database: %v", err)
+			slog.Error("error closing database", "error", err)
 		}
 	}()
 
@@ -109,7 +113,7 @@ func Launch() error {
 			return fmt.Errorf("error running program: %w", err)
 		}
 	case <-ctx.Done():
-		log.Println("Shutdown signal received, cleaning up...")
+		slog.Info("shutdown signal received, cleaning up")
 		// Give the program 5 seconds to clean up database queries still running
 		time.Sleep(5 * time.Second)
 	}
