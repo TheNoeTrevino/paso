@@ -925,6 +925,10 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Form mode: just toggle the selection state
 						// Actual database changes happen on form submission
 						m.parentPickerState.Items[i].Selected = !m.parentPickerState.Items[i].Selected
+						// Set default relation type when selecting (if not already set)
+						if m.parentPickerState.Items[i].Selected && m.parentPickerState.Items[i].RelationTypeID == 0 {
+							m.parentPickerState.Items[i].RelationTypeID = 1 // Default to Parent/Child
+						}
 					} else {
 						// View mode: apply changes to database immediately (existing behavior)
 						ctx, cancel := m.uiContext()
@@ -1076,6 +1080,10 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Form mode: just toggle the selection state
 						// Actual database changes happen on form submission
 						m.childPickerState.Items[i].Selected = !m.childPickerState.Items[i].Selected
+						// Set default relation type when selecting (if not already set)
+						if m.childPickerState.Items[i].Selected && m.childPickerState.Items[i].RelationTypeID == 0 {
+							m.childPickerState.Items[i].RelationTypeID = 1 // Default to Parent/Child
+						}
 					} else {
 						// View mode: apply changes to database immediately (existing behavior)
 						ctx, cancel := m.uiContext()
