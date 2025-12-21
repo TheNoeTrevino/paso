@@ -146,6 +146,11 @@ func runMigrations(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
+	// Migrate relation_types table and add relation_type_id to task_subtasks
+	if err := migrateRelationTypes(ctx, db); err != nil {
+		return err
+	}
+
 	// Create indexes AFTER all table/column migrations are complete
 	// Index on columns.project_id for efficient project-based queries
 	_, err = db.ExecContext(ctx, `
@@ -878,6 +883,95 @@ func migrateTaskPriorities(ctx context.Context, db *sql.DB) error {
 
 	// Add priority_id column with default value of 3 (medium)
 	_, err = tx.ExecContext(ctx, `ALTER TABLE tasks ADD COLUMN priority_id INTEGER NOT NULL DEFAULT 3`)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// migrateRelationTypes creates the relation_types table and adds relation_type_id column to task_subtasks
+func migrateRelationTypes(ctx context.Context, db *sql.DB) error {
+	// Check if relation_types table already exists
+	var tableCount int
+	err := db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM sqlite_master
+		WHERE type='table' AND name='relation_types'
+	`).Scan(&tableCount)
+	if err != nil {
+		return err
+	}
+
+	// If table doesn't exist, create it
+	if tableCount == 0 {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+				log.Printf("failed to rollback transaction: %v", err)
+			}
+		}()
+
+		// Create relation_types table
+		_, err = tx.ExecContext(ctx, `
+			CREATE TABLE relation_types (
+				id INTEGER PRIMARY KEY,
+				p_to_c_label TEXT NOT NULL,
+				c_to_p_label TEXT NOT NULL,
+				color TEXT NOT NULL,
+				is_blocking BOOLEAN NOT NULL DEFAULT 0
+			)
+		`)
+		if err != nil {
+			return err
+		}
+
+		// Seed relation_types table with default values
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO relation_types (id, p_to_c_label, c_to_p_label, color, is_blocking) VALUES
+				(1, 'Parent', 'Child', '#6B7280', 0),
+				(2, 'Blocked By', 'Blocker', '#EF4444', 1),
+				(3, 'Related To', 'Related To', '#3B82F6', 0)
+		`)
+		if err != nil {
+			return err
+		}
+
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+
+	// Check if relation_type_id column already exists in task_subtasks table
+	var columnCount int
+	err = db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM pragma_table_info('task_subtasks')
+		WHERE name = 'relation_type_id'
+	`).Scan(&columnCount)
+	if err != nil {
+		return err
+	}
+
+	// If column exists, skip migration
+	if columnCount > 0 {
+		return nil
+	}
+
+	// Start transaction to add relation_type_id column
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
+
+	// Add relation_type_id column with default value of 1 (Parent/Child)
+	_, err = tx.ExecContext(ctx, `ALTER TABLE task_subtasks ADD COLUMN relation_type_id INTEGER NOT NULL DEFAULT 1`)
 	if err != nil {
 		return err
 	}

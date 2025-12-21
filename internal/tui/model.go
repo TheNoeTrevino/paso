@@ -27,27 +27,28 @@ const (
 
 // Model represents the application state for the TUI
 type Model struct {
-	ctx                 context.Context // Application context for cancellation and timeouts
-	repo                database.DataStore
-	config              *config.Config
-	appState            *state.AppState
-	uiState             *state.UIState
-	inputState          *state.InputState
-	formState           *state.FormState
-	labelPickerState    *state.LabelPickerState
-	parentPickerState   *state.TaskPickerState
-	childPickerState    *state.TaskPickerState
-	priorityPickerState *state.PriorityPickerState
-	typePickerState     *state.TypePickerState
-	notificationState   *state.NotificationState
-	searchState         *state.SearchState
-	listViewState       *state.ListViewState
-	statusPickerState   *state.StatusPickerState
-	connectionState     *state.ConnectionState      // Connection status to daemon
-	eventClient         events.EventPublisher       // Connection to daemon for live updates
-	eventChan           <-chan events.Event         // Channel for receiving events
-	notifyChan          chan events.NotificationMsg // Channel for user-facing notifications from events
-	subscriptionStarted bool                        // Track if we've started listening
+	ctx                     context.Context // Application context for cancellation and timeouts
+	repo                    database.DataStore
+	config                  *config.Config
+	appState                *state.AppState
+	uiState                 *state.UIState
+	inputState              *state.InputState
+	formState               *state.FormState
+	labelPickerState        *state.LabelPickerState
+	parentPickerState       *state.TaskPickerState
+	childPickerState        *state.TaskPickerState
+	priorityPickerState     *state.PriorityPickerState
+	typePickerState         *state.TypePickerState
+	relationTypePickerState *state.RelationTypePickerState
+	notificationState       *state.NotificationState
+	searchState             *state.SearchState
+	listViewState           *state.ListViewState
+	statusPickerState       *state.StatusPickerState
+	connectionState         *state.ConnectionState      // Connection status to daemon
+	eventClient             events.EventPublisher       // Connection to daemon for live updates
+	eventChan               <-chan events.Event         // Channel for receiving events
+	notifyChan              chan events.NotificationMsg // Channel for user-facing notifications from events
+	subscriptionStarted     bool                        // Track if we've started listening
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
@@ -101,6 +102,7 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	childPickerState := state.NewTaskPickerState()
 	priorityPickerState := state.NewPriorityPickerState()
 	typePickerState := state.NewTypePickerState()
+	relationTypePickerState := state.NewRelationTypePickerState()
 	notificationState := state.NewNotificationState()
 	searchState := state.NewSearchState()
 	listViewState := state.NewListViewState()
@@ -147,27 +149,28 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	}
 
 	return Model{
-		ctx:                 ctx, // Store root context
-		repo:                repo,
-		config:              cfg,
-		appState:            appState,
-		uiState:             uiState,
-		inputState:          inputState,
-		formState:           formState,
-		labelPickerState:    labelPickerState,
-		parentPickerState:   parentPickerState,
-		childPickerState:    childPickerState,
-		priorityPickerState: priorityPickerState,
-		typePickerState:     typePickerState,
-		notificationState:   notificationState,
-		searchState:         searchState,
-		listViewState:       listViewState,
-		statusPickerState:   statusPickerState,
-		connectionState:     connectionState,
-		eventClient:         eventClient,
-		eventChan:           eventChan,
-		notifyChan:          notifyChan,
-		subscriptionStarted: false,
+		ctx:                     ctx, // Store root context
+		repo:                    repo,
+		config:                  cfg,
+		appState:                appState,
+		uiState:                 uiState,
+		inputState:              inputState,
+		formState:               formState,
+		labelPickerState:        labelPickerState,
+		parentPickerState:       parentPickerState,
+		childPickerState:        childPickerState,
+		priorityPickerState:     priorityPickerState,
+		typePickerState:         typePickerState,
+		relationTypePickerState: relationTypePickerState,
+		notificationState:       notificationState,
+		searchState:             searchState,
+		listViewState:           listViewState,
+		statusPickerState:       statusPickerState,
+		connectionState:         connectionState,
+		eventClient:             eventClient,
+		eventChan:               eventChan,
+		notifyChan:              notifyChan,
+		subscriptionStarted:     false,
 	}
 }
 

@@ -101,6 +101,8 @@ func (m Model) View() tea.View {
 			content = m.viewPriorityPicker()
 		case state.TypePickerMode:
 			content = m.viewTypePicker()
+		case state.RelationTypePickerMode:
+			content = m.viewRelationTypePicker()
 		case state.StatusPickerMode:
 			content = m.viewStatusPicker()
 		default:
@@ -485,6 +487,35 @@ func (m Model) viewTypePicker() string {
 	)
 }
 
+// viewRelationTypePicker renders the relation type picker popup
+func (m Model) viewRelationTypePicker() string {
+	// Determine picker type based on return mode
+	pickerType := "parent"
+	if m.relationTypePickerState.ReturnMode() == state.ChildPickerMode {
+		pickerType = "child"
+	}
+
+	pickerContent := RenderRelationTypePicker(
+		GetRelationTypeOptions(),
+		m.relationTypePickerState.SelectedRelationTypeID(),
+		m.relationTypePickerState.Cursor(),
+		m.uiState.Width()*3/4-8,
+		pickerType,
+	)
+
+	// Wrap in styled container (reuse LabelPickerBoxStyle)
+	pickerBox := components.LabelPickerBoxStyle.
+		Width(m.uiState.Width() * 3 / 4).
+		Height(m.uiState.Height() * 3 / 4).
+		Render(pickerContent)
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		pickerBox,
+	)
+}
+
 // viewKanbanBoard renders the main kanban board (normal mode)
 func (m Model) viewKanbanBoard() string {
 	// Check if list view is active
@@ -825,7 +856,16 @@ func (m Model) renderFormAssociationsZone(width, height int) string {
 		parts = append(parts, subtleStyle.Render("No Parent Tasks Found"))
 	} else {
 		for _, parent := range m.formState.FormParentRefs {
-			taskLine := fmt.Sprintf("#%d - %s", parent.TicketNumber, parent.Title)
+			// Render relation label with color if available
+			var relationLabel string
+			if parent.RelationLabel != "" && parent.RelationColor != "" {
+				labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(parent.RelationColor))
+				relationLabel = labelStyle.Render(parent.RelationLabel)
+			} else {
+				// Fallback to default if no relation type
+				relationLabel = subtleStyle.Render("Parent")
+			}
+			taskLine := fmt.Sprintf("#%d - %s - %s", parent.TicketNumber, relationLabel, parent.Title)
 			parts = append(parts, taskStyle.Render(taskLine))
 		}
 	}
@@ -837,7 +877,16 @@ func (m Model) renderFormAssociationsZone(width, height int) string {
 		parts = append(parts, subtleStyle.Render("No Child Tasks Found"))
 	} else {
 		for _, child := range m.formState.FormChildRefs {
-			taskLine := fmt.Sprintf("#%d - %s", child.TicketNumber, child.Title)
+			// Render relation label with color if available
+			var relationLabel string
+			if child.RelationLabel != "" && child.RelationColor != "" {
+				labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(child.RelationColor))
+				relationLabel = labelStyle.Render(child.RelationLabel)
+			} else {
+				// Fallback to default if no relation type
+				relationLabel = subtleStyle.Render("Child")
+			}
+			taskLine := fmt.Sprintf("#%d - %s - %s", child.TicketNumber, relationLabel, child.Title)
 			parts = append(parts, taskStyle.Render(taskLine))
 		}
 	}
