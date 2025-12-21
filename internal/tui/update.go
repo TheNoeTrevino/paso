@@ -70,9 +70,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case events.NotificationMsg:
 		// Handle user-facing notification from events client
 		level := state.LevelInfo
-		if msg.Level == "error" {
+		switch msg.Level {
+		case "error":
 			level = state.LevelError
-		} else if msg.Level == "warning" {
+		case "warning":
 			level = state.LevelWarning
 		}
 		m.notificationState.Add(level, msg.Message)

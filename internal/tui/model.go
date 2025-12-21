@@ -14,6 +14,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -113,7 +114,7 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	connectionState := state.NewConnectionState(initialStatus)
 
 	// Initialize styles with color scheme from config
-	InitStyles(cfg.ColorScheme)
+	components.InitStyles(cfg.ColorScheme)
 
 	// Create notification channel for events client messages
 	notifyChan := make(chan events.NotificationMsg, 10)

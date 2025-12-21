@@ -1,4 +1,4 @@
-package tui
+package components
 
 import (
 	"charm.land/lipgloss/v2"
@@ -6,11 +6,12 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
-// Style definitions for the kanban board UI
-// These styles follow Lipgloss conventions for composable terminal styling
+// Doing this to cache the draw
+// dont recompute every redraw
 
 var (
-	// Tab borders - active tab has no bottom border to "open" into content
+	// compared to the defaults, these feel like
+	// they take up less space
 	activeTabBorder = lipgloss.Border{
 		Top:         "─",
 		Bottom:      " ",
@@ -103,7 +104,6 @@ func InitStyles(colors config.ColorScheme) {
 		BorderLeft(false).
 		BorderRight(false)
 
-	// Column style
 	ColumnStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(colors.ColumnBorder)).

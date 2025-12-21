@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -141,7 +142,7 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 			currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 			columnHeight := m.uiState.ContentHeight()
 			const columnOverhead = 11 // Includes reserved space for top and bottom indicators
-			maxTasksVisible := max((columnHeight-columnOverhead)/TaskCardHeight, 1)
+			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
 			m.uiState.EnsureTaskVisible(currentCol.ID, m.uiState.SelectedTask(), maxTasksVisible)
 		}
 	} else {
@@ -179,7 +180,7 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 			currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 			columnHeight := m.uiState.ContentHeight()
 			const columnOverhead = 11 // Includes reserved space for top and bottom indicators
-			maxTasksVisible := max((columnHeight-columnOverhead)/TaskCardHeight, 1)
+			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
 			m.uiState.EnsureTaskVisible(currentCol.ID, m.uiState.SelectedTask(), maxTasksVisible)
 		}
 	} else if len(currentTasks) > 0 {
