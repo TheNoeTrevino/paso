@@ -402,6 +402,7 @@ func (m Model) viewParentPicker() string {
 		"Parent Issues",
 		m.uiState.Width()*3/4-8,
 		m.uiState.Height()*3/4-4,
+		true, // isParentPicker
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
@@ -428,6 +429,7 @@ func (m Model) viewChildPicker() string {
 		"Child Issues",
 		m.uiState.Width()*3/4-8,
 		m.uiState.Height()*3/4-4,
+		false, // isParentPicker
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
