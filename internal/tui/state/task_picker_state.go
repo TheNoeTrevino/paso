@@ -18,6 +18,9 @@ type TaskPickerItem struct {
 
 	// Selected indicates whether this task is currently selected
 	Selected bool
+
+	// RelationTypeID is the relation type for this relationship (defaults to 1 for Parent/Child)
+	RelationTypeID int
 }
 
 // TaskPickerState manages the task picker popup state.
