@@ -214,7 +214,12 @@ func (r *TaskRepo) GetTaskSummariesByProject(ctx context.Context, projectID int)
 			p.color,
 			GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
 			GROUP_CONCAT(l.name, CHAR(31)) as label_names,
-			GROUP_CONCAT(l.color, CHAR(31)) as label_colors
+			GROUP_CONCAT(l.color, CHAR(31)) as label_colors,
+			EXISTS(
+				SELECT 1 FROM task_subtasks ts
+				INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
+				WHERE ts.parent_id = t.id AND rt.is_blocking = 1
+			) as is_blocked
 		FROM tasks t
 		INNER JOIN columns c ON t.column_id = c.id
 		LEFT JOIN types ty ON t.type_id = ty.id
@@ -248,6 +253,7 @@ func (r *TaskRepo) GetTaskSummariesByProject(ctx context.Context, projectID int)
 			&labelIDsStr,
 			&labelNamesStr,
 			&labelColorsStr,
+			&summary.IsBlocked,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan task summary: %w", err)
 		}
@@ -287,7 +293,12 @@ func (r *TaskRepo) GetTaskSummariesByProjectFiltered(ctx context.Context, projec
 			p.color,
 			GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
 			GROUP_CONCAT(l.name, CHAR(31)) as label_names,
-			GROUP_CONCAT(l.color, CHAR(31)) as label_colors
+			GROUP_CONCAT(l.color, CHAR(31)) as label_colors,
+			EXISTS(
+				SELECT 1 FROM task_subtasks ts
+				INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
+				WHERE ts.parent_id = t.id AND rt.is_blocking = 1
+			) as is_blocked
 		FROM tasks t
 		INNER JOIN columns c ON t.column_id = c.id
 		LEFT JOIN types ty ON t.type_id = ty.id
@@ -321,6 +332,7 @@ func (r *TaskRepo) GetTaskSummariesByProjectFiltered(ctx context.Context, projec
 			&labelIDsStr,
 			&labelNamesStr,
 			&labelColorsStr,
+			&summary.IsBlocked,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan task summary: %w", err)
 		}
@@ -816,9 +828,11 @@ func (r *TaskRepo) getTaskReferences(ctx context.Context, refType string, id int
 	switch refType {
 	case "parent":
 		query = `
-			SELECT t.id, t.ticket_number, t.title, p.name
+			SELECT t.id, t.ticket_number, t.title, p.name,
+			       rt.id, rt.p_to_c_label, rt.color, rt.is_blocking
 			FROM tasks t
 			INNER JOIN task_subtasks ts ON t.id = ts.parent_id
+			INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
 			INNER JOIN columns c ON t.column_id = c.id
 			INNER JOIN projects p ON c.project_id = p.id
 			WHERE ts.child_id = ?
@@ -826,9 +840,11 @@ func (r *TaskRepo) getTaskReferences(ctx context.Context, refType string, id int
 		errorContext = "parent tasks for task"
 	case "child":
 		query = `
-			SELECT t.id, t.ticket_number, t.title, p.name
+			SELECT t.id, t.ticket_number, t.title, p.name,
+			       rt.id, rt.c_to_p_label, rt.color, rt.is_blocking
 			FROM tasks t
 			INNER JOIN task_subtasks ts ON t.id = ts.child_id
+			INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
 			INNER JOIN columns c ON t.column_id = c.id
 			INNER JOIN projects p ON c.project_id = p.id
 			WHERE ts.parent_id = ?
@@ -836,7 +852,8 @@ func (r *TaskRepo) getTaskReferences(ctx context.Context, refType string, id int
 		errorContext = "child tasks for task"
 	case "project":
 		query = `
-			SELECT t.id, t.ticket_number, t.title, p.name
+			SELECT t.id, t.ticket_number, t.title, p.name,
+			       0, '', '', 0
 			FROM tasks t
 			INNER JOIN columns c ON t.column_id = c.id
 			INNER JOIN projects p ON c.project_id = p.id
@@ -856,7 +873,8 @@ func (r *TaskRepo) getTaskReferences(ctx context.Context, refType string, id int
 	references := make([]*models.TaskReference, 0, 10)
 	for rows.Next() {
 		ref := &models.TaskReference{}
-		if err := rows.Scan(&ref.ID, &ref.TicketNumber, &ref.Title, &ref.ProjectName); err != nil {
+		if err := rows.Scan(&ref.ID, &ref.TicketNumber, &ref.Title, &ref.ProjectName,
+			&ref.RelationTypeID, &ref.RelationLabel, &ref.RelationColor, &ref.IsBlocking); err != nil {
 			return nil, fmt.Errorf("failed to scan %s %d: %w", errorContext, id, err)
 		}
 		references = append(references, ref)
@@ -893,6 +911,74 @@ func (r *TaskRepo) GetChildTasks(ctx context.Context, taskID int) ([]*models.Tas
 //   - An error if the query fails
 func (r *TaskRepo) GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error) {
 	return r.getTaskReferences(ctx, "project", projectID)
+}
+
+// GetAllRelationTypes retrieves all available relation types
+func (r *TaskRepo) GetAllRelationTypes(ctx context.Context) ([]*models.RelationType, error) {
+	query := `
+		SELECT id, p_to_c_label, c_to_p_label, color, is_blocking
+		FROM relation_types
+		ORDER BY id`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query relation types: %w", err)
+	}
+	defer closeRows(rows, "GetAllRelationTypes")
+
+	relationTypes := make([]*models.RelationType, 0, 3)
+	for rows.Next() {
+		rt := &models.RelationType{}
+		if err := rows.Scan(&rt.ID, &rt.PToCLabel, &rt.CToPLabel, &rt.Color, &rt.IsBlocking); err != nil {
+			return nil, fmt.Errorf("failed to scan relation type: %w", err)
+		}
+		relationTypes = append(relationTypes, rt)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating relation types: %w", err)
+	}
+
+	return relationTypes, nil
+}
+
+// AddSubtaskWithRelationType creates a parent-child relationship between tasks with a specific relation type.
+// This establishes a typed dependency between parent and child tasks.
+//
+// CRITICAL - Parameter Ordering:
+//   - parentID: The task that will block on the child (the dependent task)
+//   - childID: The task that must be completed first (the dependency)
+//   - relationTypeID: The type of relationship (1=Parent/Child, 2=Blocked By/Blocker, 3=Related To)
+//
+// Example: AddSubtaskWithRelationType(taskA, taskB, 2) means taskA is blocked by taskB.
+//
+// The function uses INSERT OR REPLACE to handle updates to existing relationships.
+func (r *TaskRepo) AddSubtaskWithRelationType(ctx context.Context, parentID, childID, relationTypeID int) error {
+	// Get projectID for event notification
+	var projectID int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT c.project_id FROM tasks t
+		 INNER JOIN columns c ON t.column_id = c.id
+		 WHERE t.id = ?`,
+		parentID,
+	).Scan(&projectID)
+	if err != nil {
+		return fmt.Errorf("failed to get project for task %d: %w", parentID, err)
+	}
+
+	// Insert or replace the relationship with the specified relation type
+	_, err = r.db.ExecContext(ctx,
+		`INSERT OR REPLACE INTO task_subtasks (parent_id, child_id, relation_type_id)
+		 VALUES (?, ?, ?)`,
+		parentID, childID, relationTypeID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to add subtask relationship: %w", err)
+	}
+
+	// Send event notification
+	sendEvent(r.eventClient, projectID)
+	return nil
 }
 
 // AddSubtask creates a parent-child relationship between tasks.
