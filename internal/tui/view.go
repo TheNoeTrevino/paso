@@ -150,7 +150,8 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 
 	// Add help text for shortcuts
 	helpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-	helpText := helpStyle.Render("Ctrl+L: edit labels  Ctrl+P: edit parents  Ctrl+C: edit children  Ctrl+R: edit priority")
+	// TODO: get these from the keymaps config
+	helpText := helpStyle.Render("Ctrl+L: edit labels  Ctrl+P: edit parents  Ctrl+C: edit children  Ctrl+R: edit priority Ctrl+T edit type")
 
 	// Combine title + content + help
 	fullContent := lipgloss.JoinVertical(
@@ -163,7 +164,7 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 	)
 
 	// Wrap in form box style
-	formBox := FormBoxStyle.
+	formBox := components.FormBoxStyle.
 		Width(layerWidth).
 		Height(layerHeight).
 		Render(fullContent)
@@ -180,7 +181,7 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 	formView := m.formState.ProjectForm.View()
 
 	// Wrap form in a styled container with green border for creation
-	formBox := ProjectFormBoxStyle.
+	formBox := components.ProjectFormBoxStyle.
 		Width(m.uiState.Width() * 3 / 4).
 		Height(m.uiState.Height() / 3).
 		Render("New Project\n\n" + formView)
@@ -192,12 +193,12 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 func (m Model) renderColumnInputLayer() *lipgloss.Layer {
 	var inputBox string
 	if m.uiState.Mode() == state.AddColumnMode {
-		inputBox = CreateInputBoxStyle.
+		inputBox = components.CreateInputBoxStyle.
 			Width(50).
 			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
 	} else {
 		// EditColumnMode
-		inputBox = EditInputBoxStyle.
+		inputBox = components.EditInputBoxStyle.
 			Width(50).
 			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
 	}
@@ -212,7 +213,7 @@ func (m Model) viewDeleteTaskConfirm() string {
 		return ""
 	}
 
-	confirmBox := DeleteConfirmBoxStyle.
+	confirmBox := components.DeleteConfirmBoxStyle.
 		Width(50).
 		Render(fmt.Sprintf("Delete '%s'?\n\n[y]es  [n]o", task.Title))
 
@@ -242,7 +243,7 @@ func (m Model) viewDeleteColumnConfirm() string {
 		content = fmt.Sprintf("Delete column '%s'?\n\n[y]es  [n]o", column.Name)
 	}
 
-	confirmBox := DeleteConfirmBoxStyle.
+	confirmBox := components.DeleteConfirmBoxStyle.
 		Width(50).
 		Render(content)
 
@@ -261,7 +262,7 @@ func (m Model) viewDiscardConfirm() string {
 	}
 
 	// Use context message for personalized prompt
-	confirmBox := DeleteConfirmBoxStyle.
+	confirmBox := components.DeleteConfirmBoxStyle.
 		Width(50).
 		Render(fmt.Sprintf("%s\n\n[y]es  [n]o", ctx.Message))
 
@@ -274,7 +275,7 @@ func (m Model) viewDiscardConfirm() string {
 
 // renderHelpLayer renders the keyboard shortcuts help screen as a layer
 func (m Model) renderHelpLayer() *lipgloss.Layer {
-	helpBox := HelpBoxStyle.
+	helpBox := components.HelpBoxStyle.
 		Width(50).
 		Render(m.generateHelpText())
 
@@ -370,12 +371,12 @@ func (m Model) viewLabelPicker() string {
 	// Wrap in styled container - use different style for create mode
 	var pickerBox string
 	if m.labelPickerState.CreateMode {
-		pickerBox = LabelPickerCreateBoxStyle.
+		pickerBox = components.LabelPickerCreateBoxStyle.
 			Width(m.uiState.Width() * 3 / 4).
 			Height(m.uiState.Height() * 3 / 4).
 			Render(pickerContent)
 	} else {
-		pickerBox = LabelPickerBoxStyle.
+		pickerBox = components.LabelPickerBoxStyle.
 			Width(m.uiState.Width() * 3 / 4).
 			Height(m.uiState.Height() * 3 / 4).
 			Render(pickerContent)
@@ -402,7 +403,7 @@ func (m Model) viewParentPicker() string {
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
-	pickerBox := LabelPickerBoxStyle.
+	pickerBox := components.LabelPickerBoxStyle.
 		Width(m.uiState.Width() * 3 / 4).
 		Height(m.uiState.Height() * 3 / 4).
 		Render(pickerContent)
@@ -428,7 +429,7 @@ func (m Model) viewChildPicker() string {
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
-	pickerBox := LabelPickerBoxStyle.
+	pickerBox := components.LabelPickerBoxStyle.
 		Width(m.uiState.Width() * 3 / 4).
 		Height(m.uiState.Height() * 3 / 4).
 		Render(pickerContent)
@@ -450,7 +451,7 @@ func (m Model) viewPriorityPicker() string {
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
-	pickerBox := LabelPickerBoxStyle.
+	pickerBox := components.LabelPickerBoxStyle.
 		Width(m.uiState.Width() * 3 / 4).
 		Height(m.uiState.Height() * 3 / 4).
 		Render(pickerContent)
@@ -472,7 +473,7 @@ func (m Model) viewTypePicker() string {
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
-	pickerBox := LabelPickerBoxStyle.
+	pickerBox := components.LabelPickerBoxStyle.
 		Width(m.uiState.Width() * 3 / 4).
 		Height(m.uiState.Height() * 3 / 4).
 		Render(pickerContent)
@@ -538,7 +539,7 @@ func (m Model) viewKanbanBoard() string {
 		// Get scroll offset for this column
 		scrollOffset := m.uiState.TaskScrollOffset(col.ID)
 
-		columns = append(columns, RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight, scrollOffset))
+		columns = append(columns, components.RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight, scrollOffset))
 	}
 
 	scrollIndicators := GetScrollIndicators(
@@ -561,7 +562,7 @@ func (m Model) viewKanbanBoard() string {
 	}
 	// Get inline notification for tab bar
 	inlineNotification := m.getInlineNotification()
-	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width(), inlineNotification)
+	tabBar := components.RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width(), inlineNotification)
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
 		Width:            m.uiState.Width(),
@@ -621,7 +622,7 @@ func (m Model) viewListView() string {
 	}
 	// Get inline notification for tab bar
 	inlineNotification := m.getInlineNotification()
-	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width(), inlineNotification)
+	tabBar := components.RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width(), inlineNotification)
 
 	// Render list content with sort indicator
 	listContent := RenderListView(
@@ -678,7 +679,7 @@ func (m Model) viewStatusPicker() string {
 	content := "Select Status:\n\n" + strings.Join(items, "\n") + "\n\nEnter: confirm  Esc: cancel"
 
 	// Wrap in styled container
-	pickerBox := LabelPickerBoxStyle.
+	pickerBox := components.LabelPickerBoxStyle.
 		Width(40).
 		Height(len(columns) + 6).
 		Render(content)
