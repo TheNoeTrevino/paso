@@ -84,6 +84,8 @@ var (
 
 	// ErrorBannerStyle defines the appearance of error messages (red)
 	ErrorBannerStyle lipgloss.Style
+
+	IndicatorStyle lipgloss.Style
 )
 
 // InitStyles initializes all styles with the given color scheme
@@ -107,20 +109,17 @@ func InitStyles(colors config.ColorScheme) {
 	ColumnStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(colors.ColumnBorder)).
-		PaddingTop(0).
-		PaddingBottom(1).
 		PaddingLeft(1).
 		PaddingRight(1).
 		Width(40)
 
 	// Task style
 	TaskStyle = lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
+		BorderStyle(lipgloss.ThickBorder()).
 		BorderForeground(lipgloss.Color(colors.TaskBorder)).
 		BorderBackground(lipgloss.Color(colors.TaskBackground)).
 		Background(lipgloss.Color(colors.TaskBackground)).
 		Padding(0).
-		MarginBottom(1).
 		Width(36)
 
 	// Title style
@@ -187,4 +186,8 @@ func InitStyles(colors config.ColorScheme) {
 		Background(lipgloss.Color(colors.ErrorBg)).
 		Bold(true).
 		Padding(0, 1)
+
+	IndicatorStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle)).
+		Align(lipgloss.Center)
 }
