@@ -35,18 +35,30 @@ func (f *OutputFormatter) Success(data interface{}) error {
 
 // Error outputs error information
 func (f *OutputFormatter) Error(code string, message string) error {
+	return f.ErrorWithSuggestion(code, message, "")
+}
+
+// ErrorWithSuggestion outputs error information with an optional suggestion
+func (f *OutputFormatter) ErrorWithSuggestion(code string, message string, suggestion string) error {
 	if f.JSON {
+		errData := map[string]interface{}{
+			"code":    code,
+			"message": message,
+		}
+		if suggestion != "" {
+			errData["suggestion"] = suggestion
+		}
 		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
 			"success": false,
-			"error": map[string]interface{}{
-				"code":    code,
-				"message": message,
-			},
+			"error":   errData,
 		})
 	}
 
 	// Human-readable error
 	fmt.Fprintf(os.Stderr, "❌ Error: %s\n", message)
+	if suggestion != "" {
+		fmt.Fprintf(os.Stderr, "💡 Suggestion: %s\n", suggestion)
+	}
 	return nil
 }
 
