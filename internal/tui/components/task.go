@@ -32,8 +32,15 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 		bg = theme.TaskBg
 	}
 
+	// Add blocked indicator if task is blocked
+	var blockedIndicator string
+	if task.IsBlocked {
+		blockedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444")).Bold(true)
+		blockedIndicator = blockedStyle.Render("! ")
+	}
+
 	// Format task content with title (add leading space for padding)
-	title := lipgloss.NewStyle().Bold(true).Render(" 󰗴 " + task.Title)
+	title := lipgloss.NewStyle().Bold(true).Render(" 󰗴 " + blockedIndicator + task.Title)
 	text := lipgloss.NewStyle().Background(lipgloss.Color(bg)).Render(" ")
 
 	// Render type and priority on the same line, separated by │
