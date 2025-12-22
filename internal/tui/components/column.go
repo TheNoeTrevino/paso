@@ -9,8 +9,14 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
-// TaskCardHeight is the fixed heght of the task card
-const TaskCardHeight = 7
+// TaskCardHeight is the fixed height of the task card
+const TaskCardHeight = 5
+
+const (
+	columnBorderOverhead = 3 // top border + bottom padding + bottom border
+	headerLines          = 1 // column name and count
+	topIndicatorLines    = 1 // empty line or "▲ more above"
+)
 
 // RenderColumn renders a complete column with its title and tasks
 // This is a pure, reusable component that composes individual task components
@@ -31,105 +37,98 @@ const TaskCardHeight = 7
 //   - selectedTaskIdx: Index of selected task in this column (-1 if not this column)
 //   - height: Fixed height for the column (0 for auto)
 //   - scrollOffset: Index of first visible task
-func RenderColumn(column *models.Column, tasks []*models.TaskSummary, selected bool, selectedTaskIdx int, height int, scrollOffset int) string {
-	// Render column title with task count
-	header := fmt.Sprintf("%s (%d)", column.Name, len(tasks))
-	content := TitleStyle.Render(header) + "\n"
+func RenderColumn(
+	column *models.Column,
+	tasks []*models.TaskSummary,
+	selected bool,
+	selectedTaskIdx int,
+	height int,
+	scrollOffset int,
+) string {
+	header := renderColumnHeader(column, len(tasks))
 
-	// Render all tasks in the column or show empty state
 	if len(tasks) == 0 {
-		// Empty column - show helpful message
-		emptyStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(theme.Subtle)).
-			Italic(true).
-			Padding(1, 0)
-		content += emptyStyle.Render("No tasks")
-	} else {
-		// Calculate how many tasks fit
-		// Column overhead breakdown:
-		// - Border + Padding: 3 lines (top border(1) + bottom padding(1) + bottom border(1))
-		// - Header: 1 line (column name and count)
-		// - Top indicator: 1 line (empty line or "▲ more above")
-		// - Bottom indicator: 1 line ("▼ more below" when present)
-		// Total: 6 lines
-		const columnOverhead = 5
-		availableHeight := height - columnOverhead
-		maxVisibleTasks := max(availableHeight/TaskCardHeight, 1)
-
-		// Style for indicators
-		indicatorStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(theme.Subtle)).
-			Align(lipgloss.Center)
-
-		// Always reserve space for top indicator
-		if scrollOffset > 0 {
-			content += indicatorStyle.Render("▲ more above") + "\n"
-		} else {
-			content += "\n" // Empty line to maintain consistent spacing
-		}
-
-		// Calculate visible task range
-		endIdx := min(scrollOffset+maxVisibleTasks, len(tasks))
-		visibleTasks := tasks[scrollOffset:endIdx]
-
-		// Render visible tasks (no separators - tasks are adjacent)
-		for i, task := range visibleTasks {
-			// Task is selected if this is the selected column and matches the actual index
-			actualIdx := scrollOffset + i
-			isTaskSelected := selected && actualIdx == selectedTaskIdx
-			content += RenderTask(task, isTaskSelected)
-		}
-
-		// Calculate padding to push bottom indicator to the bottom.
-		//
-		// The height parameter is the TOTAL box height (including borders and padding).
-		// ColumnStyle adds: TopBorder(1) + BottomPadding(1) + BottomBorder(1) = 3 lines
-		// Therefore, available content height = height - 3
-		//
-		// Content lines used so far:
-		// - Header: 1 line
-		// - Top indicator: 1 line (empty or "▲ more above")
-		// - Tasks: len(visibleTasks) * TaskCardHeight lines
-		// - Bottom indicator: 1 line (if present) or 0 lines (if at end)
-		//
-		// We want to fill the remaining space with newlines to push the bottom
-		// indicator flush to the bottom padding area.
-
-		usedLines := 1 + 1 + (len(visibleTasks) * TaskCardHeight)
-
-		// Determine if we need a bottom indicator
-		hasBottomIndicator := endIdx < len(tasks)
-		var bottomIndicatorLines int
-		if hasBottomIndicator {
-			bottomIndicatorLines = 2 // newline + indicator text
-		} else {
-			bottomIndicatorLines = 0
-		}
-
-		// Calculate remaining space.
-		// Account for the 3 lines used by borders and padding (handled by lipgloss)
-		contentHeight := height - 3
-		remainingLines := contentHeight - usedLines - bottomIndicatorLines
-
-		// Add padding newlines to fill space
-		if remainingLines > 0 {
-			content += strings.Repeat("\n", remainingLines)
-		}
-
-		// Add bottom indicator if needed (newline + indicator text = 2 lines)
-		if hasBottomIndicator {
-			content += "\n" + indicatorStyle.Render("▼ more below")
-		}
+		content := renderEmptyColumnContent(header)
+		return applyColumnStyle(content, selected, height)
 	}
 
-	// Apply column styling with selection highlight and fixed height
+	content := renderColumnWithTasksContent(header, tasks, selected, selectedTaskIdx, height, scrollOffset)
+	return applyColumnStyle(content, selected, height)
+}
+
+// renderColumnHeader formats the column title with task count
+func renderColumnHeader(column *models.Column, taskCount int) string {
+	header := fmt.Sprintf("%s (%d)", column.Name, taskCount)
+	return TitleStyle.Render(header)
+}
+
+// renderScrollIndicator renders a centered scroll indicator or empty line for spacing consistently
+// ▲ more above or ▼ more below in this case
+func renderScrollIndicator(show bool, text string) string {
+	if !show {
+		return "\n" // Empty line to maintain consistent spacing
+	}
+	return IndicatorStyle.Render(text) + "\n"
+}
+
+// renderEmptyColumnContent renders the empty state
+func renderEmptyColumnContent(header string) string {
+	emptyStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle)).
+		Italic(true)
+
+	content := header + "\n" + "\n"
+
+	content += emptyStyle.Render("No tasks")
+
+	return content
+}
+
+// renderColumnWithTasksContent renders tasks with scroll indicators and padding
+func renderColumnWithTasksContent(
+	header string,
+	tasks []*models.TaskSummary,
+	selected bool,
+	selectedTaskIdx int,
+	height int,
+	scrollOffset int,
+) string {
+	content := header + "\n"
+
+	// calculating how many tasks fit, to avoid a 'infinite' list
+	columnOverhead := columnBorderOverhead + headerLines + topIndicatorLines
+	availableHeight := height - columnOverhead
+	maxVisibleTasks := max(availableHeight/TaskCardHeight, 1)
+
+	content += renderScrollIndicator(scrollOffset > 0, "▲ more above")
+
+	// Calculate visible task range
+	endIdx := min(scrollOffset+maxVisibleTasks, len(tasks))
+	visibleTasks := tasks[scrollOffset:endIdx]
+
+	// Render visible tasks
+	for i, task := range visibleTasks {
+		actualIdx := scrollOffset + i
+		isTaskSelected := selected && actualIdx == selectedTaskIdx
+		content += RenderTask(task, isTaskSelected)
+	}
+
+	showBottomIndicator := endIdx < len(tasks)
+	content += strings.TrimRight(renderScrollIndicator(showBottomIndicator, "▼ more below"), "\n")
+
+	return content
+}
+
+// applyColumnStyle applies border, selection highlighting, and height to content
+func applyColumnStyle(content string, selected bool, height int) string {
 	style := ColumnStyle
+
 	if selected {
 		style = style.BorderForeground(lipgloss.Color(theme.SelectedBorder))
 	}
+
 	if height > 0 {
-		// Subtract 2 for top and bottom borders since .Height() sets content area height
-		style = style.Height(height - 2)
+		style = style.Height(height)
 	}
 
 	return style.Render(content)
