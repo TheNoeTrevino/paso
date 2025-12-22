@@ -39,11 +39,13 @@ type TaskRelationshipReader interface {
 	GetParentTasks(ctx context.Context, taskID int) ([]*models.TaskReference, error)
 	GetChildTasks(ctx context.Context, taskID int) ([]*models.TaskReference, error)
 	GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error)
+	GetAllRelationTypes(ctx context.Context) ([]*models.RelationType, error)
 }
 
 // TaskRelationshipWriter defines write operations for task relationships.
 type TaskRelationshipWriter interface {
 	AddSubtask(ctx context.Context, parentID, childID int) error
+	AddSubtaskWithRelationType(ctx context.Context, parentID, childID, relationTypeID int) error
 	RemoveSubtask(ctx context.Context, parentID, childID int) error
 }
 
