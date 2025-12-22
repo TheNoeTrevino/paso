@@ -138,6 +138,8 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updatePriorityPicker(msg)
 	case state.TypePickerMode:
 		return m.updateTypePicker(msg)
+	case state.RelationTypePickerMode:
+		return m.updateRelationTypePicker(msg)
 	case state.SearchMode:
 		return m.handleSearchMode(msg)
 	case state.StatusPickerMode:
@@ -213,23 +215,35 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 		}
 	}
 
-	// 3. Apply parent relationships
+	// 3. Apply parent relationships with relation types
 	// CRITICAL: Parent picker means selected task BLOCKS ON current task
-	// So: AddSubtask(parentID, currentTaskID)
-	for _, parentID := range m.formState.FormParentIDs {
-		err = m.repo.AddSubtask(ctx, parentID, task.ID)
-		if err != nil {
-			slog.Error("Error adding parent relationship", "error", err)
+	// So: AddSubtaskWithRelationType(parentID, currentTaskID, relationTypeID)
+	for _, item := range m.parentPickerState.Items {
+		if item.Selected {
+			relationTypeID := item.RelationTypeID
+			if relationTypeID == 0 {
+				relationTypeID = 1 // Default to Parent/Child
+			}
+			err = m.repo.AddSubtaskWithRelationType(ctx, item.TaskRef.ID, task.ID, relationTypeID)
+			if err != nil {
+				slog.Error("Error adding parent relationship", "error", err)
+			}
 		}
 	}
 
-	// 4. Apply child relationships
+	// 4. Apply child relationships with relation types
 	// CRITICAL: Child picker means current task BLOCKS ON selected task
-	// So: AddSubtask(currentTaskID, childID)
-	for _, childID := range m.formState.FormChildIDs {
-		err = m.repo.AddSubtask(ctx, task.ID, childID)
-		if err != nil {
-			slog.Error("Error adding child relationship", "error", err)
+	// So: AddSubtaskWithRelationType(currentTaskID, childID, relationTypeID)
+	for _, item := range m.childPickerState.Items {
+		if item.Selected {
+			relationTypeID := item.RelationTypeID
+			if relationTypeID == 0 {
+				relationTypeID = 1 // Default to Parent/Child
+			}
+			err = m.repo.AddSubtaskWithRelationType(ctx, task.ID, item.TaskRef.ID, relationTypeID)
+			if err != nil {
+				slog.Error("Error adding child relationship", "error", err)
+			}
 		}
 	}
 
@@ -266,7 +280,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 		slog.Error("Error setting labels", "error", err)
 	}
 
-	// 3. Sync parent relationships
+	// 3. Sync parent relationships with relation types
 	// Get current parents from database
 	currentParents, err := m.repo.GetParentTasks(ctx, taskID)
 	if err != nil {
@@ -274,70 +288,87 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 		currentParents = []*models.TaskReference{}
 	}
 
-	// Build sets for comparison
-	currentParentIDs := make(map[int]bool)
+	// Build maps for comparison (ID -> RelationTypeID)
+	currentParentMap := make(map[int]int)
 	for _, p := range currentParents {
-		currentParentIDs[p.ID] = true
+		currentParentMap[p.ID] = p.RelationTypeID
 	}
 
-	newParentIDs := make(map[int]bool)
-	for _, id := range m.formState.FormParentIDs {
-		newParentIDs[id] = true
+	newParentMap := make(map[int]int)
+	for _, item := range m.parentPickerState.Items {
+		if item.Selected {
+			relationTypeID := item.RelationTypeID
+			if relationTypeID == 0 {
+				relationTypeID = 1 // Default to Parent/Child
+			}
+			newParentMap[item.TaskRef.ID] = relationTypeID
+		}
 	}
 
 	// Remove parents that are no longer selected
-	for parentID := range currentParentIDs {
-		if !newParentIDs[parentID] {
+	for parentID := range currentParentMap {
+		if _, exists := newParentMap[parentID]; !exists {
 			err = m.repo.RemoveSubtask(ctx, parentID, taskID)
 			if err != nil {
-				slog.Error("Error removing parent %d", "error", parentID, err)
+				slog.Error("Error removing parent", "parentID", parentID, "error", err)
 			}
 		}
 	}
 
-	// Add new parents
-	for parentID := range newParentIDs {
-		if !currentParentIDs[parentID] {
-			err = m.repo.AddSubtask(ctx, parentID, taskID)
+	// Add or update parents (AddSubtaskWithRelationType uses INSERT OR REPLACE)
+	for parentID, relationTypeID := range newParentMap {
+		currentRelationType, exists := currentParentMap[parentID]
+		if !exists || currentRelationType != relationTypeID {
+			// Add new parent or update existing parent's relation type
+			err = m.repo.AddSubtaskWithRelationType(ctx, parentID, taskID, relationTypeID)
 			if err != nil {
-				slog.Error("Error adding parent %d", "error", parentID, err)
+				slog.Error("Error adding/updating parent", "parentID", parentID, "error", err)
 			}
 		}
 	}
 
-	// 4. Sync child relationships (same pattern)
+	// 4. Sync child relationships with relation types
 	currentChildren, err := m.repo.GetChildTasks(ctx, taskID)
 	if err != nil {
 		slog.Error("Error getting current children", "error", err)
 		currentChildren = []*models.TaskReference{}
 	}
 
-	currentChildIDs := make(map[int]bool)
+	// Build maps for comparison (ID -> RelationTypeID)
+	currentChildMap := make(map[int]int)
 	for _, c := range currentChildren {
-		currentChildIDs[c.ID] = true
+		currentChildMap[c.ID] = c.RelationTypeID
 	}
 
-	newChildIDs := make(map[int]bool)
-	for _, id := range m.formState.FormChildIDs {
-		newChildIDs[id] = true
+	newChildMap := make(map[int]int)
+	for _, item := range m.childPickerState.Items {
+		if item.Selected {
+			relationTypeID := item.RelationTypeID
+			if relationTypeID == 0 {
+				relationTypeID = 1 // Default to Parent/Child
+			}
+			newChildMap[item.TaskRef.ID] = relationTypeID
+		}
 	}
 
 	// Remove children that are no longer selected
-	for childID := range currentChildIDs {
-		if !newChildIDs[childID] {
+	for childID := range currentChildMap {
+		if _, exists := newChildMap[childID]; !exists {
 			err = m.repo.RemoveSubtask(ctx, taskID, childID)
 			if err != nil {
-				slog.Error("Error removing child %d", "error", childID, err)
+				slog.Error("Error removing child", "childID", childID, "error", err)
 			}
 		}
 	}
 
-	// Add new children
-	for childID := range newChildIDs {
-		if !currentChildIDs[childID] {
-			err = m.repo.AddSubtask(ctx, taskID, childID)
+	// Add or update children (AddSubtaskWithRelationType uses INSERT OR REPLACE)
+	for childID, relationTypeID := range newChildMap {
+		currentRelationType, exists := currentChildMap[childID]
+		if !exists || currentRelationType != relationTypeID {
+			// Add new child or update existing child's relation type
+			err = m.repo.AddSubtaskWithRelationType(ctx, taskID, childID, relationTypeID)
 			if err != nil {
-				slog.Error("Error adding child %d", "error", childID, err)
+				slog.Error("Error adding/updating child", "childID", childID, "error", err)
 			}
 		}
 	}
@@ -894,6 +925,10 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Form mode: just toggle the selection state
 						// Actual database changes happen on form submission
 						m.parentPickerState.Items[i].Selected = !m.parentPickerState.Items[i].Selected
+						// Set default relation type when selecting (if not already set)
+						if m.parentPickerState.Items[i].Selected && m.parentPickerState.Items[i].RelationTypeID == 0 {
+							m.parentPickerState.Items[i].RelationTypeID = 1 // Default to Parent/Child
+						}
 					} else {
 						// View mode: apply changes to database immediately (existing behavior)
 						ctx, cancel := m.uiContext()
@@ -929,6 +964,34 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
+		}
+		return m, nil
+
+	case "tab":
+		// Open relation type picker for the currently highlighted item
+		if m.parentPickerState.Cursor < len(filteredItems) {
+			item := filteredItems[m.parentPickerState.Cursor]
+
+			// Initialize relation type picker
+			currentRelationTypeID := 1 // Default to Parent/Child
+			if item.RelationTypeID > 0 {
+				currentRelationTypeID = item.RelationTypeID
+			}
+
+			m.relationTypePickerState.SetSelectedRelationTypeID(currentRelationTypeID)
+			m.relationTypePickerState.SetCurrentTaskPickerIndex(m.parentPickerState.Cursor)
+			m.relationTypePickerState.SetReturnMode(state.ParentPickerMode)
+
+			// Set cursor to match selected relation type
+			relationTypes := GetRelationTypeOptions()
+			for i, rt := range relationTypes {
+				if rt.ID == currentRelationTypeID {
+					m.relationTypePickerState.SetCursor(i)
+					break
+				}
+			}
+
+			m.uiState.SetMode(state.RelationTypePickerMode)
 		}
 		return m, nil
 
@@ -1017,6 +1080,10 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Form mode: just toggle the selection state
 						// Actual database changes happen on form submission
 						m.childPickerState.Items[i].Selected = !m.childPickerState.Items[i].Selected
+						// Set default relation type when selecting (if not already set)
+						if m.childPickerState.Items[i].Selected && m.childPickerState.Items[i].RelationTypeID == 0 {
+							m.childPickerState.Items[i].RelationTypeID = 1 // Default to Parent/Child
+						}
 					} else {
 						// View mode: apply changes to database immediately (existing behavior)
 						ctx, cancel := m.uiContext()
@@ -1052,6 +1119,34 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
+		}
+		return m, nil
+
+	case "tab":
+		// Open relation type picker for the currently highlighted item
+		if m.childPickerState.Cursor < len(filteredItems) {
+			item := filteredItems[m.childPickerState.Cursor]
+
+			// Initialize relation type picker
+			currentRelationTypeID := 1 // Default to Parent/Child
+			if item.RelationTypeID > 0 {
+				currentRelationTypeID = item.RelationTypeID
+			}
+
+			m.relationTypePickerState.SetSelectedRelationTypeID(currentRelationTypeID)
+			m.relationTypePickerState.SetCurrentTaskPickerIndex(m.childPickerState.Cursor)
+			m.relationTypePickerState.SetReturnMode(state.ChildPickerMode)
+
+			// Set cursor to match selected relation type
+			relationTypes := GetRelationTypeOptions()
+			for i, rt := range relationTypes {
+				if rt.ID == currentRelationTypeID {
+					m.relationTypePickerState.SetCursor(i)
+					break
+				}
+			}
+
+			m.uiState.SetMode(state.RelationTypePickerMode)
 		}
 		return m, nil
 
@@ -1215,6 +1310,82 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Return to ticket form mode
 		m.uiState.SetMode(m.typePickerState.ReturnMode())
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// updateRelationTypePicker handles keyboard input in the relation type picker mode
+func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	switch keyMsg.String() {
+	case "esc":
+		// Return to previous picker (parent or child) without changing relation type
+		m.uiState.SetMode(m.relationTypePickerState.ReturnMode())
+		m.relationTypePickerState.Reset()
+		return m, nil
+
+	case "up", "k":
+		// Move cursor up
+		m.relationTypePickerState.MoveUp()
+		return m, nil
+
+	case "down", "j":
+		// Move cursor down
+		m.relationTypePickerState.MoveDown()
+		return m, nil
+
+	case "enter":
+		// Select the relation type at cursor position
+		relationTypes := GetRelationTypeOptions()
+		cursorIdx := m.relationTypePickerState.Cursor()
+
+		if cursorIdx >= 0 && cursorIdx < len(relationTypes) {
+			selectedRelationType := relationTypes[cursorIdx]
+
+			// Update the TaskPickerItem's RelationTypeID
+			itemIdx := m.relationTypePickerState.CurrentTaskPickerIndex()
+			returnMode := m.relationTypePickerState.ReturnMode()
+
+			if returnMode == state.ParentPickerMode {
+				// Update parent picker item
+				filteredItems := m.parentPickerState.GetFilteredItems()
+				if itemIdx >= 0 && itemIdx < len(filteredItems) {
+					// Find the item in the original items list and update it
+					taskID := filteredItems[itemIdx].TaskRef.ID
+					for i := range m.parentPickerState.Items {
+						if m.parentPickerState.Items[i].TaskRef.ID == taskID {
+							m.parentPickerState.Items[i].RelationTypeID = selectedRelationType.ID
+							break
+						}
+					}
+				}
+			} else if returnMode == state.ChildPickerMode {
+				// Update child picker item
+				filteredItems := m.childPickerState.GetFilteredItems()
+				if itemIdx >= 0 && itemIdx < len(filteredItems) {
+					// Find the item in the original items list and update it
+					taskID := filteredItems[itemIdx].TaskRef.ID
+					for i := range m.childPickerState.Items {
+						if m.childPickerState.Items[i].TaskRef.ID == taskID {
+							m.childPickerState.Items[i].RelationTypeID = selectedRelationType.ID
+							break
+						}
+					}
+				}
+			}
+
+			// Update the selected relation type ID in picker state
+			m.relationTypePickerState.SetSelectedRelationTypeID(selectedRelationType.ID)
+		}
+
+		// Return to previous picker mode
+		m.uiState.SetMode(m.relationTypePickerState.ReturnMode())
 		return m, nil
 	}
 
