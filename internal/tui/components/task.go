@@ -40,8 +40,7 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 	}
 
 	// Format task content with title (add leading space for padding)
-	title := lipgloss.NewStyle().Bold(true).Render(" 󰗴 " + blockedIndicator + task.Title)
-	text := lipgloss.NewStyle().Background(lipgloss.Color(bg)).Render(" ")
+	title := lipgloss.NewStyle().Bold(true).Render(" 󰗴 " + task.Title + blockedIndicator)
 
 	// Render type and priority on the same line, separated by │
 	var typeDisplay string
@@ -74,26 +73,31 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 	metadataLine := "\n " + typeDisplay + separator + priorityDisplay
 
 	// Render label chips - ALWAYS include this line even if empty to maintain fixed height
-	var labelChips string
-	if len(task.Labels) > 0 {
-		var chips []string
-		for _, label := range task.Labels {
-			chips = append(chips, RenderLabelChip(label, bg))
-		}
-		labelChips = "\n " + strings.Join(chips, text)
-	} else {
-		// place holder for no labels
-		emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Background(lipgloss.Color(bg)).Italic(true)
-		labelChips = "\n " + emptyStyle.Render("no labels")
-	}
+	labelChips := renderTaskCardLabels(task.Labels, bg)
 
 	content := title + metadataLine + labelChips
 
 	style := TaskStyle.
 		BorderForeground(lipgloss.Color(theme.SelectedBorder)).
 		BorderBackground(lipgloss.Color(bg)).
-		Background(lipgloss.Color(bg)).
-		BorderStyle(lipgloss.ThickBorder())
+		Background(lipgloss.Color(bg))
 
 	return style.Render(content)
+}
+
+func renderTaskCardLabels(labels []*models.Label, bg string) string {
+	spacer := lipgloss.NewStyle().Background(lipgloss.Color(bg)).Render(" ")
+	var labelChips string
+	if len(labels) > 0 {
+		var chips []string
+		for _, label := range labels {
+			chips = append(chips, RenderLabelChip(label, bg))
+		}
+		labelChips = "\n " + strings.Join(chips, spacer)
+	} else {
+		// place holder for no labels
+		emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Background(lipgloss.Color(bg)).Italic(true)
+		labelChips = "\n " + emptyStyle.Render("no labels")
+	}
+	return labelChips
 }
