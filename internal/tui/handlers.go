@@ -141,7 +141,7 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 		if m.uiState.SelectedColumn() < len(m.appState.Columns()) {
 			currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 			columnHeight := m.uiState.ContentHeight()
-			const columnOverhead = 11 // Includes reserved space for top and bottom indicators
+			const columnOverhead = 5 // Includes reserved space for top and bottom indicators
 			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
 			m.uiState.EnsureTaskVisible(currentCol.ID, m.uiState.SelectedTask(), maxTasksVisible)
 		}
@@ -179,7 +179,7 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 		if m.uiState.SelectedColumn() < len(m.appState.Columns()) {
 			currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 			columnHeight := m.uiState.ContentHeight()
-			const columnOverhead = 11 // Includes reserved space for top and bottom indicators
+			const columnOverhead = 5 // Includes reserved space for top and bottom indicators
 			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
 			m.uiState.EnsureTaskVisible(currentCol.ID, m.uiState.SelectedTask(), maxTasksVisible)
 		}
