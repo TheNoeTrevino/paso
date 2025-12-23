@@ -859,17 +859,59 @@ func taskDeleteCmd() *cobra.Command {
 func taskLinkCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "link",
-		Short: "Link tasks (parent-child)",
-		Long:  "Create a parent-child relationship between tasks.",
+		Short: "Link tasks with relationships",
+		Long: `Create a relationship between two tasks.
+
+Relationship Types:
+  (default)  Parent-Child: Non-blocking hierarchical relationship
+  --blocker  Blocked By/Blocker: Blocking relationship (parent blocked by child)
+  --related  Related To: Non-blocking associative relationship
+
+The --blocker and --related flags are mutually exclusive. If neither is specified,
+a parent-child relationship is created.
+
+Examples:
+  # Parent-child relationship (default)
+  paso task link --parent=5 --child=3
+
+  # Blocking relationship (task 5 blocked by task 3)
+  paso task link --parent=5 --child=3 --blocker
+
+  # Related relationship
+  paso task link --parent=5 --child=3 --related
+`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 
 			parentID, _ := cmd.Flags().GetInt("parent")
 			childID, _ := cmd.Flags().GetInt("child")
+			blocker, _ := cmd.Flags().GetBool("blocker")
+			related, _ := cmd.Flags().GetBool("related")
 			jsonOutput, _ := cmd.Flags().GetBool("json")
 			quietMode, _ := cmd.Flags().GetBool("quiet")
 
 			formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+
+			// Validate mutually exclusive flags
+			if blocker && related {
+				if fmtErr := formatter.Error("INVALID_FLAGS",
+					"cannot specify both --blocker and --related flags"); fmtErr != nil {
+					log.Printf("Error formatting error message: %v", fmtErr)
+				}
+				os.Exit(ExitUsage)
+			}
+
+			// Determine relation type ID
+			relationTypeID := 1 // Default: Parent/Child
+			relationTypeName := "parent-child"
+
+			if blocker {
+				relationTypeID = 2 // Blocked By/Blocker
+				relationTypeName = "blocking"
+			} else if related {
+				relationTypeID = 3 // Related To
+				relationTypeName = "related"
+			}
 
 			// Initialize CLI
 			cli, err := NewCLI(ctx)
@@ -885,8 +927,8 @@ func taskLinkCmd() *cobra.Command {
 				}
 			}()
 
-			// Create the relationship
-			if err := cli.Repo.AddSubtask(ctx, parentID, childID); err != nil {
+			// Create the relationship with specific type
+			if err := cli.Repo.AddSubtaskWithRelationType(ctx, parentID, childID, relationTypeID); err != nil {
 				if fmtErr := formatter.Error("LINK_ERROR", err.Error()); fmtErr != nil {
 					log.Printf("Error formatting error message: %v", fmtErr)
 				}
@@ -900,13 +942,24 @@ func taskLinkCmd() *cobra.Command {
 
 			if jsonOutput {
 				return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
-					"success":   true,
-					"parent_id": parentID,
-					"child_id":  childID,
+					"success":          true,
+					"parent_id":        parentID,
+					"child_id":         childID,
+					"relation_type_id": relationTypeID,
+					"relation_type":    relationTypeName,
 				})
 			}
 
-			fmt.Printf("✓ Linked task %d as child of task %d\n", childID, parentID)
+			// Human-readable output with relationship type
+			switch relationTypeID {
+			case 2:
+				fmt.Printf("✓ Created blocking relationship: task %d is blocked by task %d\n", parentID, childID)
+			case 3:
+				fmt.Printf("✓ Created related relationship between task %d and task %d\n", parentID, childID)
+			default:
+				fmt.Printf("✓ Linked task %d as child of task %d\n", childID, parentID)
+			}
+
 			return nil
 		},
 	}
@@ -925,6 +978,10 @@ func taskLinkCmd() *cobra.Command {
 	// Agent-friendly flags
 	cmd.Flags().Bool("json", false, "Output in JSON format")
 	cmd.Flags().Bool("quiet", false, "Minimal output")
+
+	// Relationship type flags (mutually exclusive)
+	cmd.Flags().Bool("blocker", false, "Create blocking relationship (Blocked By/Blocker)")
+	cmd.Flags().Bool("related", false, "Create related relationship (Related To)")
 
 	return cmd
 }
