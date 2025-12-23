@@ -204,7 +204,7 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 	if ttype == "" {
 		ttype = "task"
 	}
-	typeID, err := parseTaskType(ttype)
+	typeID, err := ParseTaskType(ttype)
 	if err != nil {
 		if fmtErr := formatter.ErrorWithSuggestion("INVALID_TYPE", err.Error(),
 			"Valid types are: task, feature"); fmtErr != nil {
@@ -227,7 +227,7 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 	if priority == "" {
 		priority = "medium"
 	}
-	priorityID, err := parsePriority(priority)
+	priorityID, err := ParsePriority(priority)
 	if err != nil {
 		if fmtErr := formatter.ErrorWithSuggestion("INVALID_PRIORITY", err.Error(),
 			"Valid priorities are: trivial, low, medium, high, critical"); fmtErr != nil {
@@ -285,37 +285,6 @@ func runTaskCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-// Helper: Map type string to ID
-func parseTaskType(typeStr string) (int, error) {
-	types := map[string]int{
-		"task":    1,
-		"feature": 2,
-	}
-
-	id, ok := types[strings.ToLower(typeStr)]
-	if !ok {
-		return 0, fmt.Errorf("invalid type '%s' (must be: task, feature)", typeStr)
-	}
-	return id, nil
-}
-
-// Helper: Map priority string to ID
-func parsePriority(priority string) (int, error) {
-	priorities := map[string]int{
-		"trivial":  1,
-		"low":      2,
-		"medium":   3,
-		"high":     4,
-		"critical": 5,
-	}
-
-	id, ok := priorities[strings.ToLower(priority)]
-	if !ok {
-		return 0, fmt.Errorf("invalid priority '%s' (must be: trivial, low, medium, high, critical)", priority)
-	}
-	return id, nil
 }
 
 // taskListCmd returns the task list subcommand
@@ -714,7 +683,7 @@ func taskUpdateCmd() *cobra.Command {
 
 			// Update priority if provided
 			if priorityFlag.Changed {
-				priorityID, err := parsePriority(taskPriority)
+				priorityID, err := ParsePriority(taskPriority)
 				if err != nil {
 					if fmtErr := formatter.Error("INVALID_PRIORITY", err.Error()); fmtErr != nil {
 						log.Printf("Error formatting error message: %v", fmtErr)
