@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/task"
 	"github.com/thenoetrevino/paso/internal/tui"
 )
 
@@ -39,7 +40,7 @@ func init() {
 	rootCmd.SetVersionTemplate(fmt.Sprintf("paso version %s\n  commit: %s\n  built: %s\n", version, commit, date))
 
 	// Add CLI subcommands
-	rootCmd.AddCommand(cli.TaskCmd())
+	rootCmd.AddCommand(task.TaskCmd())
 	rootCmd.AddCommand(cli.ProjectCmd())
 	rootCmd.AddCommand(cli.ColumnCmd())
 	rootCmd.AddCommand(cli.LabelCmd())
