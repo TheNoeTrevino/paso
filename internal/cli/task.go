@@ -24,6 +24,8 @@ func TaskCmd() *cobra.Command {
 	cmd.AddCommand(taskUpdateCmd())
 	cmd.AddCommand(taskDeleteCmd())
 	cmd.AddCommand(taskLinkCmd())
+	cmd.AddCommand(taskReadyCmd())
+	cmd.AddCommand(taskBlockedCmd())
 
 	return cmd
 }
@@ -401,6 +403,256 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Found %d tasks:\n\n", len(allTasks))
 	for _, t := range allTasks {
 		fmt.Printf("  [%d] %s\n", t.ID, t.Title)
+	}
+
+	return nil
+}
+
+// taskReadyCmd returns the task ready subcommand
+func taskReadyCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "ready",
+		Short: "List tasks ready to work on",
+		Long: `List all tasks that have no blocking dependencies.
+
+These are tasks that can be started immediately as they are not
+waiting on any other tasks to be completed.
+
+Examples:
+  # Human-readable output
+  paso task ready --project=1
+
+  # JSON output for agents
+  paso task ready --project=1 --json
+
+  # Quiet mode for bash capture
+  TASK_IDS=$(paso task ready --project=1 --quiet)
+`,
+		RunE: runTaskReady,
+	}
+
+	// Required flags
+	cmd.Flags().Int("project", 0, "Project ID (required)")
+	if err := cmd.MarkFlagRequired("project"); err != nil {
+		log.Printf("Error marking flag as required: %v", err)
+	}
+
+	// Agent-friendly flags
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
+
+	return cmd
+}
+
+func runTaskReady(cmd *cobra.Command, args []string) error {
+	ctx := context.Background()
+
+	taskProject, _ := cmd.Flags().GetInt("project")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
+	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+
+	// Initialize CLI
+	cli, err := NewCLI(ctx)
+	if err != nil {
+		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
+		return err
+	}
+	defer func() {
+		if err := cli.Close(); err != nil {
+			log.Printf("Error closing CLI: %v", err)
+		}
+	}()
+
+	// Validate project exists
+	_, err = cli.Repo.GetProjectByID(ctx, taskProject)
+	if err != nil {
+		if fmtErr := formatter.ErrorWithSuggestion("PROJECT_NOT_FOUND",
+			fmt.Sprintf("project %d not found", taskProject),
+			"Use 'paso project list' to see available projects"); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
+		os.Exit(ExitNotFound)
+	}
+
+	// Get all tasks for project (includes IsBlocked field)
+	tasksByColumn, err := cli.Repo.GetTaskSummariesByProject(ctx, taskProject)
+	if err != nil {
+		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
+		return err
+	}
+
+	// Filter for ready tasks (IsBlocked == false)
+	var readyTasks []*models.TaskSummary
+	for _, columnTasks := range tasksByColumn {
+		for _, task := range columnTasks {
+			if !task.IsBlocked {
+				readyTasks = append(readyTasks, task)
+			}
+		}
+	}
+
+	// Output in appropriate format
+	if quietMode {
+		// Just print IDs
+		for _, t := range readyTasks {
+			fmt.Printf("%d\n", t.ID)
+		}
+		return nil
+	}
+
+	if jsonOutput {
+		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+			"success": true,
+			"tasks":   readyTasks,
+			"count":   len(readyTasks),
+		})
+	}
+
+	// Human-readable output
+	if len(readyTasks) == 0 {
+		fmt.Println("No ready tasks found")
+		return nil
+	}
+
+	fmt.Printf("Found %d ready tasks:\n\n", len(readyTasks))
+	for _, t := range readyTasks {
+		// Include priority if set
+		priorityInfo := ""
+		if t.PriorityDescription != "" && t.PriorityDescription != "medium" {
+			priorityInfo = fmt.Sprintf(" [%s]", t.PriorityDescription)
+		}
+		fmt.Printf("  [%d] %s%s\n", t.ID, t.Title, priorityInfo)
+	}
+
+	return nil
+}
+
+// taskBlockedCmd returns the task blocked subcommand
+func taskBlockedCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "blocked",
+		Short: "List blocked tasks",
+		Long: `List all tasks that are blocked by dependencies.
+
+These are tasks that cannot be started until their blocking
+dependencies are completed.
+
+Examples:
+  # Human-readable output
+  paso task blocked --project=1
+
+  # JSON output for agents
+  paso task blocked --project=1 --json
+
+  # Quiet mode for bash capture
+  TASK_IDS=$(paso task blocked --project=1 --quiet)
+`,
+		RunE: runTaskBlocked,
+	}
+
+	// Required flags
+	cmd.Flags().Int("project", 0, "Project ID (required)")
+	if err := cmd.MarkFlagRequired("project"); err != nil {
+		log.Printf("Error marking flag as required: %v", err)
+	}
+
+	// Agent-friendly flags
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
+
+	return cmd
+}
+
+func runTaskBlocked(cmd *cobra.Command, args []string) error {
+	ctx := context.Background()
+
+	taskProject, _ := cmd.Flags().GetInt("project")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
+	formatter := &OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+
+	// Initialize CLI
+	cli, err := NewCLI(ctx)
+	if err != nil {
+		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
+		return err
+	}
+	defer func() {
+		if err := cli.Close(); err != nil {
+			log.Printf("Error closing CLI: %v", err)
+		}
+	}()
+
+	// Validate project exists
+	_, err = cli.Repo.GetProjectByID(ctx, taskProject)
+	if err != nil {
+		if fmtErr := formatter.ErrorWithSuggestion("PROJECT_NOT_FOUND",
+			fmt.Sprintf("project %d not found", taskProject),
+			"Use 'paso project list' to see available projects"); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
+		os.Exit(ExitNotFound)
+	}
+
+	// Get all tasks for project (includes IsBlocked field)
+	tasksByColumn, err := cli.Repo.GetTaskSummariesByProject(ctx, taskProject)
+	if err != nil {
+		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
+		return err
+	}
+
+	// Filter for blocked tasks (IsBlocked == true)
+	var blockedTasks []*models.TaskSummary
+	for _, columnTasks := range tasksByColumn {
+		for _, task := range columnTasks {
+			if task.IsBlocked {
+				blockedTasks = append(blockedTasks, task)
+			}
+		}
+	}
+
+	// Output in appropriate format
+	if quietMode {
+		// Just print IDs
+		for _, t := range blockedTasks {
+			fmt.Printf("%d\n", t.ID)
+		}
+		return nil
+	}
+
+	if jsonOutput {
+		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+			"success": true,
+			"tasks":   blockedTasks,
+			"count":   len(blockedTasks),
+		})
+	}
+
+	// Human-readable output
+	if len(blockedTasks) == 0 {
+		fmt.Println("No blocked tasks found")
+		return nil
+	}
+
+	fmt.Printf("Found %d blocked tasks:\n\n", len(blockedTasks))
+	for _, t := range blockedTasks {
+		// Include priority if set
+		priorityInfo := ""
+		if t.PriorityDescription != "" && t.PriorityDescription != "medium" {
+			priorityInfo = fmt.Sprintf(" [%s]", t.PriorityDescription)
+		}
+		fmt.Printf("  [%d] %s%s (BLOCKED)\n", t.ID, t.Title, priorityInfo)
 	}
 
 	return nil
