@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -99,7 +98,7 @@ func runLabelCreate(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Validate color format
-	if err := validateColorHex(labelColor); err != nil {
+	if err := ValidateColorHex(labelColor); err != nil {
 		if fmtErr := formatter.Error("INVALID_COLOR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
@@ -332,7 +331,7 @@ func runLabelUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get existing label to fetch current values
-	currentLabel, err := getLabelByID(ctx, cli, labelID)
+	currentLabel, err := GetLabelByID(ctx, cli, labelID)
 	if err != nil {
 		if fmtErr := formatter.Error("LABEL_NOT_FOUND", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -349,7 +348,7 @@ func runLabelUpdate(cmd *cobra.Command, args []string) error {
 	newColor := currentLabel.Color
 	if colorProvided {
 		// Validate color format
-		if err := validateColorHex(labelColor); err != nil {
+		if err := ValidateColorHex(labelColor); err != nil {
 			if fmtErr := formatter.Error("INVALID_COLOR", err.Error()); fmtErr != nil {
 				log.Printf("Error formatting error message: %v", fmtErr)
 			}
@@ -456,7 +455,7 @@ func runLabelDelete(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Get label details for confirmation
-	label, err := getLabelByID(ctx, cli, labelID)
+	label, err := GetLabelByID(ctx, cli, labelID)
 	if err != nil {
 		if fmtErr := formatter.Error("LABEL_NOT_FOUND", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -583,7 +582,7 @@ func runLabelAttach(cmd *cobra.Command, args []string) error {
 	taskProjectID := column.ProjectID
 
 	// Validate label exists
-	label, err := getLabelByID(ctx, cli, labelID)
+	label, err := GetLabelByID(ctx, cli, labelID)
 	if err != nil {
 		if fmtErr := formatter.Error("LABEL_NOT_FOUND", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -709,56 +708,4 @@ func runLabelDetach(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("✓ Label #%d detached from task #%d\n", labelID, taskID)
 	return nil
-}
-
-// validateColorHex validates that a color string is in valid hex format #RRGGBB
-func validateColorHex(color string) error {
-	matched, err := regexp.MatchString(`^#[0-9A-Fa-f]{6}$`, color)
-	if err != nil {
-		return fmt.Errorf("error validating color: %w", err)
-	}
-	if !matched {
-		return fmt.Errorf("color must be in hex format #RRGGBB (e.g., #FF0000), got: %s", color)
-	}
-	return nil
-}
-
-// getLabelByID is a helper function to get a single label by ID
-// Since the database layer doesn't have GetLabelByID, we iterate through all projects
-func getLabelByID(ctx context.Context, cli *CLI, labelID int) (*struct {
-	ID        int
-	Name      string
-	Color     string
-	ProjectID int
-}, error,
-) {
-	// Get all projects to search for the label
-	projects, err := cli.Repo.GetAllProjects(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, project := range projects {
-		labels, err := cli.Repo.GetLabelsByProject(ctx, project.ID)
-		if err != nil {
-			continue
-		}
-		for _, lbl := range labels {
-			if lbl.ID == labelID {
-				return &struct {
-					ID        int
-					Name      string
-					Color     string
-					ProjectID int
-				}{
-					ID:        lbl.ID,
-					Name:      lbl.Name,
-					Color:     lbl.Color,
-					ProjectID: lbl.ProjectID,
-				}, nil
-			}
-		}
-	}
-
-	return nil, fmt.Errorf("label %d not found", labelID)
 }
