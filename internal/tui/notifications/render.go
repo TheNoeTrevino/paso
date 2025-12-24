@@ -65,6 +65,7 @@ func RenderInline(severity Severity, message string) string {
 	content := style.icon + " " + message
 
 	return lipgloss.NewStyle().
+		BorderStyle(lipgloss.RoundedBorder()).
 		Foreground(lipgloss.Color(style.foreground)).
 		Background(lipgloss.Color(style.background)).
 		Padding(0, 1).
