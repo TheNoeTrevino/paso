@@ -58,7 +58,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Get tasks (returns map[columnID][]*TaskSummary)
-	tasksByColumn, err := cliInstance.Repo().GetTaskSummariesByProject(ctx, taskProject)
+	tasksByColumn, err := cliInstance.App.TaskService.GetTaskSummariesByProject(ctx, taskProject)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)

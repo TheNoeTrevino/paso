@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	projectservice "github.com/thenoetrevino/paso/internal/services/project"
 )
 
 // CreateCmd returns the project create subcommand
@@ -86,7 +87,10 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create project
-	project, err := cliInstance.Repo().CreateProject(ctx, projectTitle, projectDescription)
+	project, err := cliInstance.App.ProjectService.CreateProject(ctx, projectservice.CreateProjectRequest{
+		Name:        projectTitle,
+		Description: projectDescription,
+	})
 	if err != nil {
 		if fmtErr := formatter.Error("PROJECT_CREATE_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)

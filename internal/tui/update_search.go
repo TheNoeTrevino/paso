@@ -74,9 +74,9 @@ func (m Model) executeSearch() (tea.Model, tea.Cmd) {
 	var err error
 
 	if m.SearchState.Query == "" {
-		tasksByColumn, err = m.App.Repo().GetTaskSummariesByProject(ctx, project.ID)
+		tasksByColumn, err = m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 	} else {
-		tasksByColumn, err = m.App.Repo().GetTaskSummariesByProjectFiltered(ctx, project.ID, m.SearchState.Query)
+		tasksByColumn, err = m.App.TaskService.GetTaskSummariesByProjectFiltered(ctx, project.ID, m.SearchState.Query)
 	}
 
 	if err != nil {

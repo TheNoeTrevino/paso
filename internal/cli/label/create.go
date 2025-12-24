@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	labelservice "github.com/thenoetrevino/paso/internal/services/label"
 )
 
 // CreateCmd returns the label create subcommand
@@ -89,7 +90,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate project exists
-	project, err := cliInstance.Repo().GetProjectByID(ctx, labelProject)
+	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, labelProject)
 	if err != nil {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", labelProject)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -98,7 +99,11 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create label
-	label, err := cliInstance.Repo().CreateLabel(ctx, labelProject, labelName, labelColor)
+	label, err := cliInstance.App.LabelService.CreateLabel(ctx, labelservice.CreateLabelRequest{
+		ProjectID: labelProject,
+		Name:      labelName,
+		Color:     labelColor,
+	})
 	if err != nil {
 		if fmtErr := formatter.Error("LABEL_CREATE_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)

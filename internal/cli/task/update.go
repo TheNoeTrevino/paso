@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 )
 
 // UpdateCmd returns the task update subcommand
@@ -78,7 +79,16 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	// Update title/description if provided
 	if titleFlag.Changed || descFlag.Changed {
-		if err := cliInstance.Repo().UpdateTask(ctx, taskID, taskTitle, taskDescription); err != nil {
+		req := taskservice.UpdateTaskRequest{
+			TaskID: taskID,
+		}
+		if titleFlag.Changed {
+			req.Title = &taskTitle
+		}
+		if descFlag.Changed {
+			req.Description = &taskDescription
+		}
+		if err := cliInstance.App.TaskService.UpdateTask(ctx, req); err != nil {
 			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
 				log.Printf("Error formatting error message: %v", fmtErr)
 			}
@@ -95,7 +105,11 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 			}
 			os.Exit(cli.ExitValidation)
 		}
-		if err := cliInstance.Repo().UpdateTaskPriority(ctx, taskID, priorityID); err != nil {
+		req := taskservice.UpdateTaskRequest{
+			TaskID:     taskID,
+			PriorityID: &priorityID,
+		}
+		if err := cliInstance.App.TaskService.UpdateTask(ctx, req); err != nil {
 			if fmtErr := formatter.Error("PRIORITY_UPDATE_ERROR", err.Error()); fmtErr != nil {
 				log.Printf("Error formatting error message: %v", fmtErr)
 			}

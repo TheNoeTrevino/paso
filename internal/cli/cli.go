@@ -39,8 +39,7 @@ func NewCLI(ctx context.Context) (*CLI, error) {
 		}
 	}
 
-	repo := database.NewRepository(db, eventClient)
-	application := app.New(repo, eventClient)
+	application := app.New(db, eventClient)
 
 	return &CLI{
 		App:         application,
@@ -55,10 +54,4 @@ func (c *CLI) Close() error {
 		c.eventClient.Close()
 	}
 	return c.App.Close()
-}
-
-// Repo returns the repository for backward compatibility during migration.
-// TODO: Remove this once all CLI commands use services directly.
-func (c *CLI) Repo() *database.Repository {
-	return c.App.Repo().(*database.Repository)
 }

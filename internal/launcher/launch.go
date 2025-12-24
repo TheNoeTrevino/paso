@@ -97,8 +97,7 @@ func Launch() error {
 		}
 	}()
 
-	repo := database.NewRepository(db, eventClient)
-	application := app.New(repo, eventClient)
+	application := app.New(db, eventClient)
 	tuiApp := core.New(ctx, application, cfg, eventClient)
 	p := tea.NewProgram(tuiApp, tea.WithContext(ctx))
 

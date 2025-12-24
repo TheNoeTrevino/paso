@@ -22,7 +22,7 @@ func InitParentPickerForForm(m *tui.Model) bool {
 	// Get all task references for the entire project
 	ctx, cancel := m.DbContext()
 	defer cancel()
-	allTasks, err := m.App.Repo().GetTaskReferencesForProject(ctx, project.ID)
+	allTasks, err := m.App.TaskService.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading project tasks", "error", err)
 		return false
@@ -72,7 +72,7 @@ func InitChildPickerForForm(m *tui.Model) bool {
 	// Get all task references for the entire project
 	ctx, cancel := m.DbContext()
 	defer cancel()
-	allTasks, err := m.App.Repo().GetTaskReferencesForProject(ctx, project.ID)
+	allTasks, err := m.App.TaskService.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading project tasks", "error", err)
 		return false
@@ -163,7 +163,7 @@ func InitPriorityPickerForForm(m *tui.Model) bool {
 		ctx, cancel := m.DbContext()
 		defer cancel()
 
-		taskDetail, err := m.App.Repo().GetTaskDetail(ctx, m.FormState.EditingTaskID)
+		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.FormState.EditingTaskID)
 		if err != nil {
 			slog.Error("Error loading task detail for priority picker", "error", err)
 			return false
@@ -202,7 +202,7 @@ func InitTypePickerForForm(m *tui.Model) bool {
 		ctx, cancel := m.DbContext()
 		defer cancel()
 
-		taskDetail, err := m.App.Repo().GetTaskDetail(ctx, m.FormState.EditingTaskID)
+		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.FormState.EditingTaskID)
 		if err != nil {
 			slog.Error("Error loading task detail for type picker", "error", err)
 			return false

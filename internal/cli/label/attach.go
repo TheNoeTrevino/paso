@@ -74,7 +74,7 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Validate task exists
-	task, err := cliInstance.Repo().GetTaskDetail(ctx, taskID)
+	task, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -83,7 +83,7 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get task's project ID via column
-	column, err := cliInstance.Repo().GetColumnByID(ctx, task.ColumnID)
+	column, err := cliInstance.App.ColumnService.GetColumnByID(ctx, task.ColumnID)
 	if err != nil {
 		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -110,7 +110,7 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	}
 
 	// Attach label to task
-	if err := cliInstance.Repo().AddLabelToTask(ctx, taskID, labelID); err != nil {
+	if err := cliInstance.App.TaskService.AttachLabel(ctx, taskID, labelID); err != nil {
 		if fmtErr := formatter.Error("ATTACH_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}

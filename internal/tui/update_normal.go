@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"log/slog"
-
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
@@ -232,7 +230,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 
 	ctx, cancel := m.DbContext()
 	defer cancel()
-	taskDetail, err := m.App.Repo().GetTaskDetail(ctx, task.ID)
+	taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, task.ID)
 	if err != nil {
 		m.HandleDBError(err, "Loading task details")
 		return m, nil
@@ -342,14 +340,8 @@ func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 		m.NotificationState.Add(state.LevelError, "No column selected to delete")
 		return m, nil
 	}
-	ctx, cancel := m.DbContext()
-	defer cancel()
-	taskCount, err := m.App.Repo().GetTaskCountByColumn(ctx, column.ID)
-	if err != nil {
-		slog.Error("Error getting task count", "error", err)
-		m.NotificationState.Add(state.LevelError, "Error getting column info")
-		return m, nil
-	}
+	// Count tasks in the column from current state
+	taskCount := len(m.AppState.Tasks()[column.ID])
 	m.InputState.DeleteColumnTaskCount = taskCount
 	m.UiState.SetMode(state.DeleteColumnConfirmMode)
 	return m, nil

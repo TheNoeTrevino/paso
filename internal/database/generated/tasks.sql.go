@@ -453,7 +453,10 @@ func (q *Queries) GetTaskCountByColumn(ctx context.Context, columnID int64) (int
 
 const getTaskDetail = `-- name: GetTaskDetail :one
 
-SELECT t.id, t.title, t.description, t.column_id, t.position, t.ticket_number, t.created_at, t.updated_at, ty.description, p.description, p.color
+SELECT t.id, t.title, t.description, t.column_id, t.position, t.ticket_number, t.created_at, t.updated_at, 
+       ty.description as type_description, 
+       p.description as priority_description, 
+       p.color as priority_color
 FROM tasks t
 LEFT JOIN types ty ON t.type_id = ty.id
 LEFT JOIN priorities p ON t.priority_id = p.id
@@ -461,17 +464,17 @@ WHERE t.id = ?
 `
 
 type GetTaskDetailRow struct {
-	ID            int64
-	Title         string
-	Description   sql.NullString
-	ColumnID      int64
-	Position      int64
-	TicketNumber  sql.NullInt64
-	CreatedAt     sql.NullTime
-	UpdatedAt     sql.NullTime
-	Description_2 sql.NullString
-	Description_3 sql.NullString
-	Color         sql.NullString
+	ID                  int64
+	Title               string
+	Description         sql.NullString
+	ColumnID            int64
+	Position            int64
+	TicketNumber        sql.NullInt64
+	CreatedAt           sql.NullTime
+	UpdatedAt           sql.NullTime
+	TypeDescription     sql.NullString
+	PriorityDescription sql.NullString
+	PriorityColor       sql.NullString
 }
 
 // ============================================================================
@@ -489,9 +492,9 @@ func (q *Queries) GetTaskDetail(ctx context.Context, id int64) (GetTaskDetailRow
 		&i.TicketNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Description_2,
-		&i.Description_3,
-		&i.Color,
+		&i.TypeDescription,
+		&i.PriorityDescription,
+		&i.PriorityColor,
 	)
 	return i, err
 }
@@ -603,12 +606,12 @@ SELECT
     t.title,
     t.column_id,
     t.position,
-    ty.description,
-    p.description,
-    p.color,
-    GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
-    GROUP_CONCAT(l.name, CHAR(31)) as label_names,
-    GROUP_CONCAT(l.color, CHAR(31)) as label_colors
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors
 FROM tasks t
 LEFT JOIN types ty ON t.type_id = ty.id
 LEFT JOIN priorities p ON t.priority_id = p.id
@@ -620,16 +623,16 @@ ORDER BY t.position
 `
 
 type GetTaskSummariesByColumnRow struct {
-	ID            int64
-	Title         string
-	ColumnID      int64
-	Position      int64
-	Description   sql.NullString
-	Description_2 sql.NullString
-	Color         sql.NullString
-	LabelIds      string
-	LabelNames    string
-	LabelColors   string
+	ID                  int64
+	Title               string
+	ColumnID            int64
+	Position            int64
+	TypeDescription     sql.NullString
+	PriorityDescription sql.NullString
+	PriorityColor       sql.NullString
+	LabelIds            string
+	LabelNames          string
+	LabelColors         string
 }
 
 // ============================================================================
@@ -649,9 +652,9 @@ func (q *Queries) GetTaskSummariesByColumn(ctx context.Context, columnID int64) 
 			&i.Title,
 			&i.ColumnID,
 			&i.Position,
-			&i.Description,
-			&i.Description_2,
-			&i.Color,
+			&i.TypeDescription,
+			&i.PriorityDescription,
+			&i.PriorityColor,
 			&i.LabelIds,
 			&i.LabelNames,
 			&i.LabelColors,
@@ -675,12 +678,12 @@ SELECT
     t.title,
     t.column_id,
     t.position,
-    ty.description,
-    p.description,
-    p.color,
-    GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
-    GROUP_CONCAT(l.name, CHAR(31)) as label_names,
-    GROUP_CONCAT(l.color, CHAR(31)) as label_colors,
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors,
     EXISTS(
         SELECT 1 FROM task_subtasks ts
         INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
@@ -698,17 +701,17 @@ ORDER BY t.position
 `
 
 type GetTaskSummariesByProjectRow struct {
-	ID            int64
-	Title         string
-	ColumnID      int64
-	Position      int64
-	Description   sql.NullString
-	Description_2 sql.NullString
-	Color         sql.NullString
-	LabelIds      string
-	LabelNames    string
-	LabelColors   string
-	IsBlocked     int64
+	ID                  int64
+	Title               string
+	ColumnID            int64
+	Position            int64
+	TypeDescription     sql.NullString
+	PriorityDescription sql.NullString
+	PriorityColor       sql.NullString
+	LabelIds            string
+	LabelNames          string
+	LabelColors         string
+	IsBlocked           int64
 }
 
 func (q *Queries) GetTaskSummariesByProject(ctx context.Context, projectID int64) ([]GetTaskSummariesByProjectRow, error) {
@@ -725,9 +728,9 @@ func (q *Queries) GetTaskSummariesByProject(ctx context.Context, projectID int64
 			&i.Title,
 			&i.ColumnID,
 			&i.Position,
-			&i.Description,
-			&i.Description_2,
-			&i.Color,
+			&i.TypeDescription,
+			&i.PriorityDescription,
+			&i.PriorityColor,
 			&i.LabelIds,
 			&i.LabelNames,
 			&i.LabelColors,
@@ -752,12 +755,12 @@ SELECT
     t.title,
     t.column_id,
     t.position,
-    ty.description,
-    p.description,
-    p.color,
-    GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
-    GROUP_CONCAT(l.name, CHAR(31)) as label_names,
-    GROUP_CONCAT(l.color, CHAR(31)) as label_colors,
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors,
     EXISTS(
         SELECT 1 FROM task_subtasks ts
         INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
@@ -780,17 +783,17 @@ type GetTaskSummariesByProjectFilteredParams struct {
 }
 
 type GetTaskSummariesByProjectFilteredRow struct {
-	ID            int64
-	Title         string
-	ColumnID      int64
-	Position      int64
-	Description   sql.NullString
-	Description_2 sql.NullString
-	Color         sql.NullString
-	LabelIds      string
-	LabelNames    string
-	LabelColors   string
-	IsBlocked     int64
+	ID                  int64
+	Title               string
+	ColumnID            int64
+	Position            int64
+	TypeDescription     sql.NullString
+	PriorityDescription sql.NullString
+	PriorityColor       sql.NullString
+	LabelIds            string
+	LabelNames          string
+	LabelColors         string
+	IsBlocked           int64
 }
 
 func (q *Queries) GetTaskSummariesByProjectFiltered(ctx context.Context, arg GetTaskSummariesByProjectFilteredParams) ([]GetTaskSummariesByProjectFilteredRow, error) {
@@ -807,9 +810,9 @@ func (q *Queries) GetTaskSummariesByProjectFiltered(ctx context.Context, arg Get
 			&i.Title,
 			&i.ColumnID,
 			&i.Position,
-			&i.Description,
-			&i.Description_2,
-			&i.Color,
+			&i.TypeDescription,
+			&i.PriorityDescription,
+			&i.PriorityColor,
 			&i.LabelIds,
 			&i.LabelNames,
 			&i.LabelColors,
