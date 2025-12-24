@@ -1,16 +1,14 @@
-package render
+package tui
 
 import (
 	"charm.land/lipgloss/v2"
-	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/components"
-	"github.com/thenoetrevino/paso/internal/tui/modelops"
 	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
-// ViewLabelPicker renders the label picker modal
-func ViewLabelPicker(m *tui.Model) string {
+// viewLabelPicker renders the label picker modal
+func (m Model) viewLabelPicker() string {
 	// Render the label picker content
 	var pickerContent string
 	if m.LabelPickerState.CreateMode {
@@ -24,7 +22,7 @@ func ViewLabelPicker(m *tui.Model) string {
 	} else {
 		// Show label list (use filtered items from state)
 		pickerContent = renderers.RenderLabelPicker(
-			modelops.GetFilteredLabelPickerItems(m),
+			m.getFilteredLabelPickerItems(),
 			m.LabelPickerState.Cursor,
 			m.LabelPickerState.Filter,
 			true, // show create option
@@ -54,10 +52,10 @@ func ViewLabelPicker(m *tui.Model) string {
 	)
 }
 
-// ViewParentPicker renders the parent task picker modal.
+// viewParentPicker renders the parent task picker modal.
 // Parent tasks are tasks that depend on (block on) the current task.
 // The picker displays all tasks in the project with checkboxes indicating current selections.
-func ViewParentPicker(m *tui.Model) string {
+func (m Model) viewParentPicker() string {
 	pickerContent := renderers.RenderTaskPicker(
 		m.ParentPickerState.GetFilteredItems(),
 		m.ParentPickerState.Cursor,
@@ -81,10 +79,10 @@ func ViewParentPicker(m *tui.Model) string {
 	)
 }
 
-// ViewChildPicker renders the child task picker modal.
+// viewChildPicker renders the child task picker modal.
 // Child tasks are tasks that the current task depends on (must be completed first).
 // The picker displays all tasks in the project with checkboxes indicating current selections.
-func ViewChildPicker(m *tui.Model) string {
+func (m Model) viewChildPicker() string {
 	pickerContent := renderers.RenderTaskPicker(
 		m.ChildPickerState.GetFilteredItems(),
 		m.ChildPickerState.Cursor,
@@ -108,8 +106,8 @@ func ViewChildPicker(m *tui.Model) string {
 	)
 }
 
-// ViewPriorityPicker renders the priority picker popup
-func ViewPriorityPicker(m *tui.Model) string {
+// viewPriorityPicker renders the priority picker popup
+func (m Model) viewPriorityPicker() string {
 	pickerContent := renderers.RenderPriorityPicker(
 		renderers.GetPriorityOptions(),
 		m.PriorityPickerState.SelectedPriorityID(),
@@ -130,8 +128,8 @@ func ViewPriorityPicker(m *tui.Model) string {
 	)
 }
 
-// ViewTypePicker renders the type picker popup
-func ViewTypePicker(m *tui.Model) string {
+// viewTypePicker renders the type picker popup
+func (m Model) viewTypePicker() string {
 	pickerContent := renderers.RenderTypePicker(
 		renderers.GetTypeOptions(),
 		m.TypePickerState.SelectedTypeID(),
@@ -152,8 +150,8 @@ func ViewTypePicker(m *tui.Model) string {
 	)
 }
 
-// ViewRelationTypePicker renders the relation type picker popup
-func ViewRelationTypePicker(m *tui.Model) string {
+// viewRelationTypePicker renders the relation type picker popup
+func (m Model) viewRelationTypePicker() string {
 	// Determine picker type based on return mode
 	pickerType := "parent"
 	if m.RelationTypePickerState.ReturnMode() == state.ChildPickerMode {
@@ -181,8 +179,8 @@ func ViewRelationTypePicker(m *tui.Model) string {
 	)
 }
 
-// ViewStatusPicker renders the status/column selection picker.
-func ViewStatusPicker(m *tui.Model) string {
+// viewStatusPicker renders the status/column selection picker.
+func (m Model) viewStatusPicker() string {
 	var items []string
 	columns := m.StatusPickerState.Columns()
 	cursor := m.StatusPickerState.Cursor()

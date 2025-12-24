@@ -1,18 +1,17 @@
-package render
+package tui
 
 import (
 	"fmt"
 
 	"charm.land/lipgloss/v2"
-	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/layers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
-// RenderTicketFormLayer renders the ticket creation/edit form modal as a layer
-func RenderTicketFormLayer(m *tui.Model) *lipgloss.Layer {
+// renderTicketFormLayer renders the ticket creation/edit form modal as a layer
+func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 	if m.FormState.TicketForm == nil {
 		return nil
 	}
@@ -28,9 +27,9 @@ func RenderTicketFormLayer(m *tui.Model) *lipgloss.Layer {
 	bottomHeight := layerHeight * 4 / 10    // 40% of layer height
 
 	// Render the three zones
-	topLeftZone := renderFormTitleDescriptionZone(m, leftColumnWidth, topHeight)
-	bottomLeftZone := renderFormAssociationsZone(m, leftColumnWidth, bottomHeight)
-	rightZone := renderFormMetadataZone(m, rightColumnWidth, layerHeight)
+	topLeftZone := m.renderFormTitleDescriptionZone(leftColumnWidth, topHeight)
+	bottomLeftZone := m.renderFormAssociationsZone(leftColumnWidth, bottomHeight)
+	rightZone := m.renderFormMetadataZone(rightColumnWidth, layerHeight)
 
 	// Compose left column (top + bottom)
 	leftColumn := lipgloss.JoinVertical(lipgloss.Top, topLeftZone, bottomLeftZone)
@@ -70,8 +69,8 @@ func RenderTicketFormLayer(m *tui.Model) *lipgloss.Layer {
 	return layers.CreateCenteredLayer(formBox, m.UiState.Width(), m.UiState.Height())
 }
 
-// RenderProjectFormLayer renders the project creation form modal as a layer
-func RenderProjectFormLayer(m *tui.Model) *lipgloss.Layer {
+// renderProjectFormLayer renders the project creation form modal as a layer
+func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 	if m.FormState.ProjectForm == nil {
 		return nil
 	}
@@ -87,8 +86,8 @@ func RenderProjectFormLayer(m *tui.Model) *lipgloss.Layer {
 	return layers.CreateCenteredLayer(formBox, m.UiState.Width(), m.UiState.Height())
 }
 
-// RenderColumnInputLayer renders the column name input dialog (create or edit mode) as a layer
-func RenderColumnInputLayer(m *tui.Model) *lipgloss.Layer {
+// renderColumnInputLayer renders the column name input dialog (create or edit mode) as a layer
+func (m Model) renderColumnInputLayer() *lipgloss.Layer {
 	var inputBox string
 	if m.UiState.Mode() == state.AddColumnMode {
 		inputBox = components.CreateInputBoxStyle.
@@ -104,17 +103,17 @@ func RenderColumnInputLayer(m *tui.Model) *lipgloss.Layer {
 	return layers.CreateCenteredLayer(inputBox, m.UiState.Width(), m.UiState.Height())
 }
 
-// RenderHelpLayer renders the keyboard shortcuts help screen as a layer
-func RenderHelpLayer(m *tui.Model) *lipgloss.Layer {
+// renderHelpLayer renders the keyboard shortcuts help screen as a layer
+func (m Model) renderHelpLayer() *lipgloss.Layer {
 	helpBox := components.HelpBoxStyle.
 		Width(50).
-		Render(generateHelpText(m))
+		Render(m.generateHelpText())
 
 	return layers.CreateCenteredLayer(helpBox, m.UiState.Width(), m.UiState.Height())
 }
 
 // generateHelpText creates help text based on current key mappings
-func generateHelpText(m *tui.Model) string {
+func (m Model) generateHelpText() string {
 	km := m.Config.KeyMappings
 	return fmt.Sprintf(`PASO - Keyboard Shortcuts
 

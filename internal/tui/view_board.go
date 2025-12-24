@@ -1,14 +1,12 @@
-package render
+package tui
 
 import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
-	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/helpers"
-	"github.com/thenoetrevino/paso/internal/tui/modelops"
 	"github.com/thenoetrevino/paso/internal/tui/notifications"
 	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -16,7 +14,7 @@ import (
 
 // getInlineNotification returns the inline notification content for the tab bar
 // Returns empty string if no notifications
-func getInlineNotification(m *tui.Model) string {
+func (m Model) getInlineNotification() string {
 	if !m.NotificationState.HasAny() {
 		return ""
 	}
@@ -28,11 +26,11 @@ func getInlineNotification(m *tui.Model) string {
 	return notifications.RenderInlineFromState(allNotifications[0])
 }
 
-// ViewKanbanBoard renders the main kanban board (normal mode)
-func ViewKanbanBoard(m *tui.Model) string {
+// viewKanbanBoard renders the main kanban board (normal mode)
+func (m Model) viewKanbanBoard() string {
 	// Check if list view is active
 	if m.ListViewState.IsListView() {
-		return viewListView(m)
+		return m.viewListView()
 	}
 
 	// Handle empty column list edge case
@@ -104,7 +102,7 @@ func ViewKanbanBoard(m *tui.Model) string {
 		projectTabs = []string{"No Projects"}
 	}
 	// Get inline notification for tab bar
-	inlineNotification := getInlineNotification(m)
+	inlineNotification := m.getInlineNotification()
 	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UiState.Width(), inlineNotification)
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
@@ -148,9 +146,9 @@ func ViewKanbanBoard(m *tui.Model) string {
 }
 
 // viewListView renders the list/table view of all tasks.
-func viewListView(m *tui.Model) string {
+func (m Model) viewListView() string {
 	// Build rows from all tasks across columns (with sorting applied)
-	rows := modelops.BuildListViewRows(m)
+	rows := m.buildListViewRows()
 
 	// Calculate fixed content height using shared method
 	listHeight := m.UiState.ContentHeight()
@@ -164,7 +162,7 @@ func viewListView(m *tui.Model) string {
 		projectTabs = []string{"No Projects"}
 	}
 	// Get inline notification for tab bar
-	inlineNotification := getInlineNotification(m)
+	inlineNotification := m.getInlineNotification()
 	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UiState.Width(), inlineNotification)
 
 	// Render list content with sort indicator
