@@ -638,25 +638,331 @@ daemon:
 go build -o bin/paso .
 go build -o bin/paso-daemon ./cmd/daemon
 
-# Install (optional)
+# Install to system
 sudo cp bin/paso /usr/local/bin/
 sudo cp bin/paso-daemon /usr/local/bin/
 ```
 
-### Systemd service (optional)
+### Systemd User Service Integration
+
+**Goal:** Enable paso daemon to start automatically on user login and be managed like Docker daemon.
+
+#### Service File Location
+User-level systemd services go in: `~/.config/systemd/user/paso.service`
+
+#### Service File Content
+Create `~/.config/systemd/user/paso.service`:
 ```ini
 [Unit]
-Description=Paso Daemon
-After=network.target
+Description=Paso Daemon - Terminal Kanban Board Real-time Sync
+Documentation=https://github.com/thenoetrevino/paso
+After=default.target
 
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/paso-daemon
 Restart=always
-User=%u
+RestartSec=5
+
+# Environment
+Environment="HOME=%h"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=paso-daemon
+
+# Security hardening
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.paso
 
 [Install]
 WantedBy=default.target
+```
+
+#### Installation Script (`install_systemd.sh`)
+Create script to automate systemd setup:
+```bash
+#!/bin/bash
+# install_systemd.sh - Install Paso systemd user service
+
+set -e
+
+SYSTEMD_USER_DIR="${HOME}/.config/systemd/user"
+SERVICE_FILE="${SYSTEMD_USER_DIR}/paso.service"
+
+echo "Installing Paso systemd user service..."
+
+# Create systemd user directory if it doesn't exist
+mkdir -p "${SYSTEMD_USER_DIR}"
+
+# Create service file
+cat > "${SERVICE_FILE}" << 'EOF'
+[Unit]
+Description=Paso Daemon - Terminal Kanban Board Real-time Sync
+Documentation=https://github.com/thenoetrevino/paso
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/paso-daemon
+Restart=always
+RestartSec=5
+
+# Environment
+Environment="HOME=%h"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=paso-daemon
+
+# Security hardening
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.paso
+
+[Install]
+WantedBy=default.target
+EOF
+
+echo "✓ Service file created at ${SERVICE_FILE}"
+
+# Reload systemd user daemon
+systemctl --user daemon-reload
+echo "✓ Systemd user daemon reloaded"
+
+# Enable service to start on login
+systemctl --user enable paso.service
+echo "✓ Paso service enabled (will start on next login)"
+
+# Start service now
+systemctl --user start paso.service
+echo "✓ Paso service started"
+
+# Check status
+echo ""
+echo "Service status:"
+systemctl --user status paso.service --no-pager
+
+echo ""
+echo "Installation complete!"
+echo ""
+echo "Commands:"
+echo "  Start:    systemctl --user start paso"
+echo "  Stop:     systemctl --user stop paso"
+echo "  Restart:  systemctl --user restart paso"
+echo "  Status:   systemctl --user status paso"
+echo "  Logs:     journalctl --user -u paso -f"
+echo "  Disable:  systemctl --user disable paso"
+```
+
+#### Usage Commands
+```bash
+# Install systemd service
+chmod +x install_systemd.sh
+./install_systemd.sh
+
+# Manual systemd management
+systemctl --user enable paso    # Enable auto-start on login
+systemctl --user start paso     # Start daemon now
+systemctl --user stop paso      # Stop daemon
+systemctl --user restart paso   # Restart daemon
+systemctl --user status paso    # Check status
+systemctl --user disable paso   # Disable auto-start
+
+# View logs
+journalctl --user -u paso -f          # Follow logs
+journalctl --user -u paso --since today  # Today's logs
+journalctl --user -u paso -n 50       # Last 50 lines
+
+# Enable lingering (daemon runs even when not logged in)
+loginctl enable-linger $USER
+```
+
+#### Integration with install.sh
+Modify existing `install.sh` to optionally install systemd service:
+```bash
+#!/bin/bash
+# Enhanced install.sh with systemd integration
+
+set -e
+
+echo "Building Paso..."
+go build -o bin/paso .
+go build -o bin/paso-daemon ./cmd/daemon
+
+echo "Installing binaries..."
+sudo cp bin/paso /usr/local/bin/
+sudo cp bin/paso-daemon /usr/local/bin/
+
+echo "✓ Binaries installed to /usr/local/bin/"
+
+# Ask user if they want systemd integration
+read -p "Install systemd user service for auto-start? (y/N) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    ./install_systemd.sh
+else
+    echo "Skipping systemd installation."
+    echo "Run ./install_systemd.sh later to enable auto-start."
+fi
+
+echo ""
+echo "Installation complete! Run 'paso' to start."
+```
+
+#### Daemon Code Modifications
+Update `cmd/daemon/main.go` to work better with systemd:
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "os"
+    "os/signal"
+    "path/filepath"
+    "syscall"
+    
+    "github.com/thenoetrevino/paso/internal/daemon"
+)
+
+func main() {
+    // Set up logging for systemd
+    log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
+    log.SetPrefix("paso-daemon: ")
+    
+    ctx, cancel := signal.NotifyContext(
+        context.Background(),
+        os.Interrupt,
+        syscall.SIGTERM,
+        syscall.SIGQUIT,
+    )
+    defer cancel()
+    
+    // Get home directory from environment (set by systemd)
+    home := os.Getenv("HOME")
+    if home == "" {
+        var err error
+        home, err = os.UserHomeDir()
+        if err != nil {
+            log.Fatalf("Failed to get home directory: %v", err)
+        }
+    }
+    
+    pasoDir := filepath.Join(home, ".paso")
+    socketPath := filepath.Join(pasoDir, "paso.sock")
+    
+    // Ensure .paso directory exists
+    if err := os.MkdirAll(pasoDir, 0700); err != nil {
+        log.Fatalf("Failed to create .paso directory: %v", err)
+    }
+    
+    server, err := daemon.NewServer(socketPath)
+    if err != nil {
+        log.Fatalf("Failed to create daemon: %v", err)
+    }
+    
+    log.Printf("Paso daemon starting on %s", socketPath)
+    log.Printf("Process ID: %d", os.Getpid())
+    
+    if err := server.Start(ctx); err != nil {
+        log.Fatalf("Daemon error: %v", err)
+    }
+    
+    log.Println("Paso daemon shutting down gracefully")
+}
+```
+
+#### Update main.go Logic
+Remove auto-start logic from `main.go` since systemd handles it:
+```go
+func main() {
+    ctx, cancel := signal.NotifyContext(...)
+    defer cancel()
+    
+    cfg, err := config.Load()
+    // ... error handling ...
+    
+    // Connect to daemon (systemd ensures it's running)
+    socketPath := filepath.Join(os.Getenv("HOME"), ".paso", "paso.sock")
+    eventClient, err := events.NewClient(socketPath)
+    if err != nil {
+        log.Printf("Warning: Failed to connect to daemon: %v", err)
+        log.Printf("Hint: Start daemon with 'systemctl --user start paso'")
+        eventClient = nil // Continue without live updates
+    }
+    defer func() {
+        if eventClient != nil {
+            eventClient.Close()
+        }
+    }()
+    
+    // ... rest of initialization ...
+}
+```
+
+#### Benefits of Systemd Integration
+1. **Auto-start on login** - Daemon starts automatically when user logs in
+2. **Automatic restart** - Daemon restarts on crashes (RestartSec=5)
+3. **Logging integration** - Logs accessible via `journalctl`
+4. **Process management** - Standard systemd commands for control
+5. **Security hardening** - Systemd sandboxing features enabled
+6. **Session independence** - With lingering enabled, daemon runs always
+7. **User-friendly** - Just like Docker: `systemctl --user start paso`
+
+#### Systemd vs Manual Start Comparison
+| Feature | Manual (ensureDaemonRunning) | Systemd |
+|---------|------------------------------|---------|
+| Auto-start on boot/login | ❌ No | ✅ Yes |
+| Auto-restart on crash | ❌ No | ✅ Yes |
+| Centralized logs | ❌ No | ✅ Yes (journalctl) |
+| Process monitoring | ❌ Manual | ✅ Built-in |
+| Security hardening | ❌ None | ✅ Multiple layers |
+| User control | ❌ Limited | ✅ Standard commands |
+
+#### Backward Compatibility
+Keep `ensureDaemonRunning()` as fallback for systems without systemd:
+- Check if socket exists first
+- If not, try auto-start (manual fallback)
+- Log suggestion to use systemd for better experience
+
+#### Testing Systemd Integration
+```bash
+# 1. Install service
+./install_systemd.sh
+
+# 2. Check it's running
+systemctl --user status paso
+
+# 3. Open paso instance
+paso
+
+# 4. Open second instance in another terminal
+paso
+
+# 5. Make changes in one - verify sync in other
+
+# 6. Kill daemon
+systemctl --user stop paso
+
+# 7. Verify paso still works (degraded mode)
+
+# 8. Restart daemon
+systemctl --user start paso
+
+# 9. Verify live updates resume
+
+# 10. Test auto-restart
+sudo kill -9 $(pgrep paso-daemon)
+sleep 6
+systemctl --user status paso  # Should show running again
 ```
 
 ---
@@ -717,3 +1023,5 @@ If implementation causes issues:
 ## End of Plan
 
 This plan is comprehensive and ready for implementation. All major decisions are documented, and the architecture is sound for Linux-based terminal applications.
+
+hello world
