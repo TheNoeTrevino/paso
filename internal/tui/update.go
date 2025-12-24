@@ -191,7 +191,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 	}
 
 	// Create context for database operations
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 
 	// 1. Create the task
@@ -262,7 +262,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 // updateExistingTaskWithLabelsAndRelationships updates task, labels, and parent/child relationships
 func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormValues) {
 	// Create context for database operations
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 	taskID := m.FormState.EditingTaskID
 
@@ -604,7 +604,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 
 					if name != "" {
-						ctx, cancel := m.dbContext()
+						ctx, cancel := m.DbContext()
 						defer cancel()
 						project, err := m.Repo.CreateProject(ctx, name, description)
 						if err != nil {
@@ -647,7 +647,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if name != "" {
-				ctx, cancel := m.dbContext()
+				ctx, cancel := m.DbContext()
 				defer cancel()
 				project, err := m.Repo.CreateProject(ctx, name, description)
 				if err != nil {
@@ -729,7 +729,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.LabelPickerState.Items[i].Selected = !m.LabelPickerState.Items[i].Selected
 					} else {
 						// In view mode: update database immediately
-						ctx, cancel := m.uiContext()
+						ctx, cancel := m.UiContext()
 						defer cancel()
 						if m.LabelPickerState.Items[i].Selected {
 							// Remove label from task
@@ -824,7 +824,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		ctx, cancel := m.dbContext()
+		ctx, cancel := m.DbContext()
 		defer cancel()
 		label, err := m.Repo.CreateLabel(ctx, project.ID, m.FormState.FormLabelName, color)
 		if err != nil {
@@ -931,7 +931,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					} else {
 						// View mode: apply changes to database immediately (existing behavior)
-						ctx, cancel := m.uiContext()
+						ctx, cancel := m.UiContext()
 						defer cancel()
 						if m.ParentPickerState.Items[i].Selected {
 							// Remove parent relationship
@@ -1086,7 +1086,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					} else {
 						// View mode: apply changes to database immediately (existing behavior)
-						ctx, cancel := m.uiContext()
+						ctx, cancel := m.UiContext()
 						defer cancel()
 						if m.ChildPickerState.Items[i].Selected {
 							// Remove child relationship
@@ -1209,7 +1209,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// If we're editing a task, update it in the database
 			if m.FormState.EditingTaskID != 0 {
-				ctx, cancel := m.dbContext()
+				ctx, cancel := m.DbContext()
 				defer cancel()
 
 				// Update the task's priority_id in the database
@@ -1281,7 +1281,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// If we're editing a task, update it in the database
 			if m.FormState.EditingTaskID != 0 {
-				ctx, cancel := m.dbContext()
+				ctx, cancel := m.DbContext()
 				defer cancel()
 
 				// Update the task's type_id in the database
@@ -1447,7 +1447,7 @@ func (m *Model) reloadCurrentColumnTasks() {
 		return
 	}
 
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 	tasksByColumn, err := m.Repo.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {

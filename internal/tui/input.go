@@ -92,7 +92,7 @@ func (m Model) createColumn() (tea.Model, tea.Cmd) {
 		projectID = project.ID
 	}
 
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 	column, err := m.Repo.CreateColumn(ctx, strings.TrimSpace(m.InputState.Buffer), projectID, afterColumnID)
 	if err != nil {
@@ -120,7 +120,7 @@ func (m Model) createColumn() (tea.Model, tea.Cmd) {
 func (m Model) renameColumn() (tea.Model, tea.Cmd) {
 	column := m.getCurrentColumn()
 	if column != nil {
-		ctx, cancel := m.dbContext()
+		ctx, cancel := m.DbContext()
 		defer cancel()
 		err := m.Repo.UpdateColumnName(ctx, column.ID, strings.TrimSpace(m.InputState.Buffer))
 		if err != nil {

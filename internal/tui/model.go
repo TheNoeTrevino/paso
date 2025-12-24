@@ -179,8 +179,8 @@ func (m *Model) withTimeout(timeout time.Duration) (context.Context, context.Can
 	return context.WithTimeout(m.Ctx, timeout)
 }
 
-// dbContext creates a context for database operations with 30s timeout
-func (m *Model) dbContext() (context.Context, context.CancelFunc) {
+// DbContext creates a context for database operations with 30s timeout
+func (m *Model) DbContext() (context.Context, context.CancelFunc) {
 	return m.withTimeout(timeoutDB)
 }
 
@@ -197,8 +197,8 @@ func (m *Model) listenForNotifications() tea.Cmd {
 	}
 }
 
-// uiContext creates a context for UI operations with 10s timeout
-func (m *Model) uiContext() (context.Context, context.CancelFunc) {
+// UiContext creates a context for UI operations with 10s timeout
+func (m *Model) UiContext() (context.Context, context.CancelFunc) {
 	return m.withTimeout(timeoutUI)
 }
 
@@ -360,7 +360,7 @@ func (m Model) moveTaskRight() {
 	}
 
 	// Use the new database function to move task
-	ctx, cancel := m.uiContext()
+	ctx, cancel := m.UiContext()
 	defer cancel()
 	err := m.Repo.MoveTaskToNextColumn(ctx, task.ID)
 	if err != nil {
@@ -414,7 +414,7 @@ func (m Model) moveTaskLeft() {
 	}
 
 	// Use the new database function to move task
-	ctx, cancel := m.uiContext()
+	ctx, cancel := m.UiContext()
 	defer cancel()
 	err := m.Repo.MoveTaskToPrevColumn(ctx, task.ID)
 	if err != nil {
@@ -462,7 +462,7 @@ func (m Model) moveTaskUp() {
 	}
 
 	// Call database swap
-	ctx, cancel := m.uiContext()
+	ctx, cancel := m.UiContext()
 	defer cancel()
 	err := m.Repo.SwapTaskUp(ctx, task.ID)
 	if err != nil {
@@ -525,7 +525,7 @@ func (m Model) moveTaskDown() {
 	}
 
 	// Call database swap
-	ctx, cancel := m.uiContext()
+	ctx, cancel := m.UiContext()
 	defer cancel()
 	err := m.Repo.SwapTaskDown(ctx, task.ID)
 	if err != nil {
@@ -565,7 +565,7 @@ func (m Model) switchToProject(projectIndex int) {
 	project := m.AppState.Projects()[projectIndex]
 
 	// Create context for database operations
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 
 	// Reload columns for this project
@@ -598,7 +598,7 @@ func (m Model) switchToProject(projectIndex int) {
 
 // reloadProjects reloads the projects list from the database
 func (m Model) reloadProjects() {
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 	projects, err := m.Repo.GetAllProjects(ctx)
 	if err != nil {
@@ -620,7 +620,7 @@ func (m *Model) initParentPickerForForm() bool {
 	}
 
 	// Get all task references for the entire project
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 	allTasks, err := m.Repo.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
@@ -670,7 +670,7 @@ func (m *Model) initChildPickerForForm() bool {
 	}
 
 	// Get all task references for the entire project
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 	allTasks, err := m.Repo.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
@@ -760,7 +760,7 @@ func (m *Model) initPriorityPickerForForm() bool {
 
 	// If editing an existing task, we need to get the current priority from database
 	if m.FormState.EditingTaskID != 0 {
-		ctx, cancel := m.dbContext()
+		ctx, cancel := m.DbContext()
 		defer cancel()
 
 		taskDetail, err := m.Repo.GetTaskDetail(ctx, m.FormState.EditingTaskID)
@@ -799,7 +799,7 @@ func (m *Model) initTypePickerForForm() bool {
 
 	// If editing an existing task, we need to get the current type from database
 	if m.FormState.EditingTaskID != 0 {
-		ctx, cancel := m.dbContext()
+		ctx, cancel := m.DbContext()
 		defer cancel()
 
 		taskDetail, err := m.Repo.GetTaskDetail(ctx, m.FormState.EditingTaskID)
@@ -973,7 +973,7 @@ func (m *Model) reloadCurrentProject() {
 		return
 	}
 
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 
 	// Reload columns
