@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"strings"
-
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -49,25 +47,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case events.NotificationMsg:
-		level := state.LevelInfo
-		switch msg.Level {
-		case "error":
-			level = state.LevelError
-		case "warning":
-			level = state.LevelWarning
-		}
-		m.NotificationState.Add(level, msg.Message)
-
-		if strings.Contains(msg.Message, "Connection lost") || strings.Contains(msg.Message, "reconnecting") {
-			m.ConnectionState.SetStatus(state.Reconnecting)
-		} else if strings.Contains(msg.Message, "Reconnected") {
-			m.ConnectionState.SetStatus(state.Connected)
-		} else if strings.Contains(msg.Message, "Failed to reconnect") {
-			m.ConnectionState.SetStatus(state.Disconnected)
-		}
-
-		cmd = m.listenForNotifications()
-		return m, cmd
+		return m.handleNotificationMsg(msg)
 
 	case ConnectionEstablishedMsg:
 		m.ConnectionState.SetStatus(state.Connected)
@@ -140,4 +120,51 @@ func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 		m.UiState.SetViewportOffset(max(0, len(m.AppState.Columns())-m.UiState.ViewportSize()))
 	}
 	return m, nil
+}
+
+func (m Model) handleNotificationMsg(msg events.NotificationMsg) (tea.Model, tea.Cmd) {
+	level := state.LevelInfo
+	switch msg.Level {
+	case "error":
+		level = state.LevelError
+	case "warning":
+		level = state.LevelWarning
+	}
+	m.NotificationState.Add(level, msg.Message)
+
+	m.updateConnectionStateFromMessage(msg.Message)
+
+	return m, m.listenForNotifications()
+}
+
+func (m *Model) updateConnectionStateFromMessage(message string) {
+	if containsAny(message, "Connection lost", "reconnecting") {
+		m.ConnectionState.SetStatus(state.Reconnecting)
+	} else if contains(message, "Reconnected") {
+		m.ConnectionState.SetStatus(state.Connected)
+	} else if contains(message, "Failed to reconnect") {
+		m.ConnectionState.SetStatus(state.Disconnected)
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && findSubstring(s, substr)
+}
+
+func containsAny(s string, substrs ...string) bool {
+	for _, substr := range substrs {
+		if contains(s, substr) {
+			return true
+		}
+	}
+	return false
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
