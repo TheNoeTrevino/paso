@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"log/slog"
 	"strings"
 
@@ -28,10 +29,6 @@ type ConnectionLostMsg struct{}
 // ConnectionReconnectingMsg is sent when attempting to reconnect to daemon
 type ConnectionReconnectingMsg struct{}
 
-// Update handles all messages and updates the model accordingly.
-// This implements the "Update" part of the Model-View-Update pattern.
-//
-// ARCHITECTURE NOTE:
 // This is the main update dispatcher for the TUI. It's called by core.App.Update()
 // and delegates to mode-specific handler methods defined in this file.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -61,8 +58,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case RefreshMsg:
-		// log.Printf("Received refresh event for project %d", msg.Event.ProjectID)
-
 		// Only refresh if event is for current project
 		currentProject := m.AppState.GetCurrentProject()
 		if currentProject != nil && msg.Event.ProjectID == currentProject.ID {
@@ -229,37 +224,9 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 		}
 	}
 
-	// 3. Apply parent relationships with relation types
-	// CRITICAL: Parent picker means selected task BLOCKS ON current task
-	// So: AddSubtaskWithRelationType(parentID, currentTaskID, relationTypeID)
-	for _, item := range m.ParentPickerState.Items {
-		if item.Selected {
-			relationTypeID := item.RelationTypeID
-			if relationTypeID == 0 {
-				relationTypeID = 1 // Default to Parent/Child
-			}
-			err = m.Repo.AddSubtaskWithRelationType(ctx, item.TaskRef.ID, task.ID, relationTypeID)
-			if err != nil {
-				slog.Error("Error adding parent relationship", "error", err)
-			}
-		}
-	}
+	m.applyParentRelationships(ctx, task.ID)
 
-	// 4. Apply child relationships with relation types
-	// CRITICAL: Child picker means current task BLOCKS ON selected task
-	// So: AddSubtaskWithRelationType(currentTaskID, childID, relationTypeID)
-	for _, item := range m.ChildPickerState.Items {
-		if item.Selected {
-			relationTypeID := item.RelationTypeID
-			if relationTypeID == 0 {
-				relationTypeID = 1 // Default to Parent/Child
-			}
-			err = m.Repo.AddSubtaskWithRelationType(ctx, task.ID, item.TaskRef.ID, relationTypeID)
-			if err != nil {
-				slog.Error("Error adding child relationship", "error", err)
-			}
-		}
-	}
+	m.applyChildRelationships(ctx, task.ID)
 
 	// 5. Reload all tasks for the project to keep state consistent
 	project := m.getCurrentProject()
@@ -275,12 +242,12 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 
 // updateExistingTaskWithLabelsAndRelationships updates task, labels, and parent/child relationships
 func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormValues) {
-	// Create context for database operations
+	// create context for database operations
 	ctx, cancel := m.DbContext()
 	defer cancel()
 	taskID := m.FormState.EditingTaskID
 
-	// 1. Update task basic fields
+	// update task basic fields
 	err := m.Repo.UpdateTask(ctx, taskID, values.title, values.description)
 	if err != nil {
 		slog.Error("Error updating task", "error", err)
@@ -288,13 +255,62 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 		return
 	}
 
-	// 2. Update labels
+	// update labels
 	err = m.Repo.SetTaskLabels(ctx, taskID, values.labelIDs)
 	if err != nil {
 		slog.Error("Error setting labels", "error", err)
 	}
 
-	// 3. Sync parent relationships with relation types
+	m.syncParentRelationships(ctx, taskID)
+
+	m.syncChildRelationships(ctx, taskID)
+
+	// reload all tasks for the project to keep state consistent
+	project := m.getCurrentProject()
+	if project != nil {
+		tasksByColumn, err := m.Repo.GetTaskSummariesByProject(ctx, project.ID)
+		if err != nil {
+			slog.Error("Error reloading tasks", "error", err)
+		} else {
+			m.AppState.SetTasks(tasksByColumn)
+		}
+	}
+}
+
+// applyParentRelationships applies parent relationships from ParentPickerState to a task
+func (m *Model) applyParentRelationships(ctx context.Context, taskID int) {
+	for _, item := range m.ParentPickerState.Items {
+		if item.Selected {
+			relationTypeID := item.RelationTypeID
+			if relationTypeID == 0 {
+				relationTypeID = 1 // Default to Parent/Child
+			}
+			err := m.Repo.AddSubtaskWithRelationType(ctx, item.TaskRef.ID, taskID, relationTypeID)
+			if err != nil {
+				slog.Error("Error adding parent relationship", "error", err)
+			}
+		}
+	}
+}
+
+// applyChildRelationships applies child relationships from ChildPickerState to a task
+func (m *Model) applyChildRelationships(ctx context.Context, taskID int) {
+	for _, item := range m.ChildPickerState.Items {
+		if item.Selected {
+			relationTypeID := item.RelationTypeID
+			if relationTypeID == 0 {
+				relationTypeID = 1 // Default to Parent/Child
+			}
+			err := m.Repo.AddSubtaskWithRelationType(ctx, taskID, item.TaskRef.ID, relationTypeID)
+			if err != nil {
+				slog.Error("Error adding child relationship", "error", err)
+			}
+		}
+	}
+}
+
+// syncParentRelationships syncs parent relationships for an existing task by diffing current and new state.
+func (m *Model) syncParentRelationships(ctx context.Context, taskID int) {
 	// Get current parents from database
 	currentParents, err := m.Repo.GetParentTasks(ctx, taskID)
 	if err != nil {
@@ -340,8 +356,11 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 			}
 		}
 	}
+}
 
-	// 4. Sync child relationships with relation types
+// syncChildRelationships syncs child relationships for an existing task by diffing current and new state.
+func (m *Model) syncChildRelationships(ctx context.Context, taskID int) {
+	// Get current children from database
 	currentChildren, err := m.Repo.GetChildTasks(ctx, taskID)
 	if err != nil {
 		slog.Error("Error getting current children", "error", err)
@@ -384,17 +403,6 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 			if err != nil {
 				slog.Error("Error adding/updating child", "childID", childID, "error", err)
 			}
-		}
-	}
-
-	// 5. Reload all tasks for the project to keep state consistent
-	project := m.getCurrentProject()
-	if project != nil {
-		tasksByColumn, err := m.Repo.GetTaskSummariesByProject(ctx, project.ID)
-		if err != nil {
-			slog.Error("Error reloading tasks", "error", err)
-		} else {
-			m.AppState.SetTasks(tasksByColumn)
 		}
 	}
 }
