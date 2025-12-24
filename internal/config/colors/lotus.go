@@ -36,5 +36,9 @@ func Lotus() *ColorScheme {
 		WarningBg: palette.lotusYellow4,
 		ErrorFg:   palette.lotusRed3,
 		ErrorBg:   palette.lotusRed4,
+
+		// Status bar
+		StatusBarBg:   palette.lotusViolet4, // Matches accent
+		StatusBarText: palette.lotusWhite0,  // Light background for contrast
 	}
 }

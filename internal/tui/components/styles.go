@@ -85,7 +85,14 @@ var (
 	// ErrorBannerStyle defines the appearance of error messages (red)
 	ErrorBannerStyle lipgloss.Style
 
+	// IndicatorStyle defines the appearance of scroll indicators
 	IndicatorStyle lipgloss.Style
+
+	// StatusBarStyle defines the base style for the status bar
+	StatusBarStyle lipgloss.Style
+
+	// StatusBarSearchStyle defines the style for the search section in the status bar
+	StatusBarSearchStyle lipgloss.Style
 )
 
 // InitStyles initializes all styles with the given color scheme
@@ -190,4 +197,11 @@ func InitStyles(colors config.ColorScheme) {
 	IndicatorStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Subtle)).
 		Align(lipgloss.Center)
+
+	StatusBarStyle = lipgloss.NewStyle().
+		Background(lipgloss.Color(colors.StatusBarBg)).
+		Foreground(lipgloss.Color(colors.StatusBarText))
+
+	StatusBarSearchStyle = lipgloss.NewStyle().
+		Background(lipgloss.Color(colors.Background))
 }
