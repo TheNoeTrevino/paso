@@ -2,17 +2,14 @@
 
 **Paso** (Spanish for "step") is a zero-setup, terminal-based kanban board for personal task management.
 
-## Current Status: Phase 1 Complete ✅
+## Features
 
-Phase 1 implements the database foundation with SQLite persistence and CRUD operations.
-
-## Features Implemented
-
+- **Dual Interface**: Both CLI commands and interactive TUI
+- **Agent-Friendly**: JSON output, quiet mode, structured exit codes
 - **SQLite Database**: Pure Go implementation using `modernc.org/sqlite` (no CGo dependencies)
 - **Auto-initialization**: Database and directory (`~/.paso/`) created automatically on first run
-- **Default Columns**: Three columns pre-seeded: "Todo", "In Progress", "Done"
-- **Full CRUD Operations**: Create, read, update, and delete tasks and columns
-- **Proper Schema**: Foreign key constraints, indexes, and timestamps
+- **Live Updates**: Optional daemon for real-time updates across sessions
+- **Shell Completion**: Auto-completion for bash, zsh, fish, and PowerShell
 - **Customizable Key Mappings**: Configure keyboard shortcuts via YAML config file
 
 ## Project Structure
@@ -32,20 +29,142 @@ paso/
 └── README.md
 ```
 
-## Building and Running
+## Installation
 
 ```bash
-# Build the project
-go build
+# Build from source
+go build -o bin/paso .
 
-# Run the application
-./paso
+# Install to system path
+sudo cp bin/paso /usr/local/bin/
 
-# The database will be created at:
-~/.paso/tasks.db
+# Or use install script (if available)
+./install.sh
+```
 
-# Configuration file (optional):
-~/.config/paso/config.yaml
+## Quick Start
+
+```bash
+# Show help
+paso
+
+# Launch interactive TUI
+paso tui
+
+# Create a project
+paso project create --title="My Project"
+
+# Create a task
+paso task create --title="Fix bug" --project=1
+
+# List tasks
+paso task list --project=1
+```
+
+## CLI Usage
+
+### Project Management
+
+```bash
+# Create a project
+paso project create --title="Backend API"
+
+# List all projects
+paso project list
+
+# List projects (JSON output)
+paso project list --json
+
+# Delete a project
+paso project delete <project-id>
+```
+
+### Task Management
+
+```bash
+# Create a simple task
+paso task create --title="Fix login bug" --project=1
+
+# Create a feature task with priority
+paso task create \
+  --title="User authentication" \
+  --description="Implement JWT auth" \
+  --type=feature \
+  --priority=high \
+  --project=1
+
+# Create a subtask
+PARENT_ID=$(paso task create --title="Parent task" --project=1 --quiet)
+paso task create --title="Subtask" --parent=$PARENT_ID --project=1
+
+# List tasks
+paso task list --project=1
+
+# Update task
+paso task update <task-id> --title="New title" --priority=critical
+
+# Delete task
+paso task delete <task-id>
+```
+
+### Column Management
+
+```bash
+# Create a column
+paso column create --name="In Review" --project=1
+
+# List columns for a project
+paso column list --project=1
+```
+
+### Label Management
+
+```bash
+# Create a label
+paso label create --name="bug" --color="#FF0000" --project=1
+
+# List labels
+paso label list --project=1
+
+# Attach label to task
+paso label attach <task-id> <label-id>
+```
+
+### Agent-Friendly Features
+
+Paso is designed to work well with AI agents and shell scripts:
+
+```bash
+# Quiet mode: Returns only the ID
+PROJECT_ID=$(paso project create --title="New Project" --quiet)
+TASK_ID=$(paso task create --title="Task" --project=$PROJECT_ID --quiet)
+
+# JSON mode: Structured output for parsing
+paso task list --project=1 --json | jq '.tasks[] | select(.priority.name=="high")'
+
+# Exit codes for error handling
+paso task create --title="Test" --project=999 --quiet
+if [ $? -eq 3 ]; then
+  echo "Project not found"
+fi
+```
+
+### Shell Completion
+
+```bash
+# Generate completion script for your shell
+paso completion bash > /etc/bash_completion.d/paso  # Linux
+paso completion bash > $(brew --prefix)/etc/bash_completion.d/paso  # macOS
+paso completion zsh > "${fpath[1]}/_paso"
+paso completion fish > ~/.config/fish/completions/paso.fish
+```
+
+## TUI (Terminal User Interface)
+
+Launch the interactive TUI with:
+
+```bash
+paso tui
 ```
 
 ## Configuration
@@ -61,6 +180,14 @@ cp config.example.yaml ~/.config/paso/config.yaml
 
 # Edit to customize your key bindings
 nano ~/.config/paso/config.yaml
+```
+
+### File Locations
+
+```
+~/.paso/tasks.db              # SQLite database
+~/.paso/paso.sock             # Unix socket for daemon (optional)
+~/.config/paso/config.yaml    # Configuration file
 ```
 
 ### Default Key Bindings
@@ -100,44 +227,28 @@ nano ~/.config/paso/config.yaml
 
 All key bindings can be customized in `~/.config/paso/config.yaml`.
 
-## Database Schema
+## Exit Codes
 
-### Columns Table
-- `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
-- `name` (TEXT NOT NULL)
-- `position` (INTEGER NOT NULL)
+Paso uses consistent exit codes for automation:
 
-### Tasks Table
-- `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
-- `title` (TEXT NOT NULL)
-- `description` (TEXT)
-- `column_id` (INTEGER NOT NULL, FK to columns.id)
-- `position` (INTEGER NOT NULL)
-- `created_at` (DATETIME DEFAULT CURRENT_TIMESTAMP)
-- `updated_at` (DATETIME DEFAULT CURRENT_TIMESTAMP)
+- `0` - Success
+- `1` - General error
+- `2` - Usage error (invalid flags)
+- `3` - Not found (project/task doesn't exist)
+- `5` - Validation error (invalid input)
+- `6` - Dependency error (circular dependency, etc.)
 
-## API Reference
+## Optional Daemon
 
-### Database Functions
+Start the daemon for live updates across sessions:
 
-```go
-// Initialize database connection
-db, err := database.InitDB()
+```bash
+# Start daemon
+paso-daemon &
 
-// Column operations
-column, err := database.CreateColumn(db, "Backlog", 0)
-columns, err := database.GetAllColumns(db)
-
-// Task operations
-task, err := database.CreateTask(db, "Fix bug", "Description", columnID, position)
-tasks, err := database.GetTasksByColumn(db, columnID)
-err := database.UpdateTaskColumn(db, taskID, newColumnID, newPosition)
-err := database.DeleteTask(db, taskID)
+# The daemon listens on ~/.paso/paso.sock
+# CLI commands automatically connect to it when available
 ```
-
-## Next Steps: Phase 2
-
-Phase 2 will implement the Bubble Tea TUI framework to create the interactive terminal interface.
 
 ## Tech Stack
 
