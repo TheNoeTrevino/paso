@@ -16,7 +16,7 @@ func TestMoveTaskBetweenColumns(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create columns
 	col1, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -110,7 +110,7 @@ func TestTaskCreationPersistence(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create a column first
 	col, err := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -162,7 +162,7 @@ func TestTaskUpdatePersistence(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create column and task
 	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -195,7 +195,7 @@ func TestTaskDetailIncludesAllFields(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create column, task with description, and labels
 	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -243,7 +243,7 @@ func TestSwapTaskUp(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create a column
 	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -300,7 +300,7 @@ func TestSwapTaskDown(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create a column
 	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)
@@ -357,7 +357,7 @@ func TestSwapTaskUpAndDown(t *testing.T) {
 			log.Printf("failed to close database: %v", err)
 		}
 	}()
-	repo := NewRepository(db)
+	repo := NewRepository(db, nil)
 
 	// Create a column
 	col, _ := repo.CreateColumn(context.Background(), "Todo", 1, nil)

@@ -1,80 +1,117 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
-	tea "charm.land/bubbletea/v2"
-	"github.com/thenoetrevino/paso/internal/config"
-	"github.com/thenoetrevino/paso/internal/database"
+	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/tui"
 )
 
+var (
+	// Version information (set via ldflags during build)
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
+var rootCmd = &cobra.Command{
+	Use:   "paso",
+	Short: "Terminal-based Kanban board with CLI and TUI",
+	Long: `Paso is a zero-setup, terminal-based kanban board for personal task management.
+
+Use 'paso tui' to launch the interactive TUI.
+Use 'paso task create ...' for CLI commands.`,
+	Version: version,
+	// No Run function - shows help text by default
+}
+
 func main() {
-	// Create root context with signal handling for graceful shutdown
-	ctx, cancel := signal.NotifyContext(
-		context.Background(),
-		os.Interrupt,
-		syscall.SIGTERM,
-	)
-	defer cancel()
-
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
+}
 
-	initCtx := context.Background()
-	db, err := database.InitDB(initCtx)
-	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+func init() {
+	// Set version template to include build info
+	rootCmd.SetVersionTemplate(fmt.Sprintf("paso version %s\n  commit: %s\n  built: %s\n", version, commit, date))
+
+	// Add CLI subcommands
+	rootCmd.AddCommand(cli.TaskCmd())
+	rootCmd.AddCommand(cli.ProjectCmd())
+	rootCmd.AddCommand(cli.ColumnCmd())
+	rootCmd.AddCommand(cli.LabelCmd())
+
+	// Add TUI subcommand
+	tuiCmd := &cobra.Command{
+		Use:   "tui",
+		Short: "Launch the interactive TUI",
+		Long:  "Launch the interactive terminal user interface for managing tasks visually.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return tui.Launch()
+		},
 	}
+	rootCmd.AddCommand(tuiCmd)
 
-	// database cleanup
-	defer func() {
-		// Create drain context with 5-second timeout
-		drainCtx, drainCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer drainCancel()
+	// Add completion command
+	completionCmd := &cobra.Command{
+		Use:   "completion [bash|zsh|fish|powershell]",
+		Short: "Generate shell completion script",
+		Long: `Generate shell completion script for paso.
 
-		// Allow time for in-flight operations to complete
-		select {
-		case <-drainCtx.Done():
-			log.Println("Drain period complete, closing database")
-		case <-time.After(100 * time.Millisecond):
-			// Small delay to allow operations to wrap up
-		}
+To load completions:
 
-		if err := db.Close(); err != nil {
-			log.Printf("Error closing database: %v", err)
-		}
-	}()
+Bash:
+  $ source <(paso completion bash)
 
-	repo := database.NewRepository(db)
-	model := tui.InitialModel(ctx, repo, cfg)
-	p := tea.NewProgram(model, tea.WithContext(ctx))
+  # To load completions for each session, execute once:
+  # Linux:
+  $ paso completion bash > /etc/bash_completion.d/paso
+  # macOS:
+  $ paso completion bash > $(brew --prefix)/etc/bash_completion.d/paso
 
-	// goroutine to monitor cancellation
-	errChan := make(chan error, 1)
-	go func() {
-		_, err := p.Run()
-		errChan <- err
-	}()
+Zsh:
+  # If shell completion is not already enabled in your environment,
+  # you will need to enable it. You can execute the following once:
+  $ echo "autoload -U compinit; compinit" >> ~/.zshrc
 
-	// Wait for program completion or cancellation
-	select {
-	case err := <-errChan:
-		if err != nil {
-			fmt.Printf("Error running program: %v\n", err)
-			log.Fatal(err)
-		}
-	case <-ctx.Done():
-		log.Println("Shutdown signal received, cleaning up...")
-		// Give the program 5 seconds to clean up database queties still running
-		time.Sleep(5 * time.Second)
+  # To load completions for each session, execute once:
+  $ paso completion zsh > "${fpath[1]}/_paso"
+
+  # You will need to start a new shell for this setup to take effect.
+
+Fish:
+  $ paso completion fish | source
+
+  # To load completions for each session, execute once:
+  $ paso completion fish > ~/.config/fish/completions/paso.fish
+
+PowerShell:
+  PS> paso completion powershell | Out-String | Invoke-Expression
+
+  # To load completions for every new session, run:
+  PS> paso completion powershell > paso.ps1
+  # and source this file from your PowerShell profile.
+`,
+		DisableFlagsInUseLine: true,
+		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
+		Args:                  cobra.ExactValidArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			switch args[0] {
+			case "bash":
+				return rootCmd.GenBashCompletion(os.Stdout)
+			case "zsh":
+				return rootCmd.GenZshCompletion(os.Stdout)
+			case "fish":
+				return rootCmd.GenFishCompletion(os.Stdout, true)
+			case "powershell":
+				return rootCmd.GenPowerShellCompletionWithDesc(os.Stdout)
+			default:
+				return fmt.Errorf("unsupported shell type: %s", args[0])
+			}
+		},
 	}
+	rootCmd.AddCommand(completionCmd)
 }

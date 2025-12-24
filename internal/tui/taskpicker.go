@@ -27,6 +27,7 @@ import (
 //   - pickerType: Title displayed at the top ("Parent Issues" or "Child Issues").
 //   - width: Maximum width for the picker content in characters.
 //   - height: Maximum height for the picker content in rows (currently unused but reserved for scrolling).
+//   - isParentPicker: True for parent picker, false for child picker. Determines which label to show.
 //
 // Returns:
 //   - A formatted string ready for rendering in the terminal.
@@ -37,6 +38,7 @@ func RenderTaskPicker(
 	pickerType string, // "Parent Issues" or "Child Issues"
 	width int,
 	height int,
+	isParentPicker bool,
 ) string {
 	var content strings.Builder
 
@@ -73,8 +75,30 @@ func RenderTaskPicker(
 		// Task identifier (PROJ-123 format)
 		taskID := fmt.Sprintf("%s-%d", item.TaskRef.ProjectName, item.TaskRef.TicketNumber)
 
-		// Truncate title if needed to fit width
+		// For selected items, show relation type
+		var relationLabel string
+		var relationLabelPlain string // For length calculation
+		if item.Selected && item.RelationTypeID > 0 {
+			relationTypes := GetRelationTypeOptions()
+			for _, rt := range relationTypes {
+				if rt.ID == item.RelationTypeID {
+					label := rt.CToPLabel
+					if isParentPicker {
+						label = rt.PToCLabel
+					}
+					labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(rt.Color))
+					relationLabel = labelStyle.Render(label)
+					relationLabelPlain = label
+					break
+				}
+			}
+		}
+
+		// Truncate title if needed to fit width (reserve space for relation label)
 		maxLen := width - 12
+		if relationLabelPlain != "" {
+			maxLen -= len(relationLabelPlain) + 4 // Reserve space for label + padding
+		}
 		title := item.TaskRef.Title
 		if len(title) > maxLen {
 			title = title[:maxLen-3] + "..."
@@ -82,6 +106,18 @@ func RenderTaskPicker(
 
 		// Build line: [x] PROJ-12: Task title
 		line := fmt.Sprintf("%s %s: %s", checkbox, taskID, title)
+
+		// Add relation label if present (right-aligned)
+		if relationLabel != "" {
+			// Calculate padding to right-align the label
+			lineLen := len(checkbox) + 1 + len(taskID) + 2 + len(title)
+			paddingNeeded := width - lineLen - len(relationLabelPlain) - 8
+			if paddingNeeded > 0 {
+				line += strings.Repeat(" ", paddingNeeded) + relationLabel
+			} else {
+				line += " " + relationLabel
+			}
+		}
 
 		// Apply cursor styling
 		if i == cursorIdx {

@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
 // ColumnRepo handles all column-related database operations.
 type ColumnRepo struct {
-	db *sql.DB
+	db          *sql.DB
+	eventClient events.EventPublisher
 }
 
 // CreateColumn creates a new column in the database for a specific project
@@ -101,6 +103,9 @@ func (r *ColumnRepo) CreateColumn(ctx context.Context, name string, projectID in
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	// Send event notification after commit
+	sendEvent(r.eventClient, projectID)
+
 	return &models.Column{
 		ID:        newIDInt,
 		Name:      name,
@@ -120,11 +125,7 @@ func (r *ColumnRepo) GetColumnsByProject(ctx context.Context, projectID int) ([]
 	if err != nil {
 		return nil, fmt.Errorf("querying columns for project: %w", err)
 	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Printf("failed to close rows: %v", err)
-		}
-	}()
+	defer closeRows(rows, "GetColumnsByProject")
 
 	// Build a map for O(1) lookups and find the head
 	columnMap := make(map[int]*models.Column)
@@ -139,17 +140,12 @@ func (r *ColumnRepo) GetColumnsByProject(ctx context.Context, projectID int) ([]
 		}
 
 		// Set pointer fields
-		if prevID.Valid {
-			prevIDInt := int(prevID.Int64)
-			col.PrevID = &prevIDInt
-		} else {
-			// This is the head (prev_id is NULL)
-			headID = &col.ID
-		}
+		col.PrevID = nullInt64ToPtr(prevID)
+		col.NextID = nullInt64ToPtr(nextID)
 
-		if nextID.Valid {
-			nextIDInt := int(nextID.Int64)
-			col.NextID = &nextIDInt
+		// Track head (where prev_id is NULL)
+		if !prevID.Valid {
+			headID = &col.ID
 		}
 
 		columnMap[col.ID] = col
@@ -207,11 +203,24 @@ func (r *ColumnRepo) GetColumnByID(ctx context.Context, columnID int) (*models.C
 
 // UpdateColumnName updates the name of an existing column
 func (r *ColumnRepo) UpdateColumnName(ctx context.Context, columnID int, name string) error {
-	_, err := r.db.ExecContext(ctx,
+	// Get projectID for event notification
+	projectID, err := getProjectIDFromTable(ctx, r.db, "columns", columnID)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.ExecContext(ctx,
 		`UPDATE columns SET name = ? WHERE id = ?`,
 		name, columnID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Send event notification
+	sendEvent(r.eventClient, projectID)
+
+	return nil
 }
 
 // DeleteColumn removes a column and all its tasks from the database
@@ -227,12 +236,13 @@ func (r *ColumnRepo) DeleteColumn(ctx context.Context, columnID int) error {
 		}
 	}()
 
-	// 1. Get the column's prev_id and next_id
+	// 1. Get the column's prev_id, next_id, and projectID
 	var prevID, nextID sql.NullInt64
+	var projectID int
 	err = tx.QueryRowContext(ctx,
-		`SELECT prev_id, next_id FROM columns WHERE id = ?`,
+		`SELECT prev_id, next_id, project_id FROM columns WHERE id = ?`,
 		columnID,
-	).Scan(&prevID, &nextID)
+	).Scan(&prevID, &nextID, &projectID)
 	if err != nil {
 		return err
 	}
@@ -278,5 +288,12 @@ func (r *ColumnRepo) DeleteColumn(ctx context.Context, columnID int) error {
 		return err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	// Send event notification after commit
+	sendEvent(r.eventClient, projectID)
+
+	return nil
 }

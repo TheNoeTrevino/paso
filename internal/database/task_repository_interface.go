@@ -21,6 +21,7 @@ type TaskWriter interface {
 	CreateTask(ctx context.Context, title, description string, columnID, position int) (*models.Task, error)
 	UpdateTask(ctx context.Context, id int, title, description string) error
 	UpdateTaskPriority(ctx context.Context, taskID, priorityID int) error
+	UpdateTaskType(ctx context.Context, taskID, typeID int) error
 	DeleteTask(ctx context.Context, id int) error
 }
 
@@ -38,11 +39,13 @@ type TaskRelationshipReader interface {
 	GetParentTasks(ctx context.Context, taskID int) ([]*models.TaskReference, error)
 	GetChildTasks(ctx context.Context, taskID int) ([]*models.TaskReference, error)
 	GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error)
+	GetAllRelationTypes(ctx context.Context) ([]*models.RelationType, error)
 }
 
 // TaskRelationshipWriter defines write operations for task relationships.
 type TaskRelationshipWriter interface {
 	AddSubtask(ctx context.Context, parentID, childID int) error
+	AddSubtaskWithRelationType(ctx context.Context, parentID, childID, relationTypeID int) error
 	RemoveSubtask(ctx context.Context, parentID, childID int) error
 }
 

@@ -8,12 +8,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
 // TaskRepo handles all task-related database operations.
 type TaskRepo struct {
-	db *sql.DB
+	db          *sql.DB
+	eventClient events.EventPublisher
 }
 
 const defaultTaskCapacity = 50
@@ -21,13 +23,9 @@ const defaultTaskCapacity = 50
 // CreateTask creates a new task in the database with an auto-assigned ticket number
 func (r *TaskRepo) CreateTask(ctx context.Context, title, description string, columnID, position int) (*models.Task, error) {
 	// Get project ID from column
-	var projectID int
-	err := r.db.QueryRowContext(ctx,
-		`SELECT project_id FROM columns WHERE id = ?`,
-		columnID,
-	).Scan(&projectID)
+	projectID, err := getProjectIDFromTable(ctx, r.db, "columns", columnID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get project for column %d: %w", columnID, err)
+		return nil, err
 	}
 
 	// Start transaction for ticket number allocation and task creation
@@ -80,6 +78,9 @@ func (r *TaskRepo) CreateTask(ctx context.Context, title, description string, co
 		return nil, fmt.Errorf("failed to commit task creation transaction: %w", err)
 	}
 
+	// Send event notification after commit
+	sendEvent(r.eventClient, projectID)
+
 	// Retrieve the created task to get timestamps
 	task := &models.Task{}
 	err = r.db.QueryRowContext(ctx,
@@ -108,11 +109,7 @@ func (r *TaskRepo) GetTasksByColumn(ctx context.Context, columnID int) ([]*model
 	if err != nil {
 		return nil, fmt.Errorf("failed to query tasks for column %d: %w", columnID, err)
 	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Printf("failed to close rows: %v", err)
-		}
-	}()
+	defer closeRows(rows, "GetTasksByColumn")
 
 	tasks := make([]*models.Task, 0, defaultTaskCapacity)
 	for rows.Next() {
@@ -134,9 +131,6 @@ func (r *TaskRepo) GetTasksByColumn(ctx context.Context, columnID int) ([]*model
 // GetTaskSummariesByColumn retrieves task summaries for a column, including labels
 // Uses a single query with LEFT JOIN to avoid N+1 query pattern
 func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) ([]*models.TaskSummary, error) {
-	// Single query with LEFT JOIN to fetch tasks and their labels
-	// GROUP_CONCAT aggregates labels for each task
-	// Use ASCII Unit Separator (0x1F) as delimiter to avoid conflicts with user data
 	query := `
 		SELECT
 			t.id,
@@ -162,179 +156,9 @@ func (r *TaskRepo) GetTaskSummariesByColumn(ctx context.Context, columnID int) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to query task summaries for column %d: %w", columnID, err)
 	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Printf("failed to close rows: %v", err)
-		}
-	}()
+	defer closeRows(rows, "GetTaskSummariesByColumn")
 
 	summaries := make([]*models.TaskSummary, 0, defaultTaskCapacity)
-	for rows.Next() {
-		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
-		var typeDesc, priorityDesc, priorityColor sql.NullString
-		summary := &models.TaskSummary{}
-
-		if err := rows.Scan(
-			&summary.ID,
-			&summary.Title,
-			&summary.ColumnID,
-			&summary.Position,
-			&typeDesc,
-			&priorityDesc,
-			&priorityColor,
-			&labelIDsStr,
-			&labelNamesStr,
-			&labelColorsStr,
-		); err != nil {
-			return nil, fmt.Errorf("failed to scan task summary for column %d: %w", columnID, err)
-		}
-
-		// Set type description (default to empty string if null)
-		if typeDesc.Valid {
-			summary.TypeDescription = typeDesc.String
-		}
-
-		// Set priority description and color (default to empty string if null)
-		if priorityDesc.Valid {
-			summary.PriorityDescription = priorityDesc.String
-		}
-		if priorityColor.Valid {
-			summary.PriorityColor = priorityColor.String
-		}
-
-		// Parse concatenated label data
-		summary.Labels = parseLabelStrings(labelIDsStr, labelNamesStr, labelColorsStr)
-		summaries = append(summaries, summary)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating task summaries for column %d: %w", columnID, err)
-	}
-	return summaries, nil
-}
-
-// GetTaskSummariesByProject retrieves all task summaries for a project, grouped by column
-// This prevents N+1 queries by fetching all tasks at once
-func (r *TaskRepo) GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error) {
-	// Use ASCII Unit Separator (0x1F) as delimiter to avoid conflicts with user data
-	query := `
-		SELECT
-			t.id,
-			t.title,
-			t.column_id,
-			t.position,
-			ty.description,
-			p.description,
-			p.color,
-			GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
-			GROUP_CONCAT(l.name, CHAR(31)) as label_names,
-			GROUP_CONCAT(l.color, CHAR(31)) as label_colors
-		FROM tasks t
-		INNER JOIN columns c ON t.column_id = c.id
-		LEFT JOIN types ty ON t.type_id = ty.id
-		LEFT JOIN priorities p ON t.priority_id = p.id
-		LEFT JOIN task_labels tl ON t.id = tl.task_id
-		LEFT JOIN labels l ON tl.label_id = l.id
-		WHERE c.project_id = ?
-		GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
-		ORDER BY t.position`
-
-	rows, err := r.db.QueryContext(ctx, query, projectID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query task summaries for project %d: %w", projectID, err)
-	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Printf("failed to close rows: %v", err)
-		}
-	}()
-
-	// Group tasks by column_id
-	tasksByColumn := make(map[int][]*models.TaskSummary)
-	for rows.Next() {
-		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
-		var typeDesc, priorityDesc, priorityColor sql.NullString
-		summary := &models.TaskSummary{}
-
-		if err := rows.Scan(
-			&summary.ID,
-			&summary.Title,
-			&summary.ColumnID,
-			&summary.Position,
-			&typeDesc,
-			&priorityDesc,
-			&priorityColor,
-			&labelIDsStr,
-			&labelNamesStr,
-			&labelColorsStr,
-		); err != nil {
-			return nil, fmt.Errorf("failed to scan task summary for project %d: %w", projectID, err)
-		}
-
-		// Set type description (default to empty string if null)
-		if typeDesc.Valid {
-			summary.TypeDescription = typeDesc.String
-		}
-
-		// Set priority description and color (default to empty string if null)
-		if priorityDesc.Valid {
-			summary.PriorityDescription = priorityDesc.String
-		}
-		if priorityColor.Valid {
-			summary.PriorityColor = priorityColor.String
-		}
-
-		// Parse concatenated label data
-		summary.Labels = parseLabelStrings(labelIDsStr, labelNamesStr, labelColorsStr)
-
-		// Append to the appropriate column slice
-		tasksByColumn[summary.ColumnID] = append(tasksByColumn[summary.ColumnID], summary)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating task summaries for project %d: %w", projectID, err)
-	}
-	return tasksByColumn, nil
-}
-
-// GetTaskSummariesByProjectFiltered retrieves task summaries for a project that match the search query
-// Uses case-insensitive LIKE search on task title
-func (r *TaskRepo) GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error) {
-	// Use ASCII Unit Separator (0x1F) as delimiter to avoid conflicts with user data
-	query := `
-		SELECT
-			t.id,
-			t.title,
-			t.column_id,
-			t.position,
-			ty.description,
-			p.description,
-			p.color,
-			GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
-			GROUP_CONCAT(l.name, CHAR(31)) as label_names,
-			GROUP_CONCAT(l.color, CHAR(31)) as label_colors
-		FROM tasks t
-		INNER JOIN columns c ON t.column_id = c.id
-		LEFT JOIN types ty ON t.type_id = ty.id
-		LEFT JOIN priorities p ON t.priority_id = p.id
-		LEFT JOIN task_labels tl ON t.id = tl.task_id
-		LEFT JOIN labels l ON tl.label_id = l.id
-		WHERE c.project_id = ? AND t.title LIKE ?
-		GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
-		ORDER BY t.position`
-
-	rows, err := r.db.QueryContext(ctx, query, projectID, "%"+searchQuery+"%")
-	if err != nil {
-		return nil, fmt.Errorf("failed to query filtered tasks for project %d: %w", projectID, err)
-	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Printf("failed to close rows: %v", err)
-		}
-	}()
-
-	// Group tasks by column_id (same as GetTaskSummariesByProject)
-	tasksByColumn := make(map[int][]*models.TaskSummary)
 	for rows.Next() {
 		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
 		var typeDesc, priorityDesc, priorityColor sql.NullString
@@ -355,12 +179,9 @@ func (r *TaskRepo) GetTaskSummariesByProjectFiltered(ctx context.Context, projec
 			return nil, fmt.Errorf("failed to scan task summary: %w", err)
 		}
 
-		// Set type description (default to empty string if null)
 		if typeDesc.Valid {
 			summary.TypeDescription = typeDesc.String
 		}
-
-		// Set priority description and color (default to empty string if null)
 		if priorityDesc.Valid {
 			summary.PriorityDescription = priorityDesc.String
 		}
@@ -368,16 +189,172 @@ func (r *TaskRepo) GetTaskSummariesByProjectFiltered(ctx context.Context, projec
 			summary.PriorityColor = priorityColor.String
 		}
 
-		// Parse concatenated label data
 		summary.Labels = parseLabelStrings(labelIDsStr, labelNamesStr, labelColorsStr)
+		summaries = append(summaries, summary)
+	}
 
-		// Append to the appropriate column slice
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating task summaries: %w", err)
+	}
+
+	return summaries, nil
+}
+
+// GetTaskSummariesByProject retrieves all task summaries for a project, grouped by column
+// This prevents N+1 queries by fetching all tasks at once
+func (r *TaskRepo) GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error) {
+	query := `
+		SELECT
+			t.id,
+			t.title,
+			t.column_id,
+			t.position,
+			ty.description,
+			p.description,
+			p.color,
+			GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
+			GROUP_CONCAT(l.name, CHAR(31)) as label_names,
+			GROUP_CONCAT(l.color, CHAR(31)) as label_colors,
+			EXISTS(
+				SELECT 1 FROM task_subtasks ts
+				INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
+				WHERE ts.parent_id = t.id AND rt.is_blocking = 1
+			) as is_blocked
+		FROM tasks t
+		INNER JOIN columns c ON t.column_id = c.id
+		LEFT JOIN types ty ON t.type_id = ty.id
+		LEFT JOIN priorities p ON t.priority_id = p.id
+		LEFT JOIN task_labels tl ON t.id = tl.task_id
+		LEFT JOIN labels l ON tl.label_id = l.id
+		WHERE c.project_id = ?
+		GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
+		ORDER BY t.position`
+
+	rows, err := r.db.QueryContext(ctx, query, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query task summaries for project %d: %w", projectID, err)
+	}
+	defer closeRows(rows, "GetTaskSummariesByProject")
+
+	tasksByColumn := make(map[int][]*models.TaskSummary)
+	for rows.Next() {
+		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
+		var typeDesc, priorityDesc, priorityColor sql.NullString
+		summary := &models.TaskSummary{}
+
+		if err := rows.Scan(
+			&summary.ID,
+			&summary.Title,
+			&summary.ColumnID,
+			&summary.Position,
+			&typeDesc,
+			&priorityDesc,
+			&priorityColor,
+			&labelIDsStr,
+			&labelNamesStr,
+			&labelColorsStr,
+			&summary.IsBlocked,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan task summary: %w", err)
+		}
+
+		if typeDesc.Valid {
+			summary.TypeDescription = typeDesc.String
+		}
+		if priorityDesc.Valid {
+			summary.PriorityDescription = priorityDesc.String
+		}
+		if priorityColor.Valid {
+			summary.PriorityColor = priorityColor.String
+		}
+
+		summary.Labels = parseLabelStrings(labelIDsStr, labelNamesStr, labelColorsStr)
 		tasksByColumn[summary.ColumnID] = append(tasksByColumn[summary.ColumnID], summary)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating task summaries: %w", err)
 	}
+
+	return tasksByColumn, nil
+}
+
+// GetTaskSummariesByProjectFiltered retrieves task summaries for a project that match the search query
+// Uses case-insensitive LIKE search on task title
+func (r *TaskRepo) GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error) {
+	query := `
+		SELECT
+			t.id,
+			t.title,
+			t.column_id,
+			t.position,
+			ty.description,
+			p.description,
+			p.color,
+			GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
+			GROUP_CONCAT(l.name, CHAR(31)) as label_names,
+			GROUP_CONCAT(l.color, CHAR(31)) as label_colors,
+			EXISTS(
+				SELECT 1 FROM task_subtasks ts
+				INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
+				WHERE ts.parent_id = t.id AND rt.is_blocking = 1
+			) as is_blocked
+		FROM tasks t
+		INNER JOIN columns c ON t.column_id = c.id
+		LEFT JOIN types ty ON t.type_id = ty.id
+		LEFT JOIN priorities p ON t.priority_id = p.id
+		LEFT JOIN task_labels tl ON t.id = tl.task_id
+		LEFT JOIN labels l ON tl.label_id = l.id
+		WHERE c.project_id = ? AND t.title LIKE ?
+		GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
+		ORDER BY t.position`
+
+	rows, err := r.db.QueryContext(ctx, query, projectID, "%"+searchQuery+"%")
+	if err != nil {
+		return nil, fmt.Errorf("failed to query filtered task summaries for project %d: %w", projectID, err)
+	}
+	defer closeRows(rows, "GetTaskSummariesByProjectFiltered")
+
+	tasksByColumn := make(map[int][]*models.TaskSummary)
+	for rows.Next() {
+		var labelIDsStr, labelNamesStr, labelColorsStr sql.NullString
+		var typeDesc, priorityDesc, priorityColor sql.NullString
+		summary := &models.TaskSummary{}
+
+		if err := rows.Scan(
+			&summary.ID,
+			&summary.Title,
+			&summary.ColumnID,
+			&summary.Position,
+			&typeDesc,
+			&priorityDesc,
+			&priorityColor,
+			&labelIDsStr,
+			&labelNamesStr,
+			&labelColorsStr,
+			&summary.IsBlocked,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan task summary: %w", err)
+		}
+
+		if typeDesc.Valid {
+			summary.TypeDescription = typeDesc.String
+		}
+		if priorityDesc.Valid {
+			summary.PriorityDescription = priorityDesc.String
+		}
+		if priorityColor.Valid {
+			summary.PriorityColor = priorityColor.String
+		}
+
+		summary.Labels = parseLabelStrings(labelIDsStr, labelNamesStr, labelColorsStr)
+		tasksByColumn[summary.ColumnID] = append(tasksByColumn[summary.ColumnID], summary)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating task summaries: %w", err)
+	}
+
 	return tasksByColumn, nil
 }
 
@@ -424,11 +401,7 @@ func (r *TaskRepo) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskD
 	if err != nil {
 		return nil, fmt.Errorf("failed to query labels for task %d: %w", taskID, err)
 	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Printf("failed to close rows: %v", err)
-		}
-	}()
+	defer closeRows(rows, "GetTaskDetail labels")
 
 	labels := make([]*models.Label, 0, 10)
 	for rows.Next() {
@@ -473,7 +446,19 @@ func (r *TaskRepo) GetTaskCountByColumn(ctx context.Context, columnID int) (int,
 
 // UpdateTask updates a task's title and description
 func (r *TaskRepo) UpdateTask(ctx context.Context, taskID int, title, description string) error {
-	_, err := r.db.ExecContext(ctx,
+	// Get projectID for event notification
+	var projectID int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT c.project_id FROM tasks t
+		 INNER JOIN columns c ON t.column_id = c.id
+		 WHERE t.id = ?`,
+		taskID,
+	).Scan(&projectID)
+	if err != nil {
+		return fmt.Errorf("failed to get project for task %d: %w", taskID, err)
+	}
+
+	_, err = r.db.ExecContext(ctx,
 		`UPDATE tasks
 		 SET title = ?, description = ?, updated_at = CURRENT_TIMESTAMP
 		 WHERE id = ?`,
@@ -482,12 +467,28 @@ func (r *TaskRepo) UpdateTask(ctx context.Context, taskID int, title, descriptio
 	if err != nil {
 		return fmt.Errorf("failed to update task %d: %w", taskID, err)
 	}
+
+	// Send event notification
+	sendEvent(r.eventClient, projectID)
+
 	return nil
 }
 
 // UpdateTaskPriority updates a task's priority
 func (r *TaskRepo) UpdateTaskPriority(ctx context.Context, taskID, priorityID int) error {
-	_, err := r.db.ExecContext(ctx,
+	// Get projectID for event notification
+	var projectID int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT c.project_id FROM tasks t
+		 INNER JOIN columns c ON t.column_id = c.id
+		 WHERE t.id = ?`,
+		taskID,
+	).Scan(&projectID)
+	if err != nil {
+		return fmt.Errorf("failed to get project for task %d: %w", taskID, err)
+	}
+
+	_, err = r.db.ExecContext(ctx,
 		`UPDATE tasks
 		 SET priority_id = ?, updated_at = CURRENT_TIMESTAMP
 		 WHERE id = ?`,
@@ -496,80 +497,50 @@ func (r *TaskRepo) UpdateTaskPriority(ctx context.Context, taskID, priorityID in
 	if err != nil {
 		return fmt.Errorf("failed to update task %d priority: %w", taskID, err)
 	}
+
+	// Send event notification
+	sendEvent(r.eventClient, projectID)
+
 	return nil
 }
 
-// MoveTaskToNextColumn moves a task from its current column to the next column in the linked list
-// Returns an error if the task doesn't exist or if there's no next column
-func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction for moving task %d to next column: %w", taskID, err)
-	}
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
-		}
-	}()
-
-	//  Get the task's current column_id
-	var currentColumnID int
-	err = tx.QueryRowContext(ctx,
-		`SELECT column_id FROM tasks WHERE id = ?`,
+// UpdateTaskType updates a task's type
+func (r *TaskRepo) UpdateTaskType(ctx context.Context, taskID, typeID int) error {
+	// Get projectID for event notification
+	var projectID int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT c.project_id FROM tasks t
+		 INNER JOIN columns c ON t.column_id = c.id
+		 WHERE t.id = ?`,
 		taskID,
-	).Scan(&currentColumnID)
+	).Scan(&projectID)
 	if err != nil {
-		return fmt.Errorf("failed to get current column for task %d: %w", taskID, err)
+		return fmt.Errorf("failed to get project for task %d: %w", taskID, err)
 	}
 
-	// Get the next column's ID
-	var nextColumnID sql.NullInt64
-	err = tx.QueryRowContext(ctx,
-		`SELECT next_id FROM columns WHERE id = ?`,
-		currentColumnID,
-	).Scan(&nextColumnID)
-	if err != nil {
-		return fmt.Errorf("failed to get next column for column %d: %w", currentColumnID, err)
-	}
-
-	// Check if there's a next column
-	if !nextColumnID.Valid {
-		return models.ErrAlreadyLastColumn
-	}
-
-	// Get the number of tasks in the next column to determine position
-	var taskCount int
-	err = tx.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM tasks WHERE column_id = ?`,
-		nextColumnID.Int64,
-	).Scan(&taskCount)
-	if err != nil {
-		return fmt.Errorf("failed to count tasks in target column %d: %w", nextColumnID.Int64, err)
-	}
-
-	// Move the task to the next column (append to end)
-	_, err = tx.ExecContext(ctx,
+	_, err = r.db.ExecContext(ctx,
 		`UPDATE tasks
-		 SET column_id = ?, position = ?, updated_at = CURRENT_TIMESTAMP
+		 SET type_id = ?, updated_at = CURRENT_TIMESTAMP
 		 WHERE id = ?`,
-		nextColumnID.Int64, taskCount, taskID,
+		typeID, taskID,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to move task %d to next column: %w", taskID, err)
+		return fmt.Errorf("failed to update task %d type: %w", taskID, err)
 	}
 
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction for moving task %d: %w", taskID, err)
-	}
+	// Send event notification
+	sendEvent(r.eventClient, projectID)
+
 	return nil
 }
 
-// MoveTaskToPrevColumn moves a task from its current column to the previous column in the linked list
-// Returns an error if the task doesn't exist or if there's no previous column
-func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
+// moveTaskToColumn is a consolidated helper that moves a task to a column.
+// For moveType "next" or "prev", it uses the linked list to find the target column.
+// For moveType "direct", targetColumnID is used directly (pass 0 for targetColumnID when using "next"/"prev").
+func (r *TaskRepo) moveTaskToColumn(ctx context.Context, taskID int, moveType string, targetColumnID int) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction for moving task %d to prev column: %w", taskID, err)
+		return fmt.Errorf("failed to begin transaction for moving task %d: %w", taskID, err)
 	}
 	defer func() {
 		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
@@ -577,92 +548,75 @@ func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		}
 	}()
 
-	// Get the task's current column_id
+	var finalTargetColumnID int
 	var currentColumnID int
-	err = tx.QueryRowContext(ctx,
-		`SELECT column_id FROM tasks WHERE id = ?`,
-		taskID,
-	).Scan(&currentColumnID)
-	if err != nil {
-		return fmt.Errorf("failed to get current column for task %d: %w", taskID, err)
-	}
 
-	// Get the previous column's ID
-	var prevColumnID sql.NullInt64
-	err = tx.QueryRowContext(ctx,
-		`SELECT prev_id FROM columns WHERE id = ?`,
-		currentColumnID,
-	).Scan(&prevColumnID)
-	if err != nil {
-		return fmt.Errorf("failed to get prev column for column %d: %w", currentColumnID, err)
-	}
-
-	// Check if there's a previous column
-	if !prevColumnID.Valid {
-		return models.ErrAlreadyFirstColumn
-	}
-
-	// Get the number of tasks in the previous column to determine position
-	var taskCount int
-	err = tx.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM tasks WHERE column_id = ?`,
-		prevColumnID.Int64,
-	).Scan(&taskCount)
-	if err != nil {
-		return fmt.Errorf("failed to count tasks in target column %d: %w", prevColumnID.Int64, err)
-	}
-
-	// Move the task to the previous column (append to end)
-	_, err = tx.ExecContext(ctx,
-		`UPDATE tasks
-		 SET column_id = ?, position = ?, updated_at = CURRENT_TIMESTAMP
-		 WHERE id = ?`,
-		prevColumnID.Int64, taskCount, taskID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to move task %d to prev column: %w", taskID, err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction for moving task %d: %w", taskID, err)
-	}
-	return nil
-}
-
-// MoveTaskToColumn moves a task to a specific target column.
-// The task is appended to the end of the target column.
-func (r *TaskRepo) MoveTaskToColumn(ctx context.Context, taskID int, targetColumnID int) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction for moving task %d to column %d: %w", taskID, targetColumnID, err)
-	}
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
+	switch moveType {
+	case "next", "prev":
+		// Get the task's current column_id
+		err = tx.QueryRowContext(ctx,
+			`SELECT column_id FROM tasks WHERE id = ?`,
+			taskID,
+		).Scan(&currentColumnID)
+		if err != nil {
+			return fmt.Errorf("failed to get current column for task %d: %w", taskID, err)
 		}
-	}()
 
-	// Verify the target column exists
-	var exists int
-	err = tx.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM columns WHERE id = ?`,
-		targetColumnID,
-	).Scan(&exists)
-	if err != nil {
-		return fmt.Errorf("failed to verify target column %d: %w", targetColumnID, err)
-	}
-	if exists == 0 {
-		return fmt.Errorf("target column %d does not exist", targetColumnID)
+		// Get the adjacent column's ID
+		var adjacentColumnID sql.NullInt64
+		var columnField string
+		switch moveType {
+		case "next":
+			columnField = "next_id"
+		case "prev":
+			columnField = "prev_id"
+		}
+
+		err = tx.QueryRowContext(ctx,
+			fmt.Sprintf(`SELECT %s FROM columns WHERE id = ?`, columnField),
+			currentColumnID,
+		).Scan(&adjacentColumnID)
+		if err != nil {
+			return fmt.Errorf("failed to get %s column for column %d: %w", moveType, currentColumnID, err)
+		}
+
+		// Check if there's an adjacent column
+		if !adjacentColumnID.Valid {
+			switch moveType {
+			case "next":
+				return models.ErrAlreadyLastColumn
+			case "prev":
+				return models.ErrAlreadyFirstColumn
+			}
+		}
+
+		finalTargetColumnID = int(adjacentColumnID.Int64)
+	case "direct":
+		// Verify the target column exists
+		var exists int
+		err = tx.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM columns WHERE id = ?`,
+			targetColumnID,
+		).Scan(&exists)
+		if err != nil {
+			return fmt.Errorf("failed to verify target column %d: %w", targetColumnID, err)
+		}
+		if exists == 0 {
+			return fmt.Errorf("target column %d does not exist", targetColumnID)
+		}
+		finalTargetColumnID = targetColumnID
+	default:
+		return fmt.Errorf("invalid move type: %s", moveType)
 	}
 
 	// Get the number of tasks in the target column to determine position
 	var taskCount int
 	err = tx.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM tasks WHERE column_id = ?`,
-		targetColumnID,
+		finalTargetColumnID,
 	).Scan(&taskCount)
 	if err != nil {
-		return fmt.Errorf("failed to count tasks in target column %d: %w", targetColumnID, err)
+		return fmt.Errorf("failed to count tasks in target column %d: %w", finalTargetColumnID, err)
 	}
 
 	// Move the task to the target column (append to end)
@@ -670,24 +624,62 @@ func (r *TaskRepo) MoveTaskToColumn(ctx context.Context, taskID int, targetColum
 		`UPDATE tasks
 		 SET column_id = ?, position = ?, updated_at = CURRENT_TIMESTAMP
 		 WHERE id = ?`,
-		targetColumnID, taskCount, taskID,
+		finalTargetColumnID, taskCount, taskID,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to move task %d to column %d: %w", taskID, targetColumnID, err)
+		return fmt.Errorf("failed to move task %d to column %d: %w", taskID, finalTargetColumnID, err)
+	}
+
+	// Get projectID for event notification
+	var projectID int
+	var columnIDForProject int
+	if moveType == "direct" {
+		columnIDForProject = targetColumnID
+	} else {
+		columnIDForProject = currentColumnID
+	}
+	err = tx.QueryRowContext(ctx,
+		`SELECT project_id FROM columns WHERE id = ?`,
+		columnIDForProject,
+	).Scan(&projectID)
+	if err != nil {
+		return fmt.Errorf("failed to get project for column %d: %w", columnIDForProject, err)
 	}
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction for moving task %d: %w", taskID, err)
 	}
+
+	// Send event notification after commit
+	sendEvent(r.eventClient, projectID)
+
 	return nil
 }
 
-// SwapTaskUp moves a task up in its column by swapping positions with the task above it.
-// Returns ErrAlreadyFirstTask if the task is already at position 0
-func (r *TaskRepo) SwapTaskUp(ctx context.Context, taskID int) error {
+// MoveTaskToNextColumn moves a task from its current column to the next column in the linked list
+// Returns an error if the task doesn't exist or if there's no next column
+func (r *TaskRepo) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
+	return r.moveTaskToColumn(ctx, taskID, "next", 0)
+}
+
+// MoveTaskToPrevColumn moves a task from its current column to the previous column in the linked list
+// Returns an error if the task doesn't exist or if there's no previous column
+func (r *TaskRepo) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
+	return r.moveTaskToColumn(ctx, taskID, "prev", 0)
+}
+
+// MoveTaskToColumn moves a task to a specific target column.
+// The task is appended to the end of the target column.
+func (r *TaskRepo) MoveTaskToColumn(ctx context.Context, taskID int, targetColumnID int) error {
+	return r.moveTaskToColumn(ctx, taskID, "direct", targetColumnID)
+}
+
+// swapTask is a consolidated helper that swaps a task's position with an adjacent task.
+// direction should be "up" or "down".
+func (r *TaskRepo) swapTask(ctx context.Context, taskID int, direction string) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction for swapping task %d up: %w", taskID, err)
+		return fmt.Errorf("failed to begin transaction for swapping task %d %s: %w", taskID, direction, err)
 	}
 	defer func() {
 		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
@@ -705,19 +697,41 @@ func (r *TaskRepo) SwapTaskUp(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to get task %d position: %w", taskID, err)
 	}
 
-	// Check if already at top (position 0)
-	if currentPos == 0 {
-		return models.ErrAlreadyFirstTask
-	}
+	var adjacentTaskID, newPos, adjacentPos int
 
-	// Find the task above (position - 1)
-	var aboveTaskID int
-	err = tx.QueryRowContext(ctx,
-		`SELECT id FROM tasks WHERE column_id = ? AND position = ?`,
-		columnID, currentPos-1,
-	).Scan(&aboveTaskID)
-	if err != nil {
-		return fmt.Errorf("failed to find task above position %d: %w", currentPos, err)
+	switch direction {
+	case "up":
+		// Find the task above (next smaller position)
+		err = tx.QueryRowContext(ctx,
+			`SELECT id, position FROM tasks
+			 WHERE column_id = ? AND position < ?
+			 ORDER BY position DESC LIMIT 1`,
+			columnID, currentPos,
+		).Scan(&adjacentTaskID, &adjacentPos)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return models.ErrAlreadyFirstTask
+			}
+			return fmt.Errorf("failed to find task above position %d: %w", currentPos, err)
+		}
+		newPos = adjacentPos
+	case "down":
+		// Find the task below (next larger position)
+		err = tx.QueryRowContext(ctx,
+			`SELECT id, position FROM tasks
+			 WHERE column_id = ? AND position > ?
+			 ORDER BY position ASC LIMIT 1`,
+			columnID, currentPos,
+		).Scan(&adjacentTaskID, &adjacentPos)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return models.ErrAlreadyLastTask
+			}
+			return fmt.Errorf("failed to find task below position %d: %w", currentPos, err)
+		}
+		newPos = adjacentPos
+	default:
+		return fmt.Errorf("invalid direction: %s", direction)
 	}
 
 	// Swap positions using a temporary value to avoid unique constraint violations
@@ -730,192 +744,158 @@ func (r *TaskRepo) SwapTaskUp(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to set temporary position for task %d: %w", taskID, err)
 	}
 
-	// Move the above task down
+	// Move the adjacent task to current position
 	_, err = tx.ExecContext(ctx,
 		`UPDATE tasks SET position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		currentPos, aboveTaskID,
+		currentPos, adjacentTaskID,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to update position for task %d: %w", aboveTaskID, err)
+		return fmt.Errorf("failed to update position for task %d: %w", adjacentTaskID, err)
 	}
 
-	// Move current task to the above position
+	// Move current task to new position
 	_, err = tx.ExecContext(ctx,
 		`UPDATE tasks SET position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		currentPos-1, taskID,
+		newPos, taskID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update position for task %d: %w", taskID, err)
 	}
 
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction for swapping task %d up: %w", taskID, err)
+	// Get projectID for event notification
+	var projectID int
+	err = tx.QueryRowContext(ctx,
+		`SELECT project_id FROM columns WHERE id = ?`,
+		columnID,
+	).Scan(&projectID)
+	if err != nil {
+		return fmt.Errorf("failed to get project for column %d: %w", columnID, err)
 	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction for swapping task %d %s: %w", taskID, direction, err)
+	}
+
+	// Send event notification after commit
+	sendEvent(r.eventClient, projectID)
+
 	return nil
+}
+
+// SwapTaskUp moves a task up in its column by swapping positions with the task above it.
+// Returns ErrAlreadyFirstTask if the task is already at position 0
+func (r *TaskRepo) SwapTaskUp(ctx context.Context, taskID int) error {
+	return r.swapTask(ctx, taskID, "up")
 }
 
 // SwapTaskDown moves a task down in its column by swapping positions with the task below it.
 // Returns ErrAlreadyLastTask if the task is already at the last position.
 func (r *TaskRepo) SwapTaskDown(ctx context.Context, taskID int) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction for swapping task %d down: %w", taskID, err)
-	}
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
-		}
-	}()
-
-	// Get the task's current column_id and position
-	var columnID, currentPos int
-	err = tx.QueryRowContext(ctx,
-		`SELECT column_id, position FROM tasks WHERE id = ?`,
-		taskID,
-	).Scan(&columnID, &currentPos)
-	if err != nil {
-		return fmt.Errorf("failed to get task %d position: %w", taskID, err)
-	}
-
-	// Get max position in the column
-	var maxPos int
-	err = tx.QueryRowContext(ctx,
-		`SELECT COALESCE(MAX(position), 0) FROM tasks WHERE column_id = ?`,
-		columnID,
-	).Scan(&maxPos)
-	if err != nil {
-		return fmt.Errorf("failed to get max position in column %d: %w", columnID, err)
-	}
-
-	// Check if already at bottom
-	if currentPos >= maxPos {
-		return models.ErrAlreadyLastTask
-	}
-
-	// Find the task below (position + 1)
-	var belowTaskID int
-	err = tx.QueryRowContext(ctx,
-		`SELECT id FROM tasks WHERE column_id = ? AND position = ?`,
-		columnID, currentPos+1,
-	).Scan(&belowTaskID)
-	if err != nil {
-		return fmt.Errorf("failed to find task below position %d: %w", currentPos, err)
-	}
-
-	// Swap positions using a temporary value
-	_, err = tx.ExecContext(ctx,
-		`UPDATE tasks SET position = -1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		taskID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to set temporary position for task %d: %w", taskID, err)
-	}
-
-	// Move the below task up
-	_, err = tx.ExecContext(ctx,
-		`UPDATE tasks SET position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		currentPos, belowTaskID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to update position for task %d: %w", belowTaskID, err)
-	}
-
-	// Move current task to the below position
-	_, err = tx.ExecContext(ctx,
-		`UPDATE tasks SET position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		currentPos+1, taskID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to update position for task %d: %w", taskID, err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction for swapping task %d down: %w", taskID, err)
-	}
-	return nil
+	return r.swapTask(ctx, taskID, "down")
 }
 
 // DeleteTask removes a task from the database
 func (r *TaskRepo) DeleteTask(ctx context.Context, taskID int) error {
-	_, err := r.db.ExecContext(ctx, "DELETE FROM tasks WHERE id = ?", taskID)
+	// Get projectID before deleting
+	var projectID int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT c.project_id FROM tasks t
+		 INNER JOIN columns c ON t.column_id = c.id
+		 WHERE t.id = ?`,
+		taskID,
+	).Scan(&projectID)
+	if err != nil {
+		return fmt.Errorf("failed to get project for task %d: %w", taskID, err)
+	}
+
+	_, err = r.db.ExecContext(ctx, "DELETE FROM tasks WHERE id = ?", taskID)
 	if err != nil {
 		return fmt.Errorf("failed to delete task %d: %w", taskID, err)
 	}
+
+	// Send event notification
+	sendEvent(r.eventClient, projectID)
+
 	return nil
+}
+
+// getTaskReferences is a consolidated helper that retrieves task references based on the reference type.
+// refType should be "parent", "child", or "project".
+func (r *TaskRepo) getTaskReferences(ctx context.Context, refType string, id int) ([]*models.TaskReference, error) {
+	var query string
+	var errorContext string
+
+	switch refType {
+	case "parent":
+		query = `
+			SELECT t.id, t.ticket_number, t.title, p.name,
+			       rt.id, rt.p_to_c_label, rt.color, rt.is_blocking
+			FROM tasks t
+			INNER JOIN task_subtasks ts ON t.id = ts.parent_id
+			INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
+			INNER JOIN columns c ON t.column_id = c.id
+			INNER JOIN projects p ON c.project_id = p.id
+			WHERE ts.child_id = ?
+			ORDER BY p.name, t.ticket_number`
+		errorContext = "parent tasks for task"
+	case "child":
+		query = `
+			SELECT t.id, t.ticket_number, t.title, p.name,
+			       rt.id, rt.c_to_p_label, rt.color, rt.is_blocking
+			FROM tasks t
+			INNER JOIN task_subtasks ts ON t.id = ts.child_id
+			INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
+			INNER JOIN columns c ON t.column_id = c.id
+			INNER JOIN projects p ON c.project_id = p.id
+			WHERE ts.parent_id = ?
+			ORDER BY p.name, t.ticket_number`
+		errorContext = "child tasks for task"
+	case "project":
+		query = `
+			SELECT t.id, t.ticket_number, t.title, p.name,
+			       0, '', '', 0
+			FROM tasks t
+			INNER JOIN columns c ON t.column_id = c.id
+			INNER JOIN projects p ON c.project_id = p.id
+			WHERE p.id = ?
+			ORDER BY p.name, t.ticket_number`
+		errorContext = "task references for project"
+	default:
+		return nil, fmt.Errorf("invalid reference type: %s", refType)
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query %s %d: %w", errorContext, id, err)
+	}
+	defer closeRows(rows, fmt.Sprintf("GetTaskReferences: %s", refType))
+
+	references := make([]*models.TaskReference, 0, 10)
+	for rows.Next() {
+		ref := &models.TaskReference{}
+		if err := rows.Scan(&ref.ID, &ref.TicketNumber, &ref.Title, &ref.ProjectName,
+			&ref.RelationTypeID, &ref.RelationLabel, &ref.RelationColor, &ref.IsBlocking); err != nil {
+			return nil, fmt.Errorf("failed to scan %s %d: %w", errorContext, id, err)
+		}
+		references = append(references, ref)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating %s %d: %w", errorContext, id, err)
+	}
+	return references, nil
 }
 
 // GetParentTasks retrieves tasks that depend on this task (parent issues)
 // Returns lightweight TaskReference structs with project name for display
 func (r *TaskRepo) GetParentTasks(ctx context.Context, taskID int) ([]*models.TaskReference, error) {
-	query := `
-		SELECT t.id, t.ticket_number, t.title, p.name
-		FROM tasks t
-		INNER JOIN task_subtasks ts ON t.id = ts.parent_id
-		INNER JOIN columns c ON t.column_id = c.id
-		INNER JOIN projects p ON c.project_id = p.id
-		WHERE ts.child_id = ?
-		ORDER BY p.name, t.ticket_number`
-
-	rows, err := r.db.QueryContext(ctx, query, taskID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query parent tasks for task %d: %w", taskID, err)
-	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Printf("failed to close rows: %v", err)
-		}
-	}()
-
-	references := make([]*models.TaskReference, 0, 10)
-	for rows.Next() {
-		ref := &models.TaskReference{}
-		if err := rows.Scan(&ref.ID, &ref.TicketNumber, &ref.Title, &ref.ProjectName); err != nil {
-			return nil, fmt.Errorf("failed to scan parent task for task %d: %w", taskID, err)
-		}
-		references = append(references, ref)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating parent tasks for task %d: %w", taskID, err)
-	}
-	return references, nil
+	return r.getTaskReferences(ctx, "parent", taskID)
 }
 
 // GetChildTasks retrieves tasks that must be done before this one (child issues)
 // Returns lightweight TaskReference structs with project name for display
 func (r *TaskRepo) GetChildTasks(ctx context.Context, taskID int) ([]*models.TaskReference, error) {
-	query := `
-		SELECT t.id, t.ticket_number, t.title, p.name
-		FROM tasks t
-		INNER JOIN task_subtasks ts ON t.id = ts.child_id
-		INNER JOIN columns c ON t.column_id = c.id
-		INNER JOIN projects p ON c.project_id = p.id
-		WHERE ts.parent_id = ?
-		ORDER BY p.name, t.ticket_number`
-
-	rows, err := r.db.QueryContext(ctx, query, taskID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query child tasks for task %d: %w", taskID, err)
-	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Printf("failed to close rows: %v", err)
-		}
-	}()
-
-	references := make([]*models.TaskReference, 0, 10)
-	for rows.Next() {
-		ref := &models.TaskReference{}
-		if err := rows.Scan(&ref.ID, &ref.TicketNumber, &ref.Title, &ref.ProjectName); err != nil {
-			return nil, fmt.Errorf("failed to scan child task for task %d: %w", taskID, err)
-		}
-		references = append(references, ref)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating child tasks for task %d: %w", taskID, err)
-	}
-	return references, nil
+	return r.getTaskReferences(ctx, "child", taskID)
 }
 
 // GetTaskReferencesForProject retrieves all task references for a project.
@@ -930,37 +910,75 @@ func (r *TaskRepo) GetChildTasks(ctx context.Context, taskID int) ([]*models.Tas
 //   - A slice of TaskReference objects ordered by project name and ticket number
 //   - An error if the query fails
 func (r *TaskRepo) GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error) {
+	return r.getTaskReferences(ctx, "project", projectID)
+}
+
+// GetAllRelationTypes retrieves all available relation types
+func (r *TaskRepo) GetAllRelationTypes(ctx context.Context) ([]*models.RelationType, error) {
 	query := `
-		SELECT t.id, t.ticket_number, t.title, p.name
-		FROM tasks t
-		INNER JOIN columns c ON t.column_id = c.id
-		INNER JOIN projects p ON c.project_id = p.id
-		WHERE p.id = ?
-		ORDER BY p.name, t.ticket_number`
+		SELECT id, p_to_c_label, c_to_p_label, color, is_blocking
+		FROM relation_types
+		ORDER BY id`
 
-	rows, err := r.db.QueryContext(ctx, query, projectID)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query task references for project %d: %w", projectID, err)
+		return nil, fmt.Errorf("failed to query relation types: %w", err)
 	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Printf("failed to close rows: %v", err)
-		}
-	}()
+	defer closeRows(rows, "GetAllRelationTypes")
 
-	references := make([]*models.TaskReference, 0, 10)
+	relationTypes := make([]*models.RelationType, 0, 3)
 	for rows.Next() {
-		ref := &models.TaskReference{}
-		if err := rows.Scan(&ref.ID, &ref.TicketNumber, &ref.Title, &ref.ProjectName); err != nil {
-			return nil, fmt.Errorf("failed to scan task reference for project %d: %w", projectID, err)
+		rt := &models.RelationType{}
+		if err := rows.Scan(&rt.ID, &rt.PToCLabel, &rt.CToPLabel, &rt.Color, &rt.IsBlocking); err != nil {
+			return nil, fmt.Errorf("failed to scan relation type: %w", err)
 		}
-		references = append(references, ref)
+		relationTypes = append(relationTypes, rt)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating task references for project %d: %w", projectID, err)
+		return nil, fmt.Errorf("error iterating relation types: %w", err)
 	}
-	return references, nil
+
+	return relationTypes, nil
+}
+
+// AddSubtaskWithRelationType creates a parent-child relationship between tasks with a specific relation type.
+// This establishes a typed dependency between parent and child tasks.
+//
+// CRITICAL - Parameter Ordering:
+//   - parentID: The task that will block on the child (the dependent task)
+//   - childID: The task that must be completed first (the dependency)
+//   - relationTypeID: The type of relationship (1=Parent/Child, 2=Blocked By/Blocker, 3=Related To)
+//
+// Example: AddSubtaskWithRelationType(taskA, taskB, 2) means taskA is blocked by taskB.
+//
+// The function uses INSERT OR REPLACE to handle updates to existing relationships.
+func (r *TaskRepo) AddSubtaskWithRelationType(ctx context.Context, parentID, childID, relationTypeID int) error {
+	// Get projectID for event notification
+	var projectID int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT c.project_id FROM tasks t
+		 INNER JOIN columns c ON t.column_id = c.id
+		 WHERE t.id = ?`,
+		parentID,
+	).Scan(&projectID)
+	if err != nil {
+		return fmt.Errorf("failed to get project for task %d: %w", parentID, err)
+	}
+
+	// Insert or replace the relationship with the specified relation type
+	_, err = r.db.ExecContext(ctx,
+		`INSERT OR REPLACE INTO task_subtasks (parent_id, child_id, relation_type_id)
+		 VALUES (?, ?, ?)`,
+		parentID, childID, relationTypeID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to add subtask relationship: %w", err)
+	}
+
+	// Send event notification
+	sendEvent(r.eventClient, projectID)
+	return nil
 }
 
 // AddSubtask creates a parent-child relationship between tasks.
@@ -975,13 +993,29 @@ func (r *TaskRepo) GetTaskReferencesForProject(ctx context.Context, projectID in
 //
 // The function uses INSERT OR IGNORE to prevent duplicate relationships.
 func (r *TaskRepo) AddSubtask(ctx context.Context, parentID, childID int) error {
-	_, err := r.db.ExecContext(ctx,
+	// Get projectID for event notification
+	var projectID int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT c.project_id FROM tasks t
+		 INNER JOIN columns c ON t.column_id = c.id
+		 WHERE t.id = ?`,
+		parentID,
+	).Scan(&projectID)
+	if err != nil {
+		return fmt.Errorf("failed to get project for task %d: %w", parentID, err)
+	}
+
+	_, err = r.db.ExecContext(ctx,
 		`INSERT OR IGNORE INTO task_subtasks (parent_id, child_id) VALUES (?, ?)`,
 		parentID, childID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to add subtask relationship (parent: %d, child: %d): %w", parentID, childID, err)
 	}
+
+	// Send event notification
+	sendEvent(r.eventClient, projectID)
+
 	return nil
 }
 
@@ -994,13 +1028,29 @@ func (r *TaskRepo) AddSubtask(ctx context.Context, parentID, childID int) error 
 //
 // Example: RemoveSubtask(taskA, taskB) removes the dependency of taskA on taskB.
 func (r *TaskRepo) RemoveSubtask(ctx context.Context, parentID, childID int) error {
-	_, err := r.db.ExecContext(ctx,
+	// Get projectID before removing
+	var projectID int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT c.project_id FROM tasks t
+		 INNER JOIN columns c ON t.column_id = c.id
+		 WHERE t.id = ?`,
+		parentID,
+	).Scan(&projectID)
+	if err != nil {
+		return fmt.Errorf("failed to get project for task %d: %w", parentID, err)
+	}
+
+	_, err = r.db.ExecContext(ctx,
 		`DELETE FROM task_subtasks WHERE parent_id = ? AND child_id = ?`,
 		parentID, childID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to remove subtask relationship (parent: %d, child: %d): %w", parentID, childID, err)
 	}
+
+	// Send event notification
+	sendEvent(r.eventClient, projectID)
+
 	return nil
 }
 
