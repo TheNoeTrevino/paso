@@ -31,14 +31,11 @@ func Update(m *tui.Model, msg tea.Msg) tea.Cmd {
 	}
 
 	// Handle form modes first - forms need ALL messages
-	// TODO: Extract form update logic to handlers/forms.go
 	if m.UiState.Mode() == state.TicketFormMode {
-		_, formCmd := m.Update(msg)
-		return formCmd
+		return UpdateTicketForm(m, msg)
 	}
 	if m.UiState.Mode() == state.ProjectFormMode {
-		_, formCmd := m.Update(msg)
-		return formCmd
+		return UpdateProjectForm(m, msg)
 	}
 
 	switch msg := msg.(type) {
@@ -115,24 +112,17 @@ func HandleKeyMsg(m *tui.Model, msg tea.KeyMsg) tea.Cmd {
 	case state.HelpMode:
 		return HandleHelpMode(m, msg)
 	case state.LabelPickerMode:
-		// TODO: Extract picker logic to handlers/pickers.go
-		_, pickerCmd := m.Update(msg)
-		return pickerCmd
+		return UpdateLabelPicker(m, msg)
 	case state.ParentPickerMode:
-		_, pickerCmd := m.Update(msg)
-		return pickerCmd
+		return UpdateParentPicker(m, msg)
 	case state.ChildPickerMode:
-		_, pickerCmd := m.Update(msg)
-		return pickerCmd
+		return UpdateChildPicker(m, msg)
 	case state.PriorityPickerMode:
-		_, pickerCmd := m.Update(msg)
-		return pickerCmd
+		return UpdatePriorityPicker(m, msg)
 	case state.TypePickerMode:
-		_, pickerCmd := m.Update(msg)
-		return pickerCmd
+		return UpdateTypePicker(m, msg)
 	case state.RelationTypePickerMode:
-		_, pickerCmd := m.Update(msg)
-		return pickerCmd
+		return UpdateRelationTypePicker(m, msg)
 	case state.SearchMode:
 		return HandleSearchMode(m, msg)
 	case state.StatusPickerMode:
