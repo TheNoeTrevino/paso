@@ -5,18 +5,18 @@ import (
 	"strings"
 
 	"github.com/thenoetrevino/paso/internal/models"
-	"github.com/thenoetrevino/paso/internal/tui"
+	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
 // BuildListViewRows creates a list of all tasks across all columns for list view.
 // Returns rows sorted according to current sort settings.
-func (w *Wrapper) BuildListViewRows() []tui.ListViewRow {
-	var rows []tui.ListViewRow
+func (w *Wrapper) BuildListViewRows() []renderers.ListViewRow {
+	var rows []renderers.ListViewRow
 	for _, col := range w.AppState.Columns() {
 		tasks := w.AppState.Tasks()[col.ID]
 		for _, task := range tasks {
-			rows = append(rows, tui.ListViewRow{
+			rows = append(rows, renderers.ListViewRow{
 				Task:       task,
 				ColumnName: col.Name,
 				ColumnID:   col.ID,
@@ -31,7 +31,7 @@ func (w *Wrapper) BuildListViewRows() []tui.ListViewRow {
 
 // SortListViewRows sorts the rows based on current sort settings.
 // Modifies rows in place.
-func (w *Wrapper) SortListViewRows(rows []tui.ListViewRow) {
+func (w *Wrapper) SortListViewRows(rows []renderers.ListViewRow) {
 	if w.ListViewState.SortField() == state.SortNone {
 		return
 	}

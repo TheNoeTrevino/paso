@@ -5,10 +5,11 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
-	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/helpers"
 	"github.com/thenoetrevino/paso/internal/tui/modelops"
 	"github.com/thenoetrevino/paso/internal/tui/notifications"
+	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -83,7 +84,7 @@ func (w *Wrapper) ViewKanbanBoard() string {
 		columns = append(columns, components.RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight, scrollOffset))
 	}
 
-	scrollIndicators := tui.GetScrollIndicators(
+	scrollIndicators := helpers.GetScrollIndicators(
 		w.UiState.ViewportOffset(),
 		w.UiState.ViewportSize(),
 		len(w.AppState.Columns()),
@@ -167,7 +168,7 @@ func (w *Wrapper) viewListView() string {
 	tabBar := components.RenderTabs(projectTabs, w.AppState.SelectedProject(), w.UiState.Width(), inlineNotification)
 
 	// Render list content with sort indicator
-	listContent := tui.RenderListView(
+	listContent := renderers.RenderListView(
 		rows,
 		w.ListViewState.SelectedRow(),
 		w.ListViewState.ScrollOffset(),
