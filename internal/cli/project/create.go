@@ -86,7 +86,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create project
-	project, err := cliInstance.Repo.CreateProject(ctx, projectTitle, projectDescription)
+	project, err := cliInstance.Repo().CreateProject(ctx, projectTitle, projectDescription)
 	if err != nil {
 		if fmtErr := formatter.Error("PROJECT_CREATE_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)

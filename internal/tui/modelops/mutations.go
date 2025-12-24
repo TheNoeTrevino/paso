@@ -73,7 +73,7 @@ func MoveTaskRight(m *tui.Model) {
 	// Use the new database function to move task
 	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.Repo.MoveTaskToNextColumn(ctx, task.ID)
+	err := m.App.Repo().MoveTaskToNextColumn(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task to next column", "error", err)
 		if err != models.ErrAlreadyLastColumn {
@@ -124,7 +124,7 @@ func MoveTaskLeft(m *tui.Model) {
 	// Use the new database function to move task
 	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.Repo.MoveTaskToPrevColumn(ctx, task.ID)
+	err := m.App.Repo().MoveTaskToPrevColumn(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task to previous column", "error", err)
 		if err != models.ErrAlreadyFirstColumn {
@@ -169,7 +169,7 @@ func MoveTaskUp(m *tui.Model) {
 	// Call database swap
 	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.Repo.SwapTaskUp(ctx, task.ID)
+	err := m.App.Repo().SwapTaskUp(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task up", "error", err)
 		if err != models.ErrAlreadyFirstTask {
@@ -229,7 +229,7 @@ func MoveTaskDown(m *tui.Model) {
 	// Call database swap
 	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.Repo.SwapTaskDown(ctx, task.ID)
+	err := m.App.Repo().SwapTaskDown(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task down", "error", err)
 		if err != models.ErrAlreadyLastTask {
@@ -266,7 +266,7 @@ func SwitchToProject(m *tui.Model, projectIndex int) {
 	defer cancel()
 
 	// Reload columns for this project
-	columns, err := m.Repo.GetColumnsByProject(ctx, project.ID)
+	columns, err := m.App.Repo().GetColumnsByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading columns for project", "project_id", project.ID, "error", err)
 		columns = []*models.Column{}
@@ -274,7 +274,7 @@ func SwitchToProject(m *tui.Model, projectIndex int) {
 	m.AppState.SetColumns(columns)
 
 	// Reload task summaries for the entire project
-	tasks, err := m.Repo.GetTaskSummariesByProject(ctx, project.ID)
+	tasks, err := m.App.Repo().GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading tasks for project", "project_id", project.ID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
@@ -282,7 +282,7 @@ func SwitchToProject(m *tui.Model, projectIndex int) {
 	m.AppState.SetTasks(tasks)
 
 	// Reload labels for this project
-	labels, err := m.Repo.GetLabelsByProject(ctx, project.ID)
+	labels, err := m.App.Repo().GetLabelsByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading labels for project", "project_id", project.ID, "error", err)
 		labels = []*models.Label{}

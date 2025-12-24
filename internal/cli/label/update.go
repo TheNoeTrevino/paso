@@ -111,7 +111,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Update label
-	if err := cliInstance.Repo.UpdateLabel(ctx, labelID, newName, newColor); err != nil {
+	if err := cliInstance.Repo().UpdateLabel(ctx, labelID, newName, newColor); err != nil {
 		if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}

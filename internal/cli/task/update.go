@@ -78,7 +78,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	// Update title/description if provided
 	if titleFlag.Changed || descFlag.Changed {
-		if err := cliInstance.Repo.UpdateTask(ctx, taskID, taskTitle, taskDescription); err != nil {
+		if err := cliInstance.Repo().UpdateTask(ctx, taskID, taskTitle, taskDescription); err != nil {
 			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
 				log.Printf("Error formatting error message: %v", fmtErr)
 			}
@@ -95,7 +95,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 			}
 			os.Exit(cli.ExitValidation)
 		}
-		if err := cliInstance.Repo.UpdateTaskPriority(ctx, taskID, priorityID); err != nil {
+		if err := cliInstance.Repo().UpdateTaskPriority(ctx, taskID, priorityID); err != nil {
 			if fmtErr := formatter.Error("PRIORITY_UPDATE_ERROR", err.Error()); fmtErr != nil {
 				log.Printf("Error formatting error message: %v", fmtErr)
 			}
