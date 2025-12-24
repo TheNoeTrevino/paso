@@ -23,34 +23,34 @@ func (m Model) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		shouldConfirm := false
 		contextMsg := ""
 
-		if m.uiState.Mode() == state.AddColumnMode {
+		if m.UiState.Mode() == state.AddColumnMode {
 			// AddColumnMode: confirm if user typed anything
-			shouldConfirm = !m.inputState.IsEmpty()
+			shouldConfirm = !m.InputState.IsEmpty()
 			contextMsg = "Discard column?"
-		} else if m.uiState.Mode() == state.EditColumnMode {
+		} else if m.UiState.Mode() == state.EditColumnMode {
 			// EditColumnMode: confirm if text changed from original
-			shouldConfirm = m.inputState.HasInputChanges()
+			shouldConfirm = m.InputState.HasInputChanges()
 			contextMsg = "Discard changes?"
 		}
 
 		if shouldConfirm {
-			m.uiState.SetDiscardContext(&state.DiscardContext{
-				SourceMode: m.uiState.Mode(),
+			m.UiState.SetDiscardContext(&state.DiscardContext{
+				SourceMode: m.UiState.Mode(),
 				Message:    contextMsg,
 			})
-			m.uiState.SetMode(state.DiscardConfirmMode)
+			m.UiState.SetMode(state.DiscardConfirmMode)
 			return m, nil
 		}
 
 		// No changes - immediate close
 		return m.handleInputCancel()
 	case "backspace", "ctrl+h":
-		m.inputState.Backspace()
+		m.InputState.Backspace()
 		return m, nil
 	default:
 		key := msg.String()
 		if len(key) == 1 {
-			m.inputState.AppendChar(rune(key[0]))
+			m.InputState.AppendChar(rune(key[0]))
 		}
 		return m, nil
 	}
@@ -58,13 +58,13 @@ func (m Model) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleInputConfirm processes the input and creates/renames column.
 func (m Model) handleInputConfirm() (tea.Model, tea.Cmd) {
-	if strings.TrimSpace(m.inputState.Buffer) == "" {
-		m.uiState.SetMode(state.NormalMode)
-		m.inputState.Clear()
+	if strings.TrimSpace(m.InputState.Buffer) == "" {
+		m.UiState.SetMode(state.NormalMode)
+		m.InputState.Clear()
 		return m, nil
 	}
 
-	if m.uiState.Mode() == state.AddColumnMode {
+	if m.UiState.Mode() == state.AddColumnMode {
 		return m.createColumn()
 	}
 	return m.renameColumn()
@@ -72,15 +72,15 @@ func (m Model) handleInputConfirm() (tea.Model, tea.Cmd) {
 
 // handleInputCancel cancels the input operation.
 func (m Model) handleInputCancel() (tea.Model, tea.Cmd) {
-	m.uiState.SetMode(state.NormalMode)
-	m.inputState.Clear()
+	m.UiState.SetMode(state.NormalMode)
+	m.InputState.Clear()
 	return m, nil
 }
 
 // createColumn creates a new column with the input buffer as name.
 func (m Model) createColumn() (tea.Model, tea.Cmd) {
 	var afterColumnID *int
-	if len(m.appState.Columns()) > 0 {
+	if len(m.AppState.Columns()) > 0 {
 		currentCol := m.getCurrentColumn()
 		if currentCol != nil {
 			afterColumnID = &currentCol.ID
@@ -94,25 +94,25 @@ func (m Model) createColumn() (tea.Model, tea.Cmd) {
 
 	ctx, cancel := m.dbContext()
 	defer cancel()
-	column, err := m.repo.CreateColumn(ctx, strings.TrimSpace(m.inputState.Buffer), projectID, afterColumnID)
+	column, err := m.Repo.CreateColumn(ctx, strings.TrimSpace(m.InputState.Buffer), projectID, afterColumnID)
 	if err != nil {
 		slog.Error("Error creating column", "error", err)
-		m.notificationState.Add(state.LevelError, "Failed to create column")
+		m.NotificationState.Add(state.LevelError, "Failed to create column")
 	} else {
-		columns, err := m.repo.GetColumnsByProject(ctx, projectID)
+		columns, err := m.Repo.GetColumnsByProject(ctx, projectID)
 		if err != nil {
 			slog.Error("Error reloading columns", "error", err)
-			m.notificationState.Add(state.LevelError, "Failed to reload columns")
+			m.NotificationState.Add(state.LevelError, "Failed to reload columns")
 		}
-		m.appState.SetColumns(columns)
-		m.appState.Tasks()[column.ID] = []*models.TaskSummary{}
+		m.AppState.SetColumns(columns)
+		m.AppState.Tasks()[column.ID] = []*models.TaskSummary{}
 		if afterColumnID != nil {
-			m.uiState.SetSelectedColumn(m.uiState.SelectedColumn() + 1)
+			m.UiState.SetSelectedColumn(m.UiState.SelectedColumn() + 1)
 		}
 	}
 
-	m.uiState.SetMode(state.NormalMode)
-	m.inputState.Clear()
+	m.UiState.SetMode(state.NormalMode)
+	m.InputState.Clear()
 	return m, nil
 }
 
@@ -122,16 +122,16 @@ func (m Model) renameColumn() (tea.Model, tea.Cmd) {
 	if column != nil {
 		ctx, cancel := m.dbContext()
 		defer cancel()
-		err := m.repo.UpdateColumnName(ctx, column.ID, strings.TrimSpace(m.inputState.Buffer))
+		err := m.Repo.UpdateColumnName(ctx, column.ID, strings.TrimSpace(m.InputState.Buffer))
 		if err != nil {
 			slog.Error("Error updating column", "error", err)
-			m.notificationState.Add(state.LevelError, "Failed to rename column")
+			m.NotificationState.Add(state.LevelError, "Failed to rename column")
 		} else {
-			column.Name = strings.TrimSpace(m.inputState.Buffer)
+			column.Name = strings.TrimSpace(m.InputState.Buffer)
 		}
 	}
 
-	m.uiState.SetMode(state.NormalMode)
-	m.inputState.Clear()
+	m.UiState.SetMode(state.NormalMode)
+	m.InputState.Clear()
 	return m, nil
 }
