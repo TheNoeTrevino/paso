@@ -41,7 +41,7 @@ type UpdateProjectRequest struct {
 // service implements Service interface using SQLC directly
 type service struct {
 	db          *sql.DB
-	queries     *generated.Queries
+	queries     generated.Querier
 	eventClient events.EventPublisher
 }
 
@@ -105,7 +105,7 @@ func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest) (
 		}
 	}()
 
-	qtx := s.queries.WithTx(tx)
+	qtx := generated.New(tx)
 
 	// Create project record
 	project, err := qtx.CreateProjectRecord(ctx, generated.CreateProjectRecordParams{
@@ -204,7 +204,7 @@ func (s *service) DeleteProject(ctx context.Context, id int) error {
 		}
 	}()
 
-	qtx := s.queries.WithTx(tx)
+	qtx := generated.New(tx)
 
 	// Delete tasks first
 	if err := qtx.DeleteTasksByProject(ctx, int64(id)); err != nil {
