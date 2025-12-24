@@ -120,7 +120,7 @@ func (m Model) confirmStatusChange() (tea.Model, tea.Cmd) {
 
 	err := m.Repo.MoveTaskToColumn(ctx, taskID, selectedCol.ID)
 	if err != nil {
-		m.handleDBError(err, "Moving task to new status")
+		m.HandleDBError(err, "Moving task to new status")
 		m.StatusPickerState.Reset()
 		m.UiState.SetMode(state.NormalMode)
 		return m, nil
