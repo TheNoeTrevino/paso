@@ -3,6 +3,9 @@ package app
 import (
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
+	columnservice "github.com/thenoetrevino/paso/internal/services/column"
+	labelservice "github.com/thenoetrevino/paso/internal/services/label"
+	projectservice "github.com/thenoetrevino/paso/internal/services/project"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 )
 
@@ -16,22 +19,22 @@ type App struct {
 	eventClient events.EventPublisher
 
 	// Service layer (business logic)
-	TaskService taskservice.Service
-	// ProjectService projectservice.Service  // TODO: Implement in Step 1.7
-	// ColumnService  columnservice.Service   // TODO: Implement in Step 1.7
-	// LabelService   labelservice.Service    // TODO: Implement in Step 1.7
+	TaskService    taskservice.Service
+	ProjectService projectservice.Service
+	ColumnService  columnservice.Service
+	LabelService   labelservice.Service
 }
 
 // New creates a new App with all services initialized.
 // This is the single entry point for creating the application container.
 func New(repo database.DataStore, eventClient events.EventPublisher) *App {
 	return &App{
-		repo:        repo,
-		eventClient: eventClient,
-		TaskService: taskservice.NewService(repo, eventClient),
-		// ProjectService: projectservice.NewService(repo, eventClient),  // TODO
-		// ColumnService:  columnservice.NewService(repo, eventClient),   // TODO
-		// LabelService:   labelservice.NewService(repo, eventClient),    // TODO
+		repo:           repo,
+		eventClient:    eventClient,
+		TaskService:    taskservice.NewService(repo, eventClient),
+		ProjectService: projectservice.NewService(repo, eventClient),
+		ColumnService:  columnservice.NewService(repo, eventClient),
+		LabelService:   labelservice.NewService(repo, eventClient),
 	}
 }
 
