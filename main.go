@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/column"
 	"github.com/thenoetrevino/paso/internal/cli/task"
 	"github.com/thenoetrevino/paso/internal/tui"
 )
@@ -42,7 +43,7 @@ func init() {
 	// Add CLI subcommands
 	rootCmd.AddCommand(task.TaskCmd())
 	rootCmd.AddCommand(cli.ProjectCmd())
-	rootCmd.AddCommand(cli.ColumnCmd())
+	rootCmd.AddCommand(column.ColumnCmd())
 	rootCmd.AddCommand(cli.LabelCmd())
 
 	// Add TUI subcommand

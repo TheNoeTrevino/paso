@@ -1,0 +1,122 @@
+package column
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/cli"
+)
+
+// ListCmd returns the column list subcommand
+func ListCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List columns in a project",
+		Long: `List all columns in a project (in order).
+
+Examples:
+  # Human-readable list
+  paso column list --project=1
+
+  # JSON output for agents
+  paso column list --project=1 --json
+
+  # Quiet mode (one ID per line)
+  paso column list --project=1 --quiet
+`,
+		RunE: runList,
+	}
+
+	// Required flags
+	cmd.Flags().Int("project", 0, "Project ID (required)")
+	if err := cmd.MarkFlagRequired("project"); err != nil {
+		log.Printf("Error marking flag as required: %v", err)
+	}
+
+	// Agent-friendly flags
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("quiet", false, "Minimal output (IDs only)")
+
+	return cmd
+}
+
+func runList(cmd *cobra.Command, args []string) error {
+	ctx := context.Background()
+
+	columnProject, _ := cmd.Flags().GetInt("project")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	quietMode, _ := cmd.Flags().GetBool("quiet")
+
+	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+
+	// Initialize CLI
+	cliInstance, err := cli.NewCLI(ctx)
+	if err != nil {
+		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
+		return err
+	}
+	defer func() {
+		if err := cliInstance.Close(); err != nil {
+			log.Printf("Error closing CLI: %v", err)
+		}
+	}()
+
+	// Validate project exists
+	project, err := cliInstance.Repo.GetProjectByID(ctx, columnProject)
+	if err != nil {
+		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", columnProject)); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
+		os.Exit(cli.ExitNotFound)
+	}
+
+	// Get columns
+	columns, err := cliInstance.Repo.GetColumnsByProject(ctx, columnProject)
+	if err != nil {
+		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
+		return err
+	}
+
+	// Output based on mode
+	if quietMode {
+		for _, col := range columns {
+			fmt.Printf("%d\n", col.ID)
+		}
+		return nil
+	}
+
+	if jsonOutput {
+		columnList := make([]map[string]interface{}, len(columns))
+		for i, col := range columns {
+			columnList[i] = map[string]interface{}{
+				"id":         col.ID,
+				"name":       col.Name,
+				"project_id": col.ProjectID,
+			}
+		}
+		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+			"success": true,
+			"columns": columnList,
+		})
+	}
+
+	// Human-readable output
+	if len(columns) == 0 {
+		fmt.Printf("No columns found in project '%s'\n", project.Name)
+		return nil
+	}
+
+	fmt.Printf("Columns in project '%s':\n", project.Name)
+	for i, col := range columns {
+		fmt.Printf("  %d. %s (ID: %d)\n", i+1, col.Name, col.ID)
+	}
+	return nil
+}
