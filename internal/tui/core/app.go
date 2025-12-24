@@ -8,7 +8,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/tui"
-	"github.com/thenoetrevino/paso/internal/tui/handlers"
 )
 
 // App wraps the TUI Model and implements the tea.Model interface.
@@ -33,9 +32,13 @@ func (a *App) Init() tea.Cmd {
 
 // Update handles all messages and updates the model.
 // Implements tea.Model interface.
-// Delegates to handlers.Update() for message dispatch.
+// Delegates to Model.Update() method.
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	cmd := handlers.Update(a.model, msg)
+	updatedModel, cmd := a.model.Update(msg)
+	// Unwrap the updated Model and store it back
+	if m, ok := updatedModel.(tui.Model); ok {
+		*a.model = m
+	}
 	return a, cmd
 }
 
