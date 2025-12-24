@@ -102,7 +102,7 @@ func (m Model) confirmStatusChange() (tea.Model, tea.Cmd) {
 	ctx, cancel := m.DbContext()
 	defer cancel()
 
-	err := m.App.Repo().MoveTaskToColumn(ctx, taskID, selectedCol.ID)
+	err := m.App.TaskService.MoveTaskToColumn(ctx, taskID, selectedCol.ID)
 	if err != nil {
 		m.HandleDBError(err, "Moving task to new status")
 		m.StatusPickerState.Reset()

@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	columnservice "github.com/thenoetrevino/paso/internal/services/column"
 )
 
 // CreateCmd returns the column create subcommand
@@ -81,7 +82,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Validate project exists
-	project, err := cliInstance.Repo().GetProjectByID(ctx, columnProject)
+	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, columnProject)
 	if err != nil {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", columnProject)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -92,7 +93,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// Validate after column if specified
 	var afterID *int
 	if columnAfter > 0 {
-		afterCol, err := cliInstance.Repo().GetColumnByID(ctx, columnAfter)
+		afterCol, err := cliInstance.App.ColumnService.GetColumnByID(ctx, columnAfter)
 		if err != nil {
 			if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnAfter)); fmtErr != nil {
 				log.Printf("Error formatting error message: %v", fmtErr)
@@ -110,7 +111,11 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create column
-	column, err := cliInstance.Repo().CreateColumn(ctx, columnName, columnProject, afterID)
+	column, err := cliInstance.App.ColumnService.CreateColumn(ctx, columnservice.CreateColumnRequest{
+		Name:      columnName,
+		ProjectID: columnProject,
+		AfterID:   afterID,
+	})
 	if err != nil {
 		if fmtErr := formatter.Error("COLUMN_CREATE_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)

@@ -1,7 +1,8 @@
 package app
 
 import (
-	"github.com/thenoetrevino/paso/internal/database"
+	"database/sql"
+
 	"github.com/thenoetrevino/paso/internal/events"
 	columnservice "github.com/thenoetrevino/paso/internal/services/column"
 	labelservice "github.com/thenoetrevino/paso/internal/services/label"
@@ -12,13 +13,10 @@ import (
 // App holds all application services and provides dependency injection.
 // This is the main application container that manages service lifecycles.
 type App struct {
-	// Repository layer (direct database access)
-	repo database.DataStore
-
 	// Event system for live updates
 	eventClient events.EventPublisher
 
-	// Service layer (business logic)
+	// Service layer (business logic) - ONLY public interface
 	TaskService    taskservice.Service
 	ProjectService projectservice.Service
 	ColumnService  columnservice.Service
@@ -27,21 +25,17 @@ type App struct {
 
 // New creates a new App with all services initialized.
 // This is the single entry point for creating the application container.
-func New(repo database.DataStore, eventClient events.EventPublisher) *App {
+// Services use SQLC directly - no repository layer needed.
+func New(db *sql.DB, eventClient events.EventPublisher) *App {
+	// Create services with database connection
+	// Each service creates its own SQLC queries instance internally
 	return &App{
-		repo:           repo,
 		eventClient:    eventClient,
-		TaskService:    taskservice.NewService(repo, eventClient),
-		ProjectService: projectservice.NewService(repo, eventClient),
-		ColumnService:  columnservice.NewService(repo, eventClient),
-		LabelService:   labelservice.NewService(repo, eventClient),
+		TaskService:    taskservice.NewService(db, eventClient),
+		ProjectService: projectservice.NewService(db, eventClient),
+		ColumnService:  columnservice.NewService(db, eventClient),
+		LabelService:   labelservice.NewService(db, eventClient),
 	}
-}
-
-// Repo returns the underlying repository for direct database access.
-// This is provided for gradual migration - eventually all access should go through services.
-func (a *App) Repo() database.DataStore {
-	return a.repo
 }
 
 // Close performs cleanup of application resources.

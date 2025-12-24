@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 )
 
 // CreateCmd returns the task create subcommand
@@ -97,7 +98,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Validate project exists
-	project, err := cliInstance.Repo().GetProjectByID(ctx, taskProject)
+	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, taskProject)
 	if err != nil {
 		if fmtErr := formatter.ErrorWithSuggestion("PROJECT_NOT_FOUND",
 			fmt.Sprintf("project %d not found", taskProject),
@@ -108,7 +109,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get columns for project
-	columns, err := cliInstance.Repo().GetColumnsByProject(ctx, taskProject)
+	columns, err := cliInstance.App.ColumnService.GetColumnsByProject(ctx, taskProject)
 	if err != nil {
 		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -164,26 +165,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		description = string(data)
 	}
 
-	// Get position (append to end)
-	count, err := cliInstance.Repo().GetTaskCountByColumn(ctx, targetColumnID)
-	if err != nil {
-		if fmtErr := formatter.Error("COUNT_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		return err
-	}
-	position := count + 1
-
-	// Create task
-	task, err := cliInstance.Repo().CreateTask(ctx, taskTitle, description, targetColumnID, position)
-	if err != nil {
-		if fmtErr := formatter.Error("TASK_CREATE_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		return err
-	}
-
-	// Set type if not default
+	// Parse type
 	ttype := taskType
 	if ttype == "" {
 		ttype = "task"
@@ -196,17 +178,8 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		}
 		os.Exit(cli.ExitValidation)
 	}
-	if typeID != 1 {
-		if err := cliInstance.Repo().UpdateTaskType(ctx, task.ID, typeID); err != nil {
-			if fmtErr := formatter.Error("TYPE_UPDATE_ERROR", err.Error()); fmtErr != nil {
-				log.Printf("Error formatting error message: %v", fmtErr)
-			}
-			return err
-		}
-	}
 
-	// Set priority if not default
-	// Handle empty priority (use default)
+	// Parse priority
 	priority := taskPriority
 	if priority == "" {
 		priority = "medium"
@@ -219,23 +192,29 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		}
 		os.Exit(cli.ExitValidation)
 	}
-	if priorityID != 3 {
-		if err := cliInstance.Repo().UpdateTaskPriority(ctx, task.ID, priorityID); err != nil {
-			if fmtErr := formatter.Error("PRIORITY_UPDATE_ERROR", err.Error()); fmtErr != nil {
-				log.Printf("Error formatting error message: %v", fmtErr)
-			}
-			return err
-		}
+
+	// Create task with all parameters
+	// Position set to 9999 to append to end (will be adjusted if needed)
+	req := taskservice.CreateTaskRequest{
+		Title:       taskTitle,
+		Description: description,
+		ColumnID:    targetColumnID,
+		Position:    9999,
+		PriorityID:  priorityID,
+		TypeID:      typeID,
 	}
 
 	// Add parent relationship if specified
 	if taskParent > 0 {
-		if err := cliInstance.Repo().AddSubtask(ctx, taskParent, task.ID); err != nil {
-			if fmtErr := formatter.Error("LINK_ERROR", err.Error()); fmtErr != nil {
-				log.Printf("Error formatting error message: %v", fmtErr)
-			}
-			return err
+		req.ParentIDs = []int{taskParent}
+	}
+
+	task, err := cliInstance.App.TaskService.CreateTask(ctx, req)
+	if err != nil {
+		if fmtErr := formatter.Error("TASK_CREATE_ERROR", err.Error()); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
 		}
+		return err
 	}
 
 	// Output based on mode (JSON/Quiet/Human)

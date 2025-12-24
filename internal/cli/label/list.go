@@ -68,7 +68,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Validate project exists
-	project, err := cliInstance.Repo().GetProjectByID(ctx, labelProject)
+	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, labelProject)
 	if err != nil {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", labelProject)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -77,7 +77,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get labels
-	labels, err := cliInstance.Repo().GetLabelsByProject(ctx, labelProject)
+	labels, err := cliInstance.App.LabelService.GetLabelsByProject(ctx, labelProject)
 	if err != nil {
 		if fmtErr := formatter.Error("LABEL_FETCH_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)

@@ -8,6 +8,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	projectService "github.com/thenoetrevino/paso/internal/services/project"
+	taskService "github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -41,35 +43,48 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 	ctx, cancel := m.DbContext()
 	defer cancel()
 
-	// 1. Create the task
-	task, err := m.App.Repo().CreateTask(ctx,
-		values.title,
-		values.description,
-		currentCol.ID,
-		len(m.getTasksForColumn(currentCol.ID)),
-	)
+	// Build parent IDs with relation types
+	parentIDs := make([]int, 0)
+	for _, item := range m.ParentPickerState.Items {
+		if item.Selected {
+			parentIDs = append(parentIDs, item.TaskRef.ID)
+		}
+	}
+
+	// Build child IDs with relation types
+	childIDs := make([]int, 0)
+	for _, item := range m.ChildPickerState.Items {
+		if item.Selected {
+			childIDs = append(childIDs, item.TaskRef.ID)
+		}
+	}
+
+	// 1. Create the task with all data in one call
+	task, err := m.App.TaskService.CreateTask(ctx, taskService.CreateTaskRequest{
+		Title:       values.title,
+		Description: values.description,
+		ColumnID:    currentCol.ID,
+		Position:    len(m.getTasksForColumn(currentCol.ID)),
+		LabelIDs:    values.labelIDs,
+		ParentIDs:   parentIDs,
+		ChildIDs:    childIDs,
+	})
 	if err != nil {
 		slog.Error("Error creating task", "error", err)
 		m.NotificationState.Add(state.LevelError, "Error creating task")
 		return
 	}
 
-	// 2. Set labels
-	if len(values.labelIDs) > 0 {
-		err = m.App.Repo().SetTaskLabels(ctx, task.ID, values.labelIDs)
-		if err != nil {
-			slog.Error("Error setting labels", "error", err)
-		}
-	}
-
+	// 2. Apply parent relationships with correct relation types
 	m.applyParentRelationships(ctx, task.ID)
 
+	// 3. Apply child relationships with correct relation types
 	m.applyChildRelationships(ctx, task.ID)
 
-	// 5. Reload all tasks for the project to keep state consistent
+	// 4. Reload all tasks for the project to keep state consistent
 	project := m.getCurrentProject()
 	if project != nil {
-		tasksByColumn, err := m.App.Repo().GetTaskSummariesByProject(ctx, project.ID)
+		tasksByColumn, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 		if err != nil {
 			slog.Error("Error reloading tasks", "error", err)
 		} else {
@@ -86,17 +101,54 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	taskID := m.FormState.EditingTaskID
 
 	// update task basic fields
-	err := m.App.Repo().UpdateTask(ctx, taskID, values.title, values.description)
+	title := values.title
+	description := values.description
+	err := m.App.TaskService.UpdateTask(ctx, taskService.UpdateTaskRequest{
+		TaskID:      taskID,
+		Title:       &title,
+		Description: &description,
+	})
 	if err != nil {
 		slog.Error("Error updating task", "error", err)
 		m.NotificationState.Add(state.LevelError, "Error updating task")
 		return
 	}
 
-	// update labels
-	err = m.App.Repo().SetTaskLabels(ctx, taskID, values.labelIDs)
+	// update labels - need to handle this through detaching old and attaching new
+	// First, get current labels
+	taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		slog.Error("Error setting labels", "error", err)
+		slog.Error("Error getting task detail for label sync", "error", err)
+	} else {
+		// Build current label map
+		currentLabelMap := make(map[int]bool)
+		for _, lbl := range taskDetail.Labels {
+			currentLabelMap[lbl.ID] = true
+		}
+
+		// Build new label map
+		newLabelMap := make(map[int]bool)
+		for _, labelID := range values.labelIDs {
+			newLabelMap[labelID] = true
+		}
+
+		// Detach labels that are no longer selected
+		for _, lbl := range taskDetail.Labels {
+			if !newLabelMap[lbl.ID] {
+				if err := m.App.TaskService.DetachLabel(ctx, taskID, lbl.ID); err != nil {
+					slog.Error("Error detaching label", "error", err)
+				}
+			}
+		}
+
+		// Attach new labels
+		for _, labelID := range values.labelIDs {
+			if !currentLabelMap[labelID] {
+				if err := m.App.TaskService.AttachLabel(ctx, taskID, labelID); err != nil {
+					slog.Error("Error attaching label", "error", err)
+				}
+			}
+		}
 	}
 
 	m.syncParentRelationships(ctx, taskID)
@@ -106,7 +158,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	// reload all tasks for the project to keep state consistent
 	project := m.getCurrentProject()
 	if project != nil {
-		tasksByColumn, err := m.App.Repo().GetTaskSummariesByProject(ctx, project.ID)
+		tasksByColumn, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 		if err != nil {
 			slog.Error("Error reloading tasks", "error", err)
 		} else {
@@ -123,7 +175,7 @@ func (m *Model) applyParentRelationships(ctx context.Context, taskID int) {
 			if relationTypeID == 0 {
 				relationTypeID = 1 // Default to Parent/Child
 			}
-			err := m.App.Repo().AddSubtaskWithRelationType(ctx, item.TaskRef.ID, taskID, relationTypeID)
+			err := m.App.TaskService.AddParentRelation(ctx, taskID, item.TaskRef.ID, relationTypeID)
 			if err != nil {
 				slog.Error("Error adding parent relationship", "error", err)
 			}
@@ -139,7 +191,7 @@ func (m *Model) applyChildRelationships(ctx context.Context, taskID int) {
 			if relationTypeID == 0 {
 				relationTypeID = 1 // Default to Parent/Child
 			}
-			err := m.App.Repo().AddSubtaskWithRelationType(ctx, taskID, item.TaskRef.ID, relationTypeID)
+			err := m.App.TaskService.AddChildRelation(ctx, taskID, item.TaskRef.ID, relationTypeID)
 			if err != nil {
 				slog.Error("Error adding child relationship", "error", err)
 			}
@@ -150,9 +202,13 @@ func (m *Model) applyChildRelationships(ctx context.Context, taskID int) {
 // syncParentRelationships syncs parent relationships for an existing task by diffing current and new state.
 func (m *Model) syncParentRelationships(ctx context.Context, taskID int) {
 	// Get current parents from database
-	currentParents, err := m.App.Repo().GetParentTasks(ctx, taskID)
+	taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
 		slog.Error("Error getting current parents", "error", err)
+		return
+	}
+	currentParents := taskDetail.ParentTasks
+	if currentParents == nil {
 		currentParents = []*models.TaskReference{}
 	}
 
@@ -176,19 +232,19 @@ func (m *Model) syncParentRelationships(ctx context.Context, taskID int) {
 	// Remove parents that are no longer selected
 	for parentID := range currentParentMap {
 		if _, exists := newParentMap[parentID]; !exists {
-			err = m.App.Repo().RemoveSubtask(ctx, parentID, taskID)
+			err = m.App.TaskService.RemoveParentRelation(ctx, taskID, parentID)
 			if err != nil {
 				slog.Error("Error removing parent", "parentID", parentID, "error", err)
 			}
 		}
 	}
 
-	// Add or update parents (AddSubtaskWithRelationType uses INSERT OR REPLACE)
+	// Add or update parents
 	for parentID, relationTypeID := range newParentMap {
 		currentRelationType, exists := currentParentMap[parentID]
 		if !exists || currentRelationType != relationTypeID {
 			// Add new parent or update existing parent's relation type
-			err = m.App.Repo().AddSubtaskWithRelationType(ctx, parentID, taskID, relationTypeID)
+			err = m.App.TaskService.AddParentRelation(ctx, taskID, parentID, relationTypeID)
 			if err != nil {
 				slog.Error("Error adding/updating parent", "parentID", parentID, "error", err)
 			}
@@ -199,9 +255,13 @@ func (m *Model) syncParentRelationships(ctx context.Context, taskID int) {
 // syncChildRelationships syncs child relationships for an existing task by diffing current and new state.
 func (m *Model) syncChildRelationships(ctx context.Context, taskID int) {
 	// Get current children from database
-	currentChildren, err := m.App.Repo().GetChildTasks(ctx, taskID)
+	taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
 		slog.Error("Error getting current children", "error", err)
+		return
+	}
+	currentChildren := taskDetail.ChildTasks
+	if currentChildren == nil {
 		currentChildren = []*models.TaskReference{}
 	}
 
@@ -225,19 +285,19 @@ func (m *Model) syncChildRelationships(ctx context.Context, taskID int) {
 	// Remove children that are no longer selected
 	for childID := range currentChildMap {
 		if _, exists := newChildMap[childID]; !exists {
-			err = m.App.Repo().RemoveSubtask(ctx, taskID, childID)
+			err = m.App.TaskService.RemoveChildRelation(ctx, taskID, childID)
 			if err != nil {
 				slog.Error("Error removing child", "childID", childID, "error", err)
 			}
 		}
 	}
 
-	// Add or update children (AddSubtaskWithRelationType uses INSERT OR REPLACE)
+	// Add or update children
 	for childID, relationTypeID := range newChildMap {
 		currentRelationType, exists := currentChildMap[childID]
 		if !exists || currentRelationType != relationTypeID {
 			// Add new child or update existing child's relation type
-			err = m.App.Repo().AddSubtaskWithRelationType(ctx, taskID, childID, relationTypeID)
+			err = m.App.TaskService.AddChildRelation(ctx, taskID, childID, relationTypeID)
 			if err != nil {
 				slog.Error("Error adding/updating child", "childID", childID, "error", err)
 			}
@@ -466,7 +526,10 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if name != "" {
 						ctx, cancel := m.DbContext()
 						defer cancel()
-						project, err := m.App.Repo().CreateProject(ctx, name, description)
+						project, err := m.App.ProjectService.CreateProject(ctx, projectService.CreateProjectRequest{
+							Name:        name,
+							Description: description,
+						})
 						if err != nil {
 							slog.Error("Error creating project", "error", err)
 							m.NotificationState.Add(state.LevelError, "Error creating project")
@@ -509,7 +572,10 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if name != "" {
 				ctx, cancel := m.DbContext()
 				defer cancel()
-				project, err := m.App.Repo().CreateProject(ctx, name, description)
+				project, err := m.App.ProjectService.CreateProject(ctx, projectService.CreateProjectRequest{
+					Name:        name,
+					Description: description,
+				})
 				if err != nil {
 					slog.Error("Error creating project", "error", err)
 					m.NotificationState.Add(state.LevelError, "Error creating project")

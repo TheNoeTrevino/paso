@@ -31,7 +31,7 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 	if task != nil {
 		ctx, cancel := m.DbContext()
 		defer cancel()
-		err := m.App.Repo().DeleteTask(ctx, task.ID)
+		err := m.App.TaskService.DeleteTask(ctx, task.ID)
 		if err != nil {
 			slog.Error("Error deleting task", "error", err)
 			m.NotificationState.Add(state.LevelError, "Failed to delete task")
@@ -116,7 +116,7 @@ func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 	if column != nil {
 		ctx, cancel := m.DbContext()
 		defer cancel()
-		err := m.App.Repo().DeleteColumn(ctx, column.ID)
+		err := m.App.ColumnService.DeleteColumn(ctx, column.ID)
 		if err != nil {
 			slog.Error("Error deleting column", "error", err)
 			m.NotificationState.Add(state.LevelError, "Failed to delete column")
