@@ -258,7 +258,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 	defer cancel()
 	taskDetail, err := m.Repo.GetTaskDetail(ctx, task.ID)
 	if err != nil {
-		m.handleDBError(err, "Loading task details")
+		m.HandleDBError(err, "Loading task details")
 		return m, nil
 	}
 

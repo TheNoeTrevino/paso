@@ -205,7 +205,7 @@ func (m *Model) UiContext() (context.Context, context.CancelFunc) {
 // handleDBError handles database errors with context-aware messages
 // It distinguishes between cancellation, timeout, and other errors,
 // providing appropriate user feedback for each case.
-func (m *Model) handleDBError(err error, operation string) {
+func (m *Model) HandleDBError(err error, operation string) {
 	if err == nil {
 		return
 	}
@@ -980,7 +980,7 @@ func (m *Model) reloadCurrentProject() {
 	columns, err := m.Repo.GetColumnsByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading columns", "error", err)
-		m.handleDBError(err, "reload columns")
+		m.HandleDBError(err, "reload columns")
 		return
 	}
 
@@ -988,7 +988,7 @@ func (m *Model) reloadCurrentProject() {
 	tasks, err := m.Repo.GetTaskSummariesByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading tasks", "error", err)
-		m.handleDBError(err, "reload tasks")
+		m.HandleDBError(err, "reload tasks")
 		return
 	}
 
@@ -996,7 +996,7 @@ func (m *Model) reloadCurrentProject() {
 	labels, err := m.Repo.GetLabelsByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading labels", "error", err)
-		m.handleDBError(err, "reload labels")
+		m.HandleDBError(err, "reload labels")
 		return
 	}
 
