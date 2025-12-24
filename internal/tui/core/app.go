@@ -9,7 +9,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/handlers"
-	"github.com/thenoetrevino/paso/internal/tui/render"
 )
 
 // App wraps the TUI Model and implements the tea.Model interface.
@@ -42,9 +41,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the current state of the application.
 // Implements tea.Model interface.
-// Delegates to render.View() for view dispatch.
+// Delegates to Model.View() method.
 func (a *App) View() tea.View {
-	return render.View(a.model)
+	return a.model.View()
 }
 
 // GetModel returns the underlying Model.
