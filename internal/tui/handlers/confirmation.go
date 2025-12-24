@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/modelops"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -13,116 +14,114 @@ import (
 // ============================================================================
 
 // HandleDeleteConfirm handles task deletion confirmation.
-func (w *Wrapper) HandleDeleteConfirm(msg tea.KeyMsg) (*Wrapper, tea.Cmd) {
+func HandleDeleteConfirm(m *tui.Model, msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case "y", "Y":
-		return w.confirmDeleteTask()
+		return confirmDeleteTask(m)
 	case "n", "N", "esc":
-		w.UiState.SetMode(state.NormalMode)
-		return w, nil
+		m.UiState.SetMode(state.NormalMode)
+		return nil
 	}
-	return w, nil
+	return nil
 }
 
 // confirmDeleteTask performs the actual task deletion.
-func (w *Wrapper) confirmDeleteTask() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-	task := ops.GetCurrentTask()
+func confirmDeleteTask(m *tui.Model) tea.Cmd {
+	task := modelops.GetCurrentTask(m)
 	if task != nil {
-		ctx, cancel := w.DbContext()
+		ctx, cancel := m.DbContext()
 		defer cancel()
-		err := w.Repo.DeleteTask(ctx, task.ID)
+		err := m.Repo.DeleteTask(ctx, task.ID)
 		if err != nil {
 			slog.Error("Error deleting task", "error", err)
-			w.NotificationState.Add(state.LevelError, "Failed to delete task")
+			m.NotificationState.Add(state.LevelError, "Failed to delete task")
 		} else {
-			ops.RemoveCurrentTask()
+			modelops.RemoveCurrentTask(m)
 		}
 	}
-	w.UiState.SetMode(state.NormalMode)
-	return w, nil
+	m.UiState.SetMode(state.NormalMode)
+	return nil
 }
 
 // HandleDiscardConfirm handles discard confirmation for forms and inputs.
 // This provides a generic Y/N/ESC handler that works for all discard scenarios.
-func (w *Wrapper) HandleDiscardConfirm(msg tea.KeyMsg) (*Wrapper, tea.Cmd) {
-	ctx := w.UiState.DiscardContext()
+func HandleDiscardConfirm(m *tui.Model, msg tea.KeyMsg) tea.Cmd {
+	ctx := m.UiState.DiscardContext()
 	if ctx == nil {
 		// Safety: if context is missing, return to normal mode
-		w.UiState.SetMode(state.NormalMode)
-		return w, nil
+		m.UiState.SetMode(state.NormalMode)
+		return nil
 	}
 
 	switch msg.String() {
 	case "y", "Y":
 		// User confirmed discard - clear form/input and return to normal mode
-		return w.confirmDiscard()
+		return confirmDiscard(m)
 
 	case "n", "N", "esc":
 		// User cancelled - return to source mode without clearing
-		w.UiState.SetMode(ctx.SourceMode)
-		w.UiState.ClearDiscardContext()
-		return w, nil
+		m.UiState.SetMode(ctx.SourceMode)
+		m.UiState.ClearDiscardContext()
+		return nil
 	}
 
-	return w, nil
+	return nil
 }
 
 // confirmDiscard performs the actual discard operation based on context.
-func (w *Wrapper) confirmDiscard() (*Wrapper, tea.Cmd) {
-	ctx := w.UiState.DiscardContext()
+func confirmDiscard(m *tui.Model) tea.Cmd {
+	ctx := m.UiState.DiscardContext()
 	if ctx == nil {
-		w.UiState.SetMode(state.NormalMode)
-		return w, nil
+		m.UiState.SetMode(state.NormalMode)
+		return nil
 	}
 
 	// Clear the appropriate form/input based on source mode
 	switch ctx.SourceMode {
 	case state.TicketFormMode:
-		w.FormState.ClearTicketForm()
+		m.FormState.ClearTicketForm()
 
 	case state.ProjectFormMode:
-		w.FormState.ClearProjectForm()
+		m.FormState.ClearProjectForm()
 
 	case state.AddColumnMode, state.EditColumnMode:
-		w.InputState.Clear()
+		m.InputState.Clear()
 	}
 
 	// Always return to normal mode after discard
-	w.UiState.SetMode(state.NormalMode)
-	w.UiState.ClearDiscardContext()
+	m.UiState.SetMode(state.NormalMode)
+	m.UiState.ClearDiscardContext()
 
-	return w, tea.ClearScreen
+	return tea.ClearScreen
 }
 
 // HandleDeleteColumnConfirm handles column deletion confirmation.
-func (w *Wrapper) HandleDeleteColumnConfirm(msg tea.KeyMsg) (*Wrapper, tea.Cmd) {
+func HandleDeleteColumnConfirm(m *tui.Model, msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case "y", "Y":
-		return w.confirmDeleteColumn()
+		return confirmDeleteColumn(m)
 	case "n", "N", "esc":
-		w.UiState.SetMode(state.NormalMode)
-		return w, nil
+		m.UiState.SetMode(state.NormalMode)
+		return nil
 	}
-	return w, nil
+	return nil
 }
 
 // confirmDeleteColumn performs the actual column deletion.
-func (w *Wrapper) confirmDeleteColumn() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-	column := ops.GetCurrentColumn()
+func confirmDeleteColumn(m *tui.Model) tea.Cmd {
+	column := modelops.GetCurrentColumn(m)
 	if column != nil {
-		ctx, cancel := w.DbContext()
+		ctx, cancel := m.DbContext()
 		defer cancel()
-		err := w.Repo.DeleteColumn(ctx, column.ID)
+		err := m.Repo.DeleteColumn(ctx, column.ID)
 		if err != nil {
 			slog.Error("Error deleting column", "error", err)
-			w.NotificationState.Add(state.LevelError, "Failed to delete column")
+			m.NotificationState.Add(state.LevelError, "Failed to delete column")
 		} else {
-			delete(w.AppState.Tasks(), column.ID)
-			ops.RemoveCurrentColumn()
+			delete(m.AppState.Tasks(), column.ID)
+			modelops.RemoveCurrentColumn(m)
 		}
 	}
-	w.UiState.SetMode(state.NormalMode)
-	return w, nil
+	m.UiState.SetMode(state.NormalMode)
+	return nil
 }

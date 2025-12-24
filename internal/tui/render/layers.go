@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"charm.land/lipgloss/v2"
+	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/layers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -11,14 +12,14 @@ import (
 )
 
 // RenderTicketFormLayer renders the ticket creation/edit form modal as a layer
-func (w *Wrapper) RenderTicketFormLayer() *lipgloss.Layer {
-	if w.FormState.TicketForm == nil {
+func RenderTicketFormLayer(m *tui.Model) *lipgloss.Layer {
+	if m.FormState.TicketForm == nil {
 		return nil
 	}
 
 	// Calculate layer dimensions (80% of screen)
-	layerWidth := w.UiState.Width() * 4 / 5
-	layerHeight := w.UiState.Height() * 4 / 5
+	layerWidth := m.UiState.Width() * 4 / 5
+	layerHeight := m.UiState.Height() * 4 / 5
 
 	// Calculate zone dimensions
 	leftColumnWidth := layerWidth * 7 / 10  // 70% of layer width
@@ -27,9 +28,9 @@ func (w *Wrapper) RenderTicketFormLayer() *lipgloss.Layer {
 	bottomHeight := layerHeight * 4 / 10    // 40% of layer height
 
 	// Render the three zones
-	topLeftZone := w.renderFormTitleDescriptionZone(leftColumnWidth, topHeight)
-	bottomLeftZone := w.renderFormAssociationsZone(leftColumnWidth, bottomHeight)
-	rightZone := w.renderFormMetadataZone(rightColumnWidth, layerHeight)
+	topLeftZone := renderFormTitleDescriptionZone(m, leftColumnWidth, topHeight)
+	bottomLeftZone := renderFormAssociationsZone(m, leftColumnWidth, bottomHeight)
+	rightZone := renderFormMetadataZone(m, rightColumnWidth, layerHeight)
 
 	// Compose left column (top + bottom)
 	leftColumn := lipgloss.JoinVertical(lipgloss.Top, topLeftZone, bottomLeftZone)
@@ -40,7 +41,7 @@ func (w *Wrapper) RenderTicketFormLayer() *lipgloss.Layer {
 	// Add form title
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Highlight))
 	var formTitle string
-	if w.FormState.EditingTaskID == 0 {
+	if m.FormState.EditingTaskID == 0 {
 		formTitle = titleStyle.Render("Create New Task")
 	} else {
 		formTitle = titleStyle.Render("Edit Task")
@@ -66,55 +67,55 @@ func (w *Wrapper) RenderTicketFormLayer() *lipgloss.Layer {
 		Height(layerHeight).
 		Render(fullContent)
 
-	return layers.CreateCenteredLayer(formBox, w.UiState.Width(), w.UiState.Height())
+	return layers.CreateCenteredLayer(formBox, m.UiState.Width(), m.UiState.Height())
 }
 
 // RenderProjectFormLayer renders the project creation form modal as a layer
-func (w *Wrapper) RenderProjectFormLayer() *lipgloss.Layer {
-	if w.FormState.ProjectForm == nil {
+func RenderProjectFormLayer(m *tui.Model) *lipgloss.Layer {
+	if m.FormState.ProjectForm == nil {
 		return nil
 	}
 
-	formView := w.FormState.ProjectForm.View()
+	formView := m.FormState.ProjectForm.View()
 
 	// Wrap form in a styled container with green border for creation
 	formBox := components.ProjectFormBoxStyle.
-		Width(w.UiState.Width() * 3 / 4).
-		Height(w.UiState.Height() / 3).
+		Width(m.UiState.Width() * 3 / 4).
+		Height(m.UiState.Height() / 3).
 		Render("New Project\n\n" + formView)
 
-	return layers.CreateCenteredLayer(formBox, w.UiState.Width(), w.UiState.Height())
+	return layers.CreateCenteredLayer(formBox, m.UiState.Width(), m.UiState.Height())
 }
 
 // RenderColumnInputLayer renders the column name input dialog (create or edit mode) as a layer
-func (w *Wrapper) RenderColumnInputLayer() *lipgloss.Layer {
+func RenderColumnInputLayer(m *tui.Model) *lipgloss.Layer {
 	var inputBox string
-	if w.UiState.Mode() == state.AddColumnMode {
+	if m.UiState.Mode() == state.AddColumnMode {
 		inputBox = components.CreateInputBoxStyle.
 			Width(50).
-			Render(fmt.Sprintf("%s\n> %s_", w.InputState.Prompt, w.InputState.Buffer))
+			Render(fmt.Sprintf("%s\n> %s_", m.InputState.Prompt, m.InputState.Buffer))
 	} else {
 		// EditColumnMode
 		inputBox = components.EditInputBoxStyle.
 			Width(50).
-			Render(fmt.Sprintf("%s\n> %s_", w.InputState.Prompt, w.InputState.Buffer))
+			Render(fmt.Sprintf("%s\n> %s_", m.InputState.Prompt, m.InputState.Buffer))
 	}
 
-	return layers.CreateCenteredLayer(inputBox, w.UiState.Width(), w.UiState.Height())
+	return layers.CreateCenteredLayer(inputBox, m.UiState.Width(), m.UiState.Height())
 }
 
 // RenderHelpLayer renders the keyboard shortcuts help screen as a layer
-func (w *Wrapper) RenderHelpLayer() *lipgloss.Layer {
+func RenderHelpLayer(m *tui.Model) *lipgloss.Layer {
 	helpBox := components.HelpBoxStyle.
 		Width(50).
-		Render(w.generateHelpText())
+		Render(generateHelpText(m))
 
-	return layers.CreateCenteredLayer(helpBox, w.UiState.Width(), w.UiState.Height())
+	return layers.CreateCenteredLayer(helpBox, m.UiState.Width(), m.UiState.Height())
 }
 
 // generateHelpText creates help text based on current key mappings
-func (w *Wrapper) generateHelpText() string {
-	km := w.Config.KeyMappings
+func generateHelpText(m *tui.Model) string {
+	km := m.Config.KeyMappings
 	return fmt.Sprintf(`PASO - Keyboard Shortcuts
 
 TASKS

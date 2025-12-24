@@ -4,191 +4,192 @@ import (
 	"log/slog"
 
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
-func (w *Wrapper) RemoveCurrentTask() {
-	currentCol := w.GetCurrentColumn()
+func RemoveCurrentTask(m *tui.Model) {
+	currentCol := GetCurrentColumn(m)
 	if currentCol == nil {
 		return
 	}
 
-	tasks := w.GetTasksForColumn(currentCol.ID)
+	tasks := GetTasksForColumn(m, currentCol.ID)
 
-	if len(tasks) == 0 || w.UiState.SelectedTask() >= len(tasks) {
+	if len(tasks) == 0 || m.UiState.SelectedTask() >= len(tasks) {
 		return
 	}
 
 	// Remove the task at selectedTask index
-	w.AppState.Tasks()[currentCol.ID] = append(tasks[:w.UiState.SelectedTask()], tasks[w.UiState.SelectedTask()+1:]...)
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UiState.SelectedTask()], tasks[m.UiState.SelectedTask()+1:]...)
 
 	// Adjust selectedTask if we removed the last task
-	if w.UiState.SelectedTask() >= len(w.AppState.Tasks()[currentCol.ID]) && w.UiState.SelectedTask() > 0 {
-		w.UiState.SetSelectedTask(w.UiState.SelectedTask() - 1)
+	if m.UiState.SelectedTask() >= len(m.AppState.Tasks()[currentCol.ID]) && m.UiState.SelectedTask() > 0 {
+		m.UiState.SetSelectedTask(m.UiState.SelectedTask() - 1)
 	}
 }
 
-func (w *Wrapper) RemoveCurrentColumn() {
-	columns := w.AppState.Columns()
-	selectedCol := w.UiState.SelectedColumn()
+func RemoveCurrentColumn(m *tui.Model) {
+	columns := m.AppState.Columns()
+	selectedCol := m.UiState.SelectedColumn()
 
 	if len(columns) == 0 || selectedCol >= len(columns) {
 		return
 	}
 
 	// Remove the column at selectedColumn index
-	w.AppState.SetColumns(append(columns[:selectedCol], columns[selectedCol+1:]...))
+	m.AppState.SetColumns(append(columns[:selectedCol], columns[selectedCol+1:]...))
 
 	// Adjust selectedColumn if we removed the last column
-	if selectedCol >= len(w.AppState.Columns()) && selectedCol > 0 {
-		w.UiState.SetSelectedColumn(selectedCol - 1)
+	if selectedCol >= len(m.AppState.Columns()) && selectedCol > 0 {
+		m.UiState.SetSelectedColumn(selectedCol - 1)
 	}
 
 	// Reset task selection
-	w.UiState.SetSelectedTask(0)
+	m.UiState.SetSelectedTask(0)
 
 	// Adjust viewportOffset using UIState helper
-	w.UiState.AdjustViewportAfterColumnRemoval(w.UiState.SelectedColumn(), len(w.AppState.Columns()))
+	m.UiState.AdjustViewportAfterColumnRemoval(m.UiState.SelectedColumn(), len(m.AppState.Columns()))
 }
 
-func (w *Wrapper) MoveTaskRight() {
+func MoveTaskRight(m *tui.Model) {
 	// Get the current task
-	task := w.GetCurrentTask()
+	task := GetCurrentTask(m)
 	if task == nil {
 		return
 	}
 
 	// Check if there's a next column using the linked list
-	currentCol := w.GetCurrentColumn()
+	currentCol := GetCurrentColumn(m)
 	if currentCol == nil {
 		return
 	}
 	if currentCol.NextID == nil {
 		// Already at last column - show notification
-		w.NotificationState.Add(state.LevelInfo, "There are no more columns to move to.")
+		m.NotificationState.Add(state.LevelInfo, "There are no more columns to move to.")
 		return
 	}
 
 	// Use the new database function to move task
-	ctx, cancel := w.UiContext()
+	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := w.Repo.MoveTaskToNextColumn(ctx, task.ID)
+	err := m.Repo.MoveTaskToNextColumn(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task to next column", "error", err)
 		if err != models.ErrAlreadyLastColumn {
-			w.NotificationState.Add(state.LevelError, "Failed to move task to next column")
+			m.NotificationState.Add(state.LevelError, "Failed to move task to next column")
 		}
 		return
 	}
 
 	// Update local state: remove from current column
-	tasks := w.AppState.Tasks()[currentCol.ID]
-	w.AppState.Tasks()[currentCol.ID] = append(tasks[:w.UiState.SelectedTask()], tasks[w.UiState.SelectedTask()+1:]...)
+	tasks := m.AppState.Tasks()[currentCol.ID]
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UiState.SelectedTask()], tasks[m.UiState.SelectedTask()+1:]...)
 
 	// Find the next column and add task there
 	nextColID := *currentCol.NextID
-	newPosition := len(w.AppState.Tasks()[nextColID])
+	newPosition := len(m.AppState.Tasks()[nextColID])
 	task.ColumnID = nextColID
 	task.Position = newPosition
-	w.AppState.Tasks()[nextColID] = append(w.AppState.Tasks()[nextColID], task)
+	m.AppState.Tasks()[nextColID] = append(m.AppState.Tasks()[nextColID], task)
 
 	// Move selection to follow the task
-	w.UiState.SetSelectedColumn(w.UiState.SelectedColumn() + 1)
-	w.UiState.SetSelectedTask(newPosition)
+	m.UiState.SetSelectedColumn(m.UiState.SelectedColumn() + 1)
+	m.UiState.SetSelectedTask(newPosition)
 
 	// Ensure the moved task is visible (auto-scroll viewport if needed)
-	if w.UiState.SelectedColumn() >= w.UiState.ViewportOffset()+w.UiState.ViewportSize() {
-		w.UiState.SetViewportOffset(w.UiState.ViewportOffset() + 1)
+	if m.UiState.SelectedColumn() >= m.UiState.ViewportOffset()+m.UiState.ViewportSize() {
+		m.UiState.SetViewportOffset(m.UiState.ViewportOffset() + 1)
 	}
 }
 
-func (w *Wrapper) MoveTaskLeft() {
+func MoveTaskLeft(m *tui.Model) {
 	// Get the current task
-	task := w.GetCurrentTask()
+	task := GetCurrentTask(m)
 	if task == nil {
 		return
 	}
 
 	// Check if there's a previous column using the linked list
-	currentCol := w.GetCurrentColumn()
+	currentCol := GetCurrentColumn(m)
 	if currentCol == nil {
 		return
 	}
 	if currentCol.PrevID == nil {
 		// Already at first column - show notification
-		w.NotificationState.Add(state.LevelInfo, "There are no more columns to move to.")
+		m.NotificationState.Add(state.LevelInfo, "There are no more columns to move to.")
 		return
 	}
 
 	// Use the new database function to move task
-	ctx, cancel := w.UiContext()
+	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := w.Repo.MoveTaskToPrevColumn(ctx, task.ID)
+	err := m.Repo.MoveTaskToPrevColumn(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task to previous column", "error", err)
 		if err != models.ErrAlreadyFirstColumn {
-			w.NotificationState.Add(state.LevelError, "Failed to move task to previous column")
+			m.NotificationState.Add(state.LevelError, "Failed to move task to previous column")
 		}
 		return
 	}
 
 	// Update local state: remove from current column
-	tasks := w.AppState.Tasks()[currentCol.ID]
-	w.AppState.Tasks()[currentCol.ID] = append(tasks[:w.UiState.SelectedTask()], tasks[w.UiState.SelectedTask()+1:]...)
+	tasks := m.AppState.Tasks()[currentCol.ID]
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UiState.SelectedTask()], tasks[m.UiState.SelectedTask()+1:]...)
 
 	// Find the previous column and add task there
 	prevColID := *currentCol.PrevID
-	newPosition := len(w.AppState.Tasks()[prevColID])
+	newPosition := len(m.AppState.Tasks()[prevColID])
 	task.ColumnID = prevColID
 	task.Position = newPosition
-	w.AppState.Tasks()[prevColID] = append(w.AppState.Tasks()[prevColID], task)
+	m.AppState.Tasks()[prevColID] = append(m.AppState.Tasks()[prevColID], task)
 
 	// Move selection to follow the task
-	w.UiState.SetSelectedColumn(w.UiState.SelectedColumn() - 1)
-	w.UiState.SetSelectedTask(newPosition)
+	m.UiState.SetSelectedColumn(m.UiState.SelectedColumn() - 1)
+	m.UiState.SetSelectedTask(newPosition)
 
 	// Ensure the moved task is visible (auto-scroll viewport if needed)
-	if w.UiState.SelectedColumn() < w.UiState.ViewportOffset() {
-		w.UiState.SetViewportOffset(w.UiState.ViewportOffset() - 1)
+	if m.UiState.SelectedColumn() < m.UiState.ViewportOffset() {
+		m.UiState.SetViewportOffset(m.UiState.ViewportOffset() - 1)
 	}
 }
 
-func (w *Wrapper) MoveTaskUp() {
-	task := w.GetCurrentTask()
+func MoveTaskUp(m *tui.Model) {
+	task := GetCurrentTask(m)
 	if task == nil {
 		return
 	}
 
 	// Check if already at top (edge case handled here for quick feedback)
-	if w.UiState.SelectedTask() == 0 {
-		w.NotificationState.Add(state.LevelInfo, "Task is already at the top")
+	if m.UiState.SelectedTask() == 0 {
+		m.NotificationState.Add(state.LevelInfo, "Task is already at the top")
 		return
 	}
 
 	// Call database swap
-	ctx, cancel := w.UiContext()
+	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := w.Repo.SwapTaskUp(ctx, task.ID)
+	err := m.Repo.SwapTaskUp(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task up", "error", err)
 		if err != models.ErrAlreadyFirstTask {
-			w.NotificationState.Add(state.LevelError, "Failed to move task up")
+			m.NotificationState.Add(state.LevelError, "Failed to move task up")
 		}
 		return
 	}
 
 	// Update local state: swap tasks in slice
-	currentCol := w.GetCurrentColumn()
+	currentCol := GetCurrentColumn(m)
 	if currentCol == nil {
 		return
 	}
 
-	tasks := w.GetTasksForColumn(currentCol.ID)
+	tasks := GetTasksForColumn(m, currentCol.ID)
 	if len(tasks) < 2 {
 		return
 	}
 
-	selectedIdx := w.UiState.SelectedTask()
+	selectedIdx := m.UiState.SelectedTask()
 	if selectedIdx == 0 || selectedIdx >= len(tasks) {
 		return
 	}
@@ -201,38 +202,38 @@ func (w *Wrapper) MoveTaskUp() {
 	tasks[selectedIdx-1].Position = selectedIdx - 1
 
 	// Move selection to follow the task
-	w.UiState.SetSelectedTask(selectedIdx - 1)
+	m.UiState.SetSelectedTask(selectedIdx - 1)
 }
 
-func (w *Wrapper) MoveTaskDown() {
-	task := w.GetCurrentTask()
+func MoveTaskDown(m *tui.Model) {
+	task := GetCurrentTask(m)
 	if task == nil {
 		return
 	}
 
 	// Get current tasks for edge case check
-	currentCol := w.GetCurrentColumn()
+	currentCol := GetCurrentColumn(m)
 	if currentCol == nil {
 		return
 	}
 
-	tasks := w.GetTasksForColumn(currentCol.ID)
-	selectedIdx := w.UiState.SelectedTask()
+	tasks := GetTasksForColumn(m, currentCol.ID)
+	selectedIdx := m.UiState.SelectedTask()
 
 	// Check if already at bottom
 	if selectedIdx >= len(tasks)-1 {
-		w.NotificationState.Add(state.LevelInfo, "Task is already at the bottom")
+		m.NotificationState.Add(state.LevelInfo, "Task is already at the bottom")
 		return
 	}
 
 	// Call database swap
-	ctx, cancel := w.UiContext()
+	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := w.Repo.SwapTaskDown(ctx, task.ID)
+	err := m.Repo.SwapTaskDown(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task down", "error", err)
 		if err != models.ErrAlreadyLastTask {
-			w.NotificationState.Add(state.LevelError, "Failed to move task down")
+			m.NotificationState.Add(state.LevelError, "Failed to move task down")
 		}
 		return
 	}
@@ -245,50 +246,49 @@ func (w *Wrapper) MoveTaskDown() {
 	tasks[selectedIdx+1].Position = selectedIdx + 1
 
 	// Move selection to follow the task
-	w.UiState.SetSelectedTask(selectedIdx + 1)
+	m.UiState.SetSelectedTask(selectedIdx + 1)
 }
 
 // getCurrentProject returns the currently selected project
 
-func (w *Wrapper) SwitchToProject(projectIndex int) {
-	if projectIndex < 0 || projectIndex >= len(w.AppState.Projects()) {
+func SwitchToProject(m *tui.Model, projectIndex int) {
+	if projectIndex < 0 || projectIndex >= len(m.AppState.Projects()) {
 		return
 	}
 
 	// Update state
-	w.AppState.SetSelectedProject(projectIndex)
+	m.AppState.SetSelectedProject(projectIndex)
 
-	project := w.AppState.Projects()[projectIndex]
+	project := m.AppState.Projects()[projectIndex]
 
 	// Create context for database operations
-	ctx, cancel := w.DbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 
 	// Reload columns for this project
-	columns, err := w.Repo.GetColumnsByProject(ctx, project.ID)
+	columns, err := m.Repo.GetColumnsByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading columns for project", "project_id", project.ID, "error", err)
 		columns = []*models.Column{}
 	}
-	w.AppState.SetColumns(columns)
+	m.AppState.SetColumns(columns)
 
 	// Reload task summaries for the entire project
-	tasks, err := w.Repo.GetTaskSummariesByProject(ctx, project.ID)
+	tasks, err := m.Repo.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading tasks for project", "project_id", project.ID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
-	w.AppState.SetTasks(tasks)
+	m.AppState.SetTasks(tasks)
 
 	// Reload labels for this project
-	labels, err := w.Repo.GetLabelsByProject(ctx, project.ID)
+	labels, err := m.Repo.GetLabelsByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading labels for project", "project_id", project.ID, "error", err)
 		labels = []*models.Label{}
 	}
-	w.AppState.SetLabels(labels)
+	m.AppState.SetLabels(labels)
 
 	// Reset selection state
-	w.UiState.ResetSelection()
+	m.UiState.ResetSelection()
 }
-

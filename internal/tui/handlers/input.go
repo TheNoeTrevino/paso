@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/modelops"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -15,127 +16,124 @@ import (
 // ============================================================================
 
 // HandleInputMode handles text input for column creation/editing.
-func (w *Wrapper) HandleInputMode(msg tea.KeyMsg) (*Wrapper, tea.Cmd) {
+func HandleInputMode(m *tui.Model, msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case "enter":
-		return w.handleInputConfirm()
+		return handleInputConfirm(m)
 	case "esc":
 		// Check for changes before closing
 		shouldConfirm := false
 		contextMsg := ""
 
-		if w.UiState.Mode() == state.AddColumnMode {
+		if m.UiState.Mode() == state.AddColumnMode {
 			// AddColumnMode: confirm if user typed anything
-			shouldConfirm = !w.InputState.IsEmpty()
+			shouldConfirm = !m.InputState.IsEmpty()
 			contextMsg = "Discard column?"
-		} else if w.UiState.Mode() == state.EditColumnMode {
+		} else if m.UiState.Mode() == state.EditColumnMode {
 			// EditColumnMode: confirm if text changed from original
-			shouldConfirm = w.InputState.HasInputChanges()
+			shouldConfirm = m.InputState.HasInputChanges()
 			contextMsg = "Discard changes?"
 		}
 
 		if shouldConfirm {
-			w.UiState.SetDiscardContext(&state.DiscardContext{
-				SourceMode: w.UiState.Mode(),
+			m.UiState.SetDiscardContext(&state.DiscardContext{
+				SourceMode: m.UiState.Mode(),
 				Message:    contextMsg,
 			})
-			w.UiState.SetMode(state.DiscardConfirmMode)
-			return w, nil
+			m.UiState.SetMode(state.DiscardConfirmMode)
+			return nil
 		}
 
 		// No changes - immediate close
-		return w.handleInputCancel()
+		return handleInputCancel(m)
 	case "backspace", "ctrl+h":
-		w.InputState.Backspace()
-		return w, nil
+		m.InputState.Backspace()
+		return nil
 	default:
 		key := msg.String()
 		if len(key) == 1 {
-			w.InputState.AppendChar(rune(key[0]))
+			m.InputState.AppendChar(rune(key[0]))
 		}
-		return w, nil
+		return nil
 	}
 }
 
 // handleInputConfirm processes the input and creates/renames column.
-func (w *Wrapper) handleInputConfirm() (*Wrapper, tea.Cmd) {
-	if strings.TrimSpace(w.InputState.Buffer) == "" {
-		w.UiState.SetMode(state.NormalMode)
-		w.InputState.Clear()
-		return w, nil
+func handleInputConfirm(m *tui.Model) tea.Cmd {
+	if strings.TrimSpace(m.InputState.Buffer) == "" {
+		m.UiState.SetMode(state.NormalMode)
+		m.InputState.Clear()
+		return nil
 	}
 
-	if w.UiState.Mode() == state.AddColumnMode {
-		return w.createColumn()
+	if m.UiState.Mode() == state.AddColumnMode {
+		return createColumn(m)
 	}
-	return w.renameColumn()
+	return renameColumn(m)
 }
 
 // handleInputCancel cancels the input operation.
-func (w *Wrapper) handleInputCancel() (*Wrapper, tea.Cmd) {
-	w.UiState.SetMode(state.NormalMode)
-	w.InputState.Clear()
-	return w, nil
+func handleInputCancel(m *tui.Model) tea.Cmd {
+	m.UiState.SetMode(state.NormalMode)
+	m.InputState.Clear()
+	return nil
 }
 
 // createColumn creates a new column with the input buffer as name.
-func (w *Wrapper) createColumn() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-
+func createColumn(m *tui.Model) tea.Cmd {
 	var afterColumnID *int
-	if len(w.AppState.Columns()) > 0 {
-		currentCol := ops.GetCurrentColumn()
+	if len(m.AppState.Columns()) > 0 {
+		currentCol := modelops.GetCurrentColumn(m)
 		if currentCol != nil {
 			afterColumnID = &currentCol.ID
 		}
 	}
 
 	projectID := 0
-	if project := ops.GetCurrentProject(); project != nil {
+	if project := modelops.GetCurrentProject(m); project != nil {
 		projectID = project.ID
 	}
 
-	ctx, cancel := w.DbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
-	column, err := w.Repo.CreateColumn(ctx, strings.TrimSpace(w.InputState.Buffer), projectID, afterColumnID)
+	column, err := m.Repo.CreateColumn(ctx, strings.TrimSpace(m.InputState.Buffer), projectID, afterColumnID)
 	if err != nil {
 		slog.Error("Error creating column", "error", err)
-		w.NotificationState.Add(state.LevelError, "Failed to create column")
+		m.NotificationState.Add(state.LevelError, "Failed to create column")
 	} else {
-		columns, err := w.Repo.GetColumnsByProject(ctx, projectID)
+		columns, err := m.Repo.GetColumnsByProject(ctx, projectID)
 		if err != nil {
 			slog.Error("Error reloading columns", "error", err)
-			w.NotificationState.Add(state.LevelError, "Failed to reload columns")
+			m.NotificationState.Add(state.LevelError, "Failed to reload columns")
 		}
-		w.AppState.SetColumns(columns)
-		w.AppState.Tasks()[column.ID] = []*models.TaskSummary{}
+		m.AppState.SetColumns(columns)
+		m.AppState.Tasks()[column.ID] = []*models.TaskSummary{}
 		if afterColumnID != nil {
-			w.UiState.SetSelectedColumn(w.UiState.SelectedColumn() + 1)
+			m.UiState.SetSelectedColumn(m.UiState.SelectedColumn() + 1)
 		}
 	}
 
-	w.UiState.SetMode(state.NormalMode)
-	w.InputState.Clear()
-	return w, nil
+	m.UiState.SetMode(state.NormalMode)
+	m.InputState.Clear()
+	return nil
 }
 
 // renameColumn renames the current column with the input buffer.
-func (w *Wrapper) renameColumn() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-	column := ops.GetCurrentColumn()
+func renameColumn(m *tui.Model) tea.Cmd {
+	column := modelops.GetCurrentColumn(m)
 	if column != nil {
-		ctx, cancel := w.DbContext()
+		ctx, cancel := m.DbContext()
 		defer cancel()
-		err := w.Repo.UpdateColumnName(ctx, column.ID, strings.TrimSpace(w.InputState.Buffer))
+		err := m.Repo.UpdateColumnName(ctx, column.ID, strings.TrimSpace(m.InputState.Buffer))
 		if err != nil {
 			slog.Error("Error updating column", "error", err)
-			w.NotificationState.Add(state.LevelError, "Failed to rename column")
+			m.NotificationState.Add(state.LevelError, "Failed to rename column")
 		} else {
-			column.Name = strings.TrimSpace(w.InputState.Buffer)
+			column.Name = strings.TrimSpace(m.InputState.Buffer)
 		}
 	}
 
-	w.UiState.SetMode(state.NormalMode)
-	w.InputState.Clear()
-	return w, nil
+	m.UiState.SetMode(state.NormalMode)
+	m.InputState.Clear()
+	return nil
 }

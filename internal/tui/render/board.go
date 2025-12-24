@@ -5,6 +5,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/helpers"
 	"github.com/thenoetrevino/paso/internal/tui/modelops"
@@ -15,12 +16,12 @@ import (
 
 // getInlineNotification returns the inline notification content for the tab bar
 // Returns empty string if no notifications
-func (w *Wrapper) getInlineNotification() string {
-	if !w.NotificationState.HasAny() {
+func getInlineNotification(m *tui.Model) string {
+	if !m.NotificationState.HasAny() {
 		return ""
 	}
 	// Get the first (most recent) notification
-	allNotifications := w.NotificationState.All()
+	allNotifications := m.NotificationState.All()
 	if len(allNotifications) == 0 {
 		return ""
 	}
@@ -28,18 +29,18 @@ func (w *Wrapper) getInlineNotification() string {
 }
 
 // ViewKanbanBoard renders the main kanban board (normal mode)
-func (w *Wrapper) ViewKanbanBoard() string {
+func ViewKanbanBoard(m *tui.Model) string {
 	// Check if list view is active
-	if w.ListViewState.IsListView() {
-		return w.viewListView()
+	if m.ListViewState.IsListView() {
+		return viewListView(m)
 	}
 
 	// Handle empty column list edge case
-	if len(w.AppState.Columns()) == 0 {
+	if len(m.AppState.Columns()) == 0 {
 		emptyMsg := "No columns found. Please check database initialization."
 		footer := components.RenderStatusBar(components.StatusBarProps{
-			Width:            w.UiState.Width(),
-			ConnectionStatus: w.ConnectionState.Status(),
+			Width:            m.UiState.Width(),
+			ConnectionStatus: m.ConnectionState.Status(),
 		})
 		return lipgloss.JoinVertical(
 			lipgloss.Left,
@@ -51,43 +52,43 @@ func (w *Wrapper) ViewKanbanBoard() string {
 	}
 
 	// Calculate visible columns based on viewport
-	endIdx := min(w.UiState.ViewportOffset()+w.UiState.ViewportSize(), len(w.AppState.Columns()))
-	visibleColumns := w.AppState.Columns()[w.UiState.ViewportOffset():endIdx]
+	endIdx := min(m.UiState.ViewportOffset()+m.UiState.ViewportSize(), len(m.AppState.Columns()))
+	visibleColumns := m.AppState.Columns()[m.UiState.ViewportOffset():endIdx]
 
 	// Calculate fixed content height using shared method
-	columnHeight := w.UiState.ContentHeight()
+	columnHeight := m.UiState.ContentHeight()
 
 	// Render only visible columns
 	var columns []string
 	for i, col := range visibleColumns {
 		// Calculate global index for selection check
-		globalIndex := w.UiState.ViewportOffset() + i
+		globalIndex := m.UiState.ViewportOffset() + i
 
 		// Safe map access with defensive check
-		tasks, ok := w.AppState.Tasks()[col.ID]
+		tasks, ok := m.AppState.Tasks()[col.ID]
 		if !ok {
 			tasks = []*models.TaskSummary{}
 		}
 
 		// Determine selection state for this column
-		isSelected := (globalIndex == w.UiState.SelectedColumn())
+		isSelected := (globalIndex == m.UiState.SelectedColumn())
 
 		// Determine which task is selected (only for the selected column)
 		selectedTaskIdx := -1
 		if isSelected {
-			selectedTaskIdx = w.UiState.SelectedTask()
+			selectedTaskIdx = m.UiState.SelectedTask()
 		}
 
 		// Get scroll offset for this column
-		scrollOffset := w.UiState.TaskScrollOffset(col.ID)
+		scrollOffset := m.UiState.TaskScrollOffset(col.ID)
 
 		columns = append(columns, components.RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight, scrollOffset))
 	}
 
 	scrollIndicators := helpers.GetScrollIndicators(
-		w.UiState.ViewportOffset(),
-		w.UiState.ViewportSize(),
-		len(w.AppState.Columns()),
+		m.UiState.ViewportOffset(),
+		m.UiState.ViewportSize(),
+		len(m.AppState.Columns()),
 	)
 
 	// Layout columns horizontally with scroll indicators
@@ -96,21 +97,21 @@ func (w *Wrapper) ViewKanbanBoard() string {
 
 	// Create project tabs from actual project data
 	var projectTabs []string
-	for _, project := range w.AppState.Projects() {
+	for _, project := range m.AppState.Projects() {
 		projectTabs = append(projectTabs, project.Name)
 	}
 	if len(projectTabs) == 0 {
 		projectTabs = []string{"No Projects"}
 	}
 	// Get inline notification for tab bar
-	inlineNotification := w.getInlineNotification()
-	tabBar := components.RenderTabs(projectTabs, w.AppState.SelectedProject(), w.UiState.Width(), inlineNotification)
+	inlineNotification := getInlineNotification(m)
+	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UiState.Width(), inlineNotification)
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
-		Width:            w.UiState.Width(),
-		SearchMode:       w.UiState.Mode() == state.SearchMode || w.SearchState.IsActive,
-		SearchQuery:      w.SearchState.Query,
-		ConnectionStatus: w.ConnectionState.Status(),
+		Width:            m.UiState.Width(),
+		SearchMode:       m.UiState.Mode() == state.SearchMode || m.SearchState.IsActive,
+		SearchQuery:      m.SearchState.Query,
+		ConnectionStatus: m.ConnectionState.Status(),
 	})
 
 	// Build content (everything except footer)
@@ -119,7 +120,7 @@ func (w *Wrapper) ViewKanbanBoard() string {
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
 
-	maxContentLines := max(w.UiState.Height()-1, 1)
+	maxContentLines := max(m.UiState.Height()-1, 1)
 
 	if len(contentLines) > maxContentLines {
 		contentLines = contentLines[:maxContentLines]
@@ -130,7 +131,7 @@ func (w *Wrapper) ViewKanbanBoard() string {
 	baseView := constrainedContent + "\n" + footer
 
 	// If no notifications, return base view directly
-	if !w.NotificationState.HasAny() {
+	if !m.NotificationState.HasAny() {
 		return baseView
 	}
 
@@ -147,43 +148,42 @@ func (w *Wrapper) ViewKanbanBoard() string {
 }
 
 // viewListView renders the list/table view of all tasks.
-func (w *Wrapper) viewListView() string {
+func viewListView(m *tui.Model) string {
 	// Build rows from all tasks across columns (with sorting applied)
-	ops := modelops.New(w.Model)
-	rows := ops.BuildListViewRows()
+	rows := modelops.BuildListViewRows(m)
 
 	// Calculate fixed content height using shared method
-	listHeight := w.UiState.ContentHeight()
+	listHeight := m.UiState.ContentHeight()
 
 	// Render tab bar (same as kanban)
 	var projectTabs []string
-	for _, project := range w.AppState.Projects() {
+	for _, project := range m.AppState.Projects() {
 		projectTabs = append(projectTabs, project.Name)
 	}
 	if len(projectTabs) == 0 {
 		projectTabs = []string{"No Projects"}
 	}
 	// Get inline notification for tab bar
-	inlineNotification := w.getInlineNotification()
-	tabBar := components.RenderTabs(projectTabs, w.AppState.SelectedProject(), w.UiState.Width(), inlineNotification)
+	inlineNotification := getInlineNotification(m)
+	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UiState.Width(), inlineNotification)
 
 	// Render list content with sort indicator
 	listContent := renderers.RenderListView(
 		rows,
-		w.ListViewState.SelectedRow(),
-		w.ListViewState.ScrollOffset(),
-		w.ListViewState.SortField(),
-		w.ListViewState.SortOrder(),
-		w.UiState.Width(),
+		m.ListViewState.SelectedRow(),
+		m.ListViewState.ScrollOffset(),
+		m.ListViewState.SortField(),
+		m.ListViewState.SortOrder(),
+		m.UiState.Width(),
 		listHeight,
 	)
 
 	// Render footer
 	footer := components.RenderStatusBar(components.StatusBarProps{
-		Width:            w.UiState.Width(),
-		SearchMode:       w.UiState.Mode() == state.SearchMode || w.SearchState.IsActive,
-		SearchQuery:      w.SearchState.Query,
-		ConnectionStatus: w.ConnectionState.Status(),
+		Width:            m.UiState.Width(),
+		SearchMode:       m.UiState.Mode() == state.SearchMode || m.SearchState.IsActive,
+		SearchQuery:      m.SearchState.Query,
+		ConnectionStatus: m.ConnectionState.Status(),
 	})
 
 	// Build content (everything except footer)
@@ -191,7 +191,7 @@ func (w *Wrapper) viewListView() string {
 
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
-	maxContentLines := max(w.UiState.Height()-1, 1)
+	maxContentLines := max(m.UiState.Height()-1, 1)
 
 	if len(contentLines) > maxContentLines {
 		contentLines = contentLines[:maxContentLines]
