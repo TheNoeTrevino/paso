@@ -20,6 +20,8 @@ const (
 	ParentPickerMode                    // Parent issue picker popup
 	ChildPickerMode                     // Child issue picker popup
 	PriorityPickerMode                  // Priority picker popup
+	TypePickerMode                      // Type picker popup
+	RelationTypePickerMode              // Relation type picker popup
 	SearchMode                          // Vim-style search mode (/)
 	StatusPickerMode                    // Status picker popup for list view
 )

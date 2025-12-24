@@ -1,4 +1,4 @@
-package tui
+package components
 
 import (
 	"charm.land/lipgloss/v2"
@@ -6,11 +6,12 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
-// Style definitions for the kanban board UI
-// These styles follow Lipgloss conventions for composable terminal styling
+// Doing this to cache the draw
+// dont recompute every redraw
 
 var (
-	// Tab borders - active tab has no bottom border to "open" into content
+	// compared to the defaults, these feel like
+	// they take up less space
 	activeTabBorder = lipgloss.Border{
 		Top:         "─",
 		Bottom:      " ",
@@ -83,6 +84,8 @@ var (
 
 	// ErrorBannerStyle defines the appearance of error messages (red)
 	ErrorBannerStyle lipgloss.Style
+
+	IndicatorStyle lipgloss.Style
 )
 
 // InitStyles initializes all styles with the given color scheme
@@ -103,24 +106,20 @@ func InitStyles(colors config.ColorScheme) {
 		BorderLeft(false).
 		BorderRight(false)
 
-	// Column style
 	ColumnStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(colors.ColumnBorder)).
-		PaddingTop(0).
-		PaddingBottom(1).
 		PaddingLeft(1).
 		PaddingRight(1).
 		Width(40)
 
 	// Task style
 	TaskStyle = lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
+		BorderStyle(lipgloss.ThickBorder()).
 		BorderForeground(lipgloss.Color(colors.TaskBorder)).
 		BorderBackground(lipgloss.Color(colors.TaskBackground)).
 		Background(lipgloss.Color(colors.TaskBackground)).
 		Padding(0).
-		MarginBottom(1).
 		Width(36)
 
 	// Title style
@@ -187,4 +186,8 @@ func InitStyles(colors config.ColorScheme) {
 		Background(lipgloss.Color(colors.ErrorBg)).
 		Bold(true).
 		Padding(0, 1)
+
+	IndicatorStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle)).
+		Align(lipgloss.Center)
 }

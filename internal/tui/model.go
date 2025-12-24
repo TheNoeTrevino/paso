@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -12,7 +12,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/database"
+	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -25,25 +27,32 @@ const (
 
 // Model represents the application state for the TUI
 type Model struct {
-	ctx               context.Context // Application context for cancellation and timeouts
-	repo              database.DataStore
-	config             *config.Config
-	appState           *state.AppState
-	uiState            *state.UIState
-	inputState         *state.InputState
-	formState          *state.FormState
-	labelPickerState   *state.LabelPickerState
-	parentPickerState  *state.TaskPickerState
-	childPickerState   *state.TaskPickerState
-	priorityPickerState *state.PriorityPickerState
-	notificationState  *state.NotificationState
-	searchState        *state.SearchState
-	listViewState      *state.ListViewState
-	statusPickerState  *state.StatusPickerState
+	ctx                     context.Context // Application context for cancellation and timeouts
+	repo                    database.DataStore
+	config                  *config.Config
+	appState                *state.AppState
+	uiState                 *state.UIState
+	inputState              *state.InputState
+	formState               *state.FormState
+	labelPickerState        *state.LabelPickerState
+	parentPickerState       *state.TaskPickerState
+	childPickerState        *state.TaskPickerState
+	priorityPickerState     *state.PriorityPickerState
+	typePickerState         *state.TypePickerState
+	relationTypePickerState *state.RelationTypePickerState
+	notificationState       *state.NotificationState
+	searchState             *state.SearchState
+	listViewState           *state.ListViewState
+	statusPickerState       *state.StatusPickerState
+	connectionState         *state.ConnectionState      // Connection status to daemon
+	eventClient             events.EventPublisher       // Connection to daemon for live updates
+	eventChan               <-chan events.Event         // Channel for receiving events
+	notifyChan              chan events.NotificationMsg // Channel for user-facing notifications from events
+	subscriptionStarted     bool                        // Track if we've started listening
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
-func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Config) Model {
+func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Config, eventClient events.EventPublisher) Model {
 	// Create child context with timeout for initial loading
 	loadCtx, cancel := context.WithTimeout(ctx, timeoutInitialLoad)
 	defer cancel()
@@ -51,7 +60,7 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	// Load all projects
 	projects, err := repo.GetAllProjects(loadCtx)
 	if err != nil {
-		log.Printf("Error loading projects: %v", err)
+		slog.Error("Error loading projects", "error", err)
 		projects = []*models.Project{}
 	}
 
@@ -64,7 +73,7 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	// Load columns for the current project
 	columns, err := repo.GetColumnsByProject(loadCtx, currentProjectID)
 	if err != nil {
-		log.Printf("Error loading columns: %v", err)
+		slog.Error("Error loading columns", "error", err)
 		columns = []*models.Column{}
 	}
 
@@ -72,14 +81,14 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	// Uses batch query to avoid N+1 pattern
 	tasks, err := repo.GetTaskSummariesByProject(loadCtx, currentProjectID)
 	if err != nil {
-		log.Printf("Error loading tasks for project %d: %v", currentProjectID, err)
+		slog.Error("Error loading tasks for project %d", "error", currentProjectID, err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
 
 	// Load labels for the current project
 	labels, err := repo.GetLabelsByProject(loadCtx, currentProjectID)
 	if err != nil {
-		log.Printf("Error loading labels: %v", err)
+		slog.Error("Error loading labels", "error", err)
 		labels = []*models.Label{}
 	}
 
@@ -92,30 +101,76 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	parentPickerState := state.NewTaskPickerState()
 	childPickerState := state.NewTaskPickerState()
 	priorityPickerState := state.NewPriorityPickerState()
+	typePickerState := state.NewTypePickerState()
+	relationTypePickerState := state.NewRelationTypePickerState()
 	notificationState := state.NewNotificationState()
 	searchState := state.NewSearchState()
 	listViewState := state.NewListViewState()
 	statusPickerState := state.NewStatusPickerState()
 
+	// Determine initial connection status based on event client availability
+	initialStatus := state.Disconnected
+	if eventClient != nil {
+		initialStatus = state.Connected
+	}
+	connectionState := state.NewConnectionState(initialStatus)
+
 	// Initialize styles with color scheme from config
-	InitStyles(cfg.ColorScheme)
+	components.InitStyles(cfg.ColorScheme)
+
+	// Create notification channel for events client messages
+	notifyChan := make(chan events.NotificationMsg, 10)
+
+	// Start listening for events from daemon (optional - daemon may not be running)
+	var eventChan <-chan events.Event
+	if eventClient != nil {
+		var err error
+		eventChan, err = eventClient.Listen(ctx)
+		if err != nil {
+			slog.Error("failed to listen for events", "error", err)
+		}
+
+		// Subscribe to current project's events
+		if currentProjectID > 0 {
+			if err := eventClient.Subscribe(currentProjectID); err != nil {
+				slog.Error("error subscribing to project events", "project_id", currentProjectID, "error", err)
+			}
+		}
+
+		// Set up notification callback for user-facing messages from events client
+		eventClient.SetNotifyFunc(func(level, message string) {
+			// Send notification to channel (non-blocking)
+			select {
+			case notifyChan <- events.NotificationMsg{Level: level, Message: message}:
+			default:
+				slog.Warn("notification channel full, dropping message", "level", level, "message", message)
+			}
+		})
+	}
 
 	return Model{
-		ctx:                 ctx, // Store root context
-		repo:                repo,
-		config:              cfg,
-		appState:            appState,
-		uiState:             uiState,
-		inputState:          inputState,
-		formState:           formState,
-		labelPickerState:    labelPickerState,
-		parentPickerState:   parentPickerState,
-		childPickerState:    childPickerState,
-		priorityPickerState: priorityPickerState,
-		notificationState:   notificationState,
-		searchState:         searchState,
-		listViewState:     listViewState,
-		statusPickerState: statusPickerState,
+		ctx:                     ctx, // Store root context
+		repo:                    repo,
+		config:                  cfg,
+		appState:                appState,
+		uiState:                 uiState,
+		inputState:              inputState,
+		formState:               formState,
+		labelPickerState:        labelPickerState,
+		parentPickerState:       parentPickerState,
+		childPickerState:        childPickerState,
+		priorityPickerState:     priorityPickerState,
+		typePickerState:         typePickerState,
+		relationTypePickerState: relationTypePickerState,
+		notificationState:       notificationState,
+		searchState:             searchState,
+		listViewState:           listViewState,
+		statusPickerState:       statusPickerState,
+		connectionState:         connectionState,
+		eventClient:             eventClient,
+		eventChan:               eventChan,
+		notifyChan:              notifyChan,
+		subscriptionStarted:     false,
 	}
 }
 
@@ -127,6 +182,19 @@ func (m *Model) withTimeout(timeout time.Duration) (context.Context, context.Can
 // dbContext creates a context for database operations with 30s timeout
 func (m *Model) dbContext() (context.Context, context.CancelFunc) {
 	return m.withTimeout(timeoutDB)
+}
+
+// listenForNotifications returns a tea.Cmd that listens for notification messages
+// from the events client and sends them to the Update loop
+func (m *Model) listenForNotifications() tea.Cmd {
+	return func() tea.Msg {
+		select {
+		case msg := <-m.notifyChan:
+			return msg
+		case <-m.ctx.Done():
+			return nil
+		}
+	}
 }
 
 // uiContext creates a context for UI operations with 10s timeout
@@ -145,7 +213,7 @@ func (m *Model) handleDBError(err error, operation string) {
 	if errors.Is(err, context.Canceled) {
 		// Operation was cancelled - this is expected during shutdown
 		// Don't show error notification, just log for debugging
-		log.Printf("%s cancelled by user", operation)
+		slog.Info("operation cancelled by user", "operation", operation)
 		return
 	}
 
@@ -162,8 +230,8 @@ func (m *Model) handleDBError(err error, operation string) {
 // Init initializes the Bubble Tea application
 // Required by tea.Model interface
 func (m Model) Init() tea.Cmd {
-	// No initial commands needed yet
-	return nil
+	// Start listening for notifications from events client
+	return m.listenForNotifications()
 }
 
 // getCurrentTasks returns the task summaries for the currently selected column
@@ -296,7 +364,7 @@ func (m Model) moveTaskRight() {
 	defer cancel()
 	err := m.repo.MoveTaskToNextColumn(ctx, task.ID)
 	if err != nil {
-		log.Printf("Error moving task to next column: %v", err)
+		slog.Error("Error moving task to next column", "error", err)
 		if err != models.ErrAlreadyLastColumn {
 			m.notificationState.Add(state.LevelError, "Failed to move task to next column")
 		}
@@ -350,7 +418,7 @@ func (m Model) moveTaskLeft() {
 	defer cancel()
 	err := m.repo.MoveTaskToPrevColumn(ctx, task.ID)
 	if err != nil {
-		log.Printf("Error moving task to previous column: %v", err)
+		slog.Error("Error moving task to previous column", "error", err)
 		if err != models.ErrAlreadyFirstColumn {
 			m.notificationState.Add(state.LevelError, "Failed to move task to previous column")
 		}
@@ -398,7 +466,7 @@ func (m Model) moveTaskUp() {
 	defer cancel()
 	err := m.repo.SwapTaskUp(ctx, task.ID)
 	if err != nil {
-		log.Printf("Error moving task up: %v", err)
+		slog.Error("Error moving task up", "error", err)
 		if err != models.ErrAlreadyFirstTask {
 			m.notificationState.Add(state.LevelError, "Failed to move task up")
 		}
@@ -461,7 +529,7 @@ func (m Model) moveTaskDown() {
 	defer cancel()
 	err := m.repo.SwapTaskDown(ctx, task.ID)
 	if err != nil {
-		log.Printf("Error moving task down: %v", err)
+		slog.Error("Error moving task down", "error", err)
 		if err != models.ErrAlreadyLastTask {
 			m.notificationState.Add(state.LevelError, "Failed to move task down")
 		}
@@ -503,7 +571,7 @@ func (m Model) switchToProject(projectIndex int) {
 	// Reload columns for this project
 	columns, err := m.repo.GetColumnsByProject(ctx, project.ID)
 	if err != nil {
-		log.Printf("Error loading columns for project %d: %v", project.ID, err)
+		slog.Error("Error loading columns for project %d", "error", project.ID, err)
 		columns = []*models.Column{}
 	}
 	m.appState.SetColumns(columns)
@@ -511,7 +579,7 @@ func (m Model) switchToProject(projectIndex int) {
 	// Reload task summaries for the entire project
 	tasks, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
-		log.Printf("Error loading tasks for project %d: %v", project.ID, err)
+		slog.Error("Error loading tasks for project %d", "error", project.ID, err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
 	m.appState.SetTasks(tasks)
@@ -519,7 +587,7 @@ func (m Model) switchToProject(projectIndex int) {
 	// Reload labels for this project
 	labels, err := m.repo.GetLabelsByProject(ctx, project.ID)
 	if err != nil {
-		log.Printf("Error loading labels for project %d: %v", project.ID, err)
+		slog.Error("Error loading labels for project %d", "error", project.ID, err)
 		labels = []*models.Label{}
 	}
 	m.appState.SetLabels(labels)
@@ -534,7 +602,7 @@ func (m Model) reloadProjects() {
 	defer cancel()
 	projects, err := m.repo.GetAllProjects(ctx)
 	if err != nil {
-		log.Printf("Error reloading projects: %v", err)
+		slog.Error("Error reloading projects", "error", err)
 		return
 	}
 	m.appState.SetProjects(projects)
@@ -556,7 +624,7 @@ func (m *Model) initParentPickerForForm() bool {
 	defer cancel()
 	allTasks, err := m.repo.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
-		log.Printf("Error loading project tasks: %v", err)
+		slog.Error("Error loading project tasks", "error", err)
 		return false
 	}
 
@@ -606,7 +674,7 @@ func (m *Model) initChildPickerForForm() bool {
 	defer cancel()
 	allTasks, err := m.repo.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
-		log.Printf("Error loading project tasks: %v", err)
+		slog.Error("Error loading project tasks", "error", err)
 		return false
 	}
 
@@ -697,7 +765,7 @@ func (m *Model) initPriorityPickerForForm() bool {
 
 		taskDetail, err := m.repo.GetTaskDetail(ctx, m.formState.EditingTaskID)
 		if err != nil {
-			log.Printf("Error loading task detail for priority picker: %v", err)
+			slog.Error("Error loading task detail for priority picker", "error", err)
 			return false
 		}
 
@@ -717,6 +785,45 @@ func (m *Model) initPriorityPickerForForm() bool {
 	// Set cursor to match the selected priority (adjust for 0-indexing)
 	m.priorityPickerState.SetCursor(currentPriorityID - 1)
 	m.priorityPickerState.SetReturnMode(state.TicketFormMode)
+
+	return true
+}
+
+// initTypePickerForForm initializes the type picker for use in TicketFormMode.
+// Loads the current type from the form state.
+func (m *Model) initTypePickerForForm() bool {
+	// Get current type ID from form state
+	// If we're editing a task, get it from the task detail
+	// Otherwise, default to task (id=1)
+	currentTypeID := 1 // Default to task
+
+	// If editing an existing task, we need to get the current type from database
+	if m.formState.EditingTaskID != 0 {
+		ctx, cancel := m.dbContext()
+		defer cancel()
+
+		taskDetail, err := m.repo.GetTaskDetail(ctx, m.formState.EditingTaskID)
+		if err != nil {
+			slog.Error("Error loading task detail for type picker", "error", err)
+			return false
+		}
+
+		// Find the type ID from the type description
+		// We need to match it against our type options
+		types := GetTypeOptions()
+		for _, t := range types {
+			if t.Description == taskDetail.TypeDescription {
+				currentTypeID = t.ID
+				break
+			}
+		}
+	}
+
+	// Initialize TypePickerState
+	m.typePickerState.SetSelectedTypeID(currentTypeID)
+	// Set cursor to match the selected type (adjust for 0-indexing)
+	m.typePickerState.SetCursor(currentTypeID - 1)
+	m.typePickerState.SetReturnMode(state.TicketFormMode)
 
 	return true
 }
@@ -836,4 +943,65 @@ func (m Model) getTaskFromListRow(rowIdx int) *models.TaskSummary {
 // This is a convenience method that uses getTaskFromListRow with the current selection.
 func (m Model) getSelectedListTask() *models.TaskSummary {
 	return m.getTaskFromListRow(m.listViewState.SelectedRow())
+}
+
+// subscribeToEvents returns a command that listens for events from the daemon
+// and sends RefreshMsg when data changes
+func (m Model) subscribeToEvents() tea.Cmd {
+	if m.eventChan == nil {
+		return nil
+	}
+
+	return func() tea.Msg {
+		select {
+		case event, ok := <-m.eventChan:
+			if !ok {
+				// Channel closed, connection lost
+				return nil
+			}
+			return RefreshMsg{Event: event}
+		case <-m.ctx.Done():
+			return nil
+		}
+	}
+}
+
+// reloadCurrentProject refreshes columns, tasks, and labels for the current project
+func (m *Model) reloadCurrentProject() {
+	currentProject := m.appState.GetCurrentProject()
+	if currentProject == nil {
+		return
+	}
+
+	ctx, cancel := m.dbContext()
+	defer cancel()
+
+	// Reload columns
+	columns, err := m.repo.GetColumnsByProject(ctx, currentProject.ID)
+	if err != nil {
+		slog.Error("Error reloading columns", "error", err)
+		m.handleDBError(err, "reload columns")
+		return
+	}
+
+	// Reload tasks
+	tasks, err := m.repo.GetTaskSummariesByProject(ctx, currentProject.ID)
+	if err != nil {
+		slog.Error("Error reloading tasks", "error", err)
+		m.handleDBError(err, "reload tasks")
+		return
+	}
+
+	// Reload labels
+	labels, err := m.repo.GetLabelsByProject(ctx, currentProject.ID)
+	if err != nil {
+		slog.Error("Error reloading labels", "error", err)
+		m.handleDBError(err, "reload labels")
+		return
+	}
+
+	// Update state with new data (preserves cursor position)
+	m.appState.SetColumns(columns)
+	m.appState.SetTasks(tasks)
+	m.appState.SetLabels(labels)
 }
