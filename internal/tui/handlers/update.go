@@ -13,6 +13,13 @@ import (
 
 // Update is the main update dispatcher that handles all messages and updates the model.
 // This implements the "Update" part of the Model-View-Update pattern.
+//
+// ARCHITECTURE NOTE (Production Handler):
+// This is the NEW production update dispatcher used by core.App.
+// Flow: core.App.Update() → handlers.Update() → handler functions (forms.go, pickers.go, etc.)
+//
+// This replaces the legacy Model.Update() method (see internal/tui/update.go) which is
+// kept only for backward compatibility with existing tests during incremental migration.
 func Update(m *tui.Model, msg tea.Msg) tea.Cmd {
 	// Check if context is cancelled (graceful shutdown)
 	select {

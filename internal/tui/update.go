@@ -28,6 +28,14 @@ type ConnectionReconnectingMsg struct{}
 
 // Update handles all messages and updates the model accordingly
 // This implements the "Update" part of the Model-View-Update pattern
+//
+// ARCHITECTURE NOTE (Incremental Migration):
+// This file contains the LEGACY update logic for backward compatibility with tests.
+// Production code uses: core.App → handlers.Update() → handler functions (see handlers/ package).
+// Tests use: Model.Update() → methods below (this file and other internal/tui/*.go handlers).
+//
+// The duplication is intentional to avoid breaking existing tests during incremental migration.
+// Future work: Refactor tests to use core.App, then delete this legacy update logic.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check if context is cancelled (graceful shutdown)
 	select {
