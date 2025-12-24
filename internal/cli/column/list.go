@@ -68,7 +68,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Validate project exists
-	project, err := cliInstance.Repo.GetProjectByID(ctx, columnProject)
+	project, err := cliInstance.Repo().GetProjectByID(ctx, columnProject)
 	if err != nil {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", columnProject)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -77,7 +77,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get columns
-	columns, err := cliInstance.Repo.GetColumnsByProject(ctx, columnProject)
+	columns, err := cliInstance.Repo().GetColumnsByProject(ctx, columnProject)
 	if err != nil {
 		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)

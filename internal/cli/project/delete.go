@@ -62,7 +62,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Get project details for confirmation
-	project, err := cliInstance.Repo.GetProjectByID(ctx, projectID)
+	project, err := cliInstance.Repo().GetProjectByID(ctx, projectID)
 	if err != nil {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", projectID)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -84,7 +84,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	// Delete the project
-	if err := cliInstance.Repo.DeleteProject(ctx, projectID); err != nil {
+	if err := cliInstance.Repo().DeleteProject(ctx, projectID); err != nil {
 		if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}

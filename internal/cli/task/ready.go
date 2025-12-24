@@ -72,7 +72,7 @@ func runReady(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Validate project exists
-	_, err = cliInstance.Repo.GetProjectByID(ctx, taskProject)
+	_, err = cliInstance.Repo().GetProjectByID(ctx, taskProject)
 	if err != nil {
 		if fmtErr := formatter.ErrorWithSuggestion("PROJECT_NOT_FOUND",
 			fmt.Sprintf("project %d not found", taskProject),
@@ -83,7 +83,7 @@ func runReady(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get all tasks for project (includes IsBlocked field)
-	tasksByColumn, err := cliInstance.Repo.GetTaskSummariesByProject(ctx, taskProject)
+	tasksByColumn, err := cliInstance.Repo().GetTaskSummariesByProject(ctx, taskProject)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)

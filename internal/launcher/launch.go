@@ -11,6 +11,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/thenoetrevino/paso/internal/app"
 	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
@@ -97,8 +98,9 @@ func Launch() error {
 	}()
 
 	repo := database.NewRepository(db, eventClient)
-	app := core.New(ctx, repo, cfg, eventClient)
-	p := tea.NewProgram(app, tea.WithContext(ctx))
+	application := app.New(repo, eventClient)
+	tuiApp := core.New(ctx, application, cfg, eventClient)
+	p := tea.NewProgram(tuiApp, tea.WithContext(ctx))
 
 	// goroutine to monitor cancellation
 	errChan := make(chan error, 1)

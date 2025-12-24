@@ -95,7 +95,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	// Delete the label
-	if err := cliInstance.Repo.DeleteLabel(ctx, labelID); err != nil {
+	if err := cliInstance.Repo().DeleteLabel(ctx, labelID); err != nil {
 		if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}

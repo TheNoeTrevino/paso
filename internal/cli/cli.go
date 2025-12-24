@@ -6,13 +6,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/thenoetrevino/paso/internal/app"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
 )
 
 // CLI represents the CLI application context
 type CLI struct {
-	Repo        *database.Repository
+	App         *app.App // Application container with services
 	eventClient events.EventPublisher
 	ctx         context.Context
 }
@@ -39,9 +40,10 @@ func NewCLI(ctx context.Context) (*CLI, error) {
 	}
 
 	repo := database.NewRepository(db, eventClient)
+	application := app.New(repo, eventClient)
 
 	return &CLI{
-		Repo:        repo,
+		App:         application,
 		eventClient: eventClient,
 		ctx:         ctx,
 	}, nil
@@ -52,5 +54,11 @@ func (c *CLI) Close() error {
 	if c.eventClient != nil {
 		c.eventClient.Close()
 	}
-	return nil
+	return c.App.Close()
+}
+
+// Repo returns the repository for backward compatibility during migration.
+// TODO: Remove this once all CLI commands use services directly.
+func (c *CLI) Repo() *database.Repository {
+	return c.App.Repo().(*database.Repository)
 }

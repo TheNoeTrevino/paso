@@ -73,7 +73,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						defer cancel()
 						if m.LabelPickerState.Items[i].Selected {
 							// Remove label from task
-							err := m.Repo.RemoveLabelFromTask(ctx, m.LabelPickerState.TaskID, item.Label.ID)
+							err := m.App.Repo().RemoveLabelFromTask(ctx, m.LabelPickerState.TaskID, item.Label.ID)
 							if err != nil {
 								slog.Error("Error removing label", "error", err)
 								m.NotificationState.Add(state.LevelError, "Failed to remove label from task")
@@ -82,7 +82,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							}
 						} else {
 							// Add label to task
-							err := m.Repo.AddLabelToTask(ctx, m.LabelPickerState.TaskID, item.Label.ID)
+							err := m.App.Repo().AddLabelToTask(ctx, m.LabelPickerState.TaskID, item.Label.ID)
 							if err != nil {
 								slog.Error("Error adding label", "error", err)
 								m.NotificationState.Add(state.LevelError, "Failed to add label to task")
@@ -166,7 +166,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		ctx, cancel := m.DbContext()
 		defer cancel()
-		label, err := m.Repo.CreateLabel(ctx, project.ID, m.FormState.FormLabelName, color)
+		label, err := m.App.Repo().CreateLabel(ctx, project.ID, m.FormState.FormLabelName, color)
 		if err != nil {
 			slog.Error("Error creating label", "error", err)
 			m.NotificationState.Add(state.LevelError, "Failed to create label")
@@ -184,7 +184,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		})
 
 		// Assign to current task
-		err = m.Repo.AddLabelToTask(ctx, m.LabelPickerState.TaskID, label.ID)
+		err = m.App.Repo().AddLabelToTask(ctx, m.LabelPickerState.TaskID, label.ID)
 		if err != nil {
 			slog.Error("Error assigning new label to task", "error", err)
 			m.NotificationState.Add(state.LevelError, "Failed to assign label to task")
@@ -277,7 +277,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Remove parent relationship
 							// CRITICAL: RemoveSubtask(parentID, childID)
 							// selectedTask (parent) blocks on currentTask (child)
-							err := m.Repo.RemoveSubtask(ctx, item.TaskRef.ID, m.ParentPickerState.TaskID)
+							err := m.App.Repo().RemoveSubtask(ctx, item.TaskRef.ID, m.ParentPickerState.TaskID)
 							if err != nil {
 								slog.Error("Error removing parent", "error", err)
 								m.NotificationState.Add(state.LevelError, "Failed to remove parent from task")
@@ -289,7 +289,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// CRITICAL: AddSubtask(parentID, childID)
 							// This makes selectedTask (parent) block on currentTask (child)
 							// Meaning: selectedTask depends on completion of currentTask
-							err := m.Repo.AddSubtask(ctx, item.TaskRef.ID, m.ParentPickerState.TaskID)
+							err := m.App.Repo().AddSubtask(ctx, item.TaskRef.ID, m.ParentPickerState.TaskID)
 							if err != nil {
 								slog.Error("Error adding parent", "error", err)
 								m.NotificationState.Add(state.LevelError, "Failed to add parent to task")
@@ -432,7 +432,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Remove child relationship
 							// CRITICAL: RemoveSubtask(parentID, childID) - REVERSED parameter order from parent picker
 							// currentTask (parent) blocks on selectedTask (child)
-							err := m.Repo.RemoveSubtask(ctx, m.ChildPickerState.TaskID, item.TaskRef.ID)
+							err := m.App.Repo().RemoveSubtask(ctx, m.ChildPickerState.TaskID, item.TaskRef.ID)
 							if err != nil {
 								slog.Error("Error removing child", "error", err)
 								m.NotificationState.Add(state.LevelError, "Failed to remove child from task")
@@ -444,7 +444,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// CRITICAL: AddSubtask(parentID, childID) - REVERSED parameter order from parent picker
 							// This makes currentTask (parent) block on selectedTask (child)
 							// Meaning: currentTask depends on completion of selectedTask
-							err := m.Repo.AddSubtask(ctx, m.ChildPickerState.TaskID, item.TaskRef.ID)
+							err := m.App.Repo().AddSubtask(ctx, m.ChildPickerState.TaskID, item.TaskRef.ID)
 							if err != nil {
 								slog.Error("Error adding child", "error", err)
 								m.NotificationState.Add(state.LevelError, "Failed to add child to task")
@@ -553,7 +553,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				defer cancel()
 
 				// Update the task's priority_id in the database
-				err := m.Repo.UpdateTaskPriority(ctx, m.FormState.EditingTaskID, selectedPriority.ID)
+				err := m.App.Repo().UpdateTaskPriority(ctx, m.FormState.EditingTaskID, selectedPriority.ID)
 
 				if err != nil {
 					slog.Error("Error updating task priority", "error", err)
@@ -625,7 +625,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				defer cancel()
 
 				// Update the task's type_id in the database
-				err := m.Repo.UpdateTaskType(ctx, m.FormState.EditingTaskID, selectedType.ID)
+				err := m.App.Repo().UpdateTaskType(ctx, m.FormState.EditingTaskID, selectedType.ID)
 
 				if err != nil {
 					slog.Error("Error updating task type", "error", err)
@@ -788,7 +788,7 @@ func (m *Model) reloadCurrentColumnTasks() {
 
 	ctx, cancel := m.DbContext()
 	defer cancel()
-	tasksByColumn, err := m.Repo.GetTaskSummariesByProject(ctx, project.ID)
+	tasksByColumn, err := m.App.Repo().GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error reloading tasks", "error", err)
 		return
