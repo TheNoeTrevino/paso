@@ -2,19 +2,20 @@ package modelops
 
 import (
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui"
 )
 
 // GetCurrentTasks returns the task summaries for the currently selected column
 // Returns an empty slice if the column has no tasks
-func (w *Wrapper) GetCurrentTasks() []*models.TaskSummary {
-	if len(w.AppState.Columns()) == 0 {
+func GetCurrentTasks(m *tui.Model) []*models.TaskSummary {
+	if len(m.AppState.Columns()) == 0 {
 		return []*models.TaskSummary{}
 	}
-	if w.UiState.SelectedColumn() >= len(w.AppState.Columns()) {
+	if m.UiState.SelectedColumn() >= len(m.AppState.Columns()) {
 		return []*models.TaskSummary{}
 	}
-	currentCol := w.AppState.Columns()[w.UiState.SelectedColumn()]
-	tasks := w.AppState.Tasks()[currentCol.ID]
+	currentCol := m.AppState.Columns()[m.UiState.SelectedColumn()]
+	tasks := m.AppState.Tasks()[currentCol.ID]
 	if tasks == nil {
 		return []*models.TaskSummary{}
 	}
@@ -23,34 +24,34 @@ func (w *Wrapper) GetCurrentTasks() []*models.TaskSummary {
 
 // GetCurrentTask returns the currently selected task summary
 // Returns nil if there are no tasks in the current column or no columns exist
-func (w *Wrapper) GetCurrentTask() *models.TaskSummary {
-	tasks := w.GetCurrentTasks()
+func GetCurrentTask(m *tui.Model) *models.TaskSummary {
+	tasks := GetCurrentTasks(m)
 	if len(tasks) == 0 {
 		return nil
 	}
-	if w.UiState.SelectedTask() >= len(tasks) {
+	if m.UiState.SelectedTask() >= len(tasks) {
 		return nil
 	}
-	return tasks[w.UiState.SelectedTask()]
+	return tasks[m.UiState.SelectedTask()]
 }
 
 // GetCurrentColumn returns the currently selected column
 // Returns nil if there are no columns
-func (w *Wrapper) GetCurrentColumn() *models.Column {
-	if len(w.AppState.Columns()) == 0 {
+func GetCurrentColumn(m *tui.Model) *models.Column {
+	if len(m.AppState.Columns()) == 0 {
 		return nil
 	}
-	selectedIdx := w.UiState.SelectedColumn()
-	if selectedIdx < 0 || selectedIdx >= len(w.AppState.Columns()) {
+	selectedIdx := m.UiState.SelectedColumn()
+	if selectedIdx < 0 || selectedIdx >= len(m.AppState.Columns()) {
 		return nil
 	}
-	return w.AppState.Columns()[selectedIdx]
+	return m.AppState.Columns()[selectedIdx]
 }
 
 // GetTasksForColumn returns tasks for a specific column ID with safe map access.
 // Returns an empty slice if the column ID doesn't exist in the tasks map.
-func (w *Wrapper) GetTasksForColumn(columnID int) []*models.TaskSummary {
-	tasks, ok := w.AppState.Tasks()[columnID]
+func GetTasksForColumn(m *tui.Model, columnID int) []*models.TaskSummary {
+	tasks, ok := m.AppState.Tasks()[columnID]
 	if !ok || tasks == nil {
 		return []*models.TaskSummary{}
 	}
@@ -59,9 +60,9 @@ func (w *Wrapper) GetTasksForColumn(columnID int) []*models.TaskSummary {
 
 // GetCurrentProject returns the currently selected project
 // Returns nil if there are no projects
-func (w *Wrapper) GetCurrentProject() *models.Project {
-	projects := w.AppState.Projects()
-	selectedIdx := w.AppState.SelectedProject()
+func GetCurrentProject(m *tui.Model) *models.Project {
+	projects := m.AppState.Projects()
+	selectedIdx := m.AppState.SelectedProject()
 	if len(projects) == 0 || selectedIdx < 0 || selectedIdx >= len(projects) {
 		return nil
 	}

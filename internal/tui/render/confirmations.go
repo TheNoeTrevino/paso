@@ -4,14 +4,14 @@ import (
 	"fmt"
 
 	"charm.land/lipgloss/v2"
+	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/modelops"
 )
 
 // ViewDeleteTaskConfirm renders the task deletion confirmation dialog
-func (w *Wrapper) ViewDeleteTaskConfirm() string {
-	ops := modelops.New(w.Model)
-	task := ops.GetCurrentTask()
+func ViewDeleteTaskConfirm(m *tui.Model) string {
+	task := modelops.GetCurrentTask(m)
 	if task == nil {
 		return ""
 	}
@@ -21,22 +21,21 @@ func (w *Wrapper) ViewDeleteTaskConfirm() string {
 		Render(fmt.Sprintf("Delete '%s'?\n\n[y]es  [n]o", task.Title))
 
 	return lipgloss.Place(
-		w.UiState.Width(), w.UiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		confirmBox,
 	)
 }
 
 // ViewDeleteColumnConfirm renders the column deletion confirmation with task count warning
-func (w *Wrapper) ViewDeleteColumnConfirm() string {
-	ops := modelops.New(w.Model)
-	column := ops.GetCurrentColumn()
+func ViewDeleteColumnConfirm(m *tui.Model) string {
+	column := modelops.GetCurrentColumn(m)
 	if column == nil {
 		return ""
 	}
 
 	var content string
-	taskCount := w.InputState.DeleteColumnTaskCount
+	taskCount := m.InputState.DeleteColumnTaskCount
 	if taskCount > 0 {
 		content = fmt.Sprintf(
 			"Delete column '%s'?\nThis will also delete %d task(s).\n\n[y]es  [n]o",
@@ -52,15 +51,15 @@ func (w *Wrapper) ViewDeleteColumnConfirm() string {
 		Render(content)
 
 	return lipgloss.Place(
-		w.UiState.Width(), w.UiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		confirmBox,
 	)
 }
 
 // ViewDiscardConfirm renders the discard confirmation dialog with context-aware message
-func (w *Wrapper) ViewDiscardConfirm() string {
-	ctx := w.UiState.DiscardContext()
+func ViewDiscardConfirm(m *tui.Model) string {
+	ctx := m.UiState.DiscardContext()
 	if ctx == nil {
 		return ""
 	}
@@ -71,7 +70,7 @@ func (w *Wrapper) ViewDiscardConfirm() string {
 		Render(fmt.Sprintf("%s\n\n[y]es  [n]o", ctx.Message))
 
 	return lipgloss.Place(
-		w.UiState.Width(), w.UiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		confirmBox,
 	)
