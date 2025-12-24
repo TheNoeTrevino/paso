@@ -2,24 +2,93 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/thenoetrevino/paso/internal/tui/state"
+	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
 // View renders the current state of the application.
 // This implements the "View" part of the Model-View-Update pattern.
-//
-// ARCHITECTURE NOTE (Legacy Stub):
-// This method is a stub that exists only for interface compatibility.
-// Production code uses: core.App.View() → render.View() (see internal/tui/render/view.go).
-//
-// All rendering logic has been moved to the render/ package.
-// This stub cannot delegate to render.View() due to import cycle restrictions
-// (render imports tui for *tui.Model, so tui cannot import render back).
-//
-// No tests currently call Model.View() directly (verified via grep).
-// If you need to add tests that require rendering, use core.App instead.
 func (m Model) View() tea.View {
 	var view tea.View
-	view.AltScreen = true
-	view.Content = "Model.View() is deprecated. Use core.App for rendering."
+	view.AltScreen = true                                   // Use alternate screen buffer
+	view.BackgroundColor = lipgloss.Color(theme.Background) // Set root background color
+
+	// Wait for terminal size to be initialized
+	if m.UiState.Width() == 0 {
+		view.Content = "Loading..."
+		return view
+	}
+
+	// Check if current mode uses layer-based rendering
+	usesLayers := m.UiState.Mode() == state.TicketFormMode ||
+		m.UiState.Mode() == state.ProjectFormMode ||
+		m.UiState.Mode() == state.AddColumnMode ||
+		m.UiState.Mode() == state.EditColumnMode ||
+		m.UiState.Mode() == state.HelpMode ||
+		m.UiState.Mode() == state.NormalMode ||
+		m.UiState.Mode() == state.SearchMode
+
+	if usesLayers {
+		// Layer-based rendering: always show base board with modal overlays
+		baseView := m.viewKanbanBoard()
+
+		// Start layer stack with base view
+		layers := []*lipgloss.Layer{
+			lipgloss.NewLayer(baseView),
+		}
+
+		// Add modal overlay based on mode
+		var modalLayer *lipgloss.Layer
+		switch m.UiState.Mode() {
+		case state.TicketFormMode:
+			modalLayer = m.renderTicketFormLayer()
+		case state.ProjectFormMode:
+			modalLayer = m.renderProjectFormLayer()
+		case state.AddColumnMode, state.EditColumnMode:
+			modalLayer = m.renderColumnInputLayer()
+		case state.HelpMode:
+			modalLayer = m.renderHelpLayer()
+		}
+
+		if modalLayer != nil {
+			layers = append(layers, modalLayer)
+		}
+
+		// Notifications are now rendered inline with tabs, no need for floating layers
+
+		// Combine all layers into canvas
+		canvas := lipgloss.NewCanvas(layers...)
+		view.Content = canvas.Render()
+	} else {
+		// Legacy full-screen rendering for modes not yet converted to layers
+		var content string
+		switch m.UiState.Mode() {
+		case state.DiscardConfirmMode:
+			content = m.viewDiscardConfirm()
+		case state.DeleteConfirmMode:
+			content = m.viewDeleteTaskConfirm()
+		case state.DeleteColumnConfirmMode:
+			content = m.viewDeleteColumnConfirm()
+		case state.LabelPickerMode:
+			content = m.viewLabelPicker()
+		case state.ParentPickerMode:
+			content = m.viewParentPicker()
+		case state.ChildPickerMode:
+			content = m.viewChildPicker()
+		case state.PriorityPickerMode:
+			content = m.viewPriorityPicker()
+		case state.TypePickerMode:
+			content = m.viewTypePicker()
+		case state.RelationTypePickerMode:
+			content = m.viewRelationTypePicker()
+		case state.StatusPickerMode:
+			content = m.viewStatusPicker()
+		default:
+			content = m.viewKanbanBoard()
+		}
+		view.Content = content
+	}
+
 	return view
 }

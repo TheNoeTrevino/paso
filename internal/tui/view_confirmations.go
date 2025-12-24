@@ -1,17 +1,15 @@
-package render
+package tui
 
 import (
 	"fmt"
 
 	"charm.land/lipgloss/v2"
-	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/components"
-	"github.com/thenoetrevino/paso/internal/tui/modelops"
 )
 
-// ViewDeleteTaskConfirm renders the task deletion confirmation dialog
-func ViewDeleteTaskConfirm(m *tui.Model) string {
-	task := modelops.GetCurrentTask(m)
+// viewDeleteTaskConfirm renders the task deletion confirmation dialog
+func (m Model) viewDeleteTaskConfirm() string {
+	task := m.getCurrentTask()
 	if task == nil {
 		return ""
 	}
@@ -27,9 +25,9 @@ func ViewDeleteTaskConfirm(m *tui.Model) string {
 	)
 }
 
-// ViewDeleteColumnConfirm renders the column deletion confirmation with task count warning
-func ViewDeleteColumnConfirm(m *tui.Model) string {
-	column := modelops.GetCurrentColumn(m)
+// viewDeleteColumnConfirm renders the column deletion confirmation with task count warning
+func (m Model) viewDeleteColumnConfirm() string {
+	column := m.getCurrentColumn()
 	if column == nil {
 		return ""
 	}
@@ -57,8 +55,8 @@ func ViewDeleteColumnConfirm(m *tui.Model) string {
 	)
 }
 
-// ViewDiscardConfirm renders the discard confirmation dialog with context-aware message
-func ViewDiscardConfirm(m *tui.Model) string {
+// viewDiscardConfirm renders the discard confirmation dialog with context-aware message
+func (m Model) viewDiscardConfirm() string {
 	ctx := m.UiState.DiscardContext()
 	if ctx == nil {
 		return ""

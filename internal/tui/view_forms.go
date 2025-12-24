@@ -1,4 +1,4 @@
-package render
+package tui
 
 import (
 	"fmt"
@@ -6,13 +6,12 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
-	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
 // renderFormTitleDescriptionZone renders the top-left zone with title and description fields
-func renderFormTitleDescriptionZone(m *tui.Model, width, height int) string {
+func (m Model) renderFormTitleDescriptionZone(width, height int) string {
 	if m.FormState.TicketForm == nil {
 		return ""
 	}
@@ -28,7 +27,7 @@ func renderFormTitleDescriptionZone(m *tui.Model, width, height int) string {
 }
 
 // renderFormMetadataZone renders the right column with metadata
-func renderFormMetadataZone(m *tui.Model, width, height int) string {
+func (m Model) renderFormMetadataZone(width, height int) string {
 	var parts []string
 
 	labelHeaderStyle := lipgloss.NewStyle().
@@ -125,7 +124,7 @@ func renderFormMetadataZone(m *tui.Model, width, height int) string {
 }
 
 // renderFormAssociationsZone renders the bottom-left zone with parent and child tasks
-func renderFormAssociationsZone(m *tui.Model, width, height int) string {
+func (m Model) renderFormAssociationsZone(width, height int) string {
 	var parts []string
 
 	headerStyle := lipgloss.NewStyle().
