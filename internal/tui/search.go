@@ -68,7 +68,7 @@ func (m Model) executeSearch() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 	var tasksByColumn map[int][]*models.TaskSummary
 	var err error

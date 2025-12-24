@@ -27,7 +27,7 @@ func (m Model) handleDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 	task := m.getCurrentTask()
 	if task != nil {
-		ctx, cancel := m.dbContext()
+		ctx, cancel := m.DbContext()
 		defer cancel()
 		err := m.Repo.DeleteTask(ctx, task.ID)
 		if err != nil {
@@ -109,7 +109,7 @@ func (m Model) handleDeleteColumnConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 	column := m.getCurrentColumn()
 	if column != nil {
-		ctx, cancel := m.dbContext()
+		ctx, cancel := m.DbContext()
 		defer cancel()
 		err := m.Repo.DeleteColumn(ctx, column.ID)
 		if err != nil {

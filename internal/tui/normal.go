@@ -254,7 +254,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 	taskDetail, err := m.Repo.GetTaskDetail(ctx, task.ID)
 	if err != nil {
@@ -378,7 +378,7 @@ func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 		m.NotificationState.Add(state.LevelError, "No column selected to delete")
 		return m, nil
 	}
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 	taskCount, err := m.Repo.GetTaskCountByColumn(ctx, column.ID)
 	if err != nil {

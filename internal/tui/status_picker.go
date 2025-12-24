@@ -115,7 +115,7 @@ func (m Model) confirmStatusChange() (tea.Model, tea.Cmd) {
 	}
 
 	// Move task to new column in database
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 
 	err := m.Repo.MoveTaskToColumn(ctx, taskID, selectedCol.ID)
