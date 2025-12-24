@@ -2,6 +2,7 @@ package render
 
 import (
 	"charm.land/lipgloss/v2"
+	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/modelops"
 	"github.com/thenoetrevino/paso/internal/tui/renderers"
@@ -9,46 +10,45 @@ import (
 )
 
 // ViewLabelPicker renders the label picker modal
-func (w *Wrapper) ViewLabelPicker() string {
+func ViewLabelPicker(m *tui.Model) string {
 	// Render the label picker content
 	var pickerContent string
-	if w.LabelPickerState.CreateMode {
+	if m.LabelPickerState.CreateMode {
 		// Show color picker
 		pickerContent = renderers.RenderLabelColorPicker(
 			renderers.GetDefaultLabelColors(),
-			w.LabelPickerState.ColorIdx,
-			w.FormState.FormLabelName,
-			w.UiState.Width()*3/4-8,
+			m.LabelPickerState.ColorIdx,
+			m.FormState.FormLabelName,
+			m.UiState.Width()*3/4-8,
 		)
 	} else {
 		// Show label list (use filtered items from state)
-		ops := modelops.New(w.Model)
 		pickerContent = renderers.RenderLabelPicker(
-			ops.GetFilteredLabelPickerItems(),
-			w.LabelPickerState.Cursor,
-			w.LabelPickerState.Filter,
+			modelops.GetFilteredLabelPickerItems(m),
+			m.LabelPickerState.Cursor,
+			m.LabelPickerState.Filter,
 			true, // show create option
-			w.UiState.Width()*3/4-8,
-			w.UiState.Height()*3/4-4,
+			m.UiState.Width()*3/4-8,
+			m.UiState.Height()*3/4-4,
 		)
 	}
 
 	// Wrap in styled container - use different style for create mode
 	var pickerBox string
-	if w.LabelPickerState.CreateMode {
+	if m.LabelPickerState.CreateMode {
 		pickerBox = components.LabelPickerCreateBoxStyle.
-			Width(w.UiState.Width() * 3 / 4).
-			Height(w.UiState.Height() * 3 / 4).
+			Width(m.UiState.Width() * 3 / 4).
+			Height(m.UiState.Height() * 3 / 4).
 			Render(pickerContent)
 	} else {
 		pickerBox = components.LabelPickerBoxStyle.
-			Width(w.UiState.Width() * 3 / 4).
-			Height(w.UiState.Height() * 3 / 4).
+			Width(m.UiState.Width() * 3 / 4).
+			Height(m.UiState.Height() * 3 / 4).
 			Render(pickerContent)
 	}
 
 	return lipgloss.Place(
-		w.UiState.Width(), w.UiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)
@@ -57,25 +57,25 @@ func (w *Wrapper) ViewLabelPicker() string {
 // ViewParentPicker renders the parent task picker modal.
 // Parent tasks are tasks that depend on (block on) the current task.
 // The picker displays all tasks in the project with checkboxes indicating current selections.
-func (w *Wrapper) ViewParentPicker() string {
+func ViewParentPicker(m *tui.Model) string {
 	pickerContent := renderers.RenderTaskPicker(
-		w.ParentPickerState.GetFilteredItems(),
-		w.ParentPickerState.Cursor,
-		w.ParentPickerState.Filter,
+		m.ParentPickerState.GetFilteredItems(),
+		m.ParentPickerState.Cursor,
+		m.ParentPickerState.Filter,
 		"Parent Issues",
-		w.UiState.Width()*3/4-8,
-		w.UiState.Height()*3/4-4,
+		m.UiState.Width()*3/4-8,
+		m.UiState.Height()*3/4-4,
 		true, // isParentPicker
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
 	pickerBox := components.LabelPickerBoxStyle.
-		Width(w.UiState.Width() * 3 / 4).
-		Height(w.UiState.Height() * 3 / 4).
+		Width(m.UiState.Width() * 3 / 4).
+		Height(m.UiState.Height() * 3 / 4).
 		Render(pickerContent)
 
 	return lipgloss.Place(
-		w.UiState.Width(), w.UiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)
@@ -84,108 +84,108 @@ func (w *Wrapper) ViewParentPicker() string {
 // ViewChildPicker renders the child task picker modal.
 // Child tasks are tasks that the current task depends on (must be completed first).
 // The picker displays all tasks in the project with checkboxes indicating current selections.
-func (w *Wrapper) ViewChildPicker() string {
+func ViewChildPicker(m *tui.Model) string {
 	pickerContent := renderers.RenderTaskPicker(
-		w.ChildPickerState.GetFilteredItems(),
-		w.ChildPickerState.Cursor,
-		w.ChildPickerState.Filter,
+		m.ChildPickerState.GetFilteredItems(),
+		m.ChildPickerState.Cursor,
+		m.ChildPickerState.Filter,
 		"Child Issues",
-		w.UiState.Width()*3/4-8,
-		w.UiState.Height()*3/4-4,
+		m.UiState.Width()*3/4-8,
+		m.UiState.Height()*3/4-4,
 		false, // isParentPicker
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
 	pickerBox := components.LabelPickerBoxStyle.
-		Width(w.UiState.Width() * 3 / 4).
-		Height(w.UiState.Height() * 3 / 4).
+		Width(m.UiState.Width() * 3 / 4).
+		Height(m.UiState.Height() * 3 / 4).
 		Render(pickerContent)
 
 	return lipgloss.Place(
-		w.UiState.Width(), w.UiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)
 }
 
 // ViewPriorityPicker renders the priority picker popup
-func (w *Wrapper) ViewPriorityPicker() string {
+func ViewPriorityPicker(m *tui.Model) string {
 	pickerContent := renderers.RenderPriorityPicker(
 		renderers.GetPriorityOptions(),
-		w.PriorityPickerState.SelectedPriorityID(),
-		w.PriorityPickerState.Cursor(),
-		w.UiState.Width()*3/4-8,
+		m.PriorityPickerState.SelectedPriorityID(),
+		m.PriorityPickerState.Cursor(),
+		m.UiState.Width()*3/4-8,
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
 	pickerBox := components.LabelPickerBoxStyle.
-		Width(w.UiState.Width() * 3 / 4).
-		Height(w.UiState.Height() * 3 / 4).
+		Width(m.UiState.Width() * 3 / 4).
+		Height(m.UiState.Height() * 3 / 4).
 		Render(pickerContent)
 
 	return lipgloss.Place(
-		w.UiState.Width(), w.UiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)
 }
 
 // ViewTypePicker renders the type picker popup
-func (w *Wrapper) ViewTypePicker() string {
+func ViewTypePicker(m *tui.Model) string {
 	pickerContent := renderers.RenderTypePicker(
 		renderers.GetTypeOptions(),
-		w.TypePickerState.SelectedTypeID(),
-		w.TypePickerState.Cursor(),
-		w.UiState.Width()*3/4-8,
+		m.TypePickerState.SelectedTypeID(),
+		m.TypePickerState.Cursor(),
+		m.UiState.Width()*3/4-8,
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
 	pickerBox := components.LabelPickerBoxStyle.
-		Width(w.UiState.Width() * 3 / 4).
-		Height(w.UiState.Height() * 3 / 4).
+		Width(m.UiState.Width() * 3 / 4).
+		Height(m.UiState.Height() * 3 / 4).
 		Render(pickerContent)
 
 	return lipgloss.Place(
-		w.UiState.Width(), w.UiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)
 }
 
 // ViewRelationTypePicker renders the relation type picker popup
-func (w *Wrapper) ViewRelationTypePicker() string {
+func ViewRelationTypePicker(m *tui.Model) string {
 	// Determine picker type based on return mode
 	pickerType := "parent"
-	if w.RelationTypePickerState.ReturnMode() == state.ChildPickerMode {
+	if m.RelationTypePickerState.ReturnMode() == state.ChildPickerMode {
 		pickerType = "child"
 	}
 
 	pickerContent := renderers.RenderRelationTypePicker(
 		renderers.GetRelationTypeOptions(),
-		w.RelationTypePickerState.SelectedRelationTypeID(),
-		w.RelationTypePickerState.Cursor(),
-		w.UiState.Width()*3/4-8,
+		m.RelationTypePickerState.SelectedRelationTypeID(),
+		m.RelationTypePickerState.Cursor(),
+		m.UiState.Width()*3/4-8,
 		pickerType,
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
 	pickerBox := components.LabelPickerBoxStyle.
-		Width(w.UiState.Width() * 3 / 4).
-		Height(w.UiState.Height() * 3 / 4).
+		Width(m.UiState.Width() * 3 / 4).
+		Height(m.UiState.Height() * 3 / 4).
 		Render(pickerContent)
 
 	return lipgloss.Place(
-		w.UiState.Width(), w.UiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)
 }
 
 // ViewStatusPicker renders the status/column selection picker.
-func (w *Wrapper) ViewStatusPicker() string {
+func ViewStatusPicker(m *tui.Model) string {
 	var items []string
-	columns := w.StatusPickerState.Columns()
-	cursor := w.StatusPickerState.Cursor()
+	columns := m.StatusPickerState.Columns()
+	cursor := m.StatusPickerState.Cursor()
 
 	for i, col := range columns {
 		prefix := "  "
@@ -204,7 +204,7 @@ func (w *Wrapper) ViewStatusPicker() string {
 		Render(content)
 
 	return lipgloss.Place(
-		w.UiState.Width(), w.UiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)

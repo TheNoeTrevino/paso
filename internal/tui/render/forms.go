@@ -6,18 +6,19 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
 // renderFormTitleDescriptionZone renders the top-left zone with title and description fields
-func (w *Wrapper) renderFormTitleDescriptionZone(width, height int) string {
-	if w.FormState.TicketForm == nil {
+func renderFormTitleDescriptionZone(m *tui.Model, width, height int) string {
+	if m.FormState.TicketForm == nil {
 		return ""
 	}
 
 	// Render the form view (which includes title and description)
-	formView := w.FormState.TicketForm.View()
+	formView := m.FormState.TicketForm.View()
 
 	style := lipgloss.NewStyle().
 		Width(width).
@@ -27,7 +28,7 @@ func (w *Wrapper) renderFormTitleDescriptionZone(width, height int) string {
 }
 
 // renderFormMetadataZone renders the right column with metadata
-func (w *Wrapper) renderFormMetadataZone(width, height int) string {
+func renderFormMetadataZone(m *tui.Model, width, height int) string {
 	var parts []string
 
 	labelHeaderStyle := lipgloss.NewStyle().
@@ -39,18 +40,18 @@ func (w *Wrapper) renderFormMetadataZone(width, height int) string {
 
 	// Get current timestamps - for create mode, show placeholders
 	var createdStr, updatedStr string
-	if w.FormState.EditingTaskID == 0 {
+	if m.FormState.EditingTaskID == 0 {
 		createdStr = subtleStyle.Render("(not created yet)")
 		updatedStr = subtleStyle.Render("(not created yet)")
 	} else {
 		// In edit mode, show actual timestamps from FormState
-		createdStr = w.FormState.FormCreatedAt.Format("Jan 2, 2006 3:04 PM")
-		updatedStr = w.FormState.FormUpdatedAt.Format("Jan 2, 2006 3:04 PM")
+		createdStr = m.FormState.FormCreatedAt.Format("Jan 2, 2006 3:04 PM")
+		updatedStr = m.FormState.FormUpdatedAt.Format("Jan 2, 2006 3:04 PM")
 	}
 
 	// Edited indicator (unsaved changes)
 	parts = append(parts, labelHeaderStyle.Render("Status"))
-	if w.FormState.HasTicketFormChanges() {
+	if m.FormState.HasTicketFormChanges() {
 		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight))
 		parts = append(parts, warningStyle.Render("● Unsaved Changes"))
 	} else {
@@ -60,8 +61,8 @@ func (w *Wrapper) renderFormMetadataZone(width, height int) string {
 
 	// Type section
 	parts = append(parts, labelHeaderStyle.Render("Type"))
-	if w.FormState.FormTypeDescription != "" {
-		parts = append(parts, w.FormState.FormTypeDescription)
+	if m.FormState.FormTypeDescription != "" {
+		parts = append(parts, m.FormState.FormTypeDescription)
 	} else {
 		parts = append(parts, subtleStyle.Render("task"))
 	}
@@ -69,9 +70,9 @@ func (w *Wrapper) renderFormMetadataZone(width, height int) string {
 
 	// Priority section
 	parts = append(parts, labelHeaderStyle.Render("Priority"))
-	if w.FormState.FormPriorityDescription != "" && w.FormState.FormPriorityColor != "" {
-		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(w.FormState.FormPriorityColor))
-		parts = append(parts, priorityStyle.Render(w.FormState.FormPriorityDescription))
+	if m.FormState.FormPriorityDescription != "" && m.FormState.FormPriorityColor != "" {
+		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.FormState.FormPriorityColor))
+		parts = append(parts, priorityStyle.Render(m.FormState.FormPriorityDescription))
 	} else {
 		// Default to medium priority if not set
 		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EAB308"))
@@ -91,16 +92,16 @@ func (w *Wrapper) renderFormMetadataZone(width, height int) string {
 
 	// Labels section
 	parts = append(parts, labelHeaderStyle.Render("Labels"))
-	if len(w.FormState.FormLabelIDs) == 0 {
+	if len(m.FormState.FormLabelIDs) == 0 {
 		parts = append(parts, subtleStyle.Render("No labels"))
 	} else {
 		// Get label objects from IDs
 		labelMap := make(map[int]*models.Label)
-		for _, label := range w.AppState.Labels() {
+		for _, label := range m.AppState.Labels() {
 			labelMap[label.ID] = label
 		}
 
-		for _, labelID := range w.FormState.FormLabelIDs {
+		for _, labelID := range m.FormState.FormLabelIDs {
 			if label, ok := labelMap[labelID]; ok {
 				parts = append(parts, components.RenderLabelChip(label, ""))
 			}
@@ -124,7 +125,7 @@ func (w *Wrapper) renderFormMetadataZone(width, height int) string {
 }
 
 // renderFormAssociationsZone renders the bottom-left zone with parent and child tasks
-func (w *Wrapper) renderFormAssociationsZone(width, height int) string {
+func renderFormAssociationsZone(m *tui.Model, width, height int) string {
 	var parts []string
 
 	headerStyle := lipgloss.NewStyle().
@@ -140,10 +141,10 @@ func (w *Wrapper) renderFormAssociationsZone(width, height int) string {
 
 	// Parent Tasks section
 	parts = append(parts, headerStyle.Render("Parent Tasks"))
-	if len(w.FormState.FormParentRefs) == 0 {
+	if len(m.FormState.FormParentRefs) == 0 {
 		parts = append(parts, subtleStyle.Render("No Parent Tasks Found"))
 	} else {
-		for _, parent := range w.FormState.FormParentRefs {
+		for _, parent := range m.FormState.FormParentRefs {
 			// Render relation label with color if available
 			var relationLabel string
 			if parent.RelationLabel != "" && parent.RelationColor != "" {
@@ -161,10 +162,10 @@ func (w *Wrapper) renderFormAssociationsZone(width, height int) string {
 
 	// Child Tasks section
 	parts = append(parts, headerStyle.Render("Child Tasks"))
-	if len(w.FormState.FormChildRefs) == 0 {
+	if len(m.FormState.FormChildRefs) == 0 {
 		parts = append(parts, subtleStyle.Render("No Child Tasks Found"))
 	} else {
-		for _, child := range w.FormState.FormChildRefs {
+		for _, child := range m.FormState.FormChildRefs {
 			// Render relation label with color if available
 			var relationLabel string
 			if child.RelationLabel != "" && child.RelationColor != "" {

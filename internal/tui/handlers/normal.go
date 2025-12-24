@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/modelops"
@@ -16,425 +17,413 @@ import (
 // ============================================================================
 
 // HandleNormalMode dispatches key events in NormalMode to specific handlers.
-func (w *Wrapper) HandleNormalMode(msg tea.KeyMsg) (*Wrapper, tea.Cmd) {
-	w.NotificationState.Clear()
+func HandleNormalMode(m *tui.Model, msg tea.KeyMsg) tea.Cmd {
+	m.NotificationState.Clear()
 
 	key := msg.String()
-	km := w.Config.KeyMappings
+	km := m.Config.KeyMappings
 
 	switch key {
 	case km.Quit, "ctrl+c":
-		return w.handleQuit()
+		return handleQuit(m)
 	case km.ShowHelp:
-		return w.handleShowHelp()
+		return handleShowHelp(m)
 	case km.AddTask:
-		return w.handleAddTask()
+		return handleAddTask(m)
 	case km.EditTask:
-		return w.handleEditTask()
+		return handleEditTask(m)
 	case km.DeleteTask:
-		return w.handleDeleteTask()
+		return handleDeleteTask(m)
 	case km.ViewTask:
-		return w.handleEditTask()
+		return handleEditTask(m)
 	case km.CreateColumn:
-		return w.handleCreateColumn()
+		return handleCreateColumn(m)
 	case km.RenameColumn:
-		return w.handleRenameColumn()
+		return handleRenameColumn(m)
 	case km.DeleteColumn:
-		return w.handleDeleteColumn()
+		return handleDeleteColumn(m)
 	case km.ScrollViewportRight:
-		return w.handleScrollRight()
+		return handleScrollRight(m)
 	case km.ScrollViewportLeft:
-		return w.handleScrollLeft()
+		return handleScrollLeft(m)
 	case km.PrevColumn, "left":
-		return w.handleNavigateLeft()
+		return handleNavigateLeft(m)
 	case km.NextColumn, "right":
-		return w.handleNavigateRight()
+		return handleNavigateRight(m)
 	case km.NextTask, "down":
-		return w.handleNavigateDown()
+		return handleNavigateDown(m)
 	case km.PrevTask, "up":
-		return w.handleNavigateUp()
+		return handleNavigateUp(m)
 	case km.MoveTaskRight:
-		return w.handleMoveTaskRight()
+		return handleMoveTaskRight(m)
 	case km.MoveTaskLeft:
-		return w.handleMoveTaskLeft()
+		return handleMoveTaskLeft(m)
 	case km.MoveTaskUp:
-		return w.handleMoveTaskUp()
+		return handleMoveTaskUp(m)
 	case km.MoveTaskDown:
-		return w.handleMoveTaskDown()
+		return handleMoveTaskDown(m)
 	case km.PrevProject:
-		return w.handlePrevProject()
+		return handlePrevProject(m)
 	case km.NextProject:
-		return w.handleNextProject()
+		return handleNextProject(m)
 	case km.CreateProject:
-		return w.handleCreateProject()
+		return handleCreateProject(m)
 	case km.ToggleView:
-		return w.HandleToggleView()
+		return HandleToggleView(m)
 	case km.ChangeStatus:
-		return w.HandleChangeStatus()
+		return HandleChangeStatus(m)
 	case km.SortList:
-		return w.HandleSortList()
+		return HandleSortList(m)
 	case "/":
-		return w.HandleEnterSearch()
+		return HandleEnterSearch(m)
 	}
 
-	return w, nil
+	return nil
 }
 
 // handleQuit exits the application.
-func (w *Wrapper) handleQuit() (*Wrapper, tea.Cmd) {
-	return w, tea.Quit
+func handleQuit(m *tui.Model) tea.Cmd {
+	return tea.Quit
 }
 
 // handleShowHelp shows the help screen.
-func (w *Wrapper) handleShowHelp() (*Wrapper, tea.Cmd) {
-	w.UiState.SetMode(state.HelpMode)
-	return w, nil
+func handleShowHelp(m *tui.Model) tea.Cmd {
+	m.UiState.SetMode(state.HelpMode)
+	return nil
 }
 
 // handleNavigateLeft moves selection to the previous column.
-func (w *Wrapper) handleNavigateLeft() (*Wrapper, tea.Cmd) {
-	if w.UiState.SelectedColumn() > 0 {
-		w.UiState.SetSelectedColumn(w.UiState.SelectedColumn() - 1)
-		w.UiState.SetSelectedTask(0)
-		w.UiState.EnsureSelectionVisible(w.UiState.SelectedColumn())
+func handleNavigateLeft(m *tui.Model) tea.Cmd {
+	if m.UiState.SelectedColumn() > 0 {
+		m.UiState.SetSelectedColumn(m.UiState.SelectedColumn() - 1)
+		m.UiState.SetSelectedTask(0)
+		m.UiState.EnsureSelectionVisible(m.UiState.SelectedColumn())
 	} else {
-		w.NotificationState.Add(state.LevelInfo, "Already at the first column")
+		m.NotificationState.Add(state.LevelInfo, "Already at the first column")
 	}
-	return w, nil
+	return nil
 }
 
 // handleNavigateRight moves selection to the next column.
-func (w *Wrapper) handleNavigateRight() (*Wrapper, tea.Cmd) {
-	if w.UiState.SelectedColumn() < len(w.AppState.Columns())-1 {
-		w.UiState.SetSelectedColumn(w.UiState.SelectedColumn() + 1)
-		w.UiState.SetSelectedTask(0)
-		w.UiState.EnsureSelectionVisible(w.UiState.SelectedColumn())
+func handleNavigateRight(m *tui.Model) tea.Cmd {
+	if m.UiState.SelectedColumn() < len(m.AppState.Columns())-1 {
+		m.UiState.SetSelectedColumn(m.UiState.SelectedColumn() + 1)
+		m.UiState.SetSelectedTask(0)
+		m.UiState.EnsureSelectionVisible(m.UiState.SelectedColumn())
 	} else {
-		w.NotificationState.Add(state.LevelInfo, "Already at the last column")
+		m.NotificationState.Add(state.LevelInfo, "Already at the last column")
 	}
-	return w, nil
+	return nil
 }
 
 // handleNavigateUp moves selection to the previous task.
-func (w *Wrapper) handleNavigateUp() (*Wrapper, tea.Cmd) {
+func handleNavigateUp(m *tui.Model) tea.Cmd {
 	// List view navigation
-	if w.ListViewState.IsListView() {
-		if w.ListViewState.SelectedRow() > 0 {
-			w.ListViewState.SetSelectedRow(w.ListViewState.SelectedRow() - 1)
+	if m.ListViewState.IsListView() {
+		if m.ListViewState.SelectedRow() > 0 {
+			m.ListViewState.SetSelectedRow(m.ListViewState.SelectedRow() - 1)
 
 			// Ensure row is visible by adjusting scroll offset
-			listHeight := w.UiState.ContentHeight()
+			listHeight := m.UiState.ContentHeight()
 			const reservedHeight = 6
 			visibleRows := max(listHeight-reservedHeight, 1)
-			w.ListViewState.EnsureRowVisible(visibleRows)
+			m.ListViewState.EnsureRowVisible(visibleRows)
 		} else {
-			w.NotificationState.Add(state.LevelInfo, "Already at the first task")
+			m.NotificationState.Add(state.LevelInfo, "Already at the first task")
 		}
-		return w, nil
+		return nil
 	}
 
 	// Kanban navigation
-	if w.UiState.SelectedTask() > 0 {
-		w.UiState.SetSelectedTask(w.UiState.SelectedTask() - 1)
+	if m.UiState.SelectedTask() > 0 {
+		m.UiState.SetSelectedTask(m.UiState.SelectedTask() - 1)
 
 		// Ensure task is visible by adjusting column scroll offset
-		if w.UiState.SelectedColumn() < len(w.AppState.Columns()) {
-			currentCol := w.AppState.Columns()[w.UiState.SelectedColumn()]
-			columnHeight := w.UiState.ContentHeight()
+		if m.UiState.SelectedColumn() < len(m.AppState.Columns()) {
+			currentCol := m.AppState.Columns()[m.UiState.SelectedColumn()]
+			columnHeight := m.UiState.ContentHeight()
 			const columnOverhead = 5 // Includes reserved space for top and bottom indicators
 			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
-			w.UiState.EnsureTaskVisible(currentCol.ID, w.UiState.SelectedTask(), maxTasksVisible)
+			m.UiState.EnsureTaskVisible(currentCol.ID, m.UiState.SelectedTask(), maxTasksVisible)
 		}
 	} else {
-		w.NotificationState.Add(state.LevelInfo, "Already at the first task")
+		m.NotificationState.Add(state.LevelInfo, "Already at the first task")
 	}
-	return w, nil
+	return nil
 }
 
 // handleNavigateDown moves selection to the next task.
-func (w *Wrapper) handleNavigateDown() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-
+func handleNavigateDown(m *tui.Model) tea.Cmd {
 	// List view navigation
-	if w.ListViewState.IsListView() {
-		rows := ops.BuildListViewRows()
-		if w.ListViewState.SelectedRow() < len(rows)-1 {
-			w.ListViewState.SetSelectedRow(w.ListViewState.SelectedRow() + 1)
+	if m.ListViewState.IsListView() {
+		rows := modelops.BuildListViewRows(m)
+		if m.ListViewState.SelectedRow() < len(rows)-1 {
+			m.ListViewState.SetSelectedRow(m.ListViewState.SelectedRow() + 1)
 
 			// Ensure row is visible by adjusting scroll offset
-			listHeight := w.UiState.ContentHeight()
+			listHeight := m.UiState.ContentHeight()
 			const reservedHeight = 6
 			visibleRows := max(listHeight-reservedHeight, 1)
-			w.ListViewState.EnsureRowVisible(visibleRows)
+			m.ListViewState.EnsureRowVisible(visibleRows)
 		} else if len(rows) > 0 {
-			w.NotificationState.Add(state.LevelInfo, "Already at the last task")
+			m.NotificationState.Add(state.LevelInfo, "Already at the last task")
 		}
-		return w, nil
+		return nil
 	}
 
 	// Kanban navigation
-	currentTasks := ops.GetCurrentTasks()
-	if len(currentTasks) > 0 && w.UiState.SelectedTask() < len(currentTasks)-1 {
-		w.UiState.SetSelectedTask(w.UiState.SelectedTask() + 1)
+	currentTasks := modelops.GetCurrentTasks(m)
+	if len(currentTasks) > 0 && m.UiState.SelectedTask() < len(currentTasks)-1 {
+		m.UiState.SetSelectedTask(m.UiState.SelectedTask() + 1)
 
 		// Ensure task is visible by adjusting column scroll offset
-		if w.UiState.SelectedColumn() < len(w.AppState.Columns()) {
-			currentCol := w.AppState.Columns()[w.UiState.SelectedColumn()]
-			columnHeight := w.UiState.ContentHeight()
+		if m.UiState.SelectedColumn() < len(m.AppState.Columns()) {
+			currentCol := m.AppState.Columns()[m.UiState.SelectedColumn()]
+			columnHeight := m.UiState.ContentHeight()
 			const columnOverhead = 5 // Includes reserved space for top and bottom indicators
 			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
-			w.UiState.EnsureTaskVisible(currentCol.ID, w.UiState.SelectedTask(), maxTasksVisible)
+			m.UiState.EnsureTaskVisible(currentCol.ID, m.UiState.SelectedTask(), maxTasksVisible)
 		}
 	} else if len(currentTasks) > 0 {
-		w.NotificationState.Add(state.LevelInfo, "Already at the last task")
+		m.NotificationState.Add(state.LevelInfo, "Already at the last task")
 	}
-	return w, nil
+	return nil
 }
 
 // handleScrollRight scrolls the viewport right.
-func (w *Wrapper) handleScrollRight() (*Wrapper, tea.Cmd) {
-	if w.UiState.ViewportOffset()+w.UiState.ViewportSize() < len(w.AppState.Columns()) {
-		w.UiState.SetViewportOffset(w.UiState.ViewportOffset() + 1)
-		if w.UiState.SelectedColumn() < w.UiState.ViewportOffset() {
-			w.UiState.SetSelectedColumn(w.UiState.ViewportOffset())
-			w.UiState.SetSelectedTask(0)
+func handleScrollRight(m *tui.Model) tea.Cmd {
+	if m.UiState.ViewportOffset()+m.UiState.ViewportSize() < len(m.AppState.Columns()) {
+		m.UiState.SetViewportOffset(m.UiState.ViewportOffset() + 1)
+		if m.UiState.SelectedColumn() < m.UiState.ViewportOffset() {
+			m.UiState.SetSelectedColumn(m.UiState.ViewportOffset())
+			m.UiState.SetSelectedTask(0)
 		}
 	} else {
-		w.NotificationState.Add(state.LevelInfo, "Already at the rightmost view")
+		m.NotificationState.Add(state.LevelInfo, "Already at the rightmost view")
 	}
-	return w, nil
+	return nil
 }
 
 // handleScrollLeft scrolls the viewport left.
-func (w *Wrapper) handleScrollLeft() (*Wrapper, tea.Cmd) {
-	if w.UiState.ViewportOffset() > 0 {
-		w.UiState.SetViewportOffset(w.UiState.ViewportOffset() - 1)
-		if w.UiState.SelectedColumn() >= w.UiState.ViewportOffset()+w.UiState.ViewportSize() {
-			w.UiState.SetSelectedColumn(w.UiState.ViewportOffset() + w.UiState.ViewportSize() - 1)
-			w.UiState.SetSelectedTask(0)
+func handleScrollLeft(m *tui.Model) tea.Cmd {
+	if m.UiState.ViewportOffset() > 0 {
+		m.UiState.SetViewportOffset(m.UiState.ViewportOffset() - 1)
+		if m.UiState.SelectedColumn() >= m.UiState.ViewportOffset()+m.UiState.ViewportSize() {
+			m.UiState.SetSelectedColumn(m.UiState.ViewportOffset() + m.UiState.ViewportSize() - 1)
+			m.UiState.SetSelectedTask(0)
 		}
 	} else {
-		w.NotificationState.Add(state.LevelInfo, "Already at the leftmost view")
+		m.NotificationState.Add(state.LevelInfo, "Already at the leftmost view")
 	}
-	return w, nil
+	return nil
 }
 
 // handleAddTask initiates adding a new task.
-func (w *Wrapper) handleAddTask() (*Wrapper, tea.Cmd) {
-	if len(w.AppState.Columns()) == 0 {
-		w.NotificationState.Add(state.LevelError, "Cannot add task: No columns exist. Create a column first with 'C'")
-		return w, nil
+func handleAddTask(m *tui.Model) tea.Cmd {
+	if len(m.AppState.Columns()) == 0 {
+		m.NotificationState.Add(state.LevelError, "Cannot add task: No columns exist. Create a column first with 'C'")
+		return nil
 	}
-	w.FormState.FormTitle = ""
-	w.FormState.FormDescription = ""
-	w.FormState.FormLabelIDs = []int{}
-	w.FormState.FormParentIDs = []int{}
-	w.FormState.FormChildIDs = []int{}
-	w.FormState.FormParentRefs = []*models.TaskReference{}
-	w.FormState.FormChildRefs = []*models.TaskReference{}
-	w.FormState.FormConfirm = true
-	w.FormState.EditingTaskID = 0
+	m.FormState.FormTitle = ""
+	m.FormState.FormDescription = ""
+	m.FormState.FormLabelIDs = []int{}
+	m.FormState.FormParentIDs = []int{}
+	m.FormState.FormChildIDs = []int{}
+	m.FormState.FormParentRefs = []*models.TaskReference{}
+	m.FormState.FormChildRefs = []*models.TaskReference{}
+	m.FormState.FormConfirm = true
+	m.FormState.EditingTaskID = 0
 
 	// Calculate description height (will be dynamic in Phase 4)
 	descriptionLines := 10
 
-	w.FormState.TicketForm = huhforms.CreateTicketForm(
-		&w.FormState.FormTitle,
-		&w.FormState.FormDescription,
-		&w.FormState.FormConfirm,
+	m.FormState.TicketForm = huhforms.CreateTicketForm(
+		&m.FormState.FormTitle,
+		&m.FormState.FormDescription,
+		&m.FormState.FormConfirm,
 		descriptionLines,
-	).WithTheme(huhforms.CreatePasoTheme(w.Config.ColorScheme))
-	w.FormState.SnapshotTicketFormInitialValues() // Snapshot for change detection
-	w.UiState.SetMode(state.TicketFormMode)
-	return w, w.FormState.TicketForm.Init()
+	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+	m.FormState.SnapshotTicketFormInitialValues() // Snapshot for change detection
+	m.UiState.SetMode(state.TicketFormMode)
+	return m.FormState.TicketForm.Init()
 }
 
 // handleEditTask initiates editing the selected task.
-func (w *Wrapper) handleEditTask() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-	task := ops.GetCurrentTask()
+func handleEditTask(m *tui.Model) tea.Cmd {
+	task := modelops.GetCurrentTask(m)
 	if task == nil {
-		w.NotificationState.Add(state.LevelError, "No task selected to edit")
-		return w, nil
+		m.NotificationState.Add(state.LevelError, "No task selected to edit")
+		return nil
 	}
 
-	ctx, cancel := w.DbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
-	taskDetail, err := w.Repo.GetTaskDetail(ctx, task.ID)
+	taskDetail, err := m.Repo.GetTaskDetail(ctx, task.ID)
 	if err != nil {
-		w.HandleDBError(err, "Loading task details")
-		return w, nil
+		m.HandleDBError(err, "Loading task details")
+		return nil
 	}
 
-	w.FormState.FormTitle = taskDetail.Title
-	w.FormState.FormDescription = taskDetail.Description
-	w.FormState.FormLabelIDs = make([]int, len(taskDetail.Labels))
+	m.FormState.FormTitle = taskDetail.Title
+	m.FormState.FormDescription = taskDetail.Description
+	m.FormState.FormLabelIDs = make([]int, len(taskDetail.Labels))
 	for i, label := range taskDetail.Labels {
-		w.FormState.FormLabelIDs[i] = label.ID
+		m.FormState.FormLabelIDs[i] = label.ID
 	}
 
 	// Load parent relationships
-	w.FormState.FormParentIDs = make([]int, len(taskDetail.ParentTasks))
-	w.FormState.FormParentRefs = taskDetail.ParentTasks
+	m.FormState.FormParentIDs = make([]int, len(taskDetail.ParentTasks))
+	m.FormState.FormParentRefs = taskDetail.ParentTasks
 	for i, parent := range taskDetail.ParentTasks {
-		w.FormState.FormParentIDs[i] = parent.ID
+		m.FormState.FormParentIDs[i] = parent.ID
 	}
 
 	// Load child relationships
-	w.FormState.FormChildIDs = make([]int, len(taskDetail.ChildTasks))
-	w.FormState.FormChildRefs = taskDetail.ChildTasks
+	m.FormState.FormChildIDs = make([]int, len(taskDetail.ChildTasks))
+	m.FormState.FormChildRefs = taskDetail.ChildTasks
 	for i, child := range taskDetail.ChildTasks {
-		w.FormState.FormChildIDs[i] = child.ID
+		m.FormState.FormChildIDs[i] = child.ID
 	}
 
 	// Load timestamps, type, and priority for metadata display
-	w.FormState.FormCreatedAt = taskDetail.CreatedAt
-	w.FormState.FormUpdatedAt = taskDetail.UpdatedAt
-	w.FormState.FormTypeDescription = taskDetail.TypeDescription
-	w.FormState.FormPriorityDescription = taskDetail.PriorityDescription
-	w.FormState.FormPriorityColor = taskDetail.PriorityColor
+	m.FormState.FormCreatedAt = taskDetail.CreatedAt
+	m.FormState.FormUpdatedAt = taskDetail.UpdatedAt
+	m.FormState.FormTypeDescription = taskDetail.TypeDescription
+	m.FormState.FormPriorityDescription = taskDetail.PriorityDescription
+	m.FormState.FormPriorityColor = taskDetail.PriorityColor
 
-	w.FormState.FormConfirm = true
-	w.FormState.EditingTaskID = task.ID
+	m.FormState.FormConfirm = true
+	m.FormState.EditingTaskID = task.ID
 
 	// Calculate description height (will be dynamic in Phase 4)
 	descriptionLines := 10
 
-	w.FormState.TicketForm = huhforms.CreateTicketForm(
-		&w.FormState.FormTitle,
-		&w.FormState.FormDescription,
-		&w.FormState.FormConfirm,
+	m.FormState.TicketForm = huhforms.CreateTicketForm(
+		&m.FormState.FormTitle,
+		&m.FormState.FormDescription,
+		&m.FormState.FormConfirm,
 		descriptionLines,
-	).WithTheme(huhforms.CreatePasoTheme(w.Config.ColorScheme))
-	w.FormState.SnapshotTicketFormInitialValues() // Snapshot for change detection
-	w.UiState.SetMode(state.TicketFormMode)
-	return w, w.FormState.TicketForm.Init()
+	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+	m.FormState.SnapshotTicketFormInitialValues() // Snapshot for change detection
+	m.UiState.SetMode(state.TicketFormMode)
+	return m.FormState.TicketForm.Init()
 }
 
 // handleDeleteTask initiates task deletion confirmation.
-func (w *Wrapper) handleDeleteTask() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-	if ops.GetCurrentTask() == nil {
-		w.NotificationState.Add(state.LevelError, "No task selected to delete")
-		return w, nil
+func handleDeleteTask(m *tui.Model) tea.Cmd {
+	if modelops.GetCurrentTask(m) == nil {
+		m.NotificationState.Add(state.LevelError, "No task selected to delete")
+		return nil
 	}
-	w.UiState.SetMode(state.DeleteConfirmMode)
-	return w, nil
+	m.UiState.SetMode(state.DeleteConfirmMode)
+	return nil
 }
 
 // handleMoveTaskRight moves the task to the next column.
-func (w *Wrapper) handleMoveTaskRight() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-	if ops.GetCurrentTask() != nil {
-		ops.MoveTaskRight()
+func handleMoveTaskRight(m *tui.Model) tea.Cmd {
+	if modelops.GetCurrentTask(m) != nil {
+		modelops.MoveTaskRight(m)
 	}
-	return w, nil
+	return nil
 }
 
 // handleMoveTaskLeft moves the task to the previous column.
-func (w *Wrapper) handleMoveTaskLeft() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-	if ops.GetCurrentTask() != nil {
-		ops.MoveTaskLeft()
+func handleMoveTaskLeft(m *tui.Model) tea.Cmd {
+	if modelops.GetCurrentTask(m) != nil {
+		modelops.MoveTaskLeft(m)
 	}
-	return w, nil
+	return nil
 }
 
 // handleMoveTaskUp moves the task up within its column.
-func (w *Wrapper) handleMoveTaskUp() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-	if ops.GetCurrentTask() != nil {
-		ops.MoveTaskUp()
+func handleMoveTaskUp(m *tui.Model) tea.Cmd {
+	if modelops.GetCurrentTask(m) != nil {
+		modelops.MoveTaskUp(m)
 	}
-	return w, nil
+	return nil
 }
 
 // handleMoveTaskDown moves the task down within its column.
-func (w *Wrapper) handleMoveTaskDown() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-	if ops.GetCurrentTask() != nil {
-		ops.MoveTaskDown()
+func handleMoveTaskDown(m *tui.Model) tea.Cmd {
+	if modelops.GetCurrentTask(m) != nil {
+		modelops.MoveTaskDown(m)
 	}
-	return w, nil
+	return nil
 }
 
 // handleCreateColumn initiates column creation.
-func (w *Wrapper) handleCreateColumn() (*Wrapper, tea.Cmd) {
-	w.UiState.SetMode(state.AddColumnMode)
-	w.InputState.Prompt = "New column name:"
-	w.InputState.Buffer = ""
-	return w, nil
+func handleCreateColumn(m *tui.Model) tea.Cmd {
+	m.UiState.SetMode(state.AddColumnMode)
+	m.InputState.Prompt = "New column name:"
+	m.InputState.Buffer = ""
+	return nil
 }
 
 // handleRenameColumn initiates column renaming.
-func (w *Wrapper) handleRenameColumn() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-	column := ops.GetCurrentColumn()
+func handleRenameColumn(m *tui.Model) tea.Cmd {
+	column := modelops.GetCurrentColumn(m)
 	if column == nil {
-		w.NotificationState.Add(state.LevelError, "No column selected to rename")
-		return w, nil
+		m.NotificationState.Add(state.LevelError, "No column selected to rename")
+		return nil
 	}
-	w.UiState.SetMode(state.EditColumnMode)
-	w.InputState.Buffer = column.Name
-	w.InputState.Prompt = "Rename column:"
-	w.InputState.SnapshotInitialBuffer() // Snapshot for change detection
-	return w, nil
+	m.UiState.SetMode(state.EditColumnMode)
+	m.InputState.Buffer = column.Name
+	m.InputState.Prompt = "Rename column:"
+	m.InputState.SnapshotInitialBuffer() // Snapshot for change detection
+	return nil
 }
 
 // handleDeleteColumn initiates column deletion confirmation.
-func (w *Wrapper) handleDeleteColumn() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-	column := ops.GetCurrentColumn()
+func handleDeleteColumn(m *tui.Model) tea.Cmd {
+	column := modelops.GetCurrentColumn(m)
 	if column == nil {
-		w.NotificationState.Add(state.LevelError, "No column selected to delete")
-		return w, nil
+		m.NotificationState.Add(state.LevelError, "No column selected to delete")
+		return nil
 	}
-	ctx, cancel := w.DbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
-	taskCount, err := w.Repo.GetTaskCountByColumn(ctx, column.ID)
+	taskCount, err := m.Repo.GetTaskCountByColumn(ctx, column.ID)
 	if err != nil {
 		slog.Error("Error getting task count", "error", err)
-		w.NotificationState.Add(state.LevelError, "Error getting column info")
-		return w, nil
+		m.NotificationState.Add(state.LevelError, "Error getting column info")
+		return nil
 	}
-	w.InputState.DeleteColumnTaskCount = taskCount
-	w.UiState.SetMode(state.DeleteColumnConfirmMode)
-	return w, nil
+	m.InputState.DeleteColumnTaskCount = taskCount
+	m.UiState.SetMode(state.DeleteColumnConfirmMode)
+	return nil
 }
 
 // handlePrevProject switches to the previous project.
-func (w *Wrapper) handlePrevProject() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-	if w.AppState.SelectedProject() > 0 {
-		ops.SwitchToProject(w.AppState.SelectedProject() - 1)
+func handlePrevProject(m *tui.Model) tea.Cmd {
+	if m.AppState.SelectedProject() > 0 {
+		modelops.SwitchToProject(m, m.AppState.SelectedProject()-1)
 	} else {
-		w.NotificationState.Add(state.LevelInfo, "Already at the first project")
+		m.NotificationState.Add(state.LevelInfo, "Already at the first project")
 	}
-	return w, nil
+	return nil
 }
 
 // handleNextProject switches to the next project.
-func (w *Wrapper) handleNextProject() (*Wrapper, tea.Cmd) {
-	ops := modelops.New(w.Model)
-	if w.AppState.SelectedProject() < len(w.AppState.Projects())-1 {
-		ops.SwitchToProject(w.AppState.SelectedProject() + 1)
+func handleNextProject(m *tui.Model) tea.Cmd {
+	if m.AppState.SelectedProject() < len(m.AppState.Projects())-1 {
+		modelops.SwitchToProject(m, m.AppState.SelectedProject()+1)
 	} else {
-		w.NotificationState.Add(state.LevelInfo, "Already at the last project")
+		m.NotificationState.Add(state.LevelInfo, "Already at the last project")
 	}
-	return w, nil
+	return nil
 }
 
 // handleCreateProject initiates project creation.
-func (w *Wrapper) handleCreateProject() (*Wrapper, tea.Cmd) {
-	w.FormState.FormProjectName = ""
-	w.FormState.FormProjectDescription = ""
-	w.FormState.FormProjectConfirm = true
-	w.FormState.ProjectForm = huhforms.CreateProjectForm(
-		&w.FormState.FormProjectName,
-		&w.FormState.FormProjectDescription,
-		&w.FormState.FormProjectConfirm,
-	).WithTheme(huhforms.CreatePasoTheme(w.Config.ColorScheme))
-	w.FormState.SnapshotProjectFormInitialValues() // Snapshot for change detection
-	w.UiState.SetMode(state.ProjectFormMode)
-	return w, w.FormState.ProjectForm.Init()
+func handleCreateProject(m *tui.Model) tea.Cmd {
+	m.FormState.FormProjectName = ""
+	m.FormState.FormProjectDescription = ""
+	m.FormState.FormProjectConfirm = true
+	m.FormState.ProjectForm = huhforms.CreateProjectForm(
+		&m.FormState.FormProjectName,
+		&m.FormState.FormProjectDescription,
+		&m.FormState.FormProjectConfirm,
+	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+	m.FormState.SnapshotProjectFormInitialValues() // Snapshot for change detection
+	m.UiState.SetMode(state.ProjectFormMode)
+	return m.FormState.ProjectForm.Init()
 }

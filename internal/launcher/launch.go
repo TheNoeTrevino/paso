@@ -1,4 +1,4 @@
-package tui
+package launcher
 
 import (
 	"context"
@@ -15,6 +15,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/logging"
+	"github.com/thenoetrevino/paso/internal/tui/core"
 )
 
 // Launch starts the TUI application
@@ -96,8 +97,8 @@ func Launch() error {
 	}()
 
 	repo := database.NewRepository(db, eventClient)
-	model := InitialModel(ctx, repo, cfg, eventClient)
-	p := tea.NewProgram(model, tea.WithContext(ctx))
+	app := core.New(ctx, repo, cfg, eventClient)
+	p := tea.NewProgram(app, tea.WithContext(ctx))
 
 	// goroutine to monitor cancellation
 	errChan := make(chan error, 1)

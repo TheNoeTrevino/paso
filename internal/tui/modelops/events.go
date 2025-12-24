@@ -8,20 +8,20 @@ import (
 // SubscribeToEvents returns a command that listens for events from the daemon
 // and sends RefreshMsg when data changes.
 // Returns nil if EventChan is not initialized.
-func (w *Wrapper) SubscribeToEvents() tea.Cmd {
-	if w.EventChan == nil {
+func SubscribeToEvents(m *tui.Model) tea.Cmd {
+	if m.EventChan == nil {
 		return nil
 	}
 
 	return func() tea.Msg {
 		select {
-		case event, ok := <-w.EventChan:
+		case event, ok := <-m.EventChan:
 			if !ok {
 				// Channel closed, connection lost
 				return nil
 			}
 			return tui.RefreshMsg{Event: event}
-		case <-w.Ctx.Done():
+		case <-m.Ctx.Done():
 			return nil
 		}
 	}

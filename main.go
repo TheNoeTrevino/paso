@@ -9,7 +9,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/cli/label"
 	"github.com/thenoetrevino/paso/internal/cli/project"
 	"github.com/thenoetrevino/paso/internal/cli/task"
-	"github.com/thenoetrevino/paso/internal/tui"
+	"github.com/thenoetrevino/paso/internal/launcher"
 )
 
 var (
@@ -53,7 +53,7 @@ func init() {
 		Short: "Launch the interactive TUI",
 		Long:  "Launch the interactive terminal user interface for managing tasks visually.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return tui.Launch()
+			return launcher.Launch()
 		},
 	}
 	rootCmd.AddCommand(tuiCmd)
