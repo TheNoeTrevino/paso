@@ -19,7 +19,7 @@ func setupTestModel(columns []*models.Column, tasks map[int][]*models.TaskSummar
 
 	return Model{
 		Ctx:               context.Background(),
-		Repo:              nil, // No repo needed for navigation handlers
+		App:               nil, // No app needed for navigation handlers
 		Config:            cfg,
 		AppState:          state.NewAppState(nil, 0, columns, tasks, nil),
 		UiState:           state.NewUIState(),

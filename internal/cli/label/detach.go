@@ -74,7 +74,7 @@ func runDetach(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Detach label from task (no validation needed - removing non-existent association is not an error)
-	if err := cliInstance.Repo.RemoveLabelFromTask(ctx, taskID, labelID); err != nil {
+	if err := cliInstance.Repo().RemoveLabelFromTask(ctx, taskID, labelID); err != nil {
 		if fmtErr := formatter.Error("DETACH_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}

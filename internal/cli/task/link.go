@@ -109,7 +109,7 @@ func runLink(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Create the relationship with specific type
-	if err := cliInstance.Repo.AddSubtaskWithRelationType(ctx, parentID, childID, relationTypeID); err != nil {
+	if err := cliInstance.Repo().AddSubtaskWithRelationType(ctx, parentID, childID, relationTypeID); err != nil {
 		if fmtErr := formatter.Error("LINK_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}

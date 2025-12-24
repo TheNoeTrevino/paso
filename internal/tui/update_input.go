@@ -96,12 +96,12 @@ func (m Model) createColumn() (tea.Model, tea.Cmd) {
 
 	ctx, cancel := m.DbContext()
 	defer cancel()
-	column, err := m.Repo.CreateColumn(ctx, strings.TrimSpace(m.InputState.Buffer), projectID, afterColumnID)
+	column, err := m.App.Repo().CreateColumn(ctx, strings.TrimSpace(m.InputState.Buffer), projectID, afterColumnID)
 	if err != nil {
 		slog.Error("Error creating column", "error", err)
 		m.NotificationState.Add(state.LevelError, "Failed to create column")
 	} else {
-		columns, err := m.Repo.GetColumnsByProject(ctx, projectID)
+		columns, err := m.App.Repo().GetColumnsByProject(ctx, projectID)
 		if err != nil {
 			slog.Error("Error reloading columns", "error", err)
 			m.NotificationState.Add(state.LevelError, "Failed to reload columns")
@@ -125,7 +125,7 @@ func (m Model) renameColumn() (tea.Model, tea.Cmd) {
 	if column != nil {
 		ctx, cancel := m.DbContext()
 		defer cancel()
-		err := m.Repo.UpdateColumnName(ctx, column.ID, strings.TrimSpace(m.InputState.Buffer))
+		err := m.App.Repo().UpdateColumnName(ctx, column.ID, strings.TrimSpace(m.InputState.Buffer))
 		if err != nil {
 			slog.Error("Error updating column", "error", err)
 			m.NotificationState.Add(state.LevelError, "Failed to rename column")

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/thenoetrevino/paso/internal/app"
 	"github.com/thenoetrevino/paso/internal/config"
-	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
@@ -29,7 +29,7 @@ const (
 // Model represents the application state for the TUI
 type Model struct {
 	Ctx                     context.Context // Application context for cancellation and timeouts
-	Repo                    database.DataStore
+	App                     *app.App        // Application container with services
 	Config                  *config.Config
 	AppState                *state.AppState
 	UiState                 *state.UIState
@@ -53,10 +53,13 @@ type Model struct {
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
-func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Config, eventClient events.EventPublisher) Model {
+func InitialModel(ctx context.Context, application *app.App, cfg *config.Config, eventClient events.EventPublisher) Model {
 	// Create child context with timeout for initial loading
 	loadCtx, cancel := context.WithTimeout(ctx, timeoutInitialLoad)
 	defer cancel()
+
+	// Get repository for initial data loading
+	repo := application.Repo()
 
 	// Load all projects
 	projects, err := repo.GetAllProjects(loadCtx)
@@ -151,7 +154,7 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 
 	return Model{
 		Ctx:                     ctx, // Store root context
-		Repo:                    repo,
+		App:                     application,
 		Config:                  cfg,
 		AppState:                appState,
 		UiState:                 uiState,
@@ -363,7 +366,7 @@ func (m Model) moveTaskRight() {
 	// Use the new database function to move task
 	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.Repo.MoveTaskToNextColumn(ctx, task.ID)
+	err := m.App.Repo().MoveTaskToNextColumn(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task to next column", "error", err)
 		if err != models.ErrAlreadyLastColumn {
@@ -417,7 +420,7 @@ func (m Model) moveTaskLeft() {
 	// Use the new database function to move task
 	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.Repo.MoveTaskToPrevColumn(ctx, task.ID)
+	err := m.App.Repo().MoveTaskToPrevColumn(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task to previous column", "error", err)
 		if err != models.ErrAlreadyFirstColumn {
@@ -465,7 +468,7 @@ func (m Model) moveTaskUp() {
 	// Call database swap
 	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.Repo.SwapTaskUp(ctx, task.ID)
+	err := m.App.Repo().SwapTaskUp(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task up", "error", err)
 		if err != models.ErrAlreadyFirstTask {
@@ -528,7 +531,7 @@ func (m Model) moveTaskDown() {
 	// Call database swap
 	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.Repo.SwapTaskDown(ctx, task.ID)
+	err := m.App.Repo().SwapTaskDown(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task down", "error", err)
 		if err != models.ErrAlreadyLastTask {
@@ -570,7 +573,7 @@ func (m Model) switchToProject(projectIndex int) {
 	defer cancel()
 
 	// Reload columns for this project
-	columns, err := m.Repo.GetColumnsByProject(ctx, project.ID)
+	columns, err := m.App.Repo().GetColumnsByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading columns for project", "project_id", project.ID, "error", err)
 		columns = []*models.Column{}
@@ -578,7 +581,7 @@ func (m Model) switchToProject(projectIndex int) {
 	m.AppState.SetColumns(columns)
 
 	// Reload task summaries for the entire project
-	tasks, err := m.Repo.GetTaskSummariesByProject(ctx, project.ID)
+	tasks, err := m.App.Repo().GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading tasks for project", "project_id", project.ID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
@@ -586,7 +589,7 @@ func (m Model) switchToProject(projectIndex int) {
 	m.AppState.SetTasks(tasks)
 
 	// Reload labels for this project
-	labels, err := m.Repo.GetLabelsByProject(ctx, project.ID)
+	labels, err := m.App.Repo().GetLabelsByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading labels for project", "project_id", project.ID, "error", err)
 		labels = []*models.Label{}
@@ -601,7 +604,7 @@ func (m Model) switchToProject(projectIndex int) {
 func (m Model) reloadProjects() {
 	ctx, cancel := m.DbContext()
 	defer cancel()
-	projects, err := m.Repo.GetAllProjects(ctx)
+	projects, err := m.App.Repo().GetAllProjects(ctx)
 	if err != nil {
 		slog.Error("Error reloading projects", "error", err)
 		return
@@ -623,7 +626,7 @@ func (m *Model) initParentPickerForForm() bool {
 	// Get all task references for the entire project
 	ctx, cancel := m.DbContext()
 	defer cancel()
-	allTasks, err := m.Repo.GetTaskReferencesForProject(ctx, project.ID)
+	allTasks, err := m.App.Repo().GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading project tasks", "error", err)
 		return false
@@ -673,7 +676,7 @@ func (m *Model) initChildPickerForForm() bool {
 	// Get all task references for the entire project
 	ctx, cancel := m.DbContext()
 	defer cancel()
-	allTasks, err := m.Repo.GetTaskReferencesForProject(ctx, project.ID)
+	allTasks, err := m.App.Repo().GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading project tasks", "error", err)
 		return false
@@ -764,7 +767,7 @@ func (m *Model) initPriorityPickerForForm() bool {
 		ctx, cancel := m.DbContext()
 		defer cancel()
 
-		taskDetail, err := m.Repo.GetTaskDetail(ctx, m.FormState.EditingTaskID)
+		taskDetail, err := m.App.Repo().GetTaskDetail(ctx, m.FormState.EditingTaskID)
 		if err != nil {
 			slog.Error("Error loading task detail for priority picker", "error", err)
 			return false
@@ -803,7 +806,7 @@ func (m *Model) initTypePickerForForm() bool {
 		ctx, cancel := m.DbContext()
 		defer cancel()
 
-		taskDetail, err := m.Repo.GetTaskDetail(ctx, m.FormState.EditingTaskID)
+		taskDetail, err := m.App.Repo().GetTaskDetail(ctx, m.FormState.EditingTaskID)
 		if err != nil {
 			slog.Error("Error loading task detail for type picker", "error", err)
 			return false
@@ -978,7 +981,7 @@ func (m *Model) reloadCurrentProject() {
 	defer cancel()
 
 	// Reload columns
-	columns, err := m.Repo.GetColumnsByProject(ctx, currentProject.ID)
+	columns, err := m.App.Repo().GetColumnsByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading columns", "error", err)
 		m.HandleDBError(err, "reload columns")
@@ -986,7 +989,7 @@ func (m *Model) reloadCurrentProject() {
 	}
 
 	// Reload tasks
-	tasks, err := m.Repo.GetTaskSummariesByProject(ctx, currentProject.ID)
+	tasks, err := m.App.Repo().GetTaskSummariesByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading tasks", "error", err)
 		m.HandleDBError(err, "reload tasks")
@@ -994,7 +997,7 @@ func (m *Model) reloadCurrentProject() {
 	}
 
 	// Reload labels
-	labels, err := m.Repo.GetLabelsByProject(ctx, currentProject.ID)
+	labels, err := m.App.Repo().GetLabelsByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading labels", "error", err)
 		m.HandleDBError(err, "reload labels")

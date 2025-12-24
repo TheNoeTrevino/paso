@@ -59,7 +59,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Get task details for confirmation
-	task, err := cliInstance.Repo.GetTaskDetail(ctx, taskID)
+	task, err := cliInstance.Repo().GetTaskDetail(ctx, taskID)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -81,7 +81,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	// Delete the task
-	if err := cliInstance.Repo.DeleteTask(ctx, taskID); err != nil {
+	if err := cliInstance.Repo().DeleteTask(ctx, taskID); err != nil {
 		if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}

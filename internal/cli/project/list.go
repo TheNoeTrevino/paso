@@ -50,7 +50,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Get all projects
-	projects, err := cliInstance.Repo.GetAllProjects(ctx)
+	projects, err := cliInstance.Repo().GetAllProjects(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("PROJECT_FETCH_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)

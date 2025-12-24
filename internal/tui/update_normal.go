@@ -232,7 +232,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 
 	ctx, cancel := m.DbContext()
 	defer cancel()
-	taskDetail, err := m.Repo.GetTaskDetail(ctx, task.ID)
+	taskDetail, err := m.App.Repo().GetTaskDetail(ctx, task.ID)
 	if err != nil {
 		m.HandleDBError(err, "Loading task details")
 		return m, nil
@@ -344,7 +344,7 @@ func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 	}
 	ctx, cancel := m.DbContext()
 	defer cancel()
-	taskCount, err := m.Repo.GetTaskCountByColumn(ctx, column.ID)
+	taskCount, err := m.App.Repo().GetTaskCountByColumn(ctx, column.ID)
 	if err != nil {
 		slog.Error("Error getting task count", "error", err)
 		m.NotificationState.Add(state.LevelError, "Error getting column info")
