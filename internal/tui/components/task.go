@@ -48,14 +48,19 @@ func renderTaskSummaryTitle(task *models.TaskSummary) string {
 	// TODO: give this a subtle background
 	// emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Background(lipgloss.Color(bg)).Italic(true)
 	if len(title) >= 30 {
-		title = title[:27] + lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Italic(true).Render("...")
+		title = title[:27] + lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Subtle)).
+			Italic(true).
+			Render("...")
 	}
 
 	if len(title) < 30 {
 		title = title + strings.Repeat(" ", 30-len(title))
 	}
 
-	return lipgloss.NewStyle().Bold(true).Render(" 󰗴 " + title + blockedIndicator)
+	return lipgloss.NewStyle().
+		Bold(true).
+		Render(" 󰗴 " + title + blockedIndicator)
 }
 
 // renderTaskCardLabels renders the labels as chips, with their color as the background

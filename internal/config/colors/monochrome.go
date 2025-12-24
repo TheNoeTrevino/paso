@@ -36,5 +36,9 @@ func Monochrome() *ColorScheme {
 		WarningBg: "#3A3A3A",
 		ErrorFg:   "#FFFFFF",
 		ErrorBg:   "#585858",
+
+		// Status bar
+		StatusBarBg:   "#3A3A3A",
+		StatusBarText: "#FFFFFF",
 	}
 }
