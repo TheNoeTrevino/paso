@@ -136,7 +136,14 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case state.DeleteColumnConfirmMode:
 		return m.handleDeleteColumnConfirm(msg)
 	case state.HelpMode:
-		return m.handleHelpMode(msg)
+		// Help mode: any key exits back to normal mode
+		// Inlined from handlers.HandleHelpMode (help.go deleted to reduce duplication)
+		switch msg.String() {
+		case m.Config.KeyMappings.ShowHelp, m.Config.KeyMappings.Quit, "esc", "enter", " ":
+			m.UiState.SetMode(state.NormalMode)
+			return m, nil
+		}
+		return m, nil
 	case state.LabelPickerMode:
 		return m.updateLabelPicker(msg)
 	case state.ParentPickerMode:
