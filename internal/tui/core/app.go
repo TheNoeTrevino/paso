@@ -8,6 +8,8 @@ import (
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/tui"
+	"github.com/thenoetrevino/paso/internal/tui/handlers"
+	"github.com/thenoetrevino/paso/internal/tui/render"
 )
 
 // App wraps the TUI Model and implements the tea.Model interface.
@@ -32,21 +34,17 @@ func (a *App) Init() tea.Cmd {
 
 // Update handles all messages and updates the model.
 // Implements tea.Model interface.
-// Currently delegates to Model.Update() - Phase 4 will refactor to use handlers package.
+// Delegates to handlers.Update() for message dispatch.
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	m, cmd := a.model.Update(msg)
-	// Type assertion: Update returns tea.Model but we know it's tui.Model
-	if updatedModel, ok := m.(tui.Model); ok {
-		a.model = &updatedModel
-	}
+	cmd := handlers.Update(a.model, msg)
 	return a, cmd
 }
 
 // View renders the current state of the application.
 // Implements tea.Model interface.
-// Currently delegates to Model.View() - Phase 4 will refactor to use render package.
+// Delegates to render.View() for view dispatch.
 func (a *App) View() tea.View {
-	return a.model.View()
+	return render.View(a.model)
 }
 
 // GetModel returns the underlying Model.
