@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"strings"
+
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -138,33 +140,11 @@ func (m Model) handleNotificationMsg(msg events.NotificationMsg) (tea.Model, tea
 }
 
 func (m *Model) updateConnectionStateFromMessage(message string) {
-	if containsAny(message, "Connection lost", "reconnecting") {
+	if strings.Contains(message, "Connection lost") || strings.Contains(message, "reconnecting") {
 		m.ConnectionState.SetStatus(state.Reconnecting)
-	} else if contains(message, "Reconnected") {
+	} else if strings.Contains(message, "Reconnected") {
 		m.ConnectionState.SetStatus(state.Connected)
-	} else if contains(message, "Failed to reconnect") {
+	} else if strings.Contains(message, "Failed to reconnect") {
 		m.ConnectionState.SetStatus(state.Disconnected)
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && findSubstring(s, substr)
-}
-
-func containsAny(s string, substrs ...string) bool {
-	for _, substr := range substrs {
-		if contains(s, substr) {
-			return true
-		}
-	}
-	return false
-}
-
-func findSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
