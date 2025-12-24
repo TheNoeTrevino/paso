@@ -60,13 +60,13 @@ func GetLabelByID(ctx context.Context, cliInstance *CLI, labelID int) (*struct {
 }, error,
 ) {
 	// Get all projects to search for the label
-	projects, err := cliInstance.Repo().GetAllProjects(ctx)
+	projects, err := cliInstance.App.ProjectService.GetAllProjects(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, project := range projects {
-		labels, err := cliInstance.Repo().GetLabelsByProject(ctx, project.ID)
+		labels, err := cliInstance.App.LabelService.GetLabelsByProject(ctx, project.ID)
 		if err != nil {
 			continue
 		}

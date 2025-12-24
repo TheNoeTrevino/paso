@@ -74,7 +74,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Validate column exists
-	column, err := cliInstance.Repo().GetColumnByID(ctx, columnID)
+	column, err := cliInstance.App.ColumnService.GetColumnByID(ctx, columnID)
 	if err != nil {
 		if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnID)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -85,7 +85,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	oldName := column.Name
 
 	// Update column
-	if err := cliInstance.Repo().UpdateColumnName(ctx, columnID, columnName); err != nil {
+	if err := cliInstance.App.ColumnService.UpdateColumnName(ctx, columnID, columnName); err != nil {
 		if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}

@@ -75,7 +75,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Get column details for confirmation
-	column, err := cliInstance.Repo().GetColumnByID(ctx, columnID)
+	column, err := cliInstance.App.ColumnService.GetColumnByID(ctx, columnID)
 	if err != nil {
 		if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnID)); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -98,7 +98,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	// Delete the column
-	if err := cliInstance.Repo().DeleteColumn(ctx, columnID); err != nil {
+	if err := cliInstance.App.ColumnService.DeleteColumn(ctx, columnID); err != nil {
 		if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}

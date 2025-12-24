@@ -2,10 +2,12 @@ package label
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"log"
 	"regexp"
 
-	"github.com/thenoetrevino/paso/internal/database"
+	"github.com/thenoetrevino/paso/internal/database/generated"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -39,16 +41,18 @@ type UpdateLabelRequest struct {
 	Color *string
 }
 
-// service implements Service interface
+// service implements Service interface using SQLC directly
 type service struct {
-	repo        database.DataStore
+	db          *sql.DB
+	queries     *generated.Queries
 	eventClient events.EventPublisher
 }
 
 // NewService creates a new label service
-func NewService(repo database.DataStore, eventClient events.EventPublisher) Service {
+func NewService(db *sql.DB, eventClient events.EventPublisher) Service {
 	return &service{
-		repo:        repo,
+		db:          db,
+		queries:     generated.New(db),
 		eventClient: eventClient,
 	}
 }
@@ -58,7 +62,11 @@ func (s *service) GetLabelsByProject(ctx context.Context, projectID int) ([]*mod
 	if projectID <= 0 {
 		return nil, ErrInvalidProjectID
 	}
-	return s.repo.GetLabelsByProject(ctx, projectID)
+	labels, err := s.queries.GetLabelsByProject(ctx, int64(projectID))
+	if err != nil {
+		return nil, err
+	}
+	return toLabelModels(labels), nil
 }
 
 // GetLabelsForTask retrieves all labels for a task
@@ -66,7 +74,11 @@ func (s *service) GetLabelsForTask(ctx context.Context, taskID int) ([]*models.L
 	if taskID <= 0 {
 		return nil, ErrInvalidTaskID
 	}
-	return s.repo.GetLabelsForTask(ctx, taskID)
+	labels, err := s.queries.GetLabelsForTask(ctx, int64(taskID))
+	if err != nil {
+		return nil, err
+	}
+	return toLabelModels(labels), nil
 }
 
 // CreateLabel creates a new label with validation
@@ -76,16 +88,20 @@ func (s *service) CreateLabel(ctx context.Context, req CreateLabelRequest) (*mod
 		return nil, err
 	}
 
-	// Create label in repository
-	label, err := s.repo.CreateLabel(ctx, req.ProjectID, req.Name, req.Color)
+	// Create label
+	label, err := s.queries.CreateLabel(ctx, generated.CreateLabelParams{
+		Name:      req.Name,
+		Color:     req.Color,
+		ProjectID: int64(req.ProjectID),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create label: %w", err)
 	}
 
 	// Publish event
-	s.publishLabelEvent(label.ID, label.ProjectID)
+	s.publishLabelEvent(int(label.ID), int(label.ProjectID))
 
-	return label, nil
+	return toLabelModel(label), nil
 }
 
 // UpdateLabel updates an existing label
@@ -107,15 +123,17 @@ func (s *service) UpdateLabel(ctx context.Context, req UpdateLabelRequest) error
 	}
 
 	// Get existing label to fill in missing fields
-	labels, err := s.repo.GetLabelsByProject(ctx, 0) // TODO: Need a GetLabelByID method
+	// Note: We need to query by getting all labels and filtering
+	// This is not efficient but works for now
+	allLabels, err := s.queries.GetLabelsByProject(ctx, 0)
 	if err != nil {
-		return fmt.Errorf("failed to get label: %w", err)
+		return fmt.Errorf("failed to get labels: %w", err)
 	}
 
-	var existing *models.Label
-	for _, l := range labels {
-		if l.ID == req.ID {
-			existing = l
+	var existing *generated.Label
+	for _, l := range allLabels {
+		if l.ID == int64(req.ID) {
+			existing = &l
 			break
 		}
 	}
@@ -135,12 +153,16 @@ func (s *service) UpdateLabel(ctx context.Context, req UpdateLabelRequest) error
 	}
 
 	// Update label
-	if err := s.repo.UpdateLabel(ctx, req.ID, name, color); err != nil {
+	if err := s.queries.UpdateLabel(ctx, generated.UpdateLabelParams{
+		ID:    int64(req.ID),
+		Name:  name,
+		Color: color,
+	}); err != nil {
 		return fmt.Errorf("failed to update label: %w", err)
 	}
 
 	// Publish event
-	s.publishLabelEvent(req.ID, existing.ProjectID)
+	s.publishLabelEvent(req.ID, int(existing.ProjectID))
 
 	return nil
 }
@@ -152,22 +174,21 @@ func (s *service) DeleteLabel(ctx context.Context, id int) error {
 	}
 
 	// Get label to find project ID for event
-	// Note: We need to get all labels since there's no GetLabelByID
-	labels, err := s.repo.GetLabelsByProject(ctx, 0) // TODO: Need a GetLabelByID method
+	allLabels, err := s.queries.GetLabelsByProject(ctx, 0)
 	if err != nil {
-		return fmt.Errorf("failed to get label: %w", err)
+		return fmt.Errorf("failed to get labels: %w", err)
 	}
 
 	var projectID int
-	for _, l := range labels {
-		if l.ID == id {
-			projectID = l.ProjectID
+	for _, l := range allLabels {
+		if l.ID == int64(id) {
+			projectID = int(l.ProjectID)
 			break
 		}
 	}
 
 	// Delete label
-	if err := s.repo.DeleteLabel(ctx, id); err != nil {
+	if err := s.queries.DeleteLabel(ctx, int64(id)); err != nil {
 		return fmt.Errorf("failed to delete label: %w", err)
 	}
 
@@ -194,13 +215,35 @@ func (s *service) validateCreateLabel(req CreateLabelRequest) error {
 	return nil
 }
 
-// publishLabelEvent publishes a label event if event client exists
+// publishLabelEvent publishes a label event
 func (s *service) publishLabelEvent(labelID, projectID int) {
 	if s.eventClient == nil {
 		return
 	}
 
-	// Publish database changed event
-	_ = labelID   // Used for future enhancement
-	_ = projectID // Used for future enhancement
+	if err := s.eventClient.SendEvent(events.Event{
+		Type:      events.EventDatabaseChanged,
+		ProjectID: projectID,
+	}); err != nil {
+		log.Printf("failed to send event for label %d: %v", labelID, err)
+	}
+}
+
+// Model conversion helpers
+
+func toLabelModel(l generated.Label) *models.Label {
+	return &models.Label{
+		ID:        int(l.ID),
+		Name:      l.Name,
+		Color:     l.Color,
+		ProjectID: int(l.ProjectID),
+	}
+}
+
+func toLabelModels(labels []generated.Label) []*models.Label {
+	result := make([]*models.Label, len(labels))
+	for i, l := range labels {
+		result[i] = toLabelModel(l)
+	}
+	return result
 }

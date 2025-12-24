@@ -58,11 +58,8 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	loadCtx, cancel := context.WithTimeout(ctx, timeoutInitialLoad)
 	defer cancel()
 
-	// Get repository for initial data loading
-	repo := application.Repo()
-
 	// Load all projects
-	projects, err := repo.GetAllProjects(loadCtx)
+	projects, err := application.ProjectService.GetAllProjects(loadCtx)
 	if err != nil {
 		slog.Error("Error loading projects", "error", err)
 		projects = []*models.Project{}
@@ -75,7 +72,7 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	}
 
 	// Load columns for the current project
-	columns, err := repo.GetColumnsByProject(loadCtx, currentProjectID)
+	columns, err := application.ColumnService.GetColumnsByProject(loadCtx, currentProjectID)
 	if err != nil {
 		slog.Error("Error loading columns", "error", err)
 		columns = []*models.Column{}
@@ -83,14 +80,14 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 
 	// Load task summaries for the entire project (includes labels)
 	// Uses batch query to avoid N+1 pattern
-	tasks, err := repo.GetTaskSummariesByProject(loadCtx, currentProjectID)
+	tasks, err := application.TaskService.GetTaskSummariesByProject(loadCtx, currentProjectID)
 	if err != nil {
 		slog.Error("Error loading tasks for project", "project_id", currentProjectID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
 
 	// Load labels for the current project
-	labels, err := repo.GetLabelsByProject(loadCtx, currentProjectID)
+	labels, err := application.LabelService.GetLabelsByProject(loadCtx, currentProjectID)
 	if err != nil {
 		slog.Error("Error loading labels", "error", err)
 		labels = []*models.Label{}
@@ -366,7 +363,7 @@ func (m Model) moveTaskRight() {
 	// Use the new database function to move task
 	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.App.Repo().MoveTaskToNextColumn(ctx, task.ID)
+	err := m.App.TaskService.MoveTaskToNextColumn(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task to next column", "error", err)
 		if err != models.ErrAlreadyLastColumn {
@@ -420,7 +417,7 @@ func (m Model) moveTaskLeft() {
 	// Use the new database function to move task
 	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.App.Repo().MoveTaskToPrevColumn(ctx, task.ID)
+	err := m.App.TaskService.MoveTaskToPrevColumn(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task to previous column", "error", err)
 		if err != models.ErrAlreadyFirstColumn {
@@ -468,7 +465,7 @@ func (m Model) moveTaskUp() {
 	// Call database swap
 	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.App.Repo().SwapTaskUp(ctx, task.ID)
+	err := m.App.TaskService.MoveTaskUp(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task up", "error", err)
 		if err != models.ErrAlreadyFirstTask {
@@ -531,7 +528,7 @@ func (m Model) moveTaskDown() {
 	// Call database swap
 	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.App.Repo().SwapTaskDown(ctx, task.ID)
+	err := m.App.TaskService.MoveTaskDown(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task down", "error", err)
 		if err != models.ErrAlreadyLastTask {
@@ -573,7 +570,7 @@ func (m Model) switchToProject(projectIndex int) {
 	defer cancel()
 
 	// Reload columns for this project
-	columns, err := m.App.Repo().GetColumnsByProject(ctx, project.ID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading columns for project", "project_id", project.ID, "error", err)
 		columns = []*models.Column{}
@@ -581,7 +578,7 @@ func (m Model) switchToProject(projectIndex int) {
 	m.AppState.SetColumns(columns)
 
 	// Reload task summaries for the entire project
-	tasks, err := m.App.Repo().GetTaskSummariesByProject(ctx, project.ID)
+	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading tasks for project", "project_id", project.ID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
@@ -589,7 +586,7 @@ func (m Model) switchToProject(projectIndex int) {
 	m.AppState.SetTasks(tasks)
 
 	// Reload labels for this project
-	labels, err := m.App.Repo().GetLabelsByProject(ctx, project.ID)
+	labels, err := m.App.LabelService.GetLabelsByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading labels for project", "project_id", project.ID, "error", err)
 		labels = []*models.Label{}
@@ -604,7 +601,7 @@ func (m Model) switchToProject(projectIndex int) {
 func (m Model) reloadProjects() {
 	ctx, cancel := m.DbContext()
 	defer cancel()
-	projects, err := m.App.Repo().GetAllProjects(ctx)
+	projects, err := m.App.ProjectService.GetAllProjects(ctx)
 	if err != nil {
 		slog.Error("Error reloading projects", "error", err)
 		return
@@ -626,7 +623,7 @@ func (m *Model) initParentPickerForForm() bool {
 	// Get all task references for the entire project
 	ctx, cancel := m.DbContext()
 	defer cancel()
-	allTasks, err := m.App.Repo().GetTaskReferencesForProject(ctx, project.ID)
+	allTasks, err := m.App.TaskService.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading project tasks", "error", err)
 		return false
@@ -676,7 +673,7 @@ func (m *Model) initChildPickerForForm() bool {
 	// Get all task references for the entire project
 	ctx, cancel := m.DbContext()
 	defer cancel()
-	allTasks, err := m.App.Repo().GetTaskReferencesForProject(ctx, project.ID)
+	allTasks, err := m.App.TaskService.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading project tasks", "error", err)
 		return false
@@ -767,7 +764,7 @@ func (m *Model) initPriorityPickerForForm() bool {
 		ctx, cancel := m.DbContext()
 		defer cancel()
 
-		taskDetail, err := m.App.Repo().GetTaskDetail(ctx, m.FormState.EditingTaskID)
+		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.FormState.EditingTaskID)
 		if err != nil {
 			slog.Error("Error loading task detail for priority picker", "error", err)
 			return false
@@ -806,7 +803,7 @@ func (m *Model) initTypePickerForForm() bool {
 		ctx, cancel := m.DbContext()
 		defer cancel()
 
-		taskDetail, err := m.App.Repo().GetTaskDetail(ctx, m.FormState.EditingTaskID)
+		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.FormState.EditingTaskID)
 		if err != nil {
 			slog.Error("Error loading task detail for type picker", "error", err)
 			return false
@@ -981,7 +978,7 @@ func (m *Model) reloadCurrentProject() {
 	defer cancel()
 
 	// Reload columns
-	columns, err := m.App.Repo().GetColumnsByProject(ctx, currentProject.ID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading columns", "error", err)
 		m.HandleDBError(err, "reload columns")
@@ -989,7 +986,7 @@ func (m *Model) reloadCurrentProject() {
 	}
 
 	// Reload tasks
-	tasks, err := m.App.Repo().GetTaskSummariesByProject(ctx, currentProject.ID)
+	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading tasks", "error", err)
 		m.HandleDBError(err, "reload tasks")
@@ -997,7 +994,7 @@ func (m *Model) reloadCurrentProject() {
 	}
 
 	// Reload labels
-	labels, err := m.App.Repo().GetLabelsByProject(ctx, currentProject.ID)
+	labels, err := m.App.LabelService.GetLabelsByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading labels", "error", err)
 		m.HandleDBError(err, "reload labels")

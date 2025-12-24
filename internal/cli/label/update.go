@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	labelservice "github.com/thenoetrevino/paso/internal/services/label"
 )
 
 // UpdateCmd returns the label update subcommand
@@ -111,7 +112,17 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Update label
-	if err := cliInstance.Repo().UpdateLabel(ctx, labelID, newName, newColor); err != nil {
+	req := labelservice.UpdateLabelRequest{
+		ID: labelID,
+	}
+	if nameProvided {
+		req.Name = &newName
+	}
+	if colorProvided {
+		req.Color = &newColor
+	}
+
+	if err := cliInstance.App.LabelService.UpdateLabel(ctx, req); err != nil {
 		if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}

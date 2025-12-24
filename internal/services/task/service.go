@@ -2,9 +2,12 @@ package task
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"log"
+	"strings"
 
-	"github.com/thenoetrevino/paso/internal/database"
+	"github.com/thenoetrevino/paso/internal/database/generated"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -63,16 +66,18 @@ type UpdateTaskRequest struct {
 	TypeID      *int
 }
 
-// service implements Service interface
+// service implements Service interface using SQLC directly
 type service struct {
-	repo        database.DataStore
+	db          *sql.DB
+	queries     *generated.Queries
 	eventClient events.EventPublisher
 }
 
-// NewService creates a new task service
-func NewService(repo database.DataStore, eventClient events.EventPublisher) Service {
+// NewService creates a new task service with SQLC queries
+func NewService(db *sql.DB, eventClient events.EventPublisher) Service {
 	return &service{
-		repo:        repo,
+		db:          db,
+		queries:     generated.New(db),
 		eventClient: eventClient,
 	}
 }
@@ -84,51 +89,114 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 		return nil, err
 	}
 
-	// Create task in repository
-	task, err := s.repo.CreateTask(ctx, req.Title, req.Description, req.ColumnID, req.Position)
+	// Get project ID from column
+	projectID, err := s.queries.GetProjectIDFromColumn(ctx, int64(req.ColumnID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project ID: %w", err)
+	}
+
+	// Start transaction
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
+
+	qtx := s.queries.WithTx(tx)
+
+	// Get next ticket number
+	ticketNumber, err := qtx.GetNextTicketNumber(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ticket number: %w", err)
+	}
+
+	// Create task
+	var desc sql.NullString
+	if req.Description != "" {
+		desc = sql.NullString{String: req.Description, Valid: true}
+	}
+
+	createdTask, err := qtx.CreateTask(ctx, generated.CreateTaskParams{
+		Title:        req.Title,
+		Description:  desc,
+		ColumnID:     int64(req.ColumnID),
+		Position:     int64(req.Position),
+		TicketNumber: ticketNumber,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create task: %w", err)
 	}
 
+	// Increment ticket number
+	if err := qtx.IncrementTicketNumber(ctx, projectID); err != nil {
+		return nil, fmt.Errorf("failed to increment ticket number: %w", err)
+	}
+
 	// Set priority if provided (default is handled by database)
 	if req.PriorityID > 0 {
-		if err := s.repo.UpdateTaskPriority(ctx, task.ID, req.PriorityID); err != nil {
+		if err := qtx.UpdateTaskPriority(ctx, generated.UpdateTaskPriorityParams{
+			PriorityID: int64(req.PriorityID),
+			ID:         createdTask.ID,
+		}); err != nil {
 			return nil, fmt.Errorf("failed to set priority: %w", err)
 		}
 	}
 
 	// Set type if provided (default is handled by database)
 	if req.TypeID > 0 {
-		if err := s.repo.UpdateTaskType(ctx, task.ID, req.TypeID); err != nil {
+		if err := qtx.UpdateTaskType(ctx, generated.UpdateTaskTypeParams{
+			TypeID: int64(req.TypeID),
+			ID:     createdTask.ID,
+		}); err != nil {
 			return nil, fmt.Errorf("failed to set type: %w", err)
 		}
 	}
 
 	// Attach labels
 	for _, labelID := range req.LabelIDs {
-		if err := s.repo.AddLabelToTask(ctx, task.ID, labelID); err != nil {
+		if err := qtx.AddLabelToTask(ctx, generated.AddLabelToTaskParams{
+			TaskID:  createdTask.ID,
+			LabelID: int64(labelID),
+		}); err != nil {
 			return nil, fmt.Errorf("failed to attach label %d: %w", labelID, err)
 		}
 	}
 
 	// Add parent relationships (tasks that depend on this task)
 	for _, parentID := range req.ParentIDs {
-		if err := s.AddParentRelation(ctx, task.ID, parentID, 1); err != nil {
+		if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+			ParentID:       int64(parentID),
+			ChildID:        createdTask.ID,
+			RelationTypeID: 1,
+		}); err != nil {
 			return nil, fmt.Errorf("failed to add parent relation: %w", err)
 		}
 	}
 
 	// Add child relationships (tasks this task depends on)
 	for _, childID := range req.ChildIDs {
-		if err := s.AddChildRelation(ctx, task.ID, childID, 1); err != nil {
+		if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+			ParentID:       createdTask.ID,
+			ChildID:        int64(childID),
+			RelationTypeID: 1,
+		}); err != nil {
 			return nil, fmt.Errorf("failed to add child relation: %w", err)
 		}
 	}
 
-	// Publish event (if event client exists)
-	s.publishTaskEvent(task.ID)
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
 
-	return task, nil
+	// Publish event after successful commit
+	s.publishTaskEvent(int(createdTask.ID))
+
+	// Convert to model
+	return convertToTaskModel(createdTask), nil
 }
 
 // UpdateTask handles task updates with validation
@@ -155,13 +223,13 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 	// Update basic fields if provided
 	if req.Title != nil || req.Description != nil {
 		title := ""
-		description := ""
+		description := sql.NullString{}
 
 		if req.Title != nil {
 			title = *req.Title
 		} else {
 			// Need to get existing title
-			detail, err := s.repo.GetTaskDetail(ctx, req.TaskID)
+			detail, err := s.queries.GetTaskDetail(ctx, int64(req.TaskID))
 			if err != nil {
 				return fmt.Errorf("failed to get task: %w", err)
 			}
@@ -169,31 +237,41 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 		}
 
 		if req.Description != nil {
-			description = *req.Description
+			description = sql.NullString{String: *req.Description, Valid: true}
 		} else {
 			// Need to get existing description
-			detail, err := s.repo.GetTaskDetail(ctx, req.TaskID)
+			detail, err := s.queries.GetTaskDetail(ctx, int64(req.TaskID))
 			if err != nil {
 				return fmt.Errorf("failed to get task: %w", err)
 			}
 			description = detail.Description
 		}
 
-		if err := s.repo.UpdateTask(ctx, req.TaskID, title, description); err != nil {
+		if err := s.queries.UpdateTask(ctx, generated.UpdateTaskParams{
+			Title:       title,
+			Description: description,
+			ID:          int64(req.TaskID),
+		}); err != nil {
 			return fmt.Errorf("failed to update task: %w", err)
 		}
 	}
 
 	// Update priority if provided
 	if req.PriorityID != nil {
-		if err := s.repo.UpdateTaskPriority(ctx, req.TaskID, *req.PriorityID); err != nil {
+		if err := s.queries.UpdateTaskPriority(ctx, generated.UpdateTaskPriorityParams{
+			PriorityID: int64(*req.PriorityID),
+			ID:         int64(req.TaskID),
+		}); err != nil {
 			return fmt.Errorf("failed to update priority: %w", err)
 		}
 	}
 
 	// Update type if provided
 	if req.TypeID != nil {
-		if err := s.repo.UpdateTaskType(ctx, req.TaskID, *req.TypeID); err != nil {
+		if err := s.queries.UpdateTaskType(ctx, generated.UpdateTaskTypeParams{
+			TypeID: int64(*req.TypeID),
+			ID:     int64(req.TaskID),
+		}); err != nil {
 			return fmt.Errorf("failed to update type: %w", err)
 		}
 	}
@@ -210,7 +288,7 @@ func (s *service) DeleteTask(ctx context.Context, taskID int) error {
 		return ErrInvalidTaskID
 	}
 
-	if err := s.repo.DeleteTask(ctx, taskID); err != nil {
+	if err := s.queries.DeleteTask(ctx, int64(taskID)); err != nil {
 		return fmt.Errorf("failed to delete task: %w", err)
 	}
 
@@ -226,22 +304,127 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 		return nil, ErrInvalidTaskID
 	}
 
-	return s.repo.GetTaskDetail(ctx, taskID)
+	// Get task detail
+	taskRow, err := s.queries.GetTaskDetail(ctx, int64(taskID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task detail: %w", err)
+	}
+
+	// Get labels
+	labels, err := s.queries.GetTaskLabels(ctx, int64(taskID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task labels: %w", err)
+	}
+
+	// Get parent tasks
+	parentRows, err := s.queries.GetParentTasks(ctx, int64(taskID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get parent tasks: %w", err)
+	}
+
+	// Get child tasks
+	childRows, err := s.queries.GetChildTasks(ctx, int64(taskID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get child tasks: %w", err)
+	}
+
+	// Convert to model
+	detail := &models.TaskDetail{
+		ID:          int(taskRow.ID),
+		Title:       taskRow.Title,
+		Description: taskRow.Description.String,
+		ColumnID:    int(taskRow.ColumnID),
+		Position:    int(taskRow.Position),
+		Labels:      convertLabelsToModels(labels),
+		ParentTasks: convertParentTasksToReferences(parentRows),
+		ChildTasks:  convertChildTasksToReferences(childRows),
+	}
+
+	if taskRow.TicketNumber.Valid {
+		detail.TicketNumber = int(taskRow.TicketNumber.Int64)
+	}
+	if taskRow.TypeDescription.Valid {
+		detail.TypeDescription = taskRow.TypeDescription.String
+	}
+	if taskRow.PriorityDescription.Valid {
+		detail.PriorityDescription = taskRow.PriorityDescription.String
+	}
+	if taskRow.PriorityColor.Valid {
+		detail.PriorityColor = taskRow.PriorityColor.String
+	}
+	if taskRow.CreatedAt.Valid {
+		detail.CreatedAt = taskRow.CreatedAt.Time
+	}
+	if taskRow.UpdatedAt.Valid {
+		detail.UpdatedAt = taskRow.UpdatedAt.Time
+	}
+
+	return detail, nil
 }
 
 // GetTaskSummariesByProject retrieves task summaries for a project
 func (s *service) GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error) {
-	return s.repo.GetTaskSummariesByProject(ctx, projectID)
+	rows, err := s.queries.GetTaskSummariesByProject(ctx, int64(projectID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task summaries: %w", err)
+	}
+
+	// Group by column
+	result := make(map[int][]*models.TaskSummary)
+	for _, row := range rows {
+		summary := convertTaskSummaryRowToModel(row)
+		columnID := int(row.ColumnID)
+		result[columnID] = append(result[columnID], summary)
+	}
+
+	return result, nil
 }
 
 // GetTaskSummariesByProjectFiltered retrieves filtered task summaries
 func (s *service) GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error) {
-	return s.repo.GetTaskSummariesByProjectFiltered(ctx, projectID, searchQuery)
+	// Add wildcards for LIKE query
+	searchPattern := "%" + searchQuery + "%"
+
+	rows, err := s.queries.GetTaskSummariesByProjectFiltered(ctx, generated.GetTaskSummariesByProjectFilteredParams{
+		ProjectID: int64(projectID),
+		Title:     searchPattern,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get filtered task summaries: %w", err)
+	}
+
+	// Group by column
+	result := make(map[int][]*models.TaskSummary)
+	for _, row := range rows {
+		summary := convertFilteredTaskSummaryRowToModel(row)
+		columnID := int(row.ColumnID)
+		result[columnID] = append(result[columnID], summary)
+	}
+
+	return result, nil
 }
 
 // GetTaskReferencesForProject retrieves task references for a project
 func (s *service) GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error) {
-	return s.repo.GetTaskReferencesForProject(ctx, projectID)
+	rows, err := s.queries.GetTaskReferencesForProject(ctx, int64(projectID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task references: %w", err)
+	}
+
+	references := make([]*models.TaskReference, 0, len(rows))
+	for _, row := range rows {
+		ref := &models.TaskReference{
+			ID:          int(row.ID),
+			Title:       row.Title,
+			ProjectName: row.Name,
+		}
+		if row.TicketNumber.Valid {
+			ref.TicketNumber = int(row.TicketNumber.Int64)
+		}
+		references = append(references, ref)
+	}
+
+	return references, nil
 }
 
 // MoveTaskToNextColumn moves task to next column
@@ -250,8 +433,45 @@ func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		return ErrInvalidTaskID
 	}
 
-	if err := s.repo.MoveTaskToNextColumn(ctx, taskID); err != nil {
-		return err
+	// Get current column
+	posRow, err := s.queries.GetTaskPosition(ctx, int64(taskID))
+	if err != nil {
+		return fmt.Errorf("failed to get task position: %w", err)
+	}
+
+	// Get next column
+	nextColumnID, err := s.queries.GetNextColumnID(ctx, posRow.ColumnID)
+	if err != nil {
+		return fmt.Errorf("failed to get next column: %w", err)
+	}
+	if nextColumnID == nil {
+		return fmt.Errorf("no next column available")
+	}
+
+	// Convert interface{} to int64
+	var nextColID int64
+	switch v := nextColumnID.(type) {
+	case int64:
+		nextColID = v
+	case nil:
+		return fmt.Errorf("no next column available")
+	default:
+		return fmt.Errorf("unexpected column ID type")
+	}
+
+	// Get task count in target column to append at the end
+	taskCount, err := s.queries.GetTaskCountByColumn(ctx, nextColID)
+	if err != nil {
+		return fmt.Errorf("failed to get task count: %w", err)
+	}
+
+	// Move task to next column
+	if err := s.queries.MoveTaskToColumn(ctx, generated.MoveTaskToColumnParams{
+		ColumnID: nextColID,
+		Position: taskCount + 1,
+		ID:       int64(taskID),
+	}); err != nil {
+		return fmt.Errorf("failed to move task: %w", err)
 	}
 
 	s.publishTaskEvent(taskID)
@@ -264,8 +484,45 @@ func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		return ErrInvalidTaskID
 	}
 
-	if err := s.repo.MoveTaskToPrevColumn(ctx, taskID); err != nil {
-		return err
+	// Get current column
+	posRow, err := s.queries.GetTaskPosition(ctx, int64(taskID))
+	if err != nil {
+		return fmt.Errorf("failed to get task position: %w", err)
+	}
+
+	// Get previous column
+	prevColumnID, err := s.queries.GetPrevColumnID(ctx, posRow.ColumnID)
+	if err != nil {
+		return fmt.Errorf("failed to get previous column: %w", err)
+	}
+	if prevColumnID == nil {
+		return fmt.Errorf("no previous column available")
+	}
+
+	// Convert interface{} to int64
+	var prevColID int64
+	switch v := prevColumnID.(type) {
+	case int64:
+		prevColID = v
+	case nil:
+		return fmt.Errorf("no previous column available")
+	default:
+		return fmt.Errorf("unexpected column ID type")
+	}
+
+	// Get task count in target column to append at the end
+	taskCount, err := s.queries.GetTaskCountByColumn(ctx, prevColID)
+	if err != nil {
+		return fmt.Errorf("failed to get task count: %w", err)
+	}
+
+	// Move task to previous column
+	if err := s.queries.MoveTaskToColumn(ctx, generated.MoveTaskToColumnParams{
+		ColumnID: prevColID,
+		Position: taskCount + 1,
+		ID:       int64(taskID),
+	}); err != nil {
+		return fmt.Errorf("failed to move task: %w", err)
 	}
 
 	s.publishTaskEvent(taskID)
@@ -281,8 +538,18 @@ func (s *service) MoveTaskToColumn(ctx context.Context, taskID, columnID int) er
 		return ErrInvalidColumnID
 	}
 
-	if err := s.repo.MoveTaskToColumn(ctx, taskID, columnID); err != nil {
-		return err
+	// Get task count in target column to append at the end
+	taskCount, err := s.queries.GetTaskCountByColumn(ctx, int64(columnID))
+	if err != nil {
+		return fmt.Errorf("failed to get task count: %w", err)
+	}
+
+	if err := s.queries.MoveTaskToColumn(ctx, generated.MoveTaskToColumnParams{
+		ColumnID: int64(columnID),
+		Position: taskCount + 1,
+		ID:       int64(taskID),
+	}); err != nil {
+		return fmt.Errorf("failed to move task: %w", err)
 	}
 
 	s.publishTaskEvent(taskID)
@@ -295,8 +562,33 @@ func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 		return ErrInvalidTaskID
 	}
 
-	if err := s.repo.SwapTaskUp(ctx, taskID); err != nil {
-		return err
+	// Get task position
+	posRow, err := s.queries.GetTaskPosition(ctx, int64(taskID))
+	if err != nil {
+		return fmt.Errorf("failed to get task position: %w", err)
+	}
+
+	// Get task above
+	aboveRow, err := s.queries.GetTaskAbove(ctx, generated.GetTaskAboveParams{
+		ColumnID: posRow.ColumnID,
+		Position: posRow.Position,
+	})
+	if err != nil {
+		return fmt.Errorf("no task above: %w", err)
+	}
+
+	// Swap positions
+	if err := s.queries.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+		Position: aboveRow.Position,
+		ID:       int64(taskID),
+	}); err != nil {
+		return fmt.Errorf("failed to move task up: %w", err)
+	}
+	if err := s.queries.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+		Position: posRow.Position,
+		ID:       aboveRow.ID,
+	}); err != nil {
+		return fmt.Errorf("failed to move other task down: %w", err)
 	}
 
 	s.publishTaskEvent(taskID)
@@ -309,8 +601,33 @@ func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
 		return ErrInvalidTaskID
 	}
 
-	if err := s.repo.SwapTaskDown(ctx, taskID); err != nil {
-		return err
+	// Get task position
+	posRow, err := s.queries.GetTaskPosition(ctx, int64(taskID))
+	if err != nil {
+		return fmt.Errorf("failed to get task position: %w", err)
+	}
+
+	// Get task below
+	belowRow, err := s.queries.GetTaskBelow(ctx, generated.GetTaskBelowParams{
+		ColumnID: posRow.ColumnID,
+		Position: posRow.Position,
+	})
+	if err != nil {
+		return fmt.Errorf("no task below: %w", err)
+	}
+
+	// Swap positions
+	if err := s.queries.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+		Position: belowRow.Position,
+		ID:       int64(taskID),
+	}); err != nil {
+		return fmt.Errorf("failed to move task down: %w", err)
+	}
+	if err := s.queries.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+		Position: posRow.Position,
+		ID:       belowRow.ID,
+	}); err != nil {
+		return fmt.Errorf("failed to move other task up: %w", err)
 	}
 
 	s.publishTaskEvent(taskID)
@@ -327,7 +644,11 @@ func (s *service) AddParentRelation(ctx context.Context, taskID, parentID int, r
 	}
 
 	// Add the relationship (this task is the child)
-	if err := s.repo.AddSubtaskWithRelationType(ctx, parentID, taskID, relationTypeID); err != nil {
+	if err := s.queries.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+		ParentID:       int64(parentID),
+		ChildID:        int64(taskID),
+		RelationTypeID: int64(relationTypeID),
+	}); err != nil {
 		return fmt.Errorf("failed to add parent relation: %w", err)
 	}
 
@@ -345,7 +666,11 @@ func (s *service) AddChildRelation(ctx context.Context, taskID, childID int, rel
 	}
 
 	// Add the relationship (this task is the parent)
-	if err := s.repo.AddSubtaskWithRelationType(ctx, taskID, childID, relationTypeID); err != nil {
+	if err := s.queries.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+		ParentID:       int64(taskID),
+		ChildID:        int64(childID),
+		RelationTypeID: int64(relationTypeID),
+	}); err != nil {
 		return fmt.Errorf("failed to add child relation: %w", err)
 	}
 
@@ -359,7 +684,10 @@ func (s *service) RemoveParentRelation(ctx context.Context, taskID, parentID int
 		return ErrInvalidTaskID
 	}
 
-	if err := s.repo.RemoveSubtask(ctx, parentID, taskID); err != nil {
+	if err := s.queries.RemoveSubtask(ctx, generated.RemoveSubtaskParams{
+		ParentID: int64(parentID),
+		ChildID:  int64(taskID),
+	}); err != nil {
 		return fmt.Errorf("failed to remove parent relation: %w", err)
 	}
 
@@ -373,7 +701,10 @@ func (s *service) RemoveChildRelation(ctx context.Context, taskID, childID int) 
 		return ErrInvalidTaskID
 	}
 
-	if err := s.repo.RemoveSubtask(ctx, taskID, childID); err != nil {
+	if err := s.queries.RemoveSubtask(ctx, generated.RemoveSubtaskParams{
+		ParentID: int64(taskID),
+		ChildID:  int64(childID),
+	}); err != nil {
 		return fmt.Errorf("failed to remove child relation: %w", err)
 	}
 
@@ -390,7 +721,10 @@ func (s *service) AttachLabel(ctx context.Context, taskID, labelID int) error {
 		return ErrInvalidLabelID
 	}
 
-	if err := s.repo.AddLabelToTask(ctx, taskID, labelID); err != nil {
+	if err := s.queries.AddLabelToTask(ctx, generated.AddLabelToTaskParams{
+		TaskID:  int64(taskID),
+		LabelID: int64(labelID),
+	}); err != nil {
 		return fmt.Errorf("failed to attach label: %w", err)
 	}
 
@@ -407,7 +741,10 @@ func (s *service) DetachLabel(ctx context.Context, taskID, labelID int) error {
 		return ErrInvalidLabelID
 	}
 
-	if err := s.repo.RemoveLabelFromTask(ctx, taskID, labelID); err != nil {
+	if err := s.queries.RemoveLabelFromTask(ctx, generated.RemoveLabelFromTaskParams{
+		TaskID:  int64(taskID),
+		LabelID: int64(labelID),
+	}); err != nil {
 		return fmt.Errorf("failed to detach label: %w", err)
 	}
 
@@ -438,14 +775,185 @@ func (s *service) validateCreateTask(req CreateTaskRequest) error {
 	return nil
 }
 
-// publishTaskEvent publishes a task event if event client exists
+// publishTaskEvent publishes a task event
 func (s *service) publishTaskEvent(taskID int) {
 	if s.eventClient == nil {
 		return
 	}
 
-	// Publish database changed event
-	// The daemon will notify all connected clients to refresh
-	// We don't include project ID for now - clients will refresh on any DB change
-	_ = taskID // Used for future enhancement when we track project-specific changes
+	// Get project ID for the task
+	projectID, err := s.queries.GetProjectIDFromTask(context.Background(), int64(taskID))
+	if err != nil {
+		log.Printf("failed to get project ID for task %d: %v", taskID, err)
+		return
+	}
+
+	if err := s.eventClient.SendEvent(events.Event{
+		Type:      events.EventDatabaseChanged,
+		ProjectID: int(projectID),
+	}); err != nil {
+		log.Printf("failed to send event for task %d: %v", taskID, err)
+	}
+}
+
+// ============================================================================
+// MODEL CONVERSION FUNCTIONS
+// ============================================================================
+
+// convertToTaskModel converts a generated.Task to models.Task
+func convertToTaskModel(t generated.Task) *models.Task {
+	task := &models.Task{
+		ID:         int(t.ID),
+		Title:      t.Title,
+		ColumnID:   int(t.ColumnID),
+		Position:   int(t.Position),
+		TypeID:     int(t.TypeID),
+		PriorityID: int(t.PriorityID),
+	}
+
+	if t.Description.Valid {
+		task.Description = t.Description.String
+	}
+	if t.CreatedAt.Valid {
+		task.CreatedAt = t.CreatedAt.Time
+	}
+	if t.UpdatedAt.Valid {
+		task.UpdatedAt = t.UpdatedAt.Time
+	}
+
+	return task
+}
+
+// convertLabelsToModels converts generated.Label slice to models.Label slice
+func convertLabelsToModels(labels []generated.Label) []*models.Label {
+	result := make([]*models.Label, 0, len(labels))
+	for _, l := range labels {
+		result = append(result, &models.Label{
+			ID:        int(l.ID),
+			Name:      l.Name,
+			Color:     l.Color,
+			ProjectID: int(l.ProjectID),
+		})
+	}
+	return result
+}
+
+// convertParentTasksToReferences converts parent task rows to TaskReference slice
+func convertParentTasksToReferences(rows []generated.GetParentTasksRow) []*models.TaskReference {
+	result := make([]*models.TaskReference, 0, len(rows))
+	for _, row := range rows {
+		ref := &models.TaskReference{
+			ID:             int(row.ID),
+			Title:          row.Title,
+			ProjectName:    row.Name,
+			RelationTypeID: int(row.ID_2),
+			RelationLabel:  row.PToCLabel,
+			RelationColor:  row.Color,
+			IsBlocking:     row.IsBlocking,
+		}
+		if row.TicketNumber.Valid {
+			ref.TicketNumber = int(row.TicketNumber.Int64)
+		}
+		result = append(result, ref)
+	}
+	return result
+}
+
+// convertChildTasksToReferences converts child task rows to TaskReference slice
+func convertChildTasksToReferences(rows []generated.GetChildTasksRow) []*models.TaskReference {
+	result := make([]*models.TaskReference, 0, len(rows))
+	for _, row := range rows {
+		ref := &models.TaskReference{
+			ID:             int(row.ID),
+			Title:          row.Title,
+			ProjectName:    row.Name,
+			RelationTypeID: int(row.ID_2),
+			RelationLabel:  row.CToPLabel,
+			RelationColor:  row.Color,
+			IsBlocking:     row.IsBlocking,
+		}
+		if row.TicketNumber.Valid {
+			ref.TicketNumber = int(row.TicketNumber.Int64)
+		}
+		result = append(result, ref)
+	}
+	return result
+}
+
+// convertTaskSummaryRowToModel converts a task summary row to models.TaskSummary
+func convertTaskSummaryRowToModel(row generated.GetTaskSummariesByProjectRow) *models.TaskSummary {
+	summary := &models.TaskSummary{
+		ID:        int(row.ID),
+		Title:     row.Title,
+		ColumnID:  int(row.ColumnID),
+		Position:  int(row.Position),
+		IsBlocked: row.IsBlocked > 0,
+		Labels:    parseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
+	}
+
+	if row.TypeDescription.Valid {
+		summary.TypeDescription = row.TypeDescription.String
+	}
+	if row.PriorityDescription.Valid {
+		summary.PriorityDescription = row.PriorityDescription.String
+	}
+	if row.PriorityColor.Valid {
+		summary.PriorityColor = row.PriorityColor.String
+	}
+
+	return summary
+}
+
+// convertFilteredTaskSummaryRowToModel converts a filtered task summary row to models.TaskSummary
+func convertFilteredTaskSummaryRowToModel(row generated.GetTaskSummariesByProjectFilteredRow) *models.TaskSummary {
+	summary := &models.TaskSummary{
+		ID:        int(row.ID),
+		Title:     row.Title,
+		ColumnID:  int(row.ColumnID),
+		Position:  int(row.Position),
+		IsBlocked: row.IsBlocked > 0,
+		Labels:    parseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
+	}
+
+	if row.TypeDescription.Valid {
+		summary.TypeDescription = row.TypeDescription.String
+	}
+	if row.PriorityDescription.Valid {
+		summary.PriorityDescription = row.PriorityDescription.String
+	}
+	if row.PriorityColor.Valid {
+		summary.PriorityColor = row.PriorityColor.String
+	}
+
+	return summary
+}
+
+// parseLabelsFromConcatenated parses GROUP_CONCAT label data into Label slice
+func parseLabelsFromConcatenated(ids, names, colors string) []*models.Label {
+	if ids == "" || names == "" || colors == "" {
+		return []*models.Label{}
+	}
+
+	idParts := strings.Split(ids, string(rune(31))) // CHAR(31) separator
+	nameParts := strings.Split(names, string(rune(31)))
+	colorParts := strings.Split(colors, string(rune(31)))
+
+	if len(idParts) != len(nameParts) || len(idParts) != len(colorParts) {
+		return []*models.Label{}
+	}
+
+	labels := make([]*models.Label, 0, len(idParts))
+	for i := range idParts {
+		// Parse ID
+		var id int
+		fmt.Sscanf(idParts[i], "%d", &id)
+
+		labels = append(labels, &models.Label{
+			ID:    id,
+			Name:  nameParts[i],
+			Color: colorParts[i],
+		})
+	}
+
+	return labels
 }

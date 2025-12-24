@@ -44,7 +44,10 @@ DELETE FROM tasks WHERE id = ?;
 -- ============================================================================
 
 -- name: GetTaskDetail :one
-SELECT t.id, t.title, t.description, t.column_id, t.position, t.ticket_number, t.created_at, t.updated_at, ty.description, p.description, p.color
+SELECT t.id, t.title, t.description, t.column_id, t.position, t.ticket_number, t.created_at, t.updated_at, 
+       ty.description as type_description, 
+       p.description as priority_description, 
+       p.color as priority_color
 FROM tasks t
 LEFT JOIN types ty ON t.type_id = ty.id
 LEFT JOIN priorities p ON t.priority_id = p.id
@@ -67,12 +70,12 @@ SELECT
     t.title,
     t.column_id,
     t.position,
-    ty.description,
-    p.description,
-    p.color,
-    GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
-    GROUP_CONCAT(l.name, CHAR(31)) as label_names,
-    GROUP_CONCAT(l.color, CHAR(31)) as label_colors
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors
 FROM tasks t
 LEFT JOIN types ty ON t.type_id = ty.id
 LEFT JOIN priorities p ON t.priority_id = p.id
@@ -88,12 +91,12 @@ SELECT
     t.title,
     t.column_id,
     t.position,
-    ty.description,
-    p.description,
-    p.color,
-    GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
-    GROUP_CONCAT(l.name, CHAR(31)) as label_names,
-    GROUP_CONCAT(l.color, CHAR(31)) as label_colors,
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors,
     EXISTS(
         SELECT 1 FROM task_subtasks ts
         INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
@@ -115,12 +118,12 @@ SELECT
     t.title,
     t.column_id,
     t.position,
-    ty.description,
-    p.description,
-    p.color,
-    GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
-    GROUP_CONCAT(l.name, CHAR(31)) as label_names,
-    GROUP_CONCAT(l.color, CHAR(31)) as label_colors,
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors,
     EXISTS(
         SELECT 1 FROM task_subtasks ts
         INNER JOIN relation_types rt ON ts.relation_type_id = rt.id

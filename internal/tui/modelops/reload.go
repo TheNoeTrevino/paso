@@ -11,7 +11,7 @@ import (
 func ReloadProjects(m *tui.Model) {
 	ctx, cancel := m.DbContext()
 	defer cancel()
-	projects, err := m.App.Repo().GetAllProjects(ctx)
+	projects, err := m.App.ProjectService.GetAllProjects(ctx)
 	if err != nil {
 		slog.Error("Error reloading projects", "error", err)
 		return
@@ -32,7 +32,7 @@ func ReloadCurrentProject(m *tui.Model) {
 	defer cancel()
 
 	// Reload columns
-	columns, err := m.App.Repo().GetColumnsByProject(ctx, currentProject.ID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading columns", "error", err)
 		m.HandleDBError(err, "reload columns")
@@ -40,7 +40,7 @@ func ReloadCurrentProject(m *tui.Model) {
 	}
 
 	// Reload tasks
-	tasks, err := m.App.Repo().GetTaskSummariesByProject(ctx, currentProject.ID)
+	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading tasks", "error", err)
 		m.HandleDBError(err, "reload tasks")
@@ -48,7 +48,7 @@ func ReloadCurrentProject(m *tui.Model) {
 	}
 
 	// Reload labels
-	labels, err := m.App.Repo().GetLabelsByProject(ctx, currentProject.ID)
+	labels, err := m.App.LabelService.GetLabelsByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading labels", "error", err)
 		m.HandleDBError(err, "reload labels")
