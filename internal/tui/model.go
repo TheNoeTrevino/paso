@@ -81,7 +81,7 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	// Uses batch query to avoid N+1 pattern
 	tasks, err := repo.GetTaskSummariesByProject(loadCtx, currentProjectID)
 	if err != nil {
-		slog.Error("Error loading tasks for project %d", "error", currentProjectID, err)
+		slog.Error("Error loading tasks for project", "project_id", currentProjectID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
 
@@ -571,7 +571,7 @@ func (m Model) switchToProject(projectIndex int) {
 	// Reload columns for this project
 	columns, err := m.repo.GetColumnsByProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading columns for project %d", "error", project.ID, err)
+		slog.Error("Error loading columns for project", "project_id", project.ID, "error", err)
 		columns = []*models.Column{}
 	}
 	m.appState.SetColumns(columns)
@@ -579,7 +579,7 @@ func (m Model) switchToProject(projectIndex int) {
 	// Reload task summaries for the entire project
 	tasks, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading tasks for project %d", "error", project.ID, err)
+		slog.Error("Error loading tasks for project", "project_id", project.ID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
 	m.appState.SetTasks(tasks)
@@ -587,7 +587,7 @@ func (m Model) switchToProject(projectIndex int) {
 	// Reload labels for this project
 	labels, err := m.repo.GetLabelsByProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading labels for project %d", "error", project.ID, err)
+		slog.Error("Error loading labels for project", "project_id", project.ID, "error", err)
 		labels = []*models.Label{}
 	}
 	m.appState.SetLabels(labels)
