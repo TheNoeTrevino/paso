@@ -8,8 +8,10 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/helpers"
 	"github.com/thenoetrevino/paso/internal/tui/layers"
 	"github.com/thenoetrevino/paso/internal/tui/notifications"
+	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
@@ -352,15 +354,15 @@ func (m Model) viewLabelPicker() string {
 	var pickerContent string
 	if m.LabelPickerState.CreateMode {
 		// Show color picker
-		pickerContent = RenderLabelColorPicker(
-			GetDefaultLabelColors(),
+		pickerContent = renderers.RenderLabelColorPicker(
+			renderers.GetDefaultLabelColors(),
 			m.LabelPickerState.ColorIdx,
 			m.FormState.FormLabelName,
 			m.UiState.Width()*3/4-8,
 		)
 	} else {
 		// Show label list (use filtered items from state)
-		pickerContent = RenderLabelPicker(
+		pickerContent = renderers.RenderLabelPicker(
 			m.getFilteredLabelPickerItems(),
 			m.LabelPickerState.Cursor,
 			m.LabelPickerState.Filter,
@@ -395,7 +397,7 @@ func (m Model) viewLabelPicker() string {
 // Parent tasks are tasks that depend on (block on) the current task.
 // The picker displays all tasks in the project with checkboxes indicating current selections.
 func (m Model) viewParentPicker() string {
-	pickerContent := RenderTaskPicker(
+	pickerContent := renderers.RenderTaskPicker(
 		m.ParentPickerState.GetFilteredItems(),
 		m.ParentPickerState.Cursor,
 		m.ParentPickerState.Filter,
@@ -422,7 +424,7 @@ func (m Model) viewParentPicker() string {
 // Child tasks are tasks that the current task depends on (must be completed first).
 // The picker displays all tasks in the project with checkboxes indicating current selections.
 func (m Model) viewChildPicker() string {
-	pickerContent := RenderTaskPicker(
+	pickerContent := renderers.RenderTaskPicker(
 		m.ChildPickerState.GetFilteredItems(),
 		m.ChildPickerState.Cursor,
 		m.ChildPickerState.Filter,
@@ -447,8 +449,8 @@ func (m Model) viewChildPicker() string {
 
 // viewPriorityPicker renders the priority picker popup
 func (m Model) viewPriorityPicker() string {
-	pickerContent := RenderPriorityPicker(
-		GetPriorityOptions(),
+	pickerContent := renderers.RenderPriorityPicker(
+		renderers.GetPriorityOptions(),
 		m.PriorityPickerState.SelectedPriorityID(),
 		m.PriorityPickerState.Cursor(),
 		m.UiState.Width()*3/4-8,
@@ -469,8 +471,8 @@ func (m Model) viewPriorityPicker() string {
 
 // viewTypePicker renders the type picker popup
 func (m Model) viewTypePicker() string {
-	pickerContent := RenderTypePicker(
-		GetTypeOptions(),
+	pickerContent := renderers.RenderTypePicker(
+		renderers.GetTypeOptions(),
 		m.TypePickerState.SelectedTypeID(),
 		m.TypePickerState.Cursor(),
 		m.UiState.Width()*3/4-8,
@@ -497,8 +499,8 @@ func (m Model) viewRelationTypePicker() string {
 		pickerType = "child"
 	}
 
-	pickerContent := RenderRelationTypePicker(
-		GetRelationTypeOptions(),
+	pickerContent := renderers.RenderRelationTypePicker(
+		renderers.GetRelationTypeOptions(),
 		m.RelationTypePickerState.SelectedRelationTypeID(),
 		m.RelationTypePickerState.Cursor(),
 		m.UiState.Width()*3/4-8,
@@ -575,7 +577,7 @@ func (m Model) viewKanbanBoard() string {
 		columns = append(columns, components.RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight, scrollOffset))
 	}
 
-	scrollIndicators := GetScrollIndicators(
+	scrollIndicators := helpers.GetScrollIndicators(
 		m.UiState.ViewportOffset(),
 		m.UiState.ViewportSize(),
 		len(m.AppState.Columns()),
@@ -658,7 +660,7 @@ func (m Model) viewListView() string {
 	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UiState.Width(), inlineNotification)
 
 	// Render list content with sort indicator
-	listContent := RenderListView(
+	listContent := renderers.RenderListView(
 		rows,
 		m.ListViewState.SelectedRow(),
 		m.ListViewState.ScrollOffset(),
