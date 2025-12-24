@@ -30,7 +30,7 @@ type ConnectionReconnectingMsg struct{}
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check if context is cancelled (graceful shutdown)
 	select {
-	case <-m.ctx.Done():
+	case <-m.Ctx.Done():
 		// Context cancelled, initiate graceful shutdown
 		return m, tea.Quit
 	default:
@@ -39,16 +39,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Start listening for events on first update if not already started
 	var cmd tea.Cmd
-	if m.eventChan != nil && !m.subscriptionStarted {
-		m.subscriptionStarted = true
+	if m.EventChan != nil && !m.SubscriptionStarted {
+		m.SubscriptionStarted = true
 		cmd = m.subscribeToEvents()
 	}
 
 	// Handle form modes first - forms need ALL messages
-	if m.uiState.Mode() == state.TicketFormMode {
+	if m.UiState.Mode() == state.TicketFormMode {
 		return m.updateTicketForm(msg)
 	}
-	if m.uiState.Mode() == state.ProjectFormMode {
+	if m.UiState.Mode() == state.ProjectFormMode {
 		return m.updateProjectForm(msg)
 	}
 
@@ -57,10 +57,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// log.Printf("Received refresh event for project %d", msg.Event.ProjectID)
 
 		// Only refresh if event is for current project
-		currentProject := m.appState.GetCurrentProject()
+		currentProject := m.AppState.GetCurrentProject()
 		if currentProject != nil && msg.Event.ProjectID == currentProject.ID {
 			m.reloadCurrentProject()
-			// m.notificationState.Add(state.LevelInfo, "Synced with other instances")
+			// m.NotificationState.Add(state.LevelInfo, "Synced with other instances")
 		}
 
 		// Continue listening for more events
@@ -76,15 +76,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "warning":
 			level = state.LevelWarning
 		}
-		m.notificationState.Add(level, msg.Message)
+		m.NotificationState.Add(level, msg.Message)
 
 		// Update connection status based on notification message
 		if strings.Contains(msg.Message, "Connection lost") || strings.Contains(msg.Message, "reconnecting") {
-			m.connectionState.SetStatus(state.Reconnecting)
+			m.ConnectionState.SetStatus(state.Reconnecting)
 		} else if strings.Contains(msg.Message, "Reconnected") {
-			m.connectionState.SetStatus(state.Connected)
+			m.ConnectionState.SetStatus(state.Connected)
 		} else if strings.Contains(msg.Message, "Failed to reconnect") {
-			m.connectionState.SetStatus(state.Disconnected)
+			m.ConnectionState.SetStatus(state.Disconnected)
 		}
 
 		// Continue listening for more notifications
@@ -92,15 +92,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case ConnectionEstablishedMsg:
-		m.connectionState.SetStatus(state.Connected)
+		m.ConnectionState.SetStatus(state.Connected)
 		return m, nil
 
 	case ConnectionLostMsg:
-		m.connectionState.SetStatus(state.Disconnected)
+		m.ConnectionState.SetStatus(state.Disconnected)
 		return m, nil
 
 	case ConnectionReconnectingMsg:
-		m.connectionState.SetStatus(state.Reconnecting)
+		m.ConnectionState.SetStatus(state.Reconnecting)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -115,7 +115,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKeyMsg dispatches key messages to the appropriate mode handler.
 func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch m.uiState.Mode() {
+	switch m.UiState.Mode() {
 	case state.NormalMode:
 		return m.handleNormalMode(msg)
 	case state.AddColumnMode, state.EditColumnMode:
@@ -150,15 +150,15 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleWindowResize handles terminal resize events.
 func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
-	m.uiState.SetWidth(msg.Width)
-	m.uiState.SetHeight(msg.Height)
+	m.UiState.SetWidth(msg.Width)
+	m.UiState.SetHeight(msg.Height)
 
 	// Update notification state with new window dimensions
-	m.notificationState.SetWindowSize(msg.Width, msg.Height)
+	m.NotificationState.SetWindowSize(msg.Width, msg.Height)
 
 	// Ensure viewport offset is still valid after resize
-	if m.uiState.ViewportOffset()+m.uiState.ViewportSize() > len(m.appState.Columns()) {
-		m.uiState.SetViewportOffset(max(0, len(m.appState.Columns())-m.uiState.ViewportSize()))
+	if m.UiState.ViewportOffset()+m.UiState.ViewportSize() > len(m.AppState.Columns()) {
+		m.UiState.SetViewportOffset(max(0, len(m.AppState.Columns())-m.UiState.ViewportSize()))
 	}
 	return m, nil
 }
@@ -175,10 +175,10 @@ type ticketFormValues struct {
 // Since our forms update pointers in place, we can just read from formState
 func (m Model) extractTicketFormValues() ticketFormValues {
 	return ticketFormValues{
-		title:       strings.TrimSpace(m.formState.FormTitle),
-		description: strings.TrimSpace(m.formState.FormDescription),
-		confirm:     m.formState.FormConfirm,
-		labelIDs:    m.formState.FormLabelIDs,
+		title:       strings.TrimSpace(m.FormState.FormTitle),
+		description: strings.TrimSpace(m.FormState.FormDescription),
+		confirm:     m.FormState.FormConfirm,
+		labelIDs:    m.FormState.FormLabelIDs,
 	}
 }
 
@@ -186,7 +186,7 @@ func (m Model) extractTicketFormValues() ticketFormValues {
 func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues) {
 	currentCol := m.getCurrentColumn()
 	if currentCol == nil {
-		m.notificationState.Add(state.LevelError, "No column selected")
+		m.NotificationState.Add(state.LevelError, "No column selected")
 		return
 	}
 
@@ -195,7 +195,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 	defer cancel()
 
 	// 1. Create the task
-	task, err := m.repo.CreateTask(ctx,
+	task, err := m.Repo.CreateTask(ctx,
 		values.title,
 		values.description,
 		currentCol.ID,
@@ -203,13 +203,13 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 	)
 	if err != nil {
 		slog.Error("Error creating task", "error", err)
-		m.notificationState.Add(state.LevelError, "Error creating task")
+		m.NotificationState.Add(state.LevelError, "Error creating task")
 		return
 	}
 
 	// 2. Set labels
 	if len(values.labelIDs) > 0 {
-		err = m.repo.SetTaskLabels(ctx, task.ID, values.labelIDs)
+		err = m.Repo.SetTaskLabels(ctx, task.ID, values.labelIDs)
 		if err != nil {
 			slog.Error("Error setting labels", "error", err)
 		}
@@ -218,13 +218,13 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 	// 3. Apply parent relationships with relation types
 	// CRITICAL: Parent picker means selected task BLOCKS ON current task
 	// So: AddSubtaskWithRelationType(parentID, currentTaskID, relationTypeID)
-	for _, item := range m.parentPickerState.Items {
+	for _, item := range m.ParentPickerState.Items {
 		if item.Selected {
 			relationTypeID := item.RelationTypeID
 			if relationTypeID == 0 {
 				relationTypeID = 1 // Default to Parent/Child
 			}
-			err = m.repo.AddSubtaskWithRelationType(ctx, item.TaskRef.ID, task.ID, relationTypeID)
+			err = m.Repo.AddSubtaskWithRelationType(ctx, item.TaskRef.ID, task.ID, relationTypeID)
 			if err != nil {
 				slog.Error("Error adding parent relationship", "error", err)
 			}
@@ -234,13 +234,13 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 	// 4. Apply child relationships with relation types
 	// CRITICAL: Child picker means current task BLOCKS ON selected task
 	// So: AddSubtaskWithRelationType(currentTaskID, childID, relationTypeID)
-	for _, item := range m.childPickerState.Items {
+	for _, item := range m.ChildPickerState.Items {
 		if item.Selected {
 			relationTypeID := item.RelationTypeID
 			if relationTypeID == 0 {
 				relationTypeID = 1 // Default to Parent/Child
 			}
-			err = m.repo.AddSubtaskWithRelationType(ctx, task.ID, item.TaskRef.ID, relationTypeID)
+			err = m.Repo.AddSubtaskWithRelationType(ctx, task.ID, item.TaskRef.ID, relationTypeID)
 			if err != nil {
 				slog.Error("Error adding child relationship", "error", err)
 			}
@@ -250,11 +250,11 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 	// 5. Reload all tasks for the project to keep state consistent
 	project := m.getCurrentProject()
 	if project != nil {
-		tasksByColumn, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
+		tasksByColumn, err := m.Repo.GetTaskSummariesByProject(ctx, project.ID)
 		if err != nil {
 			slog.Error("Error reloading tasks", "error", err)
 		} else {
-			m.appState.SetTasks(tasksByColumn)
+			m.AppState.SetTasks(tasksByColumn)
 		}
 	}
 }
@@ -264,25 +264,25 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	// Create context for database operations
 	ctx, cancel := m.dbContext()
 	defer cancel()
-	taskID := m.formState.EditingTaskID
+	taskID := m.FormState.EditingTaskID
 
 	// 1. Update task basic fields
-	err := m.repo.UpdateTask(ctx, taskID, values.title, values.description)
+	err := m.Repo.UpdateTask(ctx, taskID, values.title, values.description)
 	if err != nil {
 		slog.Error("Error updating task", "error", err)
-		m.notificationState.Add(state.LevelError, "Error updating task")
+		m.NotificationState.Add(state.LevelError, "Error updating task")
 		return
 	}
 
 	// 2. Update labels
-	err = m.repo.SetTaskLabels(ctx, taskID, values.labelIDs)
+	err = m.Repo.SetTaskLabels(ctx, taskID, values.labelIDs)
 	if err != nil {
 		slog.Error("Error setting labels", "error", err)
 	}
 
 	// 3. Sync parent relationships with relation types
 	// Get current parents from database
-	currentParents, err := m.repo.GetParentTasks(ctx, taskID)
+	currentParents, err := m.Repo.GetParentTasks(ctx, taskID)
 	if err != nil {
 		slog.Error("Error getting current parents", "error", err)
 		currentParents = []*models.TaskReference{}
@@ -295,7 +295,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	}
 
 	newParentMap := make(map[int]int)
-	for _, item := range m.parentPickerState.Items {
+	for _, item := range m.ParentPickerState.Items {
 		if item.Selected {
 			relationTypeID := item.RelationTypeID
 			if relationTypeID == 0 {
@@ -308,7 +308,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	// Remove parents that are no longer selected
 	for parentID := range currentParentMap {
 		if _, exists := newParentMap[parentID]; !exists {
-			err = m.repo.RemoveSubtask(ctx, parentID, taskID)
+			err = m.Repo.RemoveSubtask(ctx, parentID, taskID)
 			if err != nil {
 				slog.Error("Error removing parent", "parentID", parentID, "error", err)
 			}
@@ -320,7 +320,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 		currentRelationType, exists := currentParentMap[parentID]
 		if !exists || currentRelationType != relationTypeID {
 			// Add new parent or update existing parent's relation type
-			err = m.repo.AddSubtaskWithRelationType(ctx, parentID, taskID, relationTypeID)
+			err = m.Repo.AddSubtaskWithRelationType(ctx, parentID, taskID, relationTypeID)
 			if err != nil {
 				slog.Error("Error adding/updating parent", "parentID", parentID, "error", err)
 			}
@@ -328,7 +328,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	}
 
 	// 4. Sync child relationships with relation types
-	currentChildren, err := m.repo.GetChildTasks(ctx, taskID)
+	currentChildren, err := m.Repo.GetChildTasks(ctx, taskID)
 	if err != nil {
 		slog.Error("Error getting current children", "error", err)
 		currentChildren = []*models.TaskReference{}
@@ -341,7 +341,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	}
 
 	newChildMap := make(map[int]int)
-	for _, item := range m.childPickerState.Items {
+	for _, item := range m.ChildPickerState.Items {
 		if item.Selected {
 			relationTypeID := item.RelationTypeID
 			if relationTypeID == 0 {
@@ -354,7 +354,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	// Remove children that are no longer selected
 	for childID := range currentChildMap {
 		if _, exists := newChildMap[childID]; !exists {
-			err = m.repo.RemoveSubtask(ctx, taskID, childID)
+			err = m.Repo.RemoveSubtask(ctx, taskID, childID)
 			if err != nil {
 				slog.Error("Error removing child", "childID", childID, "error", err)
 			}
@@ -366,7 +366,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 		currentRelationType, exists := currentChildMap[childID]
 		if !exists || currentRelationType != relationTypeID {
 			// Add new child or update existing child's relation type
-			err = m.repo.AddSubtaskWithRelationType(ctx, taskID, childID, relationTypeID)
+			err = m.Repo.AddSubtaskWithRelationType(ctx, taskID, childID, relationTypeID)
 			if err != nil {
 				slog.Error("Error adding/updating child", "childID", childID, "error", err)
 			}
@@ -376,11 +376,11 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	// 5. Reload all tasks for the project to keep state consistent
 	project := m.getCurrentProject()
 	if project != nil {
-		tasksByColumn, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
+		tasksByColumn, err := m.Repo.GetTaskSummariesByProject(ctx, project.ID)
 		if err != nil {
 			slog.Error("Error reloading tasks", "error", err)
 		} else {
-			m.appState.SetTasks(tasksByColumn)
+			m.AppState.SetTasks(tasksByColumn)
 		}
 	}
 }
@@ -397,7 +397,7 @@ type formConfig struct {
 // handleFormUpdate processes form messages generically
 func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd) {
 	if cfg.form == nil {
-		m.uiState.SetMode(state.NormalMode)
+		m.UiState.SetMode(state.NormalMode)
 		return m, nil
 	}
 
@@ -408,7 +408,7 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 	// Check completion
 	if cfg.form.State == huh.StateCompleted {
 		cfg.onComplete()
-		m.uiState.SetMode(state.NormalMode)
+		m.UiState.SetMode(state.NormalMode)
 		cfg.setForm(nil)
 		cfg.clearForm()
 		return m, tea.ClearScreen
@@ -424,7 +424,7 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 // Sets confirmation to true and completes the form, triggering the save flow.
 func (m Model) handleFormSave(cfg formConfig) (tea.Model, tea.Cmd) {
 	if cfg.form == nil {
-		m.uiState.SetMode(state.NormalMode)
+		m.UiState.SetMode(state.NormalMode)
 		return m, nil
 	}
 
@@ -440,7 +440,7 @@ func (m Model) handleFormSave(cfg formConfig) (tea.Model, tea.Cmd) {
 	cfg.onComplete()
 
 	// Clean up and return to normal mode
-	m.uiState.SetMode(state.NormalMode)
+	m.UiState.SetMode(state.NormalMode)
 	cfg.setForm(nil)
 	cfg.clearForm()
 
@@ -455,65 +455,65 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch keyMsg.String() {
 		case "esc":
 			// Check for changes before allowing abort
-			if m.formState.HasTicketFormChanges() {
+			if m.FormState.HasTicketFormChanges() {
 				// Show discard confirmation
-				m.uiState.SetDiscardContext(&state.DiscardContext{
+				m.UiState.SetDiscardContext(&state.DiscardContext{
 					SourceMode: state.TicketFormMode,
 					Message:    "Discard task?",
 				})
-				m.uiState.SetMode(state.DiscardConfirmMode)
+				m.UiState.SetMode(state.DiscardConfirmMode)
 				return m, nil
 			}
 			// No changes - allow immediate close
-			m.uiState.SetMode(state.NormalMode)
-			m.formState.ClearTicketForm()
+			m.UiState.SetMode(state.NormalMode)
+			m.FormState.ClearTicketForm()
 			return m, tea.ClearScreen
 
 		case "ctrl+p":
 			// Open parent picker
 			if m.initParentPickerForForm() {
-				m.uiState.SetMode(state.ParentPickerMode)
+				m.UiState.SetMode(state.ParentPickerMode)
 			}
 			return m, nil
 
 		case "ctrl+c":
 			// Open child picker
 			if m.initChildPickerForForm() {
-				m.uiState.SetMode(state.ChildPickerMode)
+				m.UiState.SetMode(state.ChildPickerMode)
 			}
 			return m, nil
 
 		case "ctrl+l":
 			// Open label picker
 			if m.initLabelPickerForForm() {
-				m.uiState.SetMode(state.LabelPickerMode)
+				m.UiState.SetMode(state.LabelPickerMode)
 			}
 			return m, nil
 
 		case "ctrl+r":
 			// Open priority picker
 			if m.initPriorityPickerForForm() {
-				m.uiState.SetMode(state.PriorityPickerMode)
+				m.UiState.SetMode(state.PriorityPickerMode)
 			}
 			return m, nil
 
 		case "ctrl+t":
 			// Open type picker
 			if m.initTypePickerForForm() {
-				m.uiState.SetMode(state.TypePickerMode)
+				m.UiState.SetMode(state.TypePickerMode)
 			}
 			return m, nil
 
-		case m.config.KeyMappings.SaveForm:
+		case m.Config.KeyMappings.SaveForm:
 			// Quick save via C-s
 			return m.handleFormSave(formConfig{
-				form: m.formState.TicketForm,
+				form: m.FormState.TicketForm,
 				setForm: func(f *huh.Form) {
-					m.formState.TicketForm = f
+					m.FormState.TicketForm = f
 				},
 				clearForm: func() {
-					m.formState.ClearTicketForm()
-					m.formState.EditingTaskID = 0
+					m.FormState.ClearTicketForm()
+					m.FormState.EditingTaskID = 0
 				},
 				onComplete: func() {
 					values := m.extractTicketFormValues()
@@ -521,27 +521,27 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return
 					}
 					if values.title != "" {
-						if m.formState.EditingTaskID == 0 {
+						if m.FormState.EditingTaskID == 0 {
 							m.createNewTaskWithLabelsAndRelationships(values)
 						} else {
 							m.updateExistingTaskWithLabelsAndRelationships(values)
 						}
 					}
 				},
-				confirmPtr: &m.formState.FormConfirm,
+				confirmPtr: &m.FormState.FormConfirm,
 			})
 		}
 	}
 
 	// Pass through to existing form handler
 	return m.handleFormUpdate(msg, formConfig{
-		form: m.formState.TicketForm,
+		form: m.FormState.TicketForm,
 		setForm: func(f *huh.Form) {
-			m.formState.TicketForm = f
+			m.FormState.TicketForm = f
 		},
 		clearForm: func() {
-			m.formState.ClearTicketForm()
-			m.formState.EditingTaskID = 0
+			m.FormState.ClearTicketForm()
+			m.FormState.EditingTaskID = 0
 		},
 		onComplete: func() {
 			values := m.extractTicketFormValues()
@@ -553,7 +553,7 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if values.title != "" {
-				if m.formState.EditingTaskID == 0 {
+				if m.FormState.EditingTaskID == 0 {
 					m.createNewTaskWithLabelsAndRelationships(values)
 				} else {
 					m.updateExistingTaskWithLabelsAndRelationships(values)
@@ -571,33 +571,33 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch keyMsg.String() {
 		case "esc":
 			// Check for changes before allowing abort
-			if m.formState.HasProjectFormChanges() {
+			if m.FormState.HasProjectFormChanges() {
 				// Show discard confirmation
-				m.uiState.SetDiscardContext(&state.DiscardContext{
+				m.UiState.SetDiscardContext(&state.DiscardContext{
 					SourceMode: state.ProjectFormMode,
 					Message:    "Discard project?",
 				})
-				m.uiState.SetMode(state.DiscardConfirmMode)
+				m.UiState.SetMode(state.DiscardConfirmMode)
 				return m, nil
 			}
 			// No changes - allow immediate close
-			m.uiState.SetMode(state.NormalMode)
-			m.formState.ClearProjectForm()
+			m.UiState.SetMode(state.NormalMode)
+			m.FormState.ClearProjectForm()
 			return m, tea.ClearScreen
 
-		case m.config.KeyMappings.SaveForm:
+		case m.Config.KeyMappings.SaveForm:
 			return m.handleFormSave(formConfig{
-				form: m.formState.ProjectForm,
+				form: m.FormState.ProjectForm,
 				setForm: func(f *huh.Form) {
-					m.formState.ProjectForm = f
+					m.FormState.ProjectForm = f
 				},
 				clearForm: func() {
-					m.formState.ClearProjectForm()
+					m.FormState.ClearProjectForm()
 				},
 				onComplete: func() {
-					name := strings.TrimSpace(m.formState.FormProjectName)
-					description := strings.TrimSpace(m.formState.FormProjectDescription)
-					confirm := m.formState.FormProjectConfirm
+					name := strings.TrimSpace(m.FormState.FormProjectName)
+					description := strings.TrimSpace(m.FormState.FormProjectDescription)
+					confirm := m.FormState.FormProjectConfirm
 
 					if !confirm {
 						return
@@ -606,13 +606,13 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if name != "" {
 						ctx, cancel := m.dbContext()
 						defer cancel()
-						project, err := m.repo.CreateProject(ctx, name, description)
+						project, err := m.Repo.CreateProject(ctx, name, description)
 						if err != nil {
 							slog.Error("Error creating project", "error", err)
-							m.notificationState.Add(state.LevelError, "Error creating project")
+							m.NotificationState.Add(state.LevelError, "Error creating project")
 						} else {
 							m.reloadProjects()
-							for i, p := range m.appState.Projects() {
+							for i, p := range m.AppState.Projects() {
 								if p.ID == project.ID {
 									m.switchToProject(i)
 									break
@@ -621,24 +621,24 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					}
 				},
-				confirmPtr: &m.formState.FormProjectConfirm,
+				confirmPtr: &m.FormState.FormProjectConfirm,
 			})
 		}
 	}
 
 	return m.handleFormUpdate(msg, formConfig{
-		form: m.formState.ProjectForm,
+		form: m.FormState.ProjectForm,
 		setForm: func(f *huh.Form) {
-			m.formState.ProjectForm = f
+			m.FormState.ProjectForm = f
 		},
 		clearForm: func() {
-			m.formState.ClearProjectForm()
+			m.FormState.ClearProjectForm()
 		},
 		onComplete: func() {
 			// Read values from form state (forms update pointers in place)
-			name := strings.TrimSpace(m.formState.FormProjectName)
-			description := strings.TrimSpace(m.formState.FormProjectDescription)
-			confirm := m.formState.FormProjectConfirm
+			name := strings.TrimSpace(m.FormState.FormProjectName)
+			description := strings.TrimSpace(m.FormState.FormProjectDescription)
+			confirm := m.FormState.FormProjectConfirm
 
 			// Form submitted - check confirmation and create the project
 			if !confirm {
@@ -649,16 +649,16 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if name != "" {
 				ctx, cancel := m.dbContext()
 				defer cancel()
-				project, err := m.repo.CreateProject(ctx, name, description)
+				project, err := m.Repo.CreateProject(ctx, name, description)
 				if err != nil {
 					slog.Error("Error creating project", "error", err)
-					m.notificationState.Add(state.LevelError, "Error creating project")
+					m.NotificationState.Add(state.LevelError, "Error creating project")
 				} else {
 					// Reload projects list
 					m.reloadProjects()
 
 					// Switch to the new project
-					for i, p := range m.appState.Projects() {
+					for i, p := range m.AppState.Projects() {
 						if p.ID == project.ID {
 							m.switchToProject(i)
 							break
@@ -678,7 +678,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle color picker sub-mode for creating new label
-	if m.labelPickerState.CreateMode {
+	if m.LabelPickerState.CreateMode {
 		return m.updateLabelColorPicker(keyMsg)
 	}
 
@@ -689,65 +689,65 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		// Close picker and return to appropriate mode
-		if m.labelPickerState.ReturnMode == state.TicketFormMode {
+		if m.LabelPickerState.ReturnMode == state.TicketFormMode {
 			// In form mode: sync selections and return to form
 			m.syncLabelPickerToFormState()
-			m.uiState.SetMode(state.TicketFormMode)
+			m.UiState.SetMode(state.TicketFormMode)
 		} else {
 			// In view mode: return to NormalMode
-			m.uiState.SetMode(state.NormalMode)
+			m.UiState.SetMode(state.NormalMode)
 		}
-		m.labelPickerState.Filter = ""
-		m.labelPickerState.Cursor = 0
+		m.LabelPickerState.Filter = ""
+		m.LabelPickerState.Cursor = 0
 		return m, nil
 
 	case "up", "k":
 		// Move cursor up
-		if m.labelPickerState.Cursor > 0 {
-			m.labelPickerState.Cursor--
+		if m.LabelPickerState.Cursor > 0 {
+			m.LabelPickerState.Cursor--
 		}
 		return m, nil
 
 	case "down", "j":
 		// Move cursor down
-		if m.labelPickerState.Cursor < maxIdx {
-			m.labelPickerState.Cursor++
+		if m.LabelPickerState.Cursor < maxIdx {
+			m.LabelPickerState.Cursor++
 		}
 		return m, nil
 
 	case "enter":
 		// Toggle label or create new
-		if m.labelPickerState.Cursor < len(filteredItems) {
+		if m.LabelPickerState.Cursor < len(filteredItems) {
 			// Toggle this label
-			item := filteredItems[m.labelPickerState.Cursor]
+			item := filteredItems[m.LabelPickerState.Cursor]
 
 			// Find the index in the unfiltered list
-			for i, pi := range m.labelPickerState.Items {
+			for i, pi := range m.LabelPickerState.Items {
 				if pi.Label.ID == item.Label.ID {
-					if m.labelPickerState.ReturnMode == state.TicketFormMode {
+					if m.LabelPickerState.ReturnMode == state.TicketFormMode {
 						// In form mode: just toggle selection state, don't update database
-						m.labelPickerState.Items[i].Selected = !m.labelPickerState.Items[i].Selected
+						m.LabelPickerState.Items[i].Selected = !m.LabelPickerState.Items[i].Selected
 					} else {
 						// In view mode: update database immediately
 						ctx, cancel := m.uiContext()
 						defer cancel()
-						if m.labelPickerState.Items[i].Selected {
+						if m.LabelPickerState.Items[i].Selected {
 							// Remove label from task
-							err := m.repo.RemoveLabelFromTask(ctx, m.labelPickerState.TaskID, item.Label.ID)
+							err := m.Repo.RemoveLabelFromTask(ctx, m.LabelPickerState.TaskID, item.Label.ID)
 							if err != nil {
 								slog.Error("Error removing label", "error", err)
-								m.notificationState.Add(state.LevelError, "Failed to remove label from task")
+								m.NotificationState.Add(state.LevelError, "Failed to remove label from task")
 							} else {
-								m.labelPickerState.Items[i].Selected = false
+								m.LabelPickerState.Items[i].Selected = false
 							}
 						} else {
 							// Add label to task
-							err := m.repo.AddLabelToTask(ctx, m.labelPickerState.TaskID, item.Label.ID)
+							err := m.Repo.AddLabelToTask(ctx, m.LabelPickerState.TaskID, item.Label.ID)
 							if err != nil {
 								slog.Error("Error adding label", "error", err)
-								m.notificationState.Add(state.LevelError, "Failed to add label to task")
+								m.NotificationState.Add(state.LevelError, "Failed to add label to task")
 							} else {
-								m.labelPickerState.Items[i].Selected = true
+								m.LabelPickerState.Items[i].Selected = true
 							}
 						}
 						// Reload task summaries for the current column
@@ -758,24 +758,24 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		} else {
 			// Create new label - switch to color picker sub-mode
-			if strings.TrimSpace(m.labelPickerState.Filter) != "" {
-				m.formState.FormLabelName = strings.TrimSpace(m.labelPickerState.Filter)
+			if strings.TrimSpace(m.LabelPickerState.Filter) != "" {
+				m.FormState.FormLabelName = strings.TrimSpace(m.LabelPickerState.Filter)
 			} else {
-				m.formState.FormLabelName = "New Label"
+				m.FormState.FormLabelName = "New Label"
 			}
-			m.labelPickerState.CreateMode = true
-			m.labelPickerState.ColorIdx = 0
+			m.LabelPickerState.CreateMode = true
+			m.LabelPickerState.ColorIdx = 0
 		}
 		return m, nil
 
 	case "backspace", "ctrl+h":
 		// Remove last character from filter
-		if len(m.labelPickerState.Filter) > 0 {
-			m.labelPickerState.Filter = m.labelPickerState.Filter[:len(m.labelPickerState.Filter)-1]
+		if len(m.LabelPickerState.Filter) > 0 {
+			m.LabelPickerState.Filter = m.LabelPickerState.Filter[:len(m.LabelPickerState.Filter)-1]
 			// Reset cursor if it's out of bounds after filter change
 			newFiltered := m.getFilteredLabelPickerItems()
-			if m.labelPickerState.Cursor > len(newFiltered) {
-				m.labelPickerState.Cursor = len(newFiltered)
+			if m.LabelPickerState.Cursor > len(newFiltered) {
+				m.LabelPickerState.Cursor = len(newFiltered)
 			}
 		}
 		return m, nil
@@ -783,10 +783,10 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	default:
 		// Type to filter/search
 		key := keyMsg.String()
-		if len(key) == 1 && len(m.labelPickerState.Filter) < 50 {
-			m.labelPickerState.Filter += key
+		if len(key) == 1 && len(m.LabelPickerState.Filter) < 50 {
+			m.LabelPickerState.Filter += key
 			// Reset cursor to 0 when filter changes
-			m.labelPickerState.Cursor = 0
+			m.LabelPickerState.Cursor = 0
 		}
 		return m, nil
 	}
@@ -800,63 +800,63 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		// Cancel and return to label list
-		m.labelPickerState.CreateMode = false
+		m.LabelPickerState.CreateMode = false
 		return m, nil
 
 	case "up", "k":
-		if m.labelPickerState.ColorIdx > 0 {
-			m.labelPickerState.ColorIdx--
+		if m.LabelPickerState.ColorIdx > 0 {
+			m.LabelPickerState.ColorIdx--
 		}
 		return m, nil
 
 	case "down", "j":
-		if m.labelPickerState.ColorIdx < maxIdx {
-			m.labelPickerState.ColorIdx++
+		if m.LabelPickerState.ColorIdx < maxIdx {
+			m.LabelPickerState.ColorIdx++
 		}
 		return m, nil
 
 	case "enter":
 		// Create the new label
-		color := colors[m.labelPickerState.ColorIdx].Color
+		color := colors[m.LabelPickerState.ColorIdx].Color
 		project := m.getCurrentProject()
 		if project == nil {
-			m.labelPickerState.CreateMode = false
+			m.LabelPickerState.CreateMode = false
 			return m, nil
 		}
 
 		ctx, cancel := m.dbContext()
 		defer cancel()
-		label, err := m.repo.CreateLabel(ctx, project.ID, m.formState.FormLabelName, color)
+		label, err := m.Repo.CreateLabel(ctx, project.ID, m.FormState.FormLabelName, color)
 		if err != nil {
 			slog.Error("Error creating label", "error", err)
-			m.notificationState.Add(state.LevelError, "Failed to create label")
-			m.labelPickerState.CreateMode = false
+			m.NotificationState.Add(state.LevelError, "Failed to create label")
+			m.LabelPickerState.CreateMode = false
 			return m, nil
 		}
 
 		// Add to labels list
-		m.appState.SetLabels(append(m.appState.Labels(), label))
+		m.AppState.SetLabels(append(m.AppState.Labels(), label))
 
 		// Add to picker items (selected by default)
-		m.labelPickerState.Items = append(m.labelPickerState.Items, state.LabelPickerItem{
+		m.LabelPickerState.Items = append(m.LabelPickerState.Items, state.LabelPickerItem{
 			Label:    label,
 			Selected: true,
 		})
 
 		// Assign to current task
-		err = m.repo.AddLabelToTask(ctx, m.labelPickerState.TaskID, label.ID)
+		err = m.Repo.AddLabelToTask(ctx, m.LabelPickerState.TaskID, label.ID)
 		if err != nil {
 			slog.Error("Error assigning new label to task", "error", err)
-			m.notificationState.Add(state.LevelError, "Failed to assign label to task")
+			m.NotificationState.Add(state.LevelError, "Failed to assign label to task")
 		}
 
 		// Reload task summaries for the current column
 		m.reloadCurrentColumnTasks()
 
 		// Exit create mode and clear filter
-		m.labelPickerState.CreateMode = false
-		m.labelPickerState.Filter = ""
-		m.labelPickerState.Cursor = 0
+		m.LabelPickerState.CreateMode = false
+		m.LabelPickerState.Filter = ""
+		m.LabelPickerState.Cursor = 0
 
 		return m, nil
 	}
@@ -881,13 +881,13 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Get filtered items to determine bounds
-	filteredItems := m.parentPickerState.GetFilteredItems()
+	filteredItems := m.ParentPickerState.GetFilteredItems()
 	maxIdx := len(filteredItems) - 1
 
 	switch keyMsg.String() {
 	case "esc":
 		// Return to the mode specified by ReturnMode
-		returnMode := m.parentPickerState.ReturnMode
+		returnMode := m.ParentPickerState.ReturnMode
 		if returnMode == state.Mode(0) { // Default to NormalMode
 			returnMode = state.NormalMode
 		}
@@ -897,64 +897,64 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.syncParentPickerToFormState()
 		}
 
-		m.uiState.SetMode(returnMode)
-		m.parentPickerState.Filter = ""
-		m.parentPickerState.Cursor = 0
+		m.UiState.SetMode(returnMode)
+		m.ParentPickerState.Filter = ""
+		m.ParentPickerState.Cursor = 0
 		return m, nil
 
 	case "up", "k":
 		// Move cursor up
-		m.parentPickerState.MoveCursorUp()
+		m.ParentPickerState.MoveCursorUp()
 		return m, nil
 
 	case "down", "j":
 		// Move cursor down
-		m.parentPickerState.MoveCursorDown(maxIdx)
+		m.ParentPickerState.MoveCursorDown(maxIdx)
 		return m, nil
 
 	case "enter":
 		// Toggle parent relationship
-		if m.parentPickerState.Cursor < len(filteredItems) {
-			item := filteredItems[m.parentPickerState.Cursor]
+		if m.ParentPickerState.Cursor < len(filteredItems) {
+			item := filteredItems[m.ParentPickerState.Cursor]
 
 			// Find the index in the unfiltered list
-			for i, pi := range m.parentPickerState.Items {
+			for i, pi := range m.ParentPickerState.Items {
 				if pi.TaskRef.ID == item.TaskRef.ID {
 					// Determine if we're in form mode or view mode
-					if m.parentPickerState.ReturnMode == state.TicketFormMode {
+					if m.ParentPickerState.ReturnMode == state.TicketFormMode {
 						// Form mode: just toggle the selection state
 						// Actual database changes happen on form submission
-						m.parentPickerState.Items[i].Selected = !m.parentPickerState.Items[i].Selected
+						m.ParentPickerState.Items[i].Selected = !m.ParentPickerState.Items[i].Selected
 						// Set default relation type when selecting (if not already set)
-						if m.parentPickerState.Items[i].Selected && m.parentPickerState.Items[i].RelationTypeID == 0 {
-							m.parentPickerState.Items[i].RelationTypeID = 1 // Default to Parent/Child
+						if m.ParentPickerState.Items[i].Selected && m.ParentPickerState.Items[i].RelationTypeID == 0 {
+							m.ParentPickerState.Items[i].RelationTypeID = 1 // Default to Parent/Child
 						}
 					} else {
 						// View mode: apply changes to database immediately (existing behavior)
 						ctx, cancel := m.uiContext()
 						defer cancel()
-						if m.parentPickerState.Items[i].Selected {
+						if m.ParentPickerState.Items[i].Selected {
 							// Remove parent relationship
 							// CRITICAL: RemoveSubtask(parentID, childID)
 							// selectedTask (parent) blocks on currentTask (child)
-							err := m.repo.RemoveSubtask(ctx, item.TaskRef.ID, m.parentPickerState.TaskID)
+							err := m.Repo.RemoveSubtask(ctx, item.TaskRef.ID, m.ParentPickerState.TaskID)
 							if err != nil {
 								slog.Error("Error removing parent", "error", err)
-								m.notificationState.Add(state.LevelError, "Failed to remove parent from task")
+								m.NotificationState.Add(state.LevelError, "Failed to remove parent from task")
 							} else {
-								m.parentPickerState.Items[i].Selected = false
+								m.ParentPickerState.Items[i].Selected = false
 							}
 						} else {
 							// Add parent relationship - selected task becomes parent of current task
 							// CRITICAL: AddSubtask(parentID, childID)
 							// This makes selectedTask (parent) block on currentTask (child)
 							// Meaning: selectedTask depends on completion of currentTask
-							err := m.repo.AddSubtask(ctx, item.TaskRef.ID, m.parentPickerState.TaskID)
+							err := m.Repo.AddSubtask(ctx, item.TaskRef.ID, m.ParentPickerState.TaskID)
 							if err != nil {
 								slog.Error("Error adding parent", "error", err)
-								m.notificationState.Add(state.LevelError, "Failed to add parent to task")
+								m.NotificationState.Add(state.LevelError, "Failed to add parent to task")
 							} else {
-								m.parentPickerState.Items[i].Selected = true
+								m.ParentPickerState.Items[i].Selected = true
 							}
 						}
 
@@ -969,8 +969,8 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case "tab":
 		// Open relation type picker for the currently highlighted item
-		if m.parentPickerState.Cursor < len(filteredItems) {
-			item := filteredItems[m.parentPickerState.Cursor]
+		if m.ParentPickerState.Cursor < len(filteredItems) {
+			item := filteredItems[m.ParentPickerState.Cursor]
 
 			// Initialize relation type picker
 			currentRelationTypeID := 1 // Default to Parent/Child
@@ -978,32 +978,32 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				currentRelationTypeID = item.RelationTypeID
 			}
 
-			m.relationTypePickerState.SetSelectedRelationTypeID(currentRelationTypeID)
-			m.relationTypePickerState.SetCurrentTaskPickerIndex(m.parentPickerState.Cursor)
-			m.relationTypePickerState.SetReturnMode(state.ParentPickerMode)
+			m.RelationTypePickerState.SetSelectedRelationTypeID(currentRelationTypeID)
+			m.RelationTypePickerState.SetCurrentTaskPickerIndex(m.ParentPickerState.Cursor)
+			m.RelationTypePickerState.SetReturnMode(state.ParentPickerMode)
 
 			// Set cursor to match selected relation type
 			relationTypes := GetRelationTypeOptions()
 			for i, rt := range relationTypes {
 				if rt.ID == currentRelationTypeID {
-					m.relationTypePickerState.SetCursor(i)
+					m.RelationTypePickerState.SetCursor(i)
 					break
 				}
 			}
 
-			m.uiState.SetMode(state.RelationTypePickerMode)
+			m.UiState.SetMode(state.RelationTypePickerMode)
 		}
 		return m, nil
 
 	case "backspace", "ctrl+h":
 		// Remove last character from filter
-		m.parentPickerState.BackspaceFilter()
+		m.ParentPickerState.BackspaceFilter()
 		// Reset cursor if it's out of bounds after filter change
-		newFiltered := m.parentPickerState.GetFilteredItems()
-		if m.parentPickerState.Cursor >= len(newFiltered) && len(newFiltered) > 0 {
-			m.parentPickerState.Cursor = len(newFiltered) - 1
+		newFiltered := m.ParentPickerState.GetFilteredItems()
+		if m.ParentPickerState.Cursor >= len(newFiltered) && len(newFiltered) > 0 {
+			m.ParentPickerState.Cursor = len(newFiltered) - 1
 		} else if len(newFiltered) == 0 {
-			m.parentPickerState.Cursor = 0
+			m.ParentPickerState.Cursor = 0
 		}
 		return m, nil
 
@@ -1011,9 +1011,9 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Type to filter/search
 		key := keyMsg.String()
 		if len(key) == 1 {
-			m.parentPickerState.AppendFilter(rune(key[0]))
+			m.ParentPickerState.AppendFilter(rune(key[0]))
 			// Reset cursor to 0 when filter changes
-			m.parentPickerState.Cursor = 0
+			m.ParentPickerState.Cursor = 0
 		}
 		return m, nil
 	}
@@ -1036,13 +1036,13 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Get filtered items to determine bounds
-	filteredItems := m.childPickerState.GetFilteredItems()
+	filteredItems := m.ChildPickerState.GetFilteredItems()
 	maxIdx := len(filteredItems) - 1
 
 	switch keyMsg.String() {
 	case "esc":
 		// Return to the mode specified by ReturnMode
-		returnMode := m.childPickerState.ReturnMode
+		returnMode := m.ChildPickerState.ReturnMode
 		if returnMode == state.Mode(0) { // Default to NormalMode
 			returnMode = state.NormalMode
 		}
@@ -1052,64 +1052,64 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.syncChildPickerToFormState()
 		}
 
-		m.uiState.SetMode(returnMode)
-		m.childPickerState.Filter = ""
-		m.childPickerState.Cursor = 0
+		m.UiState.SetMode(returnMode)
+		m.ChildPickerState.Filter = ""
+		m.ChildPickerState.Cursor = 0
 		return m, nil
 
 	case "up", "k":
 		// Move cursor up
-		m.childPickerState.MoveCursorUp()
+		m.ChildPickerState.MoveCursorUp()
 		return m, nil
 
 	case "down", "j":
 		// Move cursor down
-		m.childPickerState.MoveCursorDown(maxIdx)
+		m.ChildPickerState.MoveCursorDown(maxIdx)
 		return m, nil
 
 	case "enter":
 		// Toggle child relationship
-		if m.childPickerState.Cursor < len(filteredItems) {
-			item := filteredItems[m.childPickerState.Cursor]
+		if m.ChildPickerState.Cursor < len(filteredItems) {
+			item := filteredItems[m.ChildPickerState.Cursor]
 
 			// Find the index in the unfiltered list
-			for i, pi := range m.childPickerState.Items {
+			for i, pi := range m.ChildPickerState.Items {
 				if pi.TaskRef.ID == item.TaskRef.ID {
 					// Determine if we're in form mode or view mode
-					if m.childPickerState.ReturnMode == state.TicketFormMode {
+					if m.ChildPickerState.ReturnMode == state.TicketFormMode {
 						// Form mode: just toggle the selection state
 						// Actual database changes happen on form submission
-						m.childPickerState.Items[i].Selected = !m.childPickerState.Items[i].Selected
+						m.ChildPickerState.Items[i].Selected = !m.ChildPickerState.Items[i].Selected
 						// Set default relation type when selecting (if not already set)
-						if m.childPickerState.Items[i].Selected && m.childPickerState.Items[i].RelationTypeID == 0 {
-							m.childPickerState.Items[i].RelationTypeID = 1 // Default to Parent/Child
+						if m.ChildPickerState.Items[i].Selected && m.ChildPickerState.Items[i].RelationTypeID == 0 {
+							m.ChildPickerState.Items[i].RelationTypeID = 1 // Default to Parent/Child
 						}
 					} else {
 						// View mode: apply changes to database immediately (existing behavior)
 						ctx, cancel := m.uiContext()
 						defer cancel()
-						if m.childPickerState.Items[i].Selected {
+						if m.ChildPickerState.Items[i].Selected {
 							// Remove child relationship
 							// CRITICAL: RemoveSubtask(parentID, childID) - REVERSED parameter order from parent picker
 							// currentTask (parent) blocks on selectedTask (child)
-							err := m.repo.RemoveSubtask(ctx, m.childPickerState.TaskID, item.TaskRef.ID)
+							err := m.Repo.RemoveSubtask(ctx, m.ChildPickerState.TaskID, item.TaskRef.ID)
 							if err != nil {
 								slog.Error("Error removing child", "error", err)
-								m.notificationState.Add(state.LevelError, "Failed to remove child from task")
+								m.NotificationState.Add(state.LevelError, "Failed to remove child from task")
 							} else {
-								m.childPickerState.Items[i].Selected = false
+								m.ChildPickerState.Items[i].Selected = false
 							}
 						} else {
 							// Add child relationship - current task becomes parent of selected task
 							// CRITICAL: AddSubtask(parentID, childID) - REVERSED parameter order from parent picker
 							// This makes currentTask (parent) block on selectedTask (child)
 							// Meaning: currentTask depends on completion of selectedTask
-							err := m.repo.AddSubtask(ctx, m.childPickerState.TaskID, item.TaskRef.ID)
+							err := m.Repo.AddSubtask(ctx, m.ChildPickerState.TaskID, item.TaskRef.ID)
 							if err != nil {
 								slog.Error("Error adding child", "error", err)
-								m.notificationState.Add(state.LevelError, "Failed to add child to task")
+								m.NotificationState.Add(state.LevelError, "Failed to add child to task")
 							} else {
-								m.childPickerState.Items[i].Selected = true
+								m.ChildPickerState.Items[i].Selected = true
 							}
 						}
 
@@ -1124,8 +1124,8 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case "tab":
 		// Open relation type picker for the currently highlighted item
-		if m.childPickerState.Cursor < len(filteredItems) {
-			item := filteredItems[m.childPickerState.Cursor]
+		if m.ChildPickerState.Cursor < len(filteredItems) {
+			item := filteredItems[m.ChildPickerState.Cursor]
 
 			// Initialize relation type picker
 			currentRelationTypeID := 1 // Default to Parent/Child
@@ -1133,32 +1133,32 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				currentRelationTypeID = item.RelationTypeID
 			}
 
-			m.relationTypePickerState.SetSelectedRelationTypeID(currentRelationTypeID)
-			m.relationTypePickerState.SetCurrentTaskPickerIndex(m.childPickerState.Cursor)
-			m.relationTypePickerState.SetReturnMode(state.ChildPickerMode)
+			m.RelationTypePickerState.SetSelectedRelationTypeID(currentRelationTypeID)
+			m.RelationTypePickerState.SetCurrentTaskPickerIndex(m.ChildPickerState.Cursor)
+			m.RelationTypePickerState.SetReturnMode(state.ChildPickerMode)
 
 			// Set cursor to match selected relation type
 			relationTypes := GetRelationTypeOptions()
 			for i, rt := range relationTypes {
 				if rt.ID == currentRelationTypeID {
-					m.relationTypePickerState.SetCursor(i)
+					m.RelationTypePickerState.SetCursor(i)
 					break
 				}
 			}
 
-			m.uiState.SetMode(state.RelationTypePickerMode)
+			m.UiState.SetMode(state.RelationTypePickerMode)
 		}
 		return m, nil
 
 	case "backspace", "ctrl+h":
 		// Remove last character from filter
-		m.childPickerState.BackspaceFilter()
+		m.ChildPickerState.BackspaceFilter()
 		// Reset cursor if it's out of bounds after filter change
-		newFiltered := m.childPickerState.GetFilteredItems()
-		if m.childPickerState.Cursor >= len(newFiltered) && len(newFiltered) > 0 {
-			m.childPickerState.Cursor = len(newFiltered) - 1
+		newFiltered := m.ChildPickerState.GetFilteredItems()
+		if m.ChildPickerState.Cursor >= len(newFiltered) && len(newFiltered) > 0 {
+			m.ChildPickerState.Cursor = len(newFiltered) - 1
 		} else if len(newFiltered) == 0 {
-			m.childPickerState.Cursor = 0
+			m.ChildPickerState.Cursor = 0
 		}
 		return m, nil
 
@@ -1166,9 +1166,9 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Type to filter/search
 		key := keyMsg.String()
 		if len(key) == 1 {
-			m.childPickerState.AppendFilter(rune(key[0]))
+			m.ChildPickerState.AppendFilter(rune(key[0]))
 			// Reset cursor to 0 when filter changes
-			m.childPickerState.Cursor = 0
+			m.ChildPickerState.Cursor = 0
 		}
 		return m, nil
 	}
@@ -1185,61 +1185,61 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		// Return to ticket form mode without changing priority
-		m.uiState.SetMode(m.priorityPickerState.ReturnMode())
-		m.priorityPickerState.Reset()
+		m.UiState.SetMode(m.PriorityPickerState.ReturnMode())
+		m.PriorityPickerState.Reset()
 		return m, nil
 
 	case "up", "k":
 		// Move cursor up
-		m.priorityPickerState.MoveUp()
+		m.PriorityPickerState.MoveUp()
 		return m, nil
 
 	case "down", "j":
 		// Move cursor down
-		m.priorityPickerState.MoveDown()
+		m.PriorityPickerState.MoveDown()
 		return m, nil
 
 	case "enter":
 		// Select the priority at cursor position
 		priorities := GetPriorityOptions()
-		cursorIdx := m.priorityPickerState.Cursor()
+		cursorIdx := m.PriorityPickerState.Cursor()
 
 		if cursorIdx >= 0 && cursorIdx < len(priorities) {
 			selectedPriority := priorities[cursorIdx]
 
 			// If we're editing a task, update it in the database
-			if m.formState.EditingTaskID != 0 {
+			if m.FormState.EditingTaskID != 0 {
 				ctx, cancel := m.dbContext()
 				defer cancel()
 
 				// Update the task's priority_id in the database
-				err := m.repo.UpdateTaskPriority(ctx, m.formState.EditingTaskID, selectedPriority.ID)
+				err := m.Repo.UpdateTaskPriority(ctx, m.FormState.EditingTaskID, selectedPriority.ID)
 
 				if err != nil {
 					slog.Error("Error updating task priority", "error", err)
-					m.notificationState.Add(state.LevelError, "Failed to update priority")
+					m.NotificationState.Add(state.LevelError, "Failed to update priority")
 				} else {
 					// Update form state with new priority
-					m.formState.FormPriorityDescription = selectedPriority.Description
-					m.formState.FormPriorityColor = selectedPriority.Color
-					m.notificationState.Add(state.LevelInfo, "Priority updated to "+selectedPriority.Description)
+					m.FormState.FormPriorityDescription = selectedPriority.Description
+					m.FormState.FormPriorityColor = selectedPriority.Color
+					m.NotificationState.Add(state.LevelInfo, "Priority updated to "+selectedPriority.Description)
 
 					// Reload tasks to reflect the change
 					m.reloadCurrentColumnTasks()
 				}
 			} else {
 				// For new tasks, just update the form state
-				m.formState.FormPriorityDescription = selectedPriority.Description
-				m.formState.FormPriorityColor = selectedPriority.Color
-				m.notificationState.Add(state.LevelInfo, "Priority set to "+selectedPriority.Description)
+				m.FormState.FormPriorityDescription = selectedPriority.Description
+				m.FormState.FormPriorityColor = selectedPriority.Color
+				m.NotificationState.Add(state.LevelInfo, "Priority set to "+selectedPriority.Description)
 			}
 
 			// Update the selected priority ID in picker state
-			m.priorityPickerState.SetSelectedPriorityID(selectedPriority.ID)
+			m.PriorityPickerState.SetSelectedPriorityID(selectedPriority.ID)
 		}
 
 		// Return to ticket form mode
-		m.uiState.SetMode(m.priorityPickerState.ReturnMode())
+		m.UiState.SetMode(m.PriorityPickerState.ReturnMode())
 		return m, nil
 	}
 
@@ -1257,59 +1257,59 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		// Return to ticket form mode without changing type
-		m.uiState.SetMode(m.typePickerState.ReturnMode())
-		m.typePickerState.Reset()
+		m.UiState.SetMode(m.TypePickerState.ReturnMode())
+		m.TypePickerState.Reset()
 		return m, nil
 
 	case "up", "k":
 		// Move cursor up
-		m.typePickerState.MoveUp()
+		m.TypePickerState.MoveUp()
 		return m, nil
 
 	case "down", "j":
 		// Move cursor down
-		m.typePickerState.MoveDown()
+		m.TypePickerState.MoveDown()
 		return m, nil
 
 	case "enter":
 		// Select the type at cursor position
 		types := GetTypeOptions()
-		cursorIdx := m.typePickerState.Cursor()
+		cursorIdx := m.TypePickerState.Cursor()
 
 		if cursorIdx >= 0 && cursorIdx < len(types) {
 			selectedType := types[cursorIdx]
 
 			// If we're editing a task, update it in the database
-			if m.formState.EditingTaskID != 0 {
+			if m.FormState.EditingTaskID != 0 {
 				ctx, cancel := m.dbContext()
 				defer cancel()
 
 				// Update the task's type_id in the database
-				err := m.repo.UpdateTaskType(ctx, m.formState.EditingTaskID, selectedType.ID)
+				err := m.Repo.UpdateTaskType(ctx, m.FormState.EditingTaskID, selectedType.ID)
 
 				if err != nil {
 					slog.Error("Error updating task type", "error", err)
-					m.notificationState.Add(state.LevelError, "Failed to update type")
+					m.NotificationState.Add(state.LevelError, "Failed to update type")
 				} else {
 					// Update form state with new type
-					m.formState.FormTypeDescription = selectedType.Description
-					m.notificationState.Add(state.LevelInfo, "Type updated to "+selectedType.Description)
+					m.FormState.FormTypeDescription = selectedType.Description
+					m.NotificationState.Add(state.LevelInfo, "Type updated to "+selectedType.Description)
 
 					// Reload tasks to reflect the change
 					m.reloadCurrentColumnTasks()
 				}
 			} else {
 				// For new tasks, just update the form state
-				m.formState.FormTypeDescription = selectedType.Description
-				m.notificationState.Add(state.LevelInfo, "Type set to "+selectedType.Description)
+				m.FormState.FormTypeDescription = selectedType.Description
+				m.NotificationState.Add(state.LevelInfo, "Type set to "+selectedType.Description)
 			}
 
 			// Update the selected type ID in picker state
-			m.typePickerState.SetSelectedTypeID(selectedType.ID)
+			m.TypePickerState.SetSelectedTypeID(selectedType.ID)
 		}
 
 		// Return to ticket form mode
-		m.uiState.SetMode(m.typePickerState.ReturnMode())
+		m.UiState.SetMode(m.TypePickerState.ReturnMode())
 		return m, nil
 	}
 
@@ -1326,54 +1326,54 @@ func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		// Return to previous picker (parent or child) without changing relation type
-		m.uiState.SetMode(m.relationTypePickerState.ReturnMode())
-		m.relationTypePickerState.Reset()
+		m.UiState.SetMode(m.RelationTypePickerState.ReturnMode())
+		m.RelationTypePickerState.Reset()
 		return m, nil
 
 	case "up", "k":
 		// Move cursor up
-		m.relationTypePickerState.MoveUp()
+		m.RelationTypePickerState.MoveUp()
 		return m, nil
 
 	case "down", "j":
 		// Move cursor down
-		m.relationTypePickerState.MoveDown()
+		m.RelationTypePickerState.MoveDown()
 		return m, nil
 
 	case "enter":
 		// Select the relation type at cursor position
 		relationTypes := GetRelationTypeOptions()
-		cursorIdx := m.relationTypePickerState.Cursor()
+		cursorIdx := m.RelationTypePickerState.Cursor()
 
 		if cursorIdx >= 0 && cursorIdx < len(relationTypes) {
 			selectedRelationType := relationTypes[cursorIdx]
 
 			// Update the TaskPickerItem's RelationTypeID
-			itemIdx := m.relationTypePickerState.CurrentTaskPickerIndex()
-			returnMode := m.relationTypePickerState.ReturnMode()
+			itemIdx := m.RelationTypePickerState.CurrentTaskPickerIndex()
+			returnMode := m.RelationTypePickerState.ReturnMode()
 
 			if returnMode == state.ParentPickerMode {
 				// Update parent picker item
-				filteredItems := m.parentPickerState.GetFilteredItems()
+				filteredItems := m.ParentPickerState.GetFilteredItems()
 				if itemIdx >= 0 && itemIdx < len(filteredItems) {
 					// Find the item in the original items list and update it
 					taskID := filteredItems[itemIdx].TaskRef.ID
-					for i := range m.parentPickerState.Items {
-						if m.parentPickerState.Items[i].TaskRef.ID == taskID {
-							m.parentPickerState.Items[i].RelationTypeID = selectedRelationType.ID
+					for i := range m.ParentPickerState.Items {
+						if m.ParentPickerState.Items[i].TaskRef.ID == taskID {
+							m.ParentPickerState.Items[i].RelationTypeID = selectedRelationType.ID
 							break
 						}
 					}
 				}
 			} else if returnMode == state.ChildPickerMode {
 				// Update child picker item
-				filteredItems := m.childPickerState.GetFilteredItems()
+				filteredItems := m.ChildPickerState.GetFilteredItems()
 				if itemIdx >= 0 && itemIdx < len(filteredItems) {
 					// Find the item in the original items list and update it
 					taskID := filteredItems[itemIdx].TaskRef.ID
-					for i := range m.childPickerState.Items {
-						if m.childPickerState.Items[i].TaskRef.ID == taskID {
-							m.childPickerState.Items[i].RelationTypeID = selectedRelationType.ID
+					for i := range m.ChildPickerState.Items {
+						if m.ChildPickerState.Items[i].TaskRef.ID == taskID {
+							m.ChildPickerState.Items[i].RelationTypeID = selectedRelationType.ID
 							break
 						}
 					}
@@ -1381,11 +1381,11 @@ func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			// Update the selected relation type ID in picker state
-			m.relationTypePickerState.SetSelectedRelationTypeID(selectedRelationType.ID)
+			m.RelationTypePickerState.SetSelectedRelationTypeID(selectedRelationType.ID)
 		}
 
 		// Return to previous picker mode
-		m.uiState.SetMode(m.relationTypePickerState.ReturnMode())
+		m.UiState.SetMode(m.RelationTypePickerState.ReturnMode())
 		return m, nil
 	}
 
@@ -1398,15 +1398,15 @@ func (m *Model) syncParentPickerToFormState() {
 	var parentIDs []int
 	var parentRefs []*models.TaskReference
 
-	for _, item := range m.parentPickerState.Items {
+	for _, item := range m.ParentPickerState.Items {
 		if item.Selected {
 			parentIDs = append(parentIDs, item.TaskRef.ID)
 			parentRefs = append(parentRefs, item.TaskRef)
 		}
 	}
 
-	m.formState.FormParentIDs = parentIDs
-	m.formState.FormParentRefs = parentRefs
+	m.FormState.FormParentIDs = parentIDs
+	m.FormState.FormParentRefs = parentRefs
 }
 
 // syncChildPickerToFormState syncs child picker selections back to form state.
@@ -1415,15 +1415,15 @@ func (m *Model) syncChildPickerToFormState() {
 	var childIDs []int
 	var childRefs []*models.TaskReference
 
-	for _, item := range m.childPickerState.Items {
+	for _, item := range m.ChildPickerState.Items {
 		if item.Selected {
 			childIDs = append(childIDs, item.TaskRef.ID)
 			childRefs = append(childRefs, item.TaskRef)
 		}
 	}
 
-	m.formState.FormChildIDs = childIDs
-	m.formState.FormChildRefs = childRefs
+	m.FormState.FormChildIDs = childIDs
+	m.FormState.FormChildRefs = childRefs
 }
 
 // syncLabelPickerToFormState syncs label picker selections back to form state.
@@ -1431,13 +1431,13 @@ func (m *Model) syncChildPickerToFormState() {
 func (m *Model) syncLabelPickerToFormState() {
 	var labelIDs []int
 
-	for _, item := range m.labelPickerState.Items {
+	for _, item := range m.LabelPickerState.Items {
 		if item.Selected {
 			labelIDs = append(labelIDs, item.Label.ID)
 		}
 	}
 
-	m.formState.FormLabelIDs = labelIDs
+	m.FormState.FormLabelIDs = labelIDs
 }
 
 // reloadCurrentColumnTasks reloads all task summaries for the project to keep state consistent
@@ -1449,10 +1449,10 @@ func (m *Model) reloadCurrentColumnTasks() {
 
 	ctx, cancel := m.dbContext()
 	defer cancel()
-	tasksByColumn, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
+	tasksByColumn, err := m.Repo.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error reloading tasks", "error", err)
 		return
 	}
-	m.appState.SetTasks(tasksByColumn)
+	m.AppState.SetTasks(tasksByColumn)
 }

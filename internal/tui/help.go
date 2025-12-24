@@ -12,8 +12,8 @@ import (
 // handleHelpMode handles input in the help screen.
 func (m Model) handleHelpMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case m.config.KeyMappings.ShowHelp, m.config.KeyMappings.Quit, "esc", "enter", " ":
-		m.uiState.SetMode(state.NormalMode)
+	case m.Config.KeyMappings.ShowHelp, m.Config.KeyMappings.Quit, "esc", "enter", " ":
+		m.UiState.SetMode(state.NormalMode)
 		return m, nil
 	}
 	return m, nil

@@ -14,9 +14,9 @@ import (
 
 // handleEnterSearch enters search mode and clears any previous search state.
 func (m Model) handleEnterSearch() (tea.Model, tea.Cmd) {
-	m.searchState.Clear()
-	m.searchState.Deactivate()
-	m.uiState.SetMode(state.SearchMode)
+	m.SearchState.Clear()
+	m.SearchState.Deactivate()
+	m.UiState.SetMode(state.SearchMode)
 	return m, nil
 }
 
@@ -28,14 +28,14 @@ func (m Model) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		return m.handleSearchCancel()
 	case "backspace", "ctrl+h":
-		if m.searchState.Backspace() {
+		if m.SearchState.Backspace() {
 			return m.executeSearch()
 		}
 		return m, nil
 	default:
 		key := msg.String()
 		if len(key) == 1 {
-			if m.searchState.AppendChar(rune(key[0])) {
+			if m.SearchState.AppendChar(rune(key[0])) {
 				return m.executeSearch()
 			}
 		}
@@ -46,17 +46,17 @@ func (m Model) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // handleSearchConfirm activates the filter and returns to normal mode.
 // The search query persists and continues to filter the kanban view.
 func (m Model) handleSearchConfirm() (tea.Model, tea.Cmd) {
-	m.searchState.Activate()
-	m.uiState.SetMode(state.NormalMode)
+	m.SearchState.Activate()
+	m.UiState.SetMode(state.NormalMode)
 	return m, nil
 }
 
 // handleSearchCancel clears the search and returns to normal mode.
 // All tasks are shown again.
 func (m Model) handleSearchCancel() (tea.Model, tea.Cmd) {
-	m.searchState.Clear()
-	m.searchState.Deactivate()
-	m.uiState.SetMode(state.NormalMode)
+	m.SearchState.Clear()
+	m.SearchState.Deactivate()
+	m.UiState.SetMode(state.NormalMode)
 	return m.executeSearch() // Reload all tasks
 }
 
@@ -73,10 +73,10 @@ func (m Model) executeSearch() (tea.Model, tea.Cmd) {
 	var tasksByColumn map[int][]*models.TaskSummary
 	var err error
 
-	if m.searchState.Query == "" {
-		tasksByColumn, err = m.repo.GetTaskSummariesByProject(ctx, project.ID)
+	if m.SearchState.Query == "" {
+		tasksByColumn, err = m.Repo.GetTaskSummariesByProject(ctx, project.ID)
 	} else {
-		tasksByColumn, err = m.repo.GetTaskSummariesByProjectFiltered(ctx, project.ID, m.searchState.Query)
+		tasksByColumn, err = m.Repo.GetTaskSummariesByProjectFiltered(ctx, project.ID, m.SearchState.Query)
 	}
 
 	if err != nil {
@@ -84,9 +84,9 @@ func (m Model) executeSearch() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	m.appState.SetTasks(tasksByColumn)
+	m.AppState.SetTasks(tasksByColumn)
 	// Reset task selection to 0 to avoid out-of-bounds
-	m.uiState.SetSelectedTask(0)
+	m.UiState.SetSelectedTask(0)
 
 	return m, nil
 }

@@ -17,11 +17,11 @@ import (
 // getInlineNotification returns the inline notification content for the tab bar
 // Returns empty string if no notifications
 func (m Model) getInlineNotification() string {
-	if !m.notificationState.HasAny() {
+	if !m.NotificationState.HasAny() {
 		return ""
 	}
 	// Get the first (most recent) notification
-	allNotifications := m.notificationState.All()
+	allNotifications := m.NotificationState.All()
 	if len(allNotifications) == 0 {
 		return ""
 	}
@@ -36,19 +36,19 @@ func (m Model) View() tea.View {
 	view.BackgroundColor = lipgloss.Color(theme.Background) // Set root background color
 
 	// Wait for terminal size to be initialized
-	if m.uiState.Width() == 0 {
+	if m.UiState.Width() == 0 {
 		view.Content = "Loading..."
 		return view
 	}
 
 	// Check if current mode uses layer-based rendering
-	usesLayers := m.uiState.Mode() == state.TicketFormMode ||
-		m.uiState.Mode() == state.ProjectFormMode ||
-		m.uiState.Mode() == state.AddColumnMode ||
-		m.uiState.Mode() == state.EditColumnMode ||
-		m.uiState.Mode() == state.HelpMode ||
-		m.uiState.Mode() == state.NormalMode ||
-		m.uiState.Mode() == state.SearchMode
+	usesLayers := m.UiState.Mode() == state.TicketFormMode ||
+		m.UiState.Mode() == state.ProjectFormMode ||
+		m.UiState.Mode() == state.AddColumnMode ||
+		m.UiState.Mode() == state.EditColumnMode ||
+		m.UiState.Mode() == state.HelpMode ||
+		m.UiState.Mode() == state.NormalMode ||
+		m.UiState.Mode() == state.SearchMode
 
 	if usesLayers {
 		// Layer-based rendering: always show base board with modal overlays
@@ -61,7 +61,7 @@ func (m Model) View() tea.View {
 
 		// Add modal overlay based on mode
 		var modalLayer *lipgloss.Layer
-		switch m.uiState.Mode() {
+		switch m.UiState.Mode() {
 		case state.TicketFormMode:
 			modalLayer = m.renderTicketFormLayer()
 		case state.ProjectFormMode:
@@ -84,7 +84,7 @@ func (m Model) View() tea.View {
 	} else {
 		// Legacy full-screen rendering for modes not yet converted to layers
 		var content string
-		switch m.uiState.Mode() {
+		switch m.UiState.Mode() {
 		case state.DiscardConfirmMode:
 			content = m.viewDiscardConfirm()
 		case state.DeleteConfirmMode:
@@ -116,13 +116,13 @@ func (m Model) View() tea.View {
 
 // renderTicketFormLayer renders the ticket creation/edit form modal as a layer
 func (m Model) renderTicketFormLayer() *lipgloss.Layer {
-	if m.formState.TicketForm == nil {
+	if m.FormState.TicketForm == nil {
 		return nil
 	}
 
 	// Calculate layer dimensions (80% of screen)
-	layerWidth := m.uiState.Width() * 4 / 5
-	layerHeight := m.uiState.Height() * 4 / 5
+	layerWidth := m.UiState.Width() * 4 / 5
+	layerHeight := m.UiState.Height() * 4 / 5
 
 	// Calculate zone dimensions
 	leftColumnWidth := layerWidth * 7 / 10  // 70% of layer width
@@ -144,7 +144,7 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 	// Add form title
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Highlight))
 	var formTitle string
-	if m.formState.EditingTaskID == 0 {
+	if m.FormState.EditingTaskID == 0 {
 		formTitle = titleStyle.Render("Create New Task")
 	} else {
 		formTitle = titleStyle.Render("Edit Task")
@@ -171,41 +171,41 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 		Height(layerHeight).
 		Render(fullContent)
 
-	return layers.CreateCenteredLayer(formBox, m.uiState.Width(), m.uiState.Height())
+	return layers.CreateCenteredLayer(formBox, m.UiState.Width(), m.UiState.Height())
 }
 
 // renderProjectFormLayer renders the project creation form modal as a layer
 func (m Model) renderProjectFormLayer() *lipgloss.Layer {
-	if m.formState.ProjectForm == nil {
+	if m.FormState.ProjectForm == nil {
 		return nil
 	}
 
-	formView := m.formState.ProjectForm.View()
+	formView := m.FormState.ProjectForm.View()
 
 	// Wrap form in a styled container with green border for creation
 	formBox := components.ProjectFormBoxStyle.
-		Width(m.uiState.Width() * 3 / 4).
-		Height(m.uiState.Height() / 3).
+		Width(m.UiState.Width() * 3 / 4).
+		Height(m.UiState.Height() / 3).
 		Render("New Project\n\n" + formView)
 
-	return layers.CreateCenteredLayer(formBox, m.uiState.Width(), m.uiState.Height())
+	return layers.CreateCenteredLayer(formBox, m.UiState.Width(), m.UiState.Height())
 }
 
 // renderColumnInputLayer renders the column name input dialog (create or edit mode) as a layer
 func (m Model) renderColumnInputLayer() *lipgloss.Layer {
 	var inputBox string
-	if m.uiState.Mode() == state.AddColumnMode {
+	if m.UiState.Mode() == state.AddColumnMode {
 		inputBox = components.CreateInputBoxStyle.
 			Width(50).
-			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
+			Render(fmt.Sprintf("%s\n> %s_", m.InputState.Prompt, m.InputState.Buffer))
 	} else {
 		// EditColumnMode
 		inputBox = components.EditInputBoxStyle.
 			Width(50).
-			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
+			Render(fmt.Sprintf("%s\n> %s_", m.InputState.Prompt, m.InputState.Buffer))
 	}
 
-	return layers.CreateCenteredLayer(inputBox, m.uiState.Width(), m.uiState.Height())
+	return layers.CreateCenteredLayer(inputBox, m.UiState.Width(), m.UiState.Height())
 }
 
 // viewDeleteTaskConfirm renders the task deletion confirmation dialog
@@ -220,7 +220,7 @@ func (m Model) viewDeleteTaskConfirm() string {
 		Render(fmt.Sprintf("Delete '%s'?\n\n[y]es  [n]o", task.Title))
 
 	return lipgloss.Place(
-		m.uiState.Width(), m.uiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		confirmBox,
 	)
@@ -234,7 +234,7 @@ func (m Model) viewDeleteColumnConfirm() string {
 	}
 
 	var content string
-	taskCount := m.inputState.DeleteColumnTaskCount
+	taskCount := m.InputState.DeleteColumnTaskCount
 	if taskCount > 0 {
 		content = fmt.Sprintf(
 			"Delete column '%s'?\nThis will also delete %d task(s).\n\n[y]es  [n]o",
@@ -250,7 +250,7 @@ func (m Model) viewDeleteColumnConfirm() string {
 		Render(content)
 
 	return lipgloss.Place(
-		m.uiState.Width(), m.uiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		confirmBox,
 	)
@@ -258,7 +258,7 @@ func (m Model) viewDeleteColumnConfirm() string {
 
 // viewDiscardConfirm renders the discard confirmation dialog with context-aware message
 func (m Model) viewDiscardConfirm() string {
-	ctx := m.uiState.DiscardContext()
+	ctx := m.UiState.DiscardContext()
 	if ctx == nil {
 		return ""
 	}
@@ -269,7 +269,7 @@ func (m Model) viewDiscardConfirm() string {
 		Render(fmt.Sprintf("%s\n\n[y]es  [n]o", ctx.Message))
 
 	return lipgloss.Place(
-		m.uiState.Width(), m.uiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		confirmBox,
 	)
@@ -281,12 +281,12 @@ func (m Model) renderHelpLayer() *lipgloss.Layer {
 		Width(50).
 		Render(m.generateHelpText())
 
-	return layers.CreateCenteredLayer(helpBox, m.uiState.Width(), m.uiState.Height())
+	return layers.CreateCenteredLayer(helpBox, m.UiState.Width(), m.UiState.Height())
 }
 
 // generateHelpText creates help text based on current key mappings
 func (m Model) generateHelpText() string {
-	km := m.config.KeyMappings
+	km := m.Config.KeyMappings
 	return fmt.Sprintf(`PASO - Keyboard Shortcuts
 
 TASKS
@@ -350,42 +350,42 @@ func formatKey(key string) string {
 func (m Model) viewLabelPicker() string {
 	// Render the label picker content
 	var pickerContent string
-	if m.labelPickerState.CreateMode {
+	if m.LabelPickerState.CreateMode {
 		// Show color picker
 		pickerContent = RenderLabelColorPicker(
 			GetDefaultLabelColors(),
-			m.labelPickerState.ColorIdx,
-			m.formState.FormLabelName,
-			m.uiState.Width()*3/4-8,
+			m.LabelPickerState.ColorIdx,
+			m.FormState.FormLabelName,
+			m.UiState.Width()*3/4-8,
 		)
 	} else {
 		// Show label list (use filtered items from state)
 		pickerContent = RenderLabelPicker(
 			m.getFilteredLabelPickerItems(),
-			m.labelPickerState.Cursor,
-			m.labelPickerState.Filter,
+			m.LabelPickerState.Cursor,
+			m.LabelPickerState.Filter,
 			true, // show create option
-			m.uiState.Width()*3/4-8,
-			m.uiState.Height()*3/4-4,
+			m.UiState.Width()*3/4-8,
+			m.UiState.Height()*3/4-4,
 		)
 	}
 
 	// Wrap in styled container - use different style for create mode
 	var pickerBox string
-	if m.labelPickerState.CreateMode {
+	if m.LabelPickerState.CreateMode {
 		pickerBox = components.LabelPickerCreateBoxStyle.
-			Width(m.uiState.Width() * 3 / 4).
-			Height(m.uiState.Height() * 3 / 4).
+			Width(m.UiState.Width() * 3 / 4).
+			Height(m.UiState.Height() * 3 / 4).
 			Render(pickerContent)
 	} else {
 		pickerBox = components.LabelPickerBoxStyle.
-			Width(m.uiState.Width() * 3 / 4).
-			Height(m.uiState.Height() * 3 / 4).
+			Width(m.UiState.Width() * 3 / 4).
+			Height(m.UiState.Height() * 3 / 4).
 			Render(pickerContent)
 	}
 
 	return lipgloss.Place(
-		m.uiState.Width(), m.uiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)
@@ -396,23 +396,23 @@ func (m Model) viewLabelPicker() string {
 // The picker displays all tasks in the project with checkboxes indicating current selections.
 func (m Model) viewParentPicker() string {
 	pickerContent := RenderTaskPicker(
-		m.parentPickerState.GetFilteredItems(),
-		m.parentPickerState.Cursor,
-		m.parentPickerState.Filter,
+		m.ParentPickerState.GetFilteredItems(),
+		m.ParentPickerState.Cursor,
+		m.ParentPickerState.Filter,
 		"Parent Issues",
-		m.uiState.Width()*3/4-8,
-		m.uiState.Height()*3/4-4,
+		m.UiState.Width()*3/4-8,
+		m.UiState.Height()*3/4-4,
 		true, // isParentPicker
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
 	pickerBox := components.LabelPickerBoxStyle.
-		Width(m.uiState.Width() * 3 / 4).
-		Height(m.uiState.Height() * 3 / 4).
+		Width(m.UiState.Width() * 3 / 4).
+		Height(m.UiState.Height() * 3 / 4).
 		Render(pickerContent)
 
 	return lipgloss.Place(
-		m.uiState.Width(), m.uiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)
@@ -423,23 +423,23 @@ func (m Model) viewParentPicker() string {
 // The picker displays all tasks in the project with checkboxes indicating current selections.
 func (m Model) viewChildPicker() string {
 	pickerContent := RenderTaskPicker(
-		m.childPickerState.GetFilteredItems(),
-		m.childPickerState.Cursor,
-		m.childPickerState.Filter,
+		m.ChildPickerState.GetFilteredItems(),
+		m.ChildPickerState.Cursor,
+		m.ChildPickerState.Filter,
 		"Child Issues",
-		m.uiState.Width()*3/4-8,
-		m.uiState.Height()*3/4-4,
+		m.UiState.Width()*3/4-8,
+		m.UiState.Height()*3/4-4,
 		false, // isParentPicker
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
 	pickerBox := components.LabelPickerBoxStyle.
-		Width(m.uiState.Width() * 3 / 4).
-		Height(m.uiState.Height() * 3 / 4).
+		Width(m.UiState.Width() * 3 / 4).
+		Height(m.UiState.Height() * 3 / 4).
 		Render(pickerContent)
 
 	return lipgloss.Place(
-		m.uiState.Width(), m.uiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)
@@ -449,19 +449,19 @@ func (m Model) viewChildPicker() string {
 func (m Model) viewPriorityPicker() string {
 	pickerContent := RenderPriorityPicker(
 		GetPriorityOptions(),
-		m.priorityPickerState.SelectedPriorityID(),
-		m.priorityPickerState.Cursor(),
-		m.uiState.Width()*3/4-8,
+		m.PriorityPickerState.SelectedPriorityID(),
+		m.PriorityPickerState.Cursor(),
+		m.UiState.Width()*3/4-8,
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
 	pickerBox := components.LabelPickerBoxStyle.
-		Width(m.uiState.Width() * 3 / 4).
-		Height(m.uiState.Height() * 3 / 4).
+		Width(m.UiState.Width() * 3 / 4).
+		Height(m.UiState.Height() * 3 / 4).
 		Render(pickerContent)
 
 	return lipgloss.Place(
-		m.uiState.Width(), m.uiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)
@@ -471,19 +471,19 @@ func (m Model) viewPriorityPicker() string {
 func (m Model) viewTypePicker() string {
 	pickerContent := RenderTypePicker(
 		GetTypeOptions(),
-		m.typePickerState.SelectedTypeID(),
-		m.typePickerState.Cursor(),
-		m.uiState.Width()*3/4-8,
+		m.TypePickerState.SelectedTypeID(),
+		m.TypePickerState.Cursor(),
+		m.UiState.Width()*3/4-8,
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
 	pickerBox := components.LabelPickerBoxStyle.
-		Width(m.uiState.Width() * 3 / 4).
-		Height(m.uiState.Height() * 3 / 4).
+		Width(m.UiState.Width() * 3 / 4).
+		Height(m.UiState.Height() * 3 / 4).
 		Render(pickerContent)
 
 	return lipgloss.Place(
-		m.uiState.Width(), m.uiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)
@@ -493,26 +493,26 @@ func (m Model) viewTypePicker() string {
 func (m Model) viewRelationTypePicker() string {
 	// Determine picker type based on return mode
 	pickerType := "parent"
-	if m.relationTypePickerState.ReturnMode() == state.ChildPickerMode {
+	if m.RelationTypePickerState.ReturnMode() == state.ChildPickerMode {
 		pickerType = "child"
 	}
 
 	pickerContent := RenderRelationTypePicker(
 		GetRelationTypeOptions(),
-		m.relationTypePickerState.SelectedRelationTypeID(),
-		m.relationTypePickerState.Cursor(),
-		m.uiState.Width()*3/4-8,
+		m.RelationTypePickerState.SelectedRelationTypeID(),
+		m.RelationTypePickerState.Cursor(),
+		m.UiState.Width()*3/4-8,
 		pickerType,
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
 	pickerBox := components.LabelPickerBoxStyle.
-		Width(m.uiState.Width() * 3 / 4).
-		Height(m.uiState.Height() * 3 / 4).
+		Width(m.UiState.Width() * 3 / 4).
+		Height(m.UiState.Height() * 3 / 4).
 		Render(pickerContent)
 
 	return lipgloss.Place(
-		m.uiState.Width(), m.uiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)
@@ -521,16 +521,16 @@ func (m Model) viewRelationTypePicker() string {
 // viewKanbanBoard renders the main kanban board (normal mode)
 func (m Model) viewKanbanBoard() string {
 	// Check if list view is active
-	if m.listViewState.IsListView() {
+	if m.ListViewState.IsListView() {
 		return m.viewListView()
 	}
 
 	// Handle empty column list edge case
-	if len(m.appState.Columns()) == 0 {
+	if len(m.AppState.Columns()) == 0 {
 		emptyMsg := "No columns found. Please check database initialization."
 		footer := components.RenderStatusBar(components.StatusBarProps{
-			Width:            m.uiState.Width(),
-			ConnectionStatus: m.connectionState.Status(),
+			Width:            m.UiState.Width(),
+			ConnectionStatus: m.ConnectionState.Status(),
 		})
 		return lipgloss.JoinVertical(
 			lipgloss.Left,
@@ -542,43 +542,43 @@ func (m Model) viewKanbanBoard() string {
 	}
 
 	// Calculate visible columns based on viewport
-	endIdx := min(m.uiState.ViewportOffset()+m.uiState.ViewportSize(), len(m.appState.Columns()))
-	visibleColumns := m.appState.Columns()[m.uiState.ViewportOffset():endIdx]
+	endIdx := min(m.UiState.ViewportOffset()+m.UiState.ViewportSize(), len(m.AppState.Columns()))
+	visibleColumns := m.AppState.Columns()[m.UiState.ViewportOffset():endIdx]
 
 	// Calculate fixed content height using shared method
-	columnHeight := m.uiState.ContentHeight()
+	columnHeight := m.UiState.ContentHeight()
 
 	// Render only visible columns
 	var columns []string
 	for i, col := range visibleColumns {
 		// Calculate global index for selection check
-		globalIndex := m.uiState.ViewportOffset() + i
+		globalIndex := m.UiState.ViewportOffset() + i
 
 		// Safe map access with defensive check
-		tasks, ok := m.appState.Tasks()[col.ID]
+		tasks, ok := m.AppState.Tasks()[col.ID]
 		if !ok {
 			tasks = []*models.TaskSummary{}
 		}
 
 		// Determine selection state for this column
-		isSelected := (globalIndex == m.uiState.SelectedColumn())
+		isSelected := (globalIndex == m.UiState.SelectedColumn())
 
 		// Determine which task is selected (only for the selected column)
 		selectedTaskIdx := -1
 		if isSelected {
-			selectedTaskIdx = m.uiState.SelectedTask()
+			selectedTaskIdx = m.UiState.SelectedTask()
 		}
 
 		// Get scroll offset for this column
-		scrollOffset := m.uiState.TaskScrollOffset(col.ID)
+		scrollOffset := m.UiState.TaskScrollOffset(col.ID)
 
 		columns = append(columns, components.RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight, scrollOffset))
 	}
 
 	scrollIndicators := GetScrollIndicators(
-		m.uiState.ViewportOffset(),
-		m.uiState.ViewportSize(),
-		len(m.appState.Columns()),
+		m.UiState.ViewportOffset(),
+		m.UiState.ViewportSize(),
+		len(m.AppState.Columns()),
 	)
 
 	// Layout columns horizontally with scroll indicators
@@ -587,7 +587,7 @@ func (m Model) viewKanbanBoard() string {
 
 	// Create project tabs from actual project data
 	var projectTabs []string
-	for _, project := range m.appState.Projects() {
+	for _, project := range m.AppState.Projects() {
 		projectTabs = append(projectTabs, project.Name)
 	}
 	if len(projectTabs) == 0 {
@@ -595,13 +595,13 @@ func (m Model) viewKanbanBoard() string {
 	}
 	// Get inline notification for tab bar
 	inlineNotification := m.getInlineNotification()
-	tabBar := components.RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width(), inlineNotification)
+	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UiState.Width(), inlineNotification)
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
-		Width:            m.uiState.Width(),
-		SearchMode:       m.uiState.Mode() == state.SearchMode || m.searchState.IsActive,
-		SearchQuery:      m.searchState.Query,
-		ConnectionStatus: m.connectionState.Status(),
+		Width:            m.UiState.Width(),
+		SearchMode:       m.UiState.Mode() == state.SearchMode || m.SearchState.IsActive,
+		SearchQuery:      m.SearchState.Query,
+		ConnectionStatus: m.ConnectionState.Status(),
 	})
 
 	// Build content (everything except footer)
@@ -610,7 +610,7 @@ func (m Model) viewKanbanBoard() string {
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
 
-	maxContentLines := max(m.uiState.Height()-1, 1)
+	maxContentLines := max(m.UiState.Height()-1, 1)
 
 	if len(contentLines) > maxContentLines {
 		contentLines = contentLines[:maxContentLines]
@@ -621,7 +621,7 @@ func (m Model) viewKanbanBoard() string {
 	baseView := constrainedContent + "\n" + footer
 
 	// If no notifications, return base view directly
-	if !m.notificationState.HasAny() {
+	if !m.NotificationState.HasAny() {
 		return baseView
 	}
 
@@ -643,11 +643,11 @@ func (m Model) viewListView() string {
 	rows := m.buildListViewRows()
 
 	// Calculate fixed content height using shared method
-	listHeight := m.uiState.ContentHeight()
+	listHeight := m.UiState.ContentHeight()
 
 	// Render tab bar (same as kanban)
 	var projectTabs []string
-	for _, project := range m.appState.Projects() {
+	for _, project := range m.AppState.Projects() {
 		projectTabs = append(projectTabs, project.Name)
 	}
 	if len(projectTabs) == 0 {
@@ -655,25 +655,25 @@ func (m Model) viewListView() string {
 	}
 	// Get inline notification for tab bar
 	inlineNotification := m.getInlineNotification()
-	tabBar := components.RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width(), inlineNotification)
+	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UiState.Width(), inlineNotification)
 
 	// Render list content with sort indicator
 	listContent := RenderListView(
 		rows,
-		m.listViewState.SelectedRow(),
-		m.listViewState.ScrollOffset(),
-		m.listViewState.SortField(),
-		m.listViewState.SortOrder(),
-		m.uiState.Width(),
+		m.ListViewState.SelectedRow(),
+		m.ListViewState.ScrollOffset(),
+		m.ListViewState.SortField(),
+		m.ListViewState.SortOrder(),
+		m.UiState.Width(),
 		listHeight,
 	)
 
 	// Render footer
 	footer := components.RenderStatusBar(components.StatusBarProps{
-		Width:            m.uiState.Width(),
-		SearchMode:       m.uiState.Mode() == state.SearchMode || m.searchState.IsActive,
-		SearchQuery:      m.searchState.Query,
-		ConnectionStatus: m.connectionState.Status(),
+		Width:            m.UiState.Width(),
+		SearchMode:       m.UiState.Mode() == state.SearchMode || m.SearchState.IsActive,
+		SearchQuery:      m.SearchState.Query,
+		ConnectionStatus: m.ConnectionState.Status(),
 	})
 
 	// Build content (everything except footer)
@@ -681,7 +681,7 @@ func (m Model) viewListView() string {
 
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
-	maxContentLines := max(m.uiState.Height()-1, 1)
+	maxContentLines := max(m.UiState.Height()-1, 1)
 
 	if len(contentLines) > maxContentLines {
 		contentLines = contentLines[:maxContentLines]
@@ -698,8 +698,8 @@ func (m Model) viewListView() string {
 // viewStatusPicker renders the status/column selection picker.
 func (m Model) viewStatusPicker() string {
 	var items []string
-	columns := m.statusPickerState.Columns()
-	cursor := m.statusPickerState.Cursor()
+	columns := m.StatusPickerState.Columns()
+	cursor := m.StatusPickerState.Cursor()
 
 	for i, col := range columns {
 		prefix := "  "
@@ -718,7 +718,7 @@ func (m Model) viewStatusPicker() string {
 		Render(content)
 
 	return lipgloss.Place(
-		m.uiState.Width(), m.uiState.Height(),
+		m.UiState.Width(), m.UiState.Height(),
 		lipgloss.Center, lipgloss.Center,
 		pickerBox,
 	)
@@ -726,12 +726,12 @@ func (m Model) viewStatusPicker() string {
 
 // renderFormTitleDescriptionZone renders the top-left zone with title and description fields
 func (m Model) renderFormTitleDescriptionZone(width, height int) string {
-	if m.formState.TicketForm == nil {
+	if m.FormState.TicketForm == nil {
 		return ""
 	}
 
 	// Render the form view (which includes title and description)
-	formView := m.formState.TicketForm.View()
+	formView := m.FormState.TicketForm.View()
 
 	style := lipgloss.NewStyle().
 		Width(width).
@@ -753,18 +753,18 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 
 	// Get current timestamps - for create mode, show placeholders
 	var createdStr, updatedStr string
-	if m.formState.EditingTaskID == 0 {
+	if m.FormState.EditingTaskID == 0 {
 		createdStr = subtleStyle.Render("(not created yet)")
 		updatedStr = subtleStyle.Render("(not created yet)")
 	} else {
 		// In edit mode, show actual timestamps from FormState
-		createdStr = m.formState.FormCreatedAt.Format("Jan 2, 2006 3:04 PM")
-		updatedStr = m.formState.FormUpdatedAt.Format("Jan 2, 2006 3:04 PM")
+		createdStr = m.FormState.FormCreatedAt.Format("Jan 2, 2006 3:04 PM")
+		updatedStr = m.FormState.FormUpdatedAt.Format("Jan 2, 2006 3:04 PM")
 	}
 
 	// Edited indicator (unsaved changes)
 	parts = append(parts, labelHeaderStyle.Render("Status"))
-	if m.formState.HasTicketFormChanges() {
+	if m.FormState.HasTicketFormChanges() {
 		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight))
 		parts = append(parts, warningStyle.Render("● Unsaved Changes"))
 	} else {
@@ -774,8 +774,8 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 
 	// Type section
 	parts = append(parts, labelHeaderStyle.Render("Type"))
-	if m.formState.FormTypeDescription != "" {
-		parts = append(parts, m.formState.FormTypeDescription)
+	if m.FormState.FormTypeDescription != "" {
+		parts = append(parts, m.FormState.FormTypeDescription)
 	} else {
 		parts = append(parts, subtleStyle.Render("task"))
 	}
@@ -783,9 +783,9 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 
 	// Priority section
 	parts = append(parts, labelHeaderStyle.Render("Priority"))
-	if m.formState.FormPriorityDescription != "" && m.formState.FormPriorityColor != "" {
-		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.formState.FormPriorityColor))
-		parts = append(parts, priorityStyle.Render(m.formState.FormPriorityDescription))
+	if m.FormState.FormPriorityDescription != "" && m.FormState.FormPriorityColor != "" {
+		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.FormState.FormPriorityColor))
+		parts = append(parts, priorityStyle.Render(m.FormState.FormPriorityDescription))
 	} else {
 		// Default to medium priority if not set
 		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EAB308"))
@@ -805,16 +805,16 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 
 	// Labels section
 	parts = append(parts, labelHeaderStyle.Render("Labels"))
-	if len(m.formState.FormLabelIDs) == 0 {
+	if len(m.FormState.FormLabelIDs) == 0 {
 		parts = append(parts, subtleStyle.Render("No labels"))
 	} else {
 		// Get label objects from IDs
 		labelMap := make(map[int]*models.Label)
-		for _, label := range m.appState.Labels() {
+		for _, label := range m.AppState.Labels() {
 			labelMap[label.ID] = label
 		}
 
-		for _, labelID := range m.formState.FormLabelIDs {
+		for _, labelID := range m.FormState.FormLabelIDs {
 			if label, ok := labelMap[labelID]; ok {
 				parts = append(parts, components.RenderLabelChip(label, ""))
 			}
@@ -854,10 +854,10 @@ func (m Model) renderFormAssociationsZone(width, height int) string {
 
 	// Parent Tasks section
 	parts = append(parts, headerStyle.Render("Parent Tasks"))
-	if len(m.formState.FormParentRefs) == 0 {
+	if len(m.FormState.FormParentRefs) == 0 {
 		parts = append(parts, subtleStyle.Render("No Parent Tasks Found"))
 	} else {
-		for _, parent := range m.formState.FormParentRefs {
+		for _, parent := range m.FormState.FormParentRefs {
 			// Render relation label with color if available
 			var relationLabel string
 			if parent.RelationLabel != "" && parent.RelationColor != "" {
@@ -875,10 +875,10 @@ func (m Model) renderFormAssociationsZone(width, height int) string {
 
 	// Child Tasks section
 	parts = append(parts, headerStyle.Render("Child Tasks"))
-	if len(m.formState.FormChildRefs) == 0 {
+	if len(m.FormState.FormChildRefs) == 0 {
 		parts = append(parts, subtleStyle.Render("No Child Tasks Found"))
 	} else {
-		for _, child := range m.formState.FormChildRefs {
+		for _, child := range m.FormState.FormChildRefs {
 			// Render relation label with color if available
 			var relationLabel string
 			if child.RelationLabel != "" && child.RelationColor != "" {
