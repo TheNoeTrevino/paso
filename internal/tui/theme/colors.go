@@ -19,6 +19,8 @@ var (
 	WarningBg      string
 	ErrorFg        string
 	ErrorBg        string
+	StatusBarBg    string
+	StatusBarText  string
 )
 
 // Init initializes the theme colors from the given color scheme
@@ -38,4 +40,6 @@ func Init(colors config.ColorScheme) {
 	WarningBg = colors.WarningBg
 	ErrorFg = colors.ErrorFg
 	ErrorBg = colors.ErrorBg
+	StatusBarBg = colors.StatusBarBg
+	StatusBarText = colors.StatusBarText
 }

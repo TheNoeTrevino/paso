@@ -36,6 +36,10 @@ type ColorScheme struct {
 	WarningBg string `yaml:"warning_bg"`
 	ErrorFg   string `yaml:"error_fg"`
 	ErrorBg   string `yaml:"error_bg"`
+
+	// Status bar colors
+	StatusBarBg   string `yaml:"status_bar_bg"`
+	StatusBarText string `yaml:"status_bar_text"`
 }
 
 // GetPreset returns a preset color scheme by name
@@ -122,6 +126,12 @@ func (c *ColorScheme) MergeFrom(other ColorScheme) {
 	if other.ErrorBg != "" {
 		c.ErrorBg = other.ErrorBg
 	}
+	if other.StatusBarBg != "" {
+		c.StatusBarBg = other.StatusBarBg
+	}
+	if other.StatusBarText != "" {
+		c.StatusBarText = other.StatusBarText
+	}
 }
 
 // ApplyDefaults fills in missing color values using the preset as base
@@ -190,5 +200,11 @@ func (c *ColorScheme) ApplyDefaults() {
 	}
 	if c.ErrorBg == "" {
 		c.ErrorBg = preset.ErrorBg
+	}
+	if c.StatusBarBg == "" {
+		c.StatusBarBg = preset.StatusBarBg
+	}
+	if c.StatusBarText == "" {
+		c.StatusBarText = preset.StatusBarText
 	}
 }
