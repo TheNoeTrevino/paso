@@ -2,9 +2,9 @@ package render
 
 import (
 	"charm.land/lipgloss/v2"
-	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/modelops"
+	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -14,8 +14,8 @@ func (w *Wrapper) ViewLabelPicker() string {
 	var pickerContent string
 	if w.LabelPickerState.CreateMode {
 		// Show color picker
-		pickerContent = tui.RenderLabelColorPicker(
-			tui.GetDefaultLabelColors(),
+		pickerContent = renderers.RenderLabelColorPicker(
+			renderers.GetDefaultLabelColors(),
 			w.LabelPickerState.ColorIdx,
 			w.FormState.FormLabelName,
 			w.UiState.Width()*3/4-8,
@@ -23,7 +23,7 @@ func (w *Wrapper) ViewLabelPicker() string {
 	} else {
 		// Show label list (use filtered items from state)
 		ops := modelops.New(w.Model)
-		pickerContent = tui.RenderLabelPicker(
+		pickerContent = renderers.RenderLabelPicker(
 			ops.GetFilteredLabelPickerItems(),
 			w.LabelPickerState.Cursor,
 			w.LabelPickerState.Filter,
@@ -58,7 +58,7 @@ func (w *Wrapper) ViewLabelPicker() string {
 // Parent tasks are tasks that depend on (block on) the current task.
 // The picker displays all tasks in the project with checkboxes indicating current selections.
 func (w *Wrapper) ViewParentPicker() string {
-	pickerContent := tui.RenderTaskPicker(
+	pickerContent := renderers.RenderTaskPicker(
 		w.ParentPickerState.GetFilteredItems(),
 		w.ParentPickerState.Cursor,
 		w.ParentPickerState.Filter,
@@ -85,7 +85,7 @@ func (w *Wrapper) ViewParentPicker() string {
 // Child tasks are tasks that the current task depends on (must be completed first).
 // The picker displays all tasks in the project with checkboxes indicating current selections.
 func (w *Wrapper) ViewChildPicker() string {
-	pickerContent := tui.RenderTaskPicker(
+	pickerContent := renderers.RenderTaskPicker(
 		w.ChildPickerState.GetFilteredItems(),
 		w.ChildPickerState.Cursor,
 		w.ChildPickerState.Filter,
@@ -110,8 +110,8 @@ func (w *Wrapper) ViewChildPicker() string {
 
 // ViewPriorityPicker renders the priority picker popup
 func (w *Wrapper) ViewPriorityPicker() string {
-	pickerContent := tui.RenderPriorityPicker(
-		tui.GetPriorityOptions(),
+	pickerContent := renderers.RenderPriorityPicker(
+		renderers.GetPriorityOptions(),
 		w.PriorityPickerState.SelectedPriorityID(),
 		w.PriorityPickerState.Cursor(),
 		w.UiState.Width()*3/4-8,
@@ -132,8 +132,8 @@ func (w *Wrapper) ViewPriorityPicker() string {
 
 // ViewTypePicker renders the type picker popup
 func (w *Wrapper) ViewTypePicker() string {
-	pickerContent := tui.RenderTypePicker(
-		tui.GetTypeOptions(),
+	pickerContent := renderers.RenderTypePicker(
+		renderers.GetTypeOptions(),
 		w.TypePickerState.SelectedTypeID(),
 		w.TypePickerState.Cursor(),
 		w.UiState.Width()*3/4-8,
@@ -160,8 +160,8 @@ func (w *Wrapper) ViewRelationTypePicker() string {
 		pickerType = "child"
 	}
 
-	pickerContent := tui.RenderRelationTypePicker(
-		tui.GetRelationTypeOptions(),
+	pickerContent := renderers.RenderRelationTypePicker(
+		renderers.GetRelationTypeOptions(),
 		w.RelationTypePickerState.SelectedRelationTypeID(),
 		w.RelationTypePickerState.Cursor(),
 		w.UiState.Width()*3/4-8,

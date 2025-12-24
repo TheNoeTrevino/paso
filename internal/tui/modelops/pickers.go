@@ -3,7 +3,7 @@ package modelops
 import (
 	"log/slog"
 
-	"github.com/thenoetrevino/paso/internal/tui"
+	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -170,7 +170,7 @@ func (w *Wrapper) InitPriorityPickerForForm() bool {
 
 		// Find the priority ID from the priority description
 		// We need to match it against our priority options
-		priorities := tui.GetPriorityOptions()
+		priorities := renderers.GetPriorityOptions()
 		for _, p := range priorities {
 			if p.Description == taskDetail.PriorityDescription {
 				currentPriorityID = p.ID
@@ -209,7 +209,7 @@ func (w *Wrapper) InitTypePickerForForm() bool {
 
 		// Find the type ID from the type description
 		// We need to match it against our type options
-		types := tui.GetTypeOptions()
+		types := renderers.GetTypeOptions()
 		for _, t := range types {
 			if t.Description == taskDetail.TypeDescription {
 				currentTypeID = t.ID

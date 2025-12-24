@@ -15,6 +15,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -771,7 +772,7 @@ func (m *Model) initPriorityPickerForForm() bool {
 
 		// Find the priority ID from the priority description
 		// We need to match it against our priority options
-		priorities := GetPriorityOptions()
+		priorities := renderers.GetPriorityOptions()
 		for _, p := range priorities {
 			if p.Description == taskDetail.PriorityDescription {
 				currentPriorityID = p.ID
@@ -810,7 +811,7 @@ func (m *Model) initTypePickerForForm() bool {
 
 		// Find the type ID from the type description
 		// We need to match it against our type options
-		types := GetTypeOptions()
+		types := renderers.GetTypeOptions()
 		for _, t := range types {
 			if t.Description == taskDetail.TypeDescription {
 				currentTypeID = t.ID
@@ -830,12 +831,12 @@ func (m *Model) initTypePickerForForm() bool {
 
 // buildListViewRows creates a flat list of all tasks with their column names.
 // The list is sorted according to the current sort settings in listViewState.
-func (m Model) buildListViewRows() []ListViewRow {
-	var rows []ListViewRow
+func (m Model) buildListViewRows() []renderers.ListViewRow {
+	var rows []renderers.ListViewRow
 	for _, col := range m.AppState.Columns() {
 		tasks := m.AppState.Tasks()[col.ID]
 		for _, task := range tasks {
-			rows = append(rows, ListViewRow{
+			rows = append(rows, renderers.ListViewRow{
 				Task:       task,
 				ColumnName: col.Name,
 				ColumnID:   col.ID,
@@ -849,7 +850,7 @@ func (m Model) buildListViewRows() []ListViewRow {
 }
 
 // sortListViewRows sorts the rows based on current sort settings.
-func (m Model) sortListViewRows(rows []ListViewRow) {
+func (m Model) sortListViewRows(rows []renderers.ListViewRow) {
 	if m.ListViewState.SortField() == state.SortNone {
 		return
 	}

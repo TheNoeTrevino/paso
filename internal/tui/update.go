@@ -8,6 +8,7 @@ import (
 	"charm.land/huh/v2"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -794,7 +795,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // updateLabelColorPicker handles keyboard input when selecting a color for new label
 func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	colors := GetDefaultLabelColors()
+	colors := renderers.GetDefaultLabelColors()
 	maxIdx := len(colors) - 1
 
 	switch keyMsg.String() {
@@ -983,7 +984,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.RelationTypePickerState.SetReturnMode(state.ParentPickerMode)
 
 			// Set cursor to match selected relation type
-			relationTypes := GetRelationTypeOptions()
+			relationTypes := renderers.GetRelationTypeOptions()
 			for i, rt := range relationTypes {
 				if rt.ID == currentRelationTypeID {
 					m.RelationTypePickerState.SetCursor(i)
@@ -1138,7 +1139,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.RelationTypePickerState.SetReturnMode(state.ChildPickerMode)
 
 			// Set cursor to match selected relation type
-			relationTypes := GetRelationTypeOptions()
+			relationTypes := renderers.GetRelationTypeOptions()
 			for i, rt := range relationTypes {
 				if rt.ID == currentRelationTypeID {
 					m.RelationTypePickerState.SetCursor(i)
@@ -1201,7 +1202,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case "enter":
 		// Select the priority at cursor position
-		priorities := GetPriorityOptions()
+		priorities := renderers.GetPriorityOptions()
 		cursorIdx := m.PriorityPickerState.Cursor()
 
 		if cursorIdx >= 0 && cursorIdx < len(priorities) {
@@ -1273,7 +1274,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case "enter":
 		// Select the type at cursor position
-		types := GetTypeOptions()
+		types := renderers.GetTypeOptions()
 		cursorIdx := m.TypePickerState.Cursor()
 
 		if cursorIdx >= 0 && cursorIdx < len(types) {
@@ -1342,7 +1343,7 @@ func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case "enter":
 		// Select the relation type at cursor position
-		relationTypes := GetRelationTypeOptions()
+		relationTypes := renderers.GetRelationTypeOptions()
 		cursorIdx := m.RelationTypePickerState.Cursor()
 
 		if cursorIdx >= 0 && cursorIdx < len(relationTypes) {
