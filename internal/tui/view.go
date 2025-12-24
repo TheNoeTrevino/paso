@@ -14,6 +14,20 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
+// getInlineNotification returns the inline notification content for the tab bar
+// Returns empty string if no notifications
+func (m Model) getInlineNotification() string {
+	if !m.notificationState.HasAny() {
+		return ""
+	}
+	// Get the first (most recent) notification
+	allNotifications := m.notificationState.All()
+	if len(allNotifications) == 0 {
+		return ""
+	}
+	return notifications.RenderInlineFromState(allNotifications[0])
+}
+
 // View renders the current state of the application
 // This implements the "View" part of the Model-View-Update pattern
 func (m Model) View() tea.View {
@@ -62,11 +76,7 @@ func (m Model) View() tea.View {
 			layers = append(layers, modalLayer)
 		}
 
-		// Add notification layers (always on top)
-		if m.notificationState.HasAny() {
-			notificationLayers := m.notificationState.GetLayers(notifications.RenderFromState)
-			layers = append(layers, notificationLayers...)
-		}
+		// Notifications are now rendered inline with tabs, no need for floating layers
 
 		// Combine all layers into canvas
 		canvas := lipgloss.NewCanvas(layers...)
@@ -89,6 +99,10 @@ func (m Model) View() tea.View {
 			content = m.viewChildPicker()
 		case state.PriorityPickerMode:
 			content = m.viewPriorityPicker()
+		case state.TypePickerMode:
+			content = m.viewTypePicker()
+		case state.RelationTypePickerMode:
+			content = m.viewRelationTypePicker()
 		case state.StatusPickerMode:
 			content = m.viewStatusPicker()
 		default:
@@ -138,7 +152,8 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 
 	// Add help text for shortcuts
 	helpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-	helpText := helpStyle.Render("Ctrl+L: edit labels  Ctrl+P: edit parents  Ctrl+C: edit children  Ctrl+R: edit priority")
+	// TODO: get these from the keymaps config
+	helpText := helpStyle.Render("Ctrl+L: edit labels  Ctrl+P: edit parents  Ctrl+C: edit children  Ctrl+R: edit priority Ctrl+T edit type")
 
 	// Combine title + content + help
 	fullContent := lipgloss.JoinVertical(
@@ -151,7 +166,7 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 	)
 
 	// Wrap in form box style
-	formBox := FormBoxStyle.
+	formBox := components.FormBoxStyle.
 		Width(layerWidth).
 		Height(layerHeight).
 		Render(fullContent)
@@ -168,7 +183,7 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 	formView := m.formState.ProjectForm.View()
 
 	// Wrap form in a styled container with green border for creation
-	formBox := ProjectFormBoxStyle.
+	formBox := components.ProjectFormBoxStyle.
 		Width(m.uiState.Width() * 3 / 4).
 		Height(m.uiState.Height() / 3).
 		Render("New Project\n\n" + formView)
@@ -180,12 +195,12 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 func (m Model) renderColumnInputLayer() *lipgloss.Layer {
 	var inputBox string
 	if m.uiState.Mode() == state.AddColumnMode {
-		inputBox = CreateInputBoxStyle.
+		inputBox = components.CreateInputBoxStyle.
 			Width(50).
 			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
 	} else {
 		// EditColumnMode
-		inputBox = EditInputBoxStyle.
+		inputBox = components.EditInputBoxStyle.
 			Width(50).
 			Render(fmt.Sprintf("%s\n> %s_", m.inputState.Prompt, m.inputState.Buffer))
 	}
@@ -200,7 +215,7 @@ func (m Model) viewDeleteTaskConfirm() string {
 		return ""
 	}
 
-	confirmBox := DeleteConfirmBoxStyle.
+	confirmBox := components.DeleteConfirmBoxStyle.
 		Width(50).
 		Render(fmt.Sprintf("Delete '%s'?\n\n[y]es  [n]o", task.Title))
 
@@ -230,7 +245,7 @@ func (m Model) viewDeleteColumnConfirm() string {
 		content = fmt.Sprintf("Delete column '%s'?\n\n[y]es  [n]o", column.Name)
 	}
 
-	confirmBox := DeleteConfirmBoxStyle.
+	confirmBox := components.DeleteConfirmBoxStyle.
 		Width(50).
 		Render(content)
 
@@ -249,7 +264,7 @@ func (m Model) viewDiscardConfirm() string {
 	}
 
 	// Use context message for personalized prompt
-	confirmBox := DeleteConfirmBoxStyle.
+	confirmBox := components.DeleteConfirmBoxStyle.
 		Width(50).
 		Render(fmt.Sprintf("%s\n\n[y]es  [n]o", ctx.Message))
 
@@ -262,7 +277,7 @@ func (m Model) viewDiscardConfirm() string {
 
 // renderHelpLayer renders the keyboard shortcuts help screen as a layer
 func (m Model) renderHelpLayer() *lipgloss.Layer {
-	helpBox := HelpBoxStyle.
+	helpBox := components.HelpBoxStyle.
 		Width(50).
 		Render(m.generateHelpText())
 
@@ -358,12 +373,12 @@ func (m Model) viewLabelPicker() string {
 	// Wrap in styled container - use different style for create mode
 	var pickerBox string
 	if m.labelPickerState.CreateMode {
-		pickerBox = LabelPickerCreateBoxStyle.
+		pickerBox = components.LabelPickerCreateBoxStyle.
 			Width(m.uiState.Width() * 3 / 4).
 			Height(m.uiState.Height() * 3 / 4).
 			Render(pickerContent)
 	} else {
-		pickerBox = LabelPickerBoxStyle.
+		pickerBox = components.LabelPickerBoxStyle.
 			Width(m.uiState.Width() * 3 / 4).
 			Height(m.uiState.Height() * 3 / 4).
 			Render(pickerContent)
@@ -387,10 +402,11 @@ func (m Model) viewParentPicker() string {
 		"Parent Issues",
 		m.uiState.Width()*3/4-8,
 		m.uiState.Height()*3/4-4,
+		true, // isParentPicker
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
-	pickerBox := LabelPickerBoxStyle.
+	pickerBox := components.LabelPickerBoxStyle.
 		Width(m.uiState.Width() * 3 / 4).
 		Height(m.uiState.Height() * 3 / 4).
 		Render(pickerContent)
@@ -413,10 +429,11 @@ func (m Model) viewChildPicker() string {
 		"Child Issues",
 		m.uiState.Width()*3/4-8,
 		m.uiState.Height()*3/4-4,
+		false, // isParentPicker
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
-	pickerBox := LabelPickerBoxStyle.
+	pickerBox := components.LabelPickerBoxStyle.
 		Width(m.uiState.Width() * 3 / 4).
 		Height(m.uiState.Height() * 3 / 4).
 		Render(pickerContent)
@@ -438,7 +455,58 @@ func (m Model) viewPriorityPicker() string {
 	)
 
 	// Wrap in styled container (reuse LabelPickerBoxStyle)
-	pickerBox := LabelPickerBoxStyle.
+	pickerBox := components.LabelPickerBoxStyle.
+		Width(m.uiState.Width() * 3 / 4).
+		Height(m.uiState.Height() * 3 / 4).
+		Render(pickerContent)
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		pickerBox,
+	)
+}
+
+// viewTypePicker renders the type picker popup
+func (m Model) viewTypePicker() string {
+	pickerContent := RenderTypePicker(
+		GetTypeOptions(),
+		m.typePickerState.SelectedTypeID(),
+		m.typePickerState.Cursor(),
+		m.uiState.Width()*3/4-8,
+	)
+
+	// Wrap in styled container (reuse LabelPickerBoxStyle)
+	pickerBox := components.LabelPickerBoxStyle.
+		Width(m.uiState.Width() * 3 / 4).
+		Height(m.uiState.Height() * 3 / 4).
+		Render(pickerContent)
+
+	return lipgloss.Place(
+		m.uiState.Width(), m.uiState.Height(),
+		lipgloss.Center, lipgloss.Center,
+		pickerBox,
+	)
+}
+
+// viewRelationTypePicker renders the relation type picker popup
+func (m Model) viewRelationTypePicker() string {
+	// Determine picker type based on return mode
+	pickerType := "parent"
+	if m.relationTypePickerState.ReturnMode() == state.ChildPickerMode {
+		pickerType = "child"
+	}
+
+	pickerContent := RenderRelationTypePicker(
+		GetRelationTypeOptions(),
+		m.relationTypePickerState.SelectedRelationTypeID(),
+		m.relationTypePickerState.Cursor(),
+		m.uiState.Width()*3/4-8,
+		pickerType,
+	)
+
+	// Wrap in styled container (reuse LabelPickerBoxStyle)
+	pickerBox := components.LabelPickerBoxStyle.
 		Width(m.uiState.Width() * 3 / 4).
 		Height(m.uiState.Height() * 3 / 4).
 		Render(pickerContent)
@@ -461,7 +529,8 @@ func (m Model) viewKanbanBoard() string {
 	if len(m.appState.Columns()) == 0 {
 		emptyMsg := "No columns found. Please check database initialization."
 		footer := components.RenderStatusBar(components.StatusBarProps{
-			Width: m.uiState.Width(),
+			Width:            m.uiState.Width(),
+			ConnectionStatus: m.connectionState.Status(),
 		})
 		return lipgloss.JoinVertical(
 			lipgloss.Left,
@@ -503,7 +572,7 @@ func (m Model) viewKanbanBoard() string {
 		// Get scroll offset for this column
 		scrollOffset := m.uiState.TaskScrollOffset(col.ID)
 
-		columns = append(columns, RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight, scrollOffset))
+		columns = append(columns, components.RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight, scrollOffset))
 	}
 
 	scrollIndicators := GetScrollIndicators(
@@ -524,12 +593,15 @@ func (m Model) viewKanbanBoard() string {
 	if len(projectTabs) == 0 {
 		projectTabs = []string{"No Projects"}
 	}
-	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width())
+	// Get inline notification for tab bar
+	inlineNotification := m.getInlineNotification()
+	tabBar := components.RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width(), inlineNotification)
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
-		Width:       m.uiState.Width(),
-		SearchMode:  m.uiState.Mode() == state.SearchMode || m.searchState.IsActive,
-		SearchQuery: m.searchState.Query,
+		Width:            m.uiState.Width(),
+		SearchMode:       m.uiState.Mode() == state.SearchMode || m.searchState.IsActive,
+		SearchQuery:      m.searchState.Query,
+		ConnectionStatus: m.connectionState.Status(),
 	})
 
 	// Build content (everything except footer)
@@ -558,9 +630,7 @@ func (m Model) viewKanbanBoard() string {
 		lipgloss.NewLayer(baseView),
 	}
 
-	// Add notification layers
-	notificationLayers := m.notificationState.GetLayers(notifications.RenderFromState)
-	layers = append(layers, notificationLayers...)
+	// Notifications are now rendered inline with tabs, no need for floating layers
 
 	// Combine all layers into canvas
 	canvas := lipgloss.NewCanvas(layers...)
@@ -583,7 +653,9 @@ func (m Model) viewListView() string {
 	if len(projectTabs) == 0 {
 		projectTabs = []string{"No Projects"}
 	}
-	tabBar := RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width())
+	// Get inline notification for tab bar
+	inlineNotification := m.getInlineNotification()
+	tabBar := components.RenderTabs(projectTabs, m.appState.SelectedProject(), m.uiState.Width(), inlineNotification)
 
 	// Render list content with sort indicator
 	listContent := RenderListView(
@@ -598,9 +670,10 @@ func (m Model) viewListView() string {
 
 	// Render footer
 	footer := components.RenderStatusBar(components.StatusBarProps{
-		Width:       m.uiState.Width(),
-		SearchMode:  m.uiState.Mode() == state.SearchMode || m.searchState.IsActive,
-		SearchQuery: m.searchState.Query,
+		Width:            m.uiState.Width(),
+		SearchMode:       m.uiState.Mode() == state.SearchMode || m.searchState.IsActive,
+		SearchQuery:      m.searchState.Query,
+		ConnectionStatus: m.connectionState.Status(),
 	})
 
 	// Build content (everything except footer)
@@ -618,18 +691,8 @@ func (m Model) viewListView() string {
 	// Build base view with constrained content and footer always visible
 	baseView := constrainedContent + "\n" + footer
 
-	// Add notifications if any
-	if !m.notificationState.HasAny() {
-		return baseView
-	}
-
-	layers := []*lipgloss.Layer{
-		lipgloss.NewLayer(baseView),
-	}
-	notificationLayers := m.notificationState.GetLayers(notifications.RenderFromState)
-	layers = append(layers, notificationLayers...)
-	canvas := lipgloss.NewCanvas(layers...)
-	return canvas.Render()
+	// Notifications are now rendered inline with tabs
+	return baseView
 }
 
 // viewStatusPicker renders the status/column selection picker.
@@ -649,7 +712,7 @@ func (m Model) viewStatusPicker() string {
 	content := "Select Status:\n\n" + strings.Join(items, "\n") + "\n\nEnter: confirm  Esc: cancel"
 
 	// Wrap in styled container
-	pickerBox := LabelPickerBoxStyle.
+	pickerBox := components.LabelPickerBoxStyle.
 		Width(40).
 		Height(len(columns) + 6).
 		Render(content)
@@ -795,7 +858,16 @@ func (m Model) renderFormAssociationsZone(width, height int) string {
 		parts = append(parts, subtleStyle.Render("No Parent Tasks Found"))
 	} else {
 		for _, parent := range m.formState.FormParentRefs {
-			taskLine := fmt.Sprintf("#%d - %s", parent.TicketNumber, parent.Title)
+			// Render relation label with color if available
+			var relationLabel string
+			if parent.RelationLabel != "" && parent.RelationColor != "" {
+				labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(parent.RelationColor))
+				relationLabel = labelStyle.Render(parent.RelationLabel)
+			} else {
+				// Fallback to default if no relation type
+				relationLabel = subtleStyle.Render("Parent")
+			}
+			taskLine := fmt.Sprintf("#%d - %s - %s", parent.TicketNumber, relationLabel, parent.Title)
 			parts = append(parts, taskStyle.Render(taskLine))
 		}
 	}
@@ -807,7 +879,16 @@ func (m Model) renderFormAssociationsZone(width, height int) string {
 		parts = append(parts, subtleStyle.Render("No Child Tasks Found"))
 	} else {
 		for _, child := range m.formState.FormChildRefs {
-			taskLine := fmt.Sprintf("#%d - %s", child.TicketNumber, child.Title)
+			// Render relation label with color if available
+			var relationLabel string
+			if child.RelationLabel != "" && child.RelationColor != "" {
+				labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(child.RelationColor))
+				relationLabel = labelStyle.Render(child.RelationLabel)
+			} else {
+				// Fallback to default if no relation type
+				relationLabel = subtleStyle.Render("Child")
+			}
+			taskLine := fmt.Sprintf("#%d - %s - %s", child.TicketNumber, relationLabel, child.Title)
 			parts = append(parts, taskStyle.Render(taskLine))
 		}
 	}

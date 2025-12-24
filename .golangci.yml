@@ -11,11 +11,12 @@ linters:
     - noctx
     - nolintlint
     - rowserrcheck
-    - sqlclosecheck      # Important: paso uses SQLite
     - staticcheck
     - tparallel
     - unused
     - whitespace
+  disable:
+    - sqlclosecheck      # Disabled: using closeRows helper that properly handles closure
 
 issues:
   max-issues-per-linter: 0

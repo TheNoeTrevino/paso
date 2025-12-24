@@ -1,14 +1,29 @@
 package tui
 
 import (
-	"log"
+	"log/slog"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
+	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
+
+// RefreshMsg is sent when data changes from other instances via the daemon
+type RefreshMsg struct {
+	Event events.Event
+}
+
+// ConnectionEstablishedMsg is sent when connection to daemon is established
+type ConnectionEstablishedMsg struct{}
+
+// ConnectionLostMsg is sent when connection to daemon is lost
+type ConnectionLostMsg struct{}
+
+// ConnectionReconnectingMsg is sent when attempting to reconnect to daemon
+type ConnectionReconnectingMsg struct{}
 
 // Update handles all messages and updates the model accordingly
 // This implements the "Update" part of the Model-View-Update pattern
@@ -22,6 +37,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Continue normal processing
 	}
 
+	// Start listening for events on first update if not already started
+	var cmd tea.Cmd
+	if m.eventChan != nil && !m.subscriptionStarted {
+		m.subscriptionStarted = true
+		cmd = m.subscribeToEvents()
+	}
+
 	// Handle form modes first - forms need ALL messages
 	if m.uiState.Mode() == state.TicketFormMode {
 		return m.updateTicketForm(msg)
@@ -31,6 +53,56 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case RefreshMsg:
+		// log.Printf("Received refresh event for project %d", msg.Event.ProjectID)
+
+		// Only refresh if event is for current project
+		currentProject := m.appState.GetCurrentProject()
+		if currentProject != nil && msg.Event.ProjectID == currentProject.ID {
+			m.reloadCurrentProject()
+			// m.notificationState.Add(state.LevelInfo, "Synced with other instances")
+		}
+
+		// Continue listening for more events
+		cmd = m.subscribeToEvents()
+		return m, cmd
+
+	case events.NotificationMsg:
+		// Handle user-facing notification from events client
+		level := state.LevelInfo
+		switch msg.Level {
+		case "error":
+			level = state.LevelError
+		case "warning":
+			level = state.LevelWarning
+		}
+		m.notificationState.Add(level, msg.Message)
+
+		// Update connection status based on notification message
+		if strings.Contains(msg.Message, "Connection lost") || strings.Contains(msg.Message, "reconnecting") {
+			m.connectionState.SetStatus(state.Reconnecting)
+		} else if strings.Contains(msg.Message, "Reconnected") {
+			m.connectionState.SetStatus(state.Connected)
+		} else if strings.Contains(msg.Message, "Failed to reconnect") {
+			m.connectionState.SetStatus(state.Disconnected)
+		}
+
+		// Continue listening for more notifications
+		cmd = m.listenForNotifications()
+		return m, cmd
+
+	case ConnectionEstablishedMsg:
+		m.connectionState.SetStatus(state.Connected)
+		return m, nil
+
+	case ConnectionLostMsg:
+		m.connectionState.SetStatus(state.Disconnected)
+		return m, nil
+
+	case ConnectionReconnectingMsg:
+		m.connectionState.SetStatus(state.Reconnecting)
+		return m, nil
+
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
 
@@ -38,7 +110,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleWindowResize(msg)
 	}
 
-	return m, nil
+	return m, cmd
 }
 
 // handleKeyMsg dispatches key messages to the appropriate mode handler.
@@ -64,6 +136,10 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateChildPicker(msg)
 	case state.PriorityPickerMode:
 		return m.updatePriorityPicker(msg)
+	case state.TypePickerMode:
+		return m.updateTypePicker(msg)
+	case state.RelationTypePickerMode:
+		return m.updateRelationTypePicker(msg)
 	case state.SearchMode:
 		return m.handleSearchMode(msg)
 	case state.StatusPickerMode:
@@ -126,7 +202,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 		len(m.getTasksForColumn(currentCol.ID)),
 	)
 	if err != nil {
-		log.Printf("Error creating task: %v", err)
+		slog.Error("Error creating task", "error", err)
 		m.notificationState.Add(state.LevelError, "Error creating task")
 		return
 	}
@@ -135,36 +211,51 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 	if len(values.labelIDs) > 0 {
 		err = m.repo.SetTaskLabels(ctx, task.ID, values.labelIDs)
 		if err != nil {
-			log.Printf("Error setting labels: %v", err)
+			slog.Error("Error setting labels", "error", err)
 		}
 	}
 
-	// 3. Apply parent relationships
+	// 3. Apply parent relationships with relation types
 	// CRITICAL: Parent picker means selected task BLOCKS ON current task
-	// So: AddSubtask(parentID, currentTaskID)
-	for _, parentID := range m.formState.FormParentIDs {
-		err = m.repo.AddSubtask(ctx, parentID, task.ID)
-		if err != nil {
-			log.Printf("Error adding parent relationship: %v", err)
+	// So: AddSubtaskWithRelationType(parentID, currentTaskID, relationTypeID)
+	for _, item := range m.parentPickerState.Items {
+		if item.Selected {
+			relationTypeID := item.RelationTypeID
+			if relationTypeID == 0 {
+				relationTypeID = 1 // Default to Parent/Child
+			}
+			err = m.repo.AddSubtaskWithRelationType(ctx, item.TaskRef.ID, task.ID, relationTypeID)
+			if err != nil {
+				slog.Error("Error adding parent relationship", "error", err)
+			}
 		}
 	}
 
-	// 4. Apply child relationships
+	// 4. Apply child relationships with relation types
 	// CRITICAL: Child picker means current task BLOCKS ON selected task
-	// So: AddSubtask(currentTaskID, childID)
-	for _, childID := range m.formState.FormChildIDs {
-		err = m.repo.AddSubtask(ctx, task.ID, childID)
-		if err != nil {
-			log.Printf("Error adding child relationship: %v", err)
+	// So: AddSubtaskWithRelationType(currentTaskID, childID, relationTypeID)
+	for _, item := range m.childPickerState.Items {
+		if item.Selected {
+			relationTypeID := item.RelationTypeID
+			if relationTypeID == 0 {
+				relationTypeID = 1 // Default to Parent/Child
+			}
+			err = m.repo.AddSubtaskWithRelationType(ctx, task.ID, item.TaskRef.ID, relationTypeID)
+			if err != nil {
+				slog.Error("Error adding child relationship", "error", err)
+			}
 		}
 	}
 
-	// 5. Reload task summaries with labels
-	summaries, err := m.repo.GetTaskSummariesByColumn(ctx, currentCol.ID)
-	if err != nil {
-		log.Printf("Error reloading tasks: %v", err)
-	} else {
-		m.appState.Tasks()[currentCol.ID] = summaries
+	// 5. Reload all tasks for the project to keep state consistent
+	project := m.getCurrentProject()
+	if project != nil {
+		tasksByColumn, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
+		if err != nil {
+			slog.Error("Error reloading tasks", "error", err)
+		} else {
+			m.appState.SetTasks(tasksByColumn)
+		}
 	}
 }
 
@@ -178,7 +269,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	// 1. Update task basic fields
 	err := m.repo.UpdateTask(ctx, taskID, values.title, values.description)
 	if err != nil {
-		log.Printf("Error updating task: %v", err)
+		slog.Error("Error updating task", "error", err)
 		m.notificationState.Add(state.LevelError, "Error updating task")
 		return
 	}
@@ -186,96 +277,111 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormVa
 	// 2. Update labels
 	err = m.repo.SetTaskLabels(ctx, taskID, values.labelIDs)
 	if err != nil {
-		log.Printf("Error setting labels: %v", err)
+		slog.Error("Error setting labels", "error", err)
 	}
 
-	// 3. Sync parent relationships
+	// 3. Sync parent relationships with relation types
 	// Get current parents from database
 	currentParents, err := m.repo.GetParentTasks(ctx, taskID)
 	if err != nil {
-		log.Printf("Error getting current parents: %v", err)
+		slog.Error("Error getting current parents", "error", err)
 		currentParents = []*models.TaskReference{}
 	}
 
-	// Build sets for comparison
-	currentParentIDs := make(map[int]bool)
+	// Build maps for comparison (ID -> RelationTypeID)
+	currentParentMap := make(map[int]int)
 	for _, p := range currentParents {
-		currentParentIDs[p.ID] = true
+		currentParentMap[p.ID] = p.RelationTypeID
 	}
 
-	newParentIDs := make(map[int]bool)
-	for _, id := range m.formState.FormParentIDs {
-		newParentIDs[id] = true
+	newParentMap := make(map[int]int)
+	for _, item := range m.parentPickerState.Items {
+		if item.Selected {
+			relationTypeID := item.RelationTypeID
+			if relationTypeID == 0 {
+				relationTypeID = 1 // Default to Parent/Child
+			}
+			newParentMap[item.TaskRef.ID] = relationTypeID
+		}
 	}
 
 	// Remove parents that are no longer selected
-	for parentID := range currentParentIDs {
-		if !newParentIDs[parentID] {
+	for parentID := range currentParentMap {
+		if _, exists := newParentMap[parentID]; !exists {
 			err = m.repo.RemoveSubtask(ctx, parentID, taskID)
 			if err != nil {
-				log.Printf("Error removing parent %d: %v", parentID, err)
+				slog.Error("Error removing parent", "parentID", parentID, "error", err)
 			}
 		}
 	}
 
-	// Add new parents
-	for parentID := range newParentIDs {
-		if !currentParentIDs[parentID] {
-			err = m.repo.AddSubtask(ctx, parentID, taskID)
+	// Add or update parents (AddSubtaskWithRelationType uses INSERT OR REPLACE)
+	for parentID, relationTypeID := range newParentMap {
+		currentRelationType, exists := currentParentMap[parentID]
+		if !exists || currentRelationType != relationTypeID {
+			// Add new parent or update existing parent's relation type
+			err = m.repo.AddSubtaskWithRelationType(ctx, parentID, taskID, relationTypeID)
 			if err != nil {
-				log.Printf("Error adding parent %d: %v", parentID, err)
+				slog.Error("Error adding/updating parent", "parentID", parentID, "error", err)
 			}
 		}
 	}
 
-	// 4. Sync child relationships (same pattern)
+	// 4. Sync child relationships with relation types
 	currentChildren, err := m.repo.GetChildTasks(ctx, taskID)
 	if err != nil {
-		log.Printf("Error getting current children: %v", err)
+		slog.Error("Error getting current children", "error", err)
 		currentChildren = []*models.TaskReference{}
 	}
 
-	currentChildIDs := make(map[int]bool)
+	// Build maps for comparison (ID -> RelationTypeID)
+	currentChildMap := make(map[int]int)
 	for _, c := range currentChildren {
-		currentChildIDs[c.ID] = true
+		currentChildMap[c.ID] = c.RelationTypeID
 	}
 
-	newChildIDs := make(map[int]bool)
-	for _, id := range m.formState.FormChildIDs {
-		newChildIDs[id] = true
+	newChildMap := make(map[int]int)
+	for _, item := range m.childPickerState.Items {
+		if item.Selected {
+			relationTypeID := item.RelationTypeID
+			if relationTypeID == 0 {
+				relationTypeID = 1 // Default to Parent/Child
+			}
+			newChildMap[item.TaskRef.ID] = relationTypeID
+		}
 	}
 
 	// Remove children that are no longer selected
-	for childID := range currentChildIDs {
-		if !newChildIDs[childID] {
+	for childID := range currentChildMap {
+		if _, exists := newChildMap[childID]; !exists {
 			err = m.repo.RemoveSubtask(ctx, taskID, childID)
 			if err != nil {
-				log.Printf("Error removing child %d: %v", childID, err)
+				slog.Error("Error removing child", "childID", childID, "error", err)
 			}
 		}
 	}
 
-	// Add new children
-	for childID := range newChildIDs {
-		if !currentChildIDs[childID] {
-			err = m.repo.AddSubtask(ctx, taskID, childID)
+	// Add or update children (AddSubtaskWithRelationType uses INSERT OR REPLACE)
+	for childID, relationTypeID := range newChildMap {
+		currentRelationType, exists := currentChildMap[childID]
+		if !exists || currentRelationType != relationTypeID {
+			// Add new child or update existing child's relation type
+			err = m.repo.AddSubtaskWithRelationType(ctx, taskID, childID, relationTypeID)
 			if err != nil {
-				log.Printf("Error adding child %d: %v", childID, err)
+				slog.Error("Error adding/updating child", "childID", childID, "error", err)
 			}
 		}
 	}
 
-	// 5. Reload task summaries for the column
-	currentCol := m.getCurrentColumn()
-	if currentCol == nil {
-		return
-	}
-
-	summaries, err := m.repo.GetTaskSummariesByColumn(ctx, currentCol.ID)
-	if err != nil {
-		log.Printf("Error reloading tasks: %v", err)
-	} else {
-		m.appState.Tasks()[currentCol.ID] = summaries
+	// 5. Reload all tasks for the project to keep state consistent
+	project := m.getCurrentProject()
+	if project != nil {
+		tasksByColumn, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
+		if err != nil {
+			slog.Error("Error reloading tasks", "error", err)
+		} else {
+			m.appState.SetTasks(tasksByColumn)
+		}
 	}
 }
 
@@ -391,6 +497,13 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		case "ctrl+t":
+			// Open type picker
+			if m.initTypePickerForForm() {
+				m.uiState.SetMode(state.TypePickerMode)
+			}
+			return m, nil
+
 		case m.config.KeyMappings.SaveForm:
 			// Quick save via C-s
 			return m.handleFormSave(formConfig{
@@ -495,7 +608,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 						defer cancel()
 						project, err := m.repo.CreateProject(ctx, name, description)
 						if err != nil {
-							log.Printf("Error creating project: %v", err)
+							slog.Error("Error creating project", "error", err)
 							m.notificationState.Add(state.LevelError, "Error creating project")
 						} else {
 							m.reloadProjects()
@@ -538,7 +651,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				defer cancel()
 				project, err := m.repo.CreateProject(ctx, name, description)
 				if err != nil {
-					log.Printf("Error creating project: %v", err)
+					slog.Error("Error creating project", "error", err)
 					m.notificationState.Add(state.LevelError, "Error creating project")
 				} else {
 					// Reload projects list
@@ -622,7 +735,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Remove label from task
 							err := m.repo.RemoveLabelFromTask(ctx, m.labelPickerState.TaskID, item.Label.ID)
 							if err != nil {
-								log.Printf("Error removing label: %v", err)
+								slog.Error("Error removing label", "error", err)
 								m.notificationState.Add(state.LevelError, "Failed to remove label from task")
 							} else {
 								m.labelPickerState.Items[i].Selected = false
@@ -631,7 +744,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Add label to task
 							err := m.repo.AddLabelToTask(ctx, m.labelPickerState.TaskID, item.Label.ID)
 							if err != nil {
-								log.Printf("Error adding label: %v", err)
+								slog.Error("Error adding label", "error", err)
 								m.notificationState.Add(state.LevelError, "Failed to add label to task")
 							} else {
 								m.labelPickerState.Items[i].Selected = true
@@ -715,7 +828,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		defer cancel()
 		label, err := m.repo.CreateLabel(ctx, project.ID, m.formState.FormLabelName, color)
 		if err != nil {
-			log.Printf("Error creating label: %v", err)
+			slog.Error("Error creating label", "error", err)
 			m.notificationState.Add(state.LevelError, "Failed to create label")
 			m.labelPickerState.CreateMode = false
 			return m, nil
@@ -733,7 +846,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Assign to current task
 		err = m.repo.AddLabelToTask(ctx, m.labelPickerState.TaskID, label.ID)
 		if err != nil {
-			log.Printf("Error assigning new label to task: %v", err)
+			slog.Error("Error assigning new label to task", "error", err)
 			m.notificationState.Add(state.LevelError, "Failed to assign label to task")
 		}
 
@@ -812,6 +925,10 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Form mode: just toggle the selection state
 						// Actual database changes happen on form submission
 						m.parentPickerState.Items[i].Selected = !m.parentPickerState.Items[i].Selected
+						// Set default relation type when selecting (if not already set)
+						if m.parentPickerState.Items[i].Selected && m.parentPickerState.Items[i].RelationTypeID == 0 {
+							m.parentPickerState.Items[i].RelationTypeID = 1 // Default to Parent/Child
+						}
 					} else {
 						// View mode: apply changes to database immediately (existing behavior)
 						ctx, cancel := m.uiContext()
@@ -822,7 +939,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// selectedTask (parent) blocks on currentTask (child)
 							err := m.repo.RemoveSubtask(ctx, item.TaskRef.ID, m.parentPickerState.TaskID)
 							if err != nil {
-								log.Printf("Error removing parent: %v", err)
+								slog.Error("Error removing parent", "error", err)
 								m.notificationState.Add(state.LevelError, "Failed to remove parent from task")
 							} else {
 								m.parentPickerState.Items[i].Selected = false
@@ -834,7 +951,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Meaning: selectedTask depends on completion of currentTask
 							err := m.repo.AddSubtask(ctx, item.TaskRef.ID, m.parentPickerState.TaskID)
 							if err != nil {
-								log.Printf("Error adding parent: %v", err)
+								slog.Error("Error adding parent", "error", err)
 								m.notificationState.Add(state.LevelError, "Failed to add parent to task")
 							} else {
 								m.parentPickerState.Items[i].Selected = true
@@ -847,6 +964,34 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
+		}
+		return m, nil
+
+	case "tab":
+		// Open relation type picker for the currently highlighted item
+		if m.parentPickerState.Cursor < len(filteredItems) {
+			item := filteredItems[m.parentPickerState.Cursor]
+
+			// Initialize relation type picker
+			currentRelationTypeID := 1 // Default to Parent/Child
+			if item.RelationTypeID > 0 {
+				currentRelationTypeID = item.RelationTypeID
+			}
+
+			m.relationTypePickerState.SetSelectedRelationTypeID(currentRelationTypeID)
+			m.relationTypePickerState.SetCurrentTaskPickerIndex(m.parentPickerState.Cursor)
+			m.relationTypePickerState.SetReturnMode(state.ParentPickerMode)
+
+			// Set cursor to match selected relation type
+			relationTypes := GetRelationTypeOptions()
+			for i, rt := range relationTypes {
+				if rt.ID == currentRelationTypeID {
+					m.relationTypePickerState.SetCursor(i)
+					break
+				}
+			}
+
+			m.uiState.SetMode(state.RelationTypePickerMode)
 		}
 		return m, nil
 
@@ -935,6 +1080,10 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Form mode: just toggle the selection state
 						// Actual database changes happen on form submission
 						m.childPickerState.Items[i].Selected = !m.childPickerState.Items[i].Selected
+						// Set default relation type when selecting (if not already set)
+						if m.childPickerState.Items[i].Selected && m.childPickerState.Items[i].RelationTypeID == 0 {
+							m.childPickerState.Items[i].RelationTypeID = 1 // Default to Parent/Child
+						}
 					} else {
 						// View mode: apply changes to database immediately (existing behavior)
 						ctx, cancel := m.uiContext()
@@ -945,7 +1094,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// currentTask (parent) blocks on selectedTask (child)
 							err := m.repo.RemoveSubtask(ctx, m.childPickerState.TaskID, item.TaskRef.ID)
 							if err != nil {
-								log.Printf("Error removing child: %v", err)
+								slog.Error("Error removing child", "error", err)
 								m.notificationState.Add(state.LevelError, "Failed to remove child from task")
 							} else {
 								m.childPickerState.Items[i].Selected = false
@@ -957,7 +1106,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Meaning: currentTask depends on completion of selectedTask
 							err := m.repo.AddSubtask(ctx, m.childPickerState.TaskID, item.TaskRef.ID)
 							if err != nil {
-								log.Printf("Error adding child: %v", err)
+								slog.Error("Error adding child", "error", err)
 								m.notificationState.Add(state.LevelError, "Failed to add child to task")
 							} else {
 								m.childPickerState.Items[i].Selected = true
@@ -970,6 +1119,34 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
+		}
+		return m, nil
+
+	case "tab":
+		// Open relation type picker for the currently highlighted item
+		if m.childPickerState.Cursor < len(filteredItems) {
+			item := filteredItems[m.childPickerState.Cursor]
+
+			// Initialize relation type picker
+			currentRelationTypeID := 1 // Default to Parent/Child
+			if item.RelationTypeID > 0 {
+				currentRelationTypeID = item.RelationTypeID
+			}
+
+			m.relationTypePickerState.SetSelectedRelationTypeID(currentRelationTypeID)
+			m.relationTypePickerState.SetCurrentTaskPickerIndex(m.childPickerState.Cursor)
+			m.relationTypePickerState.SetReturnMode(state.ChildPickerMode)
+
+			// Set cursor to match selected relation type
+			relationTypes := GetRelationTypeOptions()
+			for i, rt := range relationTypes {
+				if rt.ID == currentRelationTypeID {
+					m.relationTypePickerState.SetCursor(i)
+					break
+				}
+			}
+
+			m.uiState.SetMode(state.RelationTypePickerMode)
 		}
 		return m, nil
 
@@ -1039,7 +1216,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				err := m.repo.UpdateTaskPriority(ctx, m.formState.EditingTaskID, selectedPriority.ID)
 
 				if err != nil {
-					log.Printf("Error updating task priority: %v", err)
+					slog.Error("Error updating task priority", "error", err)
 					m.notificationState.Add(state.LevelError, "Failed to update priority")
 				} else {
 					// Update form state with new priority
@@ -1063,6 +1240,152 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Return to ticket form mode
 		m.uiState.SetMode(m.priorityPickerState.ReturnMode())
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// updateTypePicker handles keyboard input in the type picker mode.
+// This function processes navigation (up/down) and selection.
+func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	switch keyMsg.String() {
+	case "esc":
+		// Return to ticket form mode without changing type
+		m.uiState.SetMode(m.typePickerState.ReturnMode())
+		m.typePickerState.Reset()
+		return m, nil
+
+	case "up", "k":
+		// Move cursor up
+		m.typePickerState.MoveUp()
+		return m, nil
+
+	case "down", "j":
+		// Move cursor down
+		m.typePickerState.MoveDown()
+		return m, nil
+
+	case "enter":
+		// Select the type at cursor position
+		types := GetTypeOptions()
+		cursorIdx := m.typePickerState.Cursor()
+
+		if cursorIdx >= 0 && cursorIdx < len(types) {
+			selectedType := types[cursorIdx]
+
+			// If we're editing a task, update it in the database
+			if m.formState.EditingTaskID != 0 {
+				ctx, cancel := m.dbContext()
+				defer cancel()
+
+				// Update the task's type_id in the database
+				err := m.repo.UpdateTaskType(ctx, m.formState.EditingTaskID, selectedType.ID)
+
+				if err != nil {
+					slog.Error("Error updating task type", "error", err)
+					m.notificationState.Add(state.LevelError, "Failed to update type")
+				} else {
+					// Update form state with new type
+					m.formState.FormTypeDescription = selectedType.Description
+					m.notificationState.Add(state.LevelInfo, "Type updated to "+selectedType.Description)
+
+					// Reload tasks to reflect the change
+					m.reloadCurrentColumnTasks()
+				}
+			} else {
+				// For new tasks, just update the form state
+				m.formState.FormTypeDescription = selectedType.Description
+				m.notificationState.Add(state.LevelInfo, "Type set to "+selectedType.Description)
+			}
+
+			// Update the selected type ID in picker state
+			m.typePickerState.SetSelectedTypeID(selectedType.ID)
+		}
+
+		// Return to ticket form mode
+		m.uiState.SetMode(m.typePickerState.ReturnMode())
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// updateRelationTypePicker handles keyboard input in the relation type picker mode
+func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	switch keyMsg.String() {
+	case "esc":
+		// Return to previous picker (parent or child) without changing relation type
+		m.uiState.SetMode(m.relationTypePickerState.ReturnMode())
+		m.relationTypePickerState.Reset()
+		return m, nil
+
+	case "up", "k":
+		// Move cursor up
+		m.relationTypePickerState.MoveUp()
+		return m, nil
+
+	case "down", "j":
+		// Move cursor down
+		m.relationTypePickerState.MoveDown()
+		return m, nil
+
+	case "enter":
+		// Select the relation type at cursor position
+		relationTypes := GetRelationTypeOptions()
+		cursorIdx := m.relationTypePickerState.Cursor()
+
+		if cursorIdx >= 0 && cursorIdx < len(relationTypes) {
+			selectedRelationType := relationTypes[cursorIdx]
+
+			// Update the TaskPickerItem's RelationTypeID
+			itemIdx := m.relationTypePickerState.CurrentTaskPickerIndex()
+			returnMode := m.relationTypePickerState.ReturnMode()
+
+			if returnMode == state.ParentPickerMode {
+				// Update parent picker item
+				filteredItems := m.parentPickerState.GetFilteredItems()
+				if itemIdx >= 0 && itemIdx < len(filteredItems) {
+					// Find the item in the original items list and update it
+					taskID := filteredItems[itemIdx].TaskRef.ID
+					for i := range m.parentPickerState.Items {
+						if m.parentPickerState.Items[i].TaskRef.ID == taskID {
+							m.parentPickerState.Items[i].RelationTypeID = selectedRelationType.ID
+							break
+						}
+					}
+				}
+			} else if returnMode == state.ChildPickerMode {
+				// Update child picker item
+				filteredItems := m.childPickerState.GetFilteredItems()
+				if itemIdx >= 0 && itemIdx < len(filteredItems) {
+					// Find the item in the original items list and update it
+					taskID := filteredItems[itemIdx].TaskRef.ID
+					for i := range m.childPickerState.Items {
+						if m.childPickerState.Items[i].TaskRef.ID == taskID {
+							m.childPickerState.Items[i].RelationTypeID = selectedRelationType.ID
+							break
+						}
+					}
+				}
+			}
+
+			// Update the selected relation type ID in picker state
+			m.relationTypePickerState.SetSelectedRelationTypeID(selectedRelationType.ID)
+		}
+
+		// Return to previous picker mode
+		m.uiState.SetMode(m.relationTypePickerState.ReturnMode())
 		return m, nil
 	}
 
@@ -1117,19 +1440,19 @@ func (m *Model) syncLabelPickerToFormState() {
 	m.formState.FormLabelIDs = labelIDs
 }
 
-// reloadCurrentColumnTasks reloads task summaries for the current column
+// reloadCurrentColumnTasks reloads all task summaries for the project to keep state consistent
 func (m *Model) reloadCurrentColumnTasks() {
-	currentCol := m.getCurrentColumn()
-	if currentCol == nil {
+	project := m.getCurrentProject()
+	if project == nil {
 		return
 	}
 
 	ctx, cancel := m.dbContext()
 	defer cancel()
-	summaries, err := m.repo.GetTaskSummariesByColumn(ctx, currentCol.ID)
+	tasksByColumn, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
-		log.Printf("Error reloading column tasks: %v", err)
+		slog.Error("Error reloading tasks", "error", err)
 		return
 	}
-	m.appState.Tasks()[currentCol.ID] = summaries
+	m.appState.SetTasks(tasksByColumn)
 }

@@ -40,12 +40,36 @@ func InitDB(ctx context.Context) (*sql.DB, error) {
 		return nil, err
 	}
 
+	// Enable WAL mode for better concurrency
+	_, err = db.ExecContext(ctx, "PRAGMA journal_mode = WAL")
+	if err != nil {
+		log.Printf("Failed to enable WAL mode: %v", err)
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("error closing db: %v", closeErr)
+		}
+		return nil, err
+	}
+
+	// Set busy timeout to 5 seconds (SQLite will retry for this duration)
+	_, err = db.ExecContext(ctx, "PRAGMA busy_timeout = 5000")
+	if err != nil {
+		log.Printf("Failed to set busy timeout: %v", err)
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("error closing db: %v", closeErr)
+		}
+		return nil, err
+	}
+
 	if err := db.PingContext(ctx); err != nil {
 		if closeErr := db.Close(); closeErr != nil {
 			log.Printf("error closing db: %v", closeErr)
 		}
 		return nil, fmt.Errorf("database ping failed: %w", err)
 	}
+
+	// Configure connection pool to reduce contention
+	db.SetMaxOpenConns(1) // SQLite benefits from a single writer connection
+	db.SetMaxIdleConns(1)
 
 	if err := runMigrations(ctx, db); err != nil {
 		if closeErr := db.Close(); closeErr != nil {

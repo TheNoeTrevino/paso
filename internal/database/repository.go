@@ -2,6 +2,8 @@ package database
 
 import (
 	"database/sql"
+
+	"github.com/thenoetrevino/paso/internal/events"
 )
 
 // Repository provides a unified interface to all data operations.
@@ -12,15 +14,18 @@ type Repository struct {
 	*ColumnRepo
 	*TaskRepo
 	*LabelRepo
+	eventClient events.EventPublisher
 }
 
 // NewRepository creates a new Repository instance wrapping the given database connection.
-func NewRepository(db *sql.DB) *Repository {
+// eventClient is optional and may be nil if the daemon is not running.
+func NewRepository(db *sql.DB, eventClient events.EventPublisher) *Repository {
 	return &Repository{
-		ProjectRepo: &ProjectRepo{db: db},
-		ColumnRepo:  &ColumnRepo{db: db},
-		TaskRepo:    &TaskRepo{db: db},
-		LabelRepo:   &LabelRepo{db: db},
+		ProjectRepo: &ProjectRepo{db: db, eventClient: eventClient},
+		ColumnRepo:  &ColumnRepo{db: db, eventClient: eventClient},
+		TaskRepo:    &TaskRepo{db: db, eventClient: eventClient},
+		LabelRepo:   &LabelRepo{db: db, eventClient: eventClient},
+		eventClient: eventClient,
 	}
 }
 

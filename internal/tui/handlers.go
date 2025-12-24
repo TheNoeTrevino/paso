@@ -1,11 +1,12 @@
 package tui
 
 import (
-	"log"
+	"log/slog"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -140,8 +141,8 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 		if m.uiState.SelectedColumn() < len(m.appState.Columns()) {
 			currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 			columnHeight := m.uiState.ContentHeight()
-			const columnOverhead = 11 // Includes reserved space for top and bottom indicators
-			maxTasksVisible := max((columnHeight-columnOverhead)/TaskCardHeight, 1)
+			const columnOverhead = 5 // Includes reserved space for top and bottom indicators
+			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
 			m.uiState.EnsureTaskVisible(currentCol.ID, m.uiState.SelectedTask(), maxTasksVisible)
 		}
 	} else {
@@ -178,8 +179,8 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 		if m.uiState.SelectedColumn() < len(m.appState.Columns()) {
 			currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
 			columnHeight := m.uiState.ContentHeight()
-			const columnOverhead = 11 // Includes reserved space for top and bottom indicators
-			maxTasksVisible := max((columnHeight-columnOverhead)/TaskCardHeight, 1)
+			const columnOverhead = 5 // Includes reserved space for top and bottom indicators
+			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
 			m.uiState.EnsureTaskVisible(currentCol.ID, m.uiState.SelectedTask(), maxTasksVisible)
 		}
 	} else if len(currentTasks) > 0 {
@@ -382,7 +383,7 @@ func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 	defer cancel()
 	taskCount, err := m.repo.GetTaskCountByColumn(ctx, column.ID)
 	if err != nil {
-		log.Printf("Error getting task count: %v", err)
+		slog.Error("Error getting task count", "error", err)
 		m.notificationState.Add(state.LevelError, "Error getting column info")
 		return m, nil
 	}
@@ -513,12 +514,12 @@ func (m Model) createColumn() (tea.Model, tea.Cmd) {
 	defer cancel()
 	column, err := m.repo.CreateColumn(ctx, strings.TrimSpace(m.inputState.Buffer), projectID, afterColumnID)
 	if err != nil {
-		log.Printf("Error creating column: %v", err)
+		slog.Error("Error creating column", "error", err)
 		m.notificationState.Add(state.LevelError, "Failed to create column")
 	} else {
 		columns, err := m.repo.GetColumnsByProject(ctx, projectID)
 		if err != nil {
-			log.Printf("Error reloading columns: %v", err)
+			slog.Error("Error reloading columns", "error", err)
 			m.notificationState.Add(state.LevelError, "Failed to reload columns")
 		}
 		m.appState.SetColumns(columns)
@@ -541,7 +542,7 @@ func (m Model) renameColumn() (tea.Model, tea.Cmd) {
 		defer cancel()
 		err := m.repo.UpdateColumnName(ctx, column.ID, strings.TrimSpace(m.inputState.Buffer))
 		if err != nil {
-			log.Printf("Error updating column: %v", err)
+			slog.Error("Error updating column", "error", err)
 			m.notificationState.Add(state.LevelError, "Failed to rename column")
 		} else {
 			column.Name = strings.TrimSpace(m.inputState.Buffer)
@@ -577,7 +578,7 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 		defer cancel()
 		err := m.repo.DeleteTask(ctx, task.ID)
 		if err != nil {
-			log.Printf("Error deleting task: %v", err)
+			slog.Error("Error deleting task", "error", err)
 			m.notificationState.Add(state.LevelError, "Failed to delete task")
 		} else {
 			m.removeCurrentTask()
@@ -659,7 +660,7 @@ func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 		defer cancel()
 		err := m.repo.DeleteColumn(ctx, column.ID)
 		if err != nil {
-			log.Printf("Error deleting column: %v", err)
+			slog.Error("Error deleting column", "error", err)
 			m.notificationState.Add(state.LevelError, "Failed to delete column")
 		} else {
 			delete(m.appState.Tasks(), column.ID)
@@ -756,7 +757,7 @@ func (m Model) executeSearch() (tea.Model, tea.Cmd) {
 	}
 
 	if err != nil {
-		log.Printf("Error filtering tasks: %v", err)
+		slog.Error("Error filtering tasks", "error", err)
 		return m, nil
 	}
 
