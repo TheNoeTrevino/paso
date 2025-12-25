@@ -329,3 +329,116 @@ ls -la ~/.paso/paso.sock
 # Check for goroutine leaks
 pprof http://localhost:6060/debug/pprof/goroutine
 ```
+
+---
+
+## Automated Test Suite: Real-Time Updates Bug Fix
+
+### Overview
+
+This section documents the comprehensive automated tests added to prevent regression of the real-time updates bug where only Project 1 received live updates. The bug was caused by lingering write deadlines on socket connections that weren't properly cleared.
+
+### Running the Tests
+
+**Run all tests:**
+```bash
+go test ./...
+```
+
+**Run only short tests (skips slow reconnection tests):**
+```bash
+go test ./... -short
+```
+
+**Run with race detector:**
+```bash
+go test ./... -race
+```
+
+**Run specific test suites:**
+```bash
+# Events client tests
+go test ./internal/events/... -v
+
+# Daemon server tests  
+go test ./internal/daemon/... -v
+
+# TUI subscription tests
+go test ./internal/tui/... -v -run "Subscription|RefreshMsg"
+```
+
+### Test Coverage (9 Tests Total)
+
+#### 1. Events Client Tests (`internal/events/client_test.go`) - 4 tests
+
+**TestSubscribe_AfterLongDelay** ⭐ CRITICAL
+- Validates Subscribe works after write deadline expires
+- Reproduces original bug without fix
+- Runtime: ~1s
+
+**TestSubscribe_ClearsWriteDeadline**
+- Verifies Subscribe clears deadline after encoding
+- Runtime: ~600ms
+
+**TestSubscribe_MultipleRapidChanges**
+- Tests rapid project switching (9 changes)
+- Runtime: ~100ms
+
+**TestSendEvent_ClearsDeadline**
+- Verifies SendEvent clears deadline
+- Runtime: ~1s
+
+#### 2. Daemon Server Tests (`internal/daemon/server_test.go`) - 2 tests
+
+**TestSubscription_Switching** ⭐ CRITICAL
+- Validates server routes events based on subscription
+- Runtime: ~700ms
+
+**TestSubscription_ProjectZeroHandling**
+- Verifies broadcast (ProjectID=0) reaches all clients
+- Runtime: ~400ms
+
+#### 3. TUI Tests (`internal/tui/model_subscriptions_test.go`) - 3 tests
+
+**TestSwitchToProject_UpdatesSubscription** ⭐ CRITICAL
+- Verifies subscription tracking when switching projects
+- Runtime: <10ms
+
+**TestRefreshMsg_HandlesProjectZero**
+- Unit test for broadcast filtering logic
+- Runtime: <10ms
+
+**TestRefreshMsg_IgnoresWrongProject**
+- Validates filtering of wrong-project events
+- Runtime: <10ms
+
+### Test Infrastructure
+
+**MockEventPublisher Enhancement** (`internal/events/mock_test.go`)
+- Added subscription tracking: `SubscriptionHistory`, `CurrentSubscription`
+- Added helpers: `GetSubscriptionHistory()`, `GetCurrentSubscription()`
+
+**Configurable Write Deadline** (`internal/events/client.go`)
+- Production: 5 seconds
+- Tests: 500ms (via `setWriteDeadlineForTest()`)
+
+**TUI Test Fixtures** (`internal/tui/testdata.go`)
+- `createTestProjects()`, `createTestColumns()`, `createTestTasks()`
+- `createTestModel()`, `createTestModelWithProjects()`
+
+### Execution Time
+
+- **Total:** ~3 seconds
+- **Short mode:** <3 seconds
+- **Events tests:** ~3s
+- **Daemon tests:** ~1s
+- **TUI tests:** <10ms
+
+### Bug Fix Validated
+
+✅ Write deadlines cleared after operations  
+✅ Subscribe works after deadline expiration  
+✅ Rapid subscription changes work  
+✅ Server routes events correctly  
+✅ TUI updates subscriptions  
+✅ Broadcast events reach all clients

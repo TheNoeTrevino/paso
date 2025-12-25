@@ -49,6 +49,9 @@ type Client struct {
 
 	// Notification callback for user-facing messages
 	onNotify NotifyFunc
+
+	// Write deadline duration (configurable for tests)
+	writeDeadline time.Duration
 }
 
 // NewClient creates a new event client but does not connect.
@@ -76,6 +79,7 @@ func NewClient(socketPath string) (*Client, error) {
 		ctx:              ctx,
 		cancel:           cancel,
 		batcherDone:      make(chan struct{}),
+		writeDeadline:    5 * time.Second, // Default: 5 seconds
 	}, nil
 }
 
@@ -87,6 +91,14 @@ func (c *Client) SetNotifyFunc(fn NotifyFunc) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.onNotify = fn
+}
+
+// setWriteDeadlineForTest allows tests to use shorter deadlines.
+// This is an unexported method for test use only.
+func (c *Client) setWriteDeadlineForTest(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.writeDeadline = d
 }
 
 // notify calls the notification callback if it's set (thread-safe)
@@ -245,7 +257,7 @@ func (c *Client) sendToSocket(event Event) error {
 	}
 
 	// Set a short write deadline to detect dead connections
-	if err := c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
+	if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeDeadline)); err != nil {
 		return fmt.Errorf("connection error: %w", err)
 	}
 
@@ -254,7 +266,14 @@ func (c *Client) sendToSocket(event Event) error {
 		Type:    "event",
 		Event:   &event,
 	}
-	return c.encoder.Encode(msg)
+	err := c.encoder.Encode(msg)
+
+	// Clear the deadline after writing to avoid affecting future operations
+	if clearErr := c.conn.SetWriteDeadline(time.Time{}); clearErr != nil {
+		slog.Debug("failed to clear write deadline", "error", clearErr)
+	}
+
+	return err
 }
 
 // Listen starts listening for events from the daemon.
@@ -386,6 +405,13 @@ func (c *Client) reconnect(ctx context.Context) bool {
 			if err := c.Connect(ctx); err == nil {
 				slog.Info("reconnected to daemon", "attempt", i+1, "max_retries", c.maxRetries)
 				c.notify("info", fmt.Sprintf("Reconnected (attempt %d/%d)", i+1, c.maxRetries))
+				// Restore previous subscription after reconnect
+				if c.currentProjectID > 0 {
+					slog.Info("restoring subscription after reconnect", "project_id", c.currentProjectID)
+					if err := c.Subscribe(c.currentProjectID); err != nil {
+						slog.Error("failed to restore subscription after reconnect", "project_id", c.currentProjectID, "error", err)
+					}
+				}
 				return true
 			}
 
@@ -420,7 +446,19 @@ func (c *Client) Subscribe(projectID int) error {
 		return fmt.Errorf("not connected to daemon")
 	}
 
-	return c.encoder.Encode(msg)
+	// Set a write deadline for the subscription message
+	if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeDeadline)); err != nil {
+		return fmt.Errorf("connection error: %w", err)
+	}
+
+	err := c.encoder.Encode(msg)
+
+	// Clear the deadline after writing
+	if clearErr := c.conn.SetWriteDeadline(time.Time{}); clearErr != nil {
+		slog.Debug("failed to clear write deadline after subscribe", "error", clearErr)
+	}
+
+	return err
 }
 
 // Close closes the connection to the daemon and stops all goroutines.
