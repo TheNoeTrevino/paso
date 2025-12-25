@@ -81,6 +81,9 @@ func NewClient(socketPath string) (*Client, error) {
 
 // SetNotifyFunc sets the notification callback for user-facing messages
 func (c *Client) SetNotifyFunc(fn NotifyFunc) {
+	if c == nil {
+		return
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.onNotify = fn
@@ -139,6 +142,9 @@ func (c *Client) Connect(ctx context.Context) error {
 // Events are batched and sent in bursts within the debounce window.
 // Returns error if the queue is full (non-blocking send).
 func (c *Client) SendEvent(event Event) error {
+	if c == nil {
+		return fmt.Errorf("event client is nil")
+	}
 	select {
 	case c.eventQueue <- event:
 		return nil
@@ -255,6 +261,12 @@ func (c *Client) sendToSocket(event Event) error {
 // It returns a channel that receives events and handles reconnection automatically.
 // The channel is closed when context is done or reconnection fails.
 func (c *Client) Listen(ctx context.Context) (<-chan Event, error) {
+	if c == nil {
+		// Return a closed channel when client is nil
+		eventChan := make(chan Event)
+		close(eventChan)
+		return eventChan, fmt.Errorf("event client is nil")
+	}
 	eventChan := make(chan Event, 10)
 	go c.listenLoop(ctx, eventChan)
 	return eventChan, nil
@@ -388,6 +400,9 @@ func (c *Client) reconnect(ctx context.Context) bool {
 // Subscribe changes the subscription to a specific project.
 // ProjectID 0 means subscribe to all projects.
 func (c *Client) Subscribe(projectID int) error {
+	if c == nil {
+		return fmt.Errorf("event client is nil")
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -410,6 +425,9 @@ func (c *Client) Subscribe(projectID int) error {
 
 // Close closes the connection to the daemon and stops all goroutines.
 func (c *Client) Close() error {
+	if c == nil {
+		return nil
+	}
 	var err error
 	c.closeOnce.Do(func() {
 		// Close the event queue to signal no more events coming
