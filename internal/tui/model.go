@@ -599,6 +599,16 @@ func (m Model) switchToProject(projectIndex int) {
 	}
 	m.AppState.SetLabels(labels)
 
+	// Update daemon subscription to the new project
+	if m.EventClient != nil && project.ID > 0 {
+		slog.Info("subscribing to project events", "project_id", project.ID, "project_name", project.Name)
+		if err := m.EventClient.Subscribe(project.ID); err != nil {
+			slog.Error("error subscribing to project events", "project_id", project.ID, "error", err)
+		} else {
+			slog.Info("successfully subscribed to project events", "project_id", project.ID)
+		}
+	}
+
 	// Reset selection state
 	m.UiState.ResetSelection()
 }

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"log/slog"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -41,7 +42,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case RefreshMsg:
 		currentProject := m.AppState.GetCurrentProject()
-		if currentProject != nil && msg.Event.ProjectID == currentProject.ID {
+		// Reload if event is for current project OR for all projects (0)
+		if currentProject != nil {
+			slog.Info("received refresh event",
+				"event_project_id", msg.Event.ProjectID,
+				"current_project_id", currentProject.ID,
+				"will_reload", msg.Event.ProjectID == currentProject.ID || msg.Event.ProjectID == 0)
+		}
+		if currentProject != nil && (msg.Event.ProjectID == currentProject.ID || msg.Event.ProjectID == 0) {
 			m.reloadCurrentProject()
 		}
 
