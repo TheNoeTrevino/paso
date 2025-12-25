@@ -121,6 +121,11 @@ func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest) (
 		return nil, fmt.Errorf("failed to initialize project counter: %w", err)
 	}
 
+	// Create default columns (Todo, In Progress, Done)
+	if err := database.CreateDefaultColumns(ctx, qtx, project.ID); err != nil {
+		return nil, fmt.Errorf("failed to create default columns: %w", err)
+	}
+
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
