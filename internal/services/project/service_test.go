@@ -83,7 +83,7 @@ func createTestSchema(db *sql.DB) error {
 	);
 	`
 
-	_, err := db.Exec(schema)
+	_, err := db.ExecContext(context.Background(), schema)
 	return err
 }
 
@@ -95,7 +95,7 @@ func TestCreateProject(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil) // nil event publisher is OK
 
@@ -131,7 +131,7 @@ func TestCreateProject_EmptyName(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -155,7 +155,7 @@ func TestCreateProject_NameTooLong(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -184,7 +184,7 @@ func TestGetAllProjects(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -228,7 +228,7 @@ func TestGetAllProjects_Empty(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -247,7 +247,7 @@ func TestGetProjectByID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -283,7 +283,7 @@ func TestGetProjectByID_NotFound(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -302,7 +302,7 @@ func TestGetProjectByID_InvalidID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -321,7 +321,7 @@ func TestUpdateProject(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -365,7 +365,7 @@ func TestUpdateProject_EmptyName(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -399,7 +399,7 @@ func TestUpdateProject_InvalidID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -424,7 +424,7 @@ func TestDeleteProject(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -454,7 +454,7 @@ func TestDeleteProject_InvalidID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -473,7 +473,7 @@ func TestGetTaskCount(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -502,7 +502,7 @@ func TestGetTaskCount_InvalidID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 

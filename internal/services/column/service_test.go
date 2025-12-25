@@ -72,18 +72,19 @@ func createTestSchema(db *sql.DB) error {
 		status TEXT DEFAULT 'todo',
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE
+		FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
+		UNIQUE(column_id, position)
 	);
 	`
 
-	_, err := db.Exec(schema)
+	_, err := db.ExecContext(context.Background(), schema)
 	return err
 }
 
 // createTestProject creates a test project and returns its ID
 func createTestProject(t *testing.T, db *sql.DB) int {
 	t.Helper()
-	result, err := db.Exec("INSERT INTO projects (name, description) VALUES (?, ?)", "Test Project", "Test Description")
+	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name, description) VALUES (?, ?)", "Test Project", "Test Description")
 	if err != nil {
 		t.Fatalf("Failed to create test project: %v", err)
 	}
@@ -97,7 +98,7 @@ func createTestProject(t *testing.T, db *sql.DB) int {
 // createTestTask creates a test task and returns its ID
 func createTestTask(t *testing.T, db *sql.DB, columnID int) int {
 	t.Helper()
-	result, err := db.Exec("INSERT INTO tasks (column_id, title, description, position) VALUES (?, ?, ?, ?)",
+	result, err := db.ExecContext(context.Background(), "INSERT INTO tasks (column_id, title, description, position) VALUES (?, ?, ?, ?)",
 		columnID, "Test Task", "Test Description", 0)
 	if err != nil {
 		t.Fatalf("Failed to create test task: %v", err)
@@ -117,7 +118,7 @@ func TestCreateColumn(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -163,7 +164,7 @@ func TestCreateColumn_EmptyName(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -188,7 +189,7 @@ func TestCreateColumn_NameTooLong(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -218,7 +219,7 @@ func TestCreateColumn_InvalidProjectID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -242,7 +243,7 @@ func TestCreateColumn_LinkedList(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -315,7 +316,7 @@ func TestCreateColumn_InsertAfter(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -375,7 +376,7 @@ func TestGetColumnsByProject(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -420,7 +421,7 @@ func TestGetColumnsByProject_Empty(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -440,7 +441,7 @@ func TestGetColumnsByProject_InvalidProjectID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -459,7 +460,7 @@ func TestGetColumnByID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -491,7 +492,7 @@ func TestGetColumnByID_NotFound(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -510,7 +511,7 @@ func TestGetColumnByID_InvalidID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -529,7 +530,7 @@ func TestUpdateColumnName(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -563,7 +564,7 @@ func TestUpdateColumnName_EmptyName(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -591,7 +592,7 @@ func TestUpdateColumnName_InvalidID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -610,7 +611,7 @@ func TestDeleteColumn(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -640,7 +641,7 @@ func TestDeleteColumn_InvalidID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -659,7 +660,7 @@ func TestDeleteColumn_HasTasks(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -690,7 +691,7 @@ func TestDeleteColumn_LinkedListIntegrity(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
