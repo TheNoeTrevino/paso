@@ -147,6 +147,12 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 				slog.Warn("notification channel full, dropping message", "level", level, "message", message)
 			}
 		})
+	} else {
+		// No event client available - create a closed channel to avoid nil channel issues
+		ch := make(chan events.Event)
+		close(ch)
+		eventChan = ch
+		slog.Debug("event client is nil, continuing without live updates")
 	}
 
 	return Model{

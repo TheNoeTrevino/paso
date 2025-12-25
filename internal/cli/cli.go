@@ -51,7 +51,12 @@ func NewCLI(ctx context.Context) (*CLI, error) {
 // Close cleans up CLI resources
 func (c *CLI) Close() error {
 	if c.eventClient != nil {
-		c.eventClient.Close()
+		if err := c.eventClient.Close(); err != nil {
+			// Log but don't fail - best effort cleanup
+			// Still attempt to close the app
+			_ = c.App.Close()
+			return fmt.Errorf("failed to close event client: %w", err)
+		}
 	}
 	return c.App.Close()
 }

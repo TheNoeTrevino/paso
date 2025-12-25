@@ -76,14 +76,14 @@ func createTestSchema(db *sql.DB) error {
 	);
 	`
 
-	_, err := db.Exec(schema)
+	_, err := db.ExecContext(context.Background(), schema)
 	return err
 }
 
 // createTestProject creates a test project and returns its ID
 func createTestProject(t *testing.T, db *sql.DB) int {
 	t.Helper()
-	result, err := db.Exec("INSERT INTO projects (name, description) VALUES (?, ?)", "Test Project", "Test Description")
+	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name, description) VALUES (?, ?)", "Test Project", "Test Description")
 	if err != nil {
 		t.Fatalf("Failed to create test project: %v", err)
 	}
@@ -97,7 +97,7 @@ func createTestProject(t *testing.T, db *sql.DB) int {
 // createTestTask creates a test task and returns its ID
 func createTestTask(t *testing.T, db *sql.DB, projectID int) int {
 	t.Helper()
-	result, err := db.Exec("INSERT INTO tasks (project_id, title, description) VALUES (?, ?, ?)", projectID, "Test Task", "Test Description")
+	result, err := db.ExecContext(context.Background(), "INSERT INTO tasks (project_id, title, description) VALUES (?, ?, ?)", projectID, "Test Task", "Test Description")
 	if err != nil {
 		t.Fatalf("Failed to create test task: %v", err)
 	}
@@ -111,7 +111,7 @@ func createTestTask(t *testing.T, db *sql.DB, projectID int) int {
 // attachLabelToTask attaches a label to a task
 func attachLabelToTask(t *testing.T, db *sql.DB, taskID, labelID int) {
 	t.Helper()
-	_, err := db.Exec("INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID)
+	_, err := db.ExecContext(context.Background(), "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID)
 	if err != nil {
 		t.Fatalf("Failed to attach label to task: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestCreateLabel(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -167,7 +167,7 @@ func TestCreateLabel_EmptyName(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -193,7 +193,7 @@ func TestCreateLabel_NameTooLong(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -224,7 +224,7 @@ func TestCreateLabel_InvalidColor(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	t.Cleanup(func() { _ = db.Close() })
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -243,6 +243,7 @@ func TestCreateLabel_InvalidColor(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			req := CreateLabelRequest{
 				ProjectID: projectID,
 				Name:      "Bug",
@@ -266,7 +267,7 @@ func TestCreateLabel_InvalidProjectID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -291,7 +292,7 @@ func TestGetLabelsByProject(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -338,7 +339,7 @@ func TestGetLabelsByProject_Empty(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -358,7 +359,7 @@ func TestGetLabelsByProject_InvalidProjectID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -377,7 +378,7 @@ func TestGetLabelsForTask(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	taskID := createTestTask(t, db, projectID)
@@ -434,7 +435,7 @@ func TestGetLabelsForTask_Empty(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	taskID := createTestTask(t, db, projectID)
@@ -455,7 +456,7 @@ func TestGetLabelsForTask_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -474,7 +475,7 @@ func TestUpdateLabel(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -526,7 +527,7 @@ func TestUpdateLabel_OnlyName(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -572,7 +573,7 @@ func TestUpdateLabel_EmptyName(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -608,7 +609,7 @@ func TestUpdateLabel_InvalidColor(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -644,7 +645,7 @@ func TestUpdateLabel_InvalidID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -669,7 +670,7 @@ func TestDeleteLabel(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -705,7 +706,7 @@ func TestDeleteLabel_InvalidID(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	svc := NewService(db, nil)
 
@@ -724,7 +725,7 @@ func TestDeleteLabel_CascadeToTaskLabels(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	taskID := createTestTask(t, db, projectID)
