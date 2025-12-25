@@ -116,7 +116,8 @@ func createTestSchema(db *sql.DB) error {
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
 		FOREIGN KEY (type_id) REFERENCES types(id),
-		FOREIGN KEY (priority_id) REFERENCES priorities(id)
+		FOREIGN KEY (priority_id) REFERENCES priorities(id),
+		UNIQUE(column_id, position)
 	);
 
 	-- Task relationships (parent-child, blocking, etc.)
@@ -916,5 +917,666 @@ func TestRemoveParentRelation(t *testing.T) {
 
 	if count != 0 {
 		t.Errorf("Expected 0 relationships, got %d", count)
+	}
+}
+
+func TestRemoveChildRelation(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create two tasks with child relationship
+	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Parent Task",
+		ColumnID: columnID,
+		Position: 0,
+	})
+
+	task2, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Child Task",
+		ColumnID: columnID,
+		Position: 1,
+	})
+
+	// Add child relation (task2 is child of task1)
+	err := svc.AddChildRelation(context.Background(), task1.ID, task2.ID, 1)
+	if err != nil {
+		t.Fatalf("Failed to add child relation: %v", err)
+	}
+
+	// Remove child relation
+	err = svc.RemoveChildRelation(context.Background(), task1.ID, task2.ID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify relationship is removed
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM task_subtasks WHERE parent_id = ? AND child_id = ?", task1.ID, task2.ID).Scan(&count)
+	if err != nil {
+		t.Fatalf("Failed to query task relationships: %v", err)
+	}
+
+	if count != 0 {
+		t.Errorf("Expected 0 relationships, got %d", count)
+	}
+}
+
+// ============================================================================
+// TEST CASES - TASK MOVEMENT OPERATIONS
+// ============================================================================
+
+func TestMoveTaskToNextColumn(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	col1ID := createTestColumn(t, db, projectID, "To Do")
+	col2ID := createTestColumn(t, db, projectID, "In Progress")
+
+	// Link columns
+	_, err := db.Exec("UPDATE columns SET next_id = ? WHERE id = ?", col2ID, col1ID)
+	if err != nil {
+		t.Fatalf("Failed to link columns: %v", err)
+	}
+
+	svc := NewService(db, nil)
+
+	// Create task in first column
+	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: col1ID,
+		Position: 0,
+	})
+
+	// Move to next column
+	err = svc.MoveTaskToNextColumn(context.Background(), task.ID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify task moved to col2
+	var columnID int
+	err = db.QueryRow("SELECT column_id FROM tasks WHERE id = ?", task.ID).Scan(&columnID)
+	if err != nil {
+		t.Fatalf("Failed to query task: %v", err)
+	}
+
+	if columnID != col2ID {
+		t.Errorf("Expected task in column %d, got %d", col2ID, columnID)
+	}
+}
+
+func TestMoveTaskToNextColumn_LastColumn(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "Done")
+	svc := NewService(db, nil)
+
+	// Create task in last column (no next_id)
+	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: columnID,
+		Position: 0,
+	})
+
+	// Try to move to next column (should fail)
+	err := svc.MoveTaskToNextColumn(context.Background(), task.ID)
+
+	if err == nil {
+		t.Fatal("Expected error when moving from last column")
+	}
+}
+
+func TestMoveTaskToNextColumn_InvalidID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	svc := NewService(db, nil)
+
+	err := svc.MoveTaskToNextColumn(context.Background(), 999)
+
+	if err == nil {
+		t.Fatal("Expected error for invalid task ID")
+	}
+}
+
+func TestMoveTaskToPrevColumn(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	col1ID := createTestColumn(t, db, projectID, "To Do")
+	col2ID := createTestColumn(t, db, projectID, "In Progress")
+
+	// Link columns
+	_, err := db.Exec("UPDATE columns SET next_id = ?, prev_id = ? WHERE id = ?", col2ID, 0, col1ID)
+	if err != nil {
+		t.Fatalf("Failed to link columns: %v", err)
+	}
+	_, err = db.Exec("UPDATE columns SET prev_id = ? WHERE id = ?", col1ID, col2ID)
+	if err != nil {
+		t.Fatalf("Failed to link columns: %v", err)
+	}
+
+	svc := NewService(db, nil)
+
+	// Create task in second column
+	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: col2ID,
+		Position: 0,
+	})
+
+	// Move to previous column
+	err = svc.MoveTaskToPrevColumn(context.Background(), task.ID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify task moved to col1
+	var columnID int
+	err = db.QueryRow("SELECT column_id FROM tasks WHERE id = ?", task.ID).Scan(&columnID)
+	if err != nil {
+		t.Fatalf("Failed to query task: %v", err)
+	}
+
+	if columnID != col1ID {
+		t.Errorf("Expected task in column %d, got %d", col1ID, columnID)
+	}
+}
+
+func TestMoveTaskToPrevColumn_FirstColumn(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create task in first column (no prev_id)
+	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: columnID,
+		Position: 0,
+	})
+
+	// Try to move to previous column (should fail)
+	err := svc.MoveTaskToPrevColumn(context.Background(), task.ID)
+
+	if err == nil {
+		t.Fatal("Expected error when moving from first column")
+	}
+}
+
+func TestMoveTaskToPrevColumn_InvalidID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	svc := NewService(db, nil)
+
+	err := svc.MoveTaskToPrevColumn(context.Background(), 999)
+
+	if err == nil {
+		t.Fatal("Expected error for invalid task ID")
+	}
+}
+
+func TestMoveTaskToColumn(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	col1ID := createTestColumn(t, db, projectID, "To Do")
+	col2ID := createTestColumn(t, db, projectID, "Done")
+	svc := NewService(db, nil)
+
+	// Create task in first column
+	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: col1ID,
+		Position: 0,
+	})
+
+	// Move to specific column
+	err := svc.MoveTaskToColumn(context.Background(), task.ID, col2ID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify task moved
+	var columnID int
+	err = db.QueryRow("SELECT column_id FROM tasks WHERE id = ?", task.ID).Scan(&columnID)
+	if err != nil {
+		t.Fatalf("Failed to query task: %v", err)
+	}
+
+	if columnID != col2ID {
+		t.Errorf("Expected task in column %d, got %d", col2ID, columnID)
+	}
+}
+
+func TestMoveTaskToColumn_InvalidColumnID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create task
+	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: columnID,
+		Position: 0,
+	})
+
+	// Try to move to invalid column
+	err := svc.MoveTaskToColumn(context.Background(), task.ID, 999)
+
+	if err == nil {
+		t.Fatal("Expected error for invalid column ID")
+	}
+}
+
+func TestMoveTaskToColumn_InvalidTaskID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Try to move invalid task
+	err := svc.MoveTaskToColumn(context.Background(), 999, columnID)
+
+	if err == nil {
+		t.Fatal("Expected error for invalid task ID")
+	}
+}
+
+func TestMoveTaskUp(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create two tasks
+	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 1",
+		ColumnID: columnID,
+		Position: 0,
+	})
+
+	task2, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 2",
+		ColumnID: columnID,
+		Position: 1,
+	})
+
+	// Move task2 up (should swap positions with task1)
+	err := svc.MoveTaskUp(context.Background(), task2.ID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify positions swapped
+	var pos1, pos2 int64
+	err = db.QueryRow("SELECT position FROM tasks WHERE id = ?", task1.ID).Scan(&pos1)
+	if err != nil {
+		t.Fatalf("Failed to query task1 position: %v", err)
+	}
+
+	err = db.QueryRow("SELECT position FROM tasks WHERE id = ?", task2.ID).Scan(&pos2)
+	if err != nil {
+		t.Fatalf("Failed to query task2 position: %v", err)
+	}
+
+	if pos2 >= pos1 {
+		t.Errorf("Expected task2 position (%d) to be less than task1 position (%d)", pos2, pos1)
+	}
+}
+
+func TestMoveTaskUp_FirstPosition(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create task at first position
+	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 1",
+		ColumnID: columnID,
+		Position: 0,
+	})
+
+	// Try to move up (should fail - no task above)
+	err := svc.MoveTaskUp(context.Background(), task.ID)
+
+	if err == nil {
+		t.Fatal("Expected error when moving up from first position")
+	}
+}
+
+func TestMoveTaskUp_InvalidID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	svc := NewService(db, nil)
+
+	err := svc.MoveTaskUp(context.Background(), 999)
+
+	if err == nil {
+		t.Fatal("Expected error for invalid task ID")
+	}
+}
+
+func TestMoveTaskDown(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create two tasks
+	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 1",
+		ColumnID: columnID,
+		Position: 0,
+	})
+
+	task2, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 2",
+		ColumnID: columnID,
+		Position: 1,
+	})
+
+	// Move task1 down (should swap positions with task2)
+	err := svc.MoveTaskDown(context.Background(), task1.ID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify positions swapped
+	var pos1, pos2 int64
+	err = db.QueryRow("SELECT position FROM tasks WHERE id = ?", task1.ID).Scan(&pos1)
+	if err != nil {
+		t.Fatalf("Failed to query task1 position: %v", err)
+	}
+
+	err = db.QueryRow("SELECT position FROM tasks WHERE id = ?", task2.ID).Scan(&pos2)
+	if err != nil {
+		t.Fatalf("Failed to query task2 position: %v", err)
+	}
+
+	if pos1 <= pos2 {
+		t.Errorf("Expected task1 position (%d) to be greater than task2 position (%d)", pos1, pos2)
+	}
+}
+
+func TestMoveTaskDown_LastPosition(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create task at last position
+	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 1",
+		ColumnID: columnID,
+		Position: 0,
+	})
+
+	// Try to move down (should fail - no task below)
+	err := svc.MoveTaskDown(context.Background(), task.ID)
+
+	if err == nil {
+		t.Fatal("Expected error when moving down from last position")
+	}
+}
+
+func TestMoveTaskDown_InvalidID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	svc := NewService(db, nil)
+
+	err := svc.MoveTaskDown(context.Background(), 999)
+
+	if err == nil {
+		t.Fatal("Expected error for invalid task ID")
+	}
+}
+
+// ============================================================================
+// TEST CASES - TASK FILTERING AND REFERENCES
+// ============================================================================
+
+func TestGetTaskSummariesByProjectFiltered(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create tasks with different titles
+	svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Fix bug in login",
+		ColumnID: columnID,
+		Position: 0,
+	})
+
+	svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Add new feature",
+		ColumnID: columnID,
+		Position: 1,
+	})
+
+	svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Fix bug in signup",
+		ColumnID: columnID,
+		Position: 2,
+	})
+
+	// Filter by "bug"
+	results, err := svc.GetTaskSummariesByProjectFiltered(context.Background(), projectID, "bug")
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Should return 2 tasks with "bug" in title
+	totalTasks := 0
+	for _, tasks := range results {
+		totalTasks += len(tasks)
+	}
+
+	if totalTasks != 2 {
+		t.Errorf("Expected 2 tasks with 'bug' in title, got %d", totalTasks)
+	}
+}
+
+func TestGetTaskSummariesByProjectFiltered_NoResults(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create task
+	svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: columnID,
+		Position: 0,
+	})
+
+	// Filter by non-existent term
+	results, err := svc.GetTaskSummariesByProjectFiltered(context.Background(), projectID, "nonexistent")
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Should return empty map
+	totalTasks := 0
+	for _, tasks := range results {
+		totalTasks += len(tasks)
+	}
+
+	if totalTasks != 0 {
+		t.Errorf("Expected 0 tasks, got %d", totalTasks)
+	}
+}
+
+func TestGetTaskSummariesByProjectFiltered_EmptyQuery(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create tasks
+	svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 1",
+		ColumnID: columnID,
+		Position: 0,
+	})
+
+	svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 2",
+		ColumnID: columnID,
+		Position: 1,
+	})
+
+	// Filter with empty query (should return all)
+	results, err := svc.GetTaskSummariesByProjectFiltered(context.Background(), projectID, "")
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Should return all tasks
+	totalTasks := 0
+	for _, tasks := range results {
+		totalTasks += len(tasks)
+	}
+
+	if totalTasks != 2 {
+		t.Errorf("Expected 2 tasks, got %d", totalTasks)
+	}
+}
+
+func TestGetTaskReferencesForProject(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create tasks
+	svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 1",
+		ColumnID: columnID,
+		Position: 0,
+	})
+
+	svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 2",
+		ColumnID: columnID,
+		Position: 1,
+	})
+
+	// Get task references
+	refs, err := svc.GetTaskReferencesForProject(context.Background(), projectID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(refs) != 2 {
+		t.Errorf("Expected 2 task references, got %d", len(refs))
+	}
+}
+
+func TestGetTaskReferencesForProject_EmptyProject(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer db.Close()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Get task references for empty project
+	refs, err := svc.GetTaskReferencesForProject(context.Background(), projectID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(refs) != 0 {
+		t.Errorf("Expected 0 task references, got %d", len(refs))
 	}
 }
