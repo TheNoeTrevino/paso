@@ -60,6 +60,7 @@ type Querier interface {
 	GetColumnLinkedListInfo(ctx context.Context, id int64) (GetColumnLinkedListInfoRow, error)
 	GetColumnNextID(ctx context.Context, id int64) (interface{}, error)
 	GetColumnsByProject(ctx context.Context, projectID int64) ([]GetColumnsByProjectRow, error)
+	GetLabelByID(ctx context.Context, id int64) (Label, error)
 	GetLabelsByProject(ctx context.Context, projectID int64) ([]Label, error)
 	GetLabelsForTask(ctx context.Context, taskID int64) ([]Label, error)
 	GetNextColumnID(ctx context.Context, id int64) (interface{}, error)
