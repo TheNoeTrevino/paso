@@ -102,7 +102,7 @@ func (s *service) CreateColumn(ctx context.Context, req CreateColumnRequest) (*m
 	}
 
 	// Start transaction for linked list updates
-	tx, err := s.db.Begin()
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -216,7 +216,7 @@ func (s *service) DeleteColumn(ctx context.Context, id int) error {
 	projectID := int(linkedListInfo.ProjectID)
 
 	// Start transaction for linked list updates
-	tx, err := s.db.Begin()
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
