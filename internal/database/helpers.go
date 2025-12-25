@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/thenoetrevino/paso/internal/events"
 )
@@ -74,4 +75,39 @@ func nullInt64ToPtr(nv sql.NullInt64) *int {
 		return &val
 	}
 	return nil
+}
+
+// NullStringToString converts sql.NullString to string.
+// Returns empty string if the value is not valid.
+func NullStringToString(ns sql.NullString) string {
+	if ns.Valid {
+		return ns.String
+	}
+	return ""
+}
+
+// NullTimeToTime converts sql.NullTime to time.Time.
+// Returns zero time if the value is not valid.
+func NullTimeToTime(nt sql.NullTime) time.Time {
+	if nt.Valid {
+		return nt.Time
+	}
+	return time.Time{}
+}
+
+// InterfaceToIntPtr converts interface{} to *int.
+// Used for converting SQLC query results to pointer types.
+func InterfaceToIntPtr(v interface{}) *int {
+	if v == nil {
+		return nil
+	}
+	switch val := v.(type) {
+	case int64:
+		intVal := int(val)
+		return &intVal
+	case int:
+		return &val
+	default:
+		return nil
+	}
 }

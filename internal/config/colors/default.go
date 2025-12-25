@@ -36,5 +36,9 @@ func Default() *ColorScheme {
 		WarningBg: "#875F00",
 		ErrorFg:   "#FF0000",
 		ErrorBg:   "#5F0000",
+
+		// Status bar
+		StatusBarBg:   "#874BFD", // Matches accent
+		StatusBarText: "#D0D0D0", // Matches normal text
 	}
 }

@@ -17,11 +17,11 @@ func TestModeDispatch_TicketFormMode(t *testing.T) {
 	m := setupTestModel(columns, nil)
 
 	// Create a simple form (will be nil initially, but mode is what matters)
-	m.uiState.SetMode(state.TicketFormMode)
+	m.UiState.SetMode(state.TicketFormMode)
 	title := ""
 	description := ""
 	confirm := false
-	m.formState.TicketForm = huhforms.CreateTicketForm(&title, &description, &confirm, 5)
+	m.FormState.TicketForm = huhforms.CreateTicketForm(&title, &description, &confirm, 5)
 
 	// Send a key message
 	keyMsg := tea.KeyPressMsg(tea.Key{Text: "a", Code: 'a'})
@@ -31,8 +31,8 @@ func TestModeDispatch_TicketFormMode(t *testing.T) {
 	m = newModel.(Model)
 
 	// Mode should still be TicketFormMode (until form completes)
-	if m.uiState.Mode() != state.TicketFormMode {
-		t.Errorf("Mode after Update in TicketFormMode = %v, want TicketFormMode", m.uiState.Mode())
+	if m.UiState.Mode() != state.TicketFormMode {
+		t.Errorf("Mode after Update in TicketFormMode = %v, want TicketFormMode", m.UiState.Mode())
 	}
 
 	// Cmd should not be nil (form returns commands)
@@ -50,8 +50,8 @@ func TestModeDispatch_NormalMode(t *testing.T) {
 		{ID: 2, Name: "Col2"},
 	}
 	m := setupTestModel(columns, nil)
-	m.uiState.SetMode(state.NormalMode)
-	m.uiState.SetSelectedColumn(0)
+	m.UiState.SetMode(state.NormalMode)
+	m.UiState.SetSelectedColumn(0)
 
 	// Send a navigation key (right arrow)
 	keyMsg := tea.KeyPressMsg(tea.Key{Code: tea.KeyRight})
@@ -60,13 +60,13 @@ func TestModeDispatch_NormalMode(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should have navigated right
-	if m.uiState.SelectedColumn() != 1 {
-		t.Errorf("SelectedColumn after right arrow in NormalMode = %d, want 1", m.uiState.SelectedColumn())
+	if m.UiState.SelectedColumn() != 1 {
+		t.Errorf("SelectedColumn after right arrow in NormalMode = %d, want 1", m.UiState.SelectedColumn())
 	}
 
 	// Mode should still be NormalMode
-	if m.uiState.Mode() != state.NormalMode {
-		t.Errorf("Mode after navigation = %v, want NormalMode", m.uiState.Mode())
+	if m.UiState.Mode() != state.NormalMode {
+		t.Errorf("Mode after navigation = %v, want NormalMode", m.UiState.Mode())
 	}
 }
 
@@ -78,11 +78,11 @@ func TestUpdateTicketForm_EscapeCancels(t *testing.T) {
 	m := setupTestModel(columns, nil)
 
 	// Set up form mode
-	m.uiState.SetMode(state.TicketFormMode)
+	m.UiState.SetMode(state.TicketFormMode)
 	title := ""
 	description := ""
 	confirm := false
-	m.formState.TicketForm = huhforms.CreateTicketForm(&title, &description, &confirm, 5)
+	m.FormState.TicketForm = huhforms.CreateTicketForm(&title, &description, &confirm, 5)
 
 	// Send ESC key
 	keyMsg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})
@@ -91,12 +91,12 @@ func TestUpdateTicketForm_EscapeCancels(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should return to NormalMode
-	if m.uiState.Mode() != state.NormalMode {
-		t.Errorf("Mode after ESC in TicketFormMode = %v, want NormalMode", m.uiState.Mode())
+	if m.UiState.Mode() != state.NormalMode {
+		t.Errorf("Mode after ESC in TicketFormMode = %v, want NormalMode", m.UiState.Mode())
 	}
 
 	// Form should be cleared
-	if m.formState.TicketForm != nil {
+	if m.FormState.TicketForm != nil {
 		t.Error("TicketForm after ESC should be nil")
 	}
 

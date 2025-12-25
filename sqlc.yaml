@@ -1,0 +1,22 @@
+version: "2"
+sql:
+  - engine: "sqlite"
+    queries: "internal/database/sql"
+    schema: "internal/database/migrations"
+    gen:
+      go:
+        package: "generated"
+        out: "internal/database/generated"
+        sql_package: "database/sql"
+        emit_interface: true
+        emit_json_tags: false
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+        overrides:
+          - db_type: "integer"
+            go_type: "int64"
+          - db_type: "text"
+            go_type: "string"
+          - db_type: "boolean"
+            go_type: "bool"
