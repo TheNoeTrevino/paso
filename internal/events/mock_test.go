@@ -20,12 +20,17 @@ type MockEventPublisher struct {
 	ConnectCalled   bool
 	SubscribeCalled bool
 	ListenCalled    bool
+
+	// Subscription tracking
+	SubscriptionHistory []int // Track all Subscribe(projectID) calls in order
+	CurrentSubscription int   // Track the most recent subscription
 }
 
 // NewMockEventPublisher creates a new mock event publisher.
 func NewMockEventPublisher() *MockEventPublisher {
 	return &MockEventPublisher{
-		SentEvents: []events.Event{},
+		SentEvents:          []events.Event{},
+		SubscriptionHistory: []int{},
 	}
 }
 
@@ -60,6 +65,8 @@ func (m *MockEventPublisher) Subscribe(projectID int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.SubscribeCalled = true
+	m.SubscriptionHistory = append(m.SubscriptionHistory, projectID)
+	m.CurrentSubscription = projectID
 	return nil
 }
 
@@ -85,6 +92,8 @@ func (m *MockEventPublisher) Reset() {
 	m.ConnectCalled = false
 	m.SubscribeCalled = false
 	m.ListenCalled = false
+	m.SubscriptionHistory = []int{}
+	m.CurrentSubscription = 0
 }
 
 // GetEventsByType returns all events of a specific type.
@@ -130,6 +139,22 @@ func (m *MockEventPublisher) EventCount() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return len(m.SentEvents)
+}
+
+// GetSubscriptionHistory returns all project IDs that were subscribed to.
+func (m *MockEventPublisher) GetSubscriptionHistory() []int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	result := make([]int, len(m.SubscriptionHistory))
+	copy(result, m.SubscriptionHistory)
+	return result
+}
+
+// GetCurrentSubscription returns the most recent project ID subscribed to.
+func (m *MockEventPublisher) GetCurrentSubscription() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.CurrentSubscription
 }
 
 // Compile-time interface verification
