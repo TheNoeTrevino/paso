@@ -44,7 +44,7 @@ type UpdateLabelRequest struct {
 // service implements Service interface using SQLC directly
 type service struct {
 	db          *sql.DB
-	queries     *generated.Queries
+	queries     generated.Querier
 	eventClient events.EventPublisher
 }
 
@@ -123,22 +123,12 @@ func (s *service) UpdateLabel(ctx context.Context, req UpdateLabelRequest) error
 	}
 
 	// Get existing label to fill in missing fields
-	// Note: We need to query by getting all labels and filtering
-	// This is not efficient but works for now
-	allLabels, err := s.queries.GetLabelsByProject(ctx, 0)
+	existing, err := s.queries.GetLabelByID(ctx, int64(req.ID))
 	if err != nil {
-		return fmt.Errorf("failed to get labels: %w", err)
-	}
-
-	var existing *generated.Label
-	for _, l := range allLabels {
-		if l.ID == int64(req.ID) {
-			existing = &l
-			break
+		if err == sql.ErrNoRows {
+			return ErrLabelNotFound
 		}
-	}
-	if existing == nil {
-		return ErrLabelNotFound
+		return fmt.Errorf("failed to get label: %w", err)
 	}
 
 	// Determine final values
@@ -174,18 +164,16 @@ func (s *service) DeleteLabel(ctx context.Context, id int) error {
 	}
 
 	// Get label to find project ID for event
-	allLabels, err := s.queries.GetLabelsByProject(ctx, 0)
+	existing, err := s.queries.GetLabelByID(ctx, int64(id))
 	if err != nil {
-		return fmt.Errorf("failed to get labels: %w", err)
+		if err == sql.ErrNoRows {
+			// Label doesn't exist, but that's okay for deletion
+			return nil
+		}
+		return fmt.Errorf("failed to get label: %w", err)
 	}
 
-	var projectID int
-	for _, l := range allLabels {
-		if l.ID == int64(id) {
-			projectID = int(l.ProjectID)
-			break
-		}
-	}
+	projectID := int(existing.ProjectID)
 
 	// Delete label
 	if err := s.queries.DeleteLabel(ctx, int64(id)); err != nil {
