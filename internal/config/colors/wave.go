@@ -36,5 +36,9 @@ func Wave() *ColorScheme {
 		WarningBg: palette.winterYellow,
 		ErrorFg:   palette.samuraiRed,
 		ErrorBg:   palette.winterRed,
+
+		// Status bar
+		StatusBarBg:   palette.oniViolet, // Matches accent
+		StatusBarText: palette.fujiWhite, // Matches normal text
 	}
 }

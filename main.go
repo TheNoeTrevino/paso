@@ -5,8 +5,11 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/tui"
+	"github.com/thenoetrevino/paso/internal/cli/column"
+	"github.com/thenoetrevino/paso/internal/cli/label"
+	"github.com/thenoetrevino/paso/internal/cli/project"
+	"github.com/thenoetrevino/paso/internal/cli/task"
+	"github.com/thenoetrevino/paso/internal/launcher"
 )
 
 var (
@@ -39,10 +42,10 @@ func init() {
 	rootCmd.SetVersionTemplate(fmt.Sprintf("paso version %s\n  commit: %s\n  built: %s\n", version, commit, date))
 
 	// Add CLI subcommands
-	rootCmd.AddCommand(cli.TaskCmd())
-	rootCmd.AddCommand(cli.ProjectCmd())
-	rootCmd.AddCommand(cli.ColumnCmd())
-	rootCmd.AddCommand(cli.LabelCmd())
+	rootCmd.AddCommand(task.TaskCmd())
+	rootCmd.AddCommand(project.ProjectCmd())
+	rootCmd.AddCommand(column.ColumnCmd())
+	rootCmd.AddCommand(label.LabelCmd())
 
 	// Add TUI subcommand
 	tuiCmd := &cobra.Command{
@@ -50,7 +53,7 @@ func init() {
 		Short: "Launch the interactive TUI",
 		Long:  "Launch the interactive terminal user interface for managing tasks visually.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return tui.Launch()
+			return launcher.Launch()
 		},
 	}
 	rootCmd.AddCommand(tuiCmd)
