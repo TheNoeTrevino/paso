@@ -72,7 +72,8 @@ func createTestSchema(db *sql.DB) error {
 		status TEXT DEFAULT 'todo',
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE
+		FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
+		UNIQUE(column_id, position)
 	);
 	`
 
