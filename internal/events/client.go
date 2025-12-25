@@ -49,6 +49,9 @@ type Client struct {
 
 	// Notification callback for user-facing messages
 	onNotify NotifyFunc
+
+	// Write deadline duration (configurable for tests)
+	writeDeadline time.Duration
 }
 
 // NewClient creates a new event client but does not connect.
@@ -76,6 +79,7 @@ func NewClient(socketPath string) (*Client, error) {
 		ctx:              ctx,
 		cancel:           cancel,
 		batcherDone:      make(chan struct{}),
+		writeDeadline:    5 * time.Second, // Default: 5 seconds
 	}, nil
 }
 
@@ -87,6 +91,14 @@ func (c *Client) SetNotifyFunc(fn NotifyFunc) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.onNotify = fn
+}
+
+// setWriteDeadlineForTest allows tests to use shorter deadlines.
+// This is an unexported method for test use only.
+func (c *Client) setWriteDeadlineForTest(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.writeDeadline = d
 }
 
 // notify calls the notification callback if it's set (thread-safe)
@@ -245,7 +257,7 @@ func (c *Client) sendToSocket(event Event) error {
 	}
 
 	// Set a short write deadline to detect dead connections
-	if err := c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
+	if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeDeadline)); err != nil {
 		return fmt.Errorf("connection error: %w", err)
 	}
 
@@ -435,7 +447,7 @@ func (c *Client) Subscribe(projectID int) error {
 	}
 
 	// Set a write deadline for the subscription message
-	if err := c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
+	if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeDeadline)); err != nil {
 		return fmt.Errorf("connection error: %w", err)
 	}
 
