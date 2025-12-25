@@ -77,31 +77,6 @@ func createTestTasksMap(columns []*models.Column, tasksPerColumn int) map[int][]
 	return tasksMap
 }
 
-// createTestModel creates a basic Model with minimal test data.
-// This is useful for tests that only need basic state without a full setup.
-func createTestModel() Model {
-	cfg := &config.Config{
-		KeyMappings: config.DefaultKeyMappings(),
-	}
-
-	return Model{
-		Ctx:               context.Background(),
-		App:               nil, // No app needed for pure state tests
-		Config:            cfg,
-		AppState:          state.NewAppState(nil, 0, nil, nil, nil),
-		UiState:           state.NewUIState(),
-		InputState:        state.NewInputState(),
-		FormState:         state.NewFormState(),
-		LabelPickerState:  state.NewLabelPickerState(),
-		ParentPickerState: state.NewTaskPickerState(),
-		ChildPickerState:  state.NewTaskPickerState(),
-		NotificationState: state.NewNotificationState(),
-		SearchState:       state.NewSearchState(),
-		ListViewState:     state.NewListViewState(),
-		StatusPickerState: state.NewStatusPickerState(),
-	}
-}
-
 // createTestModelWithProjects creates a Model with multiple projects.
 // The first project is set as the active project.
 // Each project has the specified number of columns and tasks.
