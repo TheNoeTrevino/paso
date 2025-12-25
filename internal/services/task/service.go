@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -538,6 +539,15 @@ func (s *service) MoveTaskToColumn(ctx context.Context, taskID, columnID int) er
 		return ErrInvalidColumnID
 	}
 
+	// Verify task exists before moving
+	_, err := s.queries.GetTaskPosition(ctx, int64(taskID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrInvalidTaskID
+		}
+		return fmt.Errorf("failed to verify task exists: %w", err)
+	}
+
 	// Get task count in target column to append at the end
 	taskCount, err := s.queries.GetTaskCountByColumn(ctx, int64(columnID))
 	if err != nil {
@@ -562,14 +572,27 @@ func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 		return ErrInvalidTaskID
 	}
 
+	// Start transaction to avoid UNIQUE constraint violations during swap
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
+
+	qtx := generated.New(tx)
+
 	// Get task position
-	posRow, err := s.queries.GetTaskPosition(ctx, int64(taskID))
+	posRow, err := qtx.GetTaskPosition(ctx, int64(taskID))
 	if err != nil {
 		return fmt.Errorf("failed to get task position: %w", err)
 	}
 
 	// Get task above
-	aboveRow, err := s.queries.GetTaskAbove(ctx, generated.GetTaskAboveParams{
+	aboveRow, err := qtx.GetTaskAbove(ctx, generated.GetTaskAboveParams{
 		ColumnID: posRow.ColumnID,
 		Position: posRow.Position,
 	})
@@ -577,18 +600,33 @@ func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 		return fmt.Errorf("no task above: %w", err)
 	}
 
-	// Swap positions
-	if err := s.queries.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+	// Swap positions using temporary negative position to avoid UNIQUE constraint violation
+	// Step 1: Move current task to temporary position
+	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+		Position: -1,
+		ID:       int64(taskID),
+	}); err != nil {
+		return fmt.Errorf("failed to set temporary position: %w", err)
+	}
+
+	// Step 2: Move task above to current task's position
+	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+		Position: posRow.Position,
+		ID:       aboveRow.ID,
+	}); err != nil {
+		return fmt.Errorf("failed to move other task down: %w", err)
+	}
+
+	// Step 3: Move current task to above position
+	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
 		Position: aboveRow.Position,
 		ID:       int64(taskID),
 	}); err != nil {
 		return fmt.Errorf("failed to move task up: %w", err)
 	}
-	if err := s.queries.SetTaskPosition(ctx, generated.SetTaskPositionParams{
-		Position: posRow.Position,
-		ID:       aboveRow.ID,
-	}); err != nil {
-		return fmt.Errorf("failed to move other task down: %w", err)
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	s.publishTaskEvent(taskID)
@@ -601,14 +639,27 @@ func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
 		return ErrInvalidTaskID
 	}
 
+	// Start transaction to avoid UNIQUE constraint violations during swap
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
+
+	qtx := generated.New(tx)
+
 	// Get task position
-	posRow, err := s.queries.GetTaskPosition(ctx, int64(taskID))
+	posRow, err := qtx.GetTaskPosition(ctx, int64(taskID))
 	if err != nil {
 		return fmt.Errorf("failed to get task position: %w", err)
 	}
 
 	// Get task below
-	belowRow, err := s.queries.GetTaskBelow(ctx, generated.GetTaskBelowParams{
+	belowRow, err := qtx.GetTaskBelow(ctx, generated.GetTaskBelowParams{
 		ColumnID: posRow.ColumnID,
 		Position: posRow.Position,
 	})
@@ -616,18 +667,33 @@ func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
 		return fmt.Errorf("no task below: %w", err)
 	}
 
-	// Swap positions
-	if err := s.queries.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+	// Swap positions using temporary negative position to avoid UNIQUE constraint violation
+	// Step 1: Move current task to temporary position
+	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+		Position: -1,
+		ID:       int64(taskID),
+	}); err != nil {
+		return fmt.Errorf("failed to set temporary position: %w", err)
+	}
+
+	// Step 2: Move task below to current task's position
+	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+		Position: posRow.Position,
+		ID:       belowRow.ID,
+	}); err != nil {
+		return fmt.Errorf("failed to move other task up: %w", err)
+	}
+
+	// Step 3: Move current task to below position
+	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
 		Position: belowRow.Position,
 		ID:       int64(taskID),
 	}); err != nil {
 		return fmt.Errorf("failed to move task down: %w", err)
 	}
-	if err := s.queries.SetTaskPosition(ctx, generated.SetTaskPositionParams{
-		Position: posRow.Position,
-		ID:       belowRow.ID,
-	}); err != nil {
-		return fmt.Errorf("failed to move other task up: %w", err)
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	s.publishTaskEvent(taskID)
