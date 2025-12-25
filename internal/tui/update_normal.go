@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"log/slog"
+
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
@@ -349,7 +351,9 @@ func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 
 func (m Model) handlePrevProject() (tea.Model, tea.Cmd) {
 	if m.AppState.SelectedProject() > 0 {
-		m.switchToProject(m.AppState.SelectedProject() - 1)
+		newIndex := m.AppState.SelectedProject() - 1
+		slog.Info("navigating to previous project", "current_index", m.AppState.SelectedProject(), "new_index", newIndex)
+		m.switchToProject(newIndex)
 	} else {
 		m.NotificationState.Add(state.LevelInfo, "Already at the first project")
 	}
@@ -358,7 +362,9 @@ func (m Model) handlePrevProject() (tea.Model, tea.Cmd) {
 
 func (m Model) handleNextProject() (tea.Model, tea.Cmd) {
 	if m.AppState.SelectedProject() < len(m.AppState.Projects())-1 {
-		m.switchToProject(m.AppState.SelectedProject() + 1)
+		newIndex := m.AppState.SelectedProject() + 1
+		slog.Info("navigating to next project", "current_index", m.AppState.SelectedProject(), "new_index", newIndex)
+		m.switchToProject(newIndex)
 	} else {
 		m.NotificationState.Add(state.LevelInfo, "Already at the last project")
 	}
