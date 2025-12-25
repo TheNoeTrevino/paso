@@ -34,7 +34,7 @@ type CreateColumnRequest struct {
 // service implements Service interface using SQLC directly
 type service struct {
 	db          *sql.DB
-	queries     *generated.Queries
+	queries     generated.Querier
 	eventClient events.EventPublisher
 }
 
@@ -112,7 +112,7 @@ func (s *service) CreateColumn(ctx context.Context, req CreateColumnRequest) (*m
 		}
 	}()
 
-	qtx := s.queries.WithTx(tx)
+	qtx := generated.New(tx)
 
 	// Create new column
 	column, err := qtx.CreateColumn(ctx, generated.CreateColumnParams{
@@ -226,7 +226,7 @@ func (s *service) DeleteColumn(ctx context.Context, id int) error {
 		}
 	}()
 
-	qtx := s.queries.WithTx(tx)
+	qtx := generated.New(tx)
 
 	// Update prev column's next_id to skip deleted column
 	if prevID != nil {

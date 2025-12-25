@@ -69,7 +69,7 @@ type UpdateTaskRequest struct {
 // service implements Service interface using SQLC directly
 type service struct {
 	db          *sql.DB
-	queries     *generated.Queries
+	queries     generated.Querier
 	eventClient events.EventPublisher
 }
 
@@ -106,7 +106,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 		}
 	}()
 
-	qtx := s.queries.WithTx(tx)
+	qtx := generated.New(tx)
 
 	// Get next ticket number
 	ticketNumber, err := qtx.GetNextTicketNumber(ctx, projectID)

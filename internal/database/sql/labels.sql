@@ -13,6 +13,11 @@ FROM labels
 WHERE project_id = ?
 ORDER BY name;
 
+-- name: GetLabelByID :one
+SELECT id, name, color, project_id
+FROM labels
+WHERE id = ?;
+
 -- name: GetLabelsForTask :many
 SELECT l.id, l.name, l.color, l.project_id
 FROM labels l

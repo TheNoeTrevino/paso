@@ -73,6 +73,24 @@ func (q *Queries) DeleteLabel(ctx context.Context, id int64) error {
 	return err
 }
 
+const getLabelByID = `-- name: GetLabelByID :one
+SELECT id, name, color, project_id
+FROM labels
+WHERE id = ?
+`
+
+func (q *Queries) GetLabelByID(ctx context.Context, id int64) (Label, error) {
+	row := q.db.QueryRowContext(ctx, getLabelByID, id)
+	var i Label
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Color,
+		&i.ProjectID,
+	)
+	return i, err
+}
+
 const getLabelsByProject = `-- name: GetLabelsByProject :many
 SELECT id, name, color, project_id
 FROM labels
