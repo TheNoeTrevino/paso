@@ -18,7 +18,7 @@ func ClaudeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "claude",
 		Short: "Setup Claude Code integration",
-		Long: `Install hooks to automatically run 'paso prime' on SessionStart and PreCompact.
+		Long: `Install hooks to automatically run 'paso tutorial' on SessionStart and PreCompact.
 
 This ensures AI agents always have paso workflow context, even after context compaction.
 
@@ -75,16 +75,16 @@ func InstallClaude(project bool) {
 	}
 
 	// Ensure parent directory exists
-	if err := EnsureDir(filepath.Dir(settingsPath), 0755); err != nil {
+	if err := EnsureDir(filepath.Dir(settingsPath), 0o755); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Load or create settings
-	var settings map[string]interface{}
+	var settings map[string]any
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
-		settings = make(map[string]interface{})
+		settings = make(map[string]any)
 	} else {
 		if err := json.Unmarshal(data, &settings); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: failed to parse settings.json: %v\n", err)
@@ -93,19 +93,19 @@ func InstallClaude(project bool) {
 	}
 
 	// Get or create hooks section
-	hooks, ok := settings["hooks"].(map[string]interface{})
+	hooks, ok := settings["hooks"].(map[string]any)
 	if !ok {
-		hooks = make(map[string]interface{})
+		hooks = make(map[string]any)
 		settings["hooks"] = hooks
 	}
 
 	// Add SessionStart hook
-	if addHookCommand(hooks, "SessionStart", "paso prime") {
+	if addHookCommand(hooks, "SessionStart", "paso tutorial") {
 		fmt.Println("✓ Registered SessionStart hook")
 	}
 
 	// Add PreCompact hook
-	if addHookCommand(hooks, "PreCompact", "paso prime") {
+	if addHookCommand(hooks, "PreCompact", "paso tutorial") {
 		fmt.Println("✓ Registered PreCompact hook")
 	}
 
@@ -175,21 +175,21 @@ func RemoveClaude(project bool) {
 		return
 	}
 
-	var settings map[string]interface{}
+	var settings map[string]any
 	if err := json.Unmarshal(data, &settings); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: failed to parse settings.json: %v\n", err)
 		os.Exit(1)
 	}
 
-	hooks, ok := settings["hooks"].(map[string]interface{})
+	hooks, ok := settings["hooks"].(map[string]any)
 	if !ok {
 		fmt.Println("No hooks found")
 		return
 	}
 
-	// Remove paso prime hooks
-	removeHookCommand(hooks, "SessionStart", "paso prime")
-	removeHookCommand(hooks, "PreCompact", "paso prime")
+	// Remove paso tutorial hooks
+	removeHookCommand(hooks, "SessionStart", "paso tutorial")
+	removeHookCommand(hooks, "PreCompact", "paso tutorial")
 
 	// Write back
 	data, err = json.MarshalIndent(settings, "", "  ")
@@ -208,25 +208,25 @@ func RemoveClaude(project bool) {
 
 // addHookCommand adds a hook command to an event if not already present
 // Returns true if hook was added, false if already exists
-func addHookCommand(hooks map[string]interface{}, event, command string) bool {
+func addHookCommand(hooks map[string]any, event, command string) bool {
 	// Get or create event array
-	eventHooks, ok := hooks[event].([]interface{})
+	eventHooks, ok := hooks[event].([]any)
 	if !ok {
-		eventHooks = []interface{}{}
+		eventHooks = []any{}
 	}
 
 	// Check if paso hook already registered
 	for _, hook := range eventHooks {
-		hookMap, ok := hook.(map[string]interface{})
+		hookMap, ok := hook.(map[string]any)
 		if !ok {
 			continue
 		}
-		commands, ok := hookMap["hooks"].([]interface{})
+		commands, ok := hookMap["hooks"].([]any)
 		if !ok {
 			continue
 		}
 		for _, cmd := range commands {
-			cmdMap, ok := cmd.(map[string]interface{})
+			cmdMap, ok := cmd.(map[string]any)
 			if !ok {
 				continue
 			}
@@ -238,10 +238,10 @@ func addHookCommand(hooks map[string]interface{}, event, command string) bool {
 	}
 
 	// Add paso hook to array
-	newHook := map[string]interface{}{
+	newHook := map[string]any{
 		"matcher": "",
-		"hooks": []interface{}{
-			map[string]interface{}{
+		"hooks": []any{
+			map[string]any{
 				"type":    "command",
 				"command": command,
 			},
@@ -254,22 +254,22 @@ func addHookCommand(hooks map[string]interface{}, event, command string) bool {
 }
 
 // removeHookCommand removes a hook command from an event
-func removeHookCommand(hooks map[string]interface{}, event, command string) {
-	eventHooks, ok := hooks[event].([]interface{})
+func removeHookCommand(hooks map[string]any, event, command string) {
+	eventHooks, ok := hooks[event].([]any)
 	if !ok {
 		return
 	}
 
-	// Filter out paso prime hooks
-	var filtered []interface{}
+	// Filter out paso tutorial hooks
+	var filtered []any
 	for _, hook := range eventHooks {
-		hookMap, ok := hook.(map[string]interface{})
+		hookMap, ok := hook.(map[string]any)
 		if !ok {
 			filtered = append(filtered, hook)
 			continue
 		}
 
-		commands, ok := hookMap["hooks"].([]interface{})
+		commands, ok := hookMap["hooks"].([]any)
 		if !ok {
 			filtered = append(filtered, hook)
 			continue
@@ -277,7 +277,7 @@ func removeHookCommand(hooks map[string]interface{}, event, command string) {
 
 		keepHook := true
 		for _, cmd := range commands {
-			cmdMap, ok := cmd.(map[string]interface{})
+			cmdMap, ok := cmd.(map[string]any)
 			if !ok {
 				continue
 			}
@@ -296,45 +296,45 @@ func removeHookCommand(hooks map[string]interface{}, event, command string) {
 	hooks[event] = filtered
 }
 
-// hasPasoHooks checks if a settings file has paso prime hooks
+// hasPasoHooks checks if a settings file has paso tutorial hooks
 func hasPasoHooks(settingsPath string) bool {
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
 		return false
 	}
 
-	var settings map[string]interface{}
+	var settings map[string]any
 	if err := json.Unmarshal(data, &settings); err != nil {
 		return false
 	}
 
-	hooks, ok := settings["hooks"].(map[string]interface{})
+	hooks, ok := settings["hooks"].(map[string]any)
 	if !ok {
 		return false
 	}
 
-	// Check SessionStart and PreCompact for "paso prime"
+	// Check SessionStart and PreCompact for "paso tutorial"
 	for _, event := range []string{"SessionStart", "PreCompact"} {
-		eventHooks, ok := hooks[event].([]interface{})
+		eventHooks, ok := hooks[event].([]any)
 		if !ok {
 			continue
 		}
 
 		for _, hook := range eventHooks {
-			hookMap, ok := hook.(map[string]interface{})
+			hookMap, ok := hook.(map[string]any)
 			if !ok {
 				continue
 			}
-			commands, ok := hookMap["hooks"].([]interface{})
+			commands, ok := hookMap["hooks"].([]any)
 			if !ok {
 				continue
 			}
 			for _, cmd := range commands {
-				cmdMap, ok := cmd.(map[string]interface{})
+				cmdMap, ok := cmd.(map[string]any)
 				if !ok {
 					continue
 				}
-				if cmdMap["command"] == "paso prime" {
+				if cmdMap["command"] == "paso tutorial" {
 					return true
 				}
 			}
