@@ -3,7 +3,10 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
+
+	"github.com/thenoetrevino/paso/internal/database/generated"
 )
 
 // runMigrations creates the database schema and seeds default data if needed
@@ -311,6 +314,60 @@ func seedDefaultProject(ctx context.Context, db *sql.DB) error {
 	return err
 }
 
+// CreateDefaultColumns creates the standard three columns (Todo, In Progress, Done)
+// for a given project using the provided querier (works with both db and tx)
+func CreateDefaultColumns(ctx context.Context, q generated.Querier, projectID int64) error {
+	// Create "Todo" column (head of list)
+	todoCol, err := q.CreateColumn(ctx, generated.CreateColumnParams{
+		Name:      "Todo",
+		ProjectID: projectID,
+		PrevID:    nil,
+		NextID:    nil,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create Todo column: %w", err)
+	}
+
+	// Create "In Progress" column (middle of list)
+	inProgressCol, err := q.CreateColumn(ctx, generated.CreateColumnParams{
+		Name:      "In Progress",
+		ProjectID: projectID,
+		PrevID:    todoCol.ID,
+		NextID:    nil,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create In Progress column: %w", err)
+	}
+
+	// Create "Done" column (tail of list)
+	doneCol, err := q.CreateColumn(ctx, generated.CreateColumnParams{
+		Name:      "Done",
+		ProjectID: projectID,
+		PrevID:    inProgressCol.ID,
+		NextID:    nil,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create Done column: %w", err)
+	}
+
+	// Update next_id pointers to complete the linked list
+	if err := q.UpdateColumnNextID(ctx, generated.UpdateColumnNextIDParams{
+		ID:     todoCol.ID,
+		NextID: inProgressCol.ID,
+	}); err != nil {
+		return fmt.Errorf("failed to update Todo next_id: %w", err)
+	}
+
+	if err := q.UpdateColumnNextID(ctx, generated.UpdateColumnNextIDParams{
+		ID:     inProgressCol.ID,
+		NextID: doneCol.ID,
+	}); err != nil {
+		return fmt.Errorf("failed to update In Progress next_id: %w", err)
+	}
+
+	return nil
+}
+
 // seedDefaultColumns inserts default columns if the columns table is empty
 func seedDefaultColumns(ctx context.Context, db *sql.DB) error {
 	// Check if columns table is empty
@@ -332,58 +389,9 @@ func seedDefaultColumns(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
-	// Insert default columns with linked list structure
-	// First column: Todo (prev_id=NULL, next_id will be set)
-	result1, err := db.ExecContext(ctx,
-		"INSERT INTO columns (name, prev_id, next_id, project_id) VALUES (?, NULL, NULL, ?)",
-		"Todo", defaultProjectID,
-	)
-	if err != nil {
-		return err
-	}
-	todoID, err := result1.LastInsertId()
-	if err != nil {
-		return err
-	}
-
-	// Second column: In Progress
-	result2, err := db.ExecContext(ctx,
-		"INSERT INTO columns (name, prev_id, next_id, project_id) VALUES (?, ?, NULL, ?)",
-		"In Progress", todoID, defaultProjectID,
-	)
-	if err != nil {
-		return err
-	}
-	inProgressID, err := result2.LastInsertId()
-	if err != nil {
-		return err
-	}
-
-	// Third column: Done
-	result3, err := db.ExecContext(ctx,
-		"INSERT INTO columns (name, prev_id, next_id, project_id) VALUES (?, ?, NULL, ?)",
-		"Done", inProgressID, defaultProjectID,
-	)
-	if err != nil {
-		return err
-	}
-	doneID, err := result3.LastInsertId()
-	if err != nil {
-		return err
-	}
-
-	// Update the next_id pointers
-	_, err = db.ExecContext(ctx, "UPDATE columns SET next_id = ? WHERE id = ?", inProgressID, todoID)
-	if err != nil {
-		return err
-	}
-
-	_, err = db.ExecContext(ctx, "UPDATE columns SET next_id = ? WHERE id = ?", doneID, inProgressID)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	// Use the shared helper to create default columns
+	q := generated.New(db)
+	return CreateDefaultColumns(ctx, q, int64(defaultProjectID))
 }
 
 // seedDefaultLabels seeds default GitHub-style labels for projects that don't have any labels
