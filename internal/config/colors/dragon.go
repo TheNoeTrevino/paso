@@ -35,5 +35,9 @@ func Dragon() *ColorScheme {
 		WarningBg: palette.winterYellow,
 		ErrorFg:   palette.samuraiRed,
 		ErrorBg:   palette.winterRed,
+
+		// Status bar
+		StatusBarBg:   palette.dragonViolet, // Matches accent
+		StatusBarText: palette.dragonWhite,  // Matches normal text
 	}
 }

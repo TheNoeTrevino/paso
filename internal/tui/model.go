@@ -10,11 +10,12 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/thenoetrevino/paso/internal/app"
 	"github.com/thenoetrevino/paso/internal/config"
-	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -27,38 +28,38 @@ const (
 
 // Model represents the application state for the TUI
 type Model struct {
-	ctx                     context.Context // Application context for cancellation and timeouts
-	repo                    database.DataStore
-	config                  *config.Config
-	appState                *state.AppState
-	uiState                 *state.UIState
-	inputState              *state.InputState
-	formState               *state.FormState
-	labelPickerState        *state.LabelPickerState
-	parentPickerState       *state.TaskPickerState
-	childPickerState        *state.TaskPickerState
-	priorityPickerState     *state.PriorityPickerState
-	typePickerState         *state.TypePickerState
-	relationTypePickerState *state.RelationTypePickerState
-	notificationState       *state.NotificationState
-	searchState             *state.SearchState
-	listViewState           *state.ListViewState
-	statusPickerState       *state.StatusPickerState
-	connectionState         *state.ConnectionState      // Connection status to daemon
-	eventClient             events.EventPublisher       // Connection to daemon for live updates
-	eventChan               <-chan events.Event         // Channel for receiving events
-	notifyChan              chan events.NotificationMsg // Channel for user-facing notifications from events
-	subscriptionStarted     bool                        // Track if we've started listening
+	Ctx                     context.Context // Application context for cancellation and timeouts
+	App                     *app.App        // Application container with services
+	Config                  *config.Config
+	AppState                *state.AppState
+	UiState                 *state.UIState
+	InputState              *state.InputState
+	FormState               *state.FormState
+	LabelPickerState        *state.LabelPickerState
+	ParentPickerState       *state.TaskPickerState
+	ChildPickerState        *state.TaskPickerState
+	PriorityPickerState     *state.PriorityPickerState
+	TypePickerState         *state.TypePickerState
+	RelationTypePickerState *state.RelationTypePickerState
+	NotificationState       *state.NotificationState
+	SearchState             *state.SearchState
+	ListViewState           *state.ListViewState
+	StatusPickerState       *state.StatusPickerState
+	ConnectionState         *state.ConnectionState      // Connection status to daemon
+	EventClient             events.EventPublisher       // Connection to daemon for live updates
+	EventChan               <-chan events.Event         // Channel for receiving events
+	NotifyChan              chan events.NotificationMsg // Channel for user-facing notifications from events
+	SubscriptionStarted     bool                        // Track if we've started listening
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
-func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Config, eventClient events.EventPublisher) Model {
+func InitialModel(ctx context.Context, application *app.App, cfg *config.Config, eventClient events.EventPublisher) Model {
 	// Create child context with timeout for initial loading
 	loadCtx, cancel := context.WithTimeout(ctx, timeoutInitialLoad)
 	defer cancel()
 
 	// Load all projects
-	projects, err := repo.GetAllProjects(loadCtx)
+	projects, err := application.ProjectService.GetAllProjects(loadCtx)
 	if err != nil {
 		slog.Error("Error loading projects", "error", err)
 		projects = []*models.Project{}
@@ -71,7 +72,7 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	}
 
 	// Load columns for the current project
-	columns, err := repo.GetColumnsByProject(loadCtx, currentProjectID)
+	columns, err := application.ColumnService.GetColumnsByProject(loadCtx, currentProjectID)
 	if err != nil {
 		slog.Error("Error loading columns", "error", err)
 		columns = []*models.Column{}
@@ -79,14 +80,14 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 
 	// Load task summaries for the entire project (includes labels)
 	// Uses batch query to avoid N+1 pattern
-	tasks, err := repo.GetTaskSummariesByProject(loadCtx, currentProjectID)
+	tasks, err := application.TaskService.GetTaskSummariesByProject(loadCtx, currentProjectID)
 	if err != nil {
-		slog.Error("Error loading tasks for project %d", "error", currentProjectID, err)
+		slog.Error("Error loading tasks for project", "project_id", currentProjectID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
 
 	// Load labels for the current project
-	labels, err := repo.GetLabelsByProject(loadCtx, currentProjectID)
+	labels, err := application.LabelService.GetLabelsByProject(loadCtx, currentProjectID)
 	if err != nil {
 		slog.Error("Error loading labels", "error", err)
 		labels = []*models.Label{}
@@ -149,38 +150,38 @@ func InitialModel(ctx context.Context, repo database.DataStore, cfg *config.Conf
 	}
 
 	return Model{
-		ctx:                     ctx, // Store root context
-		repo:                    repo,
-		config:                  cfg,
-		appState:                appState,
-		uiState:                 uiState,
-		inputState:              inputState,
-		formState:               formState,
-		labelPickerState:        labelPickerState,
-		parentPickerState:       parentPickerState,
-		childPickerState:        childPickerState,
-		priorityPickerState:     priorityPickerState,
-		typePickerState:         typePickerState,
-		relationTypePickerState: relationTypePickerState,
-		notificationState:       notificationState,
-		searchState:             searchState,
-		listViewState:           listViewState,
-		statusPickerState:       statusPickerState,
-		connectionState:         connectionState,
-		eventClient:             eventClient,
-		eventChan:               eventChan,
-		notifyChan:              notifyChan,
-		subscriptionStarted:     false,
+		Ctx:                     ctx, // Store root context
+		App:                     application,
+		Config:                  cfg,
+		AppState:                appState,
+		UiState:                 uiState,
+		InputState:              inputState,
+		FormState:               formState,
+		LabelPickerState:        labelPickerState,
+		ParentPickerState:       parentPickerState,
+		ChildPickerState:        childPickerState,
+		PriorityPickerState:     priorityPickerState,
+		TypePickerState:         typePickerState,
+		RelationTypePickerState: relationTypePickerState,
+		NotificationState:       notificationState,
+		SearchState:             searchState,
+		ListViewState:           listViewState,
+		StatusPickerState:       statusPickerState,
+		ConnectionState:         connectionState,
+		EventClient:             eventClient,
+		EventChan:               eventChan,
+		NotifyChan:              notifyChan,
+		SubscriptionStarted:     false,
 	}
 }
 
 // withTimeout creates a child context with appropriate timeout for operation type
 func (m *Model) withTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(m.ctx, timeout)
+	return context.WithTimeout(m.Ctx, timeout)
 }
 
-// dbContext creates a context for database operations with 30s timeout
-func (m *Model) dbContext() (context.Context, context.CancelFunc) {
+// DbContext creates a context for database operations with 30s timeout
+func (m *Model) DbContext() (context.Context, context.CancelFunc) {
 	return m.withTimeout(timeoutDB)
 }
 
@@ -189,23 +190,23 @@ func (m *Model) dbContext() (context.Context, context.CancelFunc) {
 func (m *Model) listenForNotifications() tea.Cmd {
 	return func() tea.Msg {
 		select {
-		case msg := <-m.notifyChan:
+		case msg := <-m.NotifyChan:
 			return msg
-		case <-m.ctx.Done():
+		case <-m.Ctx.Done():
 			return nil
 		}
 	}
 }
 
-// uiContext creates a context for UI operations with 10s timeout
-func (m *Model) uiContext() (context.Context, context.CancelFunc) {
+// UiContext creates a context for UI operations with 10s timeout
+func (m *Model) UiContext() (context.Context, context.CancelFunc) {
 	return m.withTimeout(timeoutUI)
 }
 
 // handleDBError handles database errors with context-aware messages
 // It distinguishes between cancellation, timeout, and other errors,
 // providing appropriate user feedback for each case.
-func (m *Model) handleDBError(err error, operation string) {
+func (m *Model) HandleDBError(err error, operation string) {
 	if err == nil {
 		return
 	}
@@ -219,12 +220,12 @@ func (m *Model) handleDBError(err error, operation string) {
 
 	if errors.Is(err, context.DeadlineExceeded) {
 		// Operation timed out - show user-friendly message
-		m.notificationState.Add(state.LevelError, fmt.Sprintf("%s timed out. Please try again.", operation))
+		m.NotificationState.Add(state.LevelError, fmt.Sprintf("%s timed out. Please try again.", operation))
 		return
 	}
 
 	// Other errors - show detailed error message
-	m.notificationState.Add(state.LevelError, fmt.Sprintf("%s failed: %v", operation, err))
+	m.NotificationState.Add(state.LevelError, fmt.Sprintf("%s failed: %v", operation, err))
 }
 
 // Init initializes the Bubble Tea application
@@ -237,14 +238,14 @@ func (m Model) Init() tea.Cmd {
 // getCurrentTasks returns the task summaries for the currently selected column
 // Returns an empty slice if the column has no tasks
 func (m Model) getCurrentTasks() []*models.TaskSummary {
-	if len(m.appState.Columns()) == 0 {
+	if len(m.AppState.Columns()) == 0 {
 		return []*models.TaskSummary{}
 	}
-	if m.uiState.SelectedColumn() >= len(m.appState.Columns()) {
+	if m.UiState.SelectedColumn() >= len(m.AppState.Columns()) {
 		return []*models.TaskSummary{}
 	}
-	currentCol := m.appState.Columns()[m.uiState.SelectedColumn()]
-	tasks := m.appState.Tasks()[currentCol.ID]
+	currentCol := m.AppState.Columns()[m.UiState.SelectedColumn()]
+	tasks := m.AppState.Tasks()[currentCol.ID]
 	if tasks == nil {
 		return []*models.TaskSummary{}
 	}
@@ -258,10 +259,10 @@ func (m Model) getCurrentTask() *models.TaskSummary {
 	if len(tasks) == 0 {
 		return nil
 	}
-	if m.uiState.SelectedTask() >= len(tasks) {
+	if m.UiState.SelectedTask() >= len(tasks) {
 		return nil
 	}
-	return tasks[m.uiState.SelectedTask()]
+	return tasks[m.UiState.SelectedTask()]
 }
 
 // removeCurrentTask removes the currently selected task from the model's local state
@@ -275,36 +276,36 @@ func (m Model) removeCurrentTask() {
 
 	tasks := m.getTasksForColumn(currentCol.ID)
 
-	if len(tasks) == 0 || m.uiState.SelectedTask() >= len(tasks) {
+	if len(tasks) == 0 || m.UiState.SelectedTask() >= len(tasks) {
 		return
 	}
 
 	// Remove the task at selectedTask index
-	m.appState.Tasks()[currentCol.ID] = append(tasks[:m.uiState.SelectedTask()], tasks[m.uiState.SelectedTask()+1:]...)
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UiState.SelectedTask()], tasks[m.UiState.SelectedTask()+1:]...)
 
 	// Adjust selectedTask if we removed the last task
-	if m.uiState.SelectedTask() >= len(m.appState.Tasks()[currentCol.ID]) && m.uiState.SelectedTask() > 0 {
-		m.uiState.SetSelectedTask(m.uiState.SelectedTask() - 1)
+	if m.UiState.SelectedTask() >= len(m.AppState.Tasks()[currentCol.ID]) && m.UiState.SelectedTask() > 0 {
+		m.UiState.SetSelectedTask(m.UiState.SelectedTask() - 1)
 	}
 }
 
 // getCurrentColumn returns the currently selected column
 // Returns nil if there are no columns
 func (m Model) getCurrentColumn() *models.Column {
-	if len(m.appState.Columns()) == 0 {
+	if len(m.AppState.Columns()) == 0 {
 		return nil
 	}
-	selectedIdx := m.uiState.SelectedColumn()
-	if selectedIdx < 0 || selectedIdx >= len(m.appState.Columns()) {
+	selectedIdx := m.UiState.SelectedColumn()
+	if selectedIdx < 0 || selectedIdx >= len(m.AppState.Columns()) {
 		return nil
 	}
-	return m.appState.Columns()[selectedIdx]
+	return m.AppState.Columns()[selectedIdx]
 }
 
 // getTasksForColumn returns tasks for a specific column ID with safe map access.
 // Returns an empty slice if the column ID doesn't exist in the tasks map.
 func (m Model) getTasksForColumn(columnID int) []*models.TaskSummary {
-	tasks, ok := m.appState.Tasks()[columnID]
+	tasks, ok := m.AppState.Tasks()[columnID]
 	if !ok || tasks == nil {
 		return []*models.TaskSummary{}
 	}
@@ -316,26 +317,26 @@ func (m Model) getTasksForColumn(columnID int) []*models.TaskSummary {
 // It adjusts the selectedColumn index if necessary to keep it within bounds
 // It also adjusts the viewportOffset if needed
 func (m Model) removeCurrentColumn() {
-	columns := m.appState.Columns()
-	selectedCol := m.uiState.SelectedColumn()
+	columns := m.AppState.Columns()
+	selectedCol := m.UiState.SelectedColumn()
 
 	if len(columns) == 0 || selectedCol >= len(columns) {
 		return
 	}
 
 	// Remove the column at selectedColumn index
-	m.appState.SetColumns(append(columns[:selectedCol], columns[selectedCol+1:]...))
+	m.AppState.SetColumns(append(columns[:selectedCol], columns[selectedCol+1:]...))
 
 	// Adjust selectedColumn if we removed the last column
-	if selectedCol >= len(m.appState.Columns()) && selectedCol > 0 {
-		m.uiState.SetSelectedColumn(selectedCol - 1)
+	if selectedCol >= len(m.AppState.Columns()) && selectedCol > 0 {
+		m.UiState.SetSelectedColumn(selectedCol - 1)
 	}
 
 	// Reset task selection
-	m.uiState.SetSelectedTask(0)
+	m.UiState.SetSelectedTask(0)
 
 	// Adjust viewportOffset using UIState helper
-	m.uiState.AdjustViewportAfterColumnRemoval(m.uiState.SelectedColumn(), len(m.appState.Columns()))
+	m.UiState.AdjustViewportAfterColumnRemoval(m.UiState.SelectedColumn(), len(m.AppState.Columns()))
 }
 
 // moveTaskRight moves the currently selected task to the next column (right)
@@ -355,40 +356,40 @@ func (m Model) moveTaskRight() {
 	}
 	if currentCol.NextID == nil {
 		// Already at last column - show notification
-		m.notificationState.Add(state.LevelInfo, "There are no more columns to move to.")
+		m.NotificationState.Add(state.LevelInfo, "There are no more columns to move to.")
 		return
 	}
 
 	// Use the new database function to move task
-	ctx, cancel := m.uiContext()
+	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.repo.MoveTaskToNextColumn(ctx, task.ID)
+	err := m.App.TaskService.MoveTaskToNextColumn(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task to next column", "error", err)
 		if err != models.ErrAlreadyLastColumn {
-			m.notificationState.Add(state.LevelError, "Failed to move task to next column")
+			m.NotificationState.Add(state.LevelError, "Failed to move task to next column")
 		}
 		return
 	}
 
 	// Update local state: remove from current column
-	tasks := m.appState.Tasks()[currentCol.ID]
-	m.appState.Tasks()[currentCol.ID] = append(tasks[:m.uiState.SelectedTask()], tasks[m.uiState.SelectedTask()+1:]...)
+	tasks := m.AppState.Tasks()[currentCol.ID]
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UiState.SelectedTask()], tasks[m.UiState.SelectedTask()+1:]...)
 
 	// Find the next column and add task there
 	nextColID := *currentCol.NextID
-	newPosition := len(m.appState.Tasks()[nextColID])
+	newPosition := len(m.AppState.Tasks()[nextColID])
 	task.ColumnID = nextColID
 	task.Position = newPosition
-	m.appState.Tasks()[nextColID] = append(m.appState.Tasks()[nextColID], task)
+	m.AppState.Tasks()[nextColID] = append(m.AppState.Tasks()[nextColID], task)
 
 	// Move selection to follow the task
-	m.uiState.SetSelectedColumn(m.uiState.SelectedColumn() + 1)
-	m.uiState.SetSelectedTask(newPosition)
+	m.UiState.SetSelectedColumn(m.UiState.SelectedColumn() + 1)
+	m.UiState.SetSelectedTask(newPosition)
 
 	// Ensure the moved task is visible (auto-scroll viewport if needed)
-	if m.uiState.SelectedColumn() >= m.uiState.ViewportOffset()+m.uiState.ViewportSize() {
-		m.uiState.SetViewportOffset(m.uiState.ViewportOffset() + 1)
+	if m.UiState.SelectedColumn() >= m.UiState.ViewportOffset()+m.UiState.ViewportSize() {
+		m.UiState.SetViewportOffset(m.UiState.ViewportOffset() + 1)
 	}
 }
 
@@ -409,40 +410,40 @@ func (m Model) moveTaskLeft() {
 	}
 	if currentCol.PrevID == nil {
 		// Already at first column - show notification
-		m.notificationState.Add(state.LevelInfo, "There are no more columns to move to.")
+		m.NotificationState.Add(state.LevelInfo, "There are no more columns to move to.")
 		return
 	}
 
 	// Use the new database function to move task
-	ctx, cancel := m.uiContext()
+	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.repo.MoveTaskToPrevColumn(ctx, task.ID)
+	err := m.App.TaskService.MoveTaskToPrevColumn(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task to previous column", "error", err)
 		if err != models.ErrAlreadyFirstColumn {
-			m.notificationState.Add(state.LevelError, "Failed to move task to previous column")
+			m.NotificationState.Add(state.LevelError, "Failed to move task to previous column")
 		}
 		return
 	}
 
 	// Update local state: remove from current column
-	tasks := m.appState.Tasks()[currentCol.ID]
-	m.appState.Tasks()[currentCol.ID] = append(tasks[:m.uiState.SelectedTask()], tasks[m.uiState.SelectedTask()+1:]...)
+	tasks := m.AppState.Tasks()[currentCol.ID]
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UiState.SelectedTask()], tasks[m.UiState.SelectedTask()+1:]...)
 
 	// Find the previous column and add task there
 	prevColID := *currentCol.PrevID
-	newPosition := len(m.appState.Tasks()[prevColID])
+	newPosition := len(m.AppState.Tasks()[prevColID])
 	task.ColumnID = prevColID
 	task.Position = newPosition
-	m.appState.Tasks()[prevColID] = append(m.appState.Tasks()[prevColID], task)
+	m.AppState.Tasks()[prevColID] = append(m.AppState.Tasks()[prevColID], task)
 
 	// Move selection to follow the task
-	m.uiState.SetSelectedColumn(m.uiState.SelectedColumn() - 1)
-	m.uiState.SetSelectedTask(newPosition)
+	m.UiState.SetSelectedColumn(m.UiState.SelectedColumn() - 1)
+	m.UiState.SetSelectedTask(newPosition)
 
 	// Ensure the moved task is visible (auto-scroll viewport if needed)
-	if m.uiState.SelectedColumn() < m.uiState.ViewportOffset() {
-		m.uiState.SetViewportOffset(m.uiState.ViewportOffset() - 1)
+	if m.UiState.SelectedColumn() < m.UiState.ViewportOffset() {
+		m.UiState.SetViewportOffset(m.UiState.ViewportOffset() - 1)
 	}
 }
 
@@ -456,19 +457,19 @@ func (m Model) moveTaskUp() {
 	}
 
 	// Check if already at top (edge case handled here for quick feedback)
-	if m.uiState.SelectedTask() == 0 {
-		m.notificationState.Add(state.LevelInfo, "Task is already at the top")
+	if m.UiState.SelectedTask() == 0 {
+		m.NotificationState.Add(state.LevelInfo, "Task is already at the top")
 		return
 	}
 
 	// Call database swap
-	ctx, cancel := m.uiContext()
+	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.repo.SwapTaskUp(ctx, task.ID)
+	err := m.App.TaskService.MoveTaskUp(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task up", "error", err)
 		if err != models.ErrAlreadyFirstTask {
-			m.notificationState.Add(state.LevelError, "Failed to move task up")
+			m.NotificationState.Add(state.LevelError, "Failed to move task up")
 		}
 		return
 	}
@@ -484,7 +485,7 @@ func (m Model) moveTaskUp() {
 		return
 	}
 
-	selectedIdx := m.uiState.SelectedTask()
+	selectedIdx := m.UiState.SelectedTask()
 	if selectedIdx == 0 || selectedIdx >= len(tasks) {
 		return
 	}
@@ -497,7 +498,7 @@ func (m Model) moveTaskUp() {
 	tasks[selectedIdx-1].Position = selectedIdx - 1
 
 	// Move selection to follow the task
-	m.uiState.SetSelectedTask(selectedIdx - 1)
+	m.UiState.SetSelectedTask(selectedIdx - 1)
 }
 
 // moveTaskDown moves the currently selected task down within its column
@@ -516,22 +517,22 @@ func (m Model) moveTaskDown() {
 	}
 
 	tasks := m.getTasksForColumn(currentCol.ID)
-	selectedIdx := m.uiState.SelectedTask()
+	selectedIdx := m.UiState.SelectedTask()
 
 	// Check if already at bottom
 	if selectedIdx >= len(tasks)-1 {
-		m.notificationState.Add(state.LevelInfo, "Task is already at the bottom")
+		m.NotificationState.Add(state.LevelInfo, "Task is already at the bottom")
 		return
 	}
 
 	// Call database swap
-	ctx, cancel := m.uiContext()
+	ctx, cancel := m.UiContext()
 	defer cancel()
-	err := m.repo.SwapTaskDown(ctx, task.ID)
+	err := m.App.TaskService.MoveTaskDown(ctx, task.ID)
 	if err != nil {
 		slog.Error("Error moving task down", "error", err)
 		if err != models.ErrAlreadyLastTask {
-			m.notificationState.Add(state.LevelError, "Failed to move task down")
+			m.NotificationState.Add(state.LevelError, "Failed to move task down")
 		}
 		return
 	}
@@ -544,68 +545,68 @@ func (m Model) moveTaskDown() {
 	tasks[selectedIdx+1].Position = selectedIdx + 1
 
 	// Move selection to follow the task
-	m.uiState.SetSelectedTask(selectedIdx + 1)
+	m.UiState.SetSelectedTask(selectedIdx + 1)
 }
 
 // getCurrentProject returns the currently selected project
 // Returns nil if there are no projects
 func (m Model) getCurrentProject() *models.Project {
-	return m.appState.GetCurrentProject()
+	return m.AppState.GetCurrentProject()
 }
 
 // switchToProject switches to a different project by index and reloads columns/tasks/labels
 func (m Model) switchToProject(projectIndex int) {
-	if projectIndex < 0 || projectIndex >= len(m.appState.Projects()) {
+	if projectIndex < 0 || projectIndex >= len(m.AppState.Projects()) {
 		return
 	}
 
 	// Update state
-	m.appState.SetSelectedProject(projectIndex)
+	m.AppState.SetSelectedProject(projectIndex)
 
-	project := m.appState.Projects()[projectIndex]
+	project := m.AppState.Projects()[projectIndex]
 
 	// Create context for database operations
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 
 	// Reload columns for this project
-	columns, err := m.repo.GetColumnsByProject(ctx, project.ID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading columns for project %d", "error", project.ID, err)
+		slog.Error("Error loading columns for project", "project_id", project.ID, "error", err)
 		columns = []*models.Column{}
 	}
-	m.appState.SetColumns(columns)
+	m.AppState.SetColumns(columns)
 
 	// Reload task summaries for the entire project
-	tasks, err := m.repo.GetTaskSummariesByProject(ctx, project.ID)
+	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading tasks for project %d", "error", project.ID, err)
+		slog.Error("Error loading tasks for project", "project_id", project.ID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
-	m.appState.SetTasks(tasks)
+	m.AppState.SetTasks(tasks)
 
 	// Reload labels for this project
-	labels, err := m.repo.GetLabelsByProject(ctx, project.ID)
+	labels, err := m.App.LabelService.GetLabelsByProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading labels for project %d", "error", project.ID, err)
+		slog.Error("Error loading labels for project", "project_id", project.ID, "error", err)
 		labels = []*models.Label{}
 	}
-	m.appState.SetLabels(labels)
+	m.AppState.SetLabels(labels)
 
 	// Reset selection state
-	m.uiState.ResetSelection()
+	m.UiState.ResetSelection()
 }
 
 // reloadProjects reloads the projects list from the database
 func (m Model) reloadProjects() {
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
-	projects, err := m.repo.GetAllProjects(ctx)
+	projects, err := m.App.ProjectService.GetAllProjects(ctx)
 	if err != nil {
 		slog.Error("Error reloading projects", "error", err)
 		return
 	}
-	m.appState.SetProjects(projects)
+	m.AppState.SetProjects(projects)
 }
 
 // initParentPickerForForm initializes the parent picker for use in TicketFormMode.
@@ -620,9 +621,9 @@ func (m *Model) initParentPickerForForm() bool {
 	}
 
 	// Get all task references for the entire project
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
-	allTasks, err := m.repo.GetTaskReferencesForProject(ctx, project.ID)
+	allTasks, err := m.App.TaskService.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading project tasks", "error", err)
 		return false
@@ -630,7 +631,7 @@ func (m *Model) initParentPickerForForm() bool {
 
 	// Build map of currently selected parent task IDs from form state
 	parentTaskMap := make(map[int]bool)
-	for _, parentID := range m.formState.FormParentIDs {
+	for _, parentID := range m.FormState.FormParentIDs {
 		parentTaskMap[parentID] = true
 	}
 
@@ -638,7 +639,7 @@ func (m *Model) initParentPickerForForm() bool {
 	items := make([]state.TaskPickerItem, 0, len(allTasks))
 	for _, task := range allTasks {
 		// In edit mode, exclude the task being edited
-		if m.formState.EditingTaskID != 0 && task.ID == m.formState.EditingTaskID {
+		if m.FormState.EditingTaskID != 0 && task.ID == m.FormState.EditingTaskID {
 			continue
 		}
 		items = append(items, state.TaskPickerItem{
@@ -648,12 +649,12 @@ func (m *Model) initParentPickerForForm() bool {
 	}
 
 	// Initialize ParentPickerState
-	m.parentPickerState.Items = items
-	m.parentPickerState.TaskID = m.formState.EditingTaskID // 0 for create mode
-	m.parentPickerState.Cursor = 0
-	m.parentPickerState.Filter = ""
-	m.parentPickerState.PickerType = "parent"
-	m.parentPickerState.ReturnMode = state.TicketFormMode
+	m.ParentPickerState.Items = items
+	m.ParentPickerState.TaskID = m.FormState.EditingTaskID // 0 for create mode
+	m.ParentPickerState.Cursor = 0
+	m.ParentPickerState.Filter = ""
+	m.ParentPickerState.PickerType = "parent"
+	m.ParentPickerState.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -670,9 +671,9 @@ func (m *Model) initChildPickerForForm() bool {
 	}
 
 	// Get all task references for the entire project
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
-	allTasks, err := m.repo.GetTaskReferencesForProject(ctx, project.ID)
+	allTasks, err := m.App.TaskService.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("Error loading project tasks", "error", err)
 		return false
@@ -680,7 +681,7 @@ func (m *Model) initChildPickerForForm() bool {
 
 	// Build map of currently selected child task IDs from form state
 	childTaskMap := make(map[int]bool)
-	for _, childID := range m.formState.FormChildIDs {
+	for _, childID := range m.FormState.FormChildIDs {
 		childTaskMap[childID] = true
 	}
 
@@ -688,7 +689,7 @@ func (m *Model) initChildPickerForForm() bool {
 	items := make([]state.TaskPickerItem, 0, len(allTasks))
 	for _, task := range allTasks {
 		// In edit mode, exclude the task being edited
-		if m.formState.EditingTaskID != 0 && task.ID == m.formState.EditingTaskID {
+		if m.FormState.EditingTaskID != 0 && task.ID == m.FormState.EditingTaskID {
 			continue
 		}
 		items = append(items, state.TaskPickerItem{
@@ -698,12 +699,12 @@ func (m *Model) initChildPickerForForm() bool {
 	}
 
 	// Initialize ChildPickerState
-	m.childPickerState.Items = items
-	m.childPickerState.TaskID = m.formState.EditingTaskID // 0 for create mode
-	m.childPickerState.Cursor = 0
-	m.childPickerState.Filter = ""
-	m.childPickerState.PickerType = "child"
-	m.childPickerState.ReturnMode = state.TicketFormMode
+	m.ChildPickerState.Items = items
+	m.ChildPickerState.TaskID = m.FormState.EditingTaskID // 0 for create mode
+	m.ChildPickerState.Cursor = 0
+	m.ChildPickerState.Filter = ""
+	m.ChildPickerState.PickerType = "child"
+	m.ChildPickerState.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -721,13 +722,13 @@ func (m *Model) initLabelPickerForForm() bool {
 
 	// Build map of currently selected label IDs from form state
 	labelIDMap := make(map[int]bool)
-	for _, labelID := range m.formState.FormLabelIDs {
+	for _, labelID := range m.FormState.FormLabelIDs {
 		labelIDMap[labelID] = true
 	}
 
 	// Build picker items from all available labels
 	var items []state.LabelPickerItem
-	for _, label := range m.appState.Labels() {
+	for _, label := range m.AppState.Labels() {
 		items = append(items, state.LabelPickerItem{
 			Label:    label,
 			Selected: labelIDMap[label.ID],
@@ -735,11 +736,11 @@ func (m *Model) initLabelPickerForForm() bool {
 	}
 
 	// Initialize LabelPickerState
-	m.labelPickerState.Items = items
-	m.labelPickerState.TaskID = m.formState.EditingTaskID // 0 for create mode
-	m.labelPickerState.Cursor = 0
-	m.labelPickerState.Filter = ""
-	m.labelPickerState.ReturnMode = state.TicketFormMode
+	m.LabelPickerState.Items = items
+	m.LabelPickerState.TaskID = m.FormState.EditingTaskID // 0 for create mode
+	m.LabelPickerState.Cursor = 0
+	m.LabelPickerState.Filter = ""
+	m.LabelPickerState.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -747,7 +748,7 @@ func (m *Model) initLabelPickerForForm() bool {
 // getFilteredLabelPickerItems returns label picker items filtered by the current filter text
 func (m *Model) getFilteredLabelPickerItems() []state.LabelPickerItem {
 	// Delegate to LabelPickerState which now owns this logic
-	return m.labelPickerState.GetFilteredItems()
+	return m.LabelPickerState.GetFilteredItems()
 }
 
 // initPriorityPickerForForm initializes the priority picker for use in TicketFormMode.
@@ -759,11 +760,11 @@ func (m *Model) initPriorityPickerForForm() bool {
 	currentPriorityID := 3 // Default to medium
 
 	// If editing an existing task, we need to get the current priority from database
-	if m.formState.EditingTaskID != 0 {
-		ctx, cancel := m.dbContext()
+	if m.FormState.EditingTaskID != 0 {
+		ctx, cancel := m.DbContext()
 		defer cancel()
 
-		taskDetail, err := m.repo.GetTaskDetail(ctx, m.formState.EditingTaskID)
+		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.FormState.EditingTaskID)
 		if err != nil {
 			slog.Error("Error loading task detail for priority picker", "error", err)
 			return false
@@ -771,7 +772,7 @@ func (m *Model) initPriorityPickerForForm() bool {
 
 		// Find the priority ID from the priority description
 		// We need to match it against our priority options
-		priorities := GetPriorityOptions()
+		priorities := renderers.GetPriorityOptions()
 		for _, p := range priorities {
 			if p.Description == taskDetail.PriorityDescription {
 				currentPriorityID = p.ID
@@ -781,10 +782,10 @@ func (m *Model) initPriorityPickerForForm() bool {
 	}
 
 	// Initialize PriorityPickerState
-	m.priorityPickerState.SetSelectedPriorityID(currentPriorityID)
+	m.PriorityPickerState.SetSelectedPriorityID(currentPriorityID)
 	// Set cursor to match the selected priority (adjust for 0-indexing)
-	m.priorityPickerState.SetCursor(currentPriorityID - 1)
-	m.priorityPickerState.SetReturnMode(state.TicketFormMode)
+	m.PriorityPickerState.SetCursor(currentPriorityID - 1)
+	m.PriorityPickerState.SetReturnMode(state.TicketFormMode)
 
 	return true
 }
@@ -798,11 +799,11 @@ func (m *Model) initTypePickerForForm() bool {
 	currentTypeID := 1 // Default to task
 
 	// If editing an existing task, we need to get the current type from database
-	if m.formState.EditingTaskID != 0 {
-		ctx, cancel := m.dbContext()
+	if m.FormState.EditingTaskID != 0 {
+		ctx, cancel := m.DbContext()
 		defer cancel()
 
-		taskDetail, err := m.repo.GetTaskDetail(ctx, m.formState.EditingTaskID)
+		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.FormState.EditingTaskID)
 		if err != nil {
 			slog.Error("Error loading task detail for type picker", "error", err)
 			return false
@@ -810,7 +811,7 @@ func (m *Model) initTypePickerForForm() bool {
 
 		// Find the type ID from the type description
 		// We need to match it against our type options
-		types := GetTypeOptions()
+		types := renderers.GetTypeOptions()
 		for _, t := range types {
 			if t.Description == taskDetail.TypeDescription {
 				currentTypeID = t.ID
@@ -820,22 +821,22 @@ func (m *Model) initTypePickerForForm() bool {
 	}
 
 	// Initialize TypePickerState
-	m.typePickerState.SetSelectedTypeID(currentTypeID)
+	m.TypePickerState.SetSelectedTypeID(currentTypeID)
 	// Set cursor to match the selected type (adjust for 0-indexing)
-	m.typePickerState.SetCursor(currentTypeID - 1)
-	m.typePickerState.SetReturnMode(state.TicketFormMode)
+	m.TypePickerState.SetCursor(currentTypeID - 1)
+	m.TypePickerState.SetReturnMode(state.TicketFormMode)
 
 	return true
 }
 
 // buildListViewRows creates a flat list of all tasks with their column names.
 // The list is sorted according to the current sort settings in listViewState.
-func (m Model) buildListViewRows() []ListViewRow {
-	var rows []ListViewRow
-	for _, col := range m.appState.Columns() {
-		tasks := m.appState.Tasks()[col.ID]
+func (m Model) buildListViewRows() []renderers.ListViewRow {
+	var rows []renderers.ListViewRow
+	for _, col := range m.AppState.Columns() {
+		tasks := m.AppState.Tasks()[col.ID]
 		for _, task := range tasks {
-			rows = append(rows, ListViewRow{
+			rows = append(rows, renderers.ListViewRow{
 				Task:       task,
 				ColumnName: col.Name,
 				ColumnID:   col.ID,
@@ -849,14 +850,14 @@ func (m Model) buildListViewRows() []ListViewRow {
 }
 
 // sortListViewRows sorts the rows based on current sort settings.
-func (m Model) sortListViewRows(rows []ListViewRow) {
-	if m.listViewState.SortField() == state.SortNone {
+func (m Model) sortListViewRows(rows []renderers.ListViewRow) {
+	if m.ListViewState.SortField() == state.SortNone {
 		return
 	}
 
 	sort.Slice(rows, func(i, j int) bool {
 		var cmp int
-		switch m.listViewState.SortField() {
+		switch m.ListViewState.SortField() {
 		case state.SortByTitle:
 			cmp = strings.Compare(rows[i].Task.Title, rows[j].Task.Title)
 		case state.SortByStatus:
@@ -865,7 +866,7 @@ func (m Model) sortListViewRows(rows []ListViewRow) {
 			return false
 		}
 
-		if m.listViewState.SortOrder() == state.SortDesc {
+		if m.ListViewState.SortOrder() == state.SortDesc {
 			cmp = -cmp
 		}
 		return cmp < 0
@@ -877,24 +878,24 @@ func (m Model) sortListViewRows(rows []ListViewRow) {
 func (m *Model) syncKanbanToListSelection() {
 	rows := m.buildListViewRows()
 	if len(rows) == 0 {
-		m.listViewState.SetSelectedRow(0)
+		m.ListViewState.SetSelectedRow(0)
 		return
 	}
 
 	// Find the task that matches the current kanban selection
 	currentTask := m.getCurrentTask()
 	if currentTask == nil {
-		m.listViewState.SetSelectedRow(0)
+		m.ListViewState.SetSelectedRow(0)
 		return
 	}
 
 	for i, row := range rows {
 		if row.Task.ID == currentTask.ID {
-			m.listViewState.SetSelectedRow(i)
+			m.ListViewState.SetSelectedRow(i)
 			return
 		}
 	}
-	m.listViewState.SetSelectedRow(0)
+	m.ListViewState.SetSelectedRow(0)
 }
 
 // syncListToKanbanSelection maps the current list row to kanban column/task selection.
@@ -905,7 +906,7 @@ func (m *Model) syncListToKanbanSelection() {
 		return
 	}
 
-	selectedRow := m.listViewState.SelectedRow()
+	selectedRow := m.ListViewState.SelectedRow()
 	if selectedRow >= len(rows) {
 		selectedRow = len(rows) - 1
 	}
@@ -916,13 +917,13 @@ func (m *Model) syncListToKanbanSelection() {
 	selectedTask := rows[selectedRow].Task
 
 	// Find the column and task position in kanban view
-	for colIdx, col := range m.appState.Columns() {
-		tasks := m.appState.Tasks()[col.ID]
+	for colIdx, col := range m.AppState.Columns() {
+		tasks := m.AppState.Tasks()[col.ID]
 		for taskIdx, task := range tasks {
 			if task.ID == selectedTask.ID {
-				m.uiState.SetSelectedColumn(colIdx)
-				m.uiState.SetSelectedTask(taskIdx)
-				m.uiState.EnsureSelectionVisible(colIdx)
+				m.UiState.SetSelectedColumn(colIdx)
+				m.UiState.SetSelectedTask(taskIdx)
+				m.UiState.EnsureSelectionVisible(colIdx)
 				return
 			}
 		}
@@ -942,25 +943,25 @@ func (m Model) getTaskFromListRow(rowIdx int) *models.TaskSummary {
 // getSelectedListTask returns the currently selected task in list view.
 // This is a convenience method that uses getTaskFromListRow with the current selection.
 func (m Model) getSelectedListTask() *models.TaskSummary {
-	return m.getTaskFromListRow(m.listViewState.SelectedRow())
+	return m.getTaskFromListRow(m.ListViewState.SelectedRow())
 }
 
 // subscribeToEvents returns a command that listens for events from the daemon
 // and sends RefreshMsg when data changes
 func (m Model) subscribeToEvents() tea.Cmd {
-	if m.eventChan == nil {
+	if m.EventChan == nil {
 		return nil
 	}
 
 	return func() tea.Msg {
 		select {
-		case event, ok := <-m.eventChan:
+		case event, ok := <-m.EventChan:
 			if !ok {
 				// Channel closed, connection lost
 				return nil
 			}
 			return RefreshMsg{Event: event}
-		case <-m.ctx.Done():
+		case <-m.Ctx.Done():
 			return nil
 		}
 	}
@@ -968,40 +969,40 @@ func (m Model) subscribeToEvents() tea.Cmd {
 
 // reloadCurrentProject refreshes columns, tasks, and labels for the current project
 func (m *Model) reloadCurrentProject() {
-	currentProject := m.appState.GetCurrentProject()
+	currentProject := m.AppState.GetCurrentProject()
 	if currentProject == nil {
 		return
 	}
 
-	ctx, cancel := m.dbContext()
+	ctx, cancel := m.DbContext()
 	defer cancel()
 
 	// Reload columns
-	columns, err := m.repo.GetColumnsByProject(ctx, currentProject.ID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading columns", "error", err)
-		m.handleDBError(err, "reload columns")
+		m.HandleDBError(err, "reload columns")
 		return
 	}
 
 	// Reload tasks
-	tasks, err := m.repo.GetTaskSummariesByProject(ctx, currentProject.ID)
+	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading tasks", "error", err)
-		m.handleDBError(err, "reload tasks")
+		m.HandleDBError(err, "reload tasks")
 		return
 	}
 
 	// Reload labels
-	labels, err := m.repo.GetLabelsByProject(ctx, currentProject.ID)
+	labels, err := m.App.LabelService.GetLabelsByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("Error reloading labels", "error", err)
-		m.handleDBError(err, "reload labels")
+		m.HandleDBError(err, "reload labels")
 		return
 	}
 
 	// Update state with new data (preserves cursor position)
-	m.appState.SetColumns(columns)
-	m.appState.SetTasks(tasks)
-	m.appState.SetLabels(labels)
+	m.AppState.SetColumns(columns)
+	m.AppState.SetTasks(tasks)
+	m.AppState.SetLabels(labels)
 }
