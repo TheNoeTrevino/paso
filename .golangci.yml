@@ -18,27 +18,5 @@ linters:
   disable:
     - sqlclosecheck      # Disabled: using closeRows helper that properly handles closure
 
-issues:
-  max-issues-per-linter: 0
-  max-same-issues: 0
-  exclude-dirs:
-    - crush              # Exclude separate module
-
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-    - path: add_test_data\.go
-      linters:
-        - unused
-
-linters-settings:
-  govet:
-    check-shadowing: true
-  staticcheck:
-    checks: ["all"]
-
 run:
   timeout: 5m
-  skip-dirs:
-    - crush
