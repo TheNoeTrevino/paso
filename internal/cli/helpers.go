@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/thenoetrevino/paso/internal/models"
 )
 
 // ValidateColorHex validates that a color string is in valid hex format #RRGGBB
@@ -48,6 +50,36 @@ func ParsePriority(priority string) (int, error) {
 		return 0, fmt.Errorf("invalid priority '%s' (must be: trivial, low, medium, high, critical)", priority)
 	}
 	return id, nil
+}
+
+// FindColumnByName finds a column by name (case-insensitive)
+// Returns the column and nil error if found, nil and error if not found
+func FindColumnByName(columns []*models.Column, name string) (*models.Column, error) {
+	for _, col := range columns {
+		if strings.EqualFold(col.Name, name) {
+			return col, nil
+		}
+	}
+	return nil, fmt.Errorf("column '%s' not found", name)
+}
+
+// FormatAvailableColumns formats column list for error messages
+func FormatAvailableColumns(columns []*models.Column) string {
+	names := make([]string, len(columns))
+	for i, col := range columns {
+		names[i] = col.Name
+	}
+	return strings.Join(names, ", ")
+}
+
+// GetCurrentColumnName finds the column name for a given column ID
+func GetCurrentColumnName(columns []*models.Column, columnID int) string {
+	for _, col := range columns {
+		if col.ID == columnID {
+			return col.Name
+		}
+	}
+	return "Unknown"
 }
 
 // GetLabelByID is a helper function to get a single label by ID
