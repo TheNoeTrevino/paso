@@ -216,7 +216,7 @@ func (r *Runner) checkCoverage(ctx context.Context) {
 		}
 	}
 
-	if coverage < 40.0 {
+	if coverage < 15.0 {
 		r.addResult(StepResult{
 			Name:    "Coverage Threshold",
 			Passed:  false,

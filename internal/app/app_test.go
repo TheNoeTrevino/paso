@@ -25,7 +25,7 @@ func setupTestDB(t *testing.T) *sql.DB {
 
 func TestNew(t *testing.T) {
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Create app with nil event client
 	app := New(db, nil)
@@ -53,7 +53,7 @@ func TestNew(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	app := New(db, nil)
 

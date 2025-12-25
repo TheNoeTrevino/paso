@@ -148,7 +148,7 @@ func createTestSchema(db *sql.DB) error {
 	);
 	`
 
-	_, err := db.Exec(schema)
+	_, err := db.ExecContext(context.Background(), schema)
 	return err
 }
 
@@ -167,14 +167,14 @@ func SetupCLITest(t *testing.T) (*sql.DB, *app.App) {
 // CreateTestProject creates a test project with default columns (Todo, In Progress, Done)
 func CreateTestProject(t *testing.T, db *sql.DB, name string) int {
 	t.Helper()
-	result, err := db.Exec("INSERT INTO projects (name, description) VALUES (?, ?)", name, "Test description")
+	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name, description) VALUES (?, ?)", name, "Test description")
 	if err != nil {
 		t.Fatalf("Failed to create test project: %v", err)
 	}
 
 	// Initialize project counter
 	projectID, _ := result.LastInsertId()
-	_, err = db.Exec("INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)", projectID)
+	_, err = db.ExecContext(context.Background(), "INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)", projectID)
 	if err != nil {
 		t.Fatalf("Failed to initialize project counter: %v", err)
 	}
@@ -190,7 +190,7 @@ func CreateTestProject(t *testing.T, db *sql.DB, name string) int {
 // CreateTestColumn creates a test column and returns its ID
 func CreateTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
 	t.Helper()
-	result, err := db.Exec("INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, name)
+	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, name)
 	if err != nil {
 		t.Fatalf("Failed to create test column: %v", err)
 	}
@@ -201,7 +201,7 @@ func CreateTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int 
 // CreateTestTask creates a test task and returns its ID
 func CreateTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
 	t.Helper()
-	result, err := db.Exec("INSERT INTO tasks (column_id, title, position, type_id, priority_id) VALUES (?, ?, 0, 1, 3)", columnID, title)
+	result, err := db.ExecContext(context.Background(), "INSERT INTO tasks (column_id, title, position, type_id, priority_id) VALUES (?, ?, 0, 1, 3)", columnID, title)
 	if err != nil {
 		t.Fatalf("Failed to create test task: %v", err)
 	}
@@ -212,7 +212,7 @@ func CreateTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
 // CreateTestLabel creates a test label and returns its ID
 func CreateTestLabel(t *testing.T, db *sql.DB, projectID int, name, color string) int {
 	t.Helper()
-	result, err := db.Exec("INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)", projectID, name, color)
+	result, err := db.ExecContext(context.Background(), "INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)", projectID, name, color)
 	if err != nil {
 		t.Fatalf("Failed to create test label: %v", err)
 	}

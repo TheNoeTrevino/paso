@@ -34,14 +34,6 @@ func withTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) error {
 	return nil
 }
 
-// closeRows safely closes sql.Rows and logs any errors with context.
-// Designed to be used with defer.
-func closeRows(rows *sql.Rows, context string) {
-	if err := rows.Close(); err != nil {
-		log.Printf("failed to close rows (%s): %v", context, err)
-	}
-}
-
 // sendEvent sends a database change event notification if the client is available.
 // Errors are logged but not returned (fire-and-forget pattern).
 func sendEvent(eventClient events.EventPublisher, projectID int) {

@@ -35,11 +35,11 @@ func TestOutputFormatter_Success_JSON(t *testing.T) {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	// Verify JSON output
@@ -67,11 +67,11 @@ func TestOutputFormatter_Success_Quiet_WithID(t *testing.T) {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := strings.TrimSpace(buf.String())
 
 	if output != "42" {
@@ -93,11 +93,11 @@ func TestOutputFormatter_Success_Quiet_WithoutID(t *testing.T) {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	// Should fall through to pretty print when no GetID method
@@ -119,11 +119,11 @@ func TestOutputFormatter_Error_JSON(t *testing.T) {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	// Verify JSON output
@@ -158,11 +158,11 @@ func TestOutputFormatter_ErrorWithSuggestion_JSON(t *testing.T) {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	// Verify JSON output includes suggestion
@@ -190,11 +190,11 @@ func TestOutputFormatter_Error_HumanReadable(t *testing.T) {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
-	w.Close()
+	_ = w.Close()
 	os.Stderr = oldStderr
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	if !strings.Contains(output, "something went wrong") {
@@ -215,11 +215,11 @@ func TestOutputFormatter_ErrorWithSuggestion_HumanReadable(t *testing.T) {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
-	w.Close()
+	_ = w.Close()
 	os.Stderr = oldStderr
 
 	var buf bytes.Buffer
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	if !strings.Contains(output, "something went wrong") {

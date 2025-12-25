@@ -430,22 +430,30 @@ func (c *Client) Close() error {
 	}
 	var err error
 	c.closeOnce.Do(func() {
-		// Close the event queue to signal no more events coming
-		// This allows batcher to flush pending events before exiting
-		close(c.eventQueue)
-
 		// Cancel context to stop other goroutines
 		c.cancel()
 
-		// Wait for batcher to finish (it will flush pending events)
-		<-c.batcherDone
-
-		// Close the connection
+		// Check if we ever connected (and thus started the batcher)
 		c.mu.Lock()
-		if c.conn != nil {
-			err = c.conn.Close()
-		}
+		wasConnected := c.conn != nil
 		c.mu.Unlock()
+
+		if wasConnected {
+			// Close the event queue to signal no more events coming
+			// This allows batcher to flush pending events before exiting
+			close(c.eventQueue)
+
+			// Wait for batcher to finish (it will flush pending events)
+			<-c.batcherDone
+
+			// Close the connection
+			c.mu.Lock()
+			if c.conn != nil {
+				err = c.conn.Close()
+				c.conn = nil
+			}
+			c.mu.Unlock()
+		}
 	})
 	return err
 }

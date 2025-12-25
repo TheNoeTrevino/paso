@@ -38,7 +38,7 @@ func CaptureOutput(t *testing.T, fn func()) string {
 	fn()
 
 	// Close writer and restore stdout
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	// Get captured output

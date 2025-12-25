@@ -60,19 +60,19 @@ func createTestSchema(db *sql.DB) error {
 		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 	);
 	`
-	_, err := db.Exec(schema)
+	_, err := db.ExecContext(context.Background(), schema)
 	return err
 }
 
 func createTestProject(t *testing.T, db *sql.DB, name string) int {
 	t.Helper()
-	result, err := db.Exec("INSERT INTO projects (name) VALUES (?)", name)
+	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name) VALUES (?)", name)
 	if err != nil {
 		t.Fatalf("Failed to create test project: %v", err)
 	}
 	projectID, _ := result.LastInsertId()
 
-	_, err = db.Exec("INSERT INTO project_counters (project_id) VALUES (?)", projectID)
+	_, err = db.ExecContext(context.Background(), "INSERT INTO project_counters (project_id) VALUES (?)", projectID)
 	if err != nil {
 		t.Fatalf("Failed to create project counter: %v", err)
 	}
@@ -82,7 +82,7 @@ func createTestProject(t *testing.T, db *sql.DB, name string) int {
 
 func createTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
 	t.Helper()
-	result, err := db.Exec("INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, name)
+	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, name)
 	if err != nil {
 		t.Fatalf("Failed to create test column: %v", err)
 	}
@@ -96,7 +96,7 @@ func createTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int 
 
 func TestWithTx_Success_Commit(t *testing.T) {
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 	projectID := createTestProject(t, db, "Test Project")
@@ -104,7 +104,7 @@ func TestWithTx_Success_Commit(t *testing.T) {
 	// Execute transaction that should commit
 	err := withTx(ctx, db, func(tx *sql.Tx) error {
 		// Insert a column within transaction
-		_, err := tx.Exec("INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Test Column")
+		_, err := tx.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Test Column")
 		return err
 	})
 
@@ -114,7 +114,9 @@ func TestWithTx_Success_Commit(t *testing.T) {
 
 	// Verify column was created (transaction committed)
 	var count int
-	db.QueryRow("SELECT COUNT(*) FROM columns WHERE name = ?", "Test Column").Scan(&count)
+	if err := db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM columns WHERE name = ?", "Test Column").Scan(&count); err != nil {
+		t.Fatalf("Failed to scan count: %v", err)
+	}
 	if count != 1 {
 		t.Errorf("Expected 1 column, got %d", count)
 	}
@@ -122,7 +124,7 @@ func TestWithTx_Success_Commit(t *testing.T) {
 
 func TestWithTx_Error_Rollback(t *testing.T) {
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 	projectID := createTestProject(t, db, "Test Project")
@@ -131,7 +133,7 @@ func TestWithTx_Error_Rollback(t *testing.T) {
 	expectedErr := errors.New("intentional error")
 	err := withTx(ctx, db, func(tx *sql.Tx) error {
 		// Insert a column within transaction
-		_, err := tx.Exec("INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Test Column")
+		_, err := tx.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Test Column")
 		if err != nil {
 			return err
 		}
@@ -145,7 +147,9 @@ func TestWithTx_Error_Rollback(t *testing.T) {
 
 	// Verify column was NOT created (transaction rolled back)
 	var count int
-	db.QueryRow("SELECT COUNT(*) FROM columns WHERE name = ?", "Test Column").Scan(&count)
+	if err := db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM columns WHERE name = ?", "Test Column").Scan(&count); err != nil {
+		t.Fatalf("Failed to scan count: %v", err)
+	}
 	if count != 0 {
 		t.Errorf("Expected 0 columns (rollback), got %d", count)
 	}
@@ -154,7 +158,7 @@ func TestWithTx_Error_Rollback(t *testing.T) {
 func TestWithTx_Error_BeginFails(t *testing.T) {
 	// Create a closed database to trigger begin error
 	db := setupTestDB(t)
-	db.Close()
+	_ = db.Close()
 
 	ctx := context.Background()
 	err := withTx(ctx, db, func(tx *sql.Tx) error {
@@ -332,7 +336,7 @@ func TestSendEvent_Error(t *testing.T) {
 
 func TestGetProjectIDFromTable_Success(t *testing.T) {
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 	projectID := createTestProject(t, db, "Test Project")
@@ -351,7 +355,7 @@ func TestGetProjectIDFromTable_Success(t *testing.T) {
 
 func TestGetProjectIDFromTable_NotFound(t *testing.T) {
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 
@@ -364,7 +368,7 @@ func TestGetProjectIDFromTable_NotFound(t *testing.T) {
 
 func TestGetProjectIDFromTable_InvalidTable(t *testing.T) {
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 
