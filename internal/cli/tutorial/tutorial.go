@@ -53,6 +53,16 @@ func outputTutorialContext() {
 - ` + "`paso column list --project=<id>`" + ` - List columns
 - ` + "`paso column create --project=<id> --name=\"...\"`" + ` - Create column
 
+## Getting Started
+
+**Before beginning any work, always establish project context:**
+1. If the user hasn't specified which project to work on, ask them explicitly via using the AskUser tool.
+	Using the AskUser tool is MANDATORY if you are claude code.
+2. Run ` + "`paso project list`" + ` to show available projects
+3. Once confirmed, use that project ID for all subsequent operations
+
+This prevents confusion and ensures all work is tracked in the correct project.
+
 ## Common Workflows
 
 **Starting work:**
