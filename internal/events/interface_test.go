@@ -13,18 +13,16 @@ func TestEventPublisherNilCheck(t *testing.T) {
 		t.Error("Expected nil EventPublisher to be nil")
 	}
 
-	// Test with nil concrete type
+	// Test with nil concrete type - interface holding nil pointer is not nil itself
+	// Methods should handle nil receiver
 	var client *Client
-	publisher = client
-
-	// Should still be nil-checkable (interface holding nil pointer is not nil itself,
-	// but we can check the concrete value)
-	if publisher == nil {
-		t.Error("Interface holding nil pointer should not equal nil")
+	if client == nil {
+		t.Log("Nil pointer wrapped in interface - methods should handle nil receiver")
 	}
 
-	// But calling methods on it would panic, so we need to check the concrete value
-	// This is the pattern used in the codebase: if eventClient != nil
+	// Verify we can assign nil client to interface (compile-time check)
+	publisher = client
+	_ = publisher // Use it to avoid ineffassign
 }
 
 // TestEventPublisherImplementation verifies Client implements EventPublisher

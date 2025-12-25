@@ -38,6 +38,7 @@ type Server struct {
 	metrics          *Metrics
 	sequenceCounter  atomic.Int64
 	clientBufferSize int // Configurable client send queue size
+	shutdownOnce     sync.Once
 }
 
 // getEnvInt reads an integer from an environment variable, returning defaultVal if not set or invalid
@@ -197,7 +198,8 @@ func (s *Server) broadcastLoop(ctx context.Context) {
 			for c := range s.clients {
 				// Check if client is subscribed to this project (protected by client mutex)
 				c.mu.Lock()
-				isSubscribed := c.subscription.ProjectID == 0 || c.subscription.ProjectID == event.ProjectID
+				// Send event if: event is for all projects (0), OR client subscribed to all (0), OR client subscribed to specific project
+				isSubscribed := event.ProjectID == 0 || c.subscription.ProjectID == 0 || c.subscription.ProjectID == event.ProjectID
 				c.mu.Unlock()
 
 				if isSubscribed {
@@ -352,39 +354,42 @@ func (s *Server) Broadcast(event events.Event) error {
 
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown() error {
-	log.Println("Shutting down daemon...")
+	var err error
+	s.shutdownOnce.Do(func() {
+		log.Println("Shutting down daemon...")
 
-	s.cancel()
+		s.cancel()
 
-	// Close listener
-	if s.listener != nil {
-		if err := s.listener.Close(); err != nil {
-			log.Printf("Error closing listener: %v", err)
+		// Close listener
+		if s.listener != nil {
+			if closeErr := s.listener.Close(); closeErr != nil {
+				log.Printf("Error closing listener: %v", closeErr)
+			}
 		}
-	}
 
-	// Close all client connections
-	s.mu.Lock()
-	for c := range s.clients {
-		if err := c.conn.Close(); err != nil {
-			log.Printf("Error closing client connection: %v", err)
+		// Close all client connections
+		s.mu.Lock()
+		for c := range s.clients {
+			if closeErr := c.conn.Close(); closeErr != nil {
+				log.Printf("Error closing client connection: %v", closeErr)
+			}
+			c.closeOnce.Do(func() {
+				close(c.send)
+			})
 		}
-		c.closeOnce.Do(func() {
-			close(c.send)
-		})
-	}
-	s.clients = make(map[*client]bool)
-	s.mu.Unlock()
+		s.clients = make(map[*client]bool)
+		s.mu.Unlock()
 
-	// Remove socket file
-	if err := os.Remove(s.socketPath); err != nil && !os.IsNotExist(err) {
-		log.Printf("Warning: failed to remove socket file: %v", err)
-	}
+		// Remove socket file
+		if removeErr := os.Remove(s.socketPath); removeErr != nil && !os.IsNotExist(removeErr) {
+			log.Printf("Warning: failed to remove socket file: %v", removeErr)
+		}
 
-	// Close broadcast channel
-	close(s.broadcast)
+		// Close broadcast channel
+		close(s.broadcast)
+	})
 
-	return nil
+	return err
 }
 
 // Helper methods

@@ -224,7 +224,7 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 	// Update basic fields if provided
 	if req.Title != nil || req.Description != nil {
 		title := ""
-		description := sql.NullString{}
+		var description sql.NullString
 
 		if req.Title != nil {
 			title = *req.Title
@@ -592,10 +592,7 @@ func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 	}
 
 	// Get task above
-	aboveRow, err := qtx.GetTaskAbove(ctx, generated.GetTaskAboveParams{
-		ColumnID: posRow.ColumnID,
-		Position: posRow.Position,
-	})
+	aboveRow, err := qtx.GetTaskAbove(ctx, generated.GetTaskAboveParams(posRow))
 	if err != nil {
 		return fmt.Errorf("no task above: %w", err)
 	}
@@ -659,10 +656,7 @@ func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
 	}
 
 	// Get task below
-	belowRow, err := qtx.GetTaskBelow(ctx, generated.GetTaskBelowParams{
-		ColumnID: posRow.ColumnID,
-		Position: posRow.Position,
-	})
+	belowRow, err := qtx.GetTaskBelow(ctx, generated.GetTaskBelowParams(posRow))
 	if err != nil {
 		return fmt.Errorf("no task below: %w", err)
 	}
@@ -1012,7 +1006,7 @@ func parseLabelsFromConcatenated(ids, names, colors string) []*models.Label {
 	for i := range idParts {
 		// Parse ID
 		var id int
-		fmt.Sscanf(idParts[i], "%d", &id)
+		_, _ = fmt.Sscanf(idParts[i], "%d", &id)
 
 		labels = append(labels, &models.Label{
 			ID:    id,
