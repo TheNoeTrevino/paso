@@ -48,6 +48,7 @@ Examples:
 
 	// Optional flags
 	cmd.Flags().Int("after", 0, "Insert after column ID (0 = append to end)")
+	cmd.Flags().Bool("ready", false, "Mark this column as holding ready tasks")
 
 	// Agent-friendly flags
 	cmd.Flags().Bool("json", false, "Output in JSON format")
@@ -62,6 +63,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	columnName, _ := cmd.Flags().GetString("name")
 	columnProject, _ := cmd.Flags().GetInt("project")
 	columnAfter, _ := cmd.Flags().GetInt("after")
+	holdsReady, _ := cmd.Flags().GetBool("ready")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
 
@@ -112,9 +114,10 @@ func runCreate(cmd *cobra.Command, args []string) error {
 
 	// Create column
 	column, err := cliInstance.App.ColumnService.CreateColumn(ctx, columnservice.CreateColumnRequest{
-		Name:      columnName,
-		ProjectID: columnProject,
-		AfterID:   afterID,
+		Name:            columnName,
+		ProjectID:       columnProject,
+		AfterID:         afterID,
+		HoldsReadyTasks: holdsReady,
 	})
 	if err != nil {
 		if fmtErr := formatter.Error("COLUMN_CREATE_ERROR", err.Error()); fmtErr != nil {

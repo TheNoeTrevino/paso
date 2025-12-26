@@ -4,9 +4,10 @@ package models
 // Columns are organized as a doubly-linked list using PrevID and NextID pointers
 // Each column belongs to a specific project
 type Column struct {
-	ID        int    // Unique identifier for the column
-	Name      string // Display name of the column
-	ProjectID int    // ID of the project this column belongs to
-	PrevID    *int   // ID of the previous column (NULL for head)
-	NextID    *int   // ID of the next column (NULL for tail)
+	ID              int    // Unique identifier for the column
+	Name            string // Display name of the column
+	ProjectID       int    // ID of the project this column belongs to
+	PrevID          *int   // ID of the previous column (NULL for head)
+	NextID          *int   // ID of the next column (NULL for tail)
+	HoldsReadyTasks bool   // Whether tasks in this column are considered "ready" for work
 }
