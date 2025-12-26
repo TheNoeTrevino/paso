@@ -21,14 +21,16 @@ type Service interface {
 	// Write operations
 	CreateColumn(ctx context.Context, req CreateColumnRequest) (*models.Column, error)
 	UpdateColumnName(ctx context.Context, id int, name string) error
+	SetHoldsReadyTasks(ctx context.Context, columnID int) (*models.Column, error)
 	DeleteColumn(ctx context.Context, id int) error
 }
 
 // CreateColumnRequest encapsulates data for creating a column
 type CreateColumnRequest struct {
-	Name      string
-	ProjectID int
-	AfterID   *int // Optional: ID of column to insert after (nil = append to end)
+	Name            string
+	ProjectID       int
+	AfterID         *int // Optional: ID of column to insert after (nil = append to end)
+	HoldsReadyTasks bool // Whether this column holds ready tasks
 }
 
 // service implements Service interface using SQLC directly
@@ -114,12 +116,20 @@ func (s *service) CreateColumn(ctx context.Context, req CreateColumnRequest) (*m
 
 	qtx := generated.New(tx)
 
+	// If creating a ready column, clear any existing ready column first
+	if req.HoldsReadyTasks {
+		if err := qtx.ClearReadyColumnByProject(ctx, int64(req.ProjectID)); err != nil {
+			return nil, fmt.Errorf("failed to clear existing ready column: %w", err)
+		}
+	}
+
 	// Create new column
 	column, err := qtx.CreateColumn(ctx, generated.CreateColumnParams{
-		Name:      req.Name,
-		ProjectID: int64(req.ProjectID),
-		PrevID:    prevID,
-		NextID:    nextID,
+		Name:            req.Name,
+		ProjectID:       int64(req.ProjectID),
+		PrevID:          prevID,
+		NextID:          nextID,
+		HoldsReadyTasks: req.HoldsReadyTasks,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create column: %w", err)
@@ -188,6 +198,68 @@ func (s *service) UpdateColumnName(ctx context.Context, id int, name string) err
 	s.publishColumnEvent(id, int(column.ProjectID))
 
 	return nil
+}
+
+// SetHoldsReadyTasks sets a column as holding ready tasks
+// Only one column per project can hold ready tasks
+func (s *service) SetHoldsReadyTasks(ctx context.Context, columnID int) (*models.Column, error) {
+	// Validate
+	if columnID <= 0 {
+		return nil, ErrInvalidColumnID
+	}
+
+	// Get column to verify it exists and get project ID
+	column, err := s.queries.GetColumnByID(ctx, int64(columnID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get column: %w", err)
+	}
+
+	// Check if another column already holds ready tasks
+	existingReady, err := s.queries.GetReadyColumnByProject(ctx, column.ProjectID)
+	if err == nil && int(existingReady.ID) != columnID {
+		// Another column already holds ready tasks
+		return nil, fmt.Errorf("column '%s' (ID: %d) already holds ready tasks", existingReady.Name, existingReady.ID)
+	}
+	// If err == sql.ErrNoRows, no ready column exists, which is fine
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to check for existing ready column: %w", err)
+	}
+
+	// Start transaction
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
+
+	qtx := generated.New(tx)
+
+	// Clear any existing ready column
+	if err := qtx.ClearReadyColumnByProject(ctx, column.ProjectID); err != nil {
+		return nil, fmt.Errorf("failed to clear existing ready column: %w", err)
+	}
+
+	// Set this column as ready
+	if err := qtx.UpdateColumnHoldsReadyTasks(ctx, generated.UpdateColumnHoldsReadyTasksParams{
+		HoldsReadyTasks: true,
+		ID:              int64(columnID),
+	}); err != nil {
+		return nil, fmt.Errorf("failed to set column as ready: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// Publish event
+	s.publishColumnEvent(columnID, int(column.ProjectID))
+
+	// Return updated column
+	return s.GetColumnByID(ctx, columnID)
 }
 
 // DeleteColumn deletes a column (business rule: must not have tasks)
@@ -306,21 +378,23 @@ func (s *service) publishColumnEvent(columnID, projectID int) {
 
 func toColumnModel(c generated.Column) *models.Column {
 	return &models.Column{
-		ID:        int(c.ID),
-		Name:      c.Name,
-		ProjectID: int(c.ProjectID),
-		PrevID:    database.InterfaceToIntPtr(c.PrevID),
-		NextID:    database.InterfaceToIntPtr(c.NextID),
+		ID:              int(c.ID),
+		Name:            c.Name,
+		ProjectID:       int(c.ProjectID),
+		PrevID:          database.InterfaceToIntPtr(c.PrevID),
+		NextID:          database.InterfaceToIntPtr(c.NextID),
+		HoldsReadyTasks: c.HoldsReadyTasks,
 	}
 }
 
 func toColumnModelFromRow(r generated.GetColumnByIDRow) *models.Column {
 	return &models.Column{
-		ID:        int(r.ID),
-		Name:      r.Name,
-		ProjectID: int(r.ProjectID),
-		PrevID:    database.InterfaceToIntPtr(r.PrevID),
-		NextID:    database.InterfaceToIntPtr(r.NextID),
+		ID:              int(r.ID),
+		Name:            r.Name,
+		ProjectID:       int(r.ProjectID),
+		PrevID:          database.InterfaceToIntPtr(r.PrevID),
+		NextID:          database.InterfaceToIntPtr(r.NextID),
+		HoldsReadyTasks: r.HoldsReadyTasks,
 	}
 }
 
@@ -328,11 +402,12 @@ func toColumnModelsFromRows(rows []generated.GetColumnsByProjectRow) []*models.C
 	result := make([]*models.Column, len(rows))
 	for i, r := range rows {
 		result[i] = &models.Column{
-			ID:        int(r.ID),
-			Name:      r.Name,
-			ProjectID: int(r.ProjectID),
-			PrevID:    database.InterfaceToIntPtr(r.PrevID),
-			NextID:    database.InterfaceToIntPtr(r.NextID),
+			ID:              int(r.ID),
+			Name:            r.Name,
+			ProjectID:       int(r.ProjectID),
+			PrevID:          database.InterfaceToIntPtr(r.PrevID),
+			NextID:          database.InterfaceToIntPtr(r.NextID),
+			HoldsReadyTasks: r.HoldsReadyTasks,
 		}
 	}
 	return result

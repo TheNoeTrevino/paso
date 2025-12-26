@@ -82,23 +82,14 @@ func runReady(cmd *cobra.Command, args []string) error {
 		os.Exit(cli.ExitNotFound)
 	}
 
-	// Get all tasks for project (includes IsBlocked field)
-	tasksByColumn, err := cliInstance.App.TaskService.GetTaskSummariesByProject(ctx, taskProject)
+	// Get ready tasks (tasks in ready columns and not blocked)
+	var readyTasks []*models.TaskSummary
+	readyTasks, err = cliInstance.App.TaskService.GetReadyTaskSummariesByProject(ctx, taskProject)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
 		return err
-	}
-
-	// Filter for ready tasks (IsBlocked == false)
-	var readyTasks []*models.TaskSummary
-	for _, columnTasks := range tasksByColumn {
-		for _, task := range columnTasks {
-			if !task.IsBlocked {
-				readyTasks = append(readyTasks, task)
-			}
-		}
 	}
 
 	// Output in appropriate format
