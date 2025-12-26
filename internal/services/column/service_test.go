@@ -53,11 +53,16 @@ func createTestSchema(db *sql.DB) error {
 		name TEXT NOT NULL,
 		prev_id INTEGER,
 		next_id INTEGER,
+		holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
 		FOREIGN KEY (prev_id) REFERENCES columns(id) ON DELETE SET NULL,
 		FOREIGN KEY (next_id) REFERENCES columns(id) ON DELETE SET NULL
 	);
+
+	-- Unique partial index: only one column per project can have holds_ready_tasks = 1
+	CREATE UNIQUE INDEX idx_columns_ready_per_project
+	ON columns(project_id) WHERE holds_ready_tasks = 1;
 
 	-- Create tasks table (for deletion constraint checking)
 	CREATE TABLE IF NOT EXISTS tasks (
@@ -730,4 +735,335 @@ func TestDeleteColumn_LinkedListIntegrity(t *testing.T) {
 	if col3Updated.PrevID == nil || *col3Updated.PrevID != col1.ID {
 		t.Errorf("Expected col3 prev_id %d after deletion, got %v", col1.ID, col3Updated.PrevID)
 	}
+}
+
+// ============================================================================
+// TEST CASES - HOLDS_READY_TASKS FEATURE
+// ============================================================================
+
+func TestCreateColumn_WithHoldsReadyTasks(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	req := CreateColumnRequest{
+		Name:            "To Do",
+		ProjectID:       projectID,
+		HoldsReadyTasks: true,
+	}
+
+	result, err := svc.CreateColumn(context.Background(), req)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if !result.HoldsReadyTasks {
+		t.Error("Expected HoldsReadyTasks to be true")
+	}
+}
+
+func TestCreateColumn_HoldsReadyTasks_ClearsPrevious(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create first column with HoldsReadyTasks = true
+	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:            "To Do",
+		ProjectID:       projectID,
+		HoldsReadyTasks: true,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column 1: %v", err)
+	}
+
+	if !col1.HoldsReadyTasks {
+		t.Fatal("Expected col1 to hold ready tasks")
+	}
+
+	// Create second column with HoldsReadyTasks = true
+	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:            "In Progress",
+		ProjectID:       projectID,
+		HoldsReadyTasks: true,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column 2: %v", err)
+	}
+
+	if !col2.HoldsReadyTasks {
+		t.Error("Expected col2 to hold ready tasks")
+	}
+
+	// Verify col1 is no longer the ready column
+	col1Updated, err := svc.GetColumnByID(context.Background(), col1.ID)
+	if err != nil {
+		t.Fatalf("Failed to get updated col1: %v", err)
+	}
+
+	if col1Updated.HoldsReadyTasks {
+		t.Error("Expected col1 to no longer hold ready tasks")
+	}
+}
+
+func TestSetHoldsReadyTasks_Success(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create two columns (neither ready)
+	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:            "To Do",
+		ProjectID:       projectID,
+		HoldsReadyTasks: false,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column 1: %v", err)
+	}
+
+	_, err = svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:            "Done",
+		ProjectID:       projectID,
+		HoldsReadyTasks: false,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column 2: %v", err)
+	}
+
+	// Set col1 as ready
+	updated, err := svc.SetHoldsReadyTasks(context.Background(), col1.ID)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if !updated.HoldsReadyTasks {
+		t.Error("Expected column to hold ready tasks after SetHoldsReadyTasks")
+	}
+}
+
+func TestSetHoldsReadyTasks_TransfersFromPrevious(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create col1 as ready
+	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:            "To Do",
+		ProjectID:       projectID,
+		HoldsReadyTasks: true,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column 1: %v", err)
+	}
+
+	// Create col2 as not ready
+	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:            "In Progress",
+		ProjectID:       projectID,
+		HoldsReadyTasks: false,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column 2: %v", err)
+	}
+
+	// Set col2 as ready (should clear col1)
+	updated, err := svc.SetHoldsReadyTasks(context.Background(), col2.ID)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if !updated.HoldsReadyTasks {
+		t.Error("Expected col2 to hold ready tasks")
+	}
+
+	// Verify col1 is no longer ready
+	col1Updated, err := svc.GetColumnByID(context.Background(), col1.ID)
+	if err != nil {
+		t.Fatalf("Failed to get col1: %v", err)
+	}
+
+	if col1Updated.HoldsReadyTasks {
+		t.Error("Expected col1 to no longer hold ready tasks")
+	}
+}
+
+func TestGetColumnByID_IncludesHoldsReadyTasks(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create column with HoldsReadyTasks = true
+	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:            "To Do",
+		ProjectID:       projectID,
+		HoldsReadyTasks: true,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column: %v", err)
+	}
+
+	// Fetch via GetColumnByID
+	result, err := svc.GetColumnByID(context.Background(), created.ID)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if !result.HoldsReadyTasks {
+		t.Error("Expected HoldsReadyTasks to be true")
+	}
+}
+
+func TestGetColumnsByProject_IncludesHoldsReadyTasks(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create one ready column and one not ready
+	_, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:            "To Do",
+		ProjectID:       projectID,
+		HoldsReadyTasks: true,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create ready column: %v", err)
+	}
+
+	_, err = svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:            "Done",
+		ProjectID:       projectID,
+		HoldsReadyTasks: false,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create non-ready column: %v", err)
+	}
+
+	// Fetch all columns
+	results, err := svc.GetColumnsByProject(context.Background(), projectID)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(results) != 2 {
+		t.Fatalf("Expected 2 columns, got %d", len(results))
+	}
+
+	// Verify first column (To Do) is ready
+	if results[0].Name == "To Do" && !results[0].HoldsReadyTasks {
+		t.Error("Expected 'To Do' column to hold ready tasks")
+	}
+
+	// Verify second column (Done) is not ready
+	if results[1].Name == "Done" && results[1].HoldsReadyTasks {
+		t.Error("Expected 'Done' column to not hold ready tasks")
+	}
+}
+
+func TestSetHoldsReadyTasks_InvalidColumnID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	_, err := svc.SetHoldsReadyTasks(context.Background(), 0)
+
+	if err == nil {
+		t.Fatal("Expected error for invalid column ID")
+	}
+
+	if err != ErrInvalidColumnID {
+		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
+	}
+}
+
+func TestSetHoldsReadyTasks_ColumnNotFound(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	_, err := svc.SetHoldsReadyTasks(context.Background(), 999)
+
+	if err == nil {
+		t.Fatal("Expected error for non-existent column")
+	}
+
+	// Should get a wrapped sql.ErrNoRows
+	if err != sql.ErrNoRows && !contains(err.Error(), "no rows") {
+		t.Errorf("Expected sql.ErrNoRows or wrapped error, got %v", err)
+	}
+}
+
+func TestCreateColumn_OnlyOneReadyPerProject(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+
+	// Manually insert two columns with holds_ready_tasks = 1
+	// This should violate the unique partial index constraint
+	_, err := db.ExecContext(context.Background(),
+		"INSERT INTO columns (name, project_id, holds_ready_tasks) VALUES (?, ?, ?)",
+		"To Do", projectID, true)
+	if err != nil {
+		t.Fatalf("Failed to insert first ready column: %v", err)
+	}
+
+	_, err = db.ExecContext(context.Background(),
+		"INSERT INTO columns (name, project_id, holds_ready_tasks) VALUES (?, ?, ?)",
+		"Review", projectID, true)
+
+	if err == nil {
+		t.Fatal("Expected database constraint violation for duplicate ready columns")
+	}
+
+	// Should get a constraint violation error
+	if !contains(err.Error(), "UNIQUE") && !contains(err.Error(), "constraint") {
+		t.Errorf("Expected UNIQUE constraint violation, got %v", err)
+	}
+}
+
+// Helper function to check if error message contains substring
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) &&
+		(hasSubstring(s, substr)))
+}
+
+func hasSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

@@ -37,10 +37,9 @@ Examples:
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	cmd.Flags().String("name", "", "New column name (required)")
-	if err := cmd.MarkFlagRequired("name"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
-	}
+	// Optional flags
+	cmd.Flags().String("name", "", "New column name")
+	cmd.Flags().Bool("ready", false, "Set this column as holding ready tasks")
 
 	// Agent-friendly flags
 	cmd.Flags().Bool("json", false, "Output in JSON format")
@@ -54,10 +53,19 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	columnID, _ := cmd.Flags().GetInt("id")
 	columnName, _ := cmd.Flags().GetString("name")
+	setReady, _ := cmd.Flags().GetBool("ready")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+
+	// Validate at least one update flag is provided
+	if columnName == "" && !setReady {
+		if fmtErr := formatter.Error("INVALID_INPUT", "at least one of --name or --ready must be provided"); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
+		return fmt.Errorf("at least one of --name or --ready must be provided")
+	}
 
 	// Initialize CLI
 	cliInstance, err := cli.NewCLI(ctx)
@@ -83,13 +91,27 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	oldName := column.Name
+	updatedColumn := column
 
-	// Update column
-	if err := cliInstance.App.ColumnService.UpdateColumnName(ctx, columnID, columnName); err != nil {
-		if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+	// Update column name if provided
+	if columnName != "" {
+		if err := cliInstance.App.ColumnService.UpdateColumnName(ctx, columnID, columnName); err != nil {
+			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
+				log.Printf("Error formatting error message: %v", fmtErr)
+			}
+			return err
 		}
-		return err
+	}
+
+	// Update ready status if flag is set
+	if setReady {
+		updatedColumn, err = cliInstance.App.ColumnService.SetHoldsReadyTasks(ctx, columnID)
+		if err != nil {
+			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
+				log.Printf("Error formatting error message: %v", fmtErr)
+			}
+			return err
+		}
 	}
 
 	// Output based on mode
@@ -101,15 +123,21 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
 			"success": true,
 			"column": map[string]interface{}{
-				"id":       columnID,
-				"name":     columnName,
-				"old_name": oldName,
+				"id":                columnID,
+				"name":              updatedColumn.Name,
+				"old_name":          oldName,
+				"holds_ready_tasks": updatedColumn.HoldsReadyTasks,
 			},
 		})
 	}
 
 	// Human-readable output
 	fmt.Printf("✓ Column %d updated successfully\n", columnID)
-	fmt.Printf("  '%s' → '%s'\n", oldName, columnName)
+	if columnName != "" && columnName != oldName {
+		fmt.Printf("  Name: '%s' → '%s'\n", oldName, columnName)
+	}
+	if setReady {
+		fmt.Printf("  Now holds ready tasks: %v\n", updatedColumn.HoldsReadyTasks)
+	}
 	return nil
 }

@@ -363,6 +363,83 @@ func (q *Queries) GetProjectIDFromTask(ctx context.Context, id int64) (int64, er
 	return project_id, err
 }
 
+const getReadyTaskSummariesByProject = `-- name: GetReadyTaskSummariesByProject :many
+SELECT
+    t.id,
+    t.title,
+    t.column_id,
+    t.position,
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors,
+    EXISTS(
+        SELECT 1 FROM task_subtasks ts
+        INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
+        WHERE ts.parent_id = t.id AND rt.is_blocking = 1
+    ) as is_blocked
+FROM tasks t
+INNER JOIN columns c ON t.column_id = c.id
+LEFT JOIN types ty ON t.type_id = ty.id
+LEFT JOIN priorities p ON t.priority_id = p.id
+LEFT JOIN task_labels tl ON t.id = tl.task_id
+LEFT JOIN labels l ON tl.label_id = l.id
+WHERE c.project_id = ? AND c.holds_ready_tasks = 1
+GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
+ORDER BY t.position
+`
+
+type GetReadyTaskSummariesByProjectRow struct {
+	ID                  int64
+	Title               string
+	ColumnID            int64
+	Position            int64
+	TypeDescription     sql.NullString
+	PriorityDescription sql.NullString
+	PriorityColor       sql.NullString
+	LabelIds            string
+	LabelNames          string
+	LabelColors         string
+	IsBlocked           int64
+}
+
+func (q *Queries) GetReadyTaskSummariesByProject(ctx context.Context, projectID int64) ([]GetReadyTaskSummariesByProjectRow, error) {
+	rows, err := q.db.QueryContext(ctx, getReadyTaskSummariesByProject, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetReadyTaskSummariesByProjectRow{}
+	for rows.Next() {
+		var i GetReadyTaskSummariesByProjectRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.ColumnID,
+			&i.Position,
+			&i.TypeDescription,
+			&i.PriorityDescription,
+			&i.PriorityColor,
+			&i.LabelIds,
+			&i.LabelNames,
+			&i.LabelColors,
+			&i.IsBlocked,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTask = `-- name: GetTask :one
 SELECT id, title, description, column_id, position, created_at, updated_at
 FROM tasks

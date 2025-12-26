@@ -164,6 +164,7 @@ func createCoreTables(ctx context.Context, db *sql.DB) error {
 			prev_id INTEGER NULL,
 			next_id INTEGER NULL,
 			project_id INTEGER NOT NULL,
+			holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
 			FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 		)
 	`)
@@ -317,12 +318,13 @@ func seedDefaultProject(ctx context.Context, db *sql.DB) error {
 // CreateDefaultColumns creates the standard three columns (Todo, In Progress, Done)
 // for a given project using the provided querier (works with both db and tx)
 func CreateDefaultColumns(ctx context.Context, q generated.Querier, projectID int64) error {
-	// Create "Todo" column (head of list)
+	// Create "Todo" column (head of list, holds ready tasks)
 	todoCol, err := q.CreateColumn(ctx, generated.CreateColumnParams{
-		Name:      "Todo",
-		ProjectID: projectID,
-		PrevID:    nil,
-		NextID:    nil,
+		Name:            "Todo",
+		ProjectID:       projectID,
+		PrevID:          nil,
+		NextID:          nil,
+		HoldsReadyTasks: true,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create Todo column: %w", err)
