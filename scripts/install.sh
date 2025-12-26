@@ -339,7 +339,7 @@ echo ""
 
 echo ""
 echo -e "${BOLD}${GREEN}╔════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${GREEN}║     Installation Complete! 🎉         ║${NC}"
+echo -e "${BOLD}${GREEN}║     Installation Complete! 🎉          ║${NC}"
 echo -e "${BOLD}${GREEN}╚════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${BOLD}Quick Start:${NC}"

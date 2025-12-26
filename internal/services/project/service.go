@@ -22,7 +22,7 @@ type Service interface {
 	// Write operations
 	CreateProject(ctx context.Context, req CreateProjectRequest) (*models.Project, error)
 	UpdateProject(ctx context.Context, req UpdateProjectRequest) error
-	DeleteProject(ctx context.Context, id int) error
+	DeleteProject(ctx context.Context, id int, force bool) error
 }
 
 // CreateProjectRequest encapsulates data for creating a project
@@ -121,6 +121,11 @@ func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest) (
 		return nil, fmt.Errorf("failed to initialize project counter: %w", err)
 	}
 
+	// Create default columns (Todo, In Progress, Done)
+	if err := database.CreateDefaultColumns(ctx, qtx, project.ID); err != nil {
+		return nil, fmt.Errorf("failed to create default columns: %w", err)
+	}
+
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
@@ -178,19 +183,21 @@ func (s *service) UpdateProject(ctx context.Context, req UpdateProjectRequest) e
 	return nil
 }
 
-// DeleteProject deletes a project (business rule: must not have columns)
-func (s *service) DeleteProject(ctx context.Context, id int) error {
+// DeleteProject deletes a project (business rule: must not have tasks unless force=true)
+func (s *service) DeleteProject(ctx context.Context, id int, force bool) error {
 	if id <= 0 {
 		return ErrInvalidProjectID
 	}
 
-	// Business rule: Check if project has columns
-	columns, err := s.queries.GetColumnsByProject(ctx, int64(id))
-	if err != nil {
-		return fmt.Errorf("failed to check project columns: %w", err)
-	}
-	if len(columns) > 0 {
-		return ErrProjectHasColumns
+	// Business rule: Check if project has tasks (unless force is enabled)
+	if !force {
+		taskCount, err := s.queries.GetProjectTaskCount(ctx, int64(id))
+		if err != nil {
+			return fmt.Errorf("failed to check project tasks: %w", err)
+		}
+		if taskCount > 0 {
+			return ErrProjectHasTasks
+		}
 	}
 
 	// Start transaction

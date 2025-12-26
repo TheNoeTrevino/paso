@@ -46,20 +46,21 @@ func Launch() error {
 	}
 	socketPath := filepath.Join(home, ".paso", "paso.sock")
 
-	eventClient, err := events.NewClient(socketPath)
+	var eventClient events.EventPublisher
+	client, err := events.NewClient(socketPath)
 	if err != nil {
 		// Daemon may not be available, log warning but continue
 		daemonErr := events.ClassifyDaemonError(err)
 		slog.Warn("failed to create daemon client", "message", daemonErr.Message, "hint", daemonErr.Hint)
 		slog.Info("continuing without live updates")
-		eventClient = nil
 	} else {
 		// Try to connect to daemon
-		if err := eventClient.Connect(ctx); err != nil {
+		if err := client.Connect(ctx); err != nil {
 			daemonErr := events.ClassifyDaemonError(err)
 			slog.Warn("failed to connect to daemon", "message", daemonErr.Message, "hint", daemonErr.Hint)
 			slog.Info("continuing without live updates")
-			eventClient = nil
+		} else {
+			eventClient = client
 		}
 	}
 
