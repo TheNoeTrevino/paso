@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
@@ -49,6 +50,7 @@ Examples:
 	// Optional flags
 	cmd.Flags().Int("after", 0, "Insert after column ID (0 = append to end)")
 	cmd.Flags().Bool("ready", false, "Mark this column as holding ready tasks")
+	cmd.Flags().Bool("completed", false, "Mark this column as holding completed tasks")
 
 	// Agent-friendly flags
 	cmd.Flags().Bool("json", false, "Output in JSON format")
@@ -64,6 +66,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	columnProject, _ := cmd.Flags().GetInt("project")
 	columnAfter, _ := cmd.Flags().GetInt("after")
 	holdsReady, _ := cmd.Flags().GetBool("ready")
+	holdsCompleted, _ := cmd.Flags().GetBool("completed")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
 
@@ -114,12 +117,21 @@ func runCreate(cmd *cobra.Command, args []string) error {
 
 	// Create column
 	column, err := cliInstance.App.ColumnService.CreateColumn(ctx, columnservice.CreateColumnRequest{
-		Name:            columnName,
-		ProjectID:       columnProject,
-		AfterID:         afterID,
-		HoldsReadyTasks: holdsReady,
+		Name:                columnName,
+		ProjectID:           columnProject,
+		AfterID:             afterID,
+		HoldsReadyTasks:     holdsReady,
+		HoldsCompletedTasks: holdsCompleted,
 	})
 	if err != nil {
+		// Check for specific error about completed column already existing
+		if strings.Contains(err.Error(), "completed column already exists") {
+			if fmtErr := formatter.Error("COMPLETED_COLUMN_EXISTS",
+				fmt.Sprintf("%s\n\nUse the --force flag to change the done column.\nPaso uses the done column to move tasks with the {complete task command}.\nThis could lead to unexpected behavior, and this is not suggested.", err.Error())); fmtErr != nil {
+				log.Printf("Error formatting error message: %v", fmtErr)
+			}
+			os.Exit(cli.ExitValidation)
+		}
 		if fmtErr := formatter.Error("COLUMN_CREATE_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
