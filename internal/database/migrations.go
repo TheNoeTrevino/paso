@@ -391,7 +391,7 @@ func seedDefaultColumns(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
-// Use the shared helper to create default columns
+	// Use the shared helper to create default columns
 	q := generated.New(db)
 	return CreateDefaultColumns(ctx, q, int64(defaultProjectID))
 }
