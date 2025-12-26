@@ -16,6 +16,7 @@ type Querier interface {
 	AddLabelToTask(ctx context.Context, arg AddLabelToTaskParams) error
 	AddSubtask(ctx context.Context, arg AddSubtaskParams) error
 	AddSubtaskWithRelationType(ctx context.Context, arg AddSubtaskWithRelationTypeParams) error
+	ClearReadyColumnByProject(ctx context.Context, projectID int64) error
 	// ============================================================================
 	// COLUMN VERIFICATION
 	// ============================================================================
@@ -80,6 +81,8 @@ type Querier interface {
 	// ============================================================================
 	GetProjectIDFromTask(ctx context.Context, id int64) (int64, error)
 	GetProjectTaskCount(ctx context.Context, projectID int64) (int64, error)
+	GetReadyColumnByProject(ctx context.Context, projectID int64) (GetReadyColumnByProjectRow, error)
+	GetReadyTaskSummariesByProject(ctx context.Context, projectID int64) ([]GetReadyTaskSummariesByProjectRow, error)
 	GetTailColumnForProject(ctx context.Context, projectID int64) (int64, error)
 	GetTask(ctx context.Context, id int64) (GetTaskRow, error)
 	GetTaskAbove(ctx context.Context, arg GetTaskAboveParams) (GetTaskAboveRow, error)
@@ -113,6 +116,10 @@ type Querier interface {
 	RemoveSubtask(ctx context.Context, arg RemoveSubtaskParams) error
 	SetTaskPosition(ctx context.Context, arg SetTaskPositionParams) error
 	SetTaskPositionTemporary(ctx context.Context, id int64) error
+	// ============================================================================
+	// READY COLUMN OPERATIONS
+	// ============================================================================
+	UpdateColumnHoldsReadyTasks(ctx context.Context, arg UpdateColumnHoldsReadyTasksParams) error
 	UpdateColumnName(ctx context.Context, arg UpdateColumnNameParams) error
 	UpdateColumnNextID(ctx context.Context, arg UpdateColumnNextIDParams) error
 	UpdateColumnPrevID(ctx context.Context, arg UpdateColumnPrevIDParams) error
