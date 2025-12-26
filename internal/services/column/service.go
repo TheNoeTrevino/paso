@@ -208,21 +208,13 @@ func (s *service) SetHoldsReadyTasks(ctx context.Context, columnID int) (*models
 		return nil, ErrInvalidColumnID
 	}
 
+	// TODO: instead of tranfering the "holds ready tasks" column, we should return
+	// stderr and tell the user which column currently holds it
+
 	// Get column to verify it exists and get project ID
 	column, err := s.queries.GetColumnByID(ctx, int64(columnID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get column: %w", err)
-	}
-
-	// Check if another column already holds ready tasks
-	existingReady, err := s.queries.GetReadyColumnByProject(ctx, column.ProjectID)
-	if err == nil && int(existingReady.ID) != columnID {
-		// Another column already holds ready tasks
-		return nil, fmt.Errorf("column '%s' (ID: %d) already holds ready tasks", existingReady.Name, existingReady.ID)
-	}
-	// If err == sql.ErrNoRows, no ready column exists, which is fine
-	if err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("failed to check for existing ready column: %w", err)
 	}
 
 	// Start transaction
