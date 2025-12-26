@@ -3,16 +3,26 @@
 -- ============================================================================
 
 -- name: CreateProjectRecord :one
-INSERT INTO projects (name, description) VALUES (?, ?) RETURNING *;
+INSERT INTO projects (name, description)
+VALUES (?, ?)
+RETURNING *;
 
 -- name: GetProjectByID :one
-SELECT id, name, description, created_at, updated_at FROM projects WHERE id = ?;
+SELECT
+    id,
+    name,
+    description,
+    created_at,
+    updated_at
+FROM projects WHERE id = ?;
 
 -- name: GetAllProjects :many
 SELECT id, name, description, created_at, updated_at FROM projects ORDER BY id;
 
 -- name: UpdateProject :exec
-UPDATE projects SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?;
+UPDATE projects SET name = ?,
+description = ?,
+updated_at = CURRENT_TIMESTAMP WHERE id = ?;
 
 -- name: DeleteProject :exec
 DELETE FROM projects WHERE id = ?;
@@ -38,7 +48,9 @@ DELETE FROM project_counters WHERE project_id = ?;
 -- ============================================================================
 
 -- name: DeleteTasksByProject :exec
-DELETE FROM tasks WHERE column_id IN (SELECT id FROM columns WHERE project_id = ?);
+DELETE FROM tasks
+WHERE column_id IN (SELECT id FROM columns WHERE project_id = ?);
 
 -- name: DeleteColumnsByProject :exec
-DELETE FROM columns WHERE project_id = ?;
+DELETE FROM columns
+WHERE project_id = ?;

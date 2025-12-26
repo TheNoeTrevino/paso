@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS types (
 
 -- Seed default types
 INSERT OR IGNORE INTO types (id, description) VALUES
-    (1, 'task'),
-    (2, 'feature');
+(1, 'task'),
+(2, 'feature');
 
 -- Priority levels lookup table
 CREATE TABLE IF NOT EXISTS priorities (
@@ -25,11 +25,11 @@ CREATE TABLE IF NOT EXISTS priorities (
 
 -- Seed default priorities
 INSERT OR IGNORE INTO priorities (id, description, color) VALUES
-    (1, 'trivial', '#3B82F6'),
-    (2, 'low', '#22C55E'),
-    (3, 'medium', '#EAB308'),
-    (4, 'high', '#F97316'),
-    (5, 'critical', '#EF4444');
+(1, 'trivial', '#3B82F6'),
+(2, 'low', '#22C55E'),
+(3, 'medium', '#EAB308'),
+(4, 'high', '#F97316'),
+(5, 'critical', '#EF4444');
 
 -- Relationship types lookup table
 CREATE TABLE IF NOT EXISTS relation_types (
@@ -41,10 +41,12 @@ CREATE TABLE IF NOT EXISTS relation_types (
 );
 
 -- Seed default relation types
-INSERT OR IGNORE INTO relation_types (id, p_to_c_label, c_to_p_label, color, is_blocking) VALUES
-    (1, 'Parent', 'Child', '#6B7280', 0),
-    (2, 'Blocked By', 'Blocker', '#EF4444', 1),
-    (3, 'Related To', 'Related To', '#3B82F6', 0);
+INSERT OR IGNORE INTO relation_types (
+    id, p_to_c_label, c_to_p_label, color, is_blocking
+) VALUES
+(1, 'Parent', 'Child', '#6B7280', 0),
+(2, 'Blocked By', 'Blocker', '#EF4444', 1),
+(3, 'Related To', 'Related To', '#3B82F6', 0);
 
 -- ============================================================================
 -- CORE TABLES
