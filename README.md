@@ -258,6 +258,50 @@ paso-daemon &
 - **Lipgloss** - Styling (Phase 2)
 - **Harmonica** - Animations (Phase 8)
 
+## Development Setup
+
+### Git Hooks
+
+Paso includes a pre-commit hook that automatically formats staged files before committing.
+
+**Installation:**
+
+```bash
+./scripts/install-hooks.sh
+```
+
+**What the hook does:**
+- Formats staged Go files with `gofmt`
+- Automatically re-stages formatted files
+- Builds on first commit (lazy build)
+- Runs concurrently for fast performance
+
+**Usage:**
+
+```bash
+# Normal commit (runs hook)
+git commit -m "message"
+
+# Bypass hook if needed
+git commit --no-verify -m "message"
+
+# Manual formatting
+gofmt -w <file>
+```
+
+**Troubleshooting:**
+
+If the hook fails to build:
+```bash
+# Manually build the pre-commit binary
+go build -o bin/pre-commit ./cmd/pre-commit
+
+# Test it
+./bin/pre-commit
+```
+
+The hook binary (`bin/pre-commit`) is gitignored and will be rebuilt automatically if deleted.
+
 ## Running Tests
 
 ### Go concurrent runner
