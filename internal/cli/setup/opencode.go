@@ -18,7 +18,7 @@ func OpenCodeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "opencode",
 		Short: "Setup OpenCode integration",
-		Long: `Install the opencode-paso-session plugin for automatic context injection.
+		Long: `Install the opencode-paso plugin for automatic context injection.
 
 This ensures AI agents always have paso workflow context at session start.
 
@@ -99,7 +99,7 @@ func InstallOpenCode(project bool) {
 	}
 
 	// Check if already installed
-	pluginName := "opencode-paso-session"
+	pluginName := "opencode-paso"
 	for _, p := range plugins {
 		if p == pluginName {
 			fmt.Println("✓ Plugin already installed")
@@ -126,7 +126,7 @@ func InstallOpenCode(project bool) {
 	fmt.Printf("\n✓ OpenCode plugin installed\n")
 	fmt.Printf("  Config: %s\n", configPath)
 	fmt.Println("\nNote: You may need to install the plugin package:")
-	fmt.Println("  bun add opencode-paso-session")
+	fmt.Println("  bun add opencode-paso")
 }
 
 // CheckOpenCode checks if OpenCode plugin is installed
@@ -193,7 +193,7 @@ func RemoveOpenCode(project bool) {
 	var filtered []interface{}
 	removed := false
 	for _, p := range plugins {
-		if p == "opencode-paso-session" {
+		if p == "opencode-paso" {
 			removed = true
 			continue
 		}
@@ -239,7 +239,7 @@ func hasPasoPlugin(configPath string) bool {
 	}
 
 	for _, p := range plugins {
-		if p == "opencode-paso-session" {
+		if p == "opencode-paso" {
 			return true
 		}
 	}
