@@ -60,6 +60,7 @@ func createTestSchema(db *sql.DB) error {
 		name TEXT NOT NULL,
 		prev_id INTEGER,
 		next_id INTEGER,
+		holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 	);
@@ -175,9 +176,47 @@ func createTestProject(t *testing.T, db *sql.DB) int {
 // createTestColumn creates a test column and returns its ID
 func createTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
 	t.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, name)
+	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name, holds_ready_tasks) VALUES (?, ?, ?)", projectID, name, false)
 	if err != nil {
 		t.Fatalf("Failed to create test column: %v", err)
+	}
+	id, _ := result.LastInsertId()
+	return int(id)
+}
+
+// createTestReadyColumn creates a test column with holds_ready_tasks=true and returns its ID
+func createTestReadyColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
+	t.Helper()
+	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name, holds_ready_tasks) VALUES (?, ?, ?)", projectID, name, true)
+	if err != nil {
+		t.Fatalf("Failed to create test ready column: %v", err)
+	}
+	id, _ := result.LastInsertId()
+	return int(id)
+}
+
+// createTestTask creates a test task and returns its ID
+func createTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
+	t.Helper()
+
+	// Get the next position for this column
+	var maxPos sql.NullInt64
+	err := db.QueryRowContext(context.Background(),
+		"SELECT MAX(position) FROM tasks WHERE column_id = ?", columnID).Scan(&maxPos)
+	if err != nil && err != sql.ErrNoRows {
+		t.Fatalf("Failed to get max position: %v", err)
+	}
+
+	nextPos := 0
+	if maxPos.Valid {
+		nextPos = int(maxPos.Int64) + 1
+	}
+
+	result, err := db.ExecContext(context.Background(),
+		"INSERT INTO tasks (column_id, title, position, type_id, priority_id) VALUES (?, ?, ?, 1, 3)",
+		columnID, title, nextPos)
+	if err != nil {
+		t.Fatalf("Failed to create test task: %v", err)
 	}
 	id, _ := result.LastInsertId()
 	return int(id)
@@ -1578,5 +1617,207 @@ func TestGetTaskReferencesForProject_EmptyProject(t *testing.T) {
 
 	if len(refs) != 0 {
 		t.Errorf("Expected 0 task references, got %d", len(refs))
+	}
+}
+
+// ============================================================================
+// TEST CASES - READY TASKS (holds_ready_tasks feature)
+// ============================================================================
+
+func TestGetReadyTaskSummariesByProject_OnlyReadyColumn(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create three columns: Todo (ready), In Progress, Done
+	todoCol := createTestReadyColumn(t, db, projectID, "Todo")
+	inProgressCol := createTestColumn(t, db, projectID, "In Progress")
+	doneCol := createTestColumn(t, db, projectID, "Done")
+
+	// Create tasks in each column
+	task1 := createTestTask(t, db, todoCol, "Task in Todo")
+	task2 := createTestTask(t, db, inProgressCol, "Task in In Progress")
+	task3 := createTestTask(t, db, doneCol, "Task in Done")
+
+	// Get ready tasks
+	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(readyTasks) != 1 {
+		t.Fatalf("Expected 1 ready task, got %d", len(readyTasks))
+	}
+
+	// Verify only task from Todo column is returned
+	if readyTasks[0].ID != task1 {
+		t.Errorf("Expected task ID %d, got %d", task1, readyTasks[0].ID)
+	}
+
+	// Verify tasks from other columns are not included
+	for _, task := range readyTasks {
+		if task.ID == task2 || task.ID == task3 {
+			t.Errorf("Unexpected task ID %d in ready tasks (should only be from Todo column)", task.ID)
+		}
+	}
+}
+
+func TestGetReadyTaskSummariesByProject_ExcludesBlockedTasks(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create ready column
+	readyCol := createTestReadyColumn(t, db, projectID, "Todo")
+
+	// Create two tasks
+	task1 := createTestTask(t, db, readyCol, "Unblocked Task")
+	task2 := createTestTask(t, db, readyCol, "Blocked Task")
+
+	// Create a blocker relationship (task2 is blocked by task1)
+	// relation_type_id = 2 is "Blocked By/Blocker" with is_blocking = 1
+	_, err := db.ExecContext(context.Background(),
+		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, ?)",
+		task2, task1, 2)
+	if err != nil {
+		t.Fatalf("Failed to create blocking relationship: %v", err)
+	}
+
+	// Get ready tasks
+	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Should only get task1 (task2 is blocked)
+	if len(readyTasks) != 1 {
+		t.Fatalf("Expected 1 unblocked task, got %d", len(readyTasks))
+	}
+
+	if readyTasks[0].ID != task1 {
+		t.Errorf("Expected unblocked task ID %d, got %d", task1, readyTasks[0].ID)
+	}
+}
+
+func TestGetReadyTaskSummariesByProject_EmptyWhenNoReadyColumn(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create columns but none are ready
+	col1 := createTestColumn(t, db, projectID, "Todo")
+	createTestColumn(t, db, projectID, "Done")
+
+	// Create tasks
+	createTestTask(t, db, col1, "Task 1")
+
+	// Get ready tasks
+	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(readyTasks) != 0 {
+		t.Errorf("Expected 0 ready tasks when no column is marked as ready, got %d", len(readyTasks))
+	}
+}
+
+func TestGetReadyTaskSummariesByProject_EmptyReadyColumn(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create ready column with no tasks
+	createTestReadyColumn(t, db, projectID, "Todo")
+
+	// Get ready tasks
+	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(readyTasks) != 0 {
+		t.Errorf("Expected 0 ready tasks for empty ready column, got %d", len(readyTasks))
+	}
+}
+
+func TestGetReadyTaskSummariesByProject_IncludesTaskDetails(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create ready column
+	readyCol := createTestReadyColumn(t, db, projectID, "Todo")
+
+	// Create label
+	labelID := createTestLabel(t, db, projectID, "bug")
+
+	// Create task with label and high priority (priority_id = 4)
+	taskID := createTestTask(t, db, readyCol, "Important Bug Fix")
+	_, err := db.ExecContext(context.Background(),
+		"UPDATE tasks SET priority_id = 4 WHERE id = ?", taskID)
+	if err != nil {
+		t.Fatalf("Failed to update task priority: %v", err)
+	}
+
+	// Attach label
+	_, err = db.ExecContext(context.Background(),
+		"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID)
+	if err != nil {
+		t.Fatalf("Failed to attach label: %v", err)
+	}
+
+	// Get ready tasks
+	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(readyTasks) != 1 {
+		t.Fatalf("Expected 1 task, got %d", len(readyTasks))
+	}
+
+	task := readyTasks[0]
+
+	// Verify task details
+	if task.Title != "Important Bug Fix" {
+		t.Errorf("Expected title 'Important Bug Fix', got '%s'", task.Title)
+	}
+
+	if task.PriorityDescription != "high" {
+		t.Errorf("Expected priority 'high', got '%s'", task.PriorityDescription)
+	}
+
+	if len(task.Labels) != 1 {
+		t.Fatalf("Expected 1 label, got %d", len(task.Labels))
+	}
+
+	if task.Labels[0].Name != "bug" {
+		t.Errorf("Expected label name 'bug', got '%s'", task.Labels[0].Name)
 	}
 }

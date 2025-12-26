@@ -19,6 +19,7 @@ type Service interface {
 	GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error)
 	GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error)
 	GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error)
+	GetReadyTaskSummariesByProject(ctx context.Context, projectID int) ([]*models.TaskSummary, error)
 	GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error)
 
 	// Write operations
@@ -400,6 +401,25 @@ func (s *service) GetTaskSummariesByProjectFiltered(ctx context.Context, project
 		summary := convertFilteredTaskSummaryRowToModel(row)
 		columnID := int(row.ColumnID)
 		result[columnID] = append(result[columnID], summary)
+	}
+
+	return result, nil
+}
+
+// GetReadyTaskSummariesByProject retrieves task summaries for tasks in ready columns (and not blocked)
+func (s *service) GetReadyTaskSummariesByProject(ctx context.Context, projectID int) ([]*models.TaskSummary, error) {
+	rows, err := s.queries.GetReadyTaskSummariesByProject(ctx, int64(projectID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ready task summaries: %w", err)
+	}
+
+	result := make([]*models.TaskSummary, 0, len(rows))
+	for _, row := range rows {
+		// Only include unblocked tasks
+		if row.IsBlocked == 0 {
+			summary := convertReadyTaskSummaryRowToModel(row)
+			result = append(result, summary)
+		}
 	}
 
 	return result, nil
@@ -942,6 +962,30 @@ func convertChildTasksToReferences(rows []generated.GetChildTasksRow) []*models.
 
 // convertTaskSummaryRowToModel converts a task summary row to models.TaskSummary
 func convertTaskSummaryRowToModel(row generated.GetTaskSummariesByProjectRow) *models.TaskSummary {
+	summary := &models.TaskSummary{
+		ID:        int(row.ID),
+		Title:     row.Title,
+		ColumnID:  int(row.ColumnID),
+		Position:  int(row.Position),
+		IsBlocked: row.IsBlocked > 0,
+		Labels:    parseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
+	}
+
+	if row.TypeDescription.Valid {
+		summary.TypeDescription = row.TypeDescription.String
+	}
+	if row.PriorityDescription.Valid {
+		summary.PriorityDescription = row.PriorityDescription.String
+	}
+	if row.PriorityColor.Valid {
+		summary.PriorityColor = row.PriorityColor.String
+	}
+
+	return summary
+}
+
+// convertReadyTaskSummaryRowToModel converts a ready task summary row to models.TaskSummary
+func convertReadyTaskSummaryRowToModel(row generated.GetReadyTaskSummariesByProjectRow) *models.TaskSummary {
 	summary := &models.TaskSummary{
 		ID:        int(row.ID),
 		Title:     row.Title,

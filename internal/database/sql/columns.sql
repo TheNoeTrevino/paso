@@ -3,17 +3,17 @@
 -- ============================================================================
 
 -- name: CreateColumn :one
-INSERT INTO columns (name, project_id, prev_id, next_id)
-VALUES (?, ?, ?, ?)
+INSERT INTO columns (name, project_id, prev_id, next_id, holds_ready_tasks)
+VALUES (?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetColumnByID :one
-SELECT id, name, project_id, prev_id, next_id
+SELECT id, name, project_id, prev_id, next_id, holds_ready_tasks
 FROM columns
 WHERE id = ?;
 
 -- name: GetColumnsByProject :many
-SELECT id, name, project_id, prev_id, next_id
+SELECT id, name, project_id, prev_id, next_id, holds_ready_tasks
 FROM columns
 WHERE project_id = ?;
 
@@ -49,3 +49,20 @@ DELETE FROM tasks WHERE column_id = ?;
 
 -- name: ColumnExists :one
 SELECT COUNT(*) FROM columns WHERE id = ?;
+
+-- ============================================================================
+-- READY COLUMN OPERATIONS
+-- ============================================================================
+
+-- name: UpdateColumnHoldsReadyTasks :exec
+UPDATE columns SET holds_ready_tasks = ? WHERE id = ?;
+
+-- name: GetReadyColumnByProject :one
+SELECT id, name, project_id, prev_id, next_id, holds_ready_tasks
+FROM columns
+WHERE project_id = ? AND holds_ready_tasks = 1
+LIMIT 1;
+
+-- name: ClearReadyColumnByProject :exec
+UPDATE columns SET holds_ready_tasks = 0
+WHERE project_id = ? AND holds_ready_tasks = 1;
