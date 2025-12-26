@@ -3,17 +3,15 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 )
 
 // ANSI color codes for output
 const (
-	colorReset  = "\033[0m"
-	colorGreen  = "\033[32m"
-	colorRed    = "\033[31m"
-	colorYellow = "\033[33m"
+	colorReset = "\033[0m"
+	colorGreen = "\033[32m"
+	colorRed   = "\033[31m"
 )
 
 // Formatter interface allows for extensible formatting support
@@ -21,49 +19,6 @@ type Formatter interface {
 	Name() string
 	GetStagedFiles() ([]string, error)
 	Format(file string) error
-}
-
-// GoFmtFormatter handles formatting of Go files using gofmt
-type GoFmtFormatter struct{}
-
-func (g *GoFmtFormatter) Name() string {
-	return "gofmt"
-}
-
-// GetStagedFiles returns a list of staged Go files
-func (g *GoFmtFormatter) GetStagedFiles() ([]string, error) {
-	cmd := exec.Command("git", "diff", "--cached", "--name-only", "--diff-filter=ACM")
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get staged files: %w", err)
-	}
-
-	var goFiles []string
-	files := strings.Split(strings.TrimSpace(string(output)), "\n")
-	for _, file := range files {
-		if file != "" && strings.HasSuffix(file, ".go") {
-			goFiles = append(goFiles, file)
-		}
-	}
-
-	return goFiles, nil
-}
-
-// Format formats a single Go file using gofmt
-func (g *GoFmtFormatter) Format(file string) error {
-	// Format the file
-	cmd := exec.Command("gofmt", "-w", file)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("gofmt failed: %w", err)
-	}
-
-	// Re-stage the formatted file
-	cmd = exec.Command("git", "add", file)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("git add failed: %w", err)
-	}
-
-	return nil
 }
 
 // FormatterResult holds the result of a formatter run
@@ -109,8 +64,7 @@ func runFormatter(formatter Formatter, resultCh chan<- FormatterResult) {
 func main() {
 	formatters := []Formatter{
 		&GoFmtFormatter{},
-		// Future formatters can be added here:
-		// &SqruffFormatter{},
+		&SqruffFormatter{},
 	}
 
 	// Channel to collect results
