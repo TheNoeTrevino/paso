@@ -428,6 +428,37 @@ func TestDeleteProject(t *testing.T) {
 
 	svc := NewService(db, nil)
 
+	// Create a project (which will have default columns)
+	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+		Name:        "Test Project",
+		Description: "Test Description",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create project: %v", err)
+	}
+
+	// Delete should succeed since project has no tasks (columns don't matter)
+	err = svc.DeleteProject(context.Background(), created.ID, false)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify project is deleted
+	_, err = svc.GetProjectByID(context.Background(), created.ID)
+	if err != sql.ErrNoRows {
+		t.Errorf("Expected sql.ErrNoRows after deletion, got %v", err)
+	}
+}
+
+func TestDeleteProject_WithTasks(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
 	// Create a project
 	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
 		Name:        "Test Project",
@@ -437,10 +468,72 @@ func TestDeleteProject(t *testing.T) {
 		t.Fatalf("Failed to create project: %v", err)
 	}
 
-	err = svc.DeleteProject(context.Background(), created.ID)
+	// Create a column first (tasks are associated via column)
+	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", created.ID, "Test Column")
+	if err != nil {
+		t.Fatalf("Failed to create column: %v", err)
+	}
+	columnID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatalf("Failed to get column ID: %v", err)
+	}
+
+	// Create a task in the column
+	_, err = db.ExecContext(context.Background(), "INSERT INTO tasks (project_id, column_id, title) VALUES (?, ?, ?)", created.ID, columnID, "Test Task")
+	if err != nil {
+		t.Fatalf("Failed to create task: %v", err)
+	}
+
+	// This should fail because project has tasks and force=false
+	err = svc.DeleteProject(context.Background(), created.ID, false)
+
+	if err == nil {
+		t.Fatal("Expected error when deleting project with tasks")
+	}
+
+	if err != ErrProjectHasTasks {
+		t.Errorf("Expected ErrProjectHasTasks, got %v", err)
+	}
+}
+
+func TestDeleteProject_WithTasksForce(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	// Create a project
+	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+		Name:        "Test Project",
+		Description: "Test Description",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create project: %v", err)
+	}
+
+	// Create a column first (tasks are associated via column)
+	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", created.ID, "Test Column")
+	if err != nil {
+		t.Fatalf("Failed to create column: %v", err)
+	}
+	columnID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatalf("Failed to get column ID: %v", err)
+	}
+
+	// Create a task in the column
+	_, err = db.ExecContext(context.Background(), "INSERT INTO tasks (project_id, column_id, title) VALUES (?, ?, ?)", created.ID, columnID, "Test Task")
+	if err != nil {
+		t.Fatalf("Failed to create task: %v", err)
+	}
+
+	// This should succeed because force=true
+	err = svc.DeleteProject(context.Background(), created.ID, true)
 
 	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+		t.Fatalf("Expected no error with force=true, got %v", err)
 	}
 
 	// Verify project is deleted
@@ -458,7 +551,7 @@ func TestDeleteProject_InvalidID(t *testing.T) {
 
 	svc := NewService(db, nil)
 
-	err := svc.DeleteProject(context.Background(), 0)
+	err := svc.DeleteProject(context.Background(), 0, false)
 
 	if err == nil {
 		t.Fatal("Expected error for invalid ID")

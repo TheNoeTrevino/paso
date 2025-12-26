@@ -84,7 +84,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	// Delete the project
-	if err := cliInstance.App.ProjectService.DeleteProject(ctx, projectID); err != nil {
+	if err := cliInstance.App.ProjectService.DeleteProject(ctx, projectID, force); err != nil {
 		if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}

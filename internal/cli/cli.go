@@ -30,7 +30,7 @@ func NewCLI(ctx context.Context) (*CLI, error) {
 	home, _ := os.UserHomeDir()
 	socketPath := filepath.Join(home, ".paso", "paso.sock")
 
-	var eventClient *events.Client
+	var eventClient events.EventPublisher
 	client, err := events.NewClient(socketPath)
 	if err == nil {
 		// Try to connect - if it fails, daemon isn't running (graceful degradation)

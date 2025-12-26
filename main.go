@@ -8,7 +8,9 @@ import (
 	"github.com/thenoetrevino/paso/internal/cli/column"
 	"github.com/thenoetrevino/paso/internal/cli/label"
 	"github.com/thenoetrevino/paso/internal/cli/project"
+	"github.com/thenoetrevino/paso/internal/cli/setup"
 	"github.com/thenoetrevino/paso/internal/cli/task"
+	"github.com/thenoetrevino/paso/internal/cli/tutorial"
 	"github.com/thenoetrevino/paso/internal/launcher"
 )
 
@@ -46,6 +48,8 @@ func init() {
 	rootCmd.AddCommand(project.ProjectCmd())
 	rootCmd.AddCommand(column.ColumnCmd())
 	rootCmd.AddCommand(label.LabelCmd())
+	rootCmd.AddCommand(tutorial.TutorialCmd())
+	rootCmd.AddCommand(setup.SetupCmd())
 
 	// Add TUI subcommand
 	tuiCmd := &cobra.Command{
