@@ -8,7 +8,11 @@ VALUES (?, ?, ?)
 RETURNING *;
 
 -- name: GetLabelsByProject :many
-SELECT id, name, color, project_id
+SELECT
+    id,
+    name,
+    color,
+    project_id
 FROM labels
 WHERE project_id = ?
 ORDER BY name;

@@ -1,6 +1,6 @@
 [sqruff]
 dialect = sqlite
-exclude_rules = LT01
+exclude_rules = LT01,LT02
 rules = all
 
 [sqruff:indentation]

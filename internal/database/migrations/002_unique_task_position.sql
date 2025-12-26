@@ -2,7 +2,8 @@
 -- This prevents race conditions where multiple tasks can have the same position
 -- The constraint is checked after each transaction commits
 
--- Since SQLite doesn't support ADD CONSTRAINT directly, we need to recreate the table
+-- Since SQLite doesn't support ADD CONSTRAINT directly,
+-- we need to recreate the table
 -- This migration preserves all existing data
 
 -- Step 1: Create new tasks table with UNIQUE constraint
@@ -24,8 +25,29 @@ CREATE TABLE IF NOT EXISTS tasks_new (
 );
 
 -- Step 2: Copy data from old table to new table
-INSERT INTO tasks_new (id, title, description, column_id, position, ticket_number, type_id, priority_id, created_at, updated_at)
-SELECT id, title, description, column_id, position, ticket_number, type_id, priority_id, created_at, updated_at
+INSERT INTO tasks_new (
+    id,
+    title,
+    description,
+    column_id,
+    position,
+    ticket_number,
+    type_id,
+    priority_id,
+    created_at,
+    updated_at
+)
+SELECT
+    id,
+    title,
+    description,
+    column_id,
+    position,
+    ticket_number,
+    type_id,
+    priority_id,
+    created_at,
+    updated_at
 FROM tasks;
 
 -- Step 3: Drop old table

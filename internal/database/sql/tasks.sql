@@ -8,7 +8,14 @@ VALUES (?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetTask :one
-SELECT id, title, description, column_id, position, created_at, updated_at
+SELECT
+    id,
+    title,
+    description,
+    column_id,
+    position,
+    created_at,
+    updated_at
 FROM tasks
 WHERE id = ?;
 
@@ -44,10 +51,18 @@ DELETE FROM tasks WHERE id = ?;
 -- ============================================================================
 
 -- name: GetTaskDetail :one
-SELECT t.id, t.title, t.description, t.column_id, t.position, t.ticket_number, t.created_at, t.updated_at, 
-       ty.description as type_description, 
-       p.description as priority_description, 
-       p.color as priority_color
+SELECT
+    t.id,
+    t.title,
+    t.description,
+    t.column_id,
+    t.position,
+    t.ticket_number,
+    t.created_at,
+    t.updated_at,
+    ty.description AS type_description,
+    p.description AS priority_description,
+    p.color AS priority_color
 FROM tasks t
 LEFT JOIN types ty ON t.type_id = ty.id
 LEFT JOIN priorities p ON t.priority_id = p.id
@@ -70,19 +85,26 @@ SELECT
     t.title,
     t.column_id,
     t.position,
-    ty.description as type_description,
-    p.description as priority_description,
-    p.color as priority_color,
-    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
-    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
-    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors
+    ty.description AS type_description,
+    p.description AS priority_description,
+    p.color AS priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) AS label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) AS label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) AS label_colors
 FROM tasks t
 LEFT JOIN types ty ON t.type_id = ty.id
 LEFT JOIN priorities p ON t.priority_id = p.id
 LEFT JOIN task_labels tl ON t.id = tl.task_id
 LEFT JOIN labels l ON tl.label_id = l.id
 WHERE t.column_id = ?
-GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
+GROUP BY
+    t.id,
+    t.title,
+    t.column_id,
+    t.position,
+    ty.description,
+    p.description,
+    p.color
 ORDER BY t.position;
 
 -- name: GetTaskSummariesByProject :many
@@ -91,17 +113,18 @@ SELECT
     t.title,
     t.column_id,
     t.position,
-    ty.description as type_description,
-    p.description as priority_description,
-    p.color as priority_color,
-    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
-    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
-    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors,
+    ty.description AS type_description,
+    p.description AS priority_description,
+    p.color AS priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) AS label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) AS label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) AS label_colors,
     EXISTS(
-        SELECT 1 FROM task_subtasks ts
+        SELECT 1
+        FROM task_subtasks ts
         INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
         WHERE ts.parent_id = t.id AND rt.is_blocking = 1
-    ) as is_blocked
+    ) AS is_blocked
 FROM tasks t
 INNER JOIN columns c ON t.column_id = c.id
 LEFT JOIN types ty ON t.type_id = ty.id
@@ -109,7 +132,14 @@ LEFT JOIN priorities p ON t.priority_id = p.id
 LEFT JOIN task_labels tl ON t.id = tl.task_id
 LEFT JOIN labels l ON tl.label_id = l.id
 WHERE c.project_id = ?
-GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
+GROUP BY
+    t.id,
+    t.title,
+    t.column_id,
+    t.position,
+    ty.description,
+    p.description,
+    p.color
 ORDER BY t.position;
 
 -- name: GetReadyTaskSummariesByProject :many
@@ -118,17 +148,18 @@ SELECT
     t.title,
     t.column_id,
     t.position,
-    ty.description as type_description,
-    p.description as priority_description,
-    p.color as priority_color,
-    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
-    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
-    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors,
+    ty.description AS type_description,
+    p.description AS priority_description,
+    p.color AS priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) AS label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) AS label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) AS label_colors,
     EXISTS(
-        SELECT 1 FROM task_subtasks ts
+        SELECT 1
+        FROM task_subtasks ts
         INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
         WHERE ts.parent_id = t.id AND rt.is_blocking = 1
-    ) as is_blocked
+    ) AS is_blocked
 FROM tasks t
 INNER JOIN columns c ON t.column_id = c.id
 LEFT JOIN types ty ON t.type_id = ty.id
@@ -136,7 +167,14 @@ LEFT JOIN priorities p ON t.priority_id = p.id
 LEFT JOIN task_labels tl ON t.id = tl.task_id
 LEFT JOIN labels l ON tl.label_id = l.id
 WHERE c.project_id = ? AND c.holds_ready_tasks = 1
-GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
+GROUP BY
+    t.id,
+    t.title,
+    t.column_id,
+    t.position,
+    ty.description,
+    p.description,
+    p.color
 ORDER BY t.position;
 
 -- name: GetTaskSummariesByProjectFiltered :many
@@ -145,17 +183,18 @@ SELECT
     t.title,
     t.column_id,
     t.position,
-    ty.description as type_description,
-    p.description as priority_description,
-    p.color as priority_color,
-    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
-    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
-    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors,
+    ty.description AS type_description,
+    p.description AS priority_description,
+    p.color AS priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) AS label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) AS label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) AS label_colors,
     EXISTS(
-        SELECT 1 FROM task_subtasks ts
+        SELECT 1
+        FROM task_subtasks ts
         INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
         WHERE ts.parent_id = t.id AND rt.is_blocking = 1
-    ) as is_blocked
+    ) AS is_blocked
 FROM tasks t
 INNER JOIN columns c ON t.column_id = c.id
 LEFT JOIN types ty ON t.type_id = ty.id
@@ -163,7 +202,14 @@ LEFT JOIN priorities p ON t.priority_id = p.id
 LEFT JOIN task_labels tl ON t.id = tl.task_id
 LEFT JOIN labels l ON tl.label_id = l.id
 WHERE c.project_id = ? AND t.title LIKE ?
-GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
+GROUP BY
+    t.id,
+    t.title,
+    t.column_id,
+    t.position,
+    ty.description,
+    p.description,
+    p.color
 ORDER BY t.position;
 
 -- ============================================================================
@@ -230,7 +276,7 @@ UPDATE project_counters SET next_ticket_number = next_ticket_number + 1 WHERE pr
 
 -- name: GetParentTasks :many
 SELECT t.id, t.ticket_number, t.title, p.name,
-       rt.id, rt.p_to_c_label, rt.color, rt.is_blocking
+rt.id, rt.p_to_c_label, rt.color, rt.is_blocking
 FROM tasks t
 INNER JOIN task_subtasks ts ON t.id = ts.parent_id
 INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
@@ -241,7 +287,7 @@ ORDER BY p.name, t.ticket_number;
 
 -- name: GetChildTasks :many
 SELECT t.id, t.ticket_number, t.title, p.name,
-       rt.id, rt.c_to_p_label, rt.color, rt.is_blocking
+rt.id, rt.c_to_p_label, rt.color, rt.is_blocking
 FROM tasks t
 INNER JOIN task_subtasks ts ON t.id = ts.child_id
 INNER JOIN relation_types rt ON ts.relation_type_id = rt.id

@@ -8,7 +8,13 @@ VALUES (?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetColumnByID :one
-SELECT id, name, project_id, prev_id, next_id, holds_ready_tasks
+SELECT
+    id,
+    name,
+    project_id,
+    prev_id,
+    next_id,
+    holds_ready_tasks
 FROM columns
 WHERE id = ?;
 
