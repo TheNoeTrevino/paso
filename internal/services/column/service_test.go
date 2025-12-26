@@ -54,6 +54,7 @@ func createTestSchema(db *sql.DB) error {
 		prev_id INTEGER,
 		next_id INTEGER,
 		holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
+		holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
 		FOREIGN KEY (prev_id) REFERENCES columns(id) ON DELETE SET NULL,
@@ -63,6 +64,10 @@ func createTestSchema(db *sql.DB) error {
 	-- Unique partial index: only one column per project can have holds_ready_tasks = 1
 	CREATE UNIQUE INDEX idx_columns_ready_per_project
 	ON columns(project_id) WHERE holds_ready_tasks = 1;
+
+	-- Unique partial index: only one column per project can have holds_completed_tasks = 1
+	CREATE UNIQUE INDEX idx_columns_completed_per_project
+	ON columns(project_id) WHERE holds_completed_tasks = 1;
 
 	-- Create tasks table (for deletion constraint checking)
 	CREATE TABLE IF NOT EXISTS tasks (
@@ -1066,4 +1071,362 @@ func hasSubstring(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// ============================================================================
+// TEST CASES - HOLDS_COMPLETED_TASKS FEATURE
+// ============================================================================
+
+func TestCreateColumn_WithHoldsCompletedTasks(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	req := CreateColumnRequest{
+		Name:                "Done",
+		ProjectID:           projectID,
+		HoldsCompletedTasks: true,
+	}
+
+	result, err := svc.CreateColumn(context.Background(), req)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if !result.HoldsCompletedTasks {
+		t.Error("Expected HoldsCompletedTasks to be true")
+	}
+}
+
+func TestCreateColumn_HoldsCompletedTasks_FailsWhenExists(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create first column with HoldsCompletedTasks = true
+	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:                "Done",
+		ProjectID:           projectID,
+		HoldsCompletedTasks: true,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column 1: %v", err)
+	}
+
+	if !col1.HoldsCompletedTasks {
+		t.Fatal("Expected col1 to hold completed tasks")
+	}
+
+	// Create second column with HoldsCompletedTasks = true (should fail)
+	_, err = svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:                "Archive",
+		ProjectID:           projectID,
+		HoldsCompletedTasks: true,
+	})
+
+	if err == nil {
+		t.Fatal("Expected error when creating second completed column")
+	}
+
+	if err != ErrCompletedColumnExists && !contains(err.Error(), "completed column already exists") {
+		t.Errorf("Expected ErrCompletedColumnExists, got %v", err)
+	}
+}
+
+func TestSetHoldsCompletedTasks_Success(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create two columns (neither completed)
+	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:                "Done",
+		ProjectID:           projectID,
+		HoldsCompletedTasks: false,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column 1: %v", err)
+	}
+
+	_, err = svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:                "Archive",
+		ProjectID:           projectID,
+		HoldsCompletedTasks: false,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column 2: %v", err)
+	}
+
+	// Set col1 as completed
+	updated, err := svc.SetHoldsCompletedTasks(context.Background(), col1.ID, false)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if !updated.HoldsCompletedTasks {
+		t.Error("Expected column to hold completed tasks after SetHoldsCompletedTasks")
+	}
+}
+
+func TestSetHoldsCompletedTasks_FailsWhenExistsWithoutForce(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create col1 as completed
+	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:                "Done",
+		ProjectID:           projectID,
+		HoldsCompletedTasks: true,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column 1: %v", err)
+	}
+
+	// Create col2 as not completed
+	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:                "Archive",
+		ProjectID:           projectID,
+		HoldsCompletedTasks: false,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column 2: %v", err)
+	}
+
+	// Try to set col2 as completed without force (should fail)
+	_, err = svc.SetHoldsCompletedTasks(context.Background(), col2.ID, false)
+
+	if err == nil {
+		t.Fatal("Expected error when setting completed without force")
+	}
+
+	if err != ErrCompletedColumnExists && !contains(err.Error(), "completed column already exists") {
+		t.Errorf("Expected ErrCompletedColumnExists, got %v", err)
+	}
+
+	// Verify col1 is still completed
+	col1Updated, err := svc.GetColumnByID(context.Background(), col1.ID)
+	if err != nil {
+		t.Fatalf("Failed to get col1: %v", err)
+	}
+
+	if !col1Updated.HoldsCompletedTasks {
+		t.Error("Expected col1 to still hold completed tasks")
+	}
+}
+
+func TestSetHoldsCompletedTasks_SucceedsWithForce(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create col1 as completed
+	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:                "Done",
+		ProjectID:           projectID,
+		HoldsCompletedTasks: true,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column 1: %v", err)
+	}
+
+	// Create col2 as not completed
+	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:                "Archive",
+		ProjectID:           projectID,
+		HoldsCompletedTasks: false,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column 2: %v", err)
+	}
+
+	// Set col2 as completed with force (should succeed)
+	updated, err := svc.SetHoldsCompletedTasks(context.Background(), col2.ID, true)
+	if err != nil {
+		t.Fatalf("Expected no error with force flag, got %v", err)
+	}
+
+	if !updated.HoldsCompletedTasks {
+		t.Error("Expected col2 to hold completed tasks")
+	}
+
+	// Verify col1 is no longer completed
+	col1Updated, err := svc.GetColumnByID(context.Background(), col1.ID)
+	if err != nil {
+		t.Fatalf("Failed to get col1: %v", err)
+	}
+
+	if col1Updated.HoldsCompletedTasks {
+		t.Error("Expected col1 to no longer hold completed tasks")
+	}
+}
+
+func TestGetColumnByID_IncludesHoldsCompletedTasks(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create column with HoldsCompletedTasks = true
+	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:                "Done",
+		ProjectID:           projectID,
+		HoldsCompletedTasks: true,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create column: %v", err)
+	}
+
+	// Fetch via GetColumnByID
+	result, err := svc.GetColumnByID(context.Background(), created.ID)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if !result.HoldsCompletedTasks {
+		t.Error("Expected HoldsCompletedTasks to be true")
+	}
+}
+
+func TestGetColumnsByProject_IncludesHoldsCompletedTasks(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Create one completed column and one not completed
+	_, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:                "Done",
+		ProjectID:           projectID,
+		HoldsCompletedTasks: true,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create completed column: %v", err)
+	}
+
+	_, err = svc.CreateColumn(context.Background(), CreateColumnRequest{
+		Name:                "Todo",
+		ProjectID:           projectID,
+		HoldsCompletedTasks: false,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create non-completed column: %v", err)
+	}
+
+	// Fetch all columns
+	results, err := svc.GetColumnsByProject(context.Background(), projectID)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(results) != 2 {
+		t.Fatalf("Expected 2 columns, got %d", len(results))
+	}
+
+	// Verify first column (Done) is completed
+	if results[0].Name == "Done" && !results[0].HoldsCompletedTasks {
+		t.Error("Expected 'Done' column to hold completed tasks")
+	}
+
+	// Verify second column (Todo) is not completed
+	if results[1].Name == "Todo" && results[1].HoldsCompletedTasks {
+		t.Error("Expected 'Todo' column to not hold completed tasks")
+	}
+}
+
+func TestSetHoldsCompletedTasks_InvalidColumnID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	_, err := svc.SetHoldsCompletedTasks(context.Background(), 0, false)
+
+	if err == nil {
+		t.Fatal("Expected error for invalid column ID")
+	}
+
+	if err != ErrInvalidColumnID {
+		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
+	}
+}
+
+func TestSetHoldsCompletedTasks_ColumnNotFound(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	_, err := svc.SetHoldsCompletedTasks(context.Background(), 999, false)
+
+	if err == nil {
+		t.Fatal("Expected error for non-existent column")
+	}
+
+	// Should get a wrapped sql.ErrNoRows
+	if err != sql.ErrNoRows && !contains(err.Error(), "no rows") {
+		t.Errorf("Expected sql.ErrNoRows or wrapped error, got %v", err)
+	}
+}
+
+func TestCreateColumn_OnlyOneCompletedPerProject(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+
+	// Manually insert two columns with holds_completed_tasks = 1
+	// This should violate the unique partial index constraint
+	_, err := db.ExecContext(context.Background(),
+		"INSERT INTO columns (name, project_id, holds_completed_tasks) VALUES (?, ?, ?)",
+		"Done", projectID, true)
+	if err != nil {
+		t.Fatalf("Failed to insert first completed column: %v", err)
+	}
+
+	_, err = db.ExecContext(context.Background(),
+		"INSERT INTO columns (name, project_id, holds_completed_tasks) VALUES (?, ?, ?)",
+		"Archive", projectID, true)
+
+	if err == nil {
+		t.Fatal("Expected database constraint violation for duplicate completed columns")
+	}
+
+	// Should get a constraint violation error
+	if !contains(err.Error(), "UNIQUE") && !contains(err.Error(), "constraint") {
+		t.Errorf("Expected UNIQUE constraint violation, got %v", err)
+	}
 }
