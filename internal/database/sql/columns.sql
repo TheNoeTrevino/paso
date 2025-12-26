@@ -3,23 +3,32 @@
 -- ============================================================================
 
 -- name: CreateColumn :one
-INSERT INTO columns (name, project_id, prev_id, next_id, holds_ready_tasks)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO columns (
+    name, project_id, prev_id, next_id, holds_ready_tasks, holds_completed_tasks
+)
+VALUES (?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetColumnByID :one
 SELECT
     id,
-    name,
-    project_id,
-    prev_id,
-    next_id,
-    holds_ready_tasks
+name,
+project_id,
+prev_id,
+next_id,
+holds_ready_tasks,
+holds_completed_tasks
 FROM columns
 WHERE id = ?;
 
 -- name: GetColumnsByProject :many
-SELECT id, name, project_id, prev_id, next_id, holds_ready_tasks
+SELECT id,
+name,
+project_id,
+prev_id,
+next_id,
+holds_ready_tasks,
+holds_completed_tasks
 FROM columns
 WHERE project_id = ?;
 
@@ -72,3 +81,20 @@ LIMIT 1;
 -- name: ClearReadyColumnByProject :exec
 UPDATE columns SET holds_ready_tasks = 0
 WHERE project_id = ? AND holds_ready_tasks = 1;
+
+-- ============================================================================
+-- COMPLETED COLUMN OPERATIONS
+-- ============================================================================
+
+-- name: UpdateColumnHoldsCompletedTasks :exec
+UPDATE columns SET holds_completed_tasks = ? WHERE id = ?;
+
+-- name: GetCompletedColumnByProject :one
+SELECT id, name, project_id, prev_id, next_id, holds_completed_tasks
+FROM columns
+WHERE project_id = ? AND holds_completed_tasks = 1
+LIMIT 1;
+
+-- name: ClearCompletedColumnByProject :exec
+UPDATE columns SET holds_completed_tasks = 0
+WHERE project_id = ? AND holds_completed_tasks = 1;

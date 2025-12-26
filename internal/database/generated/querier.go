@@ -16,6 +16,7 @@ type Querier interface {
 	AddLabelToTask(ctx context.Context, arg AddLabelToTaskParams) error
 	AddSubtask(ctx context.Context, arg AddSubtaskParams) error
 	AddSubtaskWithRelationType(ctx context.Context, arg AddSubtaskWithRelationTypeParams) error
+	ClearCompletedColumnByProject(ctx context.Context, projectID int64) error
 	ClearReadyColumnByProject(ctx context.Context, projectID int64) error
 	// ============================================================================
 	// COLUMN VERIFICATION
@@ -61,6 +62,7 @@ type Querier interface {
 	GetColumnLinkedListInfo(ctx context.Context, id int64) (GetColumnLinkedListInfoRow, error)
 	GetColumnNextID(ctx context.Context, id int64) (interface{}, error)
 	GetColumnsByProject(ctx context.Context, projectID int64) ([]GetColumnsByProjectRow, error)
+	GetCompletedColumnByProject(ctx context.Context, projectID int64) (GetCompletedColumnByProjectRow, error)
 	GetLabelByID(ctx context.Context, id int64) (Label, error)
 	GetLabelsByProject(ctx context.Context, projectID int64) ([]Label, error)
 	GetLabelsForTask(ctx context.Context, taskID int64) ([]Label, error)
@@ -123,6 +125,10 @@ type Querier interface {
 	RemoveSubtask(ctx context.Context, arg RemoveSubtaskParams) error
 	SetTaskPosition(ctx context.Context, arg SetTaskPositionParams) error
 	SetTaskPositionTemporary(ctx context.Context, id int64) error
+	// ============================================================================
+	// COMPLETED COLUMN OPERATIONS
+	// ============================================================================
+	UpdateColumnHoldsCompletedTasks(ctx context.Context, arg UpdateColumnHoldsCompletedTasksParams) error
 	// ============================================================================
 	// READY COLUMN OPERATIONS
 	// ============================================================================
