@@ -1,0 +1,9 @@
+[sqruff]
+dialect = sqlite
+exclude_rules = LT01
+rules = all
+
+[sqruff:indentation]
+indent_unit = space
+tab_space_size = 4
+indented_joins = True
