@@ -63,3 +63,26 @@ type TaskDetail struct {
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
+
+// TaskTreeNode represents a task in a tree structure for hierarchical display
+type TaskTreeNode struct {
+	ID             int
+	TicketNumber   int
+	Title          string
+	ColumnName     string
+	ProjectName    string
+	RelationLabel  string // CToPLabel: "Blocker", "Child", "Related To"
+	RelationColor  string // Hex color for the relation
+	IsBlocking     bool   // Whether this node's relationship to parent is blocking
+	InBlockingPath bool   // Whether this node is part of a path that leads to a blocker
+	Children       []*TaskTreeNode
+}
+
+// TaskRelation represents a parent-child relationship between tasks
+type TaskRelation struct {
+	ParentID      int
+	ChildID       int
+	RelationLabel string // CToPLabel
+	RelationColor string
+	IsBlocking    bool
+}
