@@ -1,3 +1,7 @@
+// Package setup holds all cli commands related to setting up
+// integrations for agentic tools.
+//
+// This can include hooks, plugins, etc...
 package setup
 
 import (
