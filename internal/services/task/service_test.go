@@ -1821,3 +1821,303 @@ func TestGetReadyTaskSummariesByProject_IncludesTaskDetails(t *testing.T) {
 		t.Errorf("Expected label name 'bug', got '%s'", task.Labels[0].Name)
 	}
 }
+
+// ============================================================================
+// TEST CASES - TASK TREE
+// ============================================================================
+
+func TestGetTaskTreeByProject_EmptyProject(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Get tree for empty project
+	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(tree) != 0 {
+		t.Errorf("Expected 0 root tasks, got %d", len(tree))
+	}
+}
+
+func TestGetTaskTreeByProject_SimpleHierarchy(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create parent and child tasks
+	parentID := createTestTask(t, db, columnID, "Parent Task")
+	childID := createTestTask(t, db, columnID, "Child Task")
+
+	// Add parent-child relation (non-blocking)
+	_, err := db.ExecContext(context.Background(),
+		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
+		parentID, childID)
+	if err != nil {
+		t.Fatalf("Failed to create relation: %v", err)
+	}
+
+	// Get tree
+	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(tree) != 1 {
+		t.Fatalf("Expected 1 root task, got %d", len(tree))
+	}
+
+	root := tree[0]
+	if root.ID != parentID {
+		t.Errorf("Expected root ID %d, got %d", parentID, root.ID)
+	}
+
+	if len(root.Children) != 1 {
+		t.Fatalf("Expected 1 child, got %d", len(root.Children))
+	}
+
+	child := root.Children[0]
+	if child.ID != childID {
+		t.Errorf("Expected child ID %d, got %d", childID, child.ID)
+	}
+}
+
+func TestGetTaskTreeByProject_CircularDependency(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create three tasks: A -> B -> C -> A (circular)
+	taskA := createTestTask(t, db, columnID, "Task A")
+	taskB := createTestTask(t, db, columnID, "Task B")
+	taskC := createTestTask(t, db, columnID, "Task C")
+
+	// A -> B -> C -> A (circular)
+	_, _ = db.ExecContext(context.Background(),
+		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
+		taskA, taskB)
+	_, _ = db.ExecContext(context.Background(),
+		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
+		taskB, taskC)
+	_, _ = db.ExecContext(context.Background(),
+		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
+		taskC, taskA)
+
+	// Get tree - should handle circular dependency gracefully
+	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// With circular dependency, none are truly "root" tasks
+	// This is expected behavior - the function should not crash or hang
+	if len(tree) != 0 {
+		t.Logf("Got %d root tasks with circular dependencies (expected)", len(tree))
+	}
+}
+
+func TestGetTaskTreeByProject_DeepNesting(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create a deep hierarchy: Task1 -> Task2 -> Task3 -> Task4 -> Task5
+	tasks := make([]int, 5)
+	for i := 0; i < 5; i++ {
+		tasks[i] = createTestTask(t, db, columnID, "Task "+string(rune('1'+i)))
+	}
+
+	// Link them in a chain
+	for i := 0; i < 4; i++ {
+		_, err := db.ExecContext(context.Background(),
+			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
+			tasks[i], tasks[i+1])
+		if err != nil {
+			t.Fatalf("Failed to create relation: %v", err)
+		}
+	}
+
+	// Get tree
+	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(tree) != 1 {
+		t.Fatalf("Expected 1 root task, got %d", len(tree))
+	}
+
+	// Traverse the tree and verify depth
+	depth := 0
+	current := tree[0]
+	for {
+		depth++
+		if len(current.Children) == 0 {
+			break
+		}
+		if depth > 10 {
+			t.Fatal("Depth exceeds expected maximum")
+		}
+		current = current.Children[0]
+	}
+
+	if depth != 5 {
+		t.Errorf("Expected depth 5, got %d", depth)
+	}
+}
+
+func TestGetTaskTreeByProject_BlockingRelationship(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create parent and child tasks
+	parentID := createTestTask(t, db, columnID, "Parent Task")
+	blockerID := createTestTask(t, db, columnID, "Blocker Task")
+
+	// Add blocking relation (relation_type_id = 2 is the blocker type)
+	_, err := db.ExecContext(context.Background(),
+		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 2)",
+		parentID, blockerID)
+	if err != nil {
+		t.Fatalf("Failed to create blocking relation: %v", err)
+	}
+
+	// Get tree
+	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(tree) != 1 {
+		t.Fatalf("Expected 1 root task, got %d", len(tree))
+	}
+
+	root := tree[0]
+	if len(root.Children) != 1 {
+		t.Fatalf("Expected 1 child, got %d", len(root.Children))
+	}
+
+	blocker := root.Children[0]
+	if !blocker.IsBlocking {
+		t.Error("Expected child to be marked as blocking")
+	}
+}
+
+func TestGetTaskTreeByProject_SortedByTicketNumber(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create multiple root tasks (no parent relations)
+	task1 := createTestTask(t, db, columnID, "Task 1")
+	task2 := createTestTask(t, db, columnID, "Task 2")
+	task3 := createTestTask(t, db, columnID, "Task 3")
+
+	// Set ticket numbers (in database they auto-increment, but let's verify sorting)
+	_, _ = db.ExecContext(context.Background(), "UPDATE tasks SET ticket_number = 3 WHERE id = ?", task1)
+	_, _ = db.ExecContext(context.Background(), "UPDATE tasks SET ticket_number = 1 WHERE id = ?", task2)
+	_, _ = db.ExecContext(context.Background(), "UPDATE tasks SET ticket_number = 2 WHERE id = ?", task3)
+
+	// Get tree
+	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(tree) != 3 {
+		t.Fatalf("Expected 3 root tasks, got %d", len(tree))
+	}
+
+	// Verify sorted by ticket number
+	if tree[0].TicketNumber != 1 {
+		t.Errorf("Expected first task ticket number 1, got %d", tree[0].TicketNumber)
+	}
+	if tree[1].TicketNumber != 2 {
+		t.Errorf("Expected second task ticket number 2, got %d", tree[1].TicketNumber)
+	}
+	if tree[2].TicketNumber != 3 {
+		t.Errorf("Expected third task ticket number 3, got %d", tree[2].TicketNumber)
+	}
+}
+
+func TestGetTaskTreeByProject_MultipleRootsWithChildren(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create two separate trees
+	root1 := createTestTask(t, db, columnID, "Root 1")
+	child1 := createTestTask(t, db, columnID, "Child 1")
+
+	root2 := createTestTask(t, db, columnID, "Root 2")
+	child2 := createTestTask(t, db, columnID, "Child 2")
+
+	// Link them
+	_, _ = db.ExecContext(context.Background(),
+		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
+		root1, child1)
+	_, _ = db.ExecContext(context.Background(),
+		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
+		root2, child2)
+
+	// Get tree
+	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(tree) != 2 {
+		t.Fatalf("Expected 2 root tasks, got %d", len(tree))
+	}
+
+	// Verify both roots have exactly one child
+	for i, root := range tree {
+		if len(root.Children) != 1 {
+			t.Errorf("Root %d: expected 1 child, got %d", i, len(root.Children))
+		}
+	}
+}
