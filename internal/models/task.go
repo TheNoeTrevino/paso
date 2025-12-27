@@ -55,8 +55,11 @@ type TaskDetail struct {
 	PriorityDescription string
 	PriorityColor       string
 	ColumnID            int
+	ColumnName          string // Column name for display
 	Position            int
-	TicketNumber        int // For display "PROJ-12"
+	TicketNumber        int    // For display "PROJ-12"
+	ProjectName         string // Project name for display
+	IsBlocked           bool   // True if any child task has is_blocking=true
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }

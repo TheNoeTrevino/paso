@@ -530,11 +530,21 @@ func (q *Queries) GetTaskCountByColumn(ctx context.Context, columnID int64) (int
 
 const getTaskDetail = `-- name: GetTaskDetail :one
 
-SELECT t.id, t.title, t.description, t.column_id, t.position, t.ticket_number, t.created_at, t.updated_at, 
-       ty.description as type_description, 
-       p.description as priority_description, 
-       p.color as priority_color
+SELECT t.id, t.title, t.description, t.column_id, t.position,
+       t.ticket_number, t.created_at, t.updated_at,
+       ty.description as type_description,
+       p.description as priority_description,
+       p.color as priority_color,
+       c.name as column_name,
+       proj.name as project_name,
+       EXISTS(
+           SELECT 1 FROM task_subtasks ts
+           INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
+           WHERE ts.parent_id = t.id AND rt.is_blocking = 1
+       ) as is_blocked
 FROM tasks t
+INNER JOIN columns c ON t.column_id = c.id
+INNER JOIN projects proj ON c.project_id = proj.id
 LEFT JOIN types ty ON t.type_id = ty.id
 LEFT JOIN priorities p ON t.priority_id = p.id
 WHERE t.id = ?
@@ -552,6 +562,9 @@ type GetTaskDetailRow struct {
 	TypeDescription     sql.NullString
 	PriorityDescription sql.NullString
 	PriorityColor       sql.NullString
+	ColumnName          string
+	ProjectName         string
+	IsBlocked           int64
 }
 
 // ============================================================================
@@ -572,6 +585,9 @@ func (q *Queries) GetTaskDetail(ctx context.Context, id int64) (GetTaskDetailRow
 		&i.TypeDescription,
 		&i.PriorityDescription,
 		&i.PriorityColor,
+		&i.ColumnName,
+		&i.ProjectName,
+		&i.IsBlocked,
 	)
 	return i, err
 }
