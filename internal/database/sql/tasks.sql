@@ -337,3 +337,35 @@ SELECT id, description, color FROM priorities ORDER BY id;
 
 -- name: GetAllTypes :many
 SELECT id, description FROM types ORDER BY id;
+
+-- ============================================================================
+-- TASK TREE QUERIES (for project tree command)
+-- ============================================================================
+
+-- name: GetTasksForTree :many
+-- Gets all tasks in a project with their column names for tree display
+SELECT
+    t.id,
+    t.ticket_number,
+    t.title,
+    c.name AS column_name,
+    proj.name AS project_name
+FROM tasks t
+INNER JOIN columns c ON t.column_id = c.id
+INNER JOIN projects proj ON c.project_id = proj.id
+WHERE proj.id = ?
+ORDER BY t.ticket_number;
+
+-- name: GetTaskRelationsForProject :many
+-- Gets all parent-child relationships for tasks in a project
+SELECT
+    ts.parent_id,
+    ts.child_id,
+    rt.c_to_p_label AS relation_label,
+    rt.color AS relation_color,
+    rt.is_blocking
+FROM task_subtasks ts
+INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
+INNER JOIN tasks t_parent ON ts.parent_id = t_parent.id
+INNER JOIN columns c ON t_parent.column_id = c.id
+WHERE c.project_id = ?;
