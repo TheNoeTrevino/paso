@@ -336,10 +336,13 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 		Title:       taskRow.Title,
 		Description: taskRow.Description.String,
 		ColumnID:    int(taskRow.ColumnID),
+		ColumnName:  taskRow.ColumnName,
+		ProjectName: taskRow.ProjectName,
 		Position:    int(taskRow.Position),
 		Labels:      convertLabelsToModels(labels),
 		ParentTasks: convertParentTasksToReferences(parentRows),
 		ChildTasks:  convertChildTasksToReferences(childRows),
+		IsBlocked:   taskRow.IsBlocked > 0,
 	}
 
 	if taskRow.TicketNumber.Valid {

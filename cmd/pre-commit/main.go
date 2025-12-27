@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -17,8 +18,8 @@ const (
 // Formatter interface allows for extensible formatting support
 type Formatter interface {
 	Name() string
-	GetStagedFiles() ([]string, error)
-	Format(file string) error
+	GetStagedFiles(ctx context.Context) ([]string, error)
+	Format(ctx context.Context, file string) error
 }
 
 // FormatterResult holds the result of a formatter run
@@ -29,10 +30,10 @@ type FormatterResult struct {
 }
 
 // runFormatter runs a single formatter concurrently
-func runFormatter(formatter Formatter, resultCh chan<- FormatterResult) {
+func runFormatter(ctx context.Context, formatter Formatter, resultCh chan<- FormatterResult) {
 	result := FormatterResult{Name: formatter.Name()}
 
-	files, err := formatter.GetStagedFiles()
+	files, err := formatter.GetStagedFiles(ctx)
 	if err != nil {
 		result.Error = err
 		resultCh <- result
@@ -47,7 +48,7 @@ func runFormatter(formatter Formatter, resultCh chan<- FormatterResult) {
 	// Format each file
 	var formatErrors []string
 	for _, file := range files {
-		if err := formatter.Format(file); err != nil {
+		if err := formatter.Format(ctx, file); err != nil {
 			formatErrors = append(formatErrors, fmt.Sprintf("  %s: %v", file, err))
 		} else {
 			result.FilesFormatted++
@@ -62,6 +63,7 @@ func runFormatter(formatter Formatter, resultCh chan<- FormatterResult) {
 }
 
 func main() {
+	ctx := context.Background()
 	formatters := []Formatter{
 		&GoFmtFormatter{},
 		&SqruffFormatter{},
@@ -76,7 +78,7 @@ func main() {
 		wg.Add(1)
 		go func(f Formatter) {
 			defer wg.Done()
-			runFormatter(f, resultCh)
+			runFormatter(ctx, f, resultCh)
 		}(formatter)
 	}
 

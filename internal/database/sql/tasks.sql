@@ -60,10 +60,19 @@ SELECT
     t.ticket_number,
     t.created_at,
     t.updated_at,
-    ty.description AS type_description,
-    p.description AS priority_description,
-    p.color AS priority_color
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    c.name as column_name,
+    proj.name as project_name,
+    EXISTS(
+        SELECT 1 FROM task_subtasks ts
+        INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
+        WHERE ts.parent_id = t.id AND rt.is_blocking = 1
+    ) as is_blocked
 FROM tasks t
+INNER JOIN columns c ON t.column_id = c.id
+INNER JOIN projects proj ON c.project_id = proj.id
 LEFT JOIN types ty ON t.type_id = ty.id
 LEFT JOIN priorities p ON t.priority_id = p.id
 WHERE t.id = ?;
