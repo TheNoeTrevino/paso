@@ -15,8 +15,8 @@ func (s *SqruffFormatter) Name() string {
 }
 
 // GetStagedFiles returns a list of staged SQL files
-func (s *SqruffFormatter) GetStagedFiles() ([]string, error) {
-	cmd := exec.CommandContext(context.Background(), "git", "diff", "--cached", "--name-only", "--diff-filter=ACM")
+func (s *SqruffFormatter) GetStagedFiles(ctx context.Context) ([]string, error) {
+	cmd := exec.CommandContext(ctx, "git", "diff", "--cached", "--name-only", "--diff-filter=ACM")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get staged files: %w", err)
