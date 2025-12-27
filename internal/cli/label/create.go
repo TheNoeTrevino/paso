@@ -1,3 +1,5 @@
+// Package label holds all cli commands related to labels
+// e.g., paso label ...
 package label
 
 import (

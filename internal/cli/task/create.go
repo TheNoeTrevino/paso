@@ -1,3 +1,5 @@
+// Package task holds all cli commands related to tasks
+// e.g., paso task ...
 package task
 
 import (
@@ -23,7 +25,7 @@ func CreateCmd() *cobra.Command {
 
 Examples:
   # Simple task (human-readable output)
-  paso task create --title="Fix bug" --project=1
+  paso task create --title="Fix bug" --project=1 --blocked-by 15 --blocks 20
 
   # JSON output for agents
   paso task create --title="Fix bug" --project=1 --json
@@ -59,6 +61,8 @@ Examples:
 	cmd.Flags().String("type", "task", "Task type: task or feature")
 	cmd.Flags().String("priority", "medium", "Priority: trivial, low, medium, high, critical")
 	cmd.Flags().Int("parent", 0, "Parent task ID (creates dependency)")
+	cmd.Flags().Int("blocked-by", 0, "Task ID that blocks this task")
+	cmd.Flags().Int("blocks", 0, "Task ID that is blocked by this task")
 	cmd.Flags().String("column", "", "Column name (defaults to first column)")
 
 	// Agent-friendly flags (REQUIRED on all commands)
@@ -76,6 +80,8 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	taskType, _ := cmd.Flags().GetString("type")
 	taskPriority, _ := cmd.Flags().GetString("priority")
 	taskParent, _ := cmd.Flags().GetInt("parent")
+	taskBlockedBy, _ := cmd.Flags().GetInt("blocked-by")
+	taskBlocks, _ := cmd.Flags().GetInt("blocks")
 	taskColumn, _ := cmd.Flags().GetString("column")
 	taskProject, _ := cmd.Flags().GetInt("project")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
@@ -209,6 +215,14 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		req.ParentIDs = []int{taskParent}
 	}
 
+	// Add blocking relationships if specified
+	if taskBlockedBy > 0 {
+		req.BlockedByIDs = []int{taskBlockedBy}
+	}
+	if taskBlocks > 0 {
+		req.BlocksIDs = []int{taskBlocks}
+	}
+
 	task, err := cliInstance.App.TaskService.CreateTask(ctx, req)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_CREATE_ERROR", err.Error()); fmtErr != nil {
@@ -245,6 +259,12 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  Priority: %s\n", taskPriority)
 	if taskParent > 0 {
 		fmt.Printf("  Parent: #%d\n", taskParent)
+	}
+	if taskBlockedBy > 0 {
+		fmt.Printf("  Blocked by: #%d\n", taskBlockedBy)
+	}
+	if taskBlocks > 0 {
+		fmt.Printf("  Blocks: #%d\n", taskBlocks)
 	}
 
 	return nil

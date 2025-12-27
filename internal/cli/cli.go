@@ -1,3 +1,4 @@
+// Package cli provides the command-line interface context and initialization
 package cli
 
 import (

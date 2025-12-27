@@ -1,3 +1,6 @@
+// Package project holds all cli commands related to projects
+//
+// e.g., paso project ...
 package project
 
 import (
