@@ -7,6 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/state"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
@@ -108,6 +109,29 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 	}
 	parts = append(parts, "")
 
+	// Parent Tasks section (moved from associations zone)
+	parts = append(parts, labelHeaderStyle.Render("Parent Tasks"))
+	if len(m.FormState.FormParentRefs) == 0 {
+		parts = append(parts, subtleStyle.Render("No parents"))
+	} else {
+		for _, parent := range m.FormState.FormParentRefs {
+			taskLine := fmt.Sprintf("#%d - %s", parent.TicketNumber, parent.Title)
+			parts = append(parts, taskLine)
+		}
+	}
+	parts = append(parts, "")
+
+	// Child Tasks section (moved from associations zone)
+	parts = append(parts, labelHeaderStyle.Render("Child Tasks"))
+	if len(m.FormState.FormChildRefs) == 0 {
+		parts = append(parts, subtleStyle.Render("No children"))
+	} else {
+		for _, child := range m.FormState.FormChildRefs {
+			taskLine := fmt.Sprintf("#%d - %s", child.TicketNumber, child.Title)
+			parts = append(parts, taskLine)
+		}
+	}
+
 	content := strings.Join(parts, "\n")
 
 	style := lipgloss.NewStyle().
@@ -192,4 +216,69 @@ func (m Model) renderFormAssociationsZone(width, height int) string {
 		BorderForeground(lipgloss.Color(theme.Subtle))
 
 	return style.Render(content)
+}
+
+// renderFormNotesZone renders the bottom-left zone with notes/comments
+func (m Model) renderFormNotesZone(width, height int) string {
+	var parts []string
+
+	headerStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle)).
+		Bold(true)
+
+	subtleStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle)).
+		Italic(true)
+
+	noteStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Normal))
+
+	// Notes header with count
+	noteCount := len(m.FormState.FormComments)
+	parts = append(parts, headerStyle.Render(fmt.Sprintf("Notes (%d)", noteCount)))
+
+	if noteCount == 0 {
+		parts = append(parts, subtleStyle.Render("No notes. Press Ctrl+N to add one."))
+	} else {
+		// Display notes (newest first, already sorted by created_at DESC)
+		for i, comment := range m.FormState.FormComments {
+			// Show timestamp and truncated message
+			timestamp := comment.CreatedAt.Format("Jan 2 15:04")
+
+			// Truncate message if too long for display
+			message := comment.Message
+			maxLen := width - 20 // Leave room for timestamp
+			if len(message) > maxLen {
+				message = message[:maxLen-3] + "..."
+			}
+
+			noteLine := fmt.Sprintf("[%s] %s", timestamp, message)
+
+			// Highlight if this is the cursor position in NoteEditMode
+			if m.UiState.Mode() == state.NoteEditMode && m.NoteState.Cursor == i {
+				highlightStyle := lipgloss.NewStyle().
+					Foreground(lipgloss.Color(theme.Highlight)).
+					Bold(true)
+				parts = append(parts, highlightStyle.Render("▶ "+noteLine))
+			} else {
+				parts = append(parts, noteStyle.Render("  "+noteLine))
+			}
+		}
+		parts = append(parts, "")
+		parts = append(parts, subtleStyle.Render("Ctrl+N: manage notes"))
+	}
+
+	content := strings.Join(parts, "\n")
+
+	noteZoneStyle := lipgloss.NewStyle().
+		Width(width).
+		Height(height).
+		Padding(1).
+		BorderTop(true).
+		BorderStyle(lipgloss.Border{
+			Top: "─",
+		}).
+		BorderForeground(lipgloss.Color(theme.Subtle))
+
+	return noteZoneStyle.Render(content)
 }
