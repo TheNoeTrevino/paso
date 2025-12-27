@@ -91,7 +91,13 @@ func (q *Queries) DeleteTasksByColumn(ctx context.Context, columnID int64) error
 }
 
 const getColumnByID = `-- name: GetColumnByID :one
-SELECT id, name, project_id, prev_id, next_id, holds_ready_tasks
+SELECT
+    id,
+    name,
+    project_id,
+    prev_id,
+    next_id,
+    holds_ready_tasks
 FROM columns
 WHERE id = ?
 `
