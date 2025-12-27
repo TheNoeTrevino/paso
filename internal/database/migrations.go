@@ -245,6 +245,21 @@ func createJoinTables(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
+	// Create task_comments table for notes/comments on tasks
+	_, err = db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS task_comments (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			task_id INTEGER NOT NULL,
+			content TEXT NOT NULL CHECK(length(content) <= 500),
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+		)
+	`)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -265,6 +280,9 @@ func createIndexes(ctx context.Context, db *sql.DB) error {
 
 		// Index for efficient parent task lookups
 		`CREATE INDEX IF NOT EXISTS idx_task_subtasks_parent ON task_subtasks(parent_id)`,
+
+		// Index for efficient comment retrieval by task
+		`CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id)`,
 
 		// Index for efficient child task lookups
 		`CREATE INDEX IF NOT EXISTS idx_task_subtasks_child ON task_subtasks(child_id)`,
