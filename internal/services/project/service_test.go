@@ -61,6 +61,7 @@ func createTestSchema(db *sql.DB) error {
 		prev_id INTEGER,
 		next_id INTEGER,
 		holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
+		holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 	);
