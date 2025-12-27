@@ -13,6 +13,7 @@ func TaskCmd() *cobra.Command {
 
 	cmd.AddCommand(CreateCmd())
 	cmd.AddCommand(ListCmd())
+	cmd.AddCommand(ShowCmd())
 	cmd.AddCommand(UpdateCmd())
 	cmd.AddCommand(DeleteCmd())
 	cmd.AddCommand(LinkCmd())
