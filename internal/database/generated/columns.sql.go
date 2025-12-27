@@ -46,7 +46,9 @@ func (q *Queries) ColumnExists(ctx context.Context, id int64) (int64, error) {
 
 const createColumn = `-- name: CreateColumn :one
 
-INSERT INTO columns (name, project_id, prev_id, next_id, holds_ready_tasks, holds_completed_tasks)
+INSERT INTO columns (
+    name, project_id, prev_id, next_id, holds_ready_tasks, holds_completed_tasks
+)
 VALUES (?, ?, ?, ?, ?, ?)
 RETURNING id, name, prev_id, next_id, project_id, holds_ready_tasks, holds_completed_tasks
 `
@@ -104,7 +106,14 @@ func (q *Queries) DeleteTasksByColumn(ctx context.Context, columnID int64) error
 }
 
 const getColumnByID = `-- name: GetColumnByID :one
-SELECT id, name, project_id, prev_id, next_id, holds_ready_tasks, holds_completed_tasks
+SELECT
+    id,
+name,
+project_id,
+prev_id,
+next_id,
+holds_ready_tasks,
+holds_completed_tasks
 FROM columns
 WHERE id = ?
 `
@@ -163,7 +172,13 @@ func (q *Queries) GetColumnNextID(ctx context.Context, id int64) (interface{}, e
 }
 
 const getColumnsByProject = `-- name: GetColumnsByProject :many
-SELECT id, name, project_id, prev_id, next_id, holds_ready_tasks, holds_completed_tasks
+SELECT id,
+name,
+project_id,
+prev_id,
+next_id,
+holds_ready_tasks,
+holds_completed_tasks
 FROM columns
 WHERE project_id = ?
 `
