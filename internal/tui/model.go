@@ -651,11 +651,23 @@ func (m *Model) initParentPickerForForm() bool {
 		parentTaskMap[parentID] = true
 	}
 
+	// Build map of child task IDs to exclude (prevent circular dependencies)
+	// A task that is already a child cannot become a parent
+	childTaskMap := make(map[int]bool)
+	for _, childID := range m.FormState.FormChildIDs {
+		childTaskMap[childID] = true
+	}
+
 	// Build picker items from all tasks, excluding current task (if editing)
+	// and excluding tasks that are already children (circular dependency prevention)
 	items := make([]state.TaskPickerItem, 0, len(allTasks))
 	for _, task := range allTasks {
 		// In edit mode, exclude the task being edited
 		if m.FormState.EditingTaskID != 0 && task.ID == m.FormState.EditingTaskID {
+			continue
+		}
+		// Exclude tasks that are already children (prevents circular dependencies)
+		if childTaskMap[task.ID] {
 			continue
 		}
 		items = append(items, state.TaskPickerItem{
@@ -701,11 +713,23 @@ func (m *Model) initChildPickerForForm() bool {
 		childTaskMap[childID] = true
 	}
 
+	// Build map of parent task IDs to exclude (prevent circular dependencies)
+	// A task that is already a parent cannot become a child
+	parentTaskMap := make(map[int]bool)
+	for _, parentID := range m.FormState.FormParentIDs {
+		parentTaskMap[parentID] = true
+	}
+
 	// Build picker items from all tasks, excluding current task (if editing)
+	// and excluding tasks that are already parents (circular dependency prevention)
 	items := make([]state.TaskPickerItem, 0, len(allTasks))
 	for _, task := range allTasks {
 		// In edit mode, exclude the task being edited
 		if m.FormState.EditingTaskID != 0 && task.ID == m.FormState.EditingTaskID {
+			continue
+		}
+		// Exclude tasks that are already parents (prevents circular dependencies)
+		if parentTaskMap[task.ID] {
 			continue
 		}
 		items = append(items, state.TaskPickerItem{
