@@ -16,26 +16,29 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 		return nil
 	}
 
-	// Calculate layer dimensions (80% of screen)
-	layerWidth := m.UiState.Width() * 4 / 5
-	layerHeight := m.UiState.Height() * 4 / 5
+	// Calculate layer dimensions (90% of screen)
+	layerWidth := m.UiState.Width() * 9 / 10
+	layerHeight := m.UiState.Height() * 9 / 10
 
-	// Calculate zone dimensions
-	leftColumnWidth := layerWidth * 7 / 10  // 70% of layer width
-	rightColumnWidth := layerWidth * 3 / 10 // 30% of layer width
-	topHeight := layerHeight * 6 / 10       // 60% of layer height
-	bottomHeight := layerHeight * 4 / 10    // 40% of layer height
+	// Calculate zone dimensions based on requirements:
+	// - Top left (title/desc): 60% width, 70% height
+	// - Top right (metadata): 40% width, 70% height
+	// - Bottom (comments): 100% width, 30% height
+	leftColumnWidth := layerWidth * 6 / 10  // 60% of layer width
+	rightColumnWidth := layerWidth * 4 / 10 // 40% of layer width
+	topHeight := layerHeight * 7 / 10       // 70% of layer height
+	bottomHeight := layerHeight * 3 / 10    // 30% of layer height
 
 	// Render the three zones
 	topLeftZone := m.renderFormTitleDescriptionZone(leftColumnWidth, topHeight)
-	bottomLeftZone := m.renderFormAssociationsZone(leftColumnWidth, bottomHeight)
-	rightZone := m.renderFormMetadataZone(rightColumnWidth, layerHeight)
+	topRightZone := m.renderFormMetadataZone(rightColumnWidth, topHeight)
+	bottomZone := m.renderFormNotesZone(layerWidth, bottomHeight)
 
-	// Compose left column (top + bottom)
-	leftColumn := lipgloss.JoinVertical(lipgloss.Top, topLeftZone, bottomLeftZone)
+	// Compose top row (left + right)
+	topRow := lipgloss.JoinHorizontal(lipgloss.Top, topLeftZone, topRightZone)
 
-	// Compose full content (left + right)
-	content := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, rightZone)
+	// Compose full content (top row + bottom comments)
+	content := lipgloss.JoinVertical(lipgloss.Top, topRow, bottomZone)
 
 	// Add form title
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Highlight))
@@ -48,7 +51,7 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 
 	// Add help text for shortcuts
 	helpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-	helpText := helpStyle.Render("Ctrl+L: edit labels  Ctrl+P: edit parents  Ctrl+C: edit children  Ctrl+R: edit priority Ctrl+T edit type")
+	helpText := helpStyle.Render("Ctrl+L: labels  Ctrl+P: parents  Ctrl+C: children  Ctrl+R: priority  Ctrl+T: type  Ctrl+N: notes")
 
 	// Combine title + content + help
 	fullContent := lipgloss.JoinVertical(
@@ -86,21 +89,28 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 	return layers.CreateCenteredLayer(formBox, m.UiState.Width(), m.UiState.Height())
 }
 
-// renderColumnInputLayer renders the column name input dialog (create or edit mode) as a layer
-func (m Model) renderColumnInputLayer() *lipgloss.Layer {
-	var inputBox string
-	if m.UiState.Mode() == state.AddColumnMode {
-		inputBox = components.CreateInputBoxStyle.
-			Width(50).
-			Render(fmt.Sprintf("%s\n> %s_", m.InputState.Prompt, m.InputState.Buffer))
-	} else {
-		// EditColumnMode
-		inputBox = components.EditInputBoxStyle.
-			Width(50).
-			Render(fmt.Sprintf("%s\n> %s_", m.InputState.Prompt, m.InputState.Buffer))
+// renderColumnFormLayer renders the column creation/rename form modal as a layer
+func (m Model) renderColumnFormLayer() *lipgloss.Layer {
+	if m.FormState.ColumnForm == nil {
+		return nil
 	}
 
-	return layers.CreateCenteredLayer(inputBox, m.UiState.Width(), m.UiState.Height())
+	formView := m.FormState.ColumnForm.View()
+
+	// Determine title based on mode
+	var title string
+	if m.UiState.Mode() == state.AddColumnFormMode {
+		title = "New Column"
+	} else {
+		title = "Rename Column"
+	}
+
+	// Wrap form in a styled container
+	formBox := components.CreateInputBoxStyle.
+		Width(50).
+		Render(title + "\n\n" + formView)
+
+	return layers.CreateCenteredLayer(formBox, m.UiState.Width(), m.UiState.Height())
 }
 
 // renderHelpLayer renders the keyboard shortcuts help screen as a layer
@@ -182,4 +192,29 @@ Press any key to close`,
 		km.ShowHelp,
 		km.Quit,
 	)
+}
+
+// renderNoteFormLayer renders the note creation/edit form modal as a layer
+func (m Model) renderNoteFormLayer() *lipgloss.Layer {
+	if m.FormState.CommentForm == nil {
+		return nil
+	}
+
+	formView := m.FormState.CommentForm.View()
+
+	// Determine title based on mode
+	var title string
+	if m.FormState.EditingCommentID == 0 {
+		title = "New Note"
+	} else {
+		title = "Edit Note"
+	}
+
+	// Wrap form in a styled container
+	formBox := components.CreateInputBoxStyle.
+		Width(m.UiState.Width() * 3 / 4).
+		Height(m.UiState.Height() * 2 / 3).
+		Render(title + "\n\n" + formView)
+
+	return layers.CreateCenteredLayer(formBox, m.UiState.Width(), m.UiState.Height())
 }

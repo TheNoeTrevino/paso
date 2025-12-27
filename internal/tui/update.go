@@ -38,6 +38,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.UiState.Mode() == state.ProjectFormMode {
 		return m.updateProjectForm(msg)
 	}
+	// Handle column forms early to prevent key binding conflicts (e.g., space key)
+	if m.UiState.Mode() == state.AddColumnFormMode || m.UiState.Mode() == state.EditColumnFormMode {
+		return m.updateColumnForm(msg)
+	}
+	// Handle note form early to prevent key binding conflicts (e.g., space key)
+	if m.UiState.Mode() == state.NoteFormMode {
+		return m.updateNoteForm(msg)
+	}
+	// Handle NoteEditMode early to prevent key binding conflicts (e.g., space key mapped to ViewTask)
+	if m.UiState.Mode() == state.NoteEditMode {
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			return m.updateNotes(keyMsg)
+		}
+		return m, nil
+	}
 
 	switch msg := msg.(type) {
 	case RefreshMsg:
@@ -85,8 +100,6 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.UiState.Mode() {
 	case state.NormalMode:
 		return m.handleNormalMode(msg)
-	case state.AddColumnMode, state.EditColumnMode:
-		return m.handleInputMode(msg)
 	case state.DiscardConfirmMode:
 		return m.handleDiscardConfirm(msg)
 	case state.DeleteConfirmMode:
