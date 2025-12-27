@@ -746,16 +746,60 @@ func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// buildTaskRefWithRelationType creates a TaskReference with populated relation type fields.
+// It looks up the relation type by ID and populates the appropriate label based on perspective.
+func buildTaskRefWithRelationType(
+	taskRef *models.TaskReference,
+	relationTypeID int,
+	relationMap map[int]renderers.RelationTypeOption,
+	useParentPerspective bool,
+) *models.TaskReference {
+	ref := &models.TaskReference{
+		ID:             taskRef.ID,
+		TicketNumber:   taskRef.TicketNumber,
+		Title:          taskRef.Title,
+		ProjectName:    taskRef.ProjectName,
+		RelationTypeID: relationTypeID,
+	}
+
+	// Populate relation type display fields from the relation type ID
+	if relOpt, ok := relationMap[relationTypeID]; ok {
+		if useParentPerspective {
+			ref.RelationLabel = relOpt.PToCLabel // Parent's perspective
+		} else {
+			ref.RelationLabel = relOpt.CToPLabel // Child's perspective
+		}
+		ref.RelationColor = relOpt.Color
+		ref.IsBlocking = relOpt.IsBlocking
+	}
+
+	return ref
+}
+
+// getRelationTypeMap returns a map of relation type IDs to RelationTypeOptions.
+// This avoids repeatedly building the same map from the slice.
+func getRelationTypeMap() map[int]renderers.RelationTypeOption {
+	relationOptions := renderers.GetRelationTypeOptions()
+	relationMap := make(map[int]renderers.RelationTypeOption, len(relationOptions))
+	for _, opt := range relationOptions {
+		relationMap[opt.ID] = opt
+	}
+	return relationMap
+}
+
 // syncParentPickerToFormState syncs parent picker selections back to form state.
 // Extracts all selected task IDs and references from the picker and updates FormState.
 func (m *Model) syncParentPickerToFormState() {
 	var parentIDs []int
 	var parentRefs []*models.TaskReference
 
+	relationMap := getRelationTypeMap()
+
 	for _, item := range m.ParentPickerState.Items {
 		if item.Selected {
 			parentIDs = append(parentIDs, item.TaskRef.ID)
-			parentRefs = append(parentRefs, item.TaskRef)
+			ref := buildTaskRefWithRelationType(item.TaskRef, item.RelationTypeID, relationMap, true)
+			parentRefs = append(parentRefs, ref)
 		}
 	}
 
@@ -769,10 +813,13 @@ func (m *Model) syncChildPickerToFormState() {
 	var childIDs []int
 	var childRefs []*models.TaskReference
 
+	relationMap := getRelationTypeMap()
+
 	for _, item := range m.ChildPickerState.Items {
 		if item.Selected {
 			childIDs = append(childIDs, item.TaskRef.ID)
-			childRefs = append(childRefs, item.TaskRef)
+			ref := buildTaskRefWithRelationType(item.TaskRef, item.RelationTypeID, relationMap, false)
+			childRefs = append(childRefs, ref)
 		}
 	}
 
