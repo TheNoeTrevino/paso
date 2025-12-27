@@ -33,6 +33,8 @@ type Service interface {
 	MoveTaskToNextColumn(ctx context.Context, taskID int) error
 	MoveTaskToPrevColumn(ctx context.Context, taskID int) error
 	MoveTaskToColumn(ctx context.Context, taskID, columnID int) error
+	MoveTaskToReadyColumn(ctx context.Context, taskID int) error
+	MoveTaskToCompletedColumn(ctx context.Context, taskID int) error
 	MoveTaskUp(ctx context.Context, taskID int) error
 	MoveTaskDown(ctx context.Context, taskID int) error
 
@@ -716,6 +718,84 @@ func (s *service) MoveTaskToColumn(ctx context.Context, taskID, columnID int) er
 
 	s.publishTaskEvent(taskID)
 	return nil
+}
+
+// MoveTaskToReadyColumn moves task to the column marked as holding ready tasks
+func (s *service) MoveTaskToReadyColumn(ctx context.Context, taskID int) error {
+	if taskID <= 0 {
+		return ErrInvalidTaskID
+	}
+
+	// Get task detail to find project
+	taskDetail, err := s.queries.GetTaskDetail(ctx, int64(taskID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrInvalidTaskID
+		}
+		return fmt.Errorf("failed to get task: %w", err)
+	}
+
+	// Get the column via project ID
+	column, err := s.queries.GetColumnByID(ctx, taskDetail.ColumnID)
+	if err != nil {
+		return fmt.Errorf("failed to get column: %w", err)
+	}
+
+	// Get ready column for project
+	readyColumn, err := s.queries.GetReadyColumnByProject(ctx, column.ProjectID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("no ready column configured for this project")
+		}
+		return fmt.Errorf("failed to get ready column: %w", err)
+	}
+
+	// Check if already in ready column
+	if taskDetail.ColumnID == readyColumn.ID {
+		return ErrTaskAlreadyInTargetColumn
+	}
+
+	// Move task to ready column
+	return s.MoveTaskToColumn(ctx, taskID, int(readyColumn.ID))
+}
+
+// MoveTaskToCompletedColumn moves task to the column marked as holding completed tasks
+func (s *service) MoveTaskToCompletedColumn(ctx context.Context, taskID int) error {
+	if taskID <= 0 {
+		return ErrInvalidTaskID
+	}
+
+	// Get task detail to find project
+	taskDetail, err := s.queries.GetTaskDetail(ctx, int64(taskID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrInvalidTaskID
+		}
+		return fmt.Errorf("failed to get task: %w", err)
+	}
+
+	// Get the column via project ID
+	column, err := s.queries.GetColumnByID(ctx, taskDetail.ColumnID)
+	if err != nil {
+		return fmt.Errorf("failed to get column: %w", err)
+	}
+
+	// Get completed column for project
+	completedColumn, err := s.queries.GetCompletedColumnByProject(ctx, column.ProjectID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("no completed column configured for this project")
+		}
+		return fmt.Errorf("failed to get completed column: %w", err)
+	}
+
+	// Check if already in completed column
+	if taskDetail.ColumnID == completedColumn.ID {
+		return ErrTaskAlreadyInTargetColumn
+	}
+
+	// Move task to completed column
+	return s.MoveTaskToColumn(ctx, taskID, int(completedColumn.ID))
 }
 
 // MoveTaskUp moves task up in its column
