@@ -23,5 +23,6 @@ func CreateCommentForm(
 			CharLimit(1000), // Reasonable limit for notes
 	}
 
-	return huh.NewForm(huh.NewGroup(fields...))
+	form := huh.NewForm(huh.NewGroup(fields...))
+	return form.WithKeyMap(CreateKeyMapWithShiftEnter())
 }
