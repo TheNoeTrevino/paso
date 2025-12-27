@@ -1,3 +1,5 @@
+// Package tutorial holds the context injection command
+// This command is specifically made to use at the start of AI agent sessions
 package tutorial
 
 import (
