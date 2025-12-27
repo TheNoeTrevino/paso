@@ -23,8 +23,9 @@ func (m Model) View() tea.View {
 	// Check if current mode uses layer-based rendering
 	usesLayers := m.UiState.Mode() == state.TicketFormMode ||
 		m.UiState.Mode() == state.ProjectFormMode ||
-		m.UiState.Mode() == state.AddColumnMode ||
-		m.UiState.Mode() == state.EditColumnMode ||
+		m.UiState.Mode() == state.AddColumnFormMode ||
+		m.UiState.Mode() == state.EditColumnFormMode ||
+		m.UiState.Mode() == state.NoteFormMode ||
 		m.UiState.Mode() == state.HelpMode ||
 		m.UiState.Mode() == state.NormalMode ||
 		m.UiState.Mode() == state.SearchMode
@@ -45,8 +46,10 @@ func (m Model) View() tea.View {
 			modalLayer = m.renderTicketFormLayer()
 		case state.ProjectFormMode:
 			modalLayer = m.renderProjectFormLayer()
-		case state.AddColumnMode, state.EditColumnMode:
-			modalLayer = m.renderColumnInputLayer()
+		case state.AddColumnFormMode, state.EditColumnFormMode:
+			modalLayer = m.renderColumnFormLayer()
+		case state.NoteFormMode:
+			modalLayer = m.renderNoteFormLayer()
 		case state.HelpMode:
 			modalLayer = m.renderHelpLayer()
 		}
@@ -82,6 +85,8 @@ func (m Model) View() tea.View {
 			content = m.viewTypePicker()
 		case state.RelationTypePickerMode:
 			content = m.viewRelationTypePicker()
+		case state.NoteEditMode:
+			content = m.viewNoteEditor()
 		case state.StatusPickerMode:
 			content = m.viewStatusPicker()
 		default:
