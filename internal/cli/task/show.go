@@ -39,7 +39,9 @@ func runShow(cmd *cobra.Command, args []string) error {
 	// Parse task ID from positional arg or flag
 	var taskID int
 	if len(args) > 0 {
-		fmt.Sscanf(args[0], "%d", &taskID)
+		if _, err := fmt.Sscanf(args[0], "%d", &taskID); err != nil {
+			taskID = 0 // Invalid input, will be caught by validation below
+		}
 	} else {
 		taskID, _ = cmd.Flags().GetInt("id")
 	}

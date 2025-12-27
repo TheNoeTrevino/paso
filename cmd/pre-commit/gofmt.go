@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -14,8 +15,8 @@ func (g *GoFmtFormatter) Name() string {
 }
 
 // GetStagedFiles returns a list of staged Go files
-func (g *GoFmtFormatter) GetStagedFiles() ([]string, error) {
-	cmd := exec.Command("git", "diff", "--cached", "--name-only", "--diff-filter=ACM")
+func (g *GoFmtFormatter) GetStagedFiles(ctx context.Context) ([]string, error) {
+	cmd := exec.CommandContext(ctx, "git", "diff", "--cached", "--name-only", "--diff-filter=ACM")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get staged files: %w", err)
@@ -33,15 +34,15 @@ func (g *GoFmtFormatter) GetStagedFiles() ([]string, error) {
 }
 
 // Format formats a single Go file using gofmt
-func (g *GoFmtFormatter) Format(file string) error {
+func (g *GoFmtFormatter) Format(ctx context.Context, file string) error {
 	// Format the file
-	cmd := exec.Command("gofmt", "-w", file)
+	cmd := exec.CommandContext(ctx, "gofmt", "-w", file)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("gofmt failed: %w", err)
 	}
 
 	// Re-stage the formatted file
-	cmd = exec.Command("git", "add", file)
+	cmd = exec.CommandContext(ctx, "git", "add", file)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("git add failed: %w", err)
 	}
