@@ -1,3 +1,6 @@
+// Package column holds all cli commands related to columns
+//
+// e.g., paso column ...
 package column
 
 import (

@@ -1,3 +1,5 @@
+// Package task holds all cli commands related to tasks
+// e.g., paso task ...
 package task
 
 import (

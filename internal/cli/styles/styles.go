@@ -1,3 +1,4 @@
+// Package styles defines and initializes CLI styles using lipgloss
 package styles
 
 import (
