@@ -36,13 +36,13 @@ func (g *GoFmtFormatter) GetStagedFiles(ctx context.Context) ([]string, error) {
 // Format formats a single Go file using gofmt
 func (g *GoFmtFormatter) Format(ctx context.Context, file string) error {
 	// Format the file
-	cmd := exec.CommandContext(context.Background(), "gofmt", "-w", file)
+	cmd := exec.CommandContext(ctx, "gofmt", "-w", file)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("gofmt failed: %w", err)
 	}
 
 	// Re-stage the formatted file
-	cmd = exec.CommandContext(context.Background(), "git", "add", file)
+	cmd = exec.CommandContext(ctx, "git", "add", file)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("git add failed: %w", err)
 	}
