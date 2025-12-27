@@ -14,6 +14,7 @@ func ProjectCmd() *cobra.Command {
 	cmd.AddCommand(CreateCmd())
 	cmd.AddCommand(ListCmd())
 	cmd.AddCommand(DeleteCmd())
+	cmd.AddCommand(TreeCmd())
 
 	return cmd
 }

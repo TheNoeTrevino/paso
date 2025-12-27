@@ -92,7 +92,11 @@ func (q *Queries) GetLabelByID(ctx context.Context, id int64) (Label, error) {
 }
 
 const getLabelsByProject = `-- name: GetLabelsByProject :many
-SELECT id, name, color, project_id
+SELECT
+    id,
+    name,
+    color,
+    project_id
 FROM labels
 WHERE project_id = ?
 ORDER BY name

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 
 	"github.com/thenoetrevino/paso/internal/database/generated"
@@ -21,6 +22,7 @@ type Service interface {
 	GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error)
 	GetReadyTaskSummariesByProject(ctx context.Context, projectID int) ([]*models.TaskSummary, error)
 	GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error)
+	GetTaskTreeByProject(ctx context.Context, projectID int) ([]*models.TaskTreeNode, error)
 
 	// Write operations
 	CreateTask(ctx context.Context, req CreateTaskRequest) (*models.Task, error)
@@ -449,6 +451,133 @@ func (s *service) GetTaskReferencesForProject(ctx context.Context, projectID int
 	}
 
 	return references, nil
+}
+
+// childRelation is a helper struct for building the tree
+type childRelation struct {
+	childID       int
+	relationLabel string
+	relationColor string
+	isBlocking    bool
+}
+
+// GetTaskTreeByProject builds a hierarchical tree of tasks for a project
+// Returns root tasks (tasks with no parents) with their children nested recursively
+func (s *service) GetTaskTreeByProject(ctx context.Context, projectID int) ([]*models.TaskTreeNode, error) {
+	// Get all tasks in the project
+	taskRows, err := s.queries.GetTasksForTree(ctx, int64(projectID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tasks for tree: %w", err)
+	}
+
+	if len(taskRows) == 0 {
+		return []*models.TaskTreeNode{}, nil
+	}
+
+	// Get all relations for the project
+	relationRows, err := s.queries.GetTaskRelationsForProject(ctx, int64(projectID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task relations: %w", err)
+	}
+
+	// Build a map of task ID -> task info
+	taskMap := make(map[int]*models.TaskTreeNode)
+	for _, row := range taskRows {
+		node := &models.TaskTreeNode{
+			ID:          int(row.ID),
+			Title:       row.Title,
+			ColumnName:  row.ColumnName,
+			ProjectName: row.ProjectName,
+			Children:    []*models.TaskTreeNode{},
+		}
+		if row.TicketNumber.Valid {
+			node.TicketNumber = int(row.TicketNumber.Int64)
+		}
+		taskMap[node.ID] = node
+	}
+
+	// Build parent -> children map and track which tasks have parents
+	hasParent := make(map[int]bool)
+	childrenByParent := make(map[int][]*childRelation)
+
+	for _, rel := range relationRows {
+		parentID := int(rel.ParentID)
+		childID := int(rel.ChildID)
+
+		hasParent[childID] = true
+
+		childrenByParent[parentID] = append(childrenByParent[parentID], &childRelation{
+			childID:       childID,
+			relationLabel: rel.RelationLabel,
+			relationColor: rel.RelationColor,
+			isBlocking:    rel.IsBlocking,
+		})
+	}
+
+	// Build the tree structure
+	// For each parent, attach its children with relation info
+	visited := make(map[int]bool)
+	var buildChildren func(parentID int, depth int) []*models.TaskTreeNode
+	buildChildren = func(parentID int, depth int) []*models.TaskTreeNode {
+		// Prevent infinite loops from circular dependencies
+		if depth > 100 || visited[parentID] {
+			return nil
+		}
+		visited[parentID] = true
+		defer func() { visited[parentID] = false }()
+
+		children := childrenByParent[parentID]
+		if len(children) == 0 {
+			return nil
+		}
+
+		result := make([]*models.TaskTreeNode, 0, len(children))
+		for _, childRel := range children {
+			childNode, exists := taskMap[childRel.childID]
+			if !exists {
+				continue
+			}
+
+			// Create a copy with relation info for this specific parent-child relationship
+			nodeCopy := &models.TaskTreeNode{
+				ID:            childNode.ID,
+				TicketNumber:  childNode.TicketNumber,
+				Title:         childNode.Title,
+				ColumnName:    childNode.ColumnName,
+				ProjectName:   childNode.ProjectName,
+				RelationLabel: childRel.relationLabel,
+				RelationColor: childRel.relationColor,
+				IsBlocking:    childRel.isBlocking,
+				Children:      buildChildren(childRel.childID, depth+1),
+			}
+			result = append(result, nodeCopy)
+		}
+		return result
+	}
+
+	// Find root tasks (tasks with no parents)
+	var roots []*models.TaskTreeNode
+	for _, node := range taskMap {
+		if !hasParent[node.ID] {
+			// This is a root task - build its children
+			rootCopy := &models.TaskTreeNode{
+				ID:           node.ID,
+				TicketNumber: node.TicketNumber,
+				Title:        node.Title,
+				ColumnName:   node.ColumnName,
+				ProjectName:  node.ProjectName,
+				Children:     buildChildren(node.ID, 0),
+			}
+			roots = append(roots, rootCopy)
+		}
+	}
+
+	// Sort roots by ticket number for deterministic output order
+	sort.Slice(roots, func(i, j int) bool {
+		return roots[i].TicketNumber < roots[j].TicketNumber
+	})
+
+	return roots, nil
 }
 
 // MoveTaskToNextColumn moves task to next column

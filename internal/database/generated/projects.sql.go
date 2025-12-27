@@ -12,7 +12,9 @@ import (
 
 const createProjectRecord = `-- name: CreateProjectRecord :one
 
-INSERT INTO projects (name, description) VALUES (?, ?) RETURNING id, name, description, created_at, updated_at
+INSERT INTO projects (name, description)
+VALUES (?, ?)
+RETURNING id, name, description, created_at, updated_at
 `
 
 type CreateProjectRecordParams struct {
@@ -37,7 +39,8 @@ func (q *Queries) CreateProjectRecord(ctx context.Context, arg CreateProjectReco
 }
 
 const deleteColumnsByProject = `-- name: DeleteColumnsByProject :exec
-DELETE FROM columns WHERE project_id = ?
+DELETE FROM columns
+WHERE project_id = ?
 `
 
 func (q *Queries) DeleteColumnsByProject(ctx context.Context, projectID int64) error {
@@ -65,7 +68,8 @@ func (q *Queries) DeleteProjectCounter(ctx context.Context, projectID int64) err
 
 const deleteTasksByProject = `-- name: DeleteTasksByProject :exec
 
-DELETE FROM tasks WHERE column_id IN (SELECT id FROM columns WHERE project_id = ?)
+DELETE FROM tasks
+WHERE column_id IN (SELECT id FROM columns WHERE project_id = ?)
 `
 
 // ============================================================================
@@ -110,7 +114,13 @@ func (q *Queries) GetAllProjects(ctx context.Context) ([]Project, error) {
 }
 
 const getProjectByID = `-- name: GetProjectByID :one
-SELECT id, name, description, created_at, updated_at FROM projects WHERE id = ?
+SELECT
+    id,
+    name,
+    description,
+    created_at,
+    updated_at
+FROM projects WHERE id = ?
 `
 
 func (q *Queries) GetProjectByID(ctx context.Context, id int64) (Project, error) {
@@ -154,7 +164,9 @@ func (q *Queries) InitializeProjectCounter(ctx context.Context, projectID int64)
 }
 
 const updateProject = `-- name: UpdateProject :exec
-UPDATE projects SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+UPDATE projects SET name = ?,
+description = ?,
+updated_at = CURRENT_TIMESTAMP WHERE id = ?
 `
 
 type UpdateProjectParams struct {

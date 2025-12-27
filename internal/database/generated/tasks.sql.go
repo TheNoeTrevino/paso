@@ -186,7 +186,7 @@ func (q *Queries) GetAllTypes(ctx context.Context) ([]Type, error) {
 
 const getChildTasks = `-- name: GetChildTasks :many
 SELECT t.id, t.ticket_number, t.title, p.name,
-       rt.id, rt.c_to_p_label, rt.color, rt.is_blocking
+rt.id, rt.c_to_p_label, rt.color, rt.is_blocking
 FROM tasks t
 INNER JOIN task_subtasks ts ON t.id = ts.child_id
 INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
@@ -268,7 +268,7 @@ func (q *Queries) GetNextTicketNumber(ctx context.Context, projectID int64) (sql
 const getParentTasks = `-- name: GetParentTasks :many
 
 SELECT t.id, t.ticket_number, t.title, p.name,
-       rt.id, rt.p_to_c_label, rt.color, rt.is_blocking
+rt.id, rt.p_to_c_label, rt.color, rt.is_blocking
 FROM tasks t
 INNER JOIN task_subtasks ts ON t.id = ts.parent_id
 INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
@@ -369,17 +369,18 @@ SELECT
     t.title,
     t.column_id,
     t.position,
-    ty.description as type_description,
-    p.description as priority_description,
-    p.color as priority_color,
-    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
-    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
-    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors,
+    ty.description AS type_description,
+    p.description AS priority_description,
+    p.color AS priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) AS label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) AS label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) AS label_colors,
     EXISTS(
-        SELECT 1 FROM task_subtasks ts
+        SELECT 1
+        FROM task_subtasks ts
         INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
         WHERE ts.parent_id = t.id AND rt.is_blocking = 1
-    ) as is_blocked
+    ) AS is_blocked
 FROM tasks t
 INNER JOIN columns c ON t.column_id = c.id
 LEFT JOIN types ty ON t.type_id = ty.id
@@ -387,7 +388,14 @@ LEFT JOIN priorities p ON t.priority_id = p.id
 LEFT JOIN task_labels tl ON t.id = tl.task_id
 LEFT JOIN labels l ON tl.label_id = l.id
 WHERE c.project_id = ? AND c.holds_ready_tasks = 1
-GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
+GROUP BY
+    t.id,
+    t.title,
+    t.column_id,
+    t.position,
+    ty.description,
+    p.description,
+    p.color
 ORDER BY t.position
 `
 
@@ -441,7 +449,14 @@ func (q *Queries) GetReadyTaskSummariesByProject(ctx context.Context, projectID 
 }
 
 const getTask = `-- name: GetTask :one
-SELECT id, title, description, column_id, position, created_at, updated_at
+SELECT
+    id,
+    title,
+    description,
+    column_id,
+    position,
+    created_at,
+    updated_at
 FROM tasks
 WHERE id = ?
 `
@@ -530,18 +545,25 @@ func (q *Queries) GetTaskCountByColumn(ctx context.Context, columnID int64) (int
 
 const getTaskDetail = `-- name: GetTaskDetail :one
 
-SELECT t.id, t.title, t.description, t.column_id, t.position,
-       t.ticket_number, t.created_at, t.updated_at,
-       ty.description as type_description,
-       p.description as priority_description,
-       p.color as priority_color,
-       c.name as column_name,
-       proj.name as project_name,
-       EXISTS(
-           SELECT 1 FROM task_subtasks ts
-           INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
-           WHERE ts.parent_id = t.id AND rt.is_blocking = 1
-       ) as is_blocked
+SELECT
+    t.id,
+    t.title,
+    t.description,
+    t.column_id,
+    t.position,
+    t.ticket_number,
+    t.created_at,
+    t.updated_at,
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    c.name as column_name,
+    proj.name as project_name,
+    EXISTS(
+        SELECT 1 FROM task_subtasks ts
+        INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
+        WHERE ts.parent_id = t.id AND rt.is_blocking = 1
+    ) as is_blocked
 FROM tasks t
 INNER JOIN columns c ON t.column_id = c.id
 INNER JOIN projects proj ON c.project_id = proj.id
@@ -692,6 +714,58 @@ func (q *Queries) GetTaskReferencesForProject(ctx context.Context, id int64) ([]
 	return items, nil
 }
 
+const getTaskRelationsForProject = `-- name: GetTaskRelationsForProject :many
+SELECT
+    ts.parent_id,
+    ts.child_id,
+    rt.c_to_p_label AS relation_label,
+    rt.color AS relation_color,
+    rt.is_blocking
+FROM task_subtasks ts
+INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
+INNER JOIN tasks t_parent ON ts.parent_id = t_parent.id
+INNER JOIN columns c ON t_parent.column_id = c.id
+WHERE c.project_id = ?
+`
+
+type GetTaskRelationsForProjectRow struct {
+	ParentID      int64
+	ChildID       int64
+	RelationLabel string
+	RelationColor string
+	IsBlocking    bool
+}
+
+// Gets all parent-child relationships for tasks in a project
+func (q *Queries) GetTaskRelationsForProject(ctx context.Context, projectID int64) ([]GetTaskRelationsForProjectRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTaskRelationsForProject, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetTaskRelationsForProjectRow{}
+	for rows.Next() {
+		var i GetTaskRelationsForProjectRow
+		if err := rows.Scan(
+			&i.ParentID,
+			&i.ChildID,
+			&i.RelationLabel,
+			&i.RelationColor,
+			&i.IsBlocking,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTaskSummariesByColumn = `-- name: GetTaskSummariesByColumn :many
 
 SELECT
@@ -699,19 +773,26 @@ SELECT
     t.title,
     t.column_id,
     t.position,
-    ty.description as type_description,
-    p.description as priority_description,
-    p.color as priority_color,
-    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
-    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
-    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors
+    ty.description AS type_description,
+    p.description AS priority_description,
+    p.color AS priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) AS label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) AS label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) AS label_colors
 FROM tasks t
 LEFT JOIN types ty ON t.type_id = ty.id
 LEFT JOIN priorities p ON t.priority_id = p.id
 LEFT JOIN task_labels tl ON t.id = tl.task_id
 LEFT JOIN labels l ON tl.label_id = l.id
 WHERE t.column_id = ?
-GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
+GROUP BY
+    t.id,
+    t.title,
+    t.column_id,
+    t.position,
+    ty.description,
+    p.description,
+    p.color
 ORDER BY t.position
 `
 
@@ -771,17 +852,18 @@ SELECT
     t.title,
     t.column_id,
     t.position,
-    ty.description as type_description,
-    p.description as priority_description,
-    p.color as priority_color,
-    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
-    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
-    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors,
+    ty.description AS type_description,
+    p.description AS priority_description,
+    p.color AS priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) AS label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) AS label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) AS label_colors,
     EXISTS(
-        SELECT 1 FROM task_subtasks ts
+        SELECT 1
+        FROM task_subtasks ts
         INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
         WHERE ts.parent_id = t.id AND rt.is_blocking = 1
-    ) as is_blocked
+    ) AS is_blocked
 FROM tasks t
 INNER JOIN columns c ON t.column_id = c.id
 LEFT JOIN types ty ON t.type_id = ty.id
@@ -789,7 +871,14 @@ LEFT JOIN priorities p ON t.priority_id = p.id
 LEFT JOIN task_labels tl ON t.id = tl.task_id
 LEFT JOIN labels l ON tl.label_id = l.id
 WHERE c.project_id = ?
-GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
+GROUP BY
+    t.id,
+    t.title,
+    t.column_id,
+    t.position,
+    ty.description,
+    p.description,
+    p.color
 ORDER BY t.position
 `
 
@@ -848,17 +937,18 @@ SELECT
     t.title,
     t.column_id,
     t.position,
-    ty.description as type_description,
-    p.description as priority_description,
-    p.color as priority_color,
-    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) as label_ids,
-    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) as label_names,
-    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) as label_colors,
+    ty.description AS type_description,
+    p.description AS priority_description,
+    p.color AS priority_color,
+    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) AS label_ids,
+    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) AS label_names,
+    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) AS label_colors,
     EXISTS(
-        SELECT 1 FROM task_subtasks ts
+        SELECT 1
+        FROM task_subtasks ts
         INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
         WHERE ts.parent_id = t.id AND rt.is_blocking = 1
-    ) as is_blocked
+    ) AS is_blocked
 FROM tasks t
 INNER JOIN columns c ON t.column_id = c.id
 LEFT JOIN types ty ON t.type_id = ty.id
@@ -866,7 +956,14 @@ LEFT JOIN priorities p ON t.priority_id = p.id
 LEFT JOIN task_labels tl ON t.id = tl.task_id
 LEFT JOIN labels l ON tl.label_id = l.id
 WHERE c.project_id = ? AND t.title LIKE ?
-GROUP BY t.id, t.title, t.column_id, t.position, ty.description, p.description, p.color
+GROUP BY
+    t.id,
+    t.title,
+    t.column_id,
+    t.position,
+    ty.description,
+    p.description,
+    p.color
 ORDER BY t.position
 `
 
@@ -958,6 +1055,62 @@ func (q *Queries) GetTasksByColumn(ctx context.Context, columnID int64) ([]GetTa
 			&i.Position,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTasksForTree = `-- name: GetTasksForTree :many
+
+SELECT
+    t.id,
+    t.ticket_number,
+    t.title,
+    c.name AS column_name,
+    proj.name AS project_name
+FROM tasks t
+INNER JOIN columns c ON t.column_id = c.id
+INNER JOIN projects proj ON c.project_id = proj.id
+WHERE proj.id = ?
+ORDER BY t.ticket_number
+`
+
+type GetTasksForTreeRow struct {
+	ID           int64
+	TicketNumber sql.NullInt64
+	Title        string
+	ColumnName   string
+	ProjectName  string
+}
+
+// ============================================================================
+// TASK TREE QUERIES (for project tree command)
+// ============================================================================
+// Gets all tasks in a project with their column names for tree display
+func (q *Queries) GetTasksForTree(ctx context.Context, id int64) ([]GetTasksForTreeRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTasksForTree, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetTasksForTreeRow{}
+	for rows.Next() {
+		var i GetTasksForTreeRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TicketNumber,
+			&i.Title,
+			&i.ColumnName,
+			&i.ProjectName,
 		); err != nil {
 			return nil, err
 		}
