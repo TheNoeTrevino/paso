@@ -97,9 +97,11 @@ func runList(cmd *cobra.Command, args []string) error {
 		columnList := make([]map[string]interface{}, len(columns))
 		for i, col := range columns {
 			columnList[i] = map[string]interface{}{
-				"id":         col.ID,
-				"name":       col.Name,
-				"project_id": col.ProjectID,
+				"id":                    col.ID,
+				"name":                  col.Name,
+				"project_id":            col.ProjectID,
+				"holds_ready_tasks":     col.HoldsReadyTasks,
+				"holds_completed_tasks": col.HoldsCompletedTasks,
 			}
 		}
 		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
@@ -116,7 +118,14 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Columns in project '%s':\n", project.Name)
 	for i, col := range columns {
-		fmt.Printf("  %d. %s (ID: %d)\n", i+1, col.Name, col.ID)
+		flags := ""
+		if col.HoldsReadyTasks {
+			flags += " [READY]"
+		}
+		if col.HoldsCompletedTasks {
+			flags += " [COMPLETED]"
+		}
+		fmt.Printf("  %d. %s%s (ID: %d)\n", i+1, col.Name, flags, col.ID)
 	}
 	return nil
 }

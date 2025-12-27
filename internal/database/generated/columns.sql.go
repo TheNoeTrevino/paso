@@ -9,6 +9,16 @@ import (
 	"context"
 )
 
+const clearCompletedColumnByProject = `-- name: ClearCompletedColumnByProject :exec
+UPDATE columns SET holds_completed_tasks = 0
+WHERE project_id = ? AND holds_completed_tasks = 1
+`
+
+func (q *Queries) ClearCompletedColumnByProject(ctx context.Context, projectID int64) error {
+	_, err := q.db.ExecContext(ctx, clearCompletedColumnByProject, projectID)
+	return err
+}
+
 const clearReadyColumnByProject = `-- name: ClearReadyColumnByProject :exec
 UPDATE columns SET holds_ready_tasks = 0
 WHERE project_id = ? AND holds_ready_tasks = 1
@@ -36,17 +46,18 @@ func (q *Queries) ColumnExists(ctx context.Context, id int64) (int64, error) {
 
 const createColumn = `-- name: CreateColumn :one
 
-INSERT INTO columns (name, project_id, prev_id, next_id, holds_ready_tasks)
-VALUES (?, ?, ?, ?, ?)
-RETURNING id, name, prev_id, next_id, project_id, holds_ready_tasks
+INSERT INTO columns (name, project_id, prev_id, next_id, holds_ready_tasks, holds_completed_tasks)
+VALUES (?, ?, ?, ?, ?, ?)
+RETURNING id, name, prev_id, next_id, project_id, holds_ready_tasks, holds_completed_tasks
 `
 
 type CreateColumnParams struct {
-	Name            string
-	ProjectID       int64
-	PrevID          interface{}
-	NextID          interface{}
-	HoldsReadyTasks bool
+	Name                string
+	ProjectID           int64
+	PrevID              interface{}
+	NextID              interface{}
+	HoldsReadyTasks     bool
+	HoldsCompletedTasks bool
 }
 
 // ============================================================================
@@ -59,6 +70,7 @@ func (q *Queries) CreateColumn(ctx context.Context, arg CreateColumnParams) (Col
 		arg.PrevID,
 		arg.NextID,
 		arg.HoldsReadyTasks,
+		arg.HoldsCompletedTasks,
 	)
 	var i Column
 	err := row.Scan(
@@ -68,6 +80,7 @@ func (q *Queries) CreateColumn(ctx context.Context, arg CreateColumnParams) (Col
 		&i.NextID,
 		&i.ProjectID,
 		&i.HoldsReadyTasks,
+		&i.HoldsCompletedTasks,
 	)
 	return i, err
 }
@@ -91,24 +104,19 @@ func (q *Queries) DeleteTasksByColumn(ctx context.Context, columnID int64) error
 }
 
 const getColumnByID = `-- name: GetColumnByID :one
-SELECT
-    id,
-    name,
-    project_id,
-    prev_id,
-    next_id,
-    holds_ready_tasks
+SELECT id, name, project_id, prev_id, next_id, holds_ready_tasks, holds_completed_tasks
 FROM columns
 WHERE id = ?
 `
 
 type GetColumnByIDRow struct {
-	ID              int64
-	Name            string
-	ProjectID       int64
-	PrevID          interface{}
-	NextID          interface{}
-	HoldsReadyTasks bool
+	ID                  int64
+	Name                string
+	ProjectID           int64
+	PrevID              interface{}
+	NextID              interface{}
+	HoldsReadyTasks     bool
+	HoldsCompletedTasks bool
 }
 
 func (q *Queries) GetColumnByID(ctx context.Context, id int64) (GetColumnByIDRow, error) {
@@ -121,6 +129,7 @@ func (q *Queries) GetColumnByID(ctx context.Context, id int64) (GetColumnByIDRow
 		&i.PrevID,
 		&i.NextID,
 		&i.HoldsReadyTasks,
+		&i.HoldsCompletedTasks,
 	)
 	return i, err
 }
@@ -154,18 +163,19 @@ func (q *Queries) GetColumnNextID(ctx context.Context, id int64) (interface{}, e
 }
 
 const getColumnsByProject = `-- name: GetColumnsByProject :many
-SELECT id, name, project_id, prev_id, next_id, holds_ready_tasks
+SELECT id, name, project_id, prev_id, next_id, holds_ready_tasks, holds_completed_tasks
 FROM columns
 WHERE project_id = ?
 `
 
 type GetColumnsByProjectRow struct {
-	ID              int64
-	Name            string
-	ProjectID       int64
-	PrevID          interface{}
-	NextID          interface{}
-	HoldsReadyTasks bool
+	ID                  int64
+	Name                string
+	ProjectID           int64
+	PrevID              interface{}
+	NextID              interface{}
+	HoldsReadyTasks     bool
+	HoldsCompletedTasks bool
 }
 
 func (q *Queries) GetColumnsByProject(ctx context.Context, projectID int64) ([]GetColumnsByProjectRow, error) {
@@ -184,6 +194,7 @@ func (q *Queries) GetColumnsByProject(ctx context.Context, projectID int64) ([]G
 			&i.PrevID,
 			&i.NextID,
 			&i.HoldsReadyTasks,
+			&i.HoldsCompletedTasks,
 		); err != nil {
 			return nil, err
 		}
@@ -196,6 +207,36 @@ func (q *Queries) GetColumnsByProject(ctx context.Context, projectID int64) ([]G
 		return nil, err
 	}
 	return items, nil
+}
+
+const getCompletedColumnByProject = `-- name: GetCompletedColumnByProject :one
+SELECT id, name, project_id, prev_id, next_id, holds_completed_tasks
+FROM columns
+WHERE project_id = ? AND holds_completed_tasks = 1
+LIMIT 1
+`
+
+type GetCompletedColumnByProjectRow struct {
+	ID                  int64
+	Name                string
+	ProjectID           int64
+	PrevID              interface{}
+	NextID              interface{}
+	HoldsCompletedTasks bool
+}
+
+func (q *Queries) GetCompletedColumnByProject(ctx context.Context, projectID int64) (GetCompletedColumnByProjectRow, error) {
+	row := q.db.QueryRowContext(ctx, getCompletedColumnByProject, projectID)
+	var i GetCompletedColumnByProjectRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ProjectID,
+		&i.PrevID,
+		&i.NextID,
+		&i.HoldsCompletedTasks,
+	)
+	return i, err
 }
 
 const getReadyColumnByProject = `-- name: GetReadyColumnByProject :one
@@ -239,6 +280,24 @@ func (q *Queries) GetTailColumnForProject(ctx context.Context, projectID int64) 
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const updateColumnHoldsCompletedTasks = `-- name: UpdateColumnHoldsCompletedTasks :exec
+
+UPDATE columns SET holds_completed_tasks = ? WHERE id = ?
+`
+
+type UpdateColumnHoldsCompletedTasksParams struct {
+	HoldsCompletedTasks bool
+	ID                  int64
+}
+
+// ============================================================================
+// COMPLETED COLUMN OPERATIONS
+// ============================================================================
+func (q *Queries) UpdateColumnHoldsCompletedTasks(ctx context.Context, arg UpdateColumnHoldsCompletedTasksParams) error {
+	_, err := q.db.ExecContext(ctx, updateColumnHoldsCompletedTasks, arg.HoldsCompletedTasks, arg.ID)
+	return err
 }
 
 const updateColumnHoldsReadyTasks = `-- name: UpdateColumnHoldsReadyTasks :exec

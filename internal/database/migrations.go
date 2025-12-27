@@ -165,6 +165,7 @@ func createCoreTables(ctx context.Context, db *sql.DB) error {
 			next_id INTEGER NULL,
 			project_id INTEGER NOT NULL,
 			holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
+			holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
 			FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 		)
 	`)
@@ -267,6 +268,12 @@ func createIndexes(ctx context.Context, db *sql.DB) error {
 
 		// Index for efficient child task lookups
 		`CREATE INDEX IF NOT EXISTS idx_task_subtasks_child ON task_subtasks(child_id)`,
+
+		// Unique partial index: only one column per project can have holds_ready_tasks = 1
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_ready_per_project ON columns(project_id) WHERE holds_ready_tasks = 1`,
+
+		// Unique partial index: only one column per project can have holds_completed_tasks = 1
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_completed_per_project ON columns(project_id) WHERE holds_completed_tasks = 1`,
 	}
 
 	for _, indexSQL := range indexes {
@@ -320,11 +327,12 @@ func seedDefaultProject(ctx context.Context, db *sql.DB) error {
 func CreateDefaultColumns(ctx context.Context, q generated.Querier, projectID int64) error {
 	// Create "Todo" column (head of list, holds ready tasks)
 	todoCol, err := q.CreateColumn(ctx, generated.CreateColumnParams{
-		Name:            "Todo",
-		ProjectID:       projectID,
-		PrevID:          nil,
-		NextID:          nil,
-		HoldsReadyTasks: true,
+		Name:                "Todo",
+		ProjectID:           projectID,
+		PrevID:              nil,
+		NextID:              nil,
+		HoldsReadyTasks:     true,
+		HoldsCompletedTasks: false,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create Todo column: %w", err)
@@ -332,21 +340,25 @@ func CreateDefaultColumns(ctx context.Context, q generated.Querier, projectID in
 
 	// Create "In Progress" column (middle of list)
 	inProgressCol, err := q.CreateColumn(ctx, generated.CreateColumnParams{
-		Name:      "In Progress",
-		ProjectID: projectID,
-		PrevID:    todoCol.ID,
-		NextID:    nil,
+		Name:                "In Progress",
+		ProjectID:           projectID,
+		PrevID:              todoCol.ID,
+		NextID:              nil,
+		HoldsReadyTasks:     false,
+		HoldsCompletedTasks: false,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create In Progress column: %w", err)
 	}
 
-	// Create "Done" column (tail of list)
+	// Create "Done" column (tail of list, holds completed tasks)
 	doneCol, err := q.CreateColumn(ctx, generated.CreateColumnParams{
-		Name:      "Done",
-		ProjectID: projectID,
-		PrevID:    inProgressCol.ID,
-		NextID:    nil,
+		Name:                "Done",
+		ProjectID:           projectID,
+		PrevID:              inProgressCol.ID,
+		NextID:              nil,
+		HoldsReadyTasks:     false,
+		HoldsCompletedTasks: true,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create Done column: %w", err)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
@@ -40,6 +41,8 @@ Examples:
 	// Optional flags
 	cmd.Flags().String("name", "", "New column name")
 	cmd.Flags().Bool("ready", false, "Set this column as holding ready tasks")
+	cmd.Flags().Bool("completed", false, "Set this column as holding completed tasks")
+	cmd.Flags().Bool("force", false, "Force setting completed column even if one already exists")
 
 	// Agent-friendly flags
 	cmd.Flags().Bool("json", false, "Output in JSON format")
@@ -54,17 +57,19 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	columnID, _ := cmd.Flags().GetInt("id")
 	columnName, _ := cmd.Flags().GetString("name")
 	setReady, _ := cmd.Flags().GetBool("ready")
+	setCompleted, _ := cmd.Flags().GetBool("completed")
+	force, _ := cmd.Flags().GetBool("force")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Validate at least one update flag is provided
-	if columnName == "" && !setReady {
-		if fmtErr := formatter.Error("INVALID_INPUT", "at least one of --name or --ready must be provided"); fmtErr != nil {
+	if columnName == "" && !setReady && !setCompleted {
+		if fmtErr := formatter.Error("INVALID_INPUT", "at least one of --name, --ready, or --completed must be provided"); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		return fmt.Errorf("at least one of --name or --ready must be provided")
+		return fmt.Errorf("at least one of --name, --ready, or --completed must be provided")
 	}
 
 	// Initialize CLI
@@ -114,6 +119,25 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Update completed status if flag is set
+	if setCompleted {
+		updatedColumn, err = cliInstance.App.ColumnService.SetHoldsCompletedTasks(ctx, columnID, force)
+		if err != nil {
+			// Check for specific error about completed column already existing
+			if strings.Contains(err.Error(), "completed column already exists") {
+				if fmtErr := formatter.Error("COMPLETED_COLUMN_EXISTS",
+					fmt.Sprintf("%s\n\nUse the --force flag to change the done column.\nPaso uses the done column to move tasks with the {complete task command}.\nThis could lead to unexpected behavior, and this is not suggested.", err.Error())); fmtErr != nil {
+					log.Printf("Error formatting error message: %v", fmtErr)
+				}
+				os.Exit(cli.ExitValidation)
+			}
+			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
+				log.Printf("Error formatting error message: %v", fmtErr)
+			}
+			return err
+		}
+	}
+
 	// Output based on mode
 	if quietMode {
 		return nil
@@ -123,10 +147,11 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
 			"success": true,
 			"column": map[string]interface{}{
-				"id":                columnID,
-				"name":              updatedColumn.Name,
-				"old_name":          oldName,
-				"holds_ready_tasks": updatedColumn.HoldsReadyTasks,
+				"id":                    columnID,
+				"name":                  updatedColumn.Name,
+				"old_name":              oldName,
+				"holds_ready_tasks":     updatedColumn.HoldsReadyTasks,
+				"holds_completed_tasks": updatedColumn.HoldsCompletedTasks,
 			},
 		})
 	}
@@ -138,6 +163,9 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 	if setReady {
 		fmt.Printf("  Now holds ready tasks: %v\n", updatedColumn.HoldsReadyTasks)
+	}
+	if setCompleted {
+		fmt.Printf("  Now holds completed tasks: %v\n", updatedColumn.HoldsCompletedTasks)
 	}
 	return nil
 }

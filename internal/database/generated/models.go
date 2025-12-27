@@ -9,12 +9,13 @@ import (
 )
 
 type Column struct {
-	ID              int64
-	Name            string
-	PrevID          interface{}
-	NextID          interface{}
-	ProjectID       int64
-	HoldsReadyTasks bool
+	ID                  int64
+	Name                string
+	PrevID              interface{}
+	NextID              interface{}
+	ProjectID           int64
+	HoldsReadyTasks     bool
+	HoldsCompletedTasks bool
 }
 
 type Label struct {
