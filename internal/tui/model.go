@@ -41,6 +41,7 @@ type Model struct {
 	PriorityPickerState     *state.PriorityPickerState
 	TypePickerState         *state.TypePickerState
 	RelationTypePickerState *state.RelationTypePickerState
+	NoteState               *state.NoteState
 	NotificationState       *state.NotificationState
 	SearchState             *state.SearchState
 	ListViewState           *state.ListViewState
@@ -104,6 +105,7 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	priorityPickerState := state.NewPriorityPickerState()
 	typePickerState := state.NewTypePickerState()
 	relationTypePickerState := state.NewRelationTypePickerState()
+	noteState := state.NewNoteState()
 	notificationState := state.NewNotificationState()
 	searchState := state.NewSearchState()
 	listViewState := state.NewListViewState()
@@ -169,6 +171,7 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 		PriorityPickerState:     priorityPickerState,
 		TypePickerState:         typePickerState,
 		RelationTypePickerState: relationTypePickerState,
+		NoteState:               noteState,
 		NotificationState:       notificationState,
 		SearchState:             searchState,
 		ListViewState:           listViewState,
