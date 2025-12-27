@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	columnService "github.com/thenoetrevino/paso/internal/services/column"
 	projectService "github.com/thenoetrevino/paso/internal/services/project"
 	taskService "github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -424,6 +425,17 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		case "ctrl+n":
+			// Open notes editor
+			if m.FormState.EditingTaskID != 0 {
+				// Initialize note state with current comments
+				m.NoteState.Items = convertToNoteItems(m.FormState.FormComments)
+				m.NoteState.TaskID = m.FormState.EditingTaskID
+				m.NoteState.Cursor = 0
+				m.UiState.SetMode(state.NoteEditMode)
+			}
+			return m, nil
+
 		case m.Config.KeyMappings.SaveForm:
 			// Quick save via C-s
 			return m.handleFormSave(formConfig{
@@ -593,5 +605,181 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		},
+	})
+}
+
+// updateColumnForm handles all messages when in AddColumnFormMode or EditColumnFormMode
+// This is separated out because forms need to receive ALL messages, not just KeyMsg
+func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Check for keyboard shortcuts before passing to form
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		switch keyMsg.String() {
+		case "esc":
+			// For edit mode, check for changes before allowing abort
+			if m.UiState.Mode() == state.EditColumnFormMode && m.FormState.HasColumnFormChanges() {
+				// Show discard confirmation
+				m.UiState.SetDiscardContext(&state.DiscardContext{
+					SourceMode: state.EditColumnFormMode,
+					Message:    "Discard changes to column?",
+				})
+				m.UiState.SetMode(state.DiscardConfirmMode)
+				return m, nil
+			}
+			// No changes or in create mode - allow immediate close
+			m.UiState.SetMode(state.NormalMode)
+			m.FormState.ClearColumnForm()
+			return m, tea.ClearScreen
+		}
+	}
+
+	return m.handleFormUpdate(msg, formConfig{
+		form: m.FormState.ColumnForm,
+		setForm: func(f *huh.Form) {
+			m.FormState.ColumnForm = f
+		},
+		clearForm: func() {
+			m.FormState.ClearColumnForm()
+		},
+		onComplete: func() {
+			// Read values from form state (forms update pointers in place)
+			name := strings.TrimSpace(m.FormState.FormColumnName)
+
+			if name == "" {
+				return
+			}
+
+			ctx, cancel := m.DbContext()
+			defer cancel()
+
+			if m.FormState.EditingColumnID == 0 {
+				// Create new column
+				project := m.getCurrentProject()
+				if project == nil {
+					m.NotificationState.Add(state.LevelError, "No project selected")
+					return
+				}
+
+				_, err := m.App.ColumnService.CreateColumn(ctx, columnService.CreateColumnRequest{
+					Name:      name,
+					ProjectID: project.ID,
+					AfterID:   nil, // Append to end
+				})
+				if err != nil {
+					slog.Error("Error creating column", "error", err)
+					m.NotificationState.Add(state.LevelError, "Error creating column")
+					return
+				}
+
+				// Reload columns
+				m.reloadCurrentProject()
+			} else {
+				// Rename existing column
+				err := m.App.ColumnService.UpdateColumnName(ctx, m.FormState.EditingColumnID, name)
+				if err != nil {
+					slog.Error("Error renaming column", "error", err)
+					m.NotificationState.Add(state.LevelError, "Error renaming column")
+					return
+				}
+
+				// Reload columns
+				m.reloadCurrentProject()
+			}
+		},
+		confirmPtr: nil, // Column forms don't have confirmation field
+	})
+}
+
+// updateNoteForm handles all messages when in NoteFormMode
+// This is separated out because forms need to receive ALL messages, not just KeyMsg
+func (m Model) updateNoteForm(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Check for keyboard shortcuts before passing to form
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		switch keyMsg.String() {
+		case "esc":
+			// For edit mode, check for changes before allowing abort
+			if m.FormState.EditingCommentID != 0 && m.FormState.HasCommentFormChanges() {
+				// Show discard confirmation
+				m.UiState.SetDiscardContext(&state.DiscardContext{
+					SourceMode: state.NoteFormMode,
+					Message:    "Discard changes to note?",
+				})
+				m.UiState.SetMode(state.DiscardConfirmMode)
+				return m, nil
+			}
+			// No changes or in create mode - allow immediate close, return to note list
+			m.UiState.SetMode(state.NoteEditMode)
+			m.FormState.ClearCommentForm()
+			return m, tea.ClearScreen
+		}
+	}
+
+	return m.handleFormUpdate(msg, formConfig{
+		form: m.FormState.CommentForm,
+		setForm: func(f *huh.Form) {
+			m.FormState.CommentForm = f
+		},
+		clearForm: func() {
+			m.FormState.ClearCommentForm()
+		},
+		onComplete: func() {
+			// Read values from form state (forms update pointers in place)
+			message := strings.TrimSpace(m.FormState.FormCommentMessage)
+
+			if message == "" {
+				return
+			}
+
+			ctx, cancel := m.DbContext()
+			defer cancel()
+
+			if m.FormState.EditingCommentID == 0 {
+				// Create new comment
+				taskID := m.FormState.EditingTaskID
+				if taskID == 0 {
+					m.NotificationState.Add(state.LevelError, "No task selected")
+					return
+				}
+
+				_, err := m.App.TaskService.CreateComment(ctx, taskService.CreateCommentRequest{
+					TaskID:  taskID,
+					Message: message,
+				})
+				if err != nil {
+					slog.Error("Error creating comment", "error", err)
+					m.NotificationState.Add(state.LevelError, "Error creating comment")
+					return
+				}
+
+				m.NotificationState.Add(state.LevelInfo, "Note added")
+			} else {
+				// Update existing comment
+				err := m.App.TaskService.UpdateComment(ctx, taskService.UpdateCommentRequest{
+					CommentID: m.FormState.EditingCommentID,
+					Message:   message,
+				})
+				if err != nil {
+					slog.Error("Error updating comment", "error", err)
+					m.NotificationState.Add(state.LevelError, "Error updating comment")
+					return
+				}
+
+				m.NotificationState.Add(state.LevelInfo, "Note updated")
+			}
+
+			// Reload comments
+			taskID := m.FormState.EditingTaskID
+			comments, err := m.App.TaskService.GetCommentsByTask(ctx, taskID)
+			if err != nil {
+				slog.Error("Error reloading comments", "error", err)
+				m.NotificationState.Add(state.LevelError, "Failed to reload comments")
+			} else {
+				m.FormState.FormComments = comments
+				m.NoteState.Items = convertToNoteItems(comments)
+			}
+
+			// Return to note list view
+			m.UiState.SetMode(state.NoteEditMode)
+		},
+		confirmPtr: nil, // Note forms don't have confirmation field
 	})
 }

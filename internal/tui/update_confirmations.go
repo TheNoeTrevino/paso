@@ -85,8 +85,15 @@ func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
 	case state.ProjectFormMode:
 		m.FormState.ClearProjectForm()
 
-	case state.AddColumnMode, state.EditColumnMode:
-		m.InputState.Clear()
+	case state.AddColumnFormMode, state.EditColumnFormMode:
+		m.FormState.ClearColumnForm()
+
+	case state.NoteFormMode:
+		m.FormState.ClearCommentForm()
+		// Return to note list instead of normal mode
+		m.UiState.SetMode(state.NoteEditMode)
+		m.UiState.ClearDiscardContext()
+		return m, tea.ClearScreen
 	}
 
 	// Always return to normal mode after discard

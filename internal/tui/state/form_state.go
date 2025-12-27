@@ -26,6 +26,10 @@ type FormState struct {
 	FormParentRefs []*models.TaskReference // Parent task references for display
 	FormChildRefs  []*models.TaskReference // Child task references for display
 
+	// Comments/notes for ticket form
+	FormComments        []*models.Comment // Current notes loaded from DB
+	InitialFormComments []*models.Comment // Snapshot for change detection
+
 	// Task metadata for display (edit mode only)
 	FormCreatedAt           time.Time // Task creation timestamp (only populated in edit mode)
 	FormUpdatedAt           time.Time // Task last update timestamp (only populated in edit mode)
@@ -60,32 +64,54 @@ type FormState struct {
 
 	// Label assignment fields (for quick label toggling)
 	AssigningLabelIDs []int // Currently selected labels for assignment
+
+	// Column form fields (for creating/renaming columns)
+	ColumnForm            *huh.Form // The form instance
+	FormColumnName        string    // Form field: column name
+	EditingColumnID       int       // ID of column being edited (0 for new column)
+	InitialFormColumnName string    // Initial column name for change detection
+
+	// Comment form fields (for creating/editing comments/notes)
+	CommentForm               *huh.Form // The form instance
+	FormCommentMessage        string    // Form field: comment message text
+	EditingCommentID          int       // ID of comment being edited (0 for new comment)
+	InitialFormCommentMessage string    // Initial comment message for change detection
 }
 
 // NewFormState creates a new FormState with default values.
 func NewFormState() *FormState {
 	return &FormState{
-		TicketForm:             nil,
-		EditingTaskID:          0,
-		FormTitle:              "",
-		FormDescription:        "",
-		FormLabelIDs:           []int{},
-		FormConfirm:            true,
-		FormParentIDs:          []int{},
-		FormChildIDs:           []int{},
-		FormParentRefs:         []*models.TaskReference{},
-		FormChildRefs:          []*models.TaskReference{},
-		ProjectForm:            nil,
-		FormProjectName:        "",
-		FormProjectDescription: "",
-		FormProjectConfirm:     true,
-		LabelForm:              nil,
-		EditingLabelID:         0,
-		FormLabelName:          "",
-		FormLabelColor:         "",
-		SelectedLabelIdx:       0,
-		LabelListMode:          "",
-		AssigningLabelIDs:      []int{},
+		TicketForm:                nil,
+		EditingTaskID:             0,
+		FormTitle:                 "",
+		FormDescription:           "",
+		FormLabelIDs:              []int{},
+		FormConfirm:               true,
+		FormParentIDs:             []int{},
+		FormChildIDs:              []int{},
+		FormParentRefs:            []*models.TaskReference{},
+		FormChildRefs:             []*models.TaskReference{},
+		FormComments:              []*models.Comment{},
+		InitialFormComments:       []*models.Comment{},
+		ProjectForm:               nil,
+		FormProjectName:           "",
+		FormProjectDescription:    "",
+		FormProjectConfirm:        true,
+		LabelForm:                 nil,
+		EditingLabelID:            0,
+		FormLabelName:             "",
+		FormLabelColor:            "",
+		SelectedLabelIdx:          0,
+		LabelListMode:             "",
+		AssigningLabelIDs:         []int{},
+		ColumnForm:                nil,
+		FormColumnName:            "",
+		EditingColumnID:           0,
+		InitialFormColumnName:     "",
+		CommentForm:               nil,
+		FormCommentMessage:        "",
+		EditingCommentID:          0,
+		InitialFormCommentMessage: "",
 	}
 }
 
@@ -103,6 +129,8 @@ func (s *FormState) ClearTicketForm() {
 	s.FormChildIDs = []int{}
 	s.FormParentRefs = []*models.TaskReference{}
 	s.FormChildRefs = []*models.TaskReference{}
+	s.FormComments = []*models.Comment{}
+	s.InitialFormComments = []*models.Comment{}
 	// Clear initial values
 	s.InitialFormTitle = ""
 	s.InitialFormDescription = ""
@@ -250,4 +278,50 @@ func slicesEqual(a, b []int) bool {
 	}
 
 	return true
+}
+
+// --- Column Form Methods ---
+
+// ClearColumnForm resets all column form fields to their default values.
+func (s *FormState) ClearColumnForm() {
+	s.ColumnForm = nil
+	s.FormColumnName = ""
+	s.EditingColumnID = 0
+	s.InitialFormColumnName = ""
+}
+
+// SnapshotColumnFormInitialValues saves the current column form values for change detection.
+func (s *FormState) SnapshotColumnFormInitialValues() {
+	s.InitialFormColumnName = s.FormColumnName
+}
+
+// HasColumnFormChanges returns true if the column form has unsaved changes.
+func (s *FormState) HasColumnFormChanges() bool {
+	if s.ColumnForm == nil {
+		return false
+	}
+	return strings.TrimSpace(s.FormColumnName) != strings.TrimSpace(s.InitialFormColumnName)
+}
+
+// --- Comment Form Methods ---
+
+// ClearCommentForm resets all comment form fields to their default values.
+func (s *FormState) ClearCommentForm() {
+	s.CommentForm = nil
+	s.FormCommentMessage = ""
+	s.EditingCommentID = 0
+	s.InitialFormCommentMessage = ""
+}
+
+// SnapshotCommentFormInitialValues saves the current comment form values for change detection.
+func (s *FormState) SnapshotCommentFormInitialValues() {
+	s.InitialFormCommentMessage = s.FormCommentMessage
+}
+
+// HasCommentFormChanges returns true if the comment form has unsaved changes.
+func (s *FormState) HasCommentFormChanges() bool {
+	if s.CommentForm == nil {
+		return false
+	}
+	return strings.TrimSpace(s.FormCommentMessage) != strings.TrimSpace(s.InitialFormCommentMessage)
 }
