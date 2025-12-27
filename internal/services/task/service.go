@@ -49,15 +49,17 @@ type Service interface {
 
 // CreateTaskRequest encapsulates all data needed to create a task
 type CreateTaskRequest struct {
-	Title       string
-	Description string
-	ColumnID    int
-	Position    int
-	PriorityID  int // Optional: 0 means use default
-	TypeID      int // Optional: 0 means use default
-	LabelIDs    []int
-	ParentIDs   []int // Parent task IDs (tasks that depend on this task)
-	ChildIDs    []int // Child task IDs (tasks this task depends on)
+	Title        string
+	Description  string
+	ColumnID     int
+	Position     int
+	PriorityID   int // Optional: 0 means use default
+	TypeID       int // Optional: 0 means use default
+	LabelIDs     []int
+	ParentIDs    []int // Parent task IDs (tasks that depend on this task)
+	ChildIDs     []int // Child task IDs (tasks this task depends on)
+	BlockedByIDs []int // Tasks that block this task
+	BlocksIDs    []int // Tasks that are blocked by this task
 }
 
 // UpdateTaskRequest encapsulates all data needed to update a task
@@ -189,6 +191,30 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 			RelationTypeID: 1,
 		}); err != nil {
 			return nil, fmt.Errorf("failed to add child relation: %w", err)
+		}
+	}
+
+	// Add blocking relationships (tasks that block this task)
+	for _, blockerID := range req.BlockedByIDs {
+		// This task (Parent) is blocked by blockerID (Child)
+		if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+			ParentID:       createdTask.ID,
+			ChildID:        int64(blockerID),
+			RelationTypeID: 2, // Blocking relationship
+		}); err != nil {
+			return nil, fmt.Errorf("failed to add blocked-by relation: %w", err)
+		}
+	}
+
+	// Add blocked relationships (tasks that are blocked by this task)
+	for _, blockedID := range req.BlocksIDs {
+		// blockedID (Parent) is blocked by this task (Child)
+		if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+			ParentID:       int64(blockedID),
+			ChildID:        createdTask.ID,
+			RelationTypeID: 2, // Blocking relationship
+		}); err != nil {
+			return nil, fmt.Errorf("failed to add blocks relation: %w", err)
 		}
 	}
 
