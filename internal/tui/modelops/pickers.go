@@ -28,10 +28,10 @@ func InitParentPickerForForm(m *tui.Model) bool {
 		return false
 	}
 
-	// Build map of currently selected parent task IDs from form state
-	parentTaskMap := make(map[int]bool)
-	for _, parentID := range m.FormState.FormParentIDs {
-		parentTaskMap[parentID] = true
+	// Build map of currently selected parent task IDs and their relation types from form state
+	parentTaskMap := make(map[int]int) // map[taskID]relationTypeID
+	for _, parentRef := range m.FormState.FormParentRefs {
+		parentTaskMap[parentRef.ID] = parentRef.RelationTypeID
 	}
 
 	// Build map of child task IDs to exclude (prevent circular dependencies)
@@ -49,13 +49,18 @@ func InitParentPickerForForm(m *tui.Model) bool {
 		if m.FormState.EditingTaskID != 0 && task.ID == m.FormState.EditingTaskID {
 			continue
 		}
+
 		// Exclude tasks that are already children (prevents circular dependencies)
 		if childTaskMap[task.ID] {
 			continue
 		}
+
+		relationTypeID, isSelected := parentTaskMap[task.ID]
+
 		items = append(items, state.TaskPickerItem{
-			TaskRef:  task,
-			Selected: parentTaskMap[task.ID],
+			TaskRef:        task,
+			Selected:       isSelected,
+			RelationTypeID: relationTypeID,
 		})
 	}
 
@@ -90,10 +95,10 @@ func InitChildPickerForForm(m *tui.Model) bool {
 		return false
 	}
 
-	// Build map of currently selected child task IDs from form state
-	childTaskMap := make(map[int]bool)
-	for _, childID := range m.FormState.FormChildIDs {
-		childTaskMap[childID] = true
+	// Build map of currently selected child task IDs and their relation types from form state
+	childTaskMap := make(map[int]int) // map[taskID]relationTypeID
+	for _, childRef := range m.FormState.FormChildRefs {
+		childTaskMap[childRef.ID] = childRef.RelationTypeID
 	}
 
 	// Build map of parent task IDs to exclude (prevent circular dependencies)
@@ -111,13 +116,16 @@ func InitChildPickerForForm(m *tui.Model) bool {
 		if m.FormState.EditingTaskID != 0 && task.ID == m.FormState.EditingTaskID {
 			continue
 		}
-		// Exclude tasks that are already parents (prevents circular dependencies)
 		if parentTaskMap[task.ID] {
 			continue
 		}
+
+		relationTypeID, isSelected := childTaskMap[task.ID]
+
 		items = append(items, state.TaskPickerItem{
-			TaskRef:  task,
-			Selected: childTaskMap[task.ID],
+			TaskRef:        task,
+			Selected:       isSelected,
+			RelationTypeID: relationTypeID,
 		})
 	}
 
