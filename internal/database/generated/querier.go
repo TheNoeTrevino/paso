@@ -98,6 +98,8 @@ type Querier interface {
 	// ============================================================================
 	GetTaskPosition(ctx context.Context, id int64) (GetTaskPositionRow, error)
 	GetTaskReferencesForProject(ctx context.Context, id int64) ([]GetTaskReferencesForProjectRow, error)
+	// Gets all parent-child relationships for tasks in a project
+	GetTaskRelationsForProject(ctx context.Context, projectID int64) ([]GetTaskRelationsForProjectRow, error)
 	// ============================================================================
 	// TASK SUMMARIES (Optimized with JOINs to avoid N+1 queries)
 	// ============================================================================
@@ -105,6 +107,11 @@ type Querier interface {
 	GetTaskSummariesByProject(ctx context.Context, projectID int64) ([]GetTaskSummariesByProjectRow, error)
 	GetTaskSummariesByProjectFiltered(ctx context.Context, arg GetTaskSummariesByProjectFilteredParams) ([]GetTaskSummariesByProjectFilteredRow, error)
 	GetTasksByColumn(ctx context.Context, columnID int64) ([]GetTasksByColumnRow, error)
+	// ============================================================================
+	// TASK TREE QUERIES (for project tree command)
+	// ============================================================================
+	// Gets all tasks in a project with their column names for tree display
+	GetTasksForTree(ctx context.Context, id int64) ([]GetTasksForTreeRow, error)
 	IncrementTicketNumber(ctx context.Context, projectID int64) error
 	// ============================================================================
 	// PROJECT COUNTERS
