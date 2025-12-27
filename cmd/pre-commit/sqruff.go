@@ -36,13 +36,13 @@ func (s *SqruffFormatter) GetStagedFiles(ctx context.Context) ([]string, error) 
 // Format formats a single SQL file using sqruff
 func (s *SqruffFormatter) Format(ctx context.Context, file string) error {
 	// Format the file
-	cmd := exec.CommandContext(context.Background(), "sqruff", "fix", file)
+	cmd := exec.CommandContext(ctx, "sqruff", "fix", file)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("sqruff fix failed: %w", err)
 	}
 
 	// Re-stage the formatted file
-	cmd = exec.CommandContext(context.Background(), "git", "add", file)
+	cmd = exec.CommandContext(ctx, "git", "add", file)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("git add failed: %w", err)
 	}
