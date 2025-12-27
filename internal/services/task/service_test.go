@@ -2481,15 +2481,21 @@ func TestMoveTaskToCompletedColumn_MultipleTasksInProject(t *testing.T) {
 
 	// Verify task2 is in completed column
 	var col2 int
-	db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task2.ID).Scan(&col2)
+	if err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task2.ID).Scan(&col2); err != nil {
+		t.Fatalf("Failed to query task2 column: %v", err)
+	}
 	if col2 != completedColID {
 		t.Errorf("Expected task2 in completed column, got column %d", col2)
 	}
 
 	// Verify other tasks are unchanged
 	var col1, col3 int
-	db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task1.ID).Scan(&col1)
-	db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task3.ID).Scan(&col3)
+	if err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task1.ID).Scan(&col1); err != nil {
+		t.Fatalf("Failed to query task1 column: %v", err)
+	}
+	if err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task3.ID).Scan(&col3); err != nil {
+		t.Fatalf("Failed to query task3 column: %v", err)
+	}
 
 	if col1 != todoColID {
 		t.Errorf("Expected task1 in todo column, got column %d", col1)
@@ -2536,15 +2542,21 @@ func TestMoveTaskToReadyColumn_MultipleTasksInProject(t *testing.T) {
 
 	// Verify task2 is in ready column
 	var col2 int
-	db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task2.ID).Scan(&col2)
+	if err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task2.ID).Scan(&col2); err != nil {
+		t.Fatalf("Failed to query task2 column: %v", err)
+	}
 	if col2 != readyColID {
 		t.Errorf("Expected task2 in ready column, got column %d", col2)
 	}
 
 	// Verify other tasks are unchanged
 	var col1, col3 int
-	db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task1.ID).Scan(&col1)
-	db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task3.ID).Scan(&col3)
+	if err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task1.ID).Scan(&col1); err != nil {
+		t.Fatalf("Failed to query task1 column: %v", err)
+	}
+	if err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task3.ID).Scan(&col3); err != nil {
+		t.Fatalf("Failed to query task3 column: %v", err)
+	}
 
 	if col1 != todoColID {
 		t.Errorf("Expected task1 in todo column, got column %d", col1)
