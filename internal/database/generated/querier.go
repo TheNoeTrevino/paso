@@ -27,6 +27,11 @@ type Querier interface {
 	// ============================================================================
 	CreateColumn(ctx context.Context, arg CreateColumnParams) (Column, error)
 	// ============================================================================
+	// TASK COMMENT CRUD OPERATIONS
+	// ============================================================================
+	// Creates a new comment for a task
+	CreateComment(ctx context.Context, arg CreateCommentParams) (TaskComment, error)
+	// ============================================================================
 	// LABEL CRUD OPERATIONS
 	// ============================================================================
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
@@ -41,6 +46,8 @@ type Querier interface {
 	DeleteAllLabelsFromTask(ctx context.Context, taskID int64) error
 	DeleteColumn(ctx context.Context, id int64) error
 	DeleteColumnsByProject(ctx context.Context, projectID int64) error
+	// Deletes a comment by ID
+	DeleteComment(ctx context.Context, id int64) error
 	DeleteLabel(ctx context.Context, id int64) error
 	DeleteProject(ctx context.Context, id int64) error
 	DeleteProjectCounter(ctx context.Context, projectID int64) error
@@ -62,6 +69,12 @@ type Querier interface {
 	GetColumnLinkedListInfo(ctx context.Context, id int64) (GetColumnLinkedListInfoRow, error)
 	GetColumnNextID(ctx context.Context, id int64) (interface{}, error)
 	GetColumnsByProject(ctx context.Context, projectID int64) ([]GetColumnsByProjectRow, error)
+	// Gets a single comment by ID
+	GetComment(ctx context.Context, id int64) (TaskComment, error)
+	// Gets the count of comments for a task
+	GetCommentCountByTask(ctx context.Context, taskID int64) (int64, error)
+	// Gets all comments for a task, ordered by creation time (newest first)
+	GetCommentsByTask(ctx context.Context, taskID int64) ([]TaskComment, error)
 	GetCompletedColumnByProject(ctx context.Context, projectID int64) (GetCompletedColumnByProjectRow, error)
 	GetLabelByID(ctx context.Context, id int64) (Label, error)
 	GetLabelsByProject(ctx context.Context, projectID int64) ([]Label, error)
@@ -136,6 +149,8 @@ type Querier interface {
 	UpdateColumnName(ctx context.Context, arg UpdateColumnNameParams) error
 	UpdateColumnNextID(ctx context.Context, arg UpdateColumnNextIDParams) error
 	UpdateColumnPrevID(ctx context.Context, arg UpdateColumnPrevIDParams) error
+	// Updates a comment's content
+	UpdateComment(ctx context.Context, arg UpdateCommentParams) error
 	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) error
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) error
