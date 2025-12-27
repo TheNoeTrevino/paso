@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -137,113 +137,77 @@ func outputJSON(task *models.TaskDetail) error {
 }
 
 func outputHuman(task *models.TaskDetail, colors config.ColorScheme) error {
+	// Initialize styles with the color scheme
+	styles.Init(colors)
+
 	var content strings.Builder
-
-	// Define styles
-	cardStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(colors.Accent)).
-		Padding(1, 2).
-		Width(80)
-
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colors.Title))
-
-	subtitleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colors.Subtle))
-
-	labelStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colors.Accent))
-
-	valueStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colors.Normal))
-
-	blockedStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colors.ErrorFg)).
-		Background(lipgloss.Color(colors.ErrorBg)).
-		Padding(0, 1)
-
-	sectionStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colors.Accent)).
-		Bold(true).
-		MarginTop(1)
 
 	// Header with ticket ID
 	ticketID := fmt.Sprintf("%s-%d", task.ProjectName, task.TicketNumber)
-	header := titleStyle.Render(ticketID + ": " + task.Title)
+	header := styles.TitleStyle.Render(ticketID + ": " + task.Title)
 	content.WriteString(header)
 	content.WriteString("\n\n")
 
 	// Blocked indicator
 	if task.IsBlocked {
-		blocked := blockedStyle.Render("BLOCKED")
+		blocked := styles.BlockedStyle.Render("BLOCKED")
 		content.WriteString(blocked)
 		content.WriteString("\n\n")
 	}
 
 	// Description
 	if task.Description != "" {
-		content.WriteString(sectionStyle.Render("Description"))
+		content.WriteString(styles.SectionStyle.Render("Description"))
 		content.WriteString("\n")
 		// Indent each line
 		for _, line := range strings.Split(task.Description, "\n") {
-			content.WriteString("  " + valueStyle.Render(line) + "\n")
+			content.WriteString("  " + styles.ValueStyle.Render(line) + "\n")
 		}
 		content.WriteString("\n")
 	}
 
 	// Metadata row
 	metaLine := fmt.Sprintf("%s %s  %s %s",
-		labelStyle.Render("Type:"),
-		valueStyle.Render(task.TypeDescription),
-		labelStyle.Render("Priority:"),
-		lipgloss.NewStyle().
-			Foreground(lipgloss.Color(task.PriorityColor)).
-			Bold(true).
-			Render(task.PriorityDescription),
+		styles.LabelStyle.Render("Type:"),
+		styles.ValueStyle.Render(task.TypeDescription),
+		styles.LabelStyle.Render("Priority:"),
+		styles.BoldColoredText(task.PriorityDescription, task.PriorityColor),
 	)
 	content.WriteString(metaLine + "\n")
 
 	// Column
 	content.WriteString(fmt.Sprintf("%s %s\n",
-		labelStyle.Render("Column:"),
-		valueStyle.Render(task.ColumnName),
+		styles.LabelStyle.Render("Column:"),
+		styles.ValueStyle.Render(task.ColumnName),
 	))
 
 	// Timestamps
 	if !task.CreatedAt.IsZero() {
 		content.WriteString(fmt.Sprintf("%s %s\n",
-			labelStyle.Render("Created:"),
-			subtitleStyle.Render(task.CreatedAt.Format("Jan 2, 2006 3:04 PM")),
+			styles.LabelStyle.Render("Created:"),
+			styles.SubtitleStyle.Render(task.CreatedAt.Format("Jan 2, 2006 3:04 PM")),
 		))
 	}
 	if !task.UpdatedAt.IsZero() {
 		content.WriteString(fmt.Sprintf("%s %s\n",
-			labelStyle.Render("Updated:"),
-			subtitleStyle.Render(task.UpdatedAt.Format("Jan 2, 2006 3:04 PM")),
+			styles.LabelStyle.Render("Updated:"),
+			styles.SubtitleStyle.Render(task.UpdatedAt.Format("Jan 2, 2006 3:04 PM")),
 		))
 	}
 
 	// Labels
 	if len(task.Labels) > 0 {
 		content.WriteString("\n")
-		content.WriteString(sectionStyle.Render("Labels"))
-		content.WriteString("\n")
+		content.WriteString(styles.SectionStyle.Render("Labels"))
+		content.WriteString("\n  ")
 		var labelChips []string
 		for _, label := range task.Labels {
-			chip := lipgloss.NewStyle().
-				Foreground(lipgloss.Color(label.Color)).
-				Bold(true).
-				Render("[" + label.Name + "]")
-			labelChips = append(labelChips, chip)
+			labelChips = append(labelChips, styles.RenderLabelChip(label))
 		}
-		content.WriteString("  " + strings.Join(labelChips, " ") + "\n")
+		content.WriteString(strings.Join(labelChips, " ") + "\n")
 	}
 
-	// Relationships
+	// Organize relationships
 	var blockingChildren []*models.TaskReference
 	var blockingParents []*models.TaskReference
 	var nonBlockingParents []*models.TaskReference
@@ -268,59 +232,45 @@ func outputHuman(task *models.TaskDetail, colors config.ColorScheme) error {
 	// Blocked By section
 	if len(blockingChildren) > 0 {
 		content.WriteString("\n")
-		content.WriteString(sectionStyle.Render("Blocked By"))
+		content.WriteString(styles.SectionStyle.Render("Blocked By"))
 		content.WriteString("\n")
 		for _, child := range blockingChildren {
-			bulletStyle := lipgloss.NewStyle().
-				Foreground(lipgloss.Color(child.RelationColor))
-			taskRef := fmt.Sprintf("%s-%d - %s", child.ProjectName, child.TicketNumber, child.Title)
-			content.WriteString("  " + bulletStyle.Render("• "+taskRef) + "\n")
+			content.WriteString("  " + styles.RenderTaskReference(child) + "\n")
 		}
 	}
 
 	// Blocking section
 	if len(blockingParents) > 0 {
 		content.WriteString("\n")
-		content.WriteString(sectionStyle.Render("Blocking"))
+		content.WriteString(styles.SectionStyle.Render("Blocking"))
 		content.WriteString("\n")
 		for _, parent := range blockingParents {
-			bulletStyle := lipgloss.NewStyle().
-				Foreground(lipgloss.Color(parent.RelationColor))
-			taskRef := fmt.Sprintf("%s-%d - %s", parent.ProjectName, parent.TicketNumber, parent.Title)
-			content.WriteString("  " + bulletStyle.Render("• "+taskRef) + "\n")
+			content.WriteString("  " + styles.RenderTaskReference(parent) + "\n")
 		}
 	}
 
 	// Parent Tasks
 	if len(nonBlockingParents) > 0 {
 		content.WriteString("\n")
-		content.WriteString(sectionStyle.Render("Parent Tasks"))
+		content.WriteString(styles.SectionStyle.Render("Parent Tasks"))
 		content.WriteString("\n")
 		for _, parent := range nonBlockingParents {
-			bulletStyle := lipgloss.NewStyle().
-				Foreground(lipgloss.Color(parent.RelationColor))
-			taskRef := fmt.Sprintf("%s-%d - %s - %s",
-				parent.ProjectName, parent.TicketNumber, parent.RelationLabel, parent.Title)
-			content.WriteString("  " + bulletStyle.Render("• "+taskRef) + "\n")
+			content.WriteString("  " + styles.RenderTaskReferenceWithLabel(parent) + "\n")
 		}
 	}
 
 	// Child Tasks
 	if len(nonBlockingChildren) > 0 {
 		content.WriteString("\n")
-		content.WriteString(sectionStyle.Render("Child Tasks"))
+		content.WriteString(styles.SectionStyle.Render("Child Tasks"))
 		content.WriteString("\n")
 		for _, child := range nonBlockingChildren {
-			bulletStyle := lipgloss.NewStyle().
-				Foreground(lipgloss.Color(child.RelationColor))
-			taskRef := fmt.Sprintf("%s-%d - %s - %s",
-				child.ProjectName, child.TicketNumber, child.RelationLabel, child.Title)
-			content.WriteString("  " + bulletStyle.Render("• "+taskRef) + "\n")
+			content.WriteString("  " + styles.RenderTaskReferenceWithLabel(child) + "\n")
 		}
 	}
 
 	// Render the card
-	fmt.Println(cardStyle.Render(content.String()))
+	fmt.Println(styles.RenderCard(content.String()))
 
 	return nil
 }
