@@ -7,5 +7,6 @@ type Comment struct {
 	ID        int
 	TaskID    int
 	Message   string
+	Author    string
 	CreatedAt time.Time
 }
