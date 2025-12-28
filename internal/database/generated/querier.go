@@ -70,11 +70,11 @@ type Querier interface {
 	GetColumnNextID(ctx context.Context, id int64) (interface{}, error)
 	GetColumnsByProject(ctx context.Context, projectID int64) ([]GetColumnsByProjectRow, error)
 	// Gets a single comment by ID
-	GetComment(ctx context.Context, id int64) (TaskComment, error)
+	GetComment(ctx context.Context, id int64) (GetCommentRow, error)
 	// Gets the count of comments for a task
 	GetCommentCountByTask(ctx context.Context, taskID int64) (int64, error)
 	// Gets all comments for a task, ordered by creation time (newest first)
-	GetCommentsByTask(ctx context.Context, taskID int64) ([]TaskComment, error)
+	GetCommentsByTask(ctx context.Context, taskID int64) ([]GetCommentsByTaskRow, error)
 	GetCompletedColumnByProject(ctx context.Context, projectID int64) (GetCompletedColumnByProjectRow, error)
 	GetLabelByID(ctx context.Context, id int64) (Label, error)
 	GetLabelsByProject(ctx context.Context, projectID int64) ([]Label, error)

@@ -7,18 +7,20 @@ package generated
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createComment = `-- name: CreateComment :one
 
-INSERT INTO task_comments (task_id, content)
-VALUES (?, ?)
-RETURNING id, task_id, content, created_at, updated_at
+INSERT INTO task_comments (task_id, content, author)
+VALUES (?, ?, ?)
+RETURNING id, task_id, content, created_at, updated_at, author
 `
 
 type CreateCommentParams struct {
 	TaskID  int64
 	Content string
+	Author  string
 }
 
 // ============================================================================
@@ -26,7 +28,7 @@ type CreateCommentParams struct {
 // ============================================================================
 // Creates a new comment for a task
 func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (TaskComment, error) {
-	row := q.db.QueryRowContext(ctx, createComment, arg.TaskID, arg.Content)
+	row := q.db.QueryRowContext(ctx, createComment, arg.TaskID, arg.Content, arg.Author)
 	var i TaskComment
 	err := row.Scan(
 		&i.ID,
@@ -34,6 +36,7 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (T
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Author,
 	)
 	return i, err
 }
@@ -49,19 +52,29 @@ func (q *Queries) DeleteComment(ctx context.Context, id int64) error {
 }
 
 const getComment = `-- name: GetComment :one
-SELECT id, task_id, content, created_at, updated_at
+SELECT id, task_id, content, author, created_at, updated_at
 FROM task_comments
 WHERE id = ?
 `
 
+type GetCommentRow struct {
+	ID        int64
+	TaskID    int64
+	Content   string
+	Author    string
+	CreatedAt sql.NullTime
+	UpdatedAt sql.NullTime
+}
+
 // Gets a single comment by ID
-func (q *Queries) GetComment(ctx context.Context, id int64) (TaskComment, error) {
+func (q *Queries) GetComment(ctx context.Context, id int64) (GetCommentRow, error) {
 	row := q.db.QueryRowContext(ctx, getComment, id)
-	var i TaskComment
+	var i GetCommentRow
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
 		&i.Content,
+		&i.Author,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -81,26 +94,36 @@ func (q *Queries) GetCommentCountByTask(ctx context.Context, taskID int64) (int6
 }
 
 const getCommentsByTask = `-- name: GetCommentsByTask :many
-SELECT id, task_id, content, created_at, updated_at
+SELECT id, task_id, content, author, created_at, updated_at
 FROM task_comments
 WHERE task_id = ?
 ORDER BY created_at DESC
 `
 
+type GetCommentsByTaskRow struct {
+	ID        int64
+	TaskID    int64
+	Content   string
+	Author    string
+	CreatedAt sql.NullTime
+	UpdatedAt sql.NullTime
+}
+
 // Gets all comments for a task, ordered by creation time (newest first)
-func (q *Queries) GetCommentsByTask(ctx context.Context, taskID int64) ([]TaskComment, error) {
+func (q *Queries) GetCommentsByTask(ctx context.Context, taskID int64) ([]GetCommentsByTaskRow, error) {
 	rows, err := q.db.QueryContext(ctx, getCommentsByTask, taskID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []TaskComment{}
+	items := []GetCommentsByTaskRow{}
 	for rows.Next() {
-		var i TaskComment
+		var i GetCommentsByTaskRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.TaskID,
 			&i.Content,
+			&i.Author,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
