@@ -273,7 +273,7 @@ func (m Model) renderFormNotesZone(width, height int) string {
 	noteZoneStyle := lipgloss.NewStyle().
 		Width(width).
 		Height(height).
-		Padding(1).
+		Padding(0, 1, 1, 1).
 		BorderTop(true).
 		BorderStyle(lipgloss.Border{
 			Top: "─",

@@ -16,9 +16,13 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 		return nil
 	}
 
-	// Calculate layer dimensions (90% of screen)
-	layerWidth := m.UiState.Width() * 9 / 10
-	layerHeight := m.UiState.Height() * 9 / 10
+	// Calculate layer dimensions (80% of screen)
+	layerWidth := m.UiState.Width() * 8 / 10
+	layerHeight := m.UiState.Height() * 8 / 10
+
+	// Account for chrome: border (2) + padding (2) + title (1) + blanks (2) + help (1) = 8 lines
+	chromeHeight := 8
+	innerHeight := layerHeight - chromeHeight
 
 	// Calculate zone dimensions based on requirements:
 	// - Top left (title/desc): 60% width, 70% height
@@ -26,8 +30,8 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 	// - Bottom (comments): 100% width, 30% height
 	leftColumnWidth := layerWidth * 6 / 10  // 60% of layer width
 	rightColumnWidth := layerWidth * 4 / 10 // 40% of layer width
-	topHeight := layerHeight * 7 / 10       // 70% of layer height
-	bottomHeight := layerHeight * 3 / 10    // 30% of layer height
+	topHeight := innerHeight * 7 / 10       // 70% of inner height
+	bottomHeight := innerHeight * 3 / 10    // 30% of inner height
 
 	// Render the three zones
 	topLeftZone := m.renderFormTitleDescriptionZone(leftColumnWidth, topHeight)
