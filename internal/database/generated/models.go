@@ -71,6 +71,7 @@ type TaskComment struct {
 	Content   string
 	CreatedAt sql.NullTime
 	UpdatedAt sql.NullTime
+	Author    string
 }
 
 type TaskLabel struct {
