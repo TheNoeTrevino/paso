@@ -11,7 +11,9 @@ import (
 	columnService "github.com/thenoetrevino/paso/internal/services/column"
 	projectService "github.com/thenoetrevino/paso/internal/services/project"
 	taskService "github.com/thenoetrevino/paso/internal/services/task"
+	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
+	userutil "github.com/thenoetrevino/paso/internal/user"
 )
 
 type ticketFormValues struct {
@@ -371,6 +373,26 @@ func (m Model) handleFormSave(cfg formConfig) (tea.Model, tea.Cmd) {
 // updateTicketForm handles all messages when in TicketFormMode
 // This is separated out because forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Delegate viewport events first if viewport has focus
+	if m.FormState.ViewportFocused && m.FormState.ViewportReady {
+		var cmd tea.Cmd
+		m.FormState.CommentsViewport, cmd = m.FormState.CommentsViewport.Update(msg)
+
+		// Check if we should release focus back to form
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			if keyMsg.String() == "tab" || keyMsg.String() == "shift+tab" {
+				// Tab from viewport back to form
+				m.FormState.ViewportFocused = false
+				return m, nil
+			}
+		}
+
+		// If viewport consumed the message, return
+		if cmd != nil {
+			return m, cmd
+		}
+	}
+
 	// Check for keyboard shortcuts before passing to form
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		switch keyMsg.String() {
@@ -425,14 +447,42 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		case "ctrl+h":
+			// Open task form help menu
+			m.UiState.SetMode(state.TaskFormHelpMode)
+			return m, nil
+
+		case "ctrl+down":
+			// Focus comments viewport (explicit)
+			if len(m.FormState.FormComments) > 0 && m.FormState.ViewportReady {
+				m.FormState.ViewportFocused = true
+				m.FormState.CommentsViewport.GotoBottom() // Start at most recent
+				return m, nil
+			}
+			return m, nil
+
+		case "down":
+			// Auto-focus viewport on down arrow (implicit)
+			if len(m.FormState.FormComments) > 0 && !m.FormState.ViewportFocused && m.FormState.ViewportReady {
+				m.FormState.ViewportFocused = true
+				m.FormState.CommentsViewport.GotoBottom()
+				// Let viewport handle the down arrow
+				var cmd tea.Cmd
+				m.FormState.CommentsViewport, cmd = m.FormState.CommentsViewport.Update(msg)
+				return m, cmd
+			}
+			// Otherwise let form handle it
+
 		case "ctrl+n":
-			// Open notes editor
+			// Go directly to create new note (skip note list view)
 			if m.FormState.EditingTaskID != 0 {
-				// Initialize note state with current comments
-				m.NoteState.Items = convertToNoteItems(m.FormState.FormComments)
-				m.NoteState.TaskID = m.FormState.EditingTaskID
-				m.NoteState.Cursor = 0
-				m.UiState.SetMode(state.NoteEditMode)
+				m.FormState.FormCommentMessage = ""
+				m.FormState.EditingCommentID = 0
+				m.FormState.CommentForm = huhforms.CreateCommentForm(&m.FormState.FormCommentMessage, false).
+					WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+				m.FormState.SnapshotCommentFormInitialValues()
+				m.UiState.SetMode(state.NoteFormMode)
+				return m, m.FormState.CommentForm.Init()
 			}
 			return m, nil
 
@@ -492,6 +542,7 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		},
+		confirmPtr: &m.FormState.FormConfirm,
 	})
 }
 
@@ -706,8 +757,8 @@ func (m Model) updateNoteForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.UiState.SetMode(state.DiscardConfirmMode)
 				return m, nil
 			}
-			// No changes or in create mode - allow immediate close, return to note list
-			m.UiState.SetMode(state.NoteEditMode)
+			// No changes or in create mode - allow immediate close, return to ticket form
+			m.UiState.SetMode(state.TicketFormMode)
 			m.FormState.ClearCommentForm()
 			return m, tea.ClearScreen
 		}
@@ -743,6 +794,7 @@ func (m Model) updateNoteForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				_, err := m.App.TaskService.CreateComment(ctx, taskService.CreateCommentRequest{
 					TaskID:  taskID,
 					Message: message,
+					Author:  userutil.GetCurrentUsername(),
 				})
 				if err != nil {
 					slog.Error("Error creating comment", "error", err)
@@ -777,8 +829,8 @@ func (m Model) updateNoteForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.NoteState.Items = convertToNoteItems(comments)
 			}
 
-			// Return to note list view
-			m.UiState.SetMode(state.NoteEditMode)
+			// Return to ticket form view
+			m.UiState.SetMode(state.TicketFormMode)
 		},
 		confirmPtr: nil, // Note forms don't have confirmation field
 	})
