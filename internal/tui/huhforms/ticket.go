@@ -30,7 +30,7 @@ func CreateTicketForm(
 			Key("description").
 			Title("Description").
 			Placeholder("Enter task description...").
-			CharLimit(500).
+			CharLimit(5000).
 			Lines(descriptionLines).
 			Value(description),
 	)
