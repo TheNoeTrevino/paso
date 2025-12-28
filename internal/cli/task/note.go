@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/user"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
@@ -48,6 +49,8 @@ Examples:
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
+	cmd.Flags().String("author", "", "Note author (defaults to current user)")
+
 	// Agent-friendly flags
 	cmd.Flags().Bool("json", false, "Output in JSON format")
 	cmd.Flags().Bool("quiet", false, "Minimal output (comment ID only)")
@@ -60,8 +63,23 @@ func runNote(cmd *cobra.Command, args []string) error {
 
 	taskID, _ := cmd.Flags().GetInt("id")
 	message, _ := cmd.Flags().GetString("message")
+	author, _ := cmd.Flags().GetString("author")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
+
+	// Default author to current user if not provided
+	if author == "" {
+		currentUser, err := user.Current()
+		if err != nil {
+			// Fallback to USER environment variable if user.Current() fails
+			author = os.Getenv("USER")
+			if author == "" {
+				author = "unknown"
+			}
+		} else {
+			author = currentUser.Username
+		}
+	}
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
@@ -101,6 +119,7 @@ func runNote(cmd *cobra.Command, args []string) error {
 	comment, err := cliInstance.App.TaskService.CreateComment(ctx, taskservice.CreateCommentRequest{
 		TaskID:  taskID,
 		Message: message,
+		Author:  author,
 	})
 	if err != nil {
 		if fmtErr := formatter.Error("COMMENT_CREATE_ERROR", err.Error()); fmtErr != nil {
@@ -122,6 +141,7 @@ func runNote(cmd *cobra.Command, args []string) error {
 				"id":         comment.ID,
 				"task_id":    comment.TaskID,
 				"message":    comment.Message,
+				"author":     comment.Author,
 				"created_at": comment.CreatedAt,
 			},
 			"task": map[string]interface{}{
