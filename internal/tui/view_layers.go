@@ -26,23 +26,43 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 
 	// Calculate zone dimensions based on requirements:
 	// - Top left (title/desc): 60% width, 70% height
-	// - Top right (metadata): 40% width, 70% height
-	// - Bottom (comments): 100% width, 30% height
-	leftColumnWidth := layerWidth * 6 / 10  // 60% of layer width
-	rightColumnWidth := layerWidth * 4 / 10 // 40% of layer width
-	topHeight := innerHeight * 7 / 10       // 70% of inner height
-	bottomHeight := innerHeight * 3 / 10    // 30% of inner height
+	// - Bottom left (comments): 60% width, 30% height
+	// - Right (metadata): 40% width, 100% height
+	leftColumnWidth := layerWidth * 6 / 10   // 60% of layer width
+	rightColumnWidth := layerWidth * 4 / 10  // 40% of layer width
+	topLeftHeight := innerHeight * 7 / 10    // 70% of inner height
+	bottomLeftHeight := innerHeight * 3 / 10 // 30% of inner height
+	rightColumnHeight := innerHeight         // 100% of inner height
+
+	// Calculate dynamic description field height based on available space
+	// Chrome overhead: Title field (~3) + Confirmation (~3) + spacing (~3) = 9 lines
+	const (
+		descChromeOverhead = 9
+		minDescLines       = 5
+		maxDescLines       = 15
+	)
+
+	descriptionLines := topLeftHeight - descChromeOverhead
+	if descriptionLines < minDescLines {
+		descriptionLines = minDescLines
+	}
+	if descriptionLines > maxDescLines {
+		descriptionLines = maxDescLines
+	}
+
+	// Store in FormState for use during form creation
+	m.FormState.CalculatedDescriptionLines = descriptionLines
 
 	// Render the three zones
-	topLeftZone := m.renderFormTitleDescriptionZone(leftColumnWidth, topHeight)
-	topRightZone := m.renderFormMetadataZone(rightColumnWidth, topHeight)
-	bottomZone := m.renderFormNotesZone(layerWidth, bottomHeight)
+	topLeftZone := m.renderFormTitleDescriptionZone(leftColumnWidth, topLeftHeight)
+	bottomLeftZone := m.renderFormNotesZone(leftColumnWidth, bottomLeftHeight)
+	rightZone := m.renderFormMetadataZone(rightColumnWidth, rightColumnHeight)
 
-	// Compose top row (left + right)
-	topRow := lipgloss.JoinHorizontal(lipgloss.Top, topLeftZone, topRightZone)
+	// Compose left column (top + bottom)
+	leftColumn := lipgloss.JoinVertical(lipgloss.Top, topLeftZone, bottomLeftZone)
 
-	// Compose full content (top row + bottom comments)
-	content := lipgloss.JoinVertical(lipgloss.Top, topRow, bottomZone)
+	// Compose full content (left column + right metadata)
+	content := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, rightZone)
 
 	// Add form title with help hint
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Highlight))

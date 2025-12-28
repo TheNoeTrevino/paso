@@ -36,6 +36,9 @@ type FormState struct {
 	ViewportReady    bool           // Track if viewport is initialized
 	ViewportFocused  bool           // Track if viewport has focus (for border color)
 
+	// Dynamic form layout
+	CalculatedDescriptionLines int // Dynamically computed description field height based on available space
+
 	// Task metadata for display (edit mode only)
 	FormCreatedAt           time.Time // Task creation timestamp (only populated in edit mode)
 	FormUpdatedAt           time.Time // Task last update timestamp (only populated in edit mode)
