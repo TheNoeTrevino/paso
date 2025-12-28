@@ -188,13 +188,13 @@ func (m *Model) renderFormNotesZone(width, height int) string {
 	header := headerStyle.Render(fmt.Sprintf("Notes (%d)", noteCount))
 
 	// Calculate available height for viewport
-	// Account for: header (1 line), help text (2 lines), padding/borders
+	// Account for: header (1 line), blank line (1), top border (1), padding (2) = 5 lines
 	availableHeight := max(height-5, 1)
 
 	var viewportContent string
 
 	if noteCount == 0 {
-		viewportContent = subtleStyle.Render("No notes. Press Ctrl+N to add one.")
+		viewportContent = subtleStyle.Render("ctrl+n to add a new note")
 	} else {
 		// Initialize viewport if not ready
 		if !m.FormState.ViewportReady {
@@ -228,11 +228,9 @@ func (m *Model) renderFormNotesZone(width, height int) string {
 		viewportContent = m.FormState.CommentsViewport.View()
 	}
 
-	// Compose content - just header and viewport, separated by blank line
+	// Compose content - header and viewport, separated by blank line
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
-		"",
-		"",
 		header,
 		"",
 		viewportContent,
@@ -248,7 +246,12 @@ func (m *Model) renderFormNotesZone(width, height int) string {
 	noteZoneStyle := lipgloss.NewStyle().
 		Width(width).
 		Height(height).
-		Padding(0, 1, 1, 1)
+		Padding(0, 1, 1, 1).
+		BorderTop(true).
+		BorderStyle(lipgloss.Border{
+			Top: "─",
+		}).
+		BorderForeground(lipgloss.Color(theme.Subtle))
 
 	return noteZoneStyle.Render(content)
 }
