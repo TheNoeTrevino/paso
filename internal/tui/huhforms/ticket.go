@@ -46,5 +46,5 @@ func CreateTicketForm(
 	)
 
 	form := huh.NewForm(huh.NewGroup(fields...))
-	return form.WithKeyMap(CreateKeyMapWithShiftEnter())
+	return form.WithKeyMap(CreateKeyMapWithShiftEnter()).WithShowHelp(false)
 }
