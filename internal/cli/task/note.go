@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/user"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
+	userutil "github.com/thenoetrevino/paso/internal/user"
 )
 
 // NoteCmd returns the task note subcommand
@@ -69,16 +69,7 @@ func runNote(cmd *cobra.Command, args []string) error {
 
 	// Default author to current user if not provided
 	if author == "" {
-		currentUser, err := user.Current()
-		if err != nil {
-			// Fallback to USER environment variable if user.Current() fails
-			author = os.Getenv("USER")
-			if author == "" {
-				author = "unknown"
-			}
-		} else {
-			author = currentUser.Username
-		}
+		author = userutil.GetCurrentUsername()
 	}
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
