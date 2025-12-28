@@ -26,6 +26,7 @@ const (
 	NoteFormMode                        // Note/comment form (huh form for creating/editing individual note)
 	SearchMode                          // Vim-style search mode (/)
 	StatusPickerMode                    // Status picker popup for list view
+	TaskFormHelpMode                    // Help screen for task form shortcuts
 )
 
 // DiscardContext tracks information for discard confirmation dialogs.
