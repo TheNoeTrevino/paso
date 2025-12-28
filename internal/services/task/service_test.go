@@ -38,34 +38,6 @@ func setupTestDB(t *testing.T) *sql.DB {
 // createTestSchema creates the minimal schema needed for task service tests
 func createTestSchema(db *sql.DB) error {
 	schema := `
-	-- Projects table
-	CREATE TABLE IF NOT EXISTS projects (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		description TEXT,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
-
-	-- Project counters for ticket numbers
-	CREATE TABLE IF NOT EXISTS project_counters (
-		project_id INTEGER PRIMARY KEY,
-		next_ticket_number INTEGER DEFAULT 1,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-	);
-
-	-- Columns table
-	CREATE TABLE IF NOT EXISTS columns (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		project_id INTEGER NOT NULL,
-		name TEXT NOT NULL,
-		prev_id INTEGER,
-		next_id INTEGER,
-		holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
-		holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-	);
-
 	-- Types lookup table
 	CREATE TABLE IF NOT EXISTS types (
 		id INTEGER PRIMARY KEY,
@@ -102,7 +74,46 @@ func createTestSchema(db *sql.DB) error {
 
 	INSERT OR IGNORE INTO relation_types (id, p_to_c_label, c_to_p_label, color, is_blocking) VALUES
 		(1, 'Parent', 'Child', '#6B7280', 0),
-		(2, 'Blocks', 'Blocked By', '#EF4444', 1);
+		(2, 'Blocked By', 'Blocker', '#EF4444', 1),
+		(3, 'Related To', 'Related To', '#3B82F6', 0);
+
+	-- Projects table
+	CREATE TABLE IF NOT EXISTS projects (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		description TEXT DEFAULT '',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	-- Project counters for ticket numbers
+	CREATE TABLE IF NOT EXISTS project_counters (
+		project_id INTEGER PRIMARY KEY,
+		next_ticket_number INTEGER DEFAULT 1,
+		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+	);
+
+	-- Columns table
+	CREATE TABLE IF NOT EXISTS columns (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		prev_id INTEGER NULL,
+		next_id INTEGER NULL,
+		project_id INTEGER NOT NULL,
+		holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
+		holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
+		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+	);
+
+	-- Labels table
+	CREATE TABLE IF NOT EXISTS labels (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		color TEXT NOT NULL DEFAULT '#7D56F4',
+		project_id INTEGER NOT NULL,
+		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+		UNIQUE(name, project_id)
+	);
 
 	-- Tasks table
 	CREATE TABLE IF NOT EXISTS tasks (
@@ -110,16 +121,24 @@ func createTestSchema(db *sql.DB) error {
 		title TEXT NOT NULL,
 		description TEXT,
 		column_id INTEGER NOT NULL,
-		position INTEGER NOT NULL DEFAULT 0,
+		position INTEGER NOT NULL,
 		ticket_number INTEGER,
 		type_id INTEGER NOT NULL DEFAULT 1,
 		priority_id INTEGER NOT NULL DEFAULT 3,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
 		FOREIGN KEY (type_id) REFERENCES types(id),
-		FOREIGN KEY (priority_id) REFERENCES priorities(id),
-		UNIQUE(column_id, position)
+		FOREIGN KEY (priority_id) REFERENCES priorities(id)
+	);
+
+	-- Task-labels join table
+	CREATE TABLE IF NOT EXISTS task_labels (
+		task_id INTEGER NOT NULL,
+		label_id INTEGER NOT NULL,
+		PRIMARY KEY (task_id, label_id),
+		FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+		FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE
 	);
 
 	-- Task relationships (parent-child, blocking, etc.)
@@ -133,23 +152,29 @@ func createTestSchema(db *sql.DB) error {
 		FOREIGN KEY (relation_type_id) REFERENCES relation_types(id)
 	);
 
-	-- Labels table
-	CREATE TABLE IF NOT EXISTS labels (
+	-- Task comments table
+	CREATE TABLE IF NOT EXISTS task_comments (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		color TEXT NOT NULL,
-		project_id INTEGER NOT NULL,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+		task_id INTEGER NOT NULL,
+		content TEXT NOT NULL CHECK(length(content) <= 500),
+		author TEXT NOT NULL DEFAULT '',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
 	);
 
-	-- Task-labels join table
-	CREATE TABLE IF NOT EXISTS task_labels (
-		task_id INTEGER NOT NULL,
-		label_id INTEGER NOT NULL,
-		PRIMARY KEY (task_id, label_id),
-		FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-		FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE
-	);
+	-- Indexes for performance
+	CREATE INDEX IF NOT EXISTS idx_tasks_column ON tasks(column_id, position);
+	CREATE INDEX IF NOT EXISTS idx_columns_project ON columns(project_id);
+	CREATE INDEX IF NOT EXISTS idx_labels_project ON labels(project_id);
+	CREATE INDEX IF NOT EXISTS idx_task_labels_label ON task_labels(label_id);
+	CREATE INDEX IF NOT EXISTS idx_task_subtasks_parent ON task_subtasks(parent_id);
+	CREATE INDEX IF NOT EXISTS idx_task_subtasks_child ON task_subtasks(child_id);
+	CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);
+
+	-- Unique partial indexes for column constraints
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_ready_per_project ON columns(project_id) WHERE holds_ready_tasks = 1;
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_completed_per_project ON columns(project_id) WHERE holds_completed_tasks = 1;
 	`
 
 	_, err := db.ExecContext(context.Background(), schema)
