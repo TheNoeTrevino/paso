@@ -210,7 +210,7 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 	m.FormState.FormConfirm = true
 	m.FormState.EditingTaskID = 0
 
-	descriptionLines := 10
+	descriptionLines := 15
 
 	m.FormState.TicketForm = huhforms.CreateTicketForm(
 		&m.FormState.FormTitle,
@@ -271,7 +271,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 	m.FormState.FormConfirm = true
 	m.FormState.EditingTaskID = task.ID
 
-	descriptionLines := 10
+	descriptionLines := 15
 
 	m.FormState.TicketForm = huhforms.CreateTicketForm(
 		&m.FormState.FormTitle,
