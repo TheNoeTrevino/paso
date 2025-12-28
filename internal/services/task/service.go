@@ -84,6 +84,7 @@ type UpdateTaskRequest struct {
 type CreateCommentRequest struct {
 	TaskID  int
 	Message string
+	Author  string
 }
 
 // UpdateCommentRequest encapsulates data for updating a comment
@@ -1116,6 +1117,7 @@ func (s *service) CreateComment(ctx context.Context, req CreateCommentRequest) (
 	comment, err := s.queries.CreateComment(ctx, generated.CreateCommentParams{
 		TaskID:  int64(req.TaskID),
 		Content: req.Message,
+		Author:  req.Author,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create comment: %w", err)
@@ -1127,6 +1129,7 @@ func (s *service) CreateComment(ctx context.Context, req CreateCommentRequest) (
 		ID:        int(comment.ID),
 		TaskID:    int(comment.TaskID),
 		Message:   comment.Content,
+		Author:    comment.Author,
 		CreatedAt: comment.CreatedAt.Time,
 	}, nil
 }
@@ -1325,14 +1328,15 @@ func convertChildTasksToReferences(rows []generated.GetChildTasksRow) []*models.
 	return result
 }
 
-// convertCommentsToModels converts generated.TaskComment slice to models.Comment slice
-func convertCommentsToModels(comments []generated.TaskComment) []*models.Comment {
+// convertCommentsToModels converts generated.GetCommentsByTaskRow slice to models.Comment slice
+func convertCommentsToModels(comments []generated.GetCommentsByTaskRow) []*models.Comment {
 	result := make([]*models.Comment, 0, len(comments))
 	for _, c := range comments {
 		result = append(result, &models.Comment{
 			ID:        int(c.ID),
 			TaskID:    int(c.TaskID),
 			Message:   c.Content,
+			Author:    c.Author,
 			CreatedAt: c.CreatedAt.Time,
 		})
 	}
