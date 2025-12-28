@@ -113,6 +113,13 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m, nil
+	case state.TaskFormHelpMode:
+		switch msg.String() {
+		case "ctrl+h", "esc":
+			m.UiState.SetMode(state.TicketFormMode)
+			return m, nil
+		}
+		return m, nil
 	case state.LabelPickerMode:
 		return m.updateLabelPicker(msg)
 	case state.ParentPickerMode:
