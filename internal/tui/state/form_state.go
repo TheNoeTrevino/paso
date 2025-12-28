@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/bubbles/v2/viewport"
 	"charm.land/huh/v2"
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -29,6 +30,11 @@ type FormState struct {
 	// Comments/notes for ticket form
 	FormComments        []*models.Comment // Current notes loaded from DB
 	InitialFormComments []*models.Comment // Snapshot for change detection
+
+	// Comment viewport for scrollable comments section
+	CommentsViewport viewport.Model // Viewport for scrollable comments
+	ViewportReady    bool           // Track if viewport is initialized
+	ViewportFocused  bool           // Track if viewport has focus (for border color)
 
 	// Task metadata for display (edit mode only)
 	FormCreatedAt           time.Time // Task creation timestamp (only populated in edit mode)
@@ -93,6 +99,9 @@ func NewFormState() *FormState {
 		FormChildRefs:             []*models.TaskReference{},
 		FormComments:              []*models.Comment{},
 		InitialFormComments:       []*models.Comment{},
+		CommentsViewport:          viewport.Model{},
+		ViewportReady:             false,
+		ViewportFocused:           false,
 		ProjectForm:               nil,
 		FormProjectName:           "",
 		FormProjectDescription:    "",
@@ -131,6 +140,9 @@ func (s *FormState) ClearTicketForm() {
 	s.FormChildRefs = []*models.TaskReference{}
 	s.FormComments = []*models.Comment{}
 	s.InitialFormComments = []*models.Comment{}
+	s.CommentsViewport = viewport.Model{}
+	s.ViewportReady = false
+	s.ViewportFocused = false
 	// Clear initial values
 	s.InitialFormTitle = ""
 	s.InitialFormDescription = ""
