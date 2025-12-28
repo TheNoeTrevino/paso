@@ -242,17 +242,17 @@ func (m Model) renderFormNotesZone(width, height int) string {
 	} else {
 		// Display notes (newest first, already sorted by created_at DESC)
 		for i, comment := range m.FormState.FormComments {
-			// Show timestamp and truncated message
+			// Show timestamp with author and truncated message
 			timestamp := comment.CreatedAt.Format("Jan 2 15:04")
 
 			// Truncate message if too long for display
 			message := comment.Message
-			maxLen := width - 20 // Leave room for timestamp
+			maxLen := width - 30 // Leave room for timestamp and author
 			if len(message) > maxLen {
 				message = message[:maxLen-3] + "..."
 			}
 
-			noteLine := fmt.Sprintf("[%s] %s", timestamp, message)
+			noteLine := fmt.Sprintf("[%s - %s] %s", timestamp, comment.Author, message)
 
 			// Highlight if this is the cursor position in NoteEditMode
 			if m.UiState.Mode() == state.NoteEditMode && m.NoteState.Cursor == i {
