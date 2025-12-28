@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/bubbles/v2/viewport"
 	"charm.land/lipgloss/v2"
+	"github.com/muesli/reflow/wordwrap"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
-	"github.com/thenoetrevino/paso/internal/tui/state"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
@@ -147,81 +148,33 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 	return style.Render(content)
 }
 
-// renderFormAssociationsZone renders the bottom-left zone with parent and child tasks
-func (m Model) renderFormAssociationsZone(width, height int) string {
-	var parts []string
+// renderCommentSimple renders a single comment.
+// The format is:
+//
+//	{author}   {date}
+//	{content - wrapped to width}
+func renderCommentSimple(comment *models.Comment, width int) string {
+	timestamp := comment.CreatedAt.Format("Jan 2 15:04")
 
-	headerStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Subtle)).
-		Bold(true)
+	// Author icon and date header
+	authorIcon := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("󰀄 ")
+	dateIcon := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("  ")
 
-	subtleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Subtle)).
-		Italic(true)
+	header := fmt.Sprintf("%s%s%s%s", authorIcon, comment.Author, dateIcon, timestamp)
+	headerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
 
-	taskStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Normal))
+	// Content (wrapped)
+	// Reserve space for padding
+	contentWidth := max(width-4, 20)
 
-	// Parent Tasks section
-	parts = append(parts, headerStyle.Render("Parent Tasks"))
-	if len(m.FormState.FormParentRefs) == 0 {
-		parts = append(parts, subtleStyle.Render("No Parent Tasks Found"))
-	} else {
-		for _, parent := range m.FormState.FormParentRefs {
-			// Render relation label with color if available
-			var relationLabel string
-			if parent.RelationLabel != "" && parent.RelationColor != "" {
-				labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(parent.RelationColor))
-				relationLabel = labelStyle.Render(parent.RelationLabel)
-			} else {
-				// Fallback to default if no relation type
-				relationLabel = subtleStyle.Render("Parent")
-			}
-			taskLine := fmt.Sprintf("#%d - %s - %s", parent.TicketNumber, relationLabel, parent.Title)
-			parts = append(parts, taskStyle.Render(taskLine))
-		}
-	}
-	parts = append(parts, "")
+	wrapped := wordwrap.String(comment.Message, contentWidth)
+	contentStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
 
-	// Child Tasks section
-	parts = append(parts, headerStyle.Render("Child Tasks"))
-	if len(m.FormState.FormChildRefs) == 0 {
-		parts = append(parts, subtleStyle.Render("No Child Tasks Found"))
-	} else {
-		for _, child := range m.FormState.FormChildRefs {
-			// Render relation label with color if available
-			var relationLabel string
-			if child.RelationLabel != "" && child.RelationColor != "" {
-				labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(child.RelationColor))
-				relationLabel = labelStyle.Render(child.RelationLabel)
-			} else {
-				// Fallback to default if no relation type
-				relationLabel = subtleStyle.Render("Child")
-			}
-			taskLine := fmt.Sprintf("#%d - %s - %s", child.TicketNumber, relationLabel, child.Title)
-			parts = append(parts, taskStyle.Render(taskLine))
-		}
-	}
-
-	content := strings.Join(parts, "\n")
-
-	style := lipgloss.NewStyle().
-		Width(width).
-		Height(height).
-		Padding(1).
-		BorderTop(true).
-		BorderStyle(lipgloss.Border{
-			Top: "─",
-		}).
-		BorderForeground(lipgloss.Color(theme.Subtle))
-
-	return style.Render(content)
+	return headerStyle.Render(header) + "\n" + contentStyle.Render(wrapped)
 }
 
-// renderFormNotesZone renders the bottom-left zone with notes/comments
-func (m Model) renderFormNotesZone(width, height int) string {
-	var parts []string
-
+// renderFormNotesZone renders the bottom zone with notes/comments using a viewport
+func (m *Model) renderFormNotesZone(width, height int) string {
 	headerStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Subtle)).
 		Bold(true)
@@ -229,56 +182,73 @@ func (m Model) renderFormNotesZone(width, height int) string {
 	subtleStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Subtle)).
 		Italic(true)
-
-	noteStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Normal))
 
 	// Notes header with count
 	noteCount := len(m.FormState.FormComments)
-	parts = append(parts, headerStyle.Render(fmt.Sprintf("Notes (%d)", noteCount)))
+	header := headerStyle.Render(fmt.Sprintf("Notes (%d)", noteCount))
+
+	// Calculate available height for viewport
+	// Account for: header (1 line), help text (2 lines), padding/borders
+	availableHeight := max(height-5, 1)
+
+	var viewportContent string
 
 	if noteCount == 0 {
-		parts = append(parts, subtleStyle.Render("No notes. Press Ctrl+N to add one."))
+		viewportContent = subtleStyle.Render("No notes. Press Ctrl+N to add one.")
 	} else {
-		// Display notes (newest first, already sorted by created_at DESC)
-		for i, comment := range m.FormState.FormComments {
-			// Show timestamp with author and truncated message
-			timestamp := comment.CreatedAt.Format("Jan 2 15:04")
-
-			// Truncate message if too long for display
-			message := comment.Message
-			maxLen := width - 30 // Leave room for timestamp and author
-			if len(message) > maxLen {
-				message = message[:maxLen-3] + "..."
-			}
-
-			noteLine := fmt.Sprintf("[%s - %s] %s", timestamp, comment.Author, message)
-
-			// Highlight if this is the cursor position in NoteEditMode
-			if m.UiState.Mode() == state.NoteEditMode && m.NoteState.Cursor == i {
-				highlightStyle := lipgloss.NewStyle().
-					Foreground(lipgloss.Color(theme.Highlight)).
-					Bold(true)
-				parts = append(parts, highlightStyle.Render("▶ "+noteLine))
-			} else {
-				parts = append(parts, noteStyle.Render("  "+noteLine))
-			}
+		// Initialize viewport if not ready
+		if !m.FormState.ViewportReady {
+			vp := viewport.New()
+			vp.SetWidth(width - 2)
+			vp.SetHeight(availableHeight)
+			vp.Style = lipgloss.NewStyle()
+			vp.MouseWheelEnabled = true
+			m.FormState.CommentsViewport = vp
+			m.FormState.ViewportReady = true
 		}
-		parts = append(parts, "")
-		parts = append(parts, subtleStyle.Render("Ctrl+N: manage notes"))
+
+		// Update viewport dimensions in case terminal was resized
+		m.FormState.CommentsViewport.SetWidth(width - 2)
+		m.FormState.CommentsViewport.SetHeight(availableHeight)
+
+		// Render all comments into viewport content
+		var commentLines []string
+		for _, comment := range m.FormState.FormComments {
+			commentLines = append(commentLines, renderCommentSimple(comment, width-2))
+		}
+		allComments := strings.Join(commentLines, "\n\n")
+
+		// Set content and scroll to bottom (most recent comment)
+		m.FormState.CommentsViewport.SetContent(allComments)
+		if !m.FormState.ViewportFocused {
+			// Auto-scroll to bottom when not focused (to show most recent)
+			m.FormState.CommentsViewport.GotoBottom()
+		}
+
+		viewportContent = m.FormState.CommentsViewport.View()
 	}
 
-	content := strings.Join(parts, "\n")
+	// Compose content - just header and viewport, separated by blank line
+	content := lipgloss.JoinVertical(
+		lipgloss.Left,
+		"",
+		"",
+		header,
+		"",
+		viewportContent,
+	)
+
+	// Determine border color based on focus (kept for potential future use)
+	borderColor := theme.Subtle
+	if m.FormState.ViewportFocused {
+		borderColor = theme.Highlight
+	}
+	_ = borderColor // Suppress unused warning for now
 
 	noteZoneStyle := lipgloss.NewStyle().
 		Width(width).
 		Height(height).
-		Padding(0, 1, 1, 1).
-		BorderTop(true).
-		BorderStyle(lipgloss.Border{
-			Top: "─",
-		}).
-		BorderForeground(lipgloss.Color(theme.Subtle))
+		Padding(0, 1, 1, 1)
 
 	return noteZoneStyle.Render(content)
 }
