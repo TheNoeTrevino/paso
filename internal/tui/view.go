@@ -27,6 +27,7 @@ func (m Model) View() tea.View {
 		m.UiState.Mode() == state.EditColumnFormMode ||
 		m.UiState.Mode() == state.NoteFormMode ||
 		m.UiState.Mode() == state.HelpMode ||
+		m.UiState.Mode() == state.TaskFormHelpMode ||
 		m.UiState.Mode() == state.NormalMode ||
 		m.UiState.Mode() == state.SearchMode
 
@@ -49,9 +50,15 @@ func (m Model) View() tea.View {
 		case state.AddColumnFormMode, state.EditColumnFormMode:
 			modalLayer = m.renderColumnFormLayer()
 		case state.NoteFormMode:
+			// Stack both task form AND note form
+			layers = append(layers, m.renderTicketFormLayer())
 			modalLayer = m.renderNoteFormLayer()
 		case state.HelpMode:
 			modalLayer = m.renderHelpLayer()
+		case state.TaskFormHelpMode:
+			// Stack both task form AND help menu
+			layers = append(layers, m.renderTicketFormLayer())
+			modalLayer = m.renderTaskFormHelpLayer()
 		}
 
 		if modalLayer != nil {
@@ -85,8 +92,6 @@ func (m Model) View() tea.View {
 			content = m.viewTypePicker()
 		case state.RelationTypePickerMode:
 			content = m.viewRelationTypePicker()
-		case state.NoteEditMode:
-			content = m.viewNoteEditor()
 		case state.StatusPickerMode:
 			content = m.viewStatusPicker()
 		default:

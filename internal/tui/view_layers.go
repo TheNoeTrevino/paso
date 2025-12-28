@@ -20,8 +20,8 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 	layerWidth := m.UiState.Width() * 8 / 10
 	layerHeight := m.UiState.Height() * 8 / 10
 
-	// Account for chrome: border (2) + padding (2) + title (1) + blanks (2) + help (1) = 8 lines
-	chromeHeight := 8
+	// Account for chrome: border (2) + padding (2) + title (1) + blanks (1) = 6 lines
+	chromeHeight := 6
 	innerHeight := layerHeight - chromeHeight
 
 	// Calculate zone dimensions based on requirements:
@@ -44,8 +44,10 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 	// Compose full content (top row + bottom comments)
 	content := lipgloss.JoinVertical(lipgloss.Top, topRow, bottomZone)
 
-	// Add form title
+	// Add form title with help hint
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Highlight))
+	helpHintStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+
 	var formTitle string
 	if m.FormState.EditingTaskID == 0 {
 		formTitle = titleStyle.Render("Create New Task")
@@ -53,18 +55,21 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 		formTitle = titleStyle.Render("Edit Task")
 	}
 
-	// Add help text for shortcuts
-	helpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-	helpText := helpStyle.Render("Ctrl+L: labels  Ctrl+P: parents  Ctrl+C: children  Ctrl+R: priority  Ctrl+T: type  Ctrl+N: notes")
-
-	// Combine title + content + help
-	fullContent := lipgloss.JoinVertical(
+	titleWithHint := lipgloss.JoinHorizontal(
 		lipgloss.Left,
 		formTitle,
+		"  ",
+		helpHintStyle.Render("|"),
+		"  ",
+		helpHintStyle.Render("Ctrl+H: help"),
+	)
+
+	// Combine title + content
+	fullContent := lipgloss.JoinVertical(
+		lipgloss.Left,
+		titleWithHint,
 		"",
 		content,
-		"",
-		helpText,
 	)
 
 	// Wrap in form box style
@@ -221,4 +226,49 @@ func (m Model) renderNoteFormLayer() *lipgloss.Layer {
 		Render(title + "\n\n" + formView)
 
 	return layers.CreateCenteredLayer(formBox, m.UiState.Width(), m.UiState.Height())
+}
+
+// renderTaskFormHelpLayer renders the task form keyboard shortcuts help screen as a layer
+func (m Model) renderTaskFormHelpLayer() *lipgloss.Layer {
+	helpContent := `TASK FORM - Keyboard Shortcuts
+
+FORM NAVIGATION
+  Tab             Navigate between form fields
+  Shift+Tab       Navigate backwards
+  Ctrl+S          Save task and close form
+  Esc             Close form (will prompt if unsaved)
+
+TEXT EDITING (Title/Description)
+  Shift+Enter     New line
+  Alt+Enter       New line
+  Ctrl+J          New line
+  Ctrl+E          Open editor
+  Enter           Next field
+
+COMMENTS SECTION
+  Ctrl+↓          Focus comments section
+  Down            Auto-focus comments (when not focused)
+  ↑↓              Scroll comments (when focused)
+  Mouse wheel     Scroll comments (when focused)
+  Tab/Shift+Tab   Return to form fields
+
+QUICK ACTIONS
+  Ctrl+N          Create new note/comment
+  Ctrl+L          Manage labels
+  Ctrl+P          Select parent tasks
+  Ctrl+C          Select child tasks
+  Ctrl+R          Change priority
+  Ctrl+T          Change task type
+
+HELP
+  Ctrl+/          Toggle this help menu
+  Esc             Close help menu
+
+Press Ctrl+/ or Esc to close`
+
+	helpBox := components.HelpBoxStyle.
+		Width(m.UiState.Width() * 3 / 8).
+		Render(helpContent)
+
+	return layers.CreateCenteredLayer(helpBox, m.UiState.Width(), m.UiState.Height())
 }
