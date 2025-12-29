@@ -24,6 +24,7 @@ const (
 	RelationTypePickerMode              // Relation type picker popup
 	NoteEditMode                        // Note/comment editing mode (list navigation)
 	NoteFormMode                        // Note/comment form (huh form for creating/editing individual note)
+	CommentsViewMode                    // Dedicated comments list view for a task
 	SearchMode                          // Vim-style search mode (/)
 	StatusPickerMode                    // Status picker popup for list view
 	TaskFormHelpMode                    // Help screen for task form shortcuts

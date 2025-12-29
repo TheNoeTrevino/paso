@@ -65,3 +65,50 @@ func (s *NoteState) MoveCursorDown(maxIdx int) bool {
 	}
 	return false
 }
+
+// GetSelectedComment returns the currently selected comment, or nil if none
+func (s *NoteState) GetSelectedComment() *models.Comment {
+	if s.Cursor >= 0 && s.Cursor < len(s.Items) {
+		return s.Items[s.Cursor].Comment
+	}
+	return nil
+}
+
+// SetComments replaces the comment list with new data
+func (s *NoteState) SetComments(comments []*models.Comment) {
+	s.Items = make([]NoteItem, len(comments))
+	for i, c := range comments {
+		s.Items[i] = NoteItem{Comment: c}
+	}
+	// Reset cursor if out of bounds
+	if s.Cursor >= len(s.Items) {
+		if len(s.Items) > 0 {
+			s.Cursor = len(s.Items) - 1
+		} else {
+			s.Cursor = 0
+		}
+	}
+}
+
+// IsEmpty returns true if there are no comments
+func (s *NoteState) IsEmpty() bool {
+	return len(s.Items) == 0
+}
+
+// DeleteSelected removes the currently selected comment from the list
+// and adjusts the cursor position appropriately
+func (s *NoteState) DeleteSelected() {
+	if s.Cursor < 0 || s.Cursor >= len(s.Items) {
+		return
+	}
+
+	// Remove the item at cursor
+	s.Items = append(s.Items[:s.Cursor], s.Items[s.Cursor+1:]...)
+
+	// Adjust cursor
+	if len(s.Items) == 0 {
+		s.Cursor = 0
+	} else if s.Cursor >= len(s.Items) {
+		s.Cursor = len(s.Items) - 1
+	}
+}
