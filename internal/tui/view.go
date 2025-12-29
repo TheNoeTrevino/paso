@@ -25,7 +25,7 @@ func (m Model) View() tea.View {
 		m.UiState.Mode() == state.ProjectFormMode ||
 		m.UiState.Mode() == state.AddColumnFormMode ||
 		m.UiState.Mode() == state.EditColumnFormMode ||
-		m.UiState.Mode() == state.NoteFormMode ||
+		m.UiState.Mode() == state.CommentFormMode ||
 		m.UiState.Mode() == state.CommentsViewMode ||
 		m.UiState.Mode() == state.HelpMode ||
 		m.UiState.Mode() == state.TaskFormHelpMode ||
@@ -45,24 +45,24 @@ func (m Model) View() tea.View {
 		var modalLayer *lipgloss.Layer
 		switch m.UiState.Mode() {
 		case state.TicketFormMode:
-			modalLayer = m.renderTicketFormLayer()
+			modalLayer = m.renderTaskFormLayer()
 		case state.ProjectFormMode:
 			modalLayer = m.renderProjectFormLayer()
 		case state.AddColumnFormMode, state.EditColumnFormMode:
 			modalLayer = m.renderColumnFormLayer()
-		case state.NoteFormMode:
-			// Stack both task form AND note form
-			layers = append(layers, m.renderTicketFormLayer())
-			modalLayer = m.renderNoteFormLayer()
+		case state.CommentFormMode:
+			// Stack both task form AND comment form
+			layers = append(layers, m.renderTaskFormLayer())
+			modalLayer = m.renderCommentFormLayer()
 		case state.CommentsViewMode:
 			// Stack both task form AND comments view
-			layers = append(layers, m.renderTicketFormLayer())
+			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderCommentsViewLayer()
 		case state.HelpMode:
 			modalLayer = m.renderHelpLayer()
 		case state.TaskFormHelpMode:
 			// Stack both task form AND help menu
-			layers = append(layers, m.renderTicketFormLayer())
+			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderTaskFormHelpLayer()
 		}
 
