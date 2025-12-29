@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"charm.land/bubbles/v2/viewport"
 	"charm.land/lipgloss/v2"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/thenoetrevino/paso/internal/models"
@@ -173,8 +172,9 @@ func renderCommentSimple(comment *models.Comment, width int) string {
 	return headerStyle.Render(header) + "\n" + contentStyle.Render(wrapped)
 }
 
-// renderFormNotesZone renders the bottom zone with notes/comments using a viewport
-func (m *Model) renderFormNotesZone(width, height int) string {
+// renderFormCommentsPreview renders a read-only preview of recent comments
+// Users press Ctrl+N to open the full comments view
+func (m *Model) renderFormCommentsPreview(width, height int) string {
 	headerStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Subtle)).
 		Bold(true)
@@ -183,65 +183,73 @@ func (m *Model) renderFormNotesZone(width, height int) string {
 		Foreground(lipgloss.Color(theme.Subtle)).
 		Italic(true)
 
-	// Notes header with count
-	noteCount := len(m.FormState.FormComments)
-	header := headerStyle.Render(fmt.Sprintf("Notes (%d)", noteCount))
+	commentCount := len(m.FormState.FormComments)
 
-	// Calculate available height for viewport
-	// Account for: header (1 line), blank line (1), top border (1), padding (2) = 5 lines
+	// Header: "Comments · {count} total · ctrl+n to open"
+	var headerText string
+	if commentCount == 0 {
+		headerText = "Comments · ctrl+n to add"
+	} else {
+		headerText = fmt.Sprintf("Recent Comments · %d total · ctrl+n to open all notes", commentCount)
+	}
+	header := headerStyle.Render(headerText)
+
+	// Calculate available height for preview (excluding header, border, padding)
+	// Account for: header (1), blank line (1), top border (1), padding (2) = 5 lines
 	availableHeight := max(height-5, 1)
 
-	var viewportContent string
+	var previewContent string
 
-	if noteCount == 0 {
-		viewportContent = subtleStyle.Render("ctrl+n to add a new note")
+	if commentCount == 0 {
+		previewContent = subtleStyle.Render("No comments yet · ctrl+n to add")
 	} else {
-		// Initialize viewport if not ready
-		if !m.FormState.ViewportReady {
-			vp := viewport.New()
-			vp.SetWidth(width - 2)
-			vp.SetHeight(availableHeight)
-			vp.Style = lipgloss.NewStyle()
-			vp.MouseWheelEnabled = true
-			m.FormState.CommentsViewport = vp
-			m.FormState.ViewportReady = true
+		// Show most recent comments based on available height
+		// Each comment takes ~2-3 lines (header + 1-2 lines content)
+		// Being very generous to show as many recent comments as possible
+		maxComments := max((availableHeight+1)/2, 1)
+
+		var previewLines []string
+		displayCount := min(commentCount, maxComments)
+
+		// Show most recent comments first
+		for i := commentCount - 1; i >= max(commentCount-displayCount, 0); i-- {
+			comment := m.FormState.FormComments[i]
+
+			// Truncate comment content to fit preview
+			contentWidth := max(width-4, 20)
+			content := comment.Message
+			lines := strings.Split(wordwrap.String(content, contentWidth), "\n")
+
+			// Take first 2-3 lines only
+			maxLines := 2
+			if len(lines) > maxLines {
+				lines = lines[:maxLines]
+				lines[maxLines-1] = lines[maxLines-1] + "..."
+			}
+
+			// Render comment preview
+			timestamp := comment.CreatedAt.Format("Jan 2 15:04")
+			authorIcon := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("󰀄 ")
+			dateIcon := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("  ")
+
+			commentHeader := fmt.Sprintf("%s%s%s%s", authorIcon, comment.Author, dateIcon, timestamp)
+			headerLine := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render(commentHeader)
+
+			contentLines := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal)).Render(strings.Join(lines, "\n"))
+
+			previewLines = append(previewLines, headerLine+"\n"+contentLines)
 		}
 
-		// Update viewport dimensions in case terminal was resized
-		m.FormState.CommentsViewport.SetWidth(width - 2)
-		m.FormState.CommentsViewport.SetHeight(availableHeight)
-
-		// Render all comments into viewport content
-		var commentLines []string
-		for _, comment := range m.FormState.FormComments {
-			commentLines = append(commentLines, renderCommentSimple(comment, width-2))
-		}
-		allComments := strings.Join(commentLines, "\n\n")
-
-		// Set content and scroll to bottom (most recent comment)
-		m.FormState.CommentsViewport.SetContent(allComments)
-		if !m.FormState.ViewportFocused {
-			// Auto-scroll to bottom when not focused (to show most recent)
-			m.FormState.CommentsViewport.GotoBottom()
-		}
-
-		viewportContent = m.FormState.CommentsViewport.View()
+		previewContent = strings.Join(previewLines, "\n\n")
 	}
 
-	// Compose content - header and viewport, separated by blank line
+	// Compose content
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
 		"",
-		viewportContent,
+		previewContent,
 	)
-
-	// Determine border color based on focus (kept for potential future use)
-	borderColor := theme.Subtle
-	if m.FormState.ViewportFocused {
-		borderColor = theme.Highlight
-	}
-	_ = borderColor // Suppress unused warning for now
 
 	noteZoneStyle := lipgloss.NewStyle().
 		Width(width).
