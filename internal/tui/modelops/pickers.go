@@ -8,7 +8,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
-// InitParentPickerForForm initializes the parent picker for use in TicketFormMode.
+// InitParentPickerForForm initializes the parent picker for use in task form mode.
 // In edit mode: loads existing parent relationships from FormState.
 // In create mode: starts with empty selection (relationships applied after task creation).
 //
@@ -75,7 +75,7 @@ func InitParentPickerForForm(m *tui.Model) bool {
 	return true
 }
 
-// InitChildPickerForForm initializes the child picker for use in TicketFormMode.
+// InitChildPickerForForm initializes the child picker for use in task form mode.
 // In edit mode: loads existing child relationships from FormState.
 // In create mode: starts with empty selection (relationships applied after task creation).
 //
@@ -140,7 +140,7 @@ func InitChildPickerForForm(m *tui.Model) bool {
 	return true
 }
 
-// InitLabelPickerForForm initializes the label picker for use in TicketFormMode.
+// InitLabelPickerForForm initializes the label picker for use in task form mode.
 // In edit mode: loads existing label selections from FormState.
 // In create mode: starts with empty selection (labels applied on form submission).
 //
@@ -182,7 +182,7 @@ func GetFilteredLabelPickerItems(m *tui.Model) []state.LabelPickerItem {
 	return m.LabelPickerState.GetFilteredItems()
 }
 
-// InitPriorityPickerForForm initializes the priority picker for use in TicketFormMode.
+// InitPriorityPickerForForm initializes the priority picker for use in task form mode.
 // Loads the current priority from the form state.
 func InitPriorityPickerForForm(m *tui.Model) bool {
 	// Get current priority ID from form state
@@ -221,7 +221,7 @@ func InitPriorityPickerForForm(m *tui.Model) bool {
 	return true
 }
 
-// InitTypePickerForForm initializes the type picker for use in TicketFormMode.
+// InitTypePickerForForm initializes the type picker for use in task form mode.
 // Loads the current type from the form state.
 func InitTypePickerForForm(m *tui.Model) bool {
 	// Get current type ID from form state
