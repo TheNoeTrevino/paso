@@ -217,15 +217,15 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 		descriptionLines = 10
 	}
 
-	m.FormState.TicketForm = huhforms.CreateTicketForm(
+	m.FormState.TaskForm = huhforms.CreateTaskForm(
 		&m.FormState.FormTitle,
 		&m.FormState.FormDescription,
 		&m.FormState.FormConfirm,
 		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.FormState.SnapshotTicketFormInitialValues()
+	m.FormState.SnapshotTaskFormInitialValues()
 	m.UiState.SetMode(state.TicketFormMode)
-	return m, m.FormState.TicketForm.Init()
+	return m, m.FormState.TaskForm.Init()
 }
 
 func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
@@ -283,15 +283,15 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		descriptionLines = 10
 	}
 
-	m.FormState.TicketForm = huhforms.CreateTicketForm(
+	m.FormState.TaskForm = huhforms.CreateTaskForm(
 		&m.FormState.FormTitle,
 		&m.FormState.FormDescription,
 		&m.FormState.FormConfirm,
 		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.FormState.SnapshotTicketFormInitialValues()
+	m.FormState.SnapshotTaskFormInitialValues()
 	m.UiState.SetMode(state.TicketFormMode)
-	return m, m.FormState.TicketForm.Init()
+	return m, m.FormState.TaskForm.Init()
 }
 
 func (m Model) handleDeleteTask() (tea.Model, tea.Cmd) {
