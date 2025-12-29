@@ -12,7 +12,7 @@ import (
 
 // renderCommentsViewContent renders the full comments view content (without layer wrapping)
 func (m Model) renderCommentsViewContent(width, height int) string {
-	if m.NoteState.TaskID == 0 {
+	if m.CommentState.TaskID == 0 {
 		return "Error: No task selected"
 	}
 
@@ -24,7 +24,7 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 	}
 
 	// Title bar
-	commentCount := len(m.NoteState.Items)
+	commentCount := len(m.CommentState.Items)
 	titleText := fmt.Sprintf("Task Comments - \"%s\" (%d comments)", taskTitle, commentCount)
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
@@ -32,7 +32,7 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 	titleBar := titleStyle.Render(titleText)
 
 	// Empty state
-	if m.NoteState.IsEmpty() {
+	if m.CommentState.IsEmpty() {
 		emptyContent := renderEmptyCommentsState(width, height-4) // Reserve for title + help
 		helpText := renderCommentsHelpText()
 		return lipgloss.JoinVertical(lipgloss.Left, titleBar, "", emptyContent, "", helpText)
@@ -49,8 +49,8 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 
 	// Render comment cards
 	var cards []string
-	for i, item := range m.NoteState.Items {
-		selected := (i == m.NoteState.Cursor)
+	for i, item := range m.CommentState.Items {
+		selected := (i == m.CommentState.Cursor)
 		card := components.RenderCommentCard(item.Comment, selected, cardWidth)
 		cards = append(cards, card)
 	}
@@ -60,7 +60,7 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 
 	// Calculate scroll indicators
 	availableHeight := height - 4 // Reserve for title + help
-	scrollIndicators := calculateCommentsScrollIndicators(m.NoteState, availableHeight, len(cards))
+	scrollIndicators := calculateCommentsScrollIndicators(m.CommentState, availableHeight, len(cards))
 
 	// Combine content
 	helpText := renderCommentsHelpText()
@@ -116,7 +116,7 @@ type ScrollIndicators struct {
 }
 
 // calculateCommentsScrollIndicators determines if scroll indicators should be shown
-func calculateCommentsScrollIndicators(noteState *state.NoteState, availableHeight int, cardCount int) ScrollIndicators {
+func calculateCommentsScrollIndicators(commentState *state.CommentState, availableHeight int, cardCount int) ScrollIndicators {
 	indicators := ScrollIndicators{
 		Top:    "",
 		Bottom: "",
@@ -129,11 +129,11 @@ func calculateCommentsScrollIndicators(noteState *state.NoteState, availableHeig
 			Foreground(lipgloss.Color(theme.Subtle)).
 			Align(lipgloss.Center)
 
-		if noteState.Cursor > 0 {
+		if commentState.Cursor > 0 {
 			indicators.Top = indicatorStyle.Render("↑ More comments above...")
 		}
 
-		if noteState.Cursor < cardCount-1 {
+		if commentState.Cursor < cardCount-1 {
 			indicators.Bottom = indicatorStyle.Render("↓ More comments below...")
 		}
 	}

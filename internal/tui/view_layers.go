@@ -10,9 +10,9 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
-// renderTicketFormLayer renders the ticket creation/edit form modal as a layer
-func (m Model) renderTicketFormLayer() *lipgloss.Layer {
-	if m.FormState.TicketForm == nil {
+// renderTaskFormLayer renders the task creation/edit form modal as a layer
+func (m Model) renderTaskFormLayer() *lipgloss.Layer {
+	if m.FormState.TaskForm == nil {
 		return nil
 	}
 
@@ -225,7 +225,7 @@ Press any key to close`,
 
 // renderCommentsViewLayer renders the comments view modal as a full-screen layer
 func (m Model) renderCommentsViewLayer() *lipgloss.Layer {
-	// Calculate layer dimensions (80% of screen, same as ticket form)
+	// Calculate layer dimensions (80% of screen, same as task form)
 	layerWidth := m.UiState.Width() * 8 / 10
 	layerHeight := m.UiState.Height() * 8 / 10
 
@@ -241,8 +241,8 @@ func (m Model) renderCommentsViewLayer() *lipgloss.Layer {
 	return layers.CreateCenteredLayer(commentsBox, m.UiState.Width(), m.UiState.Height())
 }
 
-// renderNoteFormLayer renders the note creation/edit form modal as a layer
-func (m Model) renderNoteFormLayer() *lipgloss.Layer {
+// renderCommentFormLayer renders the comment creation/edit form modal as a layer
+func (m Model) renderCommentFormLayer() *lipgloss.Layer {
 	if m.FormState.CommentForm == nil {
 		return nil
 	}
@@ -252,9 +252,9 @@ func (m Model) renderNoteFormLayer() *lipgloss.Layer {
 	// Determine title based on mode
 	var title string
 	if m.FormState.EditingCommentID == 0 {
-		title = "New Note"
+		title = "New Comment"
 	} else {
-		title = "Edit Note"
+		title = "Edit Comment"
 	}
 
 	// Wrap form in a styled container
@@ -291,7 +291,7 @@ COMMENTS SECTION
   Tab/Shift+Tab   Return to form fields
 
 QUICK ACTIONS
-  Ctrl+N          Create new note/comment
+  Ctrl+N          Create new comment
   Ctrl+L          Manage labels
   Ctrl+P          Select parent tasks
   Ctrl+C          Select child tasks
