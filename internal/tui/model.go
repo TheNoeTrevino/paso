@@ -41,7 +41,7 @@ type Model struct {
 	PriorityPickerState     *state.PriorityPickerState
 	TypePickerState         *state.TypePickerState
 	RelationTypePickerState *state.RelationTypePickerState
-	NoteState               *state.NoteState
+	CommentState            *state.CommentState
 	NotificationState       *state.NotificationState
 	SearchState             *state.SearchState
 	ListViewState           *state.ListViewState
@@ -105,7 +105,7 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	priorityPickerState := state.NewPriorityPickerState()
 	typePickerState := state.NewTypePickerState()
 	relationTypePickerState := state.NewRelationTypePickerState()
-	noteState := state.NewNoteState()
+	commentState := state.NewCommentState()
 	notificationState := state.NewNotificationState()
 	searchState := state.NewSearchState()
 	listViewState := state.NewListViewState()
@@ -171,7 +171,7 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 		PriorityPickerState:     priorityPickerState,
 		TypePickerState:         typePickerState,
 		RelationTypePickerState: relationTypePickerState,
-		NoteState:               noteState,
+		CommentState:            commentState,
 		NotificationState:       notificationState,
 		SearchState:             searchState,
 		ListViewState:           listViewState,
@@ -628,7 +628,7 @@ func (m Model) reloadProjects() {
 	m.AppState.SetProjects(projects)
 }
 
-// initParentPickerForForm initializes the parent picker for use in TicketFormMode.
+// initParentPickerForForm initializes the parent picker for use in task form mode.
 // In edit mode: loads existing parent relationships from FormState.
 // In create mode: starts with empty selection (relationships applied after task creation).
 //
@@ -694,7 +694,7 @@ func (m *Model) initParentPickerForForm() bool {
 	return true
 }
 
-// initChildPickerForForm initializes the child picker for use in TicketFormMode.
+// initChildPickerForForm initializes the child picker for use in task form mode.
 // In edit mode: loads existing child relationships from FormState.
 // In create mode: starts with empty selection (relationships applied after task creation).
 //
@@ -759,7 +759,7 @@ func (m *Model) initChildPickerForForm() bool {
 	return true
 }
 
-// initLabelPickerForForm initializes the label picker for use in TicketFormMode.
+// initLabelPickerForForm initializes the label picker for use in task form mode.
 // In edit mode: loads existing label selections from FormState.
 // In create mode: starts with empty selection (labels applied on form submission).
 //
@@ -801,7 +801,7 @@ func (m *Model) getFilteredLabelPickerItems() []state.LabelPickerItem {
 	return m.LabelPickerState.GetFilteredItems()
 }
 
-// initPriorityPickerForForm initializes the priority picker for use in TicketFormMode.
+// initPriorityPickerForForm initializes the priority picker for use in task form mode.
 // Loads the current priority from the form state.
 func (m *Model) initPriorityPickerForForm() bool {
 	// Get current priority ID from form state
@@ -840,7 +840,7 @@ func (m *Model) initPriorityPickerForForm() bool {
 	return true
 }
 
-// initTypePickerForForm initializes the type picker for use in TicketFormMode.
+// initTypePickerForForm initializes the type picker for use in task form mode.
 // Loads the current type from the form state.
 func (m *Model) initTypePickerForForm() bool {
 	// Get current type ID from form state
