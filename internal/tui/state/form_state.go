@@ -85,6 +85,7 @@ type FormState struct {
 	FormCommentMessage        string    // Form field: comment message text
 	EditingCommentID          int       // ID of comment being edited (0 for new comment)
 	InitialFormCommentMessage string    // Initial comment message for change detection
+	CommentFormReturnMode     Mode      // Mode to return to after comment form (TicketFormMode or CommentsViewMode)
 }
 
 // NewFormState creates a new FormState with default values.
