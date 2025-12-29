@@ -55,7 +55,7 @@ func (m Model) renderTicketFormLayer() *lipgloss.Layer {
 
 	// Render the three zones
 	topLeftZone := m.renderFormTitleDescriptionZone(leftColumnWidth, topLeftHeight)
-	bottomLeftZone := m.renderFormNotesZone(leftColumnWidth, bottomLeftHeight)
+	bottomLeftZone := m.renderFormCommentsPreview(leftColumnWidth, bottomLeftHeight)
 	rightZone := m.renderFormMetadataZone(rightColumnWidth, rightColumnHeight)
 
 	// Compose left column (top + bottom)
@@ -221,6 +221,24 @@ Press any key to close`,
 		km.ShowHelp,
 		km.Quit,
 	)
+}
+
+// renderCommentsViewLayer renders the comments view modal as a full-screen layer
+func (m Model) renderCommentsViewLayer() *lipgloss.Layer {
+	// Calculate layer dimensions (80% of screen, same as ticket form)
+	layerWidth := m.UiState.Width() * 8 / 10
+	layerHeight := m.UiState.Height() * 8 / 10
+
+	// Render comments view content
+	content := m.renderCommentsViewContent(layerWidth, layerHeight)
+
+	// Wrap in styled box
+	commentsBox := components.HelpBoxStyle.
+		Width(layerWidth).
+		Height(layerHeight).
+		Render(content)
+
+	return layers.CreateCenteredLayer(commentsBox, m.UiState.Width(), m.UiState.Height())
 }
 
 // renderNoteFormLayer renders the note creation/edit form modal as a layer
