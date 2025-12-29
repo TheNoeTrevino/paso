@@ -22,6 +22,6 @@ func TaskCmd() *cobra.Command {
 	cmd.AddCommand(MoveCmd())
 	cmd.AddCommand(ReadyMoveCmd())
 	cmd.AddCommand(DoneCmd())
-	cmd.AddCommand(NoteCmd())
+	cmd.AddCommand(CommentCmd())
 	return cmd
 }
