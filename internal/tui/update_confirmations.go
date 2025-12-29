@@ -56,7 +56,7 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 // confirmDeleteComment performs the actual comment deletion.
 func (m Model) confirmDeleteComment() (tea.Model, tea.Cmd) {
 	commentID := m.FormState.EditingCommentID
-	taskID := m.NoteState.TaskID
+	taskID := m.CommentState.TaskID
 
 	if commentID != 0 && taskID != 0 {
 		ctx, cancel := m.DbContext()
@@ -67,14 +67,14 @@ func (m Model) confirmDeleteComment() (tea.Model, tea.Cmd) {
 			m.NotificationState.Add(state.LevelError, "Failed to delete comment")
 		} else {
 			// Remove from local state
-			m.NoteState.DeleteSelected()
+			m.CommentState.DeleteSelected()
 			m.NotificationState.Add(state.LevelInfo, "Comment deleted")
 
 			// Refresh comments in form state
 			comments, err := m.App.TaskService.GetCommentsByTask(ctx, taskID)
 			if err == nil {
 				m.FormState.FormComments = comments
-				m.NoteState.SetComments(comments)
+				m.CommentState.SetComments(comments)
 			}
 		}
 	}
@@ -121,7 +121,7 @@ func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
 	// Clear the appropriate form/input based on source mode
 	switch ctx.SourceMode {
 	case state.TicketFormMode:
-		m.FormState.ClearTicketForm()
+		m.FormState.ClearTaskForm()
 
 	case state.ProjectFormMode:
 		m.FormState.ClearProjectForm()
@@ -129,10 +129,10 @@ func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
 	case state.AddColumnFormMode, state.EditColumnFormMode:
 		m.FormState.ClearColumnForm()
 
-	case state.NoteFormMode:
+	case state.CommentFormMode:
 		m.FormState.ClearCommentForm()
-		// Return to note list instead of normal mode
-		m.UiState.SetMode(state.NoteEditMode)
+		// Return to comment list instead of normal mode
+		m.UiState.SetMode(state.CommentEditMode)
 		m.UiState.ClearDiscardContext()
 		return m, tea.ClearScreen
 	}

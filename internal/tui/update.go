@@ -33,7 +33,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if m.UiState.Mode() == state.TicketFormMode {
-		return m.updateTicketForm(msg)
+		return m.updateTaskForm(msg)
 	}
 	if m.UiState.Mode() == state.ProjectFormMode {
 		return m.updateProjectForm(msg)
@@ -42,14 +42,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.UiState.Mode() == state.AddColumnFormMode || m.UiState.Mode() == state.EditColumnFormMode {
 		return m.updateColumnForm(msg)
 	}
-	// Handle note form early to prevent key binding conflicts (e.g., space key)
-	if m.UiState.Mode() == state.NoteFormMode {
-		return m.updateNoteForm(msg)
+	// Handle comment form early to prevent key binding conflicts (e.g., space key)
+	if m.UiState.Mode() == state.CommentFormMode {
+		return m.updateCommentForm(msg)
 	}
-	// Handle NoteEditMode early to prevent key binding conflicts (e.g., space key mapped to ViewTask)
-	if m.UiState.Mode() == state.NoteEditMode {
+	// Handle CommentEditMode early to prevent key binding conflicts (e.g., space key mapped to ViewTask)
+	if m.UiState.Mode() == state.CommentEditMode {
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
-			return m.updateNotes(keyMsg)
+			return m.updateCommentEdit(keyMsg)
 		}
 		return m, nil
 	}

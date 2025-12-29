@@ -30,20 +30,20 @@ func (m Model) handleCommentsViewInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleCommentsViewUp moves cursor up in comments list
 func (m Model) handleCommentsViewUp() (tea.Model, tea.Cmd) {
-	m.NoteState.MoveCursorUp()
+	m.CommentState.MoveCursorUp()
 	return m, nil
 }
 
 // handleCommentsViewDown moves cursor down in comments list
 func (m Model) handleCommentsViewDown() (tea.Model, tea.Cmd) {
-	maxIdx := len(m.NoteState.Items) - 1
-	m.NoteState.MoveCursorDown(maxIdx)
+	maxIdx := len(m.CommentState.Items) - 1
+	m.CommentState.MoveCursorDown(maxIdx)
 	return m, nil
 }
 
 // handleCommentsViewEdit opens the comment form to edit the selected comment
 func (m Model) handleCommentsViewEdit() (tea.Model, tea.Cmd) {
-	selectedComment := m.NoteState.GetSelectedComment()
+	selectedComment := m.CommentState.GetSelectedComment()
 	if selectedComment == nil {
 		m.NotificationState.Add(state.LevelError, "No comment selected")
 		return m, nil
@@ -62,8 +62,8 @@ func (m Model) handleCommentsViewEdit() (tea.Model, tea.Cmd) {
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.FormState.SnapshotCommentFormInitialValues()
 
-	// Switch to note form mode
-	m.UiState.SetMode(state.NoteFormMode)
+	// Switch to comment form mode
+	m.UiState.SetMode(state.CommentFormMode)
 
 	return m, m.FormState.CommentForm.Init()
 }
@@ -83,15 +83,15 @@ func (m Model) handleCommentsViewAdd() (tea.Model, tea.Cmd) {
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.FormState.SnapshotCommentFormInitialValues()
 
-	// Switch to note form mode
-	m.UiState.SetMode(state.NoteFormMode)
+	// Switch to comment form mode
+	m.UiState.SetMode(state.CommentFormMode)
 
 	return m, m.FormState.CommentForm.Init()
 }
 
 // handleCommentsViewDelete shows confirmation dialog for deleting the selected comment
 func (m Model) handleCommentsViewDelete() (tea.Model, tea.Cmd) {
-	selectedComment := m.NoteState.GetSelectedComment()
+	selectedComment := m.CommentState.GetSelectedComment()
 	if selectedComment == nil {
 		m.NotificationState.Add(state.LevelError, "No comment selected")
 		return m, nil
@@ -107,9 +107,9 @@ func (m Model) handleCommentsViewDelete() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleCommentsViewClose closes the comments view and returns to ticket form
+// handleCommentsViewClose closes the comments view and returns to task form
 func (m Model) handleCommentsViewClose() (tea.Model, tea.Cmd) {
-	// Return to ticket form mode
+	// Return to task form mode
 	m.UiState.SetMode(state.TicketFormMode)
 	return m, nil
 }
