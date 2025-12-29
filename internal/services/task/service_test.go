@@ -156,7 +156,7 @@ func createTestSchema(db *sql.DB) error {
 	CREATE TABLE IF NOT EXISTS task_comments (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		task_id INTEGER NOT NULL,
-		content TEXT NOT NULL CHECK(length(content) <= 500),
+		content TEXT NOT NULL CHECK(length(content) <= 1000),
 		author TEXT NOT NULL DEFAULT '',
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -265,6 +265,19 @@ func createTestLabel(t *testing.T, db *sql.DB, projectID int, name string) int {
 	result, err := db.ExecContext(context.Background(), "INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)", projectID, name, "#FF5733")
 	if err != nil {
 		t.Fatalf("Failed to create test label: %v", err)
+	}
+	id, _ := result.LastInsertId()
+	return int(id)
+}
+
+// createTestComment creates a test comment and returns its ID
+func createTestComment(t *testing.T, db *sql.DB, taskID int, message, author string) int {
+	t.Helper()
+	result, err := db.ExecContext(context.Background(),
+		"INSERT INTO task_comments (task_id, content, author) VALUES (?, ?, ?)",
+		taskID, message, author)
+	if err != nil {
+		t.Fatalf("Failed to create test comment: %v", err)
 	}
 	id, _ := result.LastInsertId()
 	return int(id)
@@ -2159,7 +2172,6 @@ func TestGetTaskTreeByProject_MultipleRootsWithChildren(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // MOVE TO READY COLUMN TESTS
 // ============================================================================
 
@@ -2588,5 +2600,1036 @@ func TestMoveTaskToReadyColumn_MultipleTasksInProject(t *testing.T) {
 	}
 	if col3 != todoColID {
 		t.Errorf("Expected task3 in todo column, got column %d", col3)
+	}
+}
+
+// ============================================================================
+// TEST CASES - COMMENT OPERATIONS
+// ============================================================================
+
+func TestMoveTaskToReadyColumn(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	todoColID := createTestColumn(t, db, projectID, "To Do")
+	readyColID := createTestReadyColumn(t, db, projectID, "Ready")
+	svc := NewService(db, nil)
+
+	// Create task in To Do column
+	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: todoColID,
+		Position: 0,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create task: %v", err)
+	}
+
+	// Move to ready column
+	err = svc.MoveTaskToReadyColumn(context.Background(), task.ID)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify task moved to ready column
+	var columnID int
+	err = db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task.ID).Scan(&columnID)
+	if err != nil {
+		t.Fatalf("Failed to query task: %v", err)
+	}
+
+	if columnID != readyColID {
+		t.Errorf("Expected task in ready column %d, got %d", readyColID, columnID)
+	}
+}
+
+func TestMoveTaskToReadyColumn_InvalidTaskID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	// Try to move non-existent task
+	err := svc.MoveTaskToReadyColumn(context.Background(), 999)
+
+	if err == nil {
+		t.Fatal("Expected error for invalid task ID")
+	}
+
+	if !errors.Is(err, ErrInvalidTaskID) && !errors.Is(err, sql.ErrNoRows) {
+		t.Errorf("Expected ErrInvalidTaskID or sql.ErrNoRows, got %v", err)
+	}
+}
+
+func TestMoveTaskToReadyColumn_NoReadyColumn(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create task
+	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: columnID,
+		Position: 0,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create task: %v", err)
+	}
+
+	// Try to move to ready column when none exists
+	err = svc.MoveTaskToReadyColumn(context.Background(), task.ID)
+
+	if err == nil {
+		t.Fatal("Expected error when no ready column exists")
+	}
+
+	if !errors.Is(err, sql.ErrNoRows) && err.Error() != "no ready column configured for this project" {
+		t.Errorf("Expected 'no ready column' error, got %v", err)
+	}
+}
+
+func TestMoveTaskToReadyColumn_AlreadyInReadyColumn(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	readyColID := createTestReadyColumn(t, db, projectID, "Ready")
+	svc := NewService(db, nil)
+
+	// Create task already in ready column
+	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: readyColID,
+		Position: 0,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create task: %v", err)
+	}
+
+	// Try to move to ready column (already there)
+	err = svc.MoveTaskToReadyColumn(context.Background(), task.ID)
+
+	if !errors.Is(err, ErrTaskAlreadyInTargetColumn) {
+		t.Errorf("Expected ErrTaskAlreadyInTargetColumn, got %v", err)
+	}
+}
+
+func TestMoveTaskToReadyColumn_ZeroTaskID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	// Try to move task with ID 0
+	err := svc.MoveTaskToReadyColumn(context.Background(), 0)
+
+	if !errors.Is(err, ErrInvalidTaskID) {
+		t.Errorf("Expected ErrInvalidTaskID for task ID 0, got %v", err)
+	}
+}
+
+func TestMoveTaskToReadyColumn_NegativeTaskID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	// Try to move task with negative ID
+	err := svc.MoveTaskToReadyColumn(context.Background(), -1)
+
+	if !errors.Is(err, ErrInvalidTaskID) {
+		t.Errorf("Expected ErrInvalidTaskID for negative task ID, got %v", err)
+	}
+}
+
+// ============================================================================
+// MOVE TO COMPLETED COLUMN TESTS
+// ============================================================================
+
+func TestMoveTaskToCompletedColumn(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	todoColID := createTestColumn(t, db, projectID, "To Do")
+	completedColID := createTestCompletedColumn(t, db, projectID, "Done")
+	svc := NewService(db, nil)
+
+	// Create task in To Do column
+	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: todoColID,
+		Position: 0,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create task: %v", err)
+	}
+
+	// Move to completed column
+	err = svc.MoveTaskToCompletedColumn(context.Background(), task.ID)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify task moved to completed column
+	var columnID int
+	err = db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task.ID).Scan(&columnID)
+	if err != nil {
+		t.Fatalf("Failed to query task: %v", err)
+	}
+
+	if columnID != completedColID {
+		t.Errorf("Expected task in completed column %d, got %d", completedColID, columnID)
+	}
+}
+
+func TestMoveTaskToCompletedColumn_InvalidTaskID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	// Try to move non-existent task
+	err := svc.MoveTaskToCompletedColumn(context.Background(), 999)
+
+	if err == nil {
+		t.Fatal("Expected error for invalid task ID")
+	}
+
+	if !errors.Is(err, ErrInvalidTaskID) && !errors.Is(err, sql.ErrNoRows) {
+		t.Errorf("Expected ErrInvalidTaskID or sql.ErrNoRows, got %v", err)
+	}
+}
+
+func TestMoveTaskToCompletedColumn_NoCompletedColumn(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create task
+	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: columnID,
+		Position: 0,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create task: %v", err)
+	}
+
+	// Try to move to completed column when none exists
+	err = svc.MoveTaskToCompletedColumn(context.Background(), task.ID)
+
+	if err == nil {
+		t.Fatal("Expected error when no completed column exists")
+	}
+
+	if !errors.Is(err, sql.ErrNoRows) && err.Error() != "no completed column configured for this project" {
+		t.Errorf("Expected 'no completed column' error, got %v", err)
+	}
+}
+
+func TestMoveTaskToCompletedColumn_AlreadyInCompletedColumn(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	completedColID := createTestCompletedColumn(t, db, projectID, "Done")
+	svc := NewService(db, nil)
+
+	// Create task already in completed column
+	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: completedColID,
+		Position: 0,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create task: %v", err)
+	}
+
+	// Try to move to completed column (already there)
+	err = svc.MoveTaskToCompletedColumn(context.Background(), task.ID)
+
+	if !errors.Is(err, ErrTaskAlreadyInTargetColumn) {
+		t.Errorf("Expected ErrTaskAlreadyInTargetColumn, got %v", err)
+	}
+}
+
+func TestMoveTaskToCompletedColumn_ZeroTaskID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	// Try to move task with ID 0
+	err := svc.MoveTaskToCompletedColumn(context.Background(), 0)
+
+	if !errors.Is(err, ErrInvalidTaskID) {
+		t.Errorf("Expected ErrInvalidTaskID for task ID 0, got %v", err)
+	}
+}
+
+func TestMoveTaskToCompletedColumn_NegativeTaskID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	// Try to move task with negative ID
+	err := svc.MoveTaskToCompletedColumn(context.Background(), -1)
+
+	if !errors.Is(err, ErrInvalidTaskID) {
+		t.Errorf("Expected ErrInvalidTaskID for negative task ID, got %v", err)
+	}
+}
+
+func TestMoveTaskToCompletedColumn_MultipleTasksInProject(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	todoColID := createTestColumn(t, db, projectID, "To Do")
+	inProgressColID := createTestColumn(t, db, projectID, "In Progress")
+	completedColID := createTestCompletedColumn(t, db, projectID, "Done")
+	svc := NewService(db, nil)
+
+	// Create multiple tasks in different columns
+	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 1",
+		ColumnID: todoColID,
+		Position: 0,
+	})
+	task2, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 2",
+		ColumnID: inProgressColID,
+		Position: 0,
+	})
+	task3, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 3",
+		ColumnID: todoColID,
+		Position: 1,
+	})
+
+	// Move task2 to completed
+	err := svc.MoveTaskToCompletedColumn(context.Background(), task2.ID)
+	if err != nil {
+		t.Fatalf("Expected no error moving task2, got %v", err)
+	}
+
+	// Verify task2 is in completed column
+	var col2 int
+	if err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task2.ID).Scan(&col2); err != nil {
+		t.Fatalf("Failed to query task2 column: %v", err)
+	}
+	if col2 != completedColID {
+		t.Errorf("Expected task2 in completed column, got column %d", col2)
+	}
+
+	// Verify other tasks are unchanged
+	var col1, col3 int
+	if err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task1.ID).Scan(&col1); err != nil {
+		t.Fatalf("Failed to query task1 column: %v", err)
+	}
+	if err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task3.ID).Scan(&col3); err != nil {
+		t.Fatalf("Failed to query task3 column: %v", err)
+	}
+
+	if col1 != todoColID {
+		t.Errorf("Expected task1 in todo column, got column %d", col1)
+	}
+	if col3 != todoColID {
+		t.Errorf("Expected task3 in todo column, got column %d", col3)
+	}
+}
+
+func TestMoveTaskToReadyColumn_MultipleTasksInProject(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	todoColID := createTestColumn(t, db, projectID, "To Do")
+	inProgressColID := createTestColumn(t, db, projectID, "In Progress")
+	readyColID := createTestReadyColumn(t, db, projectID, "Ready")
+	svc := NewService(db, nil)
+
+	// Create multiple tasks in different columns
+	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 1",
+		ColumnID: todoColID,
+		Position: 0,
+	})
+	task2, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 2",
+		ColumnID: inProgressColID,
+		Position: 0,
+	})
+	task3, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 3",
+		ColumnID: todoColID,
+		Position: 1,
+	})
+
+	// Move task2 to ready
+	err := svc.MoveTaskToReadyColumn(context.Background(), task2.ID)
+	if err != nil {
+		t.Fatalf("Expected no error moving task2, got %v", err)
+	}
+
+	// Verify task2 is in ready column
+	var col2 int
+	if err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task2.ID).Scan(&col2); err != nil {
+		t.Fatalf("Failed to query task2 column: %v", err)
+	}
+	if col2 != readyColID {
+		t.Errorf("Expected task2 in ready column, got column %d", col2)
+	}
+
+	// Verify other tasks are unchanged
+	var col1, col3 int
+	if err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task1.ID).Scan(&col1); err != nil {
+		t.Fatalf("Failed to query task1 column: %v", err)
+	}
+	if err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task3.ID).Scan(&col3); err != nil {
+		t.Fatalf("Failed to query task3 column: %v", err)
+	}
+
+	if col1 != todoColID {
+		t.Errorf("Expected task1 in todo column, got column %d", col1)
+	}
+	if col3 != todoColID {
+		t.Errorf("Expected task3 in todo column, got column %d", col3)
+	}
+}
+
+// ============================================================================
+// TEST CASES - COMMENT OPERATIONS
+// ============================================================================
+
+func TestCreateComment(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	svc := NewService(db, nil)
+
+	req := CreateCommentRequest{
+		TaskID:  taskID,
+		Message: "This is a test comment",
+		Author:  "testuser",
+	}
+
+	result, err := svc.CreateComment(context.Background(), req)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("Expected comment result, got nil")
+	}
+
+	if result.ID == 0 {
+		t.Error("Expected comment ID to be set")
+	}
+
+	if result.TaskID != taskID {
+		t.Errorf("Expected task ID %d, got %d", taskID, result.TaskID)
+	}
+
+	if result.Message != "This is a test comment" {
+		t.Errorf("Expected message 'This is a test comment', got '%s'", result.Message)
+	}
+
+	if result.Author != "testuser" {
+		t.Errorf("Expected author 'testuser', got '%s'", result.Author)
+	}
+
+	if result.CreatedAt.IsZero() {
+		t.Error("Expected CreatedAt to be set")
+	}
+}
+
+func TestCreateComment_EmptyMessage(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	svc := NewService(db, nil)
+
+	req := CreateCommentRequest{
+		TaskID:  taskID,
+		Message: "", // Empty message
+		Author:  "testuser",
+	}
+
+	_, err := svc.CreateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected validation error for empty message")
+	}
+
+	if err != ErrEmptyCommentMessage {
+		t.Errorf("Expected ErrEmptyCommentMessage, got %v", err)
+	}
+}
+
+func TestCreateComment_MessageTooLong(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	svc := NewService(db, nil)
+
+	// Create message > 1000 characters
+	longMessage := ""
+	for i := 0; i < 1001; i++ {
+		longMessage += "a"
+	}
+
+	req := CreateCommentRequest{
+		TaskID:  taskID,
+		Message: longMessage,
+		Author:  "testuser",
+	}
+
+	_, err := svc.CreateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected validation error for long message")
+	}
+
+	if err != ErrCommentMessageTooLong {
+		t.Errorf("Expected ErrCommentMessageTooLong, got %v", err)
+	}
+}
+
+func TestCreateComment_InvalidTaskID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	req := CreateCommentRequest{
+		TaskID:  0, // Invalid
+		Message: "Test comment",
+		Author:  "testuser",
+	}
+
+	_, err := svc.CreateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected validation error for invalid task ID")
+	}
+
+	if err != ErrInvalidTaskID {
+		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
+	}
+}
+
+func TestCreateComment_NonExistentTask(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	req := CreateCommentRequest{
+		TaskID:  999, // Non-existent task
+		Message: "Test comment",
+		Author:  "testuser",
+	}
+
+	_, err := svc.CreateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected error for non-existent task")
+	}
+
+	if err != ErrTaskNotFound {
+		t.Errorf("Expected ErrTaskNotFound, got %v", err)
+	}
+}
+
+func TestUpdateComment(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	commentID := createTestComment(t, db, taskID, "Original message", "testuser")
+	svc := NewService(db, nil)
+
+	req := UpdateCommentRequest{
+		CommentID: commentID,
+		Message:   "Updated message",
+	}
+
+	err := svc.UpdateComment(context.Background(), req)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify the comment was updated
+	var updatedMessage string
+	err = db.QueryRowContext(context.Background(),
+		"SELECT content FROM task_comments WHERE id = ?", commentID).Scan(&updatedMessage)
+	if err != nil {
+		t.Fatalf("Failed to query updated comment: %v", err)
+	}
+
+	if updatedMessage != "Updated message" {
+		t.Errorf("Expected message 'Updated message', got '%s'", updatedMessage)
+	}
+}
+
+func TestUpdateComment_EmptyMessage(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	commentID := createTestComment(t, db, taskID, "Original message", "testuser")
+	svc := NewService(db, nil)
+
+	req := UpdateCommentRequest{
+		CommentID: commentID,
+		Message:   "", // Empty message
+	}
+
+	err := svc.UpdateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected validation error for empty message")
+	}
+
+	if err != ErrEmptyCommentMessage {
+		t.Errorf("Expected ErrEmptyCommentMessage, got %v", err)
+	}
+}
+
+func TestUpdateComment_MessageTooLong(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	commentID := createTestComment(t, db, taskID, "Original message", "testuser")
+	svc := NewService(db, nil)
+
+	// Create message > 1000 characters
+	longMessage := ""
+	for i := 0; i < 1001; i++ {
+		longMessage += "a"
+	}
+
+	req := UpdateCommentRequest{
+		CommentID: commentID,
+		Message:   longMessage,
+	}
+
+	err := svc.UpdateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected validation error for long message")
+	}
+
+	if err != ErrCommentMessageTooLong {
+		t.Errorf("Expected ErrCommentMessageTooLong, got %v", err)
+	}
+}
+
+func TestUpdateComment_InvalidID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	req := UpdateCommentRequest{
+		CommentID: 0, // Invalid
+		Message:   "Updated message",
+	}
+
+	err := svc.UpdateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected validation error for invalid comment ID")
+	}
+
+	if err != ErrInvalidCommentID {
+		t.Errorf("Expected ErrInvalidCommentID, got %v", err)
+	}
+}
+
+func TestUpdateComment_NonExistentComment(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	req := UpdateCommentRequest{
+		CommentID: 999, // Non-existent comment
+		Message:   "Updated message",
+	}
+
+	err := svc.UpdateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected error for non-existent comment")
+	}
+
+	if err != ErrCommentNotFound {
+		t.Errorf("Expected ErrCommentNotFound, got %v", err)
+	}
+}
+
+func TestDeleteComment(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	commentID := createTestComment(t, db, taskID, "Test comment", "testuser")
+	svc := NewService(db, nil)
+
+	err := svc.DeleteComment(context.Background(), commentID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify the comment was deleted
+	var count int
+	err = db.QueryRowContext(context.Background(),
+		"SELECT COUNT(*) FROM task_comments WHERE id = ?", commentID).Scan(&count)
+	if err != nil {
+		t.Fatalf("Failed to query comment count: %v", err)
+	}
+
+	if count != 0 {
+		t.Errorf("Expected comment to be deleted, but still exists")
+	}
+}
+
+func TestDeleteComment_InvalidID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	err := svc.DeleteComment(context.Background(), 0) // Invalid ID
+
+	if err == nil {
+		t.Fatal("Expected validation error for invalid comment ID")
+	}
+
+	if err != ErrInvalidCommentID {
+		t.Errorf("Expected ErrInvalidCommentID, got %v", err)
+	}
+}
+
+func TestDeleteComment_NonExistentComment(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	err := svc.DeleteComment(context.Background(), 999) // Non-existent comment
+
+	if err == nil {
+		t.Fatal("Expected error for non-existent comment")
+	}
+
+	if err != ErrCommentNotFound {
+		t.Errorf("Expected ErrCommentNotFound, got %v", err)
+	}
+}
+
+func TestGetCommentsByTask(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+
+	// Create multiple comments
+	comment1ID := createTestComment(t, db, taskID, "First comment", "user1")
+	comment2ID := createTestComment(t, db, taskID, "Second comment", "user2")
+	comment3ID := createTestComment(t, db, taskID, "Third comment", "user3")
+
+	svc := NewService(db, nil)
+
+	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(comments) != 3 {
+		t.Fatalf("Expected 3 comments, got %d", len(comments))
+	}
+
+	// Verify comments are returned (order by created_at DESC, so newest first)
+	// Since we created them in quick succession, verify IDs are present
+	foundIDs := make(map[int]bool)
+	for _, c := range comments {
+		foundIDs[c.ID] = true
+	}
+
+	if !foundIDs[comment1ID] || !foundIDs[comment2ID] || !foundIDs[comment3ID] {
+		t.Error("Not all comments were returned")
+	}
+}
+
+func TestGetCommentsByTask_NoComments(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	svc := NewService(db, nil)
+
+	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(comments) != 0 {
+		t.Errorf("Expected 0 comments, got %d", len(comments))
+	}
+}
+
+func TestGetCommentsByTask_InvalidTaskID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	_, err := svc.GetCommentsByTask(context.Background(), 0) // Invalid ID
+
+	if err == nil {
+		t.Fatal("Expected validation error for invalid task ID")
+	}
+
+	if err != ErrInvalidTaskID {
+		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
+	}
+}
+
+func TestGetCommentsByTask_OrderedByCreatedAt(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+
+	// Create comments with explicit timestamps
+	_, err := db.ExecContext(context.Background(),
+		`INSERT INTO task_comments (task_id, content, author, created_at) VALUES 
+		(?, 'Oldest comment', 'user1', datetime('2024-01-01 10:00:00')),
+		(?, 'Middle comment', 'user2', datetime('2024-01-02 10:00:00')),
+		(?, 'Newest comment', 'user3', datetime('2024-01-03 10:00:00'))`,
+		taskID, taskID, taskID)
+	if err != nil {
+		t.Fatalf("Failed to create test comments: %v", err)
+	}
+
+	svc := NewService(db, nil)
+
+	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(comments) != 3 {
+		t.Fatalf("Expected 3 comments, got %d", len(comments))
+	}
+
+	// Verify DESC order (newest first)
+	if comments[0].Message != "Newest comment" {
+		t.Errorf("Expected first comment to be 'Newest comment', got '%s'", comments[0].Message)
+	}
+
+	if comments[1].Message != "Middle comment" {
+		t.Errorf("Expected second comment to be 'Middle comment', got '%s'", comments[1].Message)
+	}
+
+	if comments[2].Message != "Oldest comment" {
+		t.Errorf("Expected third comment to be 'Oldest comment', got '%s'", comments[2].Message)
+	}
+}
+
+// ============================================================================
+// INTEGRATION TESTS - COMMENTS
+// ============================================================================
+
+func TestGetTaskDetail_IncludesComments(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create task
+	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: columnID,
+		Position: 0,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create task: %v", err)
+	}
+
+	// Create comments
+	createTestComment(t, db, task.ID, "First comment", "user1")
+	createTestComment(t, db, task.ID, "Second comment", "user2")
+
+	// Get task detail
+	detail, err := svc.GetTaskDetail(context.Background(), task.ID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify comments are included
+	if len(detail.Comments) != 2 {
+		t.Fatalf("Expected 2 comments in task detail, got %d", len(detail.Comments))
+	}
+
+	// Verify comment data
+	foundFirst := false
+	foundSecond := false
+	for _, c := range detail.Comments {
+		if c.Message == "First comment" && c.Author == "user1" {
+			foundFirst = true
+		}
+		if c.Message == "Second comment" && c.Author == "user2" {
+			foundSecond = true
+		}
+	}
+
+	if !foundFirst || !foundSecond {
+		t.Error("Expected both comments to be present in task detail")
+	}
+}
+
+func TestDeleteTask_CascadesComments(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+
+	// Create comments
+	comment1ID := createTestComment(t, db, taskID, "First comment", "user1")
+	comment2ID := createTestComment(t, db, taskID, "Second comment", "user2")
+
+	svc := NewService(db, nil)
+
+	// Delete the task
+	err := svc.DeleteTask(context.Background(), taskID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify comments were cascade deleted
+	var count int
+	err = db.QueryRowContext(context.Background(),
+		"SELECT COUNT(*) FROM task_comments WHERE id IN (?, ?)", comment1ID, comment2ID).Scan(&count)
+	if err != nil {
+		t.Fatalf("Failed to query comment count: %v", err)
+	}
+
+	if count != 0 {
+		t.Errorf("Expected comments to be cascade deleted, but found %d comments", count)
 	}
 }
