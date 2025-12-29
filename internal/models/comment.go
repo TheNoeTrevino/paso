@@ -9,4 +9,5 @@ type Comment struct {
 	Message   string
 	Author    string
 	CreatedAt time.Time
+	UpdatedAt time.Time
 }
