@@ -2,33 +2,33 @@ package state
 
 import "github.com/thenoetrevino/paso/internal/models"
 
-// NoteItem represents a single note/comment for display.
-type NoteItem struct {
+// CommentItem represents a single comment for display.
+type CommentItem struct {
 	// Comment is the comment data from the database
 	Comment *models.Comment
 }
 
-// NoteState manages the notes section state for a task.
-// This includes displaying notes and navigating them.
-// Individual note editing is handled through NoteFormMode with huh forms.
-type NoteState struct {
-	// Items contains all notes for the current task
-	Items []NoteItem
+// CommentState manages the comments section state for a task.
+// This includes displaying comments and navigating them.
+// Individual comment editing is handled through CommentFormMode with huh forms.
+type CommentState struct {
+	// Items contains all comments for the current task
+	Items []CommentItem
 
-	// Cursor is the current cursor position in the notes list
+	// Cursor is the current cursor position in the comments list
 	Cursor int
 
 	// TaskID is the ID of the task being viewed
 	TaskID int
 
-	// ScrollOffset is the vertical scroll offset for the notes list
+	// ScrollOffset is the vertical scroll offset for the comments list
 	ScrollOffset int
 }
 
-// NewNoteState creates a new NoteState with default values.
-func NewNoteState() *NoteState {
-	return &NoteState{
-		Items:        []NoteItem{},
+// NewCommentState creates a new CommentState with default values.
+func NewCommentState() *CommentState {
+	return &CommentState{
+		Items:        []CommentItem{},
 		Cursor:       0,
 		TaskID:       0,
 		ScrollOffset: 0,
@@ -36,8 +36,8 @@ func NewNoteState() *NoteState {
 }
 
 // Clear resets all state to default values.
-func (s *NoteState) Clear() {
-	s.Items = []NoteItem{}
+func (s *CommentState) Clear() {
+	s.Items = []CommentItem{}
 	s.Cursor = 0
 	s.TaskID = 0
 	s.ScrollOffset = 0
@@ -45,7 +45,7 @@ func (s *NoteState) Clear() {
 
 // MoveCursorUp moves the cursor up one position if possible.
 // Returns true if the cursor moved, false if already at top.
-func (s *NoteState) MoveCursorUp() bool {
+func (s *CommentState) MoveCursorUp() bool {
 	if s.Cursor > 0 {
 		s.Cursor--
 		return true
@@ -58,7 +58,7 @@ func (s *NoteState) MoveCursorUp() bool {
 //
 // Parameters:
 //   - maxIdx: the maximum valid cursor position (typically len(items) - 1)
-func (s *NoteState) MoveCursorDown(maxIdx int) bool {
+func (s *CommentState) MoveCursorDown(maxIdx int) bool {
 	if s.Cursor < maxIdx {
 		s.Cursor++
 		return true
@@ -67,7 +67,7 @@ func (s *NoteState) MoveCursorDown(maxIdx int) bool {
 }
 
 // GetSelectedComment returns the currently selected comment, or nil if none
-func (s *NoteState) GetSelectedComment() *models.Comment {
+func (s *CommentState) GetSelectedComment() *models.Comment {
 	if s.Cursor >= 0 && s.Cursor < len(s.Items) {
 		return s.Items[s.Cursor].Comment
 	}
@@ -75,10 +75,10 @@ func (s *NoteState) GetSelectedComment() *models.Comment {
 }
 
 // SetComments replaces the comment list with new data
-func (s *NoteState) SetComments(comments []*models.Comment) {
-	s.Items = make([]NoteItem, len(comments))
+func (s *CommentState) SetComments(comments []*models.Comment) {
+	s.Items = make([]CommentItem, len(comments))
 	for i, c := range comments {
-		s.Items[i] = NoteItem{Comment: c}
+		s.Items[i] = CommentItem{Comment: c}
 	}
 	// Reset cursor if out of bounds
 	if s.Cursor >= len(s.Items) {
@@ -91,13 +91,13 @@ func (s *NoteState) SetComments(comments []*models.Comment) {
 }
 
 // IsEmpty returns true if there are no comments
-func (s *NoteState) IsEmpty() bool {
+func (s *CommentState) IsEmpty() bool {
 	return len(s.Items) == 0
 }
 
 // DeleteSelected removes the currently selected comment from the list
 // and adjusts the cursor position appropriately
-func (s *NoteState) DeleteSelected() {
+func (s *CommentState) DeleteSelected() {
 	if s.Cursor < 0 || s.Cursor >= len(s.Items) {
 		return
 	}
