@@ -106,6 +106,8 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDeleteConfirm(msg)
 	case state.DeleteColumnConfirmMode:
 		return m.handleDeleteColumnConfirm(msg)
+	case state.CommentsViewMode:
+		return m.handleCommentsViewInput(msg)
 	case state.HelpMode:
 		switch msg.String() {
 		case m.Config.KeyMappings.ShowHelp, m.Config.KeyMappings.Quit, "esc", "enter", " ":
