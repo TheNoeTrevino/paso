@@ -13,29 +13,29 @@ import (
 	userutil "github.com/thenoetrevino/paso/internal/user"
 )
 
-// NoteCmd returns the task note subcommand
-func NoteCmd() *cobra.Command {
+// CommentCmd returns the task comment subcommand
+func CommentCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "note",
-		Short: "Add a note/comment to a task",
-		Long: `Add a note or comment to a task.
+		Use:   "comment",
+		Short: "Add a comment to a task",
+		Long: `Add a comment to a task.
 
-Notes are limited to 500 characters and are displayed in the task detail view.
+Comments are limited to 500 characters and are displayed in the task detail view.
 
 Examples:
-  # Add a note to task #42
-  paso task note --id=42 --message="Need to follow up with team"
+  # Add a comment to task #42
+  paso task comment --id=42 --message="Need to follow up with team"
 
-  # Add a longer note
-  paso task note --id=42 --message="Blocked by API changes in PR #123"
+  # Add a longer comment
+  paso task comment --id=42 --message="Blocked by API changes in PR #123"
 
   # JSON output for agents
-  paso task note --id=42 --message="Investigation complete" --json
+  paso task comment --id=42 --message="Investigation complete" --json
 
   # Quiet mode for bash capture
-  COMMENT_ID=$(paso task note --id=42 --message="Fixed" --quiet)
+  COMMENT_ID=$(paso task comment --id=42 --message="Fixed" --quiet)
 `,
-		RunE: runNote,
+		RunE: runComment,
 	}
 
 	// Required flags
@@ -44,12 +44,12 @@ Examples:
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	cmd.Flags().String("message", "", "Note message (required, max 500 chars)")
+	cmd.Flags().String("message", "", "Comment message (required, max 500 chars)")
 	if err := cmd.MarkFlagRequired("message"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	cmd.Flags().String("author", "", "Note author (defaults to current user)")
+	cmd.Flags().String("author", "", "Comment author (defaults to current user)")
 
 	// Agent-friendly flags
 	cmd.Flags().Bool("json", false, "Output in JSON format")
@@ -58,7 +58,7 @@ Examples:
 	return cmd
 }
 
-func runNote(cmd *cobra.Command, args []string) error {
+func runComment(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	taskID, _ := cmd.Flags().GetInt("id")
@@ -145,7 +145,7 @@ func runNote(cmd *cobra.Command, args []string) error {
 	}
 
 	// Human-readable output
-	fmt.Printf("✓ Note added to task #%d (%s)\n", taskDetail.TicketNumber, taskDetail.Title)
+	fmt.Printf("✓ Comment added to task #%d (%s)\n", taskDetail.TicketNumber, taskDetail.Title)
 	fmt.Printf("  Project: %s\n", taskDetail.ProjectName)
 	fmt.Printf("  Message: %s\n", message)
 	fmt.Printf("  Comment ID: %d\n", comment.ID)

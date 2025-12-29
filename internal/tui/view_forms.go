@@ -13,12 +13,12 @@ import (
 
 // renderFormTitleDescriptionZone renders the top-left zone with title and description fields
 func (m Model) renderFormTitleDescriptionZone(width, height int) string {
-	if m.FormState.TicketForm == nil {
+	if m.FormState.TaskForm == nil {
 		return ""
 	}
 
 	// Render the form view (which includes title and description)
-	formView := m.FormState.TicketForm.View()
+	formView := m.FormState.TaskForm.View()
 
 	style := lipgloss.NewStyle().
 		Width(width).
@@ -51,7 +51,7 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 
 	// Edited indicator (unsaved changes)
 	parts = append(parts, labelHeaderStyle.Render("Status"))
-	if m.FormState.HasTicketFormChanges() {
+	if m.FormState.HasTaskFormChanges() {
 		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight))
 		parts = append(parts, warningStyle.Render("● Unsaved Changes"))
 	} else {
@@ -190,7 +190,7 @@ func (m *Model) renderFormCommentsPreview(width, height int) string {
 	if commentCount == 0 {
 		headerText = "Comments · ctrl+n to add"
 	} else {
-		headerText = fmt.Sprintf("Recent Comments · %d total · ctrl+n to open all notes", commentCount)
+		headerText = fmt.Sprintf("Recent Comments · %d total · ctrl+n to open all comments", commentCount)
 	}
 	header := headerStyle.Render(headerText)
 
