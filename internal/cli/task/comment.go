@@ -20,7 +20,7 @@ func CommentCmd() *cobra.Command {
 		Short: "Add a comment to a task",
 		Long: `Add a comment to a task.
 
-Comments are limited to 500 characters and are displayed in the task detail view.
+Comments are limited to 1000 characters and are displayed in the task detail view.
 
 Examples:
   # Add a comment to task #42
@@ -44,7 +44,7 @@ Examples:
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	cmd.Flags().String("message", "", "Comment message (required, max 500 chars)")
+	cmd.Flags().String("message", "", "Comment message (required, max 1000 chars)")
 	if err := cmd.MarkFlagRequired("message"); err != nil {
 		log.Printf("Error marking flag as required: %v", err)
 	}
@@ -75,9 +75,9 @@ func runComment(cmd *cobra.Command, args []string) error {
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Validate message length before initializing CLI
-	if len(message) > 500 {
+	if len(message) > 1000 {
 		if fmtErr := formatter.Error("MESSAGE_TOO_LONG",
-			"message exceeds 500 character limit"); fmtErr != nil {
+			"message exceeds 1000 character limit"); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
 		os.Exit(cli.ExitValidation)
