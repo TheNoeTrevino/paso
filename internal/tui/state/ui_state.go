@@ -8,11 +8,11 @@ const (
 	NormalMode              Mode = iota // Default navigation mode
 	DeleteConfirmMode                   // Confirming task deletion
 	DiscardConfirmMode                  // Confirming discard of form/input changes
-	AddColumnMode                       // Creating a new column
-	EditColumnMode                      // Renaming an existing column
+	AddColumnFormMode                   // Creating a new column (huh form)
+	EditColumnFormMode                  // Renaming an existing column (huh form)
 	DeleteColumnConfirmMode             // Confirming column deletion
 	HelpMode                            // Displaying help screen
-	TicketFormMode                      // Full ticket form with huh
+	TicketFormMode                      // Full task form with huh
 	ProjectFormMode                     // Creating a new project with huh
 	LabelManagementMode                 // Managing labels (create/edit/delete)
 	LabelAssignMode                     // Quick label assignment to task
@@ -22,8 +22,12 @@ const (
 	PriorityPickerMode                  // Priority picker popup
 	TypePickerMode                      // Type picker popup
 	RelationTypePickerMode              // Relation type picker popup
+	CommentEditMode                     // Comment editing mode (list navigation)
+	CommentFormMode                     // Comment form (huh form for creating/editing individual comment)
+	CommentsViewMode                    // Dedicated comments list view for a task
 	SearchMode                          // Vim-style search mode (/)
 	StatusPickerMode                    // Status picker popup for list view
+	TaskFormHelpMode                    // Help screen for task form shortcuts
 )
 
 // DiscardContext tracks information for discard confirmation dialogs.

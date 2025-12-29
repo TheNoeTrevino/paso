@@ -11,14 +11,24 @@ import (
 // CONFIRMATION HANDLERS (Inlined from deleted confirmation.go)
 // ============================================================================
 
-// handleDeleteConfirm handles task deletion confirmation.
+// handleDeleteConfirm handles task or comment deletion confirmation.
 // Inlined from confirmation.go (deleted to reduce duplication)
 func (m Model) handleDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y", "Y":
+		// Check if we're deleting a comment or task
+		if m.FormState.EditingCommentID != 0 {
+			return m.confirmDeleteComment()
+		}
 		return m.confirmDeleteTask()
 	case "n", "N", "esc":
-		m.UiState.SetMode(state.NormalMode)
+		// Return to appropriate mode
+		if m.FormState.EditingCommentID != 0 {
+			m.FormState.EditingCommentID = 0
+			m.UiState.SetMode(state.CommentsViewMode)
+		} else {
+			m.UiState.SetMode(state.NormalMode)
+		}
 		return m, nil
 	}
 	return m, nil
@@ -40,6 +50,37 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 		}
 	}
 	m.UiState.SetMode(state.NormalMode)
+	return m, nil
+}
+
+// confirmDeleteComment performs the actual comment deletion.
+func (m Model) confirmDeleteComment() (tea.Model, tea.Cmd) {
+	commentID := m.FormState.EditingCommentID
+	taskID := m.CommentState.TaskID
+
+	if commentID != 0 && taskID != 0 {
+		ctx, cancel := m.DbContext()
+		defer cancel()
+		err := m.App.TaskService.DeleteComment(ctx, commentID)
+		if err != nil {
+			slog.Error("Error deleting comment", "error", err)
+			m.NotificationState.Add(state.LevelError, "Failed to delete comment")
+		} else {
+			// Remove from local state
+			m.CommentState.DeleteSelected()
+			m.NotificationState.Add(state.LevelInfo, "Comment deleted")
+
+			// Refresh comments in form state
+			comments, err := m.App.TaskService.GetCommentsByTask(ctx, taskID)
+			if err == nil {
+				m.FormState.FormComments = comments
+				m.CommentState.SetComments(comments)
+			}
+		}
+	}
+
+	m.FormState.EditingCommentID = 0
+	m.UiState.SetMode(state.CommentsViewMode)
 	return m, nil
 }
 
@@ -80,13 +121,20 @@ func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
 	// Clear the appropriate form/input based on source mode
 	switch ctx.SourceMode {
 	case state.TicketFormMode:
-		m.FormState.ClearTicketForm()
+		m.FormState.ClearTaskForm()
 
 	case state.ProjectFormMode:
 		m.FormState.ClearProjectForm()
 
-	case state.AddColumnMode, state.EditColumnMode:
-		m.InputState.Clear()
+	case state.AddColumnFormMode, state.EditColumnFormMode:
+		m.FormState.ClearColumnForm()
+
+	case state.CommentFormMode:
+		m.FormState.ClearCommentForm()
+		// Return to comment list instead of normal mode
+		m.UiState.SetMode(state.CommentEditMode)
+		m.UiState.ClearDiscardContext()
+		return m, tea.ClearScreen
 	}
 
 	// Always return to normal mode after discard

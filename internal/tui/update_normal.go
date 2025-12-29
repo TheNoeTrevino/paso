@@ -210,17 +210,22 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 	m.FormState.FormConfirm = true
 	m.FormState.EditingTaskID = 0
 
-	descriptionLines := 10
+	// Use dynamically calculated description lines from FormState
+	// Falls back to 10 if not set (shouldn't happen in normal flow)
+	descriptionLines := m.FormState.CalculatedDescriptionLines
+	if descriptionLines == 0 {
+		descriptionLines = 10
+	}
 
-	m.FormState.TicketForm = huhforms.CreateTicketForm(
+	m.FormState.TaskForm = huhforms.CreateTaskForm(
 		&m.FormState.FormTitle,
 		&m.FormState.FormDescription,
 		&m.FormState.FormConfirm,
 		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.FormState.SnapshotTicketFormInitialValues()
+	m.FormState.SnapshotTaskFormInitialValues()
 	m.UiState.SetMode(state.TicketFormMode)
-	return m, m.FormState.TicketForm.Init()
+	return m, m.FormState.TaskForm.Init()
 }
 
 func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
@@ -257,6 +262,11 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		m.FormState.FormChildIDs[i] = child.ID
 	}
 
+	// Load comments for the task
+	m.FormState.FormComments = taskDetail.Comments
+	m.FormState.InitialFormComments = make([]*models.Comment, len(taskDetail.Comments))
+	copy(m.FormState.InitialFormComments, taskDetail.Comments)
+
 	m.FormState.FormCreatedAt = taskDetail.CreatedAt
 	m.FormState.FormUpdatedAt = taskDetail.UpdatedAt
 	m.FormState.FormTypeDescription = taskDetail.TypeDescription
@@ -266,17 +276,22 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 	m.FormState.FormConfirm = true
 	m.FormState.EditingTaskID = task.ID
 
-	descriptionLines := 10
+	// Use dynamically calculated description lines from FormState
+	// Falls back to 10 if not set (shouldn't happen in normal flow)
+	descriptionLines := m.FormState.CalculatedDescriptionLines
+	if descriptionLines == 0 {
+		descriptionLines = 10
+	}
 
-	m.FormState.TicketForm = huhforms.CreateTicketForm(
+	m.FormState.TaskForm = huhforms.CreateTaskForm(
 		&m.FormState.FormTitle,
 		&m.FormState.FormDescription,
 		&m.FormState.FormConfirm,
 		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.FormState.SnapshotTicketFormInitialValues()
+	m.FormState.SnapshotTaskFormInitialValues()
 	m.UiState.SetMode(state.TicketFormMode)
-	return m, m.FormState.TicketForm.Init()
+	return m, m.FormState.TaskForm.Init()
 }
 
 func (m Model) handleDeleteTask() (tea.Model, tea.Cmd) {
@@ -317,10 +332,12 @@ func (m Model) handleMoveTaskDown() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleCreateColumn() (tea.Model, tea.Cmd) {
-	m.UiState.SetMode(state.AddColumnMode)
-	m.InputState.Prompt = "New column name:"
-	m.InputState.Buffer = ""
-	return m, nil
+	m.FormState.FormColumnName = ""
+	m.FormState.EditingColumnID = 0
+	m.FormState.ColumnForm = huhforms.CreateColumnForm(&m.FormState.FormColumnName, false).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+	m.FormState.SnapshotColumnFormInitialValues()
+	m.UiState.SetMode(state.AddColumnFormMode)
+	return m, m.FormState.ColumnForm.Init()
 }
 
 func (m Model) handleRenameColumn() (tea.Model, tea.Cmd) {
@@ -329,11 +346,12 @@ func (m Model) handleRenameColumn() (tea.Model, tea.Cmd) {
 		m.NotificationState.Add(state.LevelError, "No column selected to rename")
 		return m, nil
 	}
-	m.UiState.SetMode(state.EditColumnMode)
-	m.InputState.Buffer = column.Name
-	m.InputState.Prompt = "Rename column:"
-	m.InputState.SnapshotInitialBuffer()
-	return m, nil
+	m.FormState.FormColumnName = column.Name
+	m.FormState.EditingColumnID = column.ID
+	m.FormState.ColumnForm = huhforms.CreateColumnForm(&m.FormState.FormColumnName, true).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+	m.FormState.SnapshotColumnFormInitialValues()
+	m.UiState.SetMode(state.EditColumnFormMode)
+	return m, m.FormState.ColumnForm.Init()
 }
 
 func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {

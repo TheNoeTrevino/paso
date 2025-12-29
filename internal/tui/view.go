@@ -23,9 +23,12 @@ func (m Model) View() tea.View {
 	// Check if current mode uses layer-based rendering
 	usesLayers := m.UiState.Mode() == state.TicketFormMode ||
 		m.UiState.Mode() == state.ProjectFormMode ||
-		m.UiState.Mode() == state.AddColumnMode ||
-		m.UiState.Mode() == state.EditColumnMode ||
+		m.UiState.Mode() == state.AddColumnFormMode ||
+		m.UiState.Mode() == state.EditColumnFormMode ||
+		m.UiState.Mode() == state.CommentFormMode ||
+		m.UiState.Mode() == state.CommentsViewMode ||
 		m.UiState.Mode() == state.HelpMode ||
+		m.UiState.Mode() == state.TaskFormHelpMode ||
 		m.UiState.Mode() == state.NormalMode ||
 		m.UiState.Mode() == state.SearchMode
 
@@ -42,13 +45,25 @@ func (m Model) View() tea.View {
 		var modalLayer *lipgloss.Layer
 		switch m.UiState.Mode() {
 		case state.TicketFormMode:
-			modalLayer = m.renderTicketFormLayer()
+			modalLayer = m.renderTaskFormLayer()
 		case state.ProjectFormMode:
 			modalLayer = m.renderProjectFormLayer()
-		case state.AddColumnMode, state.EditColumnMode:
-			modalLayer = m.renderColumnInputLayer()
+		case state.AddColumnFormMode, state.EditColumnFormMode:
+			modalLayer = m.renderColumnFormLayer()
+		case state.CommentFormMode:
+			// Stack both task form AND comment form
+			layers = append(layers, m.renderTaskFormLayer())
+			modalLayer = m.renderCommentFormLayer()
+		case state.CommentsViewMode:
+			// Stack both task form AND comments view
+			layers = append(layers, m.renderTaskFormLayer())
+			modalLayer = m.renderCommentsViewLayer()
 		case state.HelpMode:
 			modalLayer = m.renderHelpLayer()
+		case state.TaskFormHelpMode:
+			// Stack both task form AND help menu
+			layers = append(layers, m.renderTaskFormLayer())
+			modalLayer = m.renderTaskFormHelpLayer()
 		}
 
 		if modalLayer != nil {

@@ -33,10 +33,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if m.UiState.Mode() == state.TicketFormMode {
-		return m.updateTicketForm(msg)
+		return m.updateTaskForm(msg)
 	}
 	if m.UiState.Mode() == state.ProjectFormMode {
 		return m.updateProjectForm(msg)
+	}
+	// Handle column forms early to prevent key binding conflicts (e.g., space key)
+	if m.UiState.Mode() == state.AddColumnFormMode || m.UiState.Mode() == state.EditColumnFormMode {
+		return m.updateColumnForm(msg)
+	}
+	// Handle comment form early to prevent key binding conflicts (e.g., space key)
+	if m.UiState.Mode() == state.CommentFormMode {
+		return m.updateCommentForm(msg)
+	}
+	// Handle CommentEditMode early to prevent key binding conflicts (e.g., space key mapped to ViewTask)
+	if m.UiState.Mode() == state.CommentEditMode {
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			return m.updateCommentEdit(keyMsg)
+		}
+		return m, nil
 	}
 
 	switch msg := msg.(type) {
@@ -85,18 +100,25 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.UiState.Mode() {
 	case state.NormalMode:
 		return m.handleNormalMode(msg)
-	case state.AddColumnMode, state.EditColumnMode:
-		return m.handleInputMode(msg)
 	case state.DiscardConfirmMode:
 		return m.handleDiscardConfirm(msg)
 	case state.DeleteConfirmMode:
 		return m.handleDeleteConfirm(msg)
 	case state.DeleteColumnConfirmMode:
 		return m.handleDeleteColumnConfirm(msg)
+	case state.CommentsViewMode:
+		return m.handleCommentsViewInput(msg)
 	case state.HelpMode:
 		switch msg.String() {
 		case m.Config.KeyMappings.ShowHelp, m.Config.KeyMappings.Quit, "esc", "enter", " ":
 			m.UiState.SetMode(state.NormalMode)
+			return m, nil
+		}
+		return m, nil
+	case state.TaskFormHelpMode:
+		switch msg.String() {
+		case "ctrl+h", "esc":
+			m.UiState.SetMode(state.TicketFormMode)
 			return m, nil
 		}
 		return m, nil

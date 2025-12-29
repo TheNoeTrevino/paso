@@ -51,6 +51,7 @@ type TaskDetail struct {
 	Labels              []*Label
 	ParentTasks         []*TaskReference // Tasks that depend on this task
 	ChildTasks          []*TaskReference // Tasks this task depends on
+	Comments            []*Comment       // Comments on this task
 	TypeDescription     string
 	PriorityDescription string
 	PriorityColor       string

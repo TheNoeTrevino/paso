@@ -4,10 +4,10 @@ import (
 	"charm.land/huh/v2"
 )
 
-// CreateTicketForm creates a huh form for adding/editing a ticket
+// CreateTaskForm creates a huh form for adding/editing a task
 // The form uses pointers to update values in place, matching the existing pattern
 // Labels are now edited via Ctrl+L in the form view
-func CreateTicketForm(
+func CreateTaskForm(
 	title *string,
 	description *string,
 	confirm *bool,
@@ -30,7 +30,7 @@ func CreateTicketForm(
 			Key("description").
 			Title("Description").
 			Placeholder("Enter task description...").
-			CharLimit(500).
+			CharLimit(5000).
 			Lines(descriptionLines).
 			Value(description),
 	)
@@ -39,11 +39,12 @@ func CreateTicketForm(
 	fields = append(fields,
 		huh.NewConfirm().
 			Key("confirm").
-			Title("Submit this ticket?").
+			Title("Submit this task?").
 			Affirmative("Yes").
 			Negative("No").
 			Value(confirm),
 	)
 
-	return huh.NewForm(huh.NewGroup(fields...))
+	form := huh.NewForm(huh.NewGroup(fields...))
+	return form.WithKeyMap(CreateKeyMapWithShiftEnter()).WithShowHelp(false)
 }
