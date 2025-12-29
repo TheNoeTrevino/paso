@@ -20,4 +20,10 @@ var (
 	ErrDuplicateRelation         = errors.New("relationship already exists")
 	ErrSelfRelation              = errors.New("task cannot have a relationship with itself")
 	ErrTaskAlreadyInTargetColumn = errors.New("task is already in target column")
+
+	// Comment validation errors
+	ErrEmptyCommentMessage   = errors.New("comment message cannot be empty")
+	ErrCommentMessageTooLong = errors.New("comment message cannot exceed 1000 characters")
+	ErrInvalidCommentID      = errors.New("invalid comment ID")
+	ErrCommentNotFound       = errors.New("comment not found")
 )
