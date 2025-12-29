@@ -147,31 +147,6 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 	return style.Render(content)
 }
 
-// renderCommentSimple renders a single comment.
-// The format is:
-//
-//	{author}   {date}
-//	{content - wrapped to width}
-func renderCommentSimple(comment *models.Comment, width int) string {
-	timestamp := comment.CreatedAt.Format("Jan 2 15:04")
-
-	// Author icon and date header
-	authorIcon := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("󰀄 ")
-	dateIcon := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("  ")
-
-	header := fmt.Sprintf("%s%s%s%s", authorIcon, comment.Author, dateIcon, timestamp)
-	headerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-
-	// Content (wrapped)
-	// Reserve space for padding
-	contentWidth := max(width-4, 20)
-
-	wrapped := wordwrap.String(comment.Message, contentWidth)
-	contentStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
-
-	return headerStyle.Render(header) + "\n" + contentStyle.Render(wrapped)
-}
-
 // renderFormCommentsPreview renders a read-only preview of recent comments
 // Users press Ctrl+N to open the full comments view
 func (m *Model) renderFormCommentsPreview(width, height int) string {
