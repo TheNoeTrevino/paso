@@ -119,7 +119,7 @@ CREATE TABLE task_subtasks (
 CREATE TABLE task_comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id INTEGER NOT NULL,
-    content TEXT NOT NULL CHECK(length(content) <= 500),
+    content TEXT NOT NULL CHECK(length(content) <= 1000),
     author TEXT NOT NULL DEFAULT '',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
