@@ -31,5 +31,6 @@ func CreateProjectForm(
 			Value(confirm),
 	}
 
-	return huh.NewForm(huh.NewGroup(fields...))
+	form := huh.NewForm(huh.NewGroup(fields...))
+	return form.WithKeyMap(CreateKeyMapWithShiftEnter())
 }

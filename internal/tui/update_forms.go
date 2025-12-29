@@ -8,22 +8,24 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	columnService "github.com/thenoetrevino/paso/internal/services/column"
 	projectService "github.com/thenoetrevino/paso/internal/services/project"
 	taskService "github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/tui/state"
+	userutil "github.com/thenoetrevino/paso/internal/user"
 )
 
-type ticketFormValues struct {
+type taskFormValues struct {
 	title       string
 	description string
 	confirm     bool
 	labelIDs    []int
 }
 
-// extractTicketFormValues extracts and returns form values from the ticket form
+// extractTaskFormValues extracts and returns form values from the task form
 // Since our forms update pointers in place, we can just read from formState
-func (m Model) extractTicketFormValues() ticketFormValues {
-	return ticketFormValues{
+func (m Model) extractTaskFormValues() taskFormValues {
+	return taskFormValues{
 		title:       strings.TrimSpace(m.FormState.FormTitle),
 		description: strings.TrimSpace(m.FormState.FormDescription),
 		confirm:     m.FormState.FormConfirm,
@@ -32,7 +34,7 @@ func (m Model) extractTicketFormValues() ticketFormValues {
 }
 
 // createNewTaskWithLabelsAndRelationships creates a new task, sets labels, and applies parent/child relationships
-func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues) {
+func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 	currentCol := m.getCurrentColumn()
 	if currentCol == nil {
 		m.NotificationState.Add(state.LevelError, "No column selected")
@@ -94,7 +96,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values ticketFormValues)
 }
 
 // updateExistingTaskWithLabelsAndRelationships updates task, labels, and parent/child relationships
-func (m *Model) updateExistingTaskWithLabelsAndRelationships(values ticketFormValues) {
+func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValues) {
 	// create context for database operations
 	ctx, cancel := m.DbContext()
 	defer cancel()
@@ -334,7 +336,7 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 		return m, tea.ClearScreen
 	}
 
-	// Note: StateAborted handling removed - ESC is now intercepted in updateTicketForm/updateProjectForm
+	// Note: StateAborted handling removed - ESC is now intercepted in updateTaskForm/updateProjectForm
 	// to allow for change detection and discard confirmation
 
 	return m, cmd
@@ -367,15 +369,35 @@ func (m Model) handleFormSave(cfg formConfig) (tea.Model, tea.Cmd) {
 	return m, tea.ClearScreen
 }
 
-// updateTicketForm handles all messages when in TicketFormMode
+// updateTaskForm handles all messages when in TaskFormMode
 // This is separated out because forms need to receive ALL messages, not just KeyMsg
-func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Delegate viewport events first if viewport has focus
+	if m.FormState.ViewportFocused && m.FormState.ViewportReady {
+		var cmd tea.Cmd
+		m.FormState.CommentsViewport, cmd = m.FormState.CommentsViewport.Update(msg)
+
+		// Check if we should release focus back to form
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			if keyMsg.String() == "tab" || keyMsg.String() == "shift+tab" {
+				// Tab from viewport back to form
+				m.FormState.ViewportFocused = false
+				return m, nil
+			}
+		}
+
+		// If viewport consumed the message, return
+		if cmd != nil {
+			return m, cmd
+		}
+	}
+
 	// Check for keyboard shortcuts before passing to form
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		switch keyMsg.String() {
 		case "esc":
 			// Check for changes before allowing abort
-			if m.FormState.HasTicketFormChanges() {
+			if m.FormState.HasTaskFormChanges() {
 				// Show discard confirmation
 				m.UiState.SetDiscardContext(&state.DiscardContext{
 					SourceMode: state.TicketFormMode,
@@ -386,7 +408,7 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// No changes - allow immediate close
 			m.UiState.SetMode(state.NormalMode)
-			m.FormState.ClearTicketForm()
+			m.FormState.ClearTaskForm()
 			return m, tea.ClearScreen
 
 		case "ctrl+p":
@@ -424,19 +446,49 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		case "ctrl+h":
+			// Open task form help menu
+			m.UiState.SetMode(state.TaskFormHelpMode)
+			return m, nil
+
+		case "ctrl+down":
+			// Focus comments viewport (explicit)
+			if len(m.FormState.FormComments) > 0 && m.FormState.ViewportReady {
+				m.FormState.ViewportFocused = true
+				m.FormState.CommentsViewport.GotoBottom() // Start at most recent
+				return m, nil
+			}
+			return m, nil
+
+		case "down":
+			// Auto-focus viewport on down arrow (implicit)
+			if len(m.FormState.FormComments) > 0 && !m.FormState.ViewportFocused && m.FormState.ViewportReady {
+				m.FormState.ViewportFocused = true
+				m.FormState.CommentsViewport.GotoBottom()
+				// Let viewport handle the down arrow
+				var cmd tea.Cmd
+				m.FormState.CommentsViewport, cmd = m.FormState.CommentsViewport.Update(msg)
+				return m, cmd
+			}
+			// Otherwise let form handle it
+
+		case "ctrl+n":
+			// Open comments view
+			return m.handleOpenCommentsView()
+
 		case m.Config.KeyMappings.SaveForm:
 			// Quick save via C-s
 			return m.handleFormSave(formConfig{
-				form: m.FormState.TicketForm,
+				form: m.FormState.TaskForm,
 				setForm: func(f *huh.Form) {
-					m.FormState.TicketForm = f
+					m.FormState.TaskForm = f
 				},
 				clearForm: func() {
-					m.FormState.ClearTicketForm()
+					m.FormState.ClearTaskForm()
 					m.FormState.EditingTaskID = 0
 				},
 				onComplete: func() {
-					values := m.extractTicketFormValues()
+					values := m.extractTaskFormValues()
 					if !values.confirm {
 						return
 					}
@@ -455,16 +507,16 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Pass through to existing form handler
 	return m.handleFormUpdate(msg, formConfig{
-		form: m.FormState.TicketForm,
+		form: m.FormState.TaskForm,
 		setForm: func(f *huh.Form) {
-			m.FormState.TicketForm = f
+			m.FormState.TaskForm = f
 		},
 		clearForm: func() {
-			m.FormState.ClearTicketForm()
+			m.FormState.ClearTaskForm()
 			m.FormState.EditingTaskID = 0
 		},
 		onComplete: func() {
-			values := m.extractTicketFormValues()
+			values := m.extractTaskFormValues()
 
 			// Form submitted - check confirmation and save the task
 			if !values.confirm {
@@ -480,6 +532,7 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		},
+		confirmPtr: &m.FormState.FormConfirm,
 	})
 }
 
@@ -594,4 +647,209 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		},
 	})
+}
+
+// updateColumnForm handles all messages when in AddColumnFormMode or EditColumnFormMode
+// This is separated out because forms need to receive ALL messages, not just KeyMsg
+func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Check for keyboard shortcuts before passing to form
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		switch keyMsg.String() {
+		case "esc":
+			// For edit mode, check for changes before allowing abort
+			if m.UiState.Mode() == state.EditColumnFormMode && m.FormState.HasColumnFormChanges() {
+				// Show discard confirmation
+				m.UiState.SetDiscardContext(&state.DiscardContext{
+					SourceMode: state.EditColumnFormMode,
+					Message:    "Discard changes to column?",
+				})
+				m.UiState.SetMode(state.DiscardConfirmMode)
+				return m, nil
+			}
+			// No changes or in create mode - allow immediate close
+			m.UiState.SetMode(state.NormalMode)
+			m.FormState.ClearColumnForm()
+			return m, tea.ClearScreen
+		}
+	}
+
+	return m.handleFormUpdate(msg, formConfig{
+		form: m.FormState.ColumnForm,
+		setForm: func(f *huh.Form) {
+			m.FormState.ColumnForm = f
+		},
+		clearForm: func() {
+			m.FormState.ClearColumnForm()
+		},
+		onComplete: func() {
+			// Read values from form state (forms update pointers in place)
+			name := strings.TrimSpace(m.FormState.FormColumnName)
+
+			if name == "" {
+				return
+			}
+
+			ctx, cancel := m.DbContext()
+			defer cancel()
+
+			if m.FormState.EditingColumnID == 0 {
+				// Create new column
+				project := m.getCurrentProject()
+				if project == nil {
+					m.NotificationState.Add(state.LevelError, "No project selected")
+					return
+				}
+
+				_, err := m.App.ColumnService.CreateColumn(ctx, columnService.CreateColumnRequest{
+					Name:      name,
+					ProjectID: project.ID,
+					AfterID:   nil, // Append to end
+				})
+				if err != nil {
+					slog.Error("Error creating column", "error", err)
+					m.NotificationState.Add(state.LevelError, "Error creating column")
+					return
+				}
+
+				// Reload columns
+				m.reloadCurrentProject()
+			} else {
+				// Rename existing column
+				err := m.App.ColumnService.UpdateColumnName(ctx, m.FormState.EditingColumnID, name)
+				if err != nil {
+					slog.Error("Error renaming column", "error", err)
+					m.NotificationState.Add(state.LevelError, "Error renaming column")
+					return
+				}
+
+				// Reload columns
+				m.reloadCurrentProject()
+			}
+		},
+		confirmPtr: nil, // Column forms don't have confirmation field
+	})
+}
+
+// updateCommentForm handles all messages when in CommentFormMode
+// This is separated out because forms need to receive ALL messages, not just KeyMsg
+func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Check for keyboard shortcuts before passing to form
+	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		switch keyMsg.String() {
+		case "esc":
+			// For edit mode, check for changes before allowing abort
+			if m.FormState.EditingCommentID != 0 && m.FormState.HasCommentFormChanges() {
+				// Show discard confirmation
+				m.UiState.SetDiscardContext(&state.DiscardContext{
+					SourceMode: state.CommentFormMode,
+					Message:    "Discard changes to comment?",
+				})
+				m.UiState.SetMode(state.DiscardConfirmMode)
+				return m, nil
+			}
+			// No changes or in create mode - return to appropriate mode
+			returnMode := m.FormState.CommentFormReturnMode
+			if returnMode == state.CommentsViewMode {
+				m.CommentState.SetComments(m.FormState.FormComments)
+				m.UiState.SetMode(state.CommentsViewMode)
+			} else {
+				m.UiState.SetMode(state.TicketFormMode)
+			}
+			m.FormState.ClearCommentForm()
+			return m, tea.ClearScreen
+		}
+	}
+
+	return m.handleFormUpdate(msg, formConfig{
+		form: m.FormState.CommentForm,
+		setForm: func(f *huh.Form) {
+			m.FormState.CommentForm = f
+		},
+		clearForm: func() {
+			m.FormState.ClearCommentForm()
+		},
+		onComplete: func() {
+			// Read values from form state (forms update pointers in place)
+			message := strings.TrimSpace(m.FormState.FormCommentMessage)
+
+			if message == "" {
+				return
+			}
+
+			ctx, cancel := m.DbContext()
+			defer cancel()
+
+			if m.FormState.EditingCommentID == 0 {
+				// Create new comment
+				taskID := m.FormState.EditingTaskID
+				if taskID == 0 {
+					m.NotificationState.Add(state.LevelError, "No task selected")
+					return
+				}
+
+				_, err := m.App.TaskService.CreateComment(ctx, taskService.CreateCommentRequest{
+					TaskID:  taskID,
+					Message: message,
+					Author:  userutil.GetCurrentUsername(),
+				})
+				if err != nil {
+					slog.Error("Error creating comment", "error", err)
+					m.NotificationState.Add(state.LevelError, "Error creating comment")
+					return
+				}
+
+				m.NotificationState.Add(state.LevelInfo, "Comment added")
+			} else {
+				// Update existing comment
+				err := m.App.TaskService.UpdateComment(ctx, taskService.UpdateCommentRequest{
+					CommentID: m.FormState.EditingCommentID,
+					Message:   message,
+				})
+				if err != nil {
+					slog.Error("Error updating comment", "error", err)
+					m.NotificationState.Add(state.LevelError, "Error updating comment")
+					return
+				}
+
+				m.NotificationState.Add(state.LevelInfo, "Comment updated")
+			}
+
+			// Reload comments
+			taskID := m.FormState.EditingTaskID
+			comments, err := m.App.TaskService.GetCommentsByTask(ctx, taskID)
+			if err != nil {
+				slog.Error("Error reloading comments", "error", err)
+				m.NotificationState.Add(state.LevelError, "Failed to reload comments")
+			} else {
+				m.FormState.FormComments = comments
+				m.CommentState.Items = convertToCommentItems(comments)
+			}
+
+			// Return to appropriate mode based on where we came from
+			returnMode := m.FormState.CommentFormReturnMode
+			if returnMode == state.CommentsViewMode {
+				// Refresh comments view and return to it
+				m.CommentState.SetComments(m.FormState.FormComments)
+				m.UiState.SetMode(state.CommentsViewMode)
+			} else {
+				// Return to ticket form (legacy path)
+				m.UiState.SetMode(state.TicketFormMode)
+			}
+		},
+		confirmPtr: nil, // Comment forms don't have confirmation field
+	})
+}
+
+// handleOpenCommentsView opens the full-screen comments view
+func (m Model) handleOpenCommentsView() (tea.Model, tea.Cmd) {
+	// Set up comments view state
+	m.CommentState.TaskID = m.FormState.EditingTaskID
+	m.CommentState.SetComments(m.FormState.FormComments)
+	m.CommentState.Cursor = 0
+	m.CommentState.ScrollOffset = 0
+
+	// Switch to comments view mode
+	m.UiState.SetMode(state.CommentsViewMode)
+
+	return m, nil
 }

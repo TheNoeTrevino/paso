@@ -65,6 +65,15 @@ type Task struct {
 	UpdatedAt    sql.NullTime
 }
 
+type TaskComment struct {
+	ID        int64
+	TaskID    int64
+	Content   string
+	CreatedAt sql.NullTime
+	UpdatedAt sql.NullTime
+	Author    string
+}
+
 type TaskLabel struct {
 	TaskID  int64
 	LabelID int64

@@ -38,34 +38,6 @@ func setupTestDB(t *testing.T) *sql.DB {
 // createTestSchema creates the minimal schema needed for task service tests
 func createTestSchema(db *sql.DB) error {
 	schema := `
-	-- Projects table
-	CREATE TABLE IF NOT EXISTS projects (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		description TEXT,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
-
-	-- Project counters for ticket numbers
-	CREATE TABLE IF NOT EXISTS project_counters (
-		project_id INTEGER PRIMARY KEY,
-		next_ticket_number INTEGER DEFAULT 1,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-	);
-
-	-- Columns table
-	CREATE TABLE IF NOT EXISTS columns (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		project_id INTEGER NOT NULL,
-		name TEXT NOT NULL,
-		prev_id INTEGER,
-		next_id INTEGER,
-		holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
-		holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-	);
-
 	-- Types lookup table
 	CREATE TABLE IF NOT EXISTS types (
 		id INTEGER PRIMARY KEY,
@@ -102,7 +74,46 @@ func createTestSchema(db *sql.DB) error {
 
 	INSERT OR IGNORE INTO relation_types (id, p_to_c_label, c_to_p_label, color, is_blocking) VALUES
 		(1, 'Parent', 'Child', '#6B7280', 0),
-		(2, 'Blocks', 'Blocked By', '#EF4444', 1);
+		(2, 'Blocked By', 'Blocker', '#EF4444', 1),
+		(3, 'Related To', 'Related To', '#3B82F6', 0);
+
+	-- Projects table
+	CREATE TABLE IF NOT EXISTS projects (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		description TEXT DEFAULT '',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	-- Project counters for ticket numbers
+	CREATE TABLE IF NOT EXISTS project_counters (
+		project_id INTEGER PRIMARY KEY,
+		next_ticket_number INTEGER DEFAULT 1,
+		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+	);
+
+	-- Columns table
+	CREATE TABLE IF NOT EXISTS columns (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		prev_id INTEGER NULL,
+		next_id INTEGER NULL,
+		project_id INTEGER NOT NULL,
+		holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
+		holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
+		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+	);
+
+	-- Labels table
+	CREATE TABLE IF NOT EXISTS labels (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		color TEXT NOT NULL DEFAULT '#7D56F4',
+		project_id INTEGER NOT NULL,
+		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+		UNIQUE(name, project_id)
+	);
 
 	-- Tasks table
 	CREATE TABLE IF NOT EXISTS tasks (
@@ -110,16 +121,24 @@ func createTestSchema(db *sql.DB) error {
 		title TEXT NOT NULL,
 		description TEXT,
 		column_id INTEGER NOT NULL,
-		position INTEGER NOT NULL DEFAULT 0,
+		position INTEGER NOT NULL,
 		ticket_number INTEGER,
 		type_id INTEGER NOT NULL DEFAULT 1,
 		priority_id INTEGER NOT NULL DEFAULT 3,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
 		FOREIGN KEY (type_id) REFERENCES types(id),
-		FOREIGN KEY (priority_id) REFERENCES priorities(id),
-		UNIQUE(column_id, position)
+		FOREIGN KEY (priority_id) REFERENCES priorities(id)
+	);
+
+	-- Task-labels join table
+	CREATE TABLE IF NOT EXISTS task_labels (
+		task_id INTEGER NOT NULL,
+		label_id INTEGER NOT NULL,
+		PRIMARY KEY (task_id, label_id),
+		FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+		FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE
 	);
 
 	-- Task relationships (parent-child, blocking, etc.)
@@ -133,23 +152,29 @@ func createTestSchema(db *sql.DB) error {
 		FOREIGN KEY (relation_type_id) REFERENCES relation_types(id)
 	);
 
-	-- Labels table
-	CREATE TABLE IF NOT EXISTS labels (
+	-- Task comments table
+	CREATE TABLE IF NOT EXISTS task_comments (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		color TEXT NOT NULL,
-		project_id INTEGER NOT NULL,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+		task_id INTEGER NOT NULL,
+		content TEXT NOT NULL CHECK(length(content) <= 1000),
+		author TEXT NOT NULL DEFAULT '',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
 	);
 
-	-- Task-labels join table
-	CREATE TABLE IF NOT EXISTS task_labels (
-		task_id INTEGER NOT NULL,
-		label_id INTEGER NOT NULL,
-		PRIMARY KEY (task_id, label_id),
-		FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-		FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE
-	);
+	-- Indexes for performance
+	CREATE INDEX IF NOT EXISTS idx_tasks_column ON tasks(column_id, position);
+	CREATE INDEX IF NOT EXISTS idx_columns_project ON columns(project_id);
+	CREATE INDEX IF NOT EXISTS idx_labels_project ON labels(project_id);
+	CREATE INDEX IF NOT EXISTS idx_task_labels_label ON task_labels(label_id);
+	CREATE INDEX IF NOT EXISTS idx_task_subtasks_parent ON task_subtasks(parent_id);
+	CREATE INDEX IF NOT EXISTS idx_task_subtasks_child ON task_subtasks(child_id);
+	CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);
+
+	-- Unique partial indexes for column constraints
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_ready_per_project ON columns(project_id) WHERE holds_ready_tasks = 1;
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_completed_per_project ON columns(project_id) WHERE holds_completed_tasks = 1;
 	`
 
 	_, err := db.ExecContext(context.Background(), schema)
@@ -240,6 +265,19 @@ func createTestLabel(t *testing.T, db *sql.DB, projectID int, name string) int {
 	result, err := db.ExecContext(context.Background(), "INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)", projectID, name, "#FF5733")
 	if err != nil {
 		t.Fatalf("Failed to create test label: %v", err)
+	}
+	id, _ := result.LastInsertId()
+	return int(id)
+}
+
+// createTestComment creates a test comment and returns its ID
+func createTestComment(t *testing.T, db *sql.DB, taskID int, message, author string) int {
+	t.Helper()
+	result, err := db.ExecContext(context.Background(),
+		"INSERT INTO task_comments (task_id, content, author) VALUES (?, ?, ?)",
+		taskID, message, author)
+	if err != nil {
+		t.Fatalf("Failed to create test comment: %v", err)
 	}
 	id, _ := result.LastInsertId()
 	return int(id)
@@ -2134,7 +2172,6 @@ func TestGetTaskTreeByProject_MultipleRootsWithChildren(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // MOVE TO READY COLUMN TESTS
 // ============================================================================
 
@@ -2563,5 +2600,604 @@ func TestMoveTaskToReadyColumn_MultipleTasksInProject(t *testing.T) {
 	}
 	if col3 != todoColID {
 		t.Errorf("Expected task3 in todo column, got column %d", col3)
+	}
+}
+
+// ============================================================================
+// TEST CASES - COMMENT OPERATIONS
+// ============================================================================
+
+func TestCreateComment(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	svc := NewService(db, nil)
+
+	req := CreateCommentRequest{
+		TaskID:  taskID,
+		Message: "This is a test comment",
+		Author:  "testuser",
+	}
+
+	result, err := svc.CreateComment(context.Background(), req)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("Expected comment result, got nil")
+	}
+
+	if result.ID == 0 {
+		t.Error("Expected comment ID to be set")
+	}
+
+	if result.TaskID != taskID {
+		t.Errorf("Expected task ID %d, got %d", taskID, result.TaskID)
+	}
+
+	if result.Message != "This is a test comment" {
+		t.Errorf("Expected message 'This is a test comment', got '%s'", result.Message)
+	}
+
+	if result.Author != "testuser" {
+		t.Errorf("Expected author 'testuser', got '%s'", result.Author)
+	}
+
+	if result.CreatedAt.IsZero() {
+		t.Error("Expected CreatedAt to be set")
+	}
+}
+
+func TestCreateComment_EmptyMessage(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	svc := NewService(db, nil)
+
+	req := CreateCommentRequest{
+		TaskID:  taskID,
+		Message: "", // Empty message
+		Author:  "testuser",
+	}
+
+	_, err := svc.CreateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected validation error for empty message")
+	}
+
+	if err != ErrEmptyCommentMessage {
+		t.Errorf("Expected ErrEmptyCommentMessage, got %v", err)
+	}
+}
+
+func TestCreateComment_MessageTooLong(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	svc := NewService(db, nil)
+
+	// Create message > 1000 characters
+	longMessage := ""
+	for i := 0; i < 1001; i++ {
+		longMessage += "a"
+	}
+
+	req := CreateCommentRequest{
+		TaskID:  taskID,
+		Message: longMessage,
+		Author:  "testuser",
+	}
+
+	_, err := svc.CreateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected validation error for long message")
+	}
+
+	if err != ErrCommentMessageTooLong {
+		t.Errorf("Expected ErrCommentMessageTooLong, got %v", err)
+	}
+}
+
+func TestCreateComment_InvalidTaskID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	req := CreateCommentRequest{
+		TaskID:  0, // Invalid
+		Message: "Test comment",
+		Author:  "testuser",
+	}
+
+	_, err := svc.CreateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected validation error for invalid task ID")
+	}
+
+	if err != ErrInvalidTaskID {
+		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
+	}
+}
+
+func TestCreateComment_NonExistentTask(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	req := CreateCommentRequest{
+		TaskID:  999, // Non-existent task
+		Message: "Test comment",
+		Author:  "testuser",
+	}
+
+	_, err := svc.CreateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected error for non-existent task")
+	}
+
+	if err != ErrTaskNotFound {
+		t.Errorf("Expected ErrTaskNotFound, got %v", err)
+	}
+}
+
+func TestUpdateComment(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	commentID := createTestComment(t, db, taskID, "Original message", "testuser")
+	svc := NewService(db, nil)
+
+	req := UpdateCommentRequest{
+		CommentID: commentID,
+		Message:   "Updated message",
+	}
+
+	err := svc.UpdateComment(context.Background(), req)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify the comment was updated
+	var updatedMessage string
+	err = db.QueryRowContext(context.Background(),
+		"SELECT content FROM task_comments WHERE id = ?", commentID).Scan(&updatedMessage)
+	if err != nil {
+		t.Fatalf("Failed to query updated comment: %v", err)
+	}
+
+	if updatedMessage != "Updated message" {
+		t.Errorf("Expected message 'Updated message', got '%s'", updatedMessage)
+	}
+}
+
+func TestUpdateComment_EmptyMessage(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	commentID := createTestComment(t, db, taskID, "Original message", "testuser")
+	svc := NewService(db, nil)
+
+	req := UpdateCommentRequest{
+		CommentID: commentID,
+		Message:   "", // Empty message
+	}
+
+	err := svc.UpdateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected validation error for empty message")
+	}
+
+	if err != ErrEmptyCommentMessage {
+		t.Errorf("Expected ErrEmptyCommentMessage, got %v", err)
+	}
+}
+
+func TestUpdateComment_MessageTooLong(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	commentID := createTestComment(t, db, taskID, "Original message", "testuser")
+	svc := NewService(db, nil)
+
+	// Create message > 1000 characters
+	longMessage := ""
+	for i := 0; i < 1001; i++ {
+		longMessage += "a"
+	}
+
+	req := UpdateCommentRequest{
+		CommentID: commentID,
+		Message:   longMessage,
+	}
+
+	err := svc.UpdateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected validation error for long message")
+	}
+
+	if err != ErrCommentMessageTooLong {
+		t.Errorf("Expected ErrCommentMessageTooLong, got %v", err)
+	}
+}
+
+func TestUpdateComment_InvalidID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	req := UpdateCommentRequest{
+		CommentID: 0, // Invalid
+		Message:   "Updated message",
+	}
+
+	err := svc.UpdateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected validation error for invalid comment ID")
+	}
+
+	if err != ErrInvalidCommentID {
+		t.Errorf("Expected ErrInvalidCommentID, got %v", err)
+	}
+}
+
+func TestUpdateComment_NonExistentComment(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	req := UpdateCommentRequest{
+		CommentID: 999, // Non-existent comment
+		Message:   "Updated message",
+	}
+
+	err := svc.UpdateComment(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("Expected error for non-existent comment")
+	}
+
+	if err != ErrCommentNotFound {
+		t.Errorf("Expected ErrCommentNotFound, got %v", err)
+	}
+}
+
+func TestDeleteComment(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	commentID := createTestComment(t, db, taskID, "Test comment", "testuser")
+	svc := NewService(db, nil)
+
+	err := svc.DeleteComment(context.Background(), commentID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify the comment was deleted
+	var count int
+	err = db.QueryRowContext(context.Background(),
+		"SELECT COUNT(*) FROM task_comments WHERE id = ?", commentID).Scan(&count)
+	if err != nil {
+		t.Fatalf("Failed to query comment count: %v", err)
+	}
+
+	if count != 0 {
+		t.Errorf("Expected comment to be deleted, but still exists")
+	}
+}
+
+func TestDeleteComment_InvalidID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	err := svc.DeleteComment(context.Background(), 0) // Invalid ID
+
+	if err == nil {
+		t.Fatal("Expected validation error for invalid comment ID")
+	}
+
+	if err != ErrInvalidCommentID {
+		t.Errorf("Expected ErrInvalidCommentID, got %v", err)
+	}
+}
+
+func TestDeleteComment_NonExistentComment(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	err := svc.DeleteComment(context.Background(), 999) // Non-existent comment
+
+	if err == nil {
+		t.Fatal("Expected error for non-existent comment")
+	}
+
+	if err != ErrCommentNotFound {
+		t.Errorf("Expected ErrCommentNotFound, got %v", err)
+	}
+}
+
+func TestGetCommentsByTask(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+
+	// Create multiple comments
+	comment1ID := createTestComment(t, db, taskID, "First comment", "user1")
+	comment2ID := createTestComment(t, db, taskID, "Second comment", "user2")
+	comment3ID := createTestComment(t, db, taskID, "Third comment", "user3")
+
+	svc := NewService(db, nil)
+
+	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(comments) != 3 {
+		t.Fatalf("Expected 3 comments, got %d", len(comments))
+	}
+
+	// Verify comments are returned (order by created_at DESC, so newest first)
+	// Since we created them in quick succession, verify IDs are present
+	foundIDs := make(map[int]bool)
+	for _, c := range comments {
+		foundIDs[c.ID] = true
+	}
+
+	if !foundIDs[comment1ID] || !foundIDs[comment2ID] || !foundIDs[comment3ID] {
+		t.Error("Not all comments were returned")
+	}
+}
+
+func TestGetCommentsByTask_NoComments(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	svc := NewService(db, nil)
+
+	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(comments) != 0 {
+		t.Errorf("Expected 0 comments, got %d", len(comments))
+	}
+}
+
+func TestGetCommentsByTask_InvalidTaskID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	_, err := svc.GetCommentsByTask(context.Background(), 0) // Invalid ID
+
+	if err == nil {
+		t.Fatal("Expected validation error for invalid task ID")
+	}
+
+	if err != ErrInvalidTaskID {
+		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
+	}
+}
+
+func TestGetCommentsByTask_OrderedByCreatedAt(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+
+	// Create comments with explicit timestamps
+	_, err := db.ExecContext(context.Background(),
+		`INSERT INTO task_comments (task_id, content, author, created_at) VALUES 
+		(?, 'Oldest comment', 'user1', datetime('2024-01-01 10:00:00')),
+		(?, 'Middle comment', 'user2', datetime('2024-01-02 10:00:00')),
+		(?, 'Newest comment', 'user3', datetime('2024-01-03 10:00:00'))`,
+		taskID, taskID, taskID)
+	if err != nil {
+		t.Fatalf("Failed to create test comments: %v", err)
+	}
+
+	svc := NewService(db, nil)
+
+	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(comments) != 3 {
+		t.Fatalf("Expected 3 comments, got %d", len(comments))
+	}
+
+	// Verify DESC order (newest first)
+	if comments[0].Message != "Newest comment" {
+		t.Errorf("Expected first comment to be 'Newest comment', got '%s'", comments[0].Message)
+	}
+
+	if comments[1].Message != "Middle comment" {
+		t.Errorf("Expected second comment to be 'Middle comment', got '%s'", comments[1].Message)
+	}
+
+	if comments[2].Message != "Oldest comment" {
+		t.Errorf("Expected third comment to be 'Oldest comment', got '%s'", comments[2].Message)
+	}
+}
+
+// ============================================================================
+// INTEGRATION TESTS - COMMENTS
+// ============================================================================
+
+func TestGetTaskDetail_IncludesComments(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create task
+	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Test Task",
+		ColumnID: columnID,
+		Position: 0,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create task: %v", err)
+	}
+
+	// Create comments
+	createTestComment(t, db, task.ID, "First comment", "user1")
+	createTestComment(t, db, task.ID, "Second comment", "user2")
+
+	// Get task detail
+	detail, err := svc.GetTaskDetail(context.Background(), task.ID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify comments are included
+	if len(detail.Comments) != 2 {
+		t.Fatalf("Expected 2 comments in task detail, got %d", len(detail.Comments))
+	}
+
+	// Verify comment data
+	foundFirst := false
+	foundSecond := false
+	for _, c := range detail.Comments {
+		if c.Message == "First comment" && c.Author == "user1" {
+			foundFirst = true
+		}
+		if c.Message == "Second comment" && c.Author == "user2" {
+			foundSecond = true
+		}
+	}
+
+	if !foundFirst || !foundSecond {
+		t.Error("Expected both comments to be present in task detail")
+	}
+}
+
+func TestDeleteTask_CascadesComments(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+
+	// Create comments
+	comment1ID := createTestComment(t, db, taskID, "First comment", "user1")
+	comment2ID := createTestComment(t, db, taskID, "Second comment", "user2")
+
+	svc := NewService(db, nil)
+
+	// Delete the task
+	err := svc.DeleteTask(context.Background(), taskID)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Verify comments were cascade deleted
+	var count int
+	err = db.QueryRowContext(context.Background(),
+		"SELECT COUNT(*) FROM task_comments WHERE id IN (?, ?)", comment1ID, comment2ID).Scan(&count)
+	if err != nil {
+		t.Fatalf("Failed to query comment count: %v", err)
+	}
+
+	if count != 0 {
+		t.Errorf("Expected comments to be cascade deleted, but found %d comments", count)
 	}
 }

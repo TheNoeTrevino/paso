@@ -47,6 +47,12 @@ type Service interface {
 	// Label management
 	AttachLabel(ctx context.Context, taskID, labelID int) error
 	DetachLabel(ctx context.Context, taskID, labelID int) error
+
+	// Comment operations
+	CreateComment(ctx context.Context, req CreateCommentRequest) (*models.Comment, error)
+	UpdateComment(ctx context.Context, req UpdateCommentRequest) error
+	DeleteComment(ctx context.Context, commentID int) error
+	GetCommentsByTask(ctx context.Context, taskID int) ([]*models.Comment, error)
 }
 
 // CreateTaskRequest encapsulates all data needed to create a task
@@ -72,6 +78,19 @@ type UpdateTaskRequest struct {
 	Description *string
 	PriorityID  *int
 	TypeID      *int
+}
+
+// CreateCommentRequest encapsulates data for creating a comment
+type CreateCommentRequest struct {
+	TaskID  int
+	Message string
+	Author  string
+}
+
+// UpdateCommentRequest encapsulates data for updating a comment
+type UpdateCommentRequest struct {
+	CommentID int
+	Message   string
 }
 
 // service implements Service interface using SQLC directly
@@ -360,6 +379,12 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 		return nil, fmt.Errorf("failed to get child tasks: %w", err)
 	}
 
+	// Get comments
+	commentRows, err := s.queries.GetCommentsByTask(ctx, int64(taskID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task comments: %w", err)
+	}
+
 	// Convert to model
 	detail := &models.TaskDetail{
 		ID:          int(taskRow.ID),
@@ -372,6 +397,7 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 		Labels:      convertLabelsToModels(labels),
 		ParentTasks: convertParentTasksToReferences(parentRows),
 		ChildTasks:  convertChildTasksToReferences(childRows),
+		Comments:    convertCommentsToModels(commentRows),
 		IsBlocked:   taskRow.IsBlocked > 0,
 	}
 
@@ -1070,6 +1096,124 @@ func (s *service) DetachLabel(ctx context.Context, taskID, labelID int) error {
 	return nil
 }
 
+// ============================================================================
+// COMMENT OPERATIONS
+// ============================================================================
+
+// CreateComment creates a new comment on a task
+func (s *service) CreateComment(ctx context.Context, req CreateCommentRequest) (*models.Comment, error) {
+	// Validate task ID
+	if req.TaskID <= 0 {
+		return nil, ErrInvalidTaskID
+	}
+
+	// Validate message
+	if err := validateCommentMessage(req.Message); err != nil {
+		return nil, err
+	}
+
+	// Verify task exists before creating comment
+	_, err := s.queries.GetTask(ctx, int64(req.TaskID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrTaskNotFound
+		}
+		return nil, fmt.Errorf("failed to verify task exists: %w", err)
+	}
+
+	// Create comment
+	comment, err := s.queries.CreateComment(ctx, generated.CreateCommentParams{
+		TaskID:  int64(req.TaskID),
+		Content: req.Message,
+		Author:  req.Author,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create comment: %w", err)
+	}
+
+	s.publishTaskEvent(req.TaskID)
+
+	return &models.Comment{
+		ID:        int(comment.ID),
+		TaskID:    int(comment.TaskID),
+		Message:   comment.Content,
+		Author:    comment.Author,
+		CreatedAt: comment.CreatedAt.Time,
+	}, nil
+}
+
+// UpdateComment updates a comment's message
+func (s *service) UpdateComment(ctx context.Context, req UpdateCommentRequest) error {
+	// Validate comment ID
+	if req.CommentID <= 0 {
+		return ErrInvalidCommentID
+	}
+
+	// Validate message
+	if err := validateCommentMessage(req.Message); err != nil {
+		return err
+	}
+
+	// Verify comment exists and get task ID for event publishing
+	comment, err := s.queries.GetComment(ctx, int64(req.CommentID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrCommentNotFound
+		}
+		return fmt.Errorf("failed to get comment: %w", err)
+	}
+
+	// Update comment
+	if err := s.queries.UpdateComment(ctx, generated.UpdateCommentParams{
+		Content: req.Message,
+		ID:      int64(req.CommentID),
+	}); err != nil {
+		return fmt.Errorf("failed to update comment: %w", err)
+	}
+
+	s.publishTaskEvent(int(comment.TaskID))
+	return nil
+}
+
+// DeleteComment deletes a comment
+func (s *service) DeleteComment(ctx context.Context, commentID int) error {
+	// Validate comment ID
+	if commentID <= 0 {
+		return ErrInvalidCommentID
+	}
+
+	// Get task ID before deletion for event publishing
+	comment, err := s.queries.GetComment(ctx, int64(commentID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrCommentNotFound
+		}
+		return fmt.Errorf("failed to get comment: %w", err)
+	}
+
+	// Delete comment
+	if err := s.queries.DeleteComment(ctx, int64(commentID)); err != nil {
+		return fmt.Errorf("failed to delete comment: %w", err)
+	}
+
+	s.publishTaskEvent(int(comment.TaskID))
+	return nil
+}
+
+// GetCommentsByTask retrieves all comments for a task
+func (s *service) GetCommentsByTask(ctx context.Context, taskID int) ([]*models.Comment, error) {
+	if taskID <= 0 {
+		return nil, ErrInvalidTaskID
+	}
+
+	rows, err := s.queries.GetCommentsByTask(ctx, int64(taskID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get comments: %w", err)
+	}
+
+	return convertCommentsToModels(rows), nil
+}
+
 // validateCreateTask validates a CreateTaskRequest
 func (s *service) validateCreateTask(req CreateTaskRequest) error {
 	if req.Title == "" {
@@ -1089,6 +1233,17 @@ func (s *service) validateCreateTask(req CreateTaskRequest) error {
 	}
 	if req.TypeID < 0 {
 		return ErrInvalidType
+	}
+	return nil
+}
+
+// validateCommentMessage validates a comment message
+func validateCommentMessage(message string) error {
+	if message == "" {
+		return ErrEmptyCommentMessage
+	}
+	if len(message) > 1000 {
+		return ErrCommentMessageTooLong
 	}
 	return nil
 }
@@ -1194,6 +1349,21 @@ func convertChildTasksToReferences(rows []generated.GetChildTasksRow) []*models.
 			ref.TicketNumber = int(row.TicketNumber.Int64)
 		}
 		result = append(result, ref)
+	}
+	return result
+}
+
+// convertCommentsToModels converts generated.GetCommentsByTaskRow slice to models.Comment slice
+func convertCommentsToModels(comments []generated.GetCommentsByTaskRow) []*models.Comment {
+	result := make([]*models.Comment, 0, len(comments))
+	for _, c := range comments {
+		result = append(result, &models.Comment{
+			ID:        int(c.ID),
+			TaskID:    int(c.TaskID),
+			Message:   c.Content,
+			Author:    c.Author,
+			CreatedAt: c.CreatedAt.Time,
+		})
 	}
 	return result
 }

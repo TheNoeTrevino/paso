@@ -19,7 +19,9 @@ func CreatePasoTheme(colorScheme colors.ColorScheme) huh.Theme {
 		title := lipgloss.Color(colorScheme.Title)
 
 		// Focused field styles
-		t.Focused.Base = t.Focused.Base.BorderForeground(accent)
+		t.Focused.Base = t.Focused.Base.
+			BorderForeground(accent).
+			BorderBottom(false)
 		t.Focused.Title = t.Focused.Title.Foreground(title).Bold(true)
 		t.Focused.Description = t.Focused.Description.Foreground(subtle)
 		t.Focused.ErrorIndicator = t.Focused.ErrorIndicator.Foreground(errorColor)
