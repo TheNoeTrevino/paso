@@ -10,25 +10,25 @@ import (
 )
 
 // FormState manages all form-related state for the application.
-// This includes the custom forms for tickets, projects, and labels,
+// This includes the custom forms for tasks, projects, and labels,
 // as well as their associated field values and editing state.
 type FormState struct {
-	// Ticket form fields (for creating/editing tasks)
-	TicketForm      *huh.Form // The form instance
+	// Task form fields (for creating/editing tasks)
+	TaskForm        *huh.Form // The form instance
 	EditingTaskID   int       // ID of task being edited (0 for new task)
 	FormTitle       string    // Form field: task title
 	FormDescription string    // Form field: task description
 	FormLabelIDs    []int     // Form field: selected label IDs
 	FormConfirm     bool      // Form field: confirmation (submit vs cancel)
 
-	// Parent/child issue tracking for ticket form
+	// Parent/child issue tracking for task form
 	FormParentIDs  []int                   // Selected parent task IDs
 	FormChildIDs   []int                   // Selected child task IDs
 	FormParentRefs []*models.TaskReference // Parent task references for display
 	FormChildRefs  []*models.TaskReference // Child task references for display
 
-	// Comments/notes for ticket form
-	FormComments        []*models.Comment // Current notes loaded from DB
+	// Comments for task form
+	FormComments        []*models.Comment // Current comments loaded from DB
 	InitialFormComments []*models.Comment // Snapshot for change detection
 
 	// Comment viewport for scrollable comments section
@@ -46,7 +46,7 @@ type FormState struct {
 	FormPriorityDescription string    // Task priority (e.g., "low", "high", "critical")
 	FormPriorityColor       string    // Task priority color (hex code)
 
-	// Ticket form initial values (for change detection)
+	// Task form initial values (for change detection)
 	InitialFormTitle       string // Initial title value when form was created
 	InitialFormDescription string // Initial description value when form was created
 	InitialFormLabelIDs    []int  // Initial label IDs when form was created
@@ -80,18 +80,18 @@ type FormState struct {
 	EditingColumnID       int       // ID of column being edited (0 for new column)
 	InitialFormColumnName string    // Initial column name for change detection
 
-	// Comment form fields (for creating/editing comments/notes)
+	// Comment form fields (for creating/editing comments)
 	CommentForm               *huh.Form // The form instance
 	FormCommentMessage        string    // Form field: comment message text
 	EditingCommentID          int       // ID of comment being edited (0 for new comment)
 	InitialFormCommentMessage string    // Initial comment message for change detection
-	CommentFormReturnMode     Mode      // Mode to return to after comment form (TicketFormMode or CommentsViewMode)
+	CommentFormReturnMode     Mode      // Mode to return to after comment form (TaskFormMode or CommentsViewMode)
 }
 
 // NewFormState creates a new FormState with default values.
 func NewFormState() *FormState {
 	return &FormState{
-		TicketForm:                nil,
+		TaskForm:                  nil,
 		EditingTaskID:             0,
 		FormTitle:                 "",
 		FormDescription:           "",
@@ -128,11 +128,11 @@ func NewFormState() *FormState {
 	}
 }
 
-// --- Ticket Form Methods ---
+// --- Task Form Methods ---
 
-// ClearTicketForm resets all ticket form fields to their default values.
-func (s *FormState) ClearTicketForm() {
-	s.TicketForm = nil
+// ClearTaskForm resets all task form fields to their default values.
+func (s *FormState) ClearTaskForm() {
+	s.TaskForm = nil
 	s.EditingTaskID = 0
 	s.FormTitle = ""
 	s.FormDescription = ""
@@ -155,9 +155,9 @@ func (s *FormState) ClearTicketForm() {
 	s.InitialFormChildIDs = []int{}
 }
 
-// IsTicketFormActive returns true if a ticket form is currently active.
-func (s *FormState) IsTicketFormActive() bool {
-	return s.TicketForm != nil
+// IsTaskFormActive returns true if a task form is currently active.
+func (s *FormState) IsTaskFormActive() bool {
+	return s.TaskForm != nil
 }
 
 // --- Project Form Methods ---
@@ -204,10 +204,10 @@ func (s *FormState) ClearAssigningLabels() {
 
 // --- Change Detection Methods ---
 
-// HasTicketFormChanges returns true if the ticket form has unsaved changes.
+// HasTaskFormChanges returns true if the task form has unsaved changes.
 // Compares current field values against initial snapshots.
-func (s *FormState) HasTicketFormChanges() bool {
-	if s.TicketForm == nil {
+func (s *FormState) HasTaskFormChanges() bool {
+	if s.TaskForm == nil {
 		return false
 	}
 
@@ -251,9 +251,9 @@ func (s *FormState) HasProjectFormChanges() bool {
 	return false
 }
 
-// SnapshotTicketFormInitialValues stores current form values as initial state.
+// SnapshotTaskFormInitialValues stores current form values as initial state.
 // Call this when the form is first created/initialized.
-func (s *FormState) SnapshotTicketFormInitialValues() {
+func (s *FormState) SnapshotTaskFormInitialValues() {
 	s.InitialFormTitle = s.FormTitle
 	s.InitialFormDescription = s.FormDescription
 	s.InitialFormLabelIDs = append([]int{}, s.FormLabelIDs...)   // Copy slice
