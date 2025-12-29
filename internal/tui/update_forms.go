@@ -11,7 +11,6 @@ import (
 	columnService "github.com/thenoetrevino/paso/internal/services/column"
 	projectService "github.com/thenoetrevino/paso/internal/services/project"
 	taskService "github.com/thenoetrevino/paso/internal/services/task"
-	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 	userutil "github.com/thenoetrevino/paso/internal/user"
 )
@@ -474,17 +473,8 @@ func (m Model) updateTicketForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Otherwise let form handle it
 
 		case "ctrl+n":
-			// Go directly to create new note (skip note list view)
-			if m.FormState.EditingTaskID != 0 {
-				m.FormState.FormCommentMessage = ""
-				m.FormState.EditingCommentID = 0
-				m.FormState.CommentForm = huhforms.CreateCommentForm(&m.FormState.FormCommentMessage, false).
-					WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-				m.FormState.SnapshotCommentFormInitialValues()
-				m.UiState.SetMode(state.NoteFormMode)
-				return m, m.FormState.CommentForm.Init()
-			}
-			return m, nil
+			// Open comments view
+			return m.handleOpenCommentsView()
 
 		case m.Config.KeyMappings.SaveForm:
 			// Quick save via C-s
@@ -757,8 +747,14 @@ func (m Model) updateNoteForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.UiState.SetMode(state.DiscardConfirmMode)
 				return m, nil
 			}
-			// No changes or in create mode - allow immediate close, return to ticket form
-			m.UiState.SetMode(state.TicketFormMode)
+			// No changes or in create mode - return to appropriate mode
+			returnMode := m.FormState.CommentFormReturnMode
+			if returnMode == state.CommentsViewMode {
+				m.NoteState.SetComments(m.FormState.FormComments)
+				m.UiState.SetMode(state.CommentsViewMode)
+			} else {
+				m.UiState.SetMode(state.TicketFormMode)
+			}
 			m.FormState.ClearCommentForm()
 			return m, tea.ClearScreen
 		}
@@ -829,9 +825,31 @@ func (m Model) updateNoteForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.NoteState.Items = convertToNoteItems(comments)
 			}
 
-			// Return to ticket form view
-			m.UiState.SetMode(state.TicketFormMode)
+			// Return to appropriate mode based on where we came from
+			returnMode := m.FormState.CommentFormReturnMode
+			if returnMode == state.CommentsViewMode {
+				// Refresh comments view and return to it
+				m.NoteState.SetComments(m.FormState.FormComments)
+				m.UiState.SetMode(state.CommentsViewMode)
+			} else {
+				// Return to ticket form (legacy path)
+				m.UiState.SetMode(state.TicketFormMode)
+			}
 		},
 		confirmPtr: nil, // Note forms don't have confirmation field
 	})
+}
+
+// handleOpenCommentsView opens the full-screen comments view
+func (m Model) handleOpenCommentsView() (tea.Model, tea.Cmd) {
+	// Set up comments view state
+	m.NoteState.TaskID = m.FormState.EditingTaskID
+	m.NoteState.SetComments(m.FormState.FormComments)
+	m.NoteState.Cursor = 0
+	m.NoteState.ScrollOffset = 0
+
+	// Switch to comments view mode
+	m.UiState.SetMode(state.CommentsViewMode)
+
+	return m, nil
 }
