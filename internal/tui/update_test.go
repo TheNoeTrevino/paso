@@ -9,10 +9,10 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
-// TestModeDispatch_TicketFormMode ensures form mode intercepts all messages.
-// Edge case: When in TicketFormMode, ALL messages should go to updateTicketForm.
+// TestModeDispatch_TaskFormMode ensures form mode intercepts all messages.
+// Edge case: When in TicketFormMode, ALL messages should go to updateTaskForm.
 // Security value: Form receives input correctly (keyboard events reach form handler).
-func TestModeDispatch_TicketFormMode(t *testing.T) {
+func TestModeDispatch_TaskFormMode(t *testing.T) {
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	m := setupTestModel(columns, nil)
 
@@ -21,12 +21,12 @@ func TestModeDispatch_TicketFormMode(t *testing.T) {
 	title := ""
 	description := ""
 	confirm := false
-	m.FormState.TicketForm = huhforms.CreateTicketForm(&title, &description, &confirm, 5)
+	m.FormState.TaskForm = huhforms.CreateTaskForm(&title, &description, &confirm, 5)
 
 	// Send a key message
 	keyMsg := tea.KeyPressMsg(tea.Key{Text: "a", Code: 'a'})
 
-	// Update should route to updateTicketForm
+	// Update should route to updateTaskForm
 	newModel, cmd := m.Update(keyMsg)
 	m = newModel.(Model)
 
@@ -70,10 +70,8 @@ func TestModeDispatch_NormalMode(t *testing.T) {
 	}
 }
 
-// TestUpdateTicketForm_EscapeCancels ensures ESC key exits form mode.
-// Edge case: User presses ESC while filling out form.
-// Security value: Clean state reset (no partial form data).
-func TestUpdateTicketForm_EscapeCancels(t *testing.T) {
+// TestUpdateTaskForm_EscapeCancels ensures ESC key exits form mode.
+func TestUpdateTaskForm_EscapeCancels(t *testing.T) {
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	m := setupTestModel(columns, nil)
 
@@ -82,7 +80,7 @@ func TestUpdateTicketForm_EscapeCancels(t *testing.T) {
 	title := ""
 	description := ""
 	confirm := false
-	m.FormState.TicketForm = huhforms.CreateTicketForm(&title, &description, &confirm, 5)
+	m.FormState.TaskForm = huhforms.CreateTaskForm(&title, &description, &confirm, 5)
 
 	// Send ESC key
 	keyMsg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})
@@ -96,8 +94,13 @@ func TestUpdateTicketForm_EscapeCancels(t *testing.T) {
 	}
 
 	// Form should be cleared
-	if m.FormState.TicketForm != nil {
-		t.Error("TicketForm after ESC should be nil")
+	if m.FormState.TaskForm != nil {
+		t.Error("TaskForm after ESC should be nil")
+	}
+
+	// Form should be cleared
+	if m.FormState.TaskForm != nil {
+		t.Error("TaskForm after ESC should be nil")
 	}
 
 	// Cmd should be nil (clean exit)
@@ -106,11 +109,11 @@ func TestUpdateTicketForm_EscapeCancels(t *testing.T) {
 	}
 }
 
-// TestUpdateTicketForm_EmptyTitleNoOp ensures empty title doesn't create task.
+// TestUpdateTaskForm_EmptyTitleNoOp ensures empty title doesn't create task.
 // Edge case: Form submitted with empty title.
 // Security value: Data validation (prevents empty task titles in database).
 // Note: This test documents expected behavior - actual validation happens in update.go:124
-func TestUpdateTicketForm_EmptyTitleNoOp(t *testing.T) {
+func TestUpdateTaskForm_EmptyTitleNoOp(t *testing.T) {
 	// This test requires the form to actually complete, which is complex
 	// to simulate without running the full form lifecycle.
 	// Instead, we document the validation exists in update.go:
