@@ -1102,15 +1102,23 @@ func (s *service) DetachLabel(ctx context.Context, taskID, labelID int) error {
 
 // CreateComment creates a new comment on a task
 func (s *service) CreateComment(ctx context.Context, req CreateCommentRequest) (*models.Comment, error) {
-	// Validate request
+	// Validate task ID
 	if req.TaskID <= 0 {
 		return nil, ErrInvalidTaskID
 	}
-	if req.Message == "" {
-		return nil, errors.New("comment message cannot be empty")
+
+	// Validate message
+	if err := validateCommentMessage(req.Message); err != nil {
+		return nil, err
 	}
-	if len(req.Message) > 500 {
-		return nil, errors.New("comment message cannot exceed 500 characters")
+
+	// Verify task exists before creating comment
+	_, err := s.queries.GetTask(ctx, int64(req.TaskID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrTaskNotFound
+		}
+		return nil, fmt.Errorf("failed to verify task exists: %w", err)
 	}
 
 	// Create comment
@@ -1136,15 +1144,23 @@ func (s *service) CreateComment(ctx context.Context, req CreateCommentRequest) (
 
 // UpdateComment updates a comment's message
 func (s *service) UpdateComment(ctx context.Context, req UpdateCommentRequest) error {
-	// Validate request
+	// Validate comment ID
 	if req.CommentID <= 0 {
-		return errors.New("invalid comment ID")
+		return ErrInvalidCommentID
 	}
-	if req.Message == "" {
-		return errors.New("comment message cannot be empty")
+
+	// Validate message
+	if err := validateCommentMessage(req.Message); err != nil {
+		return err
 	}
-	if len(req.Message) > 500 {
-		return errors.New("comment message cannot exceed 500 characters")
+
+	// Verify comment exists and get task ID for event publishing
+	comment, err := s.queries.GetComment(ctx, int64(req.CommentID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrCommentNotFound
+		}
+		return fmt.Errorf("failed to get comment: %w", err)
 	}
 
 	// Update comment
@@ -1155,25 +1171,23 @@ func (s *service) UpdateComment(ctx context.Context, req UpdateCommentRequest) e
 		return fmt.Errorf("failed to update comment: %w", err)
 	}
 
-	// Get task ID for event publishing
-	comment, err := s.queries.GetComment(ctx, int64(req.CommentID))
-	if err == nil {
-		s.publishTaskEvent(int(comment.TaskID))
-	}
-
+	s.publishTaskEvent(int(comment.TaskID))
 	return nil
 }
 
 // DeleteComment deletes a comment
 func (s *service) DeleteComment(ctx context.Context, commentID int) error {
-	// Validate
+	// Validate comment ID
 	if commentID <= 0 {
-		return errors.New("invalid comment ID")
+		return ErrInvalidCommentID
 	}
 
 	// Get task ID before deletion for event publishing
 	comment, err := s.queries.GetComment(ctx, int64(commentID))
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrCommentNotFound
+		}
 		return fmt.Errorf("failed to get comment: %w", err)
 	}
 
@@ -1219,6 +1233,17 @@ func (s *service) validateCreateTask(req CreateTaskRequest) error {
 	}
 	if req.TypeID < 0 {
 		return ErrInvalidType
+	}
+	return nil
+}
+
+// validateCommentMessage validates a comment message
+func validateCommentMessage(message string) error {
+	if message == "" {
+		return ErrEmptyCommentMessage
+	}
+	if len(message) > 1000 {
+		return ErrCommentMessageTooLong
 	}
 	return nil
 }
