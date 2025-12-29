@@ -18,9 +18,14 @@
 - `paso task list --project=<id>` - List tasks in project
 - `paso task ready --project=<id>` - Show ready tasks (no blockers)
 - `paso task blocked --project=<id>` - Show blocked tasks
+- `paso task show <id>` - Display full task details (description, labels, relationships, metadata)
 - `paso task create --project=<id> --title="..." --type=task|feature --priority=medium` - Create task
-- `paso task update --id=<id> --title="..." --description="..."` - Update task
+- `paso task create --project=<id> --title="..." --column="In Progress"` - Create in specific column
+- `paso task update --id=<id> --title="..." --description="..." --priority=high` - Update task
 - `paso task delete --id=<id>` - Delete task
+- `paso task move --id=<id> next` - Move to next column
+- `paso task move --id=<id> prev` - Move to previous column
+- `paso task move --id=<id> "Done"` - Move to column by name (case-insensitive)
 
 ### Dependencies
 - `paso task link --parent=<id> --child=<id>` - Parent-child relationship
@@ -30,6 +35,24 @@
 ### Columns
 - `paso column list --project=<id>` - List columns
 - `paso column create --project=<id> --name="..."` - Create column
+- `paso column update --id=<id> --name="..."` - Update column name
+- `paso column update --id=<id> --ready` - Mark column as holding ready tasks
+- `paso column update --id=<id> --completed` - Mark column as holding completed tasks
+
+### Comments
+- `paso task comment --id=<id> --message="..."` - Add comment to task (max 1000 chars)
+- `paso task comment --id=<id> --message="..." --author="name"` - Add comment with specific author (always do this. E.g., claude/opencode/copilot)
+
+### Labels
+- `paso label list --project=<id>` - List project labels
+- `paso label create --name="bug" --color="#FF0000" --project=<id>` - Create label
+- `paso label attach --task=<id> --label=<id>` - Attach label to task
+- `paso label detach --task=<id> --label=<id>` - Remove label from task
+- `paso label update --id=<id> --name="..." --color="#RRGGBB"` - Update label
+- `paso label delete --id=<id>` - Delete label
+
+### Project Overview
+- `paso project tree <project-id>` - Display hierarchical task tree showing parent-child and blocking relationships
 
 ## Getting Started
 
@@ -47,6 +70,7 @@ This prevents confusion and ensures all work is tracked in the correct project.
 ```bash
 paso project list              # Find project ID
 paso task ready --project=1    # Find available work
+paso task show 42              # View full details before starting
 ```
 
 **Creating a task:**
@@ -60,6 +84,31 @@ FEATURE=$(paso task create --project=1 --title="Implement feature X" --quiet)
 TESTS=$(paso task create --project=1 --title="Write tests for X" --quiet)
 # Tests blocked by feature:
 paso task link --parent=$TESTS --child=$FEATURE --blocker
+```
+
+**Tracking progress with comments:**
+```bash
+paso task comment --id=42 --message="Started implementation, found edge case in auth flow"
+paso task comment --id=42 --message="Edge case resolved, ready for review"
+```
+
+**Organizing with labels:**
+```bash
+# Create and attach labels for categorization
+LABEL=$(paso label create --name="backend" --color="#4A90D9" --project=1 --quiet)
+paso label attach --task=42 --label=$LABEL
+```
+
+**Moving tasks through workflow:**
+```bash
+paso task move --id=42 next           # Move to next column
+paso task move --id=42 "In Review"    # Move to specific column
+paso task move --id=42 "Done"         # Mark as complete
+```
+
+**Viewing project structure:**
+```bash
+paso project tree 1    # See all tasks and their relationships in tree format
 ```
 
 ## Output Flags
