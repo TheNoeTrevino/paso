@@ -10,6 +10,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/app"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
+	"github.com/thenoetrevino/paso/internal/logging"
 )
 
 // CLI represents the CLI application context
@@ -21,6 +22,14 @@ type CLI struct {
 
 // NewCLI initializes the CLI with database and optional daemon connection
 func NewCLI(ctx context.Context) (*CLI, error) {
+	// Initialize logging to file before database initialization
+	// This ensures goose migration logs go to the log file instead of stdout
+	if err := logging.Init(); err != nil {
+		// If logging fails, we can still continue - it's non-critical for CLI
+		// but we won't suppress migration logs
+		_ = err
+	}
+
 	// Initialize database
 	db, err := database.InitDB(ctx)
 	if err != nil {
