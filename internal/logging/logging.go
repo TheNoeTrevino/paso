@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -37,6 +38,10 @@ func Init() error {
 
 	Logger = slog.New(handler)
 	slog.SetDefault(Logger)
+
+	// Redirect standard log package output (used by goose) to the same file
+	log.SetOutput(file)
+	log.SetFlags(log.LstdFlags) // Include timestamp
 
 	return nil
 }
