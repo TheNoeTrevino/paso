@@ -4,9 +4,9 @@
 
 -- name: CreateColumn :one
 INSERT INTO columns (
-    name, project_id, prev_id, next_id, holds_ready_tasks, holds_completed_tasks
+    name, project_id, prev_id, next_id, holds_ready_tasks, holds_completed_tasks, holds_in_progress_tasks
 )
-VALUES (?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetColumnByID :one
@@ -17,7 +17,8 @@ project_id,
 prev_id,
 next_id,
 holds_ready_tasks,
-holds_completed_tasks
+holds_completed_tasks,
+holds_in_progress_tasks
 FROM columns
 WHERE id = ?;
 
@@ -28,7 +29,8 @@ project_id,
 prev_id,
 next_id,
 holds_ready_tasks,
-holds_completed_tasks
+holds_completed_tasks,
+holds_in_progress_tasks
 FROM columns
 WHERE project_id = ?;
 
@@ -98,3 +100,20 @@ LIMIT 1;
 -- name: ClearCompletedColumnByProject :exec
 UPDATE columns SET holds_completed_tasks = 0
 WHERE project_id = ? AND holds_completed_tasks = 1;
+
+-- ============================================================================
+-- IN-PROGRESS COLUMN OPERATIONS
+-- ============================================================================
+
+-- name: UpdateColumnHoldsInProgressTasks :exec
+UPDATE columns SET holds_in_progress_tasks = ? WHERE id = ?;
+
+-- name: GetInProgressColumnByProject :one
+SELECT id, name, project_id, prev_id, next_id, holds_in_progress_tasks
+FROM columns
+WHERE project_id = ? AND holds_in_progress_tasks = 1
+LIMIT 1;
+
+-- name: ClearInProgressColumnByProject :exec
+UPDATE columns SET holds_in_progress_tasks = 0
+WHERE project_id = ? AND holds_in_progress_tasks = 1;
