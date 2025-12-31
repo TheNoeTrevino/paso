@@ -42,6 +42,7 @@ Examples:
 	cmd.Flags().String("name", "", "New column name")
 	cmd.Flags().Bool("ready", false, "Set this column as holding ready tasks")
 	cmd.Flags().Bool("completed", false, "Set this column as holding completed tasks")
+	cmd.Flags().Bool("in-progress", false, "Set this column as holding in-progress tasks")
 	cmd.Flags().Bool("force", false, "Force setting completed column even if one already exists")
 
 	// Agent-friendly flags
@@ -58,6 +59,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	columnName, _ := cmd.Flags().GetString("name")
 	setReady, _ := cmd.Flags().GetBool("ready")
 	setCompleted, _ := cmd.Flags().GetBool("completed")
+	setInProgress, _ := cmd.Flags().GetBool("in-progress")
 	force, _ := cmd.Flags().GetBool("force")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
@@ -65,11 +67,11 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Validate at least one update flag is provided
-	if columnName == "" && !setReady && !setCompleted {
-		if fmtErr := formatter.Error("INVALID_INPUT", "at least one of --name, --ready, or --completed must be provided"); fmtErr != nil {
+	if columnName == "" && !setReady && !setCompleted && !setInProgress {
+		if fmtErr := formatter.Error("INVALID_INPUT", "at least one of --name, --ready, --completed, or --in-progress must be provided"); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
 		}
-		return fmt.Errorf("at least one of --name, --ready, or --completed must be provided")
+		return fmt.Errorf("at least one of --name, --ready, --completed, or --in-progress must be provided")
 	}
 
 	// Initialize CLI
@@ -138,6 +140,17 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Update in-progress status if flag is set
+	if setInProgress {
+		updatedColumn, err = cliInstance.App.ColumnService.SetHoldsInProgressTasks(ctx, columnID)
+		if err != nil {
+			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
+				log.Printf("Error formatting error message: %v", fmtErr)
+			}
+			return err
+		}
+	}
+
 	// Output based on mode
 	if quietMode {
 		return nil
@@ -147,11 +160,12 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
 			"success": true,
 			"column": map[string]interface{}{
-				"id":                    columnID,
-				"name":                  updatedColumn.Name,
-				"old_name":              oldName,
-				"holds_ready_tasks":     updatedColumn.HoldsReadyTasks,
-				"holds_completed_tasks": updatedColumn.HoldsCompletedTasks,
+				"id":                      columnID,
+				"name":                    updatedColumn.Name,
+				"old_name":                oldName,
+				"holds_ready_tasks":       updatedColumn.HoldsReadyTasks,
+				"holds_completed_tasks":   updatedColumn.HoldsCompletedTasks,
+				"holds_in_progress_tasks": updatedColumn.HoldsInProgressTasks,
 			},
 		})
 	}
@@ -166,6 +180,9 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 	if setCompleted {
 		fmt.Printf("  Now holds completed tasks: %v\n", updatedColumn.HoldsCompletedTasks)
+	}
+	if setInProgress {
+		fmt.Printf("  Now holds in-progress tasks: %v\n", updatedColumn.HoldsInProgressTasks)
 	}
 	return nil
 }
