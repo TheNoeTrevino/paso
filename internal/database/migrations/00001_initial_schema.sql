@@ -65,6 +65,7 @@ CREATE TABLE columns (
     project_id INTEGER NOT NULL,
     holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
     holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
+    holds_in_progress_tasks BOOLEAN NOT NULL DEFAULT 0,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
@@ -138,10 +139,12 @@ CREATE INDEX idx_task_comments_task ON task_comments(task_id);
 -- Unique partial indexes for column constraints
 CREATE UNIQUE INDEX idx_columns_ready_per_project ON columns(project_id) WHERE holds_ready_tasks = 1;
 CREATE UNIQUE INDEX idx_columns_completed_per_project ON columns(project_id) WHERE holds_completed_tasks = 1;
+CREATE UNIQUE INDEX idx_columns_in_progress_per_project ON columns(project_id) WHERE holds_in_progress_tasks = 1;
 
 -- +goose Down
 -- Drop all tables and indexes in reverse order
 
+DROP INDEX IF EXISTS idx_columns_in_progress_per_project;
 DROP INDEX IF EXISTS idx_columns_completed_per_project;
 DROP INDEX IF EXISTS idx_columns_ready_per_project;
 DROP INDEX IF EXISTS idx_task_comments_task;

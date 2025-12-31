@@ -11,7 +11,9 @@ var (
 	ErrInvalidProjectID = errors.New("invalid project ID")
 
 	// Business logic errors
-	ErrColumnNotFound        = errors.New("column not found")
-	ErrColumnHasTasks        = errors.New("cannot delete column with tasks")
-	ErrCompletedColumnExists = errors.New("a completed column already exists for this project")
+	ErrColumnNotFound         = errors.New("column not found")
+	ErrColumnHasTasks         = errors.New("cannot delete column with tasks")
+	ErrCompletedColumnExists  = errors.New("a completed column already exists for this project")
+	ErrReadyColumnExists      = errors.New("a ready column already exists for this project")
+	ErrInProgressColumnExists = errors.New("an in-progress column already exists for this project")
 )

@@ -80,6 +80,7 @@ func (s *CommentState) SetComments(comments []*models.Comment) {
 	for i, c := range comments {
 		s.Items[i] = CommentItem{Comment: c}
 	}
+
 	// Reset cursor if out of bounds
 	if s.Cursor >= len(s.Items) {
 		if len(s.Items) > 0 {
@@ -87,6 +88,11 @@ func (s *CommentState) SetComments(comments []*models.Comment) {
 		} else {
 			s.Cursor = 0
 		}
+	}
+
+	// Reset scroll offset if out of bounds
+	if s.ScrollOffset >= len(s.Items) && len(s.Items) > 0 {
+		s.ScrollOffset = max(0, len(s.Items)-1)
 	}
 }
 
@@ -110,5 +116,27 @@ func (s *CommentState) DeleteSelected() {
 		s.Cursor = 0
 	} else if s.Cursor >= len(s.Items) {
 		s.Cursor = len(s.Items) - 1
+	}
+}
+
+// EnsureCommentVisible adjusts scroll offset to keep the cursor visible.
+// Mirrors the EnsureTaskVisible pattern from UIState.
+//
+// Parameters:
+//   - maxVisible: maximum number of comments that can be displayed at once
+func (s *CommentState) EnsureCommentVisible(maxVisible int) {
+	// If cursor is above visible area, scroll up
+	if s.Cursor < s.ScrollOffset {
+		s.ScrollOffset = s.Cursor
+	}
+
+	// If cursor is below visible area, scroll down
+	if s.Cursor >= s.ScrollOffset+maxVisible {
+		s.ScrollOffset = s.Cursor - maxVisible + 1
+	}
+
+	// Ensure scroll offset never goes negative
+	if s.ScrollOffset < 0 {
+		s.ScrollOffset = 0
 	}
 }

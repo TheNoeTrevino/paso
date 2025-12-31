@@ -24,7 +24,7 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 		bg = theme.TaskBg
 	}
 
-	title := renderTaskSummaryTitle(task)
+	title := renderTaskSummaryTitle(task, bg)
 	metadataLine := renderTaskSummaryMetadata(task, bg)
 	labelChips := renderTaskCardLabels(task.Labels, bg)
 	content := title + metadataLine + labelChips
@@ -37,7 +37,7 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 	return style.Render(content)
 }
 
-func renderTaskSummaryTitle(task *models.TaskSummary) string {
+func renderTaskSummaryTitle(task *models.TaskSummary, bg string) string {
 	var blockedIndicator string
 	if task.IsBlocked {
 		blockedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444")).Bold(true).Italic(true)
@@ -45,13 +45,12 @@ func renderTaskSummaryTitle(task *models.TaskSummary) string {
 	}
 	title := task.Title
 
-	// TODO: give this a subtle background
-	// emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Background(lipgloss.Color(bg)).Italic(true)
 	if len(title) >= 30 {
-		title = title[:27] + lipgloss.NewStyle().
+		ellipsisStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(theme.Subtle)).
-			Italic(true).
-			Render("...")
+			Background(lipgloss.Color(bg)).
+			Italic(true)
+		title = title[:27] + ellipsisStyle.Render("...")
 	}
 
 	if len(title) < 30 {
@@ -60,7 +59,7 @@ func renderTaskSummaryTitle(task *models.TaskSummary) string {
 
 	return lipgloss.NewStyle().
 		Bold(true).
-		Render(" 󰗴 " + title + blockedIndicator)
+		Render(" 󰗴 " + blockedIndicator + title)
 }
 
 // renderTaskCardLabels renders the labels as chips, with their color as the background

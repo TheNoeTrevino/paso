@@ -723,5 +723,3 @@ Excellent organization with clear layering, focused state objects, and pure comp
 
 This is a solid foundation with production-quality database code and clean architecture. Address the critical bugs and testing gaps, and you'll have an excellent TUI application.
 
-
-TODO: why does the terminal kind of crash when we try to open a task?

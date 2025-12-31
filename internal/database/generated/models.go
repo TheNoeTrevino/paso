@@ -9,13 +9,14 @@ import (
 )
 
 type Column struct {
-	ID                  int64
-	Name                string
-	PrevID              interface{}
-	NextID              interface{}
-	ProjectID           int64
-	HoldsReadyTasks     bool
-	HoldsCompletedTasks bool
+	ID                   int64
+	Name                 string
+	PrevID               interface{}
+	NextID               interface{}
+	ProjectID            int64
+	HoldsReadyTasks      bool
+	HoldsCompletedTasks  bool
+	HoldsInProgressTasks bool
 }
 
 type Label struct {
@@ -69,9 +70,9 @@ type TaskComment struct {
 	ID        int64
 	TaskID    int64
 	Content   string
+	Author    string
 	CreatedAt sql.NullTime
 	UpdatedAt sql.NullTime
-	Author    string
 }
 
 type TaskLabel struct {
