@@ -30,14 +30,38 @@ func (m Model) handleCommentsViewInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleCommentsViewUp moves cursor up in comments list
 func (m Model) handleCommentsViewUp() (tea.Model, tea.Cmd) {
-	m.CommentState.MoveCursorUp()
+	moved := m.CommentState.MoveCursorUp()
+	if moved {
+		// Calculate max visible for auto-scroll
+		// Must match the height calculation in renderCommentsViewContent
+		layerHeight := m.UiState.Height() * 8 / 10
+		availableHeight := layerHeight - 4 // Reserve for title + help
+		_, _, maxVisible := calculateVisibleCommentRange(
+			m.CommentState.ScrollOffset,
+			len(m.CommentState.Items),
+			availableHeight,
+		)
+		m.CommentState.EnsureCommentVisible(maxVisible)
+	}
 	return m, nil
 }
 
 // handleCommentsViewDown moves cursor down in comments list
 func (m Model) handleCommentsViewDown() (tea.Model, tea.Cmd) {
 	maxIdx := len(m.CommentState.Items) - 1
-	m.CommentState.MoveCursorDown(maxIdx)
+	moved := m.CommentState.MoveCursorDown(maxIdx)
+	if moved {
+		// Calculate max visible for auto-scroll
+		// Must match the height calculation in renderCommentsViewContent
+		layerHeight := m.UiState.Height() * 8 / 10
+		availableHeight := layerHeight - 4 // Reserve for title + help
+		_, _, maxVisible := calculateVisibleCommentRange(
+			m.CommentState.ScrollOffset,
+			len(m.CommentState.Items),
+			availableHeight,
+		)
+		m.CommentState.EnsureCommentVisible(maxVisible)
+	}
 	return m, nil
 }
 
