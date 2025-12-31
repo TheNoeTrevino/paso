@@ -1,6 +1,17 @@
 # Paso Workflow Context
 
-**IMPORTANT**: This project uses **paso** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
+# 🚨 CRITICAL TASK TRACKING RULES 🚨
+
+**NEVER use the TodoWrite tool or markdown TODOs in this project!**
+
+```
+✓ CORRECT:   paso task create --project=1 --title="Fix bug"
+✗ WRONG:     TodoWrite tool
+✗ WRONG:     - [ ] Fix bug (markdown checkbox)
+✗ WRONG:     TODO comments for tracking work
+```
+
+**ALL work tracking MUST use paso commands. No exceptions.**
 
 
 ## Core Rules
@@ -38,6 +49,7 @@
 - `paso column update --id=<id> --name="..."` - Update column name
 - `paso column update --id=<id> --ready` - Mark column as holding ready tasks
 - `paso column update --id=<id> --completed` - Mark column as holding completed tasks
+- `paso column update --id=<id> --in-progress` - Mark column as holding in-progress tasks
 
 ### Comments
 - `paso task comment --id=<id> --message="..."` - Add comment to task (max 1000 chars)
@@ -63,6 +75,37 @@
 3. Once confirmed, use that project ID for all subsequent operations
 
 This prevents confusion and ensures all work is tracked in the correct project.
+
+## AI Agent Workflow
+
+**CRITICAL: Always move tasks to in-progress when you start working on them!**
+
+**When working on tasks with paso:**
+1. **IMMEDIATELY** use `paso task in-progress <id>` when you start working on a task
+2. This applies to both existing tasks AND newly created tasks you're about to work on
+3. This helps track active work across context compactions
+
+**Creating and immediately working on a task:**
+```bash
+# Create task
+TASK_ID=$(paso task create --project=1 --title="Fix bug" --quiet)
+
+# IMMEDIATELY move to in-progress before starting work
+paso task in-progress $TASK_ID
+
+# Now start working...
+```
+
+**Working on existing task:**
+```bash
+# BEFORE you start working, move to in-progress
+paso task in-progress 42
+
+# Now work on the task...
+
+# When done
+paso task done 42
+```
 
 ## Common Workflows
 
@@ -101,9 +144,10 @@ paso label attach --task=42 --label=$LABEL
 
 **Moving tasks through workflow:**
 ```bash
+paso task in-progress 42              # Start working on task
 paso task move --id=42 next           # Move to next column
 paso task move --id=42 "In Review"    # Move to specific column
-paso task move --id=42 "Done"         # Mark as complete
+paso task done 42                     # Mark as complete
 ```
 
 **Viewing project structure:**

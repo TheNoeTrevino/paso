@@ -239,6 +239,60 @@ func (q *Queries) GetChildTasks(ctx context.Context, parentID int64) ([]GetChild
 	return items, nil
 }
 
+const getInProgressTasksByProject = `-- name: GetInProgressTasksByProject :many
+SELECT
+    t.id,
+    t.ticket_number,
+    t.title,
+    t.description,
+    c.name AS column_name,
+    proj.name AS project_name
+FROM tasks t
+INNER JOIN columns c ON t.column_id = c.id
+INNER JOIN projects proj ON c.project_id = proj.id
+WHERE proj.id = ? AND c.holds_in_progress_tasks = 1
+ORDER BY t.position
+`
+
+type GetInProgressTasksByProjectRow struct {
+	ID           int64
+	TicketNumber sql.NullInt64
+	Title        string
+	Description  sql.NullString
+	ColumnName   string
+	ProjectName  string
+}
+
+func (q *Queries) GetInProgressTasksByProject(ctx context.Context, id int64) ([]GetInProgressTasksByProjectRow, error) {
+	rows, err := q.db.QueryContext(ctx, getInProgressTasksByProject, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetInProgressTasksByProjectRow{}
+	for rows.Next() {
+		var i GetInProgressTasksByProjectRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TicketNumber,
+			&i.Title,
+			&i.Description,
+			&i.ColumnName,
+			&i.ProjectName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getNextColumnID = `-- name: GetNextColumnID :one
 SELECT next_id FROM columns WHERE id = ?
 `

@@ -19,6 +19,16 @@ func (q *Queries) ClearCompletedColumnByProject(ctx context.Context, projectID i
 	return err
 }
 
+const clearInProgressColumnByProject = `-- name: ClearInProgressColumnByProject :exec
+UPDATE columns SET holds_in_progress_tasks = 0
+WHERE project_id = ? AND holds_in_progress_tasks = 1
+`
+
+func (q *Queries) ClearInProgressColumnByProject(ctx context.Context, projectID int64) error {
+	_, err := q.db.ExecContext(ctx, clearInProgressColumnByProject, projectID)
+	return err
+}
+
 const clearReadyColumnByProject = `-- name: ClearReadyColumnByProject :exec
 UPDATE columns SET holds_ready_tasks = 0
 WHERE project_id = ? AND holds_ready_tasks = 1
@@ -47,19 +57,20 @@ func (q *Queries) ColumnExists(ctx context.Context, id int64) (int64, error) {
 const createColumn = `-- name: CreateColumn :one
 
 INSERT INTO columns (
-    name, project_id, prev_id, next_id, holds_ready_tasks, holds_completed_tasks
+    name, project_id, prev_id, next_id, holds_ready_tasks, holds_completed_tasks, holds_in_progress_tasks
 )
-VALUES (?, ?, ?, ?, ?, ?)
-RETURNING id, name, prev_id, next_id, project_id, holds_ready_tasks, holds_completed_tasks
+VALUES (?, ?, ?, ?, ?, ?, ?)
+RETURNING id, name, prev_id, next_id, project_id, holds_ready_tasks, holds_completed_tasks, holds_in_progress_tasks
 `
 
 type CreateColumnParams struct {
-	Name                string
-	ProjectID           int64
-	PrevID              interface{}
-	NextID              interface{}
-	HoldsReadyTasks     bool
-	HoldsCompletedTasks bool
+	Name                 string
+	ProjectID            int64
+	PrevID               interface{}
+	NextID               interface{}
+	HoldsReadyTasks      bool
+	HoldsCompletedTasks  bool
+	HoldsInProgressTasks bool
 }
 
 // ============================================================================
@@ -73,6 +84,7 @@ func (q *Queries) CreateColumn(ctx context.Context, arg CreateColumnParams) (Col
 		arg.NextID,
 		arg.HoldsReadyTasks,
 		arg.HoldsCompletedTasks,
+		arg.HoldsInProgressTasks,
 	)
 	var i Column
 	err := row.Scan(
@@ -83,6 +95,7 @@ func (q *Queries) CreateColumn(ctx context.Context, arg CreateColumnParams) (Col
 		&i.ProjectID,
 		&i.HoldsReadyTasks,
 		&i.HoldsCompletedTasks,
+		&i.HoldsInProgressTasks,
 	)
 	return i, err
 }
@@ -113,19 +126,21 @@ project_id,
 prev_id,
 next_id,
 holds_ready_tasks,
-holds_completed_tasks
+holds_completed_tasks,
+holds_in_progress_tasks
 FROM columns
 WHERE id = ?
 `
 
 type GetColumnByIDRow struct {
-	ID                  int64
-	Name                string
-	ProjectID           int64
-	PrevID              interface{}
-	NextID              interface{}
-	HoldsReadyTasks     bool
-	HoldsCompletedTasks bool
+	ID                   int64
+	Name                 string
+	ProjectID            int64
+	PrevID               interface{}
+	NextID               interface{}
+	HoldsReadyTasks      bool
+	HoldsCompletedTasks  bool
+	HoldsInProgressTasks bool
 }
 
 func (q *Queries) GetColumnByID(ctx context.Context, id int64) (GetColumnByIDRow, error) {
@@ -139,6 +154,7 @@ func (q *Queries) GetColumnByID(ctx context.Context, id int64) (GetColumnByIDRow
 		&i.NextID,
 		&i.HoldsReadyTasks,
 		&i.HoldsCompletedTasks,
+		&i.HoldsInProgressTasks,
 	)
 	return i, err
 }
@@ -178,19 +194,21 @@ project_id,
 prev_id,
 next_id,
 holds_ready_tasks,
-holds_completed_tasks
+holds_completed_tasks,
+holds_in_progress_tasks
 FROM columns
 WHERE project_id = ?
 `
 
 type GetColumnsByProjectRow struct {
-	ID                  int64
-	Name                string
-	ProjectID           int64
-	PrevID              interface{}
-	NextID              interface{}
-	HoldsReadyTasks     bool
-	HoldsCompletedTasks bool
+	ID                   int64
+	Name                 string
+	ProjectID            int64
+	PrevID               interface{}
+	NextID               interface{}
+	HoldsReadyTasks      bool
+	HoldsCompletedTasks  bool
+	HoldsInProgressTasks bool
 }
 
 func (q *Queries) GetColumnsByProject(ctx context.Context, projectID int64) ([]GetColumnsByProjectRow, error) {
@@ -210,6 +228,7 @@ func (q *Queries) GetColumnsByProject(ctx context.Context, projectID int64) ([]G
 			&i.NextID,
 			&i.HoldsReadyTasks,
 			&i.HoldsCompletedTasks,
+			&i.HoldsInProgressTasks,
 		); err != nil {
 			return nil, err
 		}
@@ -250,6 +269,36 @@ func (q *Queries) GetCompletedColumnByProject(ctx context.Context, projectID int
 		&i.PrevID,
 		&i.NextID,
 		&i.HoldsCompletedTasks,
+	)
+	return i, err
+}
+
+const getInProgressColumnByProject = `-- name: GetInProgressColumnByProject :one
+SELECT id, name, project_id, prev_id, next_id, holds_in_progress_tasks
+FROM columns
+WHERE project_id = ? AND holds_in_progress_tasks = 1
+LIMIT 1
+`
+
+type GetInProgressColumnByProjectRow struct {
+	ID                   int64
+	Name                 string
+	ProjectID            int64
+	PrevID               interface{}
+	NextID               interface{}
+	HoldsInProgressTasks bool
+}
+
+func (q *Queries) GetInProgressColumnByProject(ctx context.Context, projectID int64) (GetInProgressColumnByProjectRow, error) {
+	row := q.db.QueryRowContext(ctx, getInProgressColumnByProject, projectID)
+	var i GetInProgressColumnByProjectRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ProjectID,
+		&i.PrevID,
+		&i.NextID,
+		&i.HoldsInProgressTasks,
 	)
 	return i, err
 }
@@ -312,6 +361,24 @@ type UpdateColumnHoldsCompletedTasksParams struct {
 // ============================================================================
 func (q *Queries) UpdateColumnHoldsCompletedTasks(ctx context.Context, arg UpdateColumnHoldsCompletedTasksParams) error {
 	_, err := q.db.ExecContext(ctx, updateColumnHoldsCompletedTasks, arg.HoldsCompletedTasks, arg.ID)
+	return err
+}
+
+const updateColumnHoldsInProgressTasks = `-- name: UpdateColumnHoldsInProgressTasks :exec
+
+UPDATE columns SET holds_in_progress_tasks = ? WHERE id = ?
+`
+
+type UpdateColumnHoldsInProgressTasksParams struct {
+	HoldsInProgressTasks bool
+	ID                   int64
+}
+
+// ============================================================================
+// IN-PROGRESS COLUMN OPERATIONS
+// ============================================================================
+func (q *Queries) UpdateColumnHoldsInProgressTasks(ctx context.Context, arg UpdateColumnHoldsInProgressTasksParams) error {
+	_, err := q.db.ExecContext(ctx, updateColumnHoldsInProgressTasks, arg.HoldsInProgressTasks, arg.ID)
 	return err
 }
 

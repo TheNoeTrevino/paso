@@ -186,6 +186,20 @@ GROUP BY
     p.color
 ORDER BY t.position;
 
+-- name: GetInProgressTasksByProject :many
+SELECT
+    t.id,
+    t.ticket_number,
+    t.title,
+    t.description,
+    c.name AS column_name,
+    proj.name AS project_name
+FROM tasks t
+INNER JOIN columns c ON t.column_id = c.id
+INNER JOIN projects proj ON c.project_id = proj.id
+WHERE proj.id = ? AND c.holds_in_progress_tasks = 1
+ORDER BY t.position;
+
 -- name: GetTaskSummariesByProjectFiltered :many
 SELECT
     t.id,
