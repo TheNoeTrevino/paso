@@ -3,6 +3,7 @@ package column
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -55,6 +56,7 @@ func createTestSchema(db *sql.DB) error {
 		next_id INTEGER,
 		holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
 		holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
+		holds_in_progress_tasks BOOLEAN NOT NULL DEFAULT 0,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
 		FOREIGN KEY (prev_id) REFERENCES columns(id) ON DELETE SET NULL,
@@ -68,6 +70,10 @@ func createTestSchema(db *sql.DB) error {
 	-- Unique partial index: only one column per project can have holds_completed_tasks = 1
 	CREATE UNIQUE INDEX idx_columns_completed_per_project
 	ON columns(project_id) WHERE holds_completed_tasks = 1;
+
+	-- Unique partial index: only one column per project can have holds_in_progress_tasks = 1
+	CREATE UNIQUE INDEX idx_columns_in_progress_per_project
+	ON columns(project_id) WHERE holds_in_progress_tasks = 1;
 
 	-- Create tasks table (for deletion constraint checking)
 	CREATE TABLE IF NOT EXISTS tasks (
@@ -888,24 +894,36 @@ func TestSetHoldsReadyTasks_TransfersFromPrevious(t *testing.T) {
 		t.Fatalf("Failed to create column 2: %v", err)
 	}
 
-	// Set col2 as ready (should clear col1)
-	updated, err := svc.SetHoldsReadyTasks(context.Background(), col2.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+	// Attempt to set col2 as ready - should fail because col1 already holds ready tasks
+	_, err = svc.SetHoldsReadyTasks(context.Background(), col2.ID)
+	if err == nil {
+		t.Fatal("Expected error when setting ready tasks on col2 while col1 is ready, got nil")
 	}
 
-	if !updated.HoldsReadyTasks {
-		t.Error("Expected col2 to hold ready tasks")
+	// Verify error message includes the existing column info
+	expectedErrorSubstring := "To Do"
+	if !strings.Contains(err.Error(), expectedErrorSubstring) {
+		t.Errorf("Expected error to contain '%s', got: %v", expectedErrorSubstring, err)
 	}
 
-	// Verify col1 is no longer ready
+	// Verify col1 still holds ready tasks
 	col1Updated, err := svc.GetColumnByID(context.Background(), col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to get col1: %v", err)
 	}
 
-	if col1Updated.HoldsReadyTasks {
-		t.Error("Expected col1 to no longer hold ready tasks")
+	if !col1Updated.HoldsReadyTasks {
+		t.Error("Expected col1 to still hold ready tasks")
+	}
+
+	// Verify col2 does not hold ready tasks
+	col2Updated, err := svc.GetColumnByID(context.Background(), col2.ID)
+	if err != nil {
+		t.Fatalf("Failed to get col2: %v", err)
+	}
+
+	if col2Updated.HoldsReadyTasks {
+		t.Error("Expected col2 to not hold ready tasks")
 	}
 }
 

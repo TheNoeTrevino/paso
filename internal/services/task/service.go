@@ -35,6 +35,8 @@ type Service interface {
 	MoveTaskToColumn(ctx context.Context, taskID, columnID int) error
 	MoveTaskToReadyColumn(ctx context.Context, taskID int) error
 	MoveTaskToCompletedColumn(ctx context.Context, taskID int) error
+	MoveTaskToInProgressColumn(ctx context.Context, taskID int) error
+	GetInProgressTasksByProject(ctx context.Context, projectID int) ([]*models.TaskDetail, error)
 	MoveTaskUp(ctx context.Context, taskID int) error
 	MoveTaskDown(ctx context.Context, taskID int) error
 
@@ -850,6 +852,70 @@ func (s *service) MoveTaskToCompletedColumn(ctx context.Context, taskID int) err
 	return s.MoveTaskToColumn(ctx, taskID, int(completedColumn.ID))
 }
 
+// MoveTaskToInProgressColumn moves a task to the column marked as holding in-progress tasks
+func (s *service) MoveTaskToInProgressColumn(ctx context.Context, taskID int) error {
+	if taskID <= 0 {
+		return ErrInvalidTaskID
+	}
+
+	// Get task detail to find project
+	taskDetail, err := s.queries.GetTaskDetail(ctx, int64(taskID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrInvalidTaskID
+		}
+		return fmt.Errorf("failed to get task: %w", err)
+	}
+
+	// Get the column via project ID
+	column, err := s.queries.GetColumnByID(ctx, taskDetail.ColumnID)
+	if err != nil {
+		return fmt.Errorf("failed to get column: %w", err)
+	}
+
+	// Get in-progress column for project
+	inProgressColumn, err := s.queries.GetInProgressColumnByProject(ctx, column.ProjectID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("no in-progress column configured for this project")
+		}
+		return fmt.Errorf("failed to get in-progress column: %w", err)
+	}
+
+	// Check if already in in-progress column
+	if taskDetail.ColumnID == inProgressColumn.ID {
+		return ErrTaskAlreadyInTargetColumn
+	}
+
+	// Move task to in-progress column
+	return s.MoveTaskToColumn(ctx, taskID, int(inProgressColumn.ID))
+}
+
+// GetInProgressTasksByProject retrieves all tasks in in-progress columns for a project
+func (s *service) GetInProgressTasksByProject(ctx context.Context, projectID int) ([]*models.TaskDetail, error) {
+	if projectID <= 0 {
+		return nil, ErrInvalidProjectID
+	}
+
+	rows, err := s.queries.GetInProgressTasksByProject(ctx, int64(projectID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get in-progress tasks: %w", err)
+	}
+
+	tasks := make([]*models.TaskDetail, 0, len(rows))
+	for _, row := range rows {
+		// Get full task detail for each in-progress task
+		taskDetail, err := s.GetTaskDetail(ctx, int(row.ID))
+		if err != nil {
+			log.Printf("failed to get details for task %d: %v", row.ID, err)
+			continue
+		}
+		tasks = append(tasks, taskDetail)
+	}
+
+	return tasks, nil
+}
+
 // MoveTaskUp moves task up in its column
 func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 	if taskID <= 0 {
@@ -1353,8 +1419,8 @@ func convertChildTasksToReferences(rows []generated.GetChildTasksRow) []*models.
 	return result
 }
 
-// convertCommentsToModels converts generated.GetCommentsByTaskRow slice to models.Comment slice
-func convertCommentsToModels(comments []generated.GetCommentsByTaskRow) []*models.Comment {
+// convertCommentsToModels converts generated.TaskComment slice to models.Comment slice
+func convertCommentsToModels(comments []generated.TaskComment) []*models.Comment {
 	result := make([]*models.Comment, 0, len(comments))
 	for _, c := range comments {
 		result = append(result, &models.Comment{
