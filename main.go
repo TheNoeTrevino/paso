@@ -11,6 +11,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/cli/setup"
 	"github.com/thenoetrevino/paso/internal/cli/task"
 	"github.com/thenoetrevino/paso/internal/cli/tutorial"
+	"github.com/thenoetrevino/paso/internal/cli/use"
 	"github.com/thenoetrevino/paso/internal/launcher"
 )
 
@@ -48,6 +49,7 @@ func init() {
 	rootCmd.AddCommand(project.ProjectCmd())
 	rootCmd.AddCommand(column.ColumnCmd())
 	rootCmd.AddCommand(label.LabelCmd())
+	rootCmd.AddCommand(use.UseCmd())
 	rootCmd.AddCommand(tutorial.TutorialCmd())
 	rootCmd.AddCommand(setup.SetupCmd())
 

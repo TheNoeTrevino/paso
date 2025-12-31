@@ -45,10 +45,7 @@ Examples:
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	cmd.Flags().Int("project", 0, "Project ID (required)")
-	if err := cmd.MarkFlagRequired("project"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
-	}
+	cmd.Flags().Int("project", 0, "Project ID (uses PASO_PROJECT env var if not specified)")
 
 	// Optional flags
 	cmd.Flags().Int("after", 0, "Insert after column ID (0 = append to end)")
@@ -66,7 +63,6 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	columnName, _ := cmd.Flags().GetString("name")
-	columnProject, _ := cmd.Flags().GetInt("project")
 	columnAfter, _ := cmd.Flags().GetInt("after")
 	holdsReady, _ := cmd.Flags().GetBool("ready")
 	holdsCompleted, _ := cmd.Flags().GetBool("completed")
@@ -74,6 +70,17 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	quietMode, _ := cmd.Flags().GetBool("quiet")
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+
+	// Get project ID from flag or environment variable
+	columnProject, err := cli.GetProjectID(cmd)
+	if err != nil {
+		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
+			err.Error(),
+			"Set project with: eval $(paso use project <project-id>)"); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
+		os.Exit(cli.ExitUsage)
+	}
 
 	// Initialize CLI
 	cliInstance, err := cli.NewCLI(ctx)
