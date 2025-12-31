@@ -6,7 +6,6 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/tui/components"
-	"github.com/thenoetrevino/paso/internal/tui/state"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
@@ -47,10 +46,20 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 		cardWidth = 100
 	}
 
-	// Render comment cards
+	// Calculate which comments to render based on scroll position
+	availableHeight := height - 4 // Reserve for title + help
+	startIdx, endIdx, _ := calculateVisibleCommentRange(
+		m.CommentState.ScrollOffset,
+		len(m.CommentState.Items),
+		availableHeight,
+	)
+
+	// Render only visible comment cards
 	var cards []string
-	for i, item := range m.CommentState.Items {
-		selected := (i == m.CommentState.Cursor)
+	visibleItems := m.CommentState.Items[startIdx:endIdx]
+	for i, item := range visibleItems {
+		actualIdx := startIdx + i
+		selected := (actualIdx == m.CommentState.Cursor)
 		card := components.RenderCommentCard(item.Comment, selected, cardWidth)
 		cards = append(cards, card)
 	}
@@ -59,8 +68,12 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 	cardsContent := strings.Join(cards, "\n\n")
 
 	// Calculate scroll indicators
-	availableHeight := height - 4 // Reserve for title + help
-	scrollIndicators := calculateCommentsScrollIndicators(m.CommentState, availableHeight, len(cards))
+	scrollIndicators := calculateCommentsScrollIndicators(
+		m.CommentState.ScrollOffset,
+		startIdx,
+		endIdx,
+		len(m.CommentState.Items),
+	)
 
 	// Combine content
 	helpText := renderCommentsHelpText()
@@ -115,27 +128,47 @@ type ScrollIndicators struct {
 	Bottom string
 }
 
+// calculateVisibleCommentRange determines which comments should be rendered
+// based on available height and scroll offset.
+//
+// Returns:
+//   - startIdx: index of first comment to render
+//   - endIdx: index after last comment to render (for slicing)
+//   - maxVisible: maximum number of comments that can fit
+func calculateVisibleCommentRange(scrollOffset int, totalComments int, availableHeight int) (startIdx, endIdx, maxVisible int) {
+	// Estimate how many comments fit in available height
+	// Reserve some overhead for scroll indicators
+	const EstimatedCommentCardHeight = 7 // 4 lines card + 2 lines spacing + buffer
+	const IndicatorOverhead = 2          // Space for scroll indicators
+
+	workingHeight := availableHeight - IndicatorOverhead
+	maxVisible = max(workingHeight/EstimatedCommentCardHeight, 1)
+
+	startIdx = max(0, scrollOffset)
+	endIdx = min(startIdx+maxVisible, totalComments)
+
+	return startIdx, endIdx, maxVisible
+}
+
 // calculateCommentsScrollIndicators determines if scroll indicators should be shown
-func calculateCommentsScrollIndicators(commentState *state.CommentState, availableHeight int, cardCount int) ScrollIndicators {
+func calculateCommentsScrollIndicators(scrollOffset int, startIdx int, endIdx int, totalComments int) ScrollIndicators {
 	indicators := ScrollIndicators{
 		Top:    "",
 		Bottom: "",
 	}
 
-	// For now, simple logic: if we have more than a few cards, show indicators
-	// TODO: Implement proper viewport scrolling logic
-	if cardCount > 3 {
-		indicatorStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(theme.Subtle)).
-			Align(lipgloss.Center)
+	indicatorStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle)).
+		Align(lipgloss.Center)
 
-		if commentState.Cursor > 0 {
-			indicators.Top = indicatorStyle.Render("↑ More comments above...")
-		}
+	// Show top indicator if scrolled down
+	if scrollOffset > 0 {
+		indicators.Top = indicatorStyle.Render("▲ more above")
+	}
 
-		if commentState.Cursor < cardCount-1 {
-			indicators.Bottom = indicatorStyle.Render("↓ More comments below...")
-		}
+	// Show bottom indicator if more comments below
+	if endIdx < totalComments {
+		indicators.Bottom = indicatorStyle.Render("▼ more below")
 	}
 
 	return indicators
