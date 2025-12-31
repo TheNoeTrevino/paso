@@ -31,11 +31,8 @@ Examples:
 		RunE: runList,
 	}
 
-	// Required flags
-	cmd.Flags().Int("project", 0, "Project ID (required)")
-	if err := cmd.MarkFlagRequired("project"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
-	}
+	// Flags
+	cmd.Flags().Int("project", 0, "Project ID (uses PASO_PROJECT env var if not specified)")
 
 	// Agent-friendly flags
 	cmd.Flags().Bool("json", false, "Output in JSON format")
@@ -47,11 +44,21 @@ Examples:
 func runList(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	columnProject, _ := cmd.Flags().GetInt("project")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+
+	// Get project ID from flag or environment variable
+	columnProject, err := cli.GetProjectID(cmd)
+	if err != nil {
+		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
+			err.Error(),
+			"Set project with: eval $(paso use project <project-id>)"); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
+		os.Exit(cli.ExitUsage)
+	}
 
 	// Initialize CLI
 	cliInstance, err := cli.NewCLI(ctx)
