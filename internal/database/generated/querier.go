@@ -17,6 +17,7 @@ type Querier interface {
 	AddSubtask(ctx context.Context, arg AddSubtaskParams) error
 	AddSubtaskWithRelationType(ctx context.Context, arg AddSubtaskWithRelationTypeParams) error
 	ClearCompletedColumnByProject(ctx context.Context, projectID int64) error
+	ClearInProgressColumnByProject(ctx context.Context, projectID int64) error
 	ClearReadyColumnByProject(ctx context.Context, projectID int64) error
 	// ============================================================================
 	// COLUMN VERIFICATION
@@ -70,12 +71,14 @@ type Querier interface {
 	GetColumnNextID(ctx context.Context, id int64) (interface{}, error)
 	GetColumnsByProject(ctx context.Context, projectID int64) ([]GetColumnsByProjectRow, error)
 	// Gets a single comment by ID
-	GetComment(ctx context.Context, id int64) (GetCommentRow, error)
+	GetComment(ctx context.Context, id int64) (TaskComment, error)
 	// Gets the count of comments for a task
 	GetCommentCountByTask(ctx context.Context, taskID int64) (int64, error)
 	// Gets all comments for a task, ordered by creation time (newest first)
-	GetCommentsByTask(ctx context.Context, taskID int64) ([]GetCommentsByTaskRow, error)
+	GetCommentsByTask(ctx context.Context, taskID int64) ([]TaskComment, error)
 	GetCompletedColumnByProject(ctx context.Context, projectID int64) (GetCompletedColumnByProjectRow, error)
+	GetInProgressColumnByProject(ctx context.Context, projectID int64) (GetInProgressColumnByProjectRow, error)
+	GetInProgressTasksByProject(ctx context.Context, id int64) ([]GetInProgressTasksByProjectRow, error)
 	GetLabelByID(ctx context.Context, id int64) (Label, error)
 	GetLabelsByProject(ctx context.Context, projectID int64) ([]Label, error)
 	GetLabelsForTask(ctx context.Context, taskID int64) ([]Label, error)
@@ -142,6 +145,10 @@ type Querier interface {
 	// COMPLETED COLUMN OPERATIONS
 	// ============================================================================
 	UpdateColumnHoldsCompletedTasks(ctx context.Context, arg UpdateColumnHoldsCompletedTasksParams) error
+	// ============================================================================
+	// IN-PROGRESS COLUMN OPERATIONS
+	// ============================================================================
+	UpdateColumnHoldsInProgressTasks(ctx context.Context, arg UpdateColumnHoldsInProgressTasksParams) error
 	// ============================================================================
 	// READY COLUMN OPERATIONS
 	// ============================================================================

@@ -7,14 +7,13 @@ package generated
 
 import (
 	"context"
-	"database/sql"
 )
 
 const createComment = `-- name: CreateComment :one
 
 INSERT INTO task_comments (task_id, content, author)
 VALUES (?, ?, ?)
-RETURNING id, task_id, content, created_at, updated_at, author
+RETURNING id, task_id, content, author, created_at, updated_at
 `
 
 type CreateCommentParams struct {
@@ -34,9 +33,9 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (T
 		&i.ID,
 		&i.TaskID,
 		&i.Content,
+		&i.Author,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Author,
 	)
 	return i, err
 }
@@ -57,19 +56,10 @@ FROM task_comments
 WHERE id = ?
 `
 
-type GetCommentRow struct {
-	ID        int64
-	TaskID    int64
-	Content   string
-	Author    string
-	CreatedAt sql.NullTime
-	UpdatedAt sql.NullTime
-}
-
 // Gets a single comment by ID
-func (q *Queries) GetComment(ctx context.Context, id int64) (GetCommentRow, error) {
+func (q *Queries) GetComment(ctx context.Context, id int64) (TaskComment, error) {
 	row := q.db.QueryRowContext(ctx, getComment, id)
-	var i GetCommentRow
+	var i TaskComment
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
@@ -100,25 +90,16 @@ WHERE task_id = ?
 ORDER BY created_at DESC
 `
 
-type GetCommentsByTaskRow struct {
-	ID        int64
-	TaskID    int64
-	Content   string
-	Author    string
-	CreatedAt sql.NullTime
-	UpdatedAt sql.NullTime
-}
-
 // Gets all comments for a task, ordered by creation time (newest first)
-func (q *Queries) GetCommentsByTask(ctx context.Context, taskID int64) ([]GetCommentsByTaskRow, error) {
+func (q *Queries) GetCommentsByTask(ctx context.Context, taskID int64) ([]TaskComment, error) {
 	rows, err := q.db.QueryContext(ctx, getCommentsByTask, taskID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []GetCommentsByTaskRow{}
+	items := []TaskComment{}
 	for rows.Next() {
-		var i GetCommentsByTaskRow
+		var i TaskComment
 		if err := rows.Scan(
 			&i.ID,
 			&i.TaskID,
