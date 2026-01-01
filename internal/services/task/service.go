@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/database/generated"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
@@ -197,125 +198,122 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 		return nil, fmt.Errorf("failed to get project ID: %w", err)
 	}
 
-	// Start transaction
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
+	var createdTask generated.Task
+
+	// Use WithTx helper for transaction management
+	err = database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		qtx := generated.New(tx)
+
+		// Get next ticket number
+		ticketNumber, err := qtx.GetNextTicketNumber(ctx, projectID)
+		if err != nil {
+			return fmt.Errorf("failed to get ticket number: %w", err)
 		}
-	}()
 
-	qtx := generated.New(tx)
+		// Create task
+		var desc sql.NullString
+		if req.Description != "" {
+			desc = sql.NullString{String: req.Description, Valid: true}
+		}
 
-	// Get next ticket number
-	ticketNumber, err := qtx.GetNextTicketNumber(ctx, projectID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get ticket number: %w", err)
-	}
+		var taskErr error
+		createdTask, taskErr = qtx.CreateTask(ctx, generated.CreateTaskParams{
+			Title:        req.Title,
+			Description:  desc,
+			ColumnID:     int64(req.ColumnID),
+			Position:     int64(req.Position),
+			TicketNumber: ticketNumber,
+		})
+		if taskErr != nil {
+			return fmt.Errorf("failed to create task: %w", taskErr)
+		}
 
-	// Create task
-	var desc sql.NullString
-	if req.Description != "" {
-		desc = sql.NullString{String: req.Description, Valid: true}
-	}
+		// Increment ticket number
+		if err := qtx.IncrementTicketNumber(ctx, projectID); err != nil {
+			return fmt.Errorf("failed to increment ticket number: %w", err)
+		}
 
-	createdTask, err := qtx.CreateTask(ctx, generated.CreateTaskParams{
-		Title:        req.Title,
-		Description:  desc,
-		ColumnID:     int64(req.ColumnID),
-		Position:     int64(req.Position),
-		TicketNumber: ticketNumber,
+		// Set priority if provided (default is handled by database)
+		if req.PriorityID > 0 {
+			if err := qtx.UpdateTaskPriority(ctx, generated.UpdateTaskPriorityParams{
+				PriorityID: int64(req.PriorityID),
+				ID:         createdTask.ID,
+			}); err != nil {
+				return fmt.Errorf("failed to set priority: %w", err)
+			}
+		}
+
+		// Set type if provided (default is handled by database)
+		if req.TypeID > 0 {
+			if err := qtx.UpdateTaskType(ctx, generated.UpdateTaskTypeParams{
+				TypeID: int64(req.TypeID),
+				ID:     createdTask.ID,
+			}); err != nil {
+				return fmt.Errorf("failed to set type: %w", err)
+			}
+		}
+
+		// Attach labels
+		for _, labelID := range req.LabelIDs {
+			if err := qtx.AddLabelToTask(ctx, generated.AddLabelToTaskParams{
+				TaskID:  createdTask.ID,
+				LabelID: int64(labelID),
+			}); err != nil {
+				return fmt.Errorf("failed to attach label %d: %w", labelID, err)
+			}
+		}
+
+		// Add parent relationships (tasks that depend on this task)
+		for _, parentID := range req.ParentIDs {
+			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+				ParentID:       int64(parentID),
+				ChildID:        createdTask.ID,
+				RelationTypeID: 1,
+			}); err != nil {
+				return fmt.Errorf("failed to add parent relation: %w", err)
+			}
+		}
+
+		// Add child relationships (tasks this task depends on)
+		for _, childID := range req.ChildIDs {
+			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+				ParentID:       createdTask.ID,
+				ChildID:        int64(childID),
+				RelationTypeID: 1,
+			}); err != nil {
+				return fmt.Errorf("failed to add child relation: %w", err)
+			}
+		}
+
+		// Add blocking relationships (tasks that block this task)
+		for _, blockerID := range req.BlockedByIDs {
+			// This task (Parent) is blocked by blockerID (Child)
+			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+				ParentID:       createdTask.ID,
+				ChildID:        int64(blockerID),
+				RelationTypeID: 2, // Blocking relationship
+			}); err != nil {
+				return fmt.Errorf("failed to add blocked-by relation: %w", err)
+			}
+		}
+
+		// Add blocked relationships (tasks that are blocked by this task)
+		for _, blockedID := range req.BlocksIDs {
+			// blockedID (Parent) is blocked by this task (Child)
+			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+				ParentID:       int64(blockedID),
+				ChildID:        createdTask.ID,
+				RelationTypeID: 2, // Blocking relationship
+			}); err != nil {
+				return fmt.Errorf("failed to add blocks relation: %w", err)
+			}
+		}
+
+		return nil
 	})
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to create task: %w", err)
-	}
-
-	// Increment ticket number
-	if err := qtx.IncrementTicketNumber(ctx, projectID); err != nil {
-		return nil, fmt.Errorf("failed to increment ticket number: %w", err)
-	}
-
-	// Set priority if provided (default is handled by database)
-	if req.PriorityID > 0 {
-		if err := qtx.UpdateTaskPriority(ctx, generated.UpdateTaskPriorityParams{
-			PriorityID: int64(req.PriorityID),
-			ID:         createdTask.ID,
-		}); err != nil {
-			return nil, fmt.Errorf("failed to set priority: %w", err)
-		}
-	}
-
-	// Set type if provided (default is handled by database)
-	if req.TypeID > 0 {
-		if err := qtx.UpdateTaskType(ctx, generated.UpdateTaskTypeParams{
-			TypeID: int64(req.TypeID),
-			ID:     createdTask.ID,
-		}); err != nil {
-			return nil, fmt.Errorf("failed to set type: %w", err)
-		}
-	}
-
-	// Attach labels
-	for _, labelID := range req.LabelIDs {
-		if err := qtx.AddLabelToTask(ctx, generated.AddLabelToTaskParams{
-			TaskID:  createdTask.ID,
-			LabelID: int64(labelID),
-		}); err != nil {
-			return nil, fmt.Errorf("failed to attach label %d: %w", labelID, err)
-		}
-	}
-
-	// Add parent relationships (tasks that depend on this task)
-	for _, parentID := range req.ParentIDs {
-		if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
-			ParentID:       int64(parentID),
-			ChildID:        createdTask.ID,
-			RelationTypeID: 1,
-		}); err != nil {
-			return nil, fmt.Errorf("failed to add parent relation: %w", err)
-		}
-	}
-
-	// Add child relationships (tasks this task depends on)
-	for _, childID := range req.ChildIDs {
-		if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
-			ParentID:       createdTask.ID,
-			ChildID:        int64(childID),
-			RelationTypeID: 1,
-		}); err != nil {
-			return nil, fmt.Errorf("failed to add child relation: %w", err)
-		}
-	}
-
-	// Add blocking relationships (tasks that block this task)
-	for _, blockerID := range req.BlockedByIDs {
-		// This task (Parent) is blocked by blockerID (Child)
-		if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
-			ParentID:       createdTask.ID,
-			ChildID:        int64(blockerID),
-			RelationTypeID: 2, // Blocking relationship
-		}); err != nil {
-			return nil, fmt.Errorf("failed to add blocked-by relation: %w", err)
-		}
-	}
-
-	// Add blocked relationships (tasks that are blocked by this task)
-	for _, blockedID := range req.BlocksIDs {
-		// blockedID (Parent) is blocked by this task (Child)
-		if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
-			ParentID:       int64(blockedID),
-			ChildID:        createdTask.ID,
-			RelationTypeID: 2, // Blocking relationship
-		}); err != nil {
-			return nil, fmt.Errorf("failed to add blocks relation: %w", err)
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, err
 	}
 
 	// Publish event after successful commit
@@ -995,58 +993,52 @@ func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 		return ErrInvalidTaskID
 	}
 
-	// Start transaction to avoid UNIQUE constraint violations during swap
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
+	// Use WithTx helper to avoid UNIQUE constraint violations during swap
+	err := database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		qtx := generated.New(tx)
+
+		// Get task position
+		posRow, err := qtx.GetTaskPosition(ctx, int64(taskID))
+		if err != nil {
+			return fmt.Errorf("failed to get task position: %w", err)
 		}
-	}()
 
-	qtx := generated.New(tx)
+		// Get task above
+		aboveRow, err := qtx.GetTaskAbove(ctx, generated.GetTaskAboveParams(posRow))
+		if err != nil {
+			return fmt.Errorf("no task above: %w", err)
+		}
 
-	// Get task position
-	posRow, err := qtx.GetTaskPosition(ctx, int64(taskID))
+		// Swap positions using temporary negative position to avoid UNIQUE constraint violation
+		// Step 1: Move current task to temporary position
+		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+			Position: -1,
+			ID:       int64(taskID),
+		}); err != nil {
+			return fmt.Errorf("failed to set temporary position: %w", err)
+		}
+
+		// Step 2: Move task above to current task's position
+		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+			Position: posRow.Position,
+			ID:       aboveRow.ID,
+		}); err != nil {
+			return fmt.Errorf("failed to move other task down: %w", err)
+		}
+
+		// Step 3: Move current task to above position
+		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+			Position: aboveRow.Position,
+			ID:       int64(taskID),
+		}); err != nil {
+			return fmt.Errorf("failed to move task up: %w", err)
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		return fmt.Errorf("failed to get task position: %w", err)
-	}
-
-	// Get task above
-	aboveRow, err := qtx.GetTaskAbove(ctx, generated.GetTaskAboveParams(posRow))
-	if err != nil {
-		return fmt.Errorf("no task above: %w", err)
-	}
-
-	// Swap positions using temporary negative position to avoid UNIQUE constraint violation
-	// Step 1: Move current task to temporary position
-	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
-		Position: -1,
-		ID:       int64(taskID),
-	}); err != nil {
-		return fmt.Errorf("failed to set temporary position: %w", err)
-	}
-
-	// Step 2: Move task above to current task's position
-	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
-		Position: posRow.Position,
-		ID:       aboveRow.ID,
-	}); err != nil {
-		return fmt.Errorf("failed to move other task down: %w", err)
-	}
-
-	// Step 3: Move current task to above position
-	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
-		Position: aboveRow.Position,
-		ID:       int64(taskID),
-	}); err != nil {
-		return fmt.Errorf("failed to move task up: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		return err
 	}
 
 	s.publishTaskEvent(ctx, taskID)
@@ -1059,58 +1051,52 @@ func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
 		return ErrInvalidTaskID
 	}
 
-	// Start transaction to avoid UNIQUE constraint violations during swap
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
+	// Use WithTx helper to avoid UNIQUE constraint violations during swap
+	err := database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		qtx := generated.New(tx)
+
+		// Get task position
+		posRow, err := qtx.GetTaskPosition(ctx, int64(taskID))
+		if err != nil {
+			return fmt.Errorf("failed to get task position: %w", err)
 		}
-	}()
 
-	qtx := generated.New(tx)
+		// Get task below
+		belowRow, err := qtx.GetTaskBelow(ctx, generated.GetTaskBelowParams(posRow))
+		if err != nil {
+			return fmt.Errorf("no task below: %w", err)
+		}
 
-	// Get task position
-	posRow, err := qtx.GetTaskPosition(ctx, int64(taskID))
+		// Swap positions using temporary negative position to avoid UNIQUE constraint violation
+		// Step 1: Move current task to temporary position
+		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+			Position: -1,
+			ID:       int64(taskID),
+		}); err != nil {
+			return fmt.Errorf("failed to set temporary position: %w", err)
+		}
+
+		// Step 2: Move task below to current task's position
+		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+			Position: posRow.Position,
+			ID:       belowRow.ID,
+		}); err != nil {
+			return fmt.Errorf("failed to move other task up: %w", err)
+		}
+
+		// Step 3: Move current task to below position
+		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+			Position: belowRow.Position,
+			ID:       int64(taskID),
+		}); err != nil {
+			return fmt.Errorf("failed to move task down: %w", err)
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		return fmt.Errorf("failed to get task position: %w", err)
-	}
-
-	// Get task below
-	belowRow, err := qtx.GetTaskBelow(ctx, generated.GetTaskBelowParams(posRow))
-	if err != nil {
-		return fmt.Errorf("no task below: %w", err)
-	}
-
-	// Swap positions using temporary negative position to avoid UNIQUE constraint violation
-	// Step 1: Move current task to temporary position
-	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
-		Position: -1,
-		ID:       int64(taskID),
-	}); err != nil {
-		return fmt.Errorf("failed to set temporary position: %w", err)
-	}
-
-	// Step 2: Move task below to current task's position
-	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
-		Position: posRow.Position,
-		ID:       belowRow.ID,
-	}); err != nil {
-		return fmt.Errorf("failed to move other task up: %w", err)
-	}
-
-	// Step 3: Move current task to below position
-	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
-		Position: belowRow.Position,
-		ID:       int64(taskID),
-	}); err != nil {
-		return fmt.Errorf("failed to move task down: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		return err
 	}
 
 	s.publishTaskEvent(ctx, taskID)
