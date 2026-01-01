@@ -16,22 +16,22 @@ func RemoveCurrentTask(m *tui.Model) {
 
 	tasks := GetTasksForColumn(m, currentCol.ID)
 
-	if len(tasks) == 0 || m.UiState.SelectedTask() >= len(tasks) {
+	if len(tasks) == 0 || m.UIState.SelectedTask() >= len(tasks) {
 		return
 	}
 
 	// Remove the task at selectedTask index
-	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UiState.SelectedTask()], tasks[m.UiState.SelectedTask()+1:]...)
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UIState.SelectedTask()], tasks[m.UIState.SelectedTask()+1:]...)
 
 	// Adjust selectedTask if we removed the last task
-	if m.UiState.SelectedTask() >= len(m.AppState.Tasks()[currentCol.ID]) && m.UiState.SelectedTask() > 0 {
-		m.UiState.SetSelectedTask(m.UiState.SelectedTask() - 1)
+	if m.UIState.SelectedTask() >= len(m.AppState.Tasks()[currentCol.ID]) && m.UIState.SelectedTask() > 0 {
+		m.UIState.SetSelectedTask(m.UIState.SelectedTask() - 1)
 	}
 }
 
 func RemoveCurrentColumn(m *tui.Model) {
 	columns := m.AppState.Columns()
-	selectedCol := m.UiState.SelectedColumn()
+	selectedCol := m.UIState.SelectedColumn()
 
 	if len(columns) == 0 || selectedCol >= len(columns) {
 		return
@@ -42,14 +42,14 @@ func RemoveCurrentColumn(m *tui.Model) {
 
 	// Adjust selectedColumn if we removed the last column
 	if selectedCol >= len(m.AppState.Columns()) && selectedCol > 0 {
-		m.UiState.SetSelectedColumn(selectedCol - 1)
+		m.UIState.SetSelectedColumn(selectedCol - 1)
 	}
 
 	// Reset task selection
-	m.UiState.SetSelectedTask(0)
+	m.UIState.SetSelectedTask(0)
 
 	// Adjust viewportOffset using UIState helper
-	m.UiState.AdjustViewportAfterColumnRemoval(m.UiState.SelectedColumn(), len(m.AppState.Columns()))
+	m.UIState.AdjustViewportAfterColumnRemoval(m.UIState.SelectedColumn(), len(m.AppState.Columns()))
 }
 
 func MoveTaskRight(m *tui.Model) {
@@ -71,7 +71,7 @@ func MoveTaskRight(m *tui.Model) {
 	}
 
 	// Use the new database function to move task
-	ctx, cancel := m.UiContext()
+	ctx, cancel := m.UIContext()
 	defer cancel()
 	err := m.App.TaskService.MoveTaskToNextColumn(ctx, task.ID)
 	if err != nil {
@@ -84,7 +84,7 @@ func MoveTaskRight(m *tui.Model) {
 
 	// Update local state: remove from current column
 	tasks := m.AppState.Tasks()[currentCol.ID]
-	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UiState.SelectedTask()], tasks[m.UiState.SelectedTask()+1:]...)
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UIState.SelectedTask()], tasks[m.UIState.SelectedTask()+1:]...)
 
 	// Find the next column and add task there
 	nextColID := *currentCol.NextID
@@ -94,12 +94,12 @@ func MoveTaskRight(m *tui.Model) {
 	m.AppState.Tasks()[nextColID] = append(m.AppState.Tasks()[nextColID], task)
 
 	// Move selection to follow the task
-	m.UiState.SetSelectedColumn(m.UiState.SelectedColumn() + 1)
-	m.UiState.SetSelectedTask(newPosition)
+	m.UIState.SetSelectedColumn(m.UIState.SelectedColumn() + 1)
+	m.UIState.SetSelectedTask(newPosition)
 
 	// Ensure the moved task is visible (auto-scroll viewport if needed)
-	if m.UiState.SelectedColumn() >= m.UiState.ViewportOffset()+m.UiState.ViewportSize() {
-		m.UiState.SetViewportOffset(m.UiState.ViewportOffset() + 1)
+	if m.UIState.SelectedColumn() >= m.UIState.ViewportOffset()+m.UIState.ViewportSize() {
+		m.UIState.SetViewportOffset(m.UIState.ViewportOffset() + 1)
 	}
 }
 
@@ -122,7 +122,7 @@ func MoveTaskLeft(m *tui.Model) {
 	}
 
 	// Use the new database function to move task
-	ctx, cancel := m.UiContext()
+	ctx, cancel := m.UIContext()
 	defer cancel()
 	err := m.App.TaskService.MoveTaskToPrevColumn(ctx, task.ID)
 	if err != nil {
@@ -135,7 +135,7 @@ func MoveTaskLeft(m *tui.Model) {
 
 	// Update local state: remove from current column
 	tasks := m.AppState.Tasks()[currentCol.ID]
-	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UiState.SelectedTask()], tasks[m.UiState.SelectedTask()+1:]...)
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UIState.SelectedTask()], tasks[m.UIState.SelectedTask()+1:]...)
 
 	// Find the previous column and add task there
 	prevColID := *currentCol.PrevID
@@ -145,12 +145,12 @@ func MoveTaskLeft(m *tui.Model) {
 	m.AppState.Tasks()[prevColID] = append(m.AppState.Tasks()[prevColID], task)
 
 	// Move selection to follow the task
-	m.UiState.SetSelectedColumn(m.UiState.SelectedColumn() - 1)
-	m.UiState.SetSelectedTask(newPosition)
+	m.UIState.SetSelectedColumn(m.UIState.SelectedColumn() - 1)
+	m.UIState.SetSelectedTask(newPosition)
 
 	// Ensure the moved task is visible (auto-scroll viewport if needed)
-	if m.UiState.SelectedColumn() < m.UiState.ViewportOffset() {
-		m.UiState.SetViewportOffset(m.UiState.ViewportOffset() - 1)
+	if m.UIState.SelectedColumn() < m.UIState.ViewportOffset() {
+		m.UIState.SetViewportOffset(m.UIState.ViewportOffset() - 1)
 	}
 }
 
@@ -161,13 +161,13 @@ func MoveTaskUp(m *tui.Model) {
 	}
 
 	// Check if already at top (edge case handled here for quick feedback)
-	if m.UiState.SelectedTask() == 0 {
+	if m.UIState.SelectedTask() == 0 {
 		m.NotificationState.Add(state.LevelInfo, "Task is already at the top")
 		return
 	}
 
 	// Call database swap
-	ctx, cancel := m.UiContext()
+	ctx, cancel := m.UIContext()
 	defer cancel()
 	err := m.App.TaskService.MoveTaskUp(ctx, task.ID)
 	if err != nil {
@@ -189,7 +189,7 @@ func MoveTaskUp(m *tui.Model) {
 		return
 	}
 
-	selectedIdx := m.UiState.SelectedTask()
+	selectedIdx := m.UIState.SelectedTask()
 	if selectedIdx == 0 || selectedIdx >= len(tasks) {
 		return
 	}
@@ -202,7 +202,7 @@ func MoveTaskUp(m *tui.Model) {
 	tasks[selectedIdx-1].Position = selectedIdx - 1
 
 	// Move selection to follow the task
-	m.UiState.SetSelectedTask(selectedIdx - 1)
+	m.UIState.SetSelectedTask(selectedIdx - 1)
 }
 
 func MoveTaskDown(m *tui.Model) {
@@ -218,7 +218,7 @@ func MoveTaskDown(m *tui.Model) {
 	}
 
 	tasks := GetTasksForColumn(m, currentCol.ID)
-	selectedIdx := m.UiState.SelectedTask()
+	selectedIdx := m.UIState.SelectedTask()
 
 	// Check if already at bottom
 	if selectedIdx >= len(tasks)-1 {
@@ -227,7 +227,7 @@ func MoveTaskDown(m *tui.Model) {
 	}
 
 	// Call database swap
-	ctx, cancel := m.UiContext()
+	ctx, cancel := m.UIContext()
 	defer cancel()
 	err := m.App.TaskService.MoveTaskDown(ctx, task.ID)
 	if err != nil {
@@ -246,7 +246,7 @@ func MoveTaskDown(m *tui.Model) {
 	tasks[selectedIdx+1].Position = selectedIdx + 1
 
 	// Move selection to follow the task
-	m.UiState.SetSelectedTask(selectedIdx + 1)
+	m.UIState.SetSelectedTask(selectedIdx + 1)
 }
 
 // getCurrentProject returns the currently selected project
@@ -262,7 +262,7 @@ func SwitchToProject(m *tui.Model, projectIndex int) {
 	project := m.AppState.Projects()[projectIndex]
 
 	// Create context for database operations
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 
 	// Reload columns for this project
@@ -290,5 +290,5 @@ func SwitchToProject(m *tui.Model, projectIndex int) {
 	m.AppState.SetLabels(labels)
 
 	// Reset selection state
-	m.UiState.ResetSelection()
+	m.UIState.ResetSelection()
 }

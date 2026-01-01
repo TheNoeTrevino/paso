@@ -42,7 +42,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 	}
 
 	// Create context for database operations
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 
 	// Build parent IDs with relation types
@@ -98,7 +98,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 // updateExistingTaskWithLabelsAndRelationships updates task, labels, and parent/child relationships
 func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValues) {
 	// create context for database operations
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 	taskID := m.FormState.EditingTaskID
 
@@ -319,7 +319,7 @@ type formConfig struct {
 // handleFormUpdate processes form messages generically
 func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd) {
 	if cfg.form == nil {
-		m.UiState.SetMode(state.NormalMode)
+		m.UIState.SetMode(state.NormalMode)
 		return m, nil
 	}
 
@@ -330,7 +330,7 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 	// Check completion
 	if cfg.form.State == huh.StateCompleted {
 		cfg.onComplete()
-		m.UiState.SetMode(state.NormalMode)
+		m.UIState.SetMode(state.NormalMode)
 		cfg.setForm(nil)
 		cfg.clearForm()
 		return m, tea.ClearScreen
@@ -346,7 +346,7 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 // Sets confirmation to true and completes the form, triggering the save flow.
 func (m Model) handleFormSave(cfg formConfig) (tea.Model, tea.Cmd) {
 	if cfg.form == nil {
-		m.UiState.SetMode(state.NormalMode)
+		m.UIState.SetMode(state.NormalMode)
 		return m, nil
 	}
 
@@ -362,7 +362,7 @@ func (m Model) handleFormSave(cfg formConfig) (tea.Model, tea.Cmd) {
 	cfg.onComplete()
 
 	// Clean up and return to normal mode
-	m.UiState.SetMode(state.NormalMode)
+	m.UIState.SetMode(state.NormalMode)
 	cfg.setForm(nil)
 	cfg.clearForm()
 
@@ -399,56 +399,56 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Check for changes before allowing abort
 			if m.FormState.HasTaskFormChanges() {
 				// Show discard confirmation
-				m.UiState.SetDiscardContext(&state.DiscardContext{
+				m.UIState.SetDiscardContext(&state.DiscardContext{
 					SourceMode: state.TicketFormMode,
 					Message:    "Discard task?",
 				})
-				m.UiState.SetMode(state.DiscardConfirmMode)
+				m.UIState.SetMode(state.DiscardConfirmMode)
 				return m, nil
 			}
 			// No changes - allow immediate close
-			m.UiState.SetMode(state.NormalMode)
+			m.UIState.SetMode(state.NormalMode)
 			m.FormState.ClearTaskForm()
 			return m, tea.ClearScreen
 
 		case "ctrl+p":
 			// Open parent picker
 			if m.initParentPickerForForm() {
-				m.UiState.SetMode(state.ParentPickerMode)
+				m.UIState.SetMode(state.ParentPickerMode)
 			}
 			return m, nil
 
 		case "ctrl+c":
 			// Open child picker
 			if m.initChildPickerForForm() {
-				m.UiState.SetMode(state.ChildPickerMode)
+				m.UIState.SetMode(state.ChildPickerMode)
 			}
 			return m, nil
 
 		case "ctrl+l":
 			// Open label picker
 			if m.initLabelPickerForForm() {
-				m.UiState.SetMode(state.LabelPickerMode)
+				m.UIState.SetMode(state.LabelPickerMode)
 			}
 			return m, nil
 
 		case "ctrl+r":
 			// Open priority picker
 			if m.initPriorityPickerForForm() {
-				m.UiState.SetMode(state.PriorityPickerMode)
+				m.UIState.SetMode(state.PriorityPickerMode)
 			}
 			return m, nil
 
 		case "ctrl+t":
 			// Open type picker
 			if m.initTypePickerForForm() {
-				m.UiState.SetMode(state.TypePickerMode)
+				m.UIState.SetMode(state.TypePickerMode)
 			}
 			return m, nil
 
 		case "ctrl+h":
 			// Open task form help menu
-			m.UiState.SetMode(state.TaskFormHelpMode)
+			m.UIState.SetMode(state.TaskFormHelpMode)
 			return m, nil
 
 		case "ctrl+down":
@@ -546,15 +546,15 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Check for changes before allowing abort
 			if m.FormState.HasProjectFormChanges() {
 				// Show discard confirmation
-				m.UiState.SetDiscardContext(&state.DiscardContext{
+				m.UIState.SetDiscardContext(&state.DiscardContext{
 					SourceMode: state.ProjectFormMode,
 					Message:    "Discard project?",
 				})
-				m.UiState.SetMode(state.DiscardConfirmMode)
+				m.UIState.SetMode(state.DiscardConfirmMode)
 				return m, nil
 			}
 			// No changes - allow immediate close
-			m.UiState.SetMode(state.NormalMode)
+			m.UIState.SetMode(state.NormalMode)
 			m.FormState.ClearProjectForm()
 			return m, tea.ClearScreen
 
@@ -577,7 +577,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 
 					if name != "" {
-						ctx, cancel := m.DbContext()
+						ctx, cancel := m.DBContext()
 						defer cancel()
 						project, err := m.App.ProjectService.CreateProject(ctx, projectService.CreateProjectRequest{
 							Name:        name,
@@ -623,7 +623,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if name != "" {
-				ctx, cancel := m.DbContext()
+				ctx, cancel := m.DBContext()
 				defer cancel()
 				project, err := m.App.ProjectService.CreateProject(ctx, projectService.CreateProjectRequest{
 					Name:        name,
@@ -657,17 +657,17 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch keyMsg.String() {
 		case "esc":
 			// For edit mode, check for changes before allowing abort
-			if m.UiState.Mode() == state.EditColumnFormMode && m.FormState.HasColumnFormChanges() {
+			if m.UIState.Mode() == state.EditColumnFormMode && m.FormState.HasColumnFormChanges() {
 				// Show discard confirmation
-				m.UiState.SetDiscardContext(&state.DiscardContext{
+				m.UIState.SetDiscardContext(&state.DiscardContext{
 					SourceMode: state.EditColumnFormMode,
 					Message:    "Discard changes to column?",
 				})
-				m.UiState.SetMode(state.DiscardConfirmMode)
+				m.UIState.SetMode(state.DiscardConfirmMode)
 				return m, nil
 			}
 			// No changes or in create mode - allow immediate close
-			m.UiState.SetMode(state.NormalMode)
+			m.UIState.SetMode(state.NormalMode)
 			m.FormState.ClearColumnForm()
 			return m, tea.ClearScreen
 		}
@@ -689,7 +689,7 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return
 			}
 
-			ctx, cancel := m.DbContext()
+			ctx, cancel := m.DBContext()
 			defer cancel()
 
 			if m.FormState.EditingColumnID == 0 {
@@ -740,20 +740,20 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// For edit mode, check for changes before allowing abort
 			if m.FormState.EditingCommentID != 0 && m.FormState.HasCommentFormChanges() {
 				// Show discard confirmation
-				m.UiState.SetDiscardContext(&state.DiscardContext{
+				m.UIState.SetDiscardContext(&state.DiscardContext{
 					SourceMode: state.CommentFormMode,
 					Message:    "Discard changes to comment?",
 				})
-				m.UiState.SetMode(state.DiscardConfirmMode)
+				m.UIState.SetMode(state.DiscardConfirmMode)
 				return m, nil
 			}
 			// No changes or in create mode - return to appropriate mode
 			returnMode := m.FormState.CommentFormReturnMode
 			if returnMode == state.CommentsViewMode {
 				m.CommentState.SetComments(m.FormState.FormComments)
-				m.UiState.SetMode(state.CommentsViewMode)
+				m.UIState.SetMode(state.CommentsViewMode)
 			} else {
-				m.UiState.SetMode(state.TicketFormMode)
+				m.UIState.SetMode(state.TicketFormMode)
 			}
 			m.FormState.ClearCommentForm()
 			return m, tea.ClearScreen
@@ -776,7 +776,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return
 			}
 
-			ctx, cancel := m.DbContext()
+			ctx, cancel := m.DBContext()
 			defer cancel()
 
 			if m.FormState.EditingCommentID == 0 {
@@ -830,10 +830,10 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if returnMode == state.CommentsViewMode {
 				// Refresh comments view and return to it
 				m.CommentState.SetComments(m.FormState.FormComments)
-				m.UiState.SetMode(state.CommentsViewMode)
+				m.UIState.SetMode(state.CommentsViewMode)
 			} else {
 				// Return to ticket form (legacy path)
-				m.UiState.SetMode(state.TicketFormMode)
+				m.UIState.SetMode(state.TicketFormMode)
 			}
 		},
 		confirmPtr: nil, // Comment forms don't have confirmation field
@@ -849,7 +849,7 @@ func (m Model) handleOpenCommentsView() (tea.Model, tea.Cmd) {
 	m.CommentState.ScrollOffset = 0
 
 	// Switch to comments view mode
-	m.UiState.SetMode(state.CommentsViewMode)
+	m.UIState.SetMode(state.CommentsViewMode)
 
 	return m, nil
 }

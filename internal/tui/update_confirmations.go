@@ -25,9 +25,9 @@ func (m Model) handleDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Return to appropriate mode
 		if m.FormState.EditingCommentID != 0 {
 			m.FormState.EditingCommentID = 0
-			m.UiState.SetMode(state.CommentsViewMode)
+			m.UIState.SetMode(state.CommentsViewMode)
 		} else {
-			m.UiState.SetMode(state.NormalMode)
+			m.UIState.SetMode(state.NormalMode)
 		}
 		return m, nil
 	}
@@ -39,7 +39,7 @@ func (m Model) handleDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 	task := m.getCurrentTask()
 	if task != nil {
-		ctx, cancel := m.DbContext()
+		ctx, cancel := m.DBContext()
 		defer cancel()
 		err := m.App.TaskService.DeleteTask(ctx, task.ID)
 		if err != nil {
@@ -49,7 +49,7 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 			m.removeCurrentTask()
 		}
 	}
-	m.UiState.SetMode(state.NormalMode)
+	m.UIState.SetMode(state.NormalMode)
 	return m, nil
 }
 
@@ -59,7 +59,7 @@ func (m Model) confirmDeleteComment() (tea.Model, tea.Cmd) {
 	taskID := m.CommentState.TaskID
 
 	if commentID != 0 && taskID != 0 {
-		ctx, cancel := m.DbContext()
+		ctx, cancel := m.DBContext()
 		defer cancel()
 		err := m.App.TaskService.DeleteComment(ctx, commentID)
 		if err != nil {
@@ -80,17 +80,17 @@ func (m Model) confirmDeleteComment() (tea.Model, tea.Cmd) {
 	}
 
 	m.FormState.EditingCommentID = 0
-	m.UiState.SetMode(state.CommentsViewMode)
+	m.UIState.SetMode(state.CommentsViewMode)
 	return m, nil
 }
 
 // handleDiscardConfirm handles discard confirmation for forms and inputs.
 // Inlined from confirmation.go (deleted to reduce duplication)
 func (m Model) handleDiscardConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	ctx := m.UiState.DiscardContext()
+	ctx := m.UIState.DiscardContext()
 	if ctx == nil {
 		// Safety: if context is missing, return to normal mode
-		m.UiState.SetMode(state.NormalMode)
+		m.UIState.SetMode(state.NormalMode)
 		return m, nil
 	}
 
@@ -101,8 +101,8 @@ func (m Model) handleDiscardConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "n", "N", "esc":
 		// User cancelled - return to source mode without clearing
-		m.UiState.SetMode(ctx.SourceMode)
-		m.UiState.ClearDiscardContext()
+		m.UIState.SetMode(ctx.SourceMode)
+		m.UIState.ClearDiscardContext()
 		return m, nil
 	}
 
@@ -112,9 +112,9 @@ func (m Model) handleDiscardConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // confirmDiscard performs the actual discard operation based on context.
 // Inlined from confirmation.go (deleted to reduce duplication)
 func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
-	ctx := m.UiState.DiscardContext()
+	ctx := m.UIState.DiscardContext()
 	if ctx == nil {
-		m.UiState.SetMode(state.NormalMode)
+		m.UIState.SetMode(state.NormalMode)
 		return m, nil
 	}
 
@@ -132,14 +132,14 @@ func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
 	case state.CommentFormMode:
 		m.FormState.ClearCommentForm()
 		// Return to comment list instead of normal mode
-		m.UiState.SetMode(state.CommentEditMode)
-		m.UiState.ClearDiscardContext()
+		m.UIState.SetMode(state.CommentEditMode)
+		m.UIState.ClearDiscardContext()
 		return m, tea.ClearScreen
 	}
 
 	// Always return to normal mode after discard
-	m.UiState.SetMode(state.NormalMode)
-	m.UiState.ClearDiscardContext()
+	m.UIState.SetMode(state.NormalMode)
+	m.UIState.ClearDiscardContext()
 
 	return m, tea.ClearScreen
 }
@@ -151,7 +151,7 @@ func (m Model) handleDeleteColumnConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "y", "Y":
 		return m.confirmDeleteColumn()
 	case "n", "N", "esc":
-		m.UiState.SetMode(state.NormalMode)
+		m.UIState.SetMode(state.NormalMode)
 		return m, nil
 	}
 	return m, nil
@@ -162,7 +162,7 @@ func (m Model) handleDeleteColumnConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 	column := m.getCurrentColumn()
 	if column != nil {
-		ctx, cancel := m.DbContext()
+		ctx, cancel := m.DBContext()
 		defer cancel()
 		err := m.App.ColumnService.DeleteColumn(ctx, column.ID)
 		if err != nil {
@@ -173,6 +173,6 @@ func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 			m.removeCurrentColumn()
 		}
 	}
-	m.UiState.SetMode(state.NormalMode)
+	m.UIState.SetMode(state.NormalMode)
 	return m, nil
 }
