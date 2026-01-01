@@ -11,10 +11,10 @@ func GetCurrentTasks(m *tui.Model) []*models.TaskSummary {
 	if len(m.AppState.Columns()) == 0 {
 		return []*models.TaskSummary{}
 	}
-	if m.UiState.SelectedColumn() >= len(m.AppState.Columns()) {
+	if m.UIState.SelectedColumn() >= len(m.AppState.Columns()) {
 		return []*models.TaskSummary{}
 	}
-	currentCol := m.AppState.Columns()[m.UiState.SelectedColumn()]
+	currentCol := m.AppState.Columns()[m.UIState.SelectedColumn()]
 	tasks := m.AppState.Tasks()[currentCol.ID]
 	if tasks == nil {
 		return []*models.TaskSummary{}
@@ -29,10 +29,10 @@ func GetCurrentTask(m *tui.Model) *models.TaskSummary {
 	if len(tasks) == 0 {
 		return nil
 	}
-	if m.UiState.SelectedTask() >= len(tasks) {
+	if m.UIState.SelectedTask() >= len(tasks) {
 		return nil
 	}
-	return tasks[m.UiState.SelectedTask()]
+	return tasks[m.UIState.SelectedTask()]
 }
 
 // GetCurrentColumn returns the currently selected column
@@ -41,7 +41,7 @@ func GetCurrentColumn(m *tui.Model) *models.Column {
 	if len(m.AppState.Columns()) == 0 {
 		return nil
 	}
-	selectedIdx := m.UiState.SelectedColumn()
+	selectedIdx := m.UIState.SelectedColumn()
 	if selectedIdx < 0 || selectedIdx >= len(m.AppState.Columns()) {
 		return nil
 	}

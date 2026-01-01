@@ -15,7 +15,7 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		// Return to ticket form mode
-		m.UiState.SetMode(state.TicketFormMode)
+		m.UIState.SetMode(state.TicketFormMode)
 		return m, nil
 
 	case "j", "down":
@@ -39,7 +39,7 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.FormState.CommentForm = huhforms.CreateCommentForm(&m.FormState.FormCommentMessage, true).
 				WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 			m.FormState.SnapshotCommentFormInitialValues()
-			m.UiState.SetMode(state.CommentFormMode)
+			m.UIState.SetMode(state.CommentFormMode)
 			return m, m.FormState.CommentForm.Init()
 		}
 		return m, nil
@@ -51,13 +51,13 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.FormState.CommentForm = huhforms.CreateCommentForm(&m.FormState.FormCommentMessage, false).
 			WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 		m.FormState.SnapshotCommentFormInitialValues()
-		m.UiState.SetMode(state.CommentFormMode)
+		m.UIState.SetMode(state.CommentFormMode)
 		return m, m.FormState.CommentForm.Init()
 
 	case "delete", "d":
 		// Delete the selected comment
 		if len(m.CommentState.Items) > 0 && m.CommentState.Cursor < len(m.CommentState.Items) {
-			ctx, cancel := m.DbContext()
+			ctx, cancel := m.DBContext()
 			defer cancel()
 
 			commentID := m.CommentState.Items[m.CommentState.Cursor].Comment.ID

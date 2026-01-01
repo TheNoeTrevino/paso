@@ -38,7 +38,7 @@ func (m Model) handleChangeStatus() (tea.Model, tea.Cmd) {
 		}
 	}
 
-	m.UiState.SetMode(state.StatusPickerMode)
+	m.UIState.SetMode(state.StatusPickerMode)
 	return m, nil
 }
 
@@ -54,7 +54,7 @@ func (m Model) handleStatusPickerMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		m.StatusPickerState.Reset()
-		m.UiState.SetMode(state.NormalMode)
+		m.UIState.SetMode(state.NormalMode)
 		return m, nil
 	case "enter":
 		return m.confirmStatusChange()
@@ -74,7 +74,7 @@ func (m Model) confirmStatusChange() (tea.Model, tea.Cmd) {
 
 	if selectedCol == nil {
 		m.StatusPickerState.Reset()
-		m.UiState.SetMode(state.NormalMode)
+		m.UIState.SetMode(state.NormalMode)
 		return m, nil
 	}
 
@@ -95,18 +95,18 @@ func (m Model) confirmStatusChange() (tea.Model, tea.Cmd) {
 
 	if currentColumnID == selectedCol.ID {
 		m.StatusPickerState.Reset()
-		m.UiState.SetMode(state.NormalMode)
+		m.UIState.SetMode(state.NormalMode)
 		return m, nil
 	}
 
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 
 	err := m.App.TaskService.MoveTaskToColumn(ctx, taskID, selectedCol.ID)
 	if err != nil {
 		m.HandleDBError(err, "Moving task to new status")
 		m.StatusPickerState.Reset()
-		m.UiState.SetMode(state.NormalMode)
+		m.UIState.SetMode(state.NormalMode)
 		return m, nil
 	}
 
@@ -126,6 +126,6 @@ func (m Model) confirmStatusChange() (tea.Model, tea.Cmd) {
 	}
 
 	m.StatusPickerState.Reset()
-	m.UiState.SetMode(state.NormalMode)
+	m.UIState.SetMode(state.NormalMode)
 	return m, nil
 }

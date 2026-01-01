@@ -6,6 +6,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/layers"
+	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
@@ -16,55 +17,27 @@ func (m Model) renderTaskFormLayer() *lipgloss.Layer {
 		return nil
 	}
 
-	// Calculate layer dimensions (80% of screen)
-	layerWidth := m.UiState.Width() * 8 / 10
-	layerHeight := m.UiState.Height() * 8 / 10
+	const chromeHeight = 6 // border (2) + padding (2) + title (1) + blanks (1) = 6 lines
 
-	// Account for chrome: border (2) + padding (2) + title (1) + blanks (1) = 6 lines
-	chromeHeight := 6
+	layerWidth := m.UIState.Width() * 8 / 10
+	layerHeight := m.UIState.Height() * 8 / 10
+
 	innerHeight := layerHeight - chromeHeight
 
-	// Calculate zone dimensions based on requirements:
-	// - Top left (title/desc): 60% width, 70% height
-	// - Bottom left (comments): 60% width, 30% height
-	// - Right (metadata): 40% width, 100% height
-	leftColumnWidth := layerWidth * 6 / 10   // 60% of layer width
-	rightColumnWidth := layerWidth * 4 / 10  // 40% of layer width
-	topLeftHeight := innerHeight * 7 / 10    // 70% of inner height
-	bottomLeftHeight := innerHeight * 3 / 10 // 30% of inner height
-	rightColumnHeight := innerHeight         // 100% of inner height
+	leftColumnWidth := layerWidth * 6 / 10
+	rightColumnWidth := layerWidth * 4 / 10
+	topLeftHeight := innerHeight * 7 / 10
+	bottomLeftHeight := innerHeight * 3 / 10
+	rightColumnHeight := innerHeight
 
-	// Calculate dynamic description field height based on available space
-	// Chrome overhead: Title field (~3) + Confirmation (~3) + spacing (~3) = 9 lines
-	const (
-		descChromeOverhead = 9
-		minDescLines       = 5
-		maxDescLines       = 15
-	)
-
-	descriptionLines := topLeftHeight - descChromeOverhead
-	if descriptionLines < minDescLines {
-		descriptionLines = minDescLines
-	}
-	if descriptionLines > maxDescLines {
-		descriptionLines = maxDescLines
-	}
-
-	// Store in FormState for use during form creation
-	m.FormState.CalculatedDescriptionLines = descriptionLines
-
-	// Render the three zones
 	topLeftZone := m.renderFormTitleDescriptionZone(leftColumnWidth, topLeftHeight)
 	bottomLeftZone := m.renderFormCommentsPreview(leftColumnWidth, bottomLeftHeight)
-	rightZone := m.renderFormMetadataZone(rightColumnWidth, rightColumnHeight)
 
-	// Compose left column (top + bottom)
 	leftColumn := lipgloss.JoinVertical(lipgloss.Top, topLeftZone, bottomLeftZone)
+	rightColumn := m.renderFormMetadataZone(rightColumnWidth, rightColumnHeight)
 
-	// Compose full content (left column + right metadata)
-	content := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, rightZone)
+	content := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, rightColumn)
 
-	// Add form title with help hint
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Highlight))
 	helpHintStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
 
@@ -84,7 +57,6 @@ func (m Model) renderTaskFormLayer() *lipgloss.Layer {
 		helpHintStyle.Render("Ctrl+H: help"),
 	)
 
-	// Combine title + content
 	fullContent := lipgloss.JoinVertical(
 		lipgloss.Left,
 		titleWithHint,
@@ -92,13 +64,12 @@ func (m Model) renderTaskFormLayer() *lipgloss.Layer {
 		content,
 	)
 
-	// Wrap in form box style
 	formBox := components.FormBoxStyle.
 		Width(layerWidth).
 		Height(layerHeight).
 		Render(fullContent)
 
-	return layers.CreateCenteredLayer(formBox, m.UiState.Width(), m.UiState.Height())
+	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height())
 }
 
 // renderProjectFormLayer renders the project creation form modal as a layer
@@ -109,13 +80,12 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 
 	formView := m.FormState.ProjectForm.View()
 
-	// Wrap form in a styled container with green border for creation
 	formBox := components.ProjectFormBoxStyle.
-		Width(m.UiState.Width() * 3 / 4).
-		Height(m.UiState.Height() / 3).
+		Width(m.UIState.Width() * 3 / 4).
+		Height(m.UIState.Height() / 3).
 		Render("New Project\n\n" + formView)
 
-	return layers.CreateCenteredLayer(formBox, m.UiState.Width(), m.UiState.Height())
+	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height())
 }
 
 // renderColumnFormLayer renders the column creation/rename form modal as a layer
@@ -126,20 +96,18 @@ func (m Model) renderColumnFormLayer() *lipgloss.Layer {
 
 	formView := m.FormState.ColumnForm.View()
 
-	// Determine title based on mode
 	var title string
-	if m.UiState.Mode() == state.AddColumnFormMode {
+	if m.UIState.Mode() == state.AddColumnFormMode {
 		title = "New Column"
 	} else {
 		title = "Rename Column"
 	}
 
-	// Wrap form in a styled container
 	formBox := components.CreateInputBoxStyle.
 		Width(50).
 		Render(title + "\n\n" + formView)
 
-	return layers.CreateCenteredLayer(formBox, m.UiState.Width(), m.UiState.Height())
+	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height())
 }
 
 // renderHelpLayer renders the keyboard shortcuts help screen as a layer
@@ -148,7 +116,21 @@ func (m Model) renderHelpLayer() *lipgloss.Layer {
 		Width(50).
 		Render(m.generateHelpText())
 
-	return layers.CreateCenteredLayer(helpBox, m.UiState.Width(), m.UiState.Height())
+	return layers.CreateCenteredLayer(helpBox, m.UIState.Width(), m.UIState.Height())
+}
+
+// renderDiscardConfirmLayer renders the discard confirmation dialog as a layer
+func (m Model) renderDiscardConfirmLayer() *lipgloss.Layer {
+	ctx := m.UIState.DiscardContext()
+	if ctx == nil {
+		return nil
+	}
+
+	confirmBox := components.DeleteConfirmBoxStyle.
+		Width(50).
+		Render(fmt.Sprintf("%s\n\n[y]es  [n]o", ctx.Message))
+
+	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height())
 }
 
 // generateHelpText creates help text based on current key mappings
@@ -225,20 +207,17 @@ Press any key to close`,
 
 // renderCommentsViewLayer renders the comments view modal as a full-screen layer
 func (m Model) renderCommentsViewLayer() *lipgloss.Layer {
-	// Calculate layer dimensions (80% of screen, same as task form)
-	layerWidth := m.UiState.Width() * 8 / 10
-	layerHeight := m.UiState.Height() * 8 / 10
+	layerWidth := m.UIState.Width() * 8 / 10
+	layerHeight := m.UIState.Height() * 8 / 10
 
-	// Render comments view content
 	content := m.renderCommentsViewContent(layerWidth, layerHeight)
 
-	// Wrap in styled box
 	commentsBox := components.HelpBoxStyle.
 		Width(layerWidth).
 		Height(layerHeight).
 		Render(content)
 
-	return layers.CreateCenteredLayer(commentsBox, m.UiState.Width(), m.UiState.Height())
+	return layers.CreateCenteredLayer(commentsBox, m.UIState.Width(), m.UIState.Height())
 }
 
 // renderCommentFormLayer renders the comment creation/edit form modal as a layer
@@ -249,7 +228,6 @@ func (m Model) renderCommentFormLayer() *lipgloss.Layer {
 
 	formView := m.FormState.CommentForm.View()
 
-	// Determine title based on mode
 	var title string
 	if m.FormState.EditingCommentID == 0 {
 		title = "New Comment"
@@ -257,13 +235,12 @@ func (m Model) renderCommentFormLayer() *lipgloss.Layer {
 		title = "Edit Comment"
 	}
 
-	// Wrap form in a styled container
 	formBox := components.CreateInputBoxStyle.
-		Width(m.UiState.Width() * 3 / 4).
-		Height(m.UiState.Height() * 2 / 3).
+		Width(m.UIState.Width() * 3 / 4).
+		Height(m.UIState.Height() * 2 / 3).
 		Render(title + "\n\n" + formView)
 
-	return layers.CreateCenteredLayer(formBox, m.UiState.Width(), m.UiState.Height())
+	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height())
 }
 
 // renderTaskFormHelpLayer renders the task form keyboard shortcuts help screen as a layer
@@ -305,8 +282,266 @@ HELP
 Press Ctrl+/ or Esc to close`
 
 	helpBox := components.HelpBoxStyle.
-		Width(m.UiState.Width() * 3 / 8).
+		Width(m.UIState.Width() * 3 / 8).
 		Render(helpContent)
 
-	return layers.CreateCenteredLayer(helpBox, m.UiState.Width(), m.UiState.Height())
+	return layers.CreateCenteredLayer(helpBox, m.UIState.Width(), m.UIState.Height())
+}
+
+type pickerDimensionStrategy interface {
+	Calculate(screenWidth, screenHeight int) (width, height int)
+}
+
+// dynamicPickerDimensions calculates dimensions based on item count, filter presence, and screen size.
+// Suitable for pickers with variable content that should adapt to available space.
+type dynamicPickerDimensions struct {
+	itemCount int
+	hasFilter bool
+	minWidth  int
+	maxWidth  int
+}
+
+func (d dynamicPickerDimensions) Calculate(screenWidth, screenHeight int) (width, height int) {
+	return layers.CalculatePickerDimensions(
+		d.itemCount,
+		d.hasFilter,
+		screenWidth,
+		screenHeight,
+		d.minWidth,
+		d.maxWidth,
+	)
+}
+
+// fixedPickerDimensions uses predetermined width and height values.
+// Suitable for pickers with small, fixed item counts where consistent sizing is preferred.
+type fixedPickerDimensions struct {
+	width  int
+	height int
+}
+
+func (f fixedPickerDimensions) Calculate(screenWidth, screenHeight int) (width, height int) {
+	return f.width, f.height
+}
+
+// statusPickerDimensions calculates dimensions with fixed width but dynamic height based on item count.
+// Specifically designed for the status/column picker where width is constant but height varies with columns.
+type statusPickerDimensions struct {
+	itemCount int
+}
+
+func (s statusPickerDimensions) Calculate(screenWidth, screenHeight int) (width, height int) {
+	return layers.PickerStatusWidth, s.itemCount + layers.PickerStatusChromeHeight
+}
+
+// pickerLayerConfig holds configuration for creating a picker layer
+type pickerLayerConfig struct {
+	dimensionStrategy pickerDimensionStrategy
+	contentRenderer   func(width, height int) string
+	boxStyle          lipgloss.Style
+}
+
+// createPickerLayer creates a centered picker layer using the provided configuration
+func (m Model) createPickerLayer(config pickerLayerConfig) *lipgloss.Layer {
+	pickerWidth, pickerHeight := config.dimensionStrategy.Calculate(
+		m.UIState.Width(),
+		m.UIState.Height(),
+	)
+
+	pickerContent := config.contentRenderer(pickerWidth, pickerHeight)
+
+	pickerBox := config.boxStyle.
+		Width(pickerWidth).
+		Height(pickerHeight).
+		Render(pickerContent)
+
+	return layers.CreateCenteredLayer(pickerBox, m.UIState.Width(), m.UIState.Height())
+}
+
+// renderLabelPickerLayer renders the label picker modal as a layer
+func (m Model) renderLabelPickerLayer() *lipgloss.Layer {
+	if m.LabelPickerState.CreateMode {
+		return m.createPickerLayer(pickerLayerConfig{
+			dimensionStrategy: dynamicPickerDimensions{
+				itemCount: layers.PickerColorDefaultItemCount,
+				hasFilter: false,
+				minWidth:  layers.PickerDefaultMinWidth,
+				maxWidth:  layers.PickerDefaultMaxWidth,
+			},
+			contentRenderer: func(width, height int) string {
+				return renderers.RenderLabelColorPicker(
+					renderers.GetDefaultLabelColors(),
+					m.LabelPickerState.ColorIdx,
+					m.FormState.FormLabelName,
+					width-layers.PickerBorderPaddingWidth,
+				)
+			},
+			boxStyle: components.LabelPickerCreateBoxStyle,
+		})
+	}
+
+	filteredItems := m.getFilteredLabelPickerItems()
+	hasFilter := m.LabelPickerState.Filter != ""
+
+	return m.createPickerLayer(pickerLayerConfig{
+		dimensionStrategy: dynamicPickerDimensions{
+			itemCount: len(filteredItems) + 1,
+			hasFilter: hasFilter,
+			minWidth:  layers.PickerDefaultMinWidth,
+			maxWidth:  layers.PickerDefaultMaxWidth,
+		},
+		contentRenderer: func(width, height int) string {
+			return renderers.RenderLabelPicker(
+				filteredItems,
+				m.LabelPickerState.Cursor,
+				m.LabelPickerState.Filter,
+				true,
+				width-layers.PickerBorderPaddingWidth,
+				height-layers.PickerBorderPaddingHeight,
+			)
+		},
+		boxStyle: components.LabelPickerBoxStyle,
+	})
+}
+
+// renderParentPickerLayer renders the parent task picker modal as a layer
+func (m Model) renderParentPickerLayer() *lipgloss.Layer {
+	filteredItems := m.ParentPickerState.GetFilteredItems()
+	hasFilter := m.ParentPickerState.Filter != ""
+	isParentPicker := true
+
+	return m.createPickerLayer(pickerLayerConfig{
+		dimensionStrategy: dynamicPickerDimensions{
+			itemCount: len(filteredItems),
+			hasFilter: hasFilter,
+			minWidth:  layers.PickerTaskMinWidth,
+			maxWidth:  layers.PickerTaskMaxWidth,
+		},
+		contentRenderer: func(width, height int) string {
+			return renderers.RenderTaskPicker(
+				filteredItems,
+				m.ParentPickerState.Cursor,
+				m.ParentPickerState.Filter,
+				"Parent Issues",
+				width-layers.PickerBorderPaddingWidth,
+				height-layers.PickerBorderPaddingHeight,
+				isParentPicker,
+			)
+		},
+		boxStyle: components.LabelPickerBoxStyle,
+	})
+}
+
+// renderChildPickerLayer renders the child task picker modal as a layer
+func (m Model) renderChildPickerLayer() *lipgloss.Layer {
+	filteredItems := m.ChildPickerState.GetFilteredItems()
+	hasFilter := m.ChildPickerState.Filter != ""
+	isParentPicker := false
+
+	return m.createPickerLayer(pickerLayerConfig{
+		dimensionStrategy: dynamicPickerDimensions{
+			itemCount: len(filteredItems),
+			hasFilter: hasFilter,
+			minWidth:  layers.PickerTaskMinWidth,
+			maxWidth:  layers.PickerTaskMaxWidth,
+		},
+		contentRenderer: func(width, height int) string {
+			return renderers.RenderTaskPicker(
+				filteredItems,
+				m.ChildPickerState.Cursor,
+				m.ChildPickerState.Filter,
+				"Child Issues",
+				width-layers.PickerBorderPaddingWidth,
+				height-layers.PickerBorderPaddingHeight,
+				isParentPicker,
+			)
+		},
+		boxStyle: components.LabelPickerBoxStyle,
+	})
+}
+
+// renderPriorityPickerLayer renders the priority picker modal as a layer
+func (m Model) renderPriorityPickerLayer() *lipgloss.Layer {
+	return m.createPickerLayer(pickerLayerConfig{
+		dimensionStrategy: fixedPickerDimensions{
+			width:  layers.PickerPriorityWidth,
+			height: layers.PickerPriorityHeight,
+		},
+		contentRenderer: func(width, height int) string {
+			return renderers.RenderPriorityPicker(
+				renderers.GetPriorityOptions(),
+				m.PriorityPickerState.SelectedPriorityID(),
+				m.PriorityPickerState.Cursor(),
+				width-layers.PickerBorderPaddingWidth,
+			)
+		},
+		boxStyle: components.LabelPickerBoxStyle,
+	})
+}
+
+// renderTypePickerLayer renders the type picker modal as a layer
+func (m Model) renderTypePickerLayer() *lipgloss.Layer {
+	return m.createPickerLayer(pickerLayerConfig{
+		dimensionStrategy: fixedPickerDimensions{
+			width:  layers.PickerTypeWidth,
+			height: layers.PickerTypeHeight,
+		},
+		contentRenderer: func(width, height int) string {
+			return renderers.RenderTypePicker(
+				renderers.GetTypeOptions(),
+				m.TypePickerState.SelectedTypeID(),
+				m.TypePickerState.Cursor(),
+				width-layers.PickerBorderPaddingWidth,
+			)
+		},
+		boxStyle: components.LabelPickerBoxStyle,
+	})
+}
+
+// renderRelationTypePickerLayer renders the relation type picker modal as a layer
+func (m Model) renderRelationTypePickerLayer() *lipgloss.Layer {
+	pickerType := "parent"
+	if m.RelationTypePickerState.ReturnMode == state.ChildPickerMode {
+		pickerType = "child"
+	}
+
+	return m.createPickerLayer(pickerLayerConfig{
+		dimensionStrategy: fixedPickerDimensions{
+			width:  layers.PickerRelationTypeWidth,
+			height: layers.PickerRelationTypeHeight,
+		},
+		contentRenderer: func(width, height int) string {
+			return renderers.RenderRelationTypePicker(
+				renderers.GetRelationTypeOptions(),
+				m.RelationTypePickerState.SelectedRelationTypeID(),
+				m.RelationTypePickerState.Cursor(),
+				width-layers.PickerBorderPaddingWidth,
+				pickerType,
+			)
+		},
+		boxStyle: components.LabelPickerBoxStyle,
+	})
+}
+
+// renderStatusPickerLayer renders the status/column selection picker modal as a layer
+func (m Model) renderStatusPickerLayer() *lipgloss.Layer {
+	columns := m.StatusPickerState.Columns()
+	cursor := m.StatusPickerState.Cursor()
+
+	return m.createPickerLayer(pickerLayerConfig{
+		dimensionStrategy: statusPickerDimensions{
+			itemCount: len(columns),
+		},
+		contentRenderer: func(width, height int) string {
+			var items []string
+			for i, col := range columns {
+				prefix := "  "
+				if i == cursor {
+					prefix = "> "
+				}
+				items = append(items, prefix+col.Name)
+			}
+			return "Select Status:\n\n" + lipgloss.JoinVertical(lipgloss.Left, items...) + "\n\n" + components.PickerFooterConfirm
+		},
+		boxStyle: components.LabelPickerBoxStyle,
+	})
 }

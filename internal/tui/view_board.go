@@ -37,7 +37,7 @@ func (m Model) viewKanbanBoard() string {
 	if len(m.AppState.Columns()) == 0 {
 		emptyMsg := "No columns found. Please check database initialization."
 		footer := components.RenderStatusBar(components.StatusBarProps{
-			Width:            m.UiState.Width(),
+			Width:            m.UIState.Width(),
 			ConnectionStatus: m.ConnectionState.Status(),
 		})
 		return lipgloss.JoinVertical(
@@ -50,17 +50,17 @@ func (m Model) viewKanbanBoard() string {
 	}
 
 	// Calculate visible columns based on viewport
-	endIdx := min(m.UiState.ViewportOffset()+m.UiState.ViewportSize(), len(m.AppState.Columns()))
-	visibleColumns := m.AppState.Columns()[m.UiState.ViewportOffset():endIdx]
+	endIdx := min(m.UIState.ViewportOffset()+m.UIState.ViewportSize(), len(m.AppState.Columns()))
+	visibleColumns := m.AppState.Columns()[m.UIState.ViewportOffset():endIdx]
 
 	// Calculate fixed content height using shared method
-	columnHeight := m.UiState.ContentHeight()
+	columnHeight := m.UIState.ContentHeight()
 
 	// Render only visible columns
 	var columns []string
 	for i, col := range visibleColumns {
 		// Calculate global index for selection check
-		globalIndex := m.UiState.ViewportOffset() + i
+		globalIndex := m.UIState.ViewportOffset() + i
 
 		// Safe map access with defensive check
 		tasks, ok := m.AppState.Tasks()[col.ID]
@@ -69,23 +69,22 @@ func (m Model) viewKanbanBoard() string {
 		}
 
 		// Determine selection state for this column
-		isSelected := (globalIndex == m.UiState.SelectedColumn())
+		isSelected := (globalIndex == m.UIState.SelectedColumn())
 
 		// Determine which task is selected (only for the selected column)
 		selectedTaskIdx := -1
 		if isSelected {
-			selectedTaskIdx = m.UiState.SelectedTask()
+			selectedTaskIdx = m.UIState.SelectedTask()
 		}
 
-		// Get scroll offset for this column
-		scrollOffset := m.UiState.TaskScrollOffset(col.ID)
+		scrollOffset := m.UIState.TaskScrollOffset(col.ID)
 
 		columns = append(columns, components.RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight, scrollOffset))
 	}
 
 	scrollIndicators := helpers.GetScrollIndicators(
-		m.UiState.ViewportOffset(),
-		m.UiState.ViewportSize(),
+		m.UIState.ViewportOffset(),
+		m.UIState.ViewportSize(),
 		len(m.AppState.Columns()),
 	)
 
@@ -103,11 +102,11 @@ func (m Model) viewKanbanBoard() string {
 	}
 	// Get inline notification for tab bar
 	inlineNotification := m.getInlineNotification()
-	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UiState.Width(), inlineNotification)
+	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UIState.Width(), inlineNotification)
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
-		Width:            m.UiState.Width(),
-		SearchMode:       m.UiState.Mode() == state.SearchMode || m.SearchState.IsActive,
+		Width:            m.UIState.Width(),
+		SearchMode:       m.UIState.Mode() == state.SearchMode || m.SearchState.IsActive,
 		SearchQuery:      m.SearchState.Query,
 		ConnectionStatus: m.ConnectionState.Status(),
 	})
@@ -118,7 +117,7 @@ func (m Model) viewKanbanBoard() string {
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
 
-	maxContentLines := max(m.UiState.Height()-1, 1)
+	maxContentLines := max(m.UIState.Height()-1, 1)
 
 	if len(contentLines) > maxContentLines {
 		contentLines = contentLines[:maxContentLines]
@@ -138,9 +137,6 @@ func (m Model) viewKanbanBoard() string {
 		lipgloss.NewLayer(baseView),
 	}
 
-	// Notifications are now rendered inline with tabs, no need for floating layers
-
-	// Combine all layers into canvas
 	canvas := lipgloss.NewCanvas(layers...)
 	return canvas.Render()
 }
@@ -151,7 +147,7 @@ func (m Model) viewListView() string {
 	rows := m.buildListViewRows()
 
 	// Calculate fixed content height using shared method
-	listHeight := m.UiState.ContentHeight()
+	listHeight := m.UIState.ContentHeight()
 
 	// Render tab bar (same as kanban)
 	var projectTabs []string
@@ -163,7 +159,7 @@ func (m Model) viewListView() string {
 	}
 	// Get inline notification for tab bar
 	inlineNotification := m.getInlineNotification()
-	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UiState.Width(), inlineNotification)
+	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UIState.Width(), inlineNotification)
 
 	// Render list content with sort indicator
 	listContent := renderers.RenderListView(
@@ -172,14 +168,13 @@ func (m Model) viewListView() string {
 		m.ListViewState.ScrollOffset(),
 		m.ListViewState.SortField(),
 		m.ListViewState.SortOrder(),
-		m.UiState.Width(),
+		m.UIState.Width(),
 		listHeight,
 	)
 
-	// Render footer
-	footer := components.RenderStatusBar(components.StatusBarProps{
-		Width:            m.UiState.Width(),
-		SearchMode:       m.UiState.Mode() == state.SearchMode || m.SearchState.IsActive,
+	statusBar := components.RenderStatusBar(components.StatusBarProps{
+		Width:            m.UIState.Width(),
+		SearchMode:       m.UIState.Mode() == state.SearchMode || m.SearchState.IsActive,
 		SearchQuery:      m.SearchState.Query,
 		ConnectionStatus: m.ConnectionState.Status(),
 	})
@@ -189,7 +184,7 @@ func (m Model) viewListView() string {
 
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
-	maxContentLines := max(m.UiState.Height()-1, 1)
+	maxContentLines := max(m.UIState.Height()-1, 1)
 
 	if len(contentLines) > maxContentLines {
 		contentLines = contentLines[:maxContentLines]
@@ -197,8 +192,7 @@ func (m Model) viewListView() string {
 	constrainedContent := strings.Join(contentLines, "\n")
 
 	// Build base view with constrained content and footer always visible
-	baseView := constrainedContent + "\n" + footer
+	baseView := constrainedContent + "\n" + statusBar
 
-	// Notifications are now rendered inline with tabs
 	return baseView
 }

@@ -9,7 +9,7 @@ import (
 // ReloadProjects reloads the list of all projects from the database.
 // Updates the AppState with fresh project data.
 func ReloadProjects(m *tui.Model) {
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 	projects, err := m.App.ProjectService.GetAllProjects(ctx)
 	if err != nil {
@@ -28,7 +28,7 @@ func ReloadCurrentProject(m *tui.Model) {
 		return
 	}
 
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 
 	// Reload columns

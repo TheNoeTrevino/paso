@@ -13,9 +13,10 @@ func Default() *ColorScheme {
 		ColumnBackground: "#262626",
 
 		// Semantic
-		Create: "#5FD75F",
-		Edit:   "#5F87D7",
-		Delete: "#FF0000",
+		Create:  "#5FD75F",
+		Edit:    "#5F87D7",
+		Delete:  "#FF0000",
+		Blocked: "#EF4444", // Softer red for blocked task indicator
 
 		// UI elements
 		ColumnBorder:   "#5F87D7",

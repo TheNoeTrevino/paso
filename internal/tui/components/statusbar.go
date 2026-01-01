@@ -20,6 +20,12 @@ type StatusBarProps struct {
 // Left side: connection status
 // Middle: "/search-query" when searching (takes space from gap)
 // Right side: "press ? for help"
+//
+// Layout:
+//
+//	┌─────────────────────────────────────────────────────────┐
+//	│ ● Connected       /search-query             ? for help  │
+//	└─────────────────────────────────────────────────────────┘
 func RenderStatusBar(props StatusBarProps) string {
 	var leftText string
 	var leftColor string

@@ -40,26 +40,33 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 func renderTaskSummaryTitle(task *models.TaskSummary, bg string) string {
 	var blockedIndicator string
 	if task.IsBlocked {
-		blockedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444")).Bold(true).Italic(true)
-		blockedIndicator = blockedStyle.Render("! ") // FIXME: why is this sometimes right and sometimes wrong
+		blockedIndicator = BlockedStyle.
+			Background(lipgloss.Color(bg)).
+			Render("! ")
 	}
-	title := task.Title
 
-	if len(title) >= 30 {
+	title := task.Title
+	if len(title) >= taskTitleMaxLength {
 		ellipsisStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(theme.Subtle)).
 			Background(lipgloss.Color(bg)).
 			Italic(true)
-		title = title[:27] + ellipsisStyle.Render("...")
+		title = title[:taskTitleMaxLength] + ellipsisStyle.Render("...")
 	}
 
-	if len(title) < 30 {
-		title = title + strings.Repeat(" ", 30-len(title))
-	}
+	title = padTitleForIndicator(title)
 
 	return lipgloss.NewStyle().
 		Bold(true).
-		Render(" 󰗴 " + blockedIndicator + title)
+		Render(title + blockedIndicator)
+}
+
+// padTitleForIndicator pads the title to ensure the blocked indicator aligns on the right
+func padTitleForIndicator(title string) string {
+	if len(title) < taskTitlePaddedLength {
+		return title + strings.Repeat(" ", taskTitlePaddedLength-len(title))
+	}
+	return title
 }
 
 // renderTaskCardLabels renders the labels as chips, with their color as the background

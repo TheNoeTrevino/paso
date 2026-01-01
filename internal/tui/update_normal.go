@@ -79,15 +79,15 @@ func (m Model) handleQuit() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleShowHelp() (tea.Model, tea.Cmd) {
-	m.UiState.SetMode(state.HelpMode)
+	m.UIState.SetMode(state.HelpMode)
 	return m, nil
 }
 
 func (m Model) handleNavigateLeft() (tea.Model, tea.Cmd) {
-	if m.UiState.SelectedColumn() > 0 {
-		m.UiState.SetSelectedColumn(m.UiState.SelectedColumn() - 1)
-		m.UiState.SetSelectedTask(0)
-		m.UiState.EnsureSelectionVisible(m.UiState.SelectedColumn())
+	if m.UIState.SelectedColumn() > 0 {
+		m.UIState.SetSelectedColumn(m.UIState.SelectedColumn() - 1)
+		m.UIState.SetSelectedTask(0)
+		m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn())
 	} else {
 		m.NotificationState.Add(state.LevelInfo, "Already at the first column")
 	}
@@ -95,10 +95,10 @@ func (m Model) handleNavigateLeft() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleNavigateRight() (tea.Model, tea.Cmd) {
-	if m.UiState.SelectedColumn() < len(m.AppState.Columns())-1 {
-		m.UiState.SetSelectedColumn(m.UiState.SelectedColumn() + 1)
-		m.UiState.SetSelectedTask(0)
-		m.UiState.EnsureSelectionVisible(m.UiState.SelectedColumn())
+	if m.UIState.SelectedColumn() < len(m.AppState.Columns())-1 {
+		m.UIState.SetSelectedColumn(m.UIState.SelectedColumn() + 1)
+		m.UIState.SetSelectedTask(0)
+		m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn())
 	} else {
 		m.NotificationState.Add(state.LevelInfo, "Already at the last column")
 	}
@@ -110,7 +110,7 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 		if m.ListViewState.SelectedRow() > 0 {
 			m.ListViewState.SetSelectedRow(m.ListViewState.SelectedRow() - 1)
 
-			listHeight := m.UiState.ContentHeight()
+			listHeight := m.UIState.ContentHeight()
 			const reservedHeight = 6
 			visibleRows := max(listHeight-reservedHeight, 1)
 			m.ListViewState.EnsureRowVisible(visibleRows)
@@ -120,15 +120,15 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.UiState.SelectedTask() > 0 {
-		m.UiState.SetSelectedTask(m.UiState.SelectedTask() - 1)
+	if m.UIState.SelectedTask() > 0 {
+		m.UIState.SetSelectedTask(m.UIState.SelectedTask() - 1)
 
-		if m.UiState.SelectedColumn() < len(m.AppState.Columns()) {
-			currentCol := m.AppState.Columns()[m.UiState.SelectedColumn()]
-			columnHeight := m.UiState.ContentHeight()
+		if m.UIState.SelectedColumn() < len(m.AppState.Columns()) {
+			currentCol := m.AppState.Columns()[m.UIState.SelectedColumn()]
+			columnHeight := m.UIState.ContentHeight()
 			const columnOverhead = 5
 			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
-			m.UiState.EnsureTaskVisible(currentCol.ID, m.UiState.SelectedTask(), maxTasksVisible)
+			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask(), maxTasksVisible)
 		}
 	} else {
 		m.NotificationState.Add(state.LevelInfo, "Already at the first task")
@@ -142,7 +142,7 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 		if m.ListViewState.SelectedRow() < len(rows)-1 {
 			m.ListViewState.SetSelectedRow(m.ListViewState.SelectedRow() + 1)
 
-			listHeight := m.UiState.ContentHeight()
+			listHeight := m.UIState.ContentHeight()
 			const reservedHeight = 6
 			visibleRows := max(listHeight-reservedHeight, 1)
 			m.ListViewState.EnsureRowVisible(visibleRows)
@@ -153,15 +153,15 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 	}
 
 	currentTasks := m.getCurrentTasks()
-	if len(currentTasks) > 0 && m.UiState.SelectedTask() < len(currentTasks)-1 {
-		m.UiState.SetSelectedTask(m.UiState.SelectedTask() + 1)
+	if len(currentTasks) > 0 && m.UIState.SelectedTask() < len(currentTasks)-1 {
+		m.UIState.SetSelectedTask(m.UIState.SelectedTask() + 1)
 
-		if m.UiState.SelectedColumn() < len(m.AppState.Columns()) {
-			currentCol := m.AppState.Columns()[m.UiState.SelectedColumn()]
-			columnHeight := m.UiState.ContentHeight()
+		if m.UIState.SelectedColumn() < len(m.AppState.Columns()) {
+			currentCol := m.AppState.Columns()[m.UIState.SelectedColumn()]
+			columnHeight := m.UIState.ContentHeight()
 			const columnOverhead = 5
 			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
-			m.UiState.EnsureTaskVisible(currentCol.ID, m.UiState.SelectedTask(), maxTasksVisible)
+			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask(), maxTasksVisible)
 		}
 	} else if len(currentTasks) > 0 {
 		m.NotificationState.Add(state.LevelInfo, "Already at the last task")
@@ -170,11 +170,11 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleScrollRight() (tea.Model, tea.Cmd) {
-	if m.UiState.ViewportOffset()+m.UiState.ViewportSize() < len(m.AppState.Columns()) {
-		m.UiState.SetViewportOffset(m.UiState.ViewportOffset() + 1)
-		if m.UiState.SelectedColumn() < m.UiState.ViewportOffset() {
-			m.UiState.SetSelectedColumn(m.UiState.ViewportOffset())
-			m.UiState.SetSelectedTask(0)
+	if m.UIState.ViewportOffset()+m.UIState.ViewportSize() < len(m.AppState.Columns()) {
+		m.UIState.SetViewportOffset(m.UIState.ViewportOffset() + 1)
+		if m.UIState.SelectedColumn() < m.UIState.ViewportOffset() {
+			m.UIState.SetSelectedColumn(m.UIState.ViewportOffset())
+			m.UIState.SetSelectedTask(0)
 		}
 	} else {
 		m.NotificationState.Add(state.LevelInfo, "Already at the rightmost view")
@@ -183,11 +183,11 @@ func (m Model) handleScrollRight() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleScrollLeft() (tea.Model, tea.Cmd) {
-	if m.UiState.ViewportOffset() > 0 {
-		m.UiState.SetViewportOffset(m.UiState.ViewportOffset() - 1)
-		if m.UiState.SelectedColumn() >= m.UiState.ViewportOffset()+m.UiState.ViewportSize() {
-			m.UiState.SetSelectedColumn(m.UiState.ViewportOffset() + m.UiState.ViewportSize() - 1)
-			m.UiState.SetSelectedTask(0)
+	if m.UIState.ViewportOffset() > 0 {
+		m.UIState.SetViewportOffset(m.UIState.ViewportOffset() - 1)
+		if m.UIState.SelectedColumn() >= m.UIState.ViewportOffset()+m.UIState.ViewportSize() {
+			m.UIState.SetSelectedColumn(m.UIState.ViewportOffset() + m.UIState.ViewportSize() - 1)
+			m.UIState.SetSelectedTask(0)
 		}
 	} else {
 		m.NotificationState.Add(state.LevelInfo, "Already at the leftmost view")
@@ -210,12 +210,8 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 	m.FormState.FormConfirm = true
 	m.FormState.EditingTaskID = 0
 
-	// Use dynamically calculated description lines from FormState
-	// Falls back to 10 if not set (shouldn't happen in normal flow)
-	descriptionLines := m.FormState.CalculatedDescriptionLines
-	if descriptionLines == 0 {
-		descriptionLines = 10
-	}
+	// Calculate description lines based on current screen size
+	descriptionLines := m.calculateDescriptionLines()
 
 	m.FormState.TaskForm = huhforms.CreateTaskForm(
 		&m.FormState.FormTitle,
@@ -224,7 +220,7 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.FormState.SnapshotTaskFormInitialValues()
-	m.UiState.SetMode(state.TicketFormMode)
+	m.UIState.SetMode(state.TicketFormMode)
 	return m, m.FormState.TaskForm.Init()
 }
 
@@ -235,7 +231,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 	taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, task.ID)
 	if err != nil {
@@ -276,12 +272,8 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 	m.FormState.FormConfirm = true
 	m.FormState.EditingTaskID = task.ID
 
-	// Use dynamically calculated description lines from FormState
-	// Falls back to 10 if not set (shouldn't happen in normal flow)
-	descriptionLines := m.FormState.CalculatedDescriptionLines
-	if descriptionLines == 0 {
-		descriptionLines = 10
-	}
+	// Calculate description lines based on current screen size
+	descriptionLines := m.calculateDescriptionLines()
 
 	m.FormState.TaskForm = huhforms.CreateTaskForm(
 		&m.FormState.FormTitle,
@@ -290,7 +282,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.FormState.SnapshotTaskFormInitialValues()
-	m.UiState.SetMode(state.TicketFormMode)
+	m.UIState.SetMode(state.TicketFormMode)
 	return m, m.FormState.TaskForm.Init()
 }
 
@@ -299,7 +291,7 @@ func (m Model) handleDeleteTask() (tea.Model, tea.Cmd) {
 		m.NotificationState.Add(state.LevelError, "No task selected to delete")
 		return m, nil
 	}
-	m.UiState.SetMode(state.DeleteConfirmMode)
+	m.UIState.SetMode(state.DeleteConfirmMode)
 	return m, nil
 }
 
@@ -336,7 +328,7 @@ func (m Model) handleCreateColumn() (tea.Model, tea.Cmd) {
 	m.FormState.EditingColumnID = 0
 	m.FormState.ColumnForm = huhforms.CreateColumnForm(&m.FormState.FormColumnName, false).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.FormState.SnapshotColumnFormInitialValues()
-	m.UiState.SetMode(state.AddColumnFormMode)
+	m.UIState.SetMode(state.AddColumnFormMode)
 	return m, m.FormState.ColumnForm.Init()
 }
 
@@ -350,7 +342,7 @@ func (m Model) handleRenameColumn() (tea.Model, tea.Cmd) {
 	m.FormState.EditingColumnID = column.ID
 	m.FormState.ColumnForm = huhforms.CreateColumnForm(&m.FormState.FormColumnName, true).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.FormState.SnapshotColumnFormInitialValues()
-	m.UiState.SetMode(state.EditColumnFormMode)
+	m.UIState.SetMode(state.EditColumnFormMode)
 	return m, m.FormState.ColumnForm.Init()
 }
 
@@ -363,7 +355,7 @@ func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 	// Count tasks in the column from current state
 	taskCount := len(m.AppState.Tasks()[column.ID])
 	m.InputState.DeleteColumnTaskCount = taskCount
-	m.UiState.SetMode(state.DeleteColumnConfirmMode)
+	m.UIState.SetMode(state.DeleteColumnConfirmMode)
 	return m, nil
 }
 
@@ -399,6 +391,6 @@ func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
 		&m.FormState.FormProjectConfirm,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.FormState.SnapshotProjectFormInitialValues()
-	m.UiState.SetMode(state.ProjectFormMode)
+	m.UIState.SetMode(state.ProjectFormMode)
 	return m, m.FormState.ProjectForm.Init()
 }
