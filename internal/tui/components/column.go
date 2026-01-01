@@ -9,26 +9,18 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
-// TaskCardHeight is the fixed height of the task card
-const TaskCardHeight = 5
-
-const (
-	columnBorderOverhead = 3 // top border + bottom padding + bottom border
-	headerLines          = 1 // column name and count
-	topIndicatorLines    = 1 // empty line or "▲ more above"
-)
-
 // RenderColumn renders a complete column with its title and tasks
-// This is a pure, reusable component that composes individual task components
+// Dynamically renders amount of tasks based on height and scroll offset
 //
 // Layout:
 //
-//	{Column Name} ({count})
-//	▲ (if scrolled down)
-//	{Task 1}
-//	{Task 2}
-//	...
-//	▼ (if more tasks below)
+//	╭──────────────────────────╮
+//	│ {Column Name} ({count})  │
+//	│ ▲ (if scrolled down)     │
+//	│ {Task 1}                 │
+//	│ {Task 2}                 │
+//	│ ▼ (if more tasks below)  │
+//	╰──────────────────────────╯
 //
 // Parameters:
 //   - column: The column to render
@@ -95,18 +87,15 @@ func renderColumnWithTasksContent(
 ) string {
 	content := header + "\n"
 
-	// calculating how many tasks fit, to avoid a 'infinite' list
 	columnOverhead := columnBorderOverhead + headerLines + topIndicatorLines
 	availableHeight := height - columnOverhead
 	maxVisibleTasks := max(availableHeight/TaskCardHeight, 1)
 
 	content += renderScrollIndicator(scrollOffset > 0, "▲ more above")
 
-	// Calculate visible task range
 	endIdx := min(scrollOffset+maxVisibleTasks, len(tasks))
 	visibleTasks := tasks[scrollOffset:endIdx]
 
-	// Render visible tasks
 	for i, task := range visibleTasks {
 		actualIdx := scrollOffset + i
 		isTaskSelected := selected && actualIdx == selectedTaskIdx
@@ -127,9 +116,7 @@ func applyColumnStyle(content string, selected bool, height int) string {
 		style = style.BorderForeground(lipgloss.Color(theme.SelectedBorder))
 	}
 
-	if height > 0 {
-		style = style.Height(height)
-	}
+	style = style.Height(max(height, 0))
 
 	return style.Render(content)
 }

@@ -12,18 +12,15 @@ import (
 // RenderCommentCard renders a single comment as a card
 //
 //	┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  (selected)
-//	┃ 󰀄 noetest    Dec 28 18:54  edited  ┃
-//	┃ this is a new comment                 ┃
-//	┃ with multiple lines                   ┃
+//	┃ 󰀄 noetest    Dec 28 18:54  edited    ┃
+//	┃ this is a new comment                ┃
+//	┃ with multiple lines                  ┃
 //	┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 //
 //	┌──────────────────────────────────────────┐  (unselected)
-//	│ 󰀄 noetest    Dec 28 17:32           │
-//	│ another comment here                  │
+//	│ 󰀄 noetest    Dec 28 17:32                │
+//	│ another comment here                     │
 //	└──────────────────────────────────────────┘
-//
-// The card uses the same selection pattern as task cards - heavy border and
-// highlighted background when selected.
 func RenderCommentCard(comment *models.Comment, selected bool, width int) string {
 	// Background color based on selection (same as task cards)
 	var bg string
@@ -73,9 +70,13 @@ func renderCommentHeader(comment *models.Comment) string {
 	// Edited indicator (only if updated_at > created_at)
 	var editedIndicator string
 	if !comment.UpdatedAt.IsZero() && comment.UpdatedAt.After(comment.CreatedAt) {
-		editedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Italic(true)
+		editedStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Subtle)).
+			Italic(true)
+
 		editedDate := comment.UpdatedAt.Format("Jan 2 15:04")
-		editedIndicator = " " + editedStyle.Render(fmt.Sprintf("(edited %s)", editedDate))
+		editedIndicator = " " + editedStyle.
+			Render(fmt.Sprintf("(edited %s)", editedDate))
 	}
 
 	headerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
