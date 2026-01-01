@@ -30,6 +30,34 @@ const (
 	TaskFormHelpMode                    // Help screen for task form shortcuts
 )
 
+// UsesLayers returns true if this mode uses layer-based rendering.
+// Modes that use layers render a base view with modal overlays on top.
+// Modes that don't use layers render full-screen content.
+func (m Mode) UsesLayers() bool {
+	switch m {
+	case TicketFormMode,
+		ProjectFormMode,
+		AddColumnFormMode,
+		EditColumnFormMode,
+		CommentFormMode,
+		CommentsViewMode,
+		HelpMode,
+		TaskFormHelpMode,
+		LabelPickerMode,
+		ParentPickerMode,
+		ChildPickerMode,
+		PriorityPickerMode,
+		TypePickerMode,
+		RelationTypePickerMode,
+		StatusPickerMode,
+		NormalMode,
+		SearchMode:
+		return true
+	default:
+		return false
+	}
+}
+
 // DiscardContext tracks information for discard confirmation dialogs.
 // It stores the mode to return to if the user cancels, and a context-specific message.
 type DiscardContext struct {
