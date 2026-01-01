@@ -6,7 +6,6 @@ import (
 
 // CreateTaskForm creates a huh form for adding/editing a task
 // The form uses pointers to update values in place, matching the existing pattern
-// Labels are now edited via Ctrl+L in the form view
 func CreateTaskForm(
 	title *string,
 	description *string,

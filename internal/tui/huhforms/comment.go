@@ -1,9 +1,9 @@
+// Package huhforms contains form that use the huh library for the TUI app
 package huhforms
 
 import "charm.land/huh/v2"
 
 // CreateCommentForm creates a huh form for adding or editing a comment.
-// The form contains a multi-line text field for the comment message.
 // No confirmation field is used - the form saves on completion.
 func CreateCommentForm(
 	message *string,
