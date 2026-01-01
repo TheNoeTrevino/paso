@@ -188,7 +188,7 @@ func (s *service) CreateColumn(ctx context.Context, req CreateColumnRequest) (*m
 	}
 
 	// Publish event after successful commit
-	s.publishColumnEvent(int(column.ID), int(column.ProjectID))
+	s.publishColumnEvent(ctx, int(column.ID), int(column.ProjectID))
 
 	return toColumnModel(column), nil
 }
@@ -221,7 +221,7 @@ func (s *service) UpdateColumnName(ctx context.Context, id int, name string) err
 	}
 
 	// Publish event
-	s.publishColumnEvent(id, int(column.ProjectID))
+	s.publishColumnEvent(ctx, id, int(column.ProjectID))
 
 	return nil
 }
@@ -277,7 +277,7 @@ func (s *service) SetHoldsReadyTasks(ctx context.Context, columnID int) (*models
 	}
 
 	// Publish event
-	s.publishColumnEvent(columnID, int(column.ProjectID))
+	s.publishColumnEvent(ctx, columnID, int(column.ProjectID))
 
 	// Return updated column
 	return s.GetColumnByID(ctx, columnID)
@@ -341,7 +341,7 @@ func (s *service) SetHoldsCompletedTasks(ctx context.Context, columnID int, forc
 	}
 
 	// Publish event
-	s.publishColumnEvent(columnID, int(column.ProjectID))
+	s.publishColumnEvent(ctx, columnID, int(column.ProjectID))
 
 	// Return updated column
 	return s.GetColumnByID(ctx, columnID)
@@ -398,7 +398,7 @@ func (s *service) SetHoldsInProgressTasks(ctx context.Context, columnID int) (*m
 	}
 
 	// Publish event
-	s.publishColumnEvent(columnID, int(column.ProjectID))
+	s.publishColumnEvent(ctx, columnID, int(column.ProjectID))
 
 	// Return updated column
 	return s.GetColumnByID(ctx, columnID)
@@ -480,7 +480,7 @@ func (s *service) DeleteColumn(ctx context.Context, id int) error {
 	}
 
 	// Publish event after successful deletion
-	s.publishColumnEvent(id, projectID)
+	s.publishColumnEvent(ctx, id, projectID)
 
 	return nil
 }
@@ -502,18 +502,18 @@ func (s *service) validateCreateColumn(req CreateColumnRequest) error {
 	return nil
 }
 
-// publishColumnEvent publishes a column event
-func (s *service) publishColumnEvent(columnID, projectID int) {
+// publishColumnEvent publishes a column event with retry logic
+func (s *service) publishColumnEvent(ctx context.Context, columnID, projectID int) {
 	if s.eventClient == nil {
 		return
 	}
 
-	if err := s.eventClient.SendEvent(events.Event{
+	// Publish with retry (3 attempts with exponential backoff)
+	// Non-blocking: errors are logged but don't affect the operation
+	_ = events.PublishWithRetry(s.eventClient, events.Event{
 		Type:      events.EventDatabaseChanged,
 		ProjectID: projectID,
-	}); err != nil {
-		log.Printf("failed to send event for column %d: %v", columnID, err)
-	}
+	}, 3)
 }
 
 // Model conversion helpers
