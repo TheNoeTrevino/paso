@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log"
 	"sort"
-	"strings"
 
+	"github.com/thenoetrevino/paso/internal/converters"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/database/generated"
 	"github.com/thenoetrevino/paso/internal/events"
@@ -320,7 +320,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 	s.publishTaskEvent(ctx, int(createdTask.ID))
 
 	// Convert to model
-	return convertToTaskModel(createdTask), nil
+	return converters.TaskToModel(createdTask), nil
 }
 
 // UpdateTask handles task updates with validation
@@ -467,10 +467,10 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 		ColumnName:  taskRow.ColumnName,
 		ProjectName: taskRow.ProjectName,
 		Position:    int(taskRow.Position),
-		Labels:      convertLabelsToModels(labels),
-		ParentTasks: convertParentTasksToReferences(parentRows),
-		ChildTasks:  convertChildTasksToReferences(childRows),
-		Comments:    convertCommentsToModels(commentRows),
+		Labels:      converters.LabelsToModels(labels),
+		ParentTasks: converters.ParentTasksToReferences(parentRows),
+		ChildTasks:  converters.ChildTasksToReferences(childRows),
+		Comments:    converters.CommentsToModels(commentRows),
 		IsBlocked:   taskRow.IsBlocked > 0,
 	}
 
@@ -506,7 +506,7 @@ func (s *service) GetTaskSummariesByProject(ctx context.Context, projectID int) 
 	// Group by column
 	result := make(map[int][]*models.TaskSummary)
 	for _, row := range rows {
-		summary := convertTaskSummaryRowToModel(row)
+		summary := converters.TaskSummaryFromRowToModel(row)
 		columnID := int(row.ColumnID)
 		result[columnID] = append(result[columnID], summary)
 	}
@@ -530,7 +530,7 @@ func (s *service) GetTaskSummariesByProjectFiltered(ctx context.Context, project
 	// Group by column
 	result := make(map[int][]*models.TaskSummary)
 	for _, row := range rows {
-		summary := convertFilteredTaskSummaryRowToModel(row)
+		summary := converters.FilteredTaskSummaryFromRowToModel(row)
 		columnID := int(row.ColumnID)
 		result[columnID] = append(result[columnID], summary)
 	}
@@ -549,7 +549,7 @@ func (s *service) GetReadyTaskSummariesByProject(ctx context.Context, projectID 
 	for _, row := range rows {
 		// Only include unblocked tasks
 		if row.IsBlocked == 0 {
-			summary := convertReadyTaskSummaryRowToModel(row)
+			summary := converters.ReadyTaskSummaryFromRowToModel(row)
 			result = append(result, summary)
 		}
 	}
@@ -1336,7 +1336,7 @@ func (s *service) GetCommentsByTask(ctx context.Context, taskID int) ([]*models.
 		return nil, fmt.Errorf("failed to get comments: %w", err)
 	}
 
-	return convertCommentsToModels(rows), nil
+	return converters.CommentsToModels(rows), nil
 }
 
 // validateCreateTask validates a CreateTaskRequest
@@ -1392,205 +1392,4 @@ func (s *service) publishTaskEvent(ctx context.Context, taskID int) {
 		Type:      events.EventDatabaseChanged,
 		ProjectID: int(projectID),
 	}, 3)
-}
-
-// ============================================================================
-// MODEL CONVERSION FUNCTIONS
-// ============================================================================
-
-// convertToTaskModel converts a generated.Task to models.Task
-func convertToTaskModel(t generated.Task) *models.Task {
-	task := &models.Task{
-		ID:         int(t.ID),
-		Title:      t.Title,
-		ColumnID:   int(t.ColumnID),
-		Position:   int(t.Position),
-		TypeID:     int(t.TypeID),
-		PriorityID: int(t.PriorityID),
-	}
-
-	if t.Description.Valid {
-		task.Description = t.Description.String
-	}
-	if t.CreatedAt.Valid {
-		task.CreatedAt = t.CreatedAt.Time
-	}
-	if t.UpdatedAt.Valid {
-		task.UpdatedAt = t.UpdatedAt.Time
-	}
-
-	return task
-}
-
-// convertLabelsToModels converts generated.Label slice to models.Label slice
-func convertLabelsToModels(labels []generated.Label) []*models.Label {
-	result := make([]*models.Label, 0, len(labels))
-	for _, l := range labels {
-		result = append(result, &models.Label{
-			ID:        int(l.ID),
-			Name:      l.Name,
-			Color:     l.Color,
-			ProjectID: int(l.ProjectID),
-		})
-	}
-	return result
-}
-
-// convertParentTasksToReferences converts parent task rows to TaskReference slice
-func convertParentTasksToReferences(rows []generated.GetParentTasksRow) []*models.TaskReference {
-	result := make([]*models.TaskReference, 0, len(rows))
-	for _, row := range rows {
-		ref := &models.TaskReference{
-			ID:             int(row.ID),
-			Title:          row.Title,
-			ProjectName:    row.Name,
-			RelationTypeID: int(row.ID_2),
-			RelationLabel:  row.PToCLabel,
-			RelationColor:  row.Color,
-			IsBlocking:     row.IsBlocking,
-		}
-		if row.TicketNumber.Valid {
-			ref.TicketNumber = int(row.TicketNumber.Int64)
-		}
-		result = append(result, ref)
-	}
-	return result
-}
-
-// convertChildTasksToReferences converts child task rows to TaskReference slice
-func convertChildTasksToReferences(rows []generated.GetChildTasksRow) []*models.TaskReference {
-	result := make([]*models.TaskReference, 0, len(rows))
-	for _, row := range rows {
-		ref := &models.TaskReference{
-			ID:             int(row.ID),
-			Title:          row.Title,
-			ProjectName:    row.Name,
-			RelationTypeID: int(row.ID_2),
-			RelationLabel:  row.CToPLabel,
-			RelationColor:  row.Color,
-			IsBlocking:     row.IsBlocking,
-		}
-		if row.TicketNumber.Valid {
-			ref.TicketNumber = int(row.TicketNumber.Int64)
-		}
-		result = append(result, ref)
-	}
-	return result
-}
-
-// convertCommentsToModels converts generated.TaskComment slice to models.Comment slice
-func convertCommentsToModels(comments []generated.TaskComment) []*models.Comment {
-	result := make([]*models.Comment, 0, len(comments))
-	for _, c := range comments {
-		result = append(result, &models.Comment{
-			ID:        int(c.ID),
-			TaskID:    int(c.TaskID),
-			Message:   c.Content,
-			Author:    c.Author,
-			CreatedAt: c.CreatedAt.Time,
-		})
-	}
-	return result
-}
-
-// convertTaskSummaryRowToModel converts a task summary row to models.TaskSummary
-func convertTaskSummaryRowToModel(row generated.GetTaskSummariesByProjectRow) *models.TaskSummary {
-	summary := &models.TaskSummary{
-		ID:        int(row.ID),
-		Title:     row.Title,
-		ColumnID:  int(row.ColumnID),
-		Position:  int(row.Position),
-		IsBlocked: row.IsBlocked > 0,
-		Labels:    parseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
-	}
-
-	if row.TypeDescription.Valid {
-		summary.TypeDescription = row.TypeDescription.String
-	}
-	if row.PriorityDescription.Valid {
-		summary.PriorityDescription = row.PriorityDescription.String
-	}
-	if row.PriorityColor.Valid {
-		summary.PriorityColor = row.PriorityColor.String
-	}
-
-	return summary
-}
-
-// convertReadyTaskSummaryRowToModel converts a ready task summary row to models.TaskSummary
-func convertReadyTaskSummaryRowToModel(row generated.GetReadyTaskSummariesByProjectRow) *models.TaskSummary {
-	summary := &models.TaskSummary{
-		ID:        int(row.ID),
-		Title:     row.Title,
-		ColumnID:  int(row.ColumnID),
-		Position:  int(row.Position),
-		IsBlocked: row.IsBlocked > 0,
-		Labels:    parseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
-	}
-
-	if row.TypeDescription.Valid {
-		summary.TypeDescription = row.TypeDescription.String
-	}
-	if row.PriorityDescription.Valid {
-		summary.PriorityDescription = row.PriorityDescription.String
-	}
-	if row.PriorityColor.Valid {
-		summary.PriorityColor = row.PriorityColor.String
-	}
-
-	return summary
-}
-
-// convertFilteredTaskSummaryRowToModel converts a filtered task summary row to models.TaskSummary
-func convertFilteredTaskSummaryRowToModel(row generated.GetTaskSummariesByProjectFilteredRow) *models.TaskSummary {
-	summary := &models.TaskSummary{
-		ID:        int(row.ID),
-		Title:     row.Title,
-		ColumnID:  int(row.ColumnID),
-		Position:  int(row.Position),
-		IsBlocked: row.IsBlocked > 0,
-		Labels:    parseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
-	}
-
-	if row.TypeDescription.Valid {
-		summary.TypeDescription = row.TypeDescription.String
-	}
-	if row.PriorityDescription.Valid {
-		summary.PriorityDescription = row.PriorityDescription.String
-	}
-	if row.PriorityColor.Valid {
-		summary.PriorityColor = row.PriorityColor.String
-	}
-
-	return summary
-}
-
-// parseLabelsFromConcatenated parses GROUP_CONCAT label data into Label slice
-func parseLabelsFromConcatenated(ids, names, colors string) []*models.Label {
-	if ids == "" || names == "" || colors == "" {
-		return []*models.Label{}
-	}
-
-	idParts := strings.Split(ids, string(rune(31))) // CHAR(31) separator
-	nameParts := strings.Split(names, string(rune(31)))
-	colorParts := strings.Split(colors, string(rune(31)))
-
-	if len(idParts) != len(nameParts) || len(idParts) != len(colorParts) {
-		return []*models.Label{}
-	}
-
-	labels := make([]*models.Label, 0, len(idParts))
-	for i := range idParts {
-		// Parse ID
-		var id int
-		_, _ = fmt.Sscanf(idParts[i], "%d", &id)
-
-		labels = append(labels, &models.Label{
-			ID:    id,
-			Name:  nameParts[i],
-			Color: colorParts[i],
-		})
-	}
-
-	return labels
 }
