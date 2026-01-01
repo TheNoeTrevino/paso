@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -34,7 +33,7 @@ func ShowCmd() *cobra.Command {
 }
 
 func runShow(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	// Parse task ID from positional arg or flag
 	var taskID int

@@ -1,7 +1,6 @@
 package project
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -28,7 +27,7 @@ func ListCmd() *cobra.Command {
 }
 
 func runList(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")

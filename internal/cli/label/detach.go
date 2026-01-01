@@ -1,7 +1,6 @@
 package label
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -50,7 +49,7 @@ Examples:
 }
 
 func runDetach(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	taskID, _ := cmd.Flags().GetInt("task")
 	labelID, _ := cmd.Flags().GetInt("label")

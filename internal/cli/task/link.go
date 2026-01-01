@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -62,7 +61,7 @@ Examples:
 }
 
 func runLink(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	parentID, _ := cmd.Flags().GetInt("parent")
 	childID, _ := cmd.Flags().GetInt("child")

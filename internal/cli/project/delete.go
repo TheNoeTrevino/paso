@@ -1,7 +1,6 @@
 package project
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -38,7 +37,7 @@ func DeleteCmd() *cobra.Command {
 }
 
 func runDelete(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	projectID, _ := cmd.Flags().GetInt("id")
 	force, _ := cmd.Flags().GetBool("force")

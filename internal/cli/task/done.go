@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -46,7 +45,7 @@ Examples:
 }
 
 func runDone(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	// Parse task ID from positional argument
 	taskID, err := strconv.Atoi(args[0])

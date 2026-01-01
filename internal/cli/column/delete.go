@@ -1,7 +1,6 @@
 package column
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -51,7 +50,7 @@ Examples:
 }
 
 func runDelete(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	columnID, _ := cmd.Flags().GetInt("id")
 	force, _ := cmd.Flags().GetBool("force")
