@@ -13,9 +13,10 @@ func Wave() *ColorScheme {
 		ColumnBackground: palette.sumiInk2,
 
 		// Semantic colors
-		Create: palette.springGreen,
-		Edit:   palette.crystalBlue,
-		Delete: palette.peachRed,
+		Create:  palette.springGreen,
+		Edit:    palette.crystalBlue,
+		Delete:  palette.peachRed,
+		Blocked: palette.peachRed, // Use peachRed for blocked indicator
 
 		// UI element colors
 		ColumnBorder:   palette.sumiInk6,

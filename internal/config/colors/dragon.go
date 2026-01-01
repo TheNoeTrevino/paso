@@ -11,9 +11,10 @@ func Dragon() *ColorScheme {
 		Background: palette.dragonBlack1,
 
 		// Semantic colors
-		Create: palette.dragonGreen2,
-		Edit:   palette.dragonBlue2,
-		Delete: palette.dragonRed,
+		Create:  palette.dragonGreen2,
+		Edit:    palette.dragonBlue2,
+		Delete:  palette.dragonRed,
+		Blocked: palette.dragonRed, // Use dragonRed for blocked indicator
 
 		// UI element colors
 		ColumnBorder:     palette.dragonBlack6,
