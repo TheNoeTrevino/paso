@@ -96,8 +96,8 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		os.Exit(cli.ExitUsage)
 	}
 
-	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	// Initialize CLI (uses injected instance from context if in test mode)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)

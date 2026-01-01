@@ -63,7 +63,7 @@ func runShow(cmd *cobra.Command, args []string) error {
 	}
 
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)

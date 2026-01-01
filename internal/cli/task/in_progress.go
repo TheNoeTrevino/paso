@@ -83,7 +83,7 @@ func runInProgress(cmd *cobra.Command, args []string) error {
 
 func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.OutputFormatter) error {
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
@@ -185,7 +185,7 @@ func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.Outp
 
 func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.OutputFormatter) error {
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
 			log.Printf("Error formatting error message: %v", fmtErr)
