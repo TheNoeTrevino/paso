@@ -29,6 +29,13 @@ func (m Model) View() tea.View {
 		m.UiState.Mode() == state.CommentsViewMode ||
 		m.UiState.Mode() == state.HelpMode ||
 		m.UiState.Mode() == state.TaskFormHelpMode ||
+		m.UiState.Mode() == state.LabelPickerMode ||
+		m.UiState.Mode() == state.ParentPickerMode ||
+		m.UiState.Mode() == state.ChildPickerMode ||
+		m.UiState.Mode() == state.PriorityPickerMode ||
+		m.UiState.Mode() == state.TypePickerMode ||
+		m.UiState.Mode() == state.RelationTypePickerMode ||
+		m.UiState.Mode() == state.StatusPickerMode ||
 		m.UiState.Mode() == state.NormalMode ||
 		m.UiState.Mode() == state.SearchMode
 
@@ -64,6 +71,51 @@ func (m Model) View() tea.View {
 			// Stack both task form AND help menu
 			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderTaskFormHelpLayer()
+		case state.LabelPickerMode:
+			// Stack task form if picker was opened from task form
+			if m.LabelPickerState.ReturnMode == state.TicketFormMode {
+				layers = append(layers, m.renderTaskFormLayer())
+			}
+			modalLayer = m.renderLabelPickerLayer()
+		case state.ParentPickerMode:
+			// Stack task form if picker was opened from task form
+			if m.ParentPickerState.ReturnMode == state.TicketFormMode {
+				layers = append(layers, m.renderTaskFormLayer())
+			}
+			modalLayer = m.renderParentPickerLayer()
+		case state.ChildPickerMode:
+			// Stack task form if picker was opened from task form
+			if m.ChildPickerState.ReturnMode == state.TicketFormMode {
+				layers = append(layers, m.renderTaskFormLayer())
+			}
+			modalLayer = m.renderChildPickerLayer()
+		case state.PriorityPickerMode:
+			// Stack task form if picker was opened from task form
+			if m.PriorityPickerState.ReturnMode() == state.TicketFormMode {
+				layers = append(layers, m.renderTaskFormLayer())
+			}
+			modalLayer = m.renderPriorityPickerLayer()
+		case state.TypePickerMode:
+			// Stack task form if picker was opened from task form
+			if m.TypePickerState.ReturnMode() == state.TicketFormMode {
+				layers = append(layers, m.renderTaskFormLayer())
+			}
+			modalLayer = m.renderTypePickerLayer()
+		case state.RelationTypePickerMode:
+			// Stack task form and parent/child picker if opened from them
+			if m.RelationTypePickerState.ReturnMode() == state.ParentPickerMode ||
+				m.RelationTypePickerState.ReturnMode() == state.ChildPickerMode {
+				layers = append(layers, m.renderTaskFormLayer())
+				// Add the parent/child picker layer based on return mode
+				if m.RelationTypePickerState.ReturnMode() == state.ParentPickerMode {
+					layers = append(layers, m.renderParentPickerLayer())
+				} else {
+					layers = append(layers, m.renderChildPickerLayer())
+				}
+			}
+			modalLayer = m.renderRelationTypePickerLayer()
+		case state.StatusPickerMode:
+			modalLayer = m.renderStatusPickerLayer()
 		}
 
 		if modalLayer != nil {
@@ -85,20 +137,6 @@ func (m Model) View() tea.View {
 			content = m.viewDeleteTaskConfirm()
 		case state.DeleteColumnConfirmMode:
 			content = m.viewDeleteColumnConfirm()
-		case state.LabelPickerMode:
-			content = m.viewLabelPicker()
-		case state.ParentPickerMode:
-			content = m.viewParentPicker()
-		case state.ChildPickerMode:
-			content = m.viewChildPicker()
-		case state.PriorityPickerMode:
-			content = m.viewPriorityPicker()
-		case state.TypePickerMode:
-			content = m.viewTypePicker()
-		case state.RelationTypePickerMode:
-			content = m.viewRelationTypePicker()
-		case state.StatusPickerMode:
-			content = m.viewStatusPicker()
 		default:
 			content = m.viewKanbanBoard()
 		}
