@@ -6,6 +6,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/layers"
+	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
@@ -309,4 +310,250 @@ Press Ctrl+/ or Esc to close`
 		Render(helpContent)
 
 	return layers.CreateCenteredLayer(helpBox, m.UiState.Width(), m.UiState.Height())
+}
+
+// renderLabelPickerLayer renders the label picker modal as a layer
+func (m Model) renderLabelPickerLayer() *lipgloss.Layer {
+	var pickerContent string
+	var pickerWidth, pickerHeight int
+
+	if m.LabelPickerState.CreateMode {
+		// CreateMode: Show color picker
+		// Use dynamic dimensions for color picker (similar to normal mode but with reasonable defaults)
+		pickerWidth, pickerHeight = layers.CalculatePickerDimensions(
+			10, // reasonable default for color picker (shows ~10 colors)
+			false,
+			m.UiState.Width(),
+			m.UiState.Height(),
+			40,
+			60,
+		)
+
+		// Render color picker content (account for border + padding: -8 width)
+		pickerContent = renderers.RenderLabelColorPicker(
+			renderers.GetDefaultLabelColors(),
+			m.LabelPickerState.ColorIdx,
+			m.FormState.FormLabelName,
+			pickerWidth-8,
+		)
+	} else {
+		// Normal mode: Show label list
+		filteredItems := m.getFilteredLabelPickerItems()
+		hasFilter := m.LabelPickerState.Filter != ""
+
+		// Calculate dynamic dimensions based on filtered item count
+		// Add 1 for the "Create new label" option
+		itemCount := len(filteredItems) + 1
+		pickerWidth, pickerHeight = layers.CalculatePickerDimensions(
+			itemCount,
+			hasFilter,
+			m.UiState.Width(),
+			m.UiState.Height(),
+			40,
+			60,
+		)
+
+		// Render label picker content (account for border + padding: -8 width, -4 height)
+		pickerContent = renderers.RenderLabelPicker(
+			filteredItems,
+			m.LabelPickerState.Cursor,
+			m.LabelPickerState.Filter,
+			true, // show create option
+			pickerWidth-8,
+			pickerHeight-4,
+		)
+	}
+
+	// Wrap in styled container - use different style for create mode
+	var pickerBox string
+	if m.LabelPickerState.CreateMode {
+		pickerBox = components.LabelPickerCreateBoxStyle.
+			Width(pickerWidth).
+			Height(pickerHeight).
+			Render(pickerContent)
+	} else {
+		pickerBox = components.LabelPickerBoxStyle.
+			Width(pickerWidth).
+			Height(pickerHeight).
+			Render(pickerContent)
+	}
+
+	return layers.CreateCenteredLayer(pickerBox, m.UiState.Width(), m.UiState.Height())
+}
+
+// renderParentPickerLayer renders the parent task picker modal as a layer
+func (m Model) renderParentPickerLayer() *lipgloss.Layer {
+	// Get filtered items from state
+	filteredItems := m.ParentPickerState.GetFilteredItems()
+	hasFilter := m.ParentPickerState.Filter != ""
+
+	// Calculate dynamic dimensions based on filtered item count
+	itemCount := len(filteredItems)
+	pickerWidth, pickerHeight := layers.CalculatePickerDimensions(
+		itemCount,
+		hasFilter,
+		m.UiState.Width(),
+		m.UiState.Height(),
+		50,
+		70,
+	)
+
+	// Render parent picker content (account for border + padding: -8 width, -4 height)
+	pickerContent := renderers.RenderTaskPicker(
+		filteredItems,
+		m.ParentPickerState.Cursor,
+		m.ParentPickerState.Filter,
+		"Parent Issues",
+		pickerWidth-8,
+		pickerHeight-4,
+		true, // isParentPicker
+	)
+
+	// Wrap in styled container (reuse LabelPickerBoxStyle)
+	pickerBox := components.LabelPickerBoxStyle.
+		Width(pickerWidth).
+		Height(pickerHeight).
+		Render(pickerContent)
+
+	return layers.CreateCenteredLayer(pickerBox, m.UiState.Width(), m.UiState.Height())
+}
+
+// renderChildPickerLayer renders the child task picker modal as a layer
+func (m Model) renderChildPickerLayer() *lipgloss.Layer {
+	// Get filtered items from state
+	filteredItems := m.ChildPickerState.GetFilteredItems()
+	hasFilter := m.ChildPickerState.Filter != ""
+
+	// Calculate dynamic dimensions based on filtered item count
+	itemCount := len(filteredItems)
+	pickerWidth, pickerHeight := layers.CalculatePickerDimensions(
+		itemCount,
+		hasFilter,
+		m.UiState.Width(),
+		m.UiState.Height(),
+		50,
+		70,
+	)
+
+	// Render child picker content (account for border + padding: -8 width, -4 height)
+	pickerContent := renderers.RenderTaskPicker(
+		filteredItems,
+		m.ChildPickerState.Cursor,
+		m.ChildPickerState.Filter,
+		"Child Issues",
+		pickerWidth-8,
+		pickerHeight-4,
+		false, // isParentPicker
+	)
+
+	// Wrap in styled container (reuse LabelPickerBoxStyle)
+	pickerBox := components.LabelPickerBoxStyle.
+		Width(pickerWidth).
+		Height(pickerHeight).
+		Render(pickerContent)
+
+	return layers.CreateCenteredLayer(pickerBox, m.UiState.Width(), m.UiState.Height())
+}
+
+// renderPriorityPickerLayer renders the priority picker modal as a layer
+func (m Model) renderPriorityPickerLayer() *lipgloss.Layer {
+	// Fixed small size for priority picker (5 options)
+	pickerWidth := 40
+	pickerHeight := 12 // 5 options + chrome (title, footer, padding, border)
+
+	pickerContent := renderers.RenderPriorityPicker(
+		renderers.GetPriorityOptions(),
+		m.PriorityPickerState.SelectedPriorityID(),
+		m.PriorityPickerState.Cursor(),
+		pickerWidth-8, // Account for padding/border
+	)
+
+	// Wrap in styled container
+	pickerBox := components.LabelPickerBoxStyle.
+		Width(pickerWidth).
+		Height(pickerHeight).
+		Render(pickerContent)
+
+	return layers.CreateCenteredLayer(pickerBox, m.UiState.Width(), m.UiState.Height())
+}
+
+// renderTypePickerLayer renders the type picker modal as a layer
+func (m Model) renderTypePickerLayer() *lipgloss.Layer {
+	// Fixed small size for type picker (2 options: task/feature)
+	pickerWidth := 40
+	pickerHeight := 9 // 2 options + chrome (title, footer, padding, border)
+
+	pickerContent := renderers.RenderTypePicker(
+		renderers.GetTypeOptions(),
+		m.TypePickerState.SelectedTypeID(),
+		m.TypePickerState.Cursor(),
+		pickerWidth-8, // Account for padding/border
+	)
+
+	// Wrap in styled container
+	pickerBox := components.LabelPickerBoxStyle.
+		Width(pickerWidth).
+		Height(pickerHeight).
+		Render(pickerContent)
+
+	return layers.CreateCenteredLayer(pickerBox, m.UiState.Width(), m.UiState.Height())
+}
+
+// renderRelationTypePickerLayer renders the relation type picker modal as a layer
+func (m Model) renderRelationTypePickerLayer() *lipgloss.Layer {
+	// Fixed small size for relation type picker (3 options)
+	pickerWidth := 45
+	pickerHeight := 11 // 3 options + chrome (title, footer, padding, border)
+
+	// Determine picker type based on return mode
+	pickerType := "parent"
+	if m.RelationTypePickerState.ReturnMode() == state.ChildPickerMode {
+		pickerType = "child"
+	}
+
+	pickerContent := renderers.RenderRelationTypePicker(
+		renderers.GetRelationTypeOptions(),
+		m.RelationTypePickerState.SelectedRelationTypeID(),
+		m.RelationTypePickerState.Cursor(),
+		pickerWidth-8, // Account for padding/border
+		pickerType,
+	)
+
+	// Wrap in styled container
+	pickerBox := components.LabelPickerBoxStyle.
+		Width(pickerWidth).
+		Height(pickerHeight).
+		Render(pickerContent)
+
+	return layers.CreateCenteredLayer(pickerBox, m.UiState.Width(), m.UiState.Height())
+}
+
+// renderStatusPickerLayer renders the status/column selection picker modal as a layer
+func (m Model) renderStatusPickerLayer() *lipgloss.Layer {
+	columns := m.StatusPickerState.Columns()
+	cursor := m.StatusPickerState.Cursor()
+
+	// Build column list items
+	var items []string
+	for i, col := range columns {
+		prefix := "  "
+		if i == cursor {
+			prefix = "> "
+		}
+		items = append(items, prefix+col.Name)
+	}
+
+	content := "Select Status:\n\n" + lipgloss.JoinVertical(lipgloss.Left, items...) + "\n\nEnter: confirm  Esc: cancel"
+
+	// Fixed width, dynamic height based on column count
+	pickerWidth := 40
+	pickerHeight := len(columns) + 6 // Columns + chrome (title, spacing, footer)
+
+	// Wrap in styled container
+	pickerBox := components.LabelPickerBoxStyle.
+		Width(pickerWidth).
+		Height(pickerHeight).
+		Render(content)
+
+	return layers.CreateCenteredLayer(pickerBox, m.UiState.Width(), m.UiState.Height())
 }
