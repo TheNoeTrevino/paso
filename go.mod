@@ -3,16 +3,18 @@ module github.com/thenoetrevino/paso
 go 1.25.0
 
 require (
+	charm.land/bubbles/v2 v2.0.0-rc.1
 	charm.land/bubbletea/v2 v2.0.0-rc.2.0.20251202162339-5fa38b798f16
 	charm.land/huh/v2 v2.0.0-20251118172832-2c1322d36358
 	charm.land/lipgloss/v2 v2.0.0-beta.3.0.20251117163933-ca12a5a8a7a3
+	github.com/muesli/reflow v0.3.0
+	github.com/pressly/goose/v3 v3.26.0
 	github.com/spf13/cobra v1.10.2
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.40.1
 )
 
 require (
-	charm.land/bubbles/v2 v2.0.0-rc.1 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/catppuccin/go v0.3.0 // indirect
 	github.com/charmbracelet/colorprofile v0.3.3 // indirect
@@ -36,9 +38,7 @@ require (
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
-	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
-	github.com/pressly/goose/v3 v3.26.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect

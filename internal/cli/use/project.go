@@ -39,7 +39,7 @@ this environment variable.`,
 }
 
 func runUseProject(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	clearFlag, _ := cmd.Flags().GetBool("clear")
 	showFlag, _ := cmd.Flags().GetBool("show")

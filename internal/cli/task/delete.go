@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -35,7 +34,7 @@ func DeleteCmd() *cobra.Command {
 }
 
 func runDelete(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	taskID, _ := cmd.Flags().GetInt("id")
 	force, _ := cmd.Flags().GetBool("force")

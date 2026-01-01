@@ -4,7 +4,6 @@
 package column
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -60,7 +59,7 @@ Examples:
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	columnName, _ := cmd.Flags().GetString("name")
 	columnAfter, _ := cmd.Flags().GetInt("after")

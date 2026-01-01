@@ -4,7 +4,6 @@
 package project
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -58,7 +57,7 @@ Examples:
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	projectTitle, _ := cmd.Flags().GetString("title")
 	projectDescription, _ := cmd.Flags().GetString("description")

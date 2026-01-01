@@ -51,7 +51,7 @@ Examples:
 }
 
 func runInProgress(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	projectID, _ := cmd.Flags().GetInt("project")
 	jsonOutput, _ := cmd.Flags().GetBool("json")

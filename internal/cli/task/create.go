@@ -3,7 +3,6 @@
 package task
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -70,7 +69,7 @@ Examples:
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	taskTitle, _ := cmd.Flags().GetString("title")
 	taskDescription, _ := cmd.Flags().GetString("description")

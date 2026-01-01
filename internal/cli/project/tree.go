@@ -1,7 +1,6 @@
 package project
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -37,7 +36,7 @@ are highlighted in red to show the blocking chain.`,
 }
 
 func runTree(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	// Parse project ID from positional arg or flag
 	var projectID int

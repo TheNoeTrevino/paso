@@ -3,7 +3,6 @@
 package label
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -55,7 +54,7 @@ Examples:
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	// Get flag values
 	labelName, _ := cmd.Flags().GetString("name")

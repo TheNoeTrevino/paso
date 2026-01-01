@@ -1,7 +1,6 @@
 package task
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -55,7 +54,7 @@ Examples:
 }
 
 func runMove(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	taskID, _ := cmd.Flags().GetInt("id")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
