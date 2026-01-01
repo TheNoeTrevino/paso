@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/thenoetrevino/paso/internal/converters"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/database/generated"
 	"github.com/thenoetrevino/paso/internal/events"
@@ -61,7 +62,7 @@ func (s *service) GetColumnsByProject(ctx context.Context, projectID int) ([]*mo
 	if err != nil {
 		return nil, err
 	}
-	return toColumnModelsFromRows(columns), nil
+	return converters.ColumnsFromRowsToModels(columns), nil
 }
 
 // GetColumnByID retrieves a specific column
@@ -73,7 +74,7 @@ func (s *service) GetColumnByID(ctx context.Context, id int) (*models.Column, er
 	if err != nil {
 		return nil, err
 	}
-	return toColumnModelFromRow(column), nil
+	return converters.ColumnFromIDRowToModel(column), nil
 }
 
 // CreateColumn creates a new column with validation and linked list management
@@ -186,7 +187,7 @@ func (s *service) CreateColumn(ctx context.Context, req CreateColumnRequest) (*m
 	// Publish event after successful commit
 	s.publishColumnEvent(ctx, int(column.ID), int(column.ProjectID))
 
-	return toColumnModel(column), nil
+	return converters.ColumnToModel(column), nil
 }
 
 // UpdateColumnName updates a column's name
@@ -505,49 +506,4 @@ func (s *service) publishColumnEvent(ctx context.Context, columnID, projectID in
 		Type:      events.EventDatabaseChanged,
 		ProjectID: projectID,
 	}, 3)
-}
-
-// Model conversion helpers
-
-func toColumnModel(c generated.Column) *models.Column {
-	return &models.Column{
-		ID:                   int(c.ID),
-		Name:                 c.Name,
-		ProjectID:            int(c.ProjectID),
-		PrevID:               database.InterfaceToIntPtr(c.PrevID),
-		NextID:               database.InterfaceToIntPtr(c.NextID),
-		HoldsReadyTasks:      c.HoldsReadyTasks,
-		HoldsCompletedTasks:  c.HoldsCompletedTasks,
-		HoldsInProgressTasks: c.HoldsInProgressTasks,
-	}
-}
-
-func toColumnModelFromRow(r generated.GetColumnByIDRow) *models.Column {
-	return &models.Column{
-		ID:                   int(r.ID),
-		Name:                 r.Name,
-		ProjectID:            int(r.ProjectID),
-		PrevID:               database.InterfaceToIntPtr(r.PrevID),
-		NextID:               database.InterfaceToIntPtr(r.NextID),
-		HoldsReadyTasks:      r.HoldsReadyTasks,
-		HoldsCompletedTasks:  r.HoldsCompletedTasks,
-		HoldsInProgressTasks: r.HoldsInProgressTasks,
-	}
-}
-
-func toColumnModelsFromRows(rows []generated.GetColumnsByProjectRow) []*models.Column {
-	result := make([]*models.Column, len(rows))
-	for i, r := range rows {
-		result[i] = &models.Column{
-			ID:                   int(r.ID),
-			Name:                 r.Name,
-			ProjectID:            int(r.ProjectID),
-			PrevID:               database.InterfaceToIntPtr(r.PrevID),
-			NextID:               database.InterfaceToIntPtr(r.NextID),
-			HoldsReadyTasks:      r.HoldsReadyTasks,
-			HoldsCompletedTasks:  r.HoldsCompletedTasks,
-			HoldsInProgressTasks: r.HoldsInProgressTasks,
-		}
-	}
-	return result
 }

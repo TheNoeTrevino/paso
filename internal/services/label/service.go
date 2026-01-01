@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/thenoetrevino/paso/internal/converters"
 	"github.com/thenoetrevino/paso/internal/database/generated"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
@@ -65,7 +66,7 @@ func (s *service) GetLabelsByProject(ctx context.Context, projectID int) ([]*mod
 	if err != nil {
 		return nil, err
 	}
-	return toLabelModels(labels), nil
+	return converters.LabelsToModels(labels), nil
 }
 
 // GetLabelsForTask retrieves all labels for a task
@@ -77,7 +78,7 @@ func (s *service) GetLabelsForTask(ctx context.Context, taskID int) ([]*models.L
 	if err != nil {
 		return nil, err
 	}
-	return toLabelModels(labels), nil
+	return converters.LabelsToModels(labels), nil
 }
 
 // CreateLabel creates a new label with validation
@@ -100,7 +101,7 @@ func (s *service) CreateLabel(ctx context.Context, req CreateLabelRequest) (*mod
 	// Publish event
 	s.publishLabelEvent(ctx, int(label.ID), int(label.ProjectID))
 
-	return toLabelModel(label), nil
+	return converters.LabelToModel(label), nil
 }
 
 // UpdateLabel updates an existing label
@@ -214,23 +215,4 @@ func (s *service) publishLabelEvent(ctx context.Context, labelID, projectID int)
 		Type:      events.EventDatabaseChanged,
 		ProjectID: projectID,
 	}, 3)
-}
-
-// Model conversion helpers
-
-func toLabelModel(l generated.Label) *models.Label {
-	return &models.Label{
-		ID:        int(l.ID),
-		Name:      l.Name,
-		Color:     l.Color,
-		ProjectID: int(l.ProjectID),
-	}
-}
-
-func toLabelModels(labels []generated.Label) []*models.Label {
-	result := make([]*models.Label, len(labels))
-	for i, l := range labels {
-		result[i] = toLabelModel(l)
-	}
-	return result
 }
