@@ -226,182 +226,189 @@ func (s *service) UpdateColumnName(ctx context.Context, id int, name string) err
 	return nil
 }
 
-// SetHoldsReadyTasks sets a column as holding ready tasks
-// Only one column per project can hold ready tasks
+// specialColumnStateType defines the type of special column state to set
+type specialColumnStateType int
+
+const (
+	// stateReady indicates a column that holds ready tasks
+	stateReady specialColumnStateType = iota
+	// stateCompleted indicates a column that holds completed tasks
+	stateCompleted
+	// stateInProgress indicates a column that holds in-progress tasks
+	stateInProgress
+)
+
+// setSpecialColumnState is a parametrized helper function that sets a column's special state.
+// It handles the common pattern of:
+// 1. Validating the column ID
+// 2. Getting the column to verify it exists and get the project ID
+// 3. Checking if another column with this state already exists
+// 4. Starting a transaction
+// 5. Optionally clearing the flag from other columns
+// 6. Setting the flag on the target column
+// 7. Committing the transaction
+// 8. Publishing the column event
+// 9. Returning the updated column
+//
+// Parameters:
+//   - ctx: context
+//   - columnID: the ID of the column to set as special
+//   - stateType: the type of special state to set (ready, completed, or in-progress)
+//   - allowForce: if true and a column with this state exists, it will be replaced;
+//     if false, an error is returned instead. Only applies to completed state.
+func (s *service) setSpecialColumnState(ctx context.Context, columnID int, stateType specialColumnStateType, allowForce bool) (*models.Column, error) {
+	// Validate
+	if columnID <= 0 {
+		return nil, ErrInvalidColumnID
+	}
+
+	// Get column to verify it exists and get project ID
+	column, err := s.queries.GetColumnByID(ctx, int64(columnID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get column: %w", err)
+	}
+
+	// Check if a column with this state already exists and enforce state-specific rules
+	if err := s.checkExistingState(ctx, stateType, column.ProjectID, allowForce); err != nil {
+		return nil, err
+	}
+
+	// Start transaction
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("failed to rollback transaction: %v", err)
+		}
+	}()
+
+	qtx := generated.New(tx)
+
+	// Clear any existing column with this state (if applicable)
+	if err := s.clearExistingState(ctx, qtx, stateType, column.ProjectID); err != nil {
+		return nil, err
+	}
+
+	// Set this column's special state
+	if err := s.setColumnState(ctx, qtx, columnID, stateType); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// Publish event
+	s.publishColumnEvent(ctx, columnID, int(column.ProjectID))
+
+	// Return updated column
+	return s.GetColumnByID(ctx, columnID)
+}
+
+// checkExistingState verifies that no conflicting column state exists.
+// For ready and in-progress states: returns error if any column with that state exists.
+// For completed state: returns error only if force is false and a column with that state exists.
+func (s *service) checkExistingState(ctx context.Context, stateType specialColumnStateType, projectID int64, allowForce bool) error {
+	switch stateType {
+	case stateReady:
+		existingReady, err := s.queries.GetReadyColumnByProject(ctx, projectID)
+		if err != nil && err != sql.ErrNoRows {
+			return fmt.Errorf("failed to check for existing ready column: %w", err)
+		}
+		if err == nil {
+			return fmt.Errorf("%w: column '%s' (ID: %d)", ErrReadyColumnExists, existingReady.Name, existingReady.ID)
+		}
+
+	case stateCompleted:
+		existingCompleted, err := s.queries.GetCompletedColumnByProject(ctx, projectID)
+		if err != nil && err != sql.ErrNoRows {
+			return fmt.Errorf("failed to check for existing completed column: %w", err)
+		}
+		if err == nil && !allowForce {
+			return fmt.Errorf("%w: column '%s' (ID: %d)", ErrCompletedColumnExists, existingCompleted.Name, existingCompleted.ID)
+		}
+
+	case stateInProgress:
+		existingInProgress, err := s.queries.GetInProgressColumnByProject(ctx, projectID)
+		if err != nil && err != sql.ErrNoRows {
+			return fmt.Errorf("failed to check for existing in-progress column: %w", err)
+		}
+		if err == nil {
+			return fmt.Errorf("%w: column '%s' (ID: %d)", ErrInProgressColumnExists, existingInProgress.Name, existingInProgress.ID)
+		}
+	}
+
+	return nil
+}
+
+// clearExistingState clears the special state flag from other columns (only for completed state).
+// For ready and in-progress states, the unique constraint prevents duplicates naturally.
+// For completed state, we allow force-setting a new column as completed, clearing the old one.
+func (s *service) clearExistingState(ctx context.Context, qtx generated.Querier, stateType specialColumnStateType, projectID int64) error {
+	switch stateType {
+	case stateCompleted:
+		if err := qtx.ClearCompletedColumnByProject(ctx, projectID); err != nil {
+			return fmt.Errorf("failed to clear existing completed column: %w", err)
+		}
+	case stateReady, stateInProgress:
+		// For ready and in-progress, the unique constraint prevents duplicates,
+		// so we don't need to explicitly clear them
+	}
+
+	return nil
+}
+
+// setColumnState updates a column to have the given special state.
+func (s *service) setColumnState(ctx context.Context, qtx generated.Querier, columnID int, stateType specialColumnStateType) error {
+	switch stateType {
+	case stateReady:
+		if err := qtx.UpdateColumnHoldsReadyTasks(ctx, generated.UpdateColumnHoldsReadyTasksParams{
+			HoldsReadyTasks: true,
+			ID:              int64(columnID),
+		}); err != nil {
+			return fmt.Errorf("failed to set column as ready: %w", err)
+		}
+
+	case stateCompleted:
+		if err := qtx.UpdateColumnHoldsCompletedTasks(ctx, generated.UpdateColumnHoldsCompletedTasksParams{
+			HoldsCompletedTasks: true,
+			ID:                  int64(columnID),
+		}); err != nil {
+			return fmt.Errorf("failed to set column as completed: %w", err)
+		}
+
+	case stateInProgress:
+		if err := qtx.UpdateColumnHoldsInProgressTasks(ctx, generated.UpdateColumnHoldsInProgressTasksParams{
+			HoldsInProgressTasks: true,
+			ID:                   int64(columnID),
+		}); err != nil {
+			return fmt.Errorf("failed to set column as in-progress: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// SetHoldsReadyTasks sets a column as holding ready tasks.
+// Only one column per project can hold ready tasks.
 func (s *service) SetHoldsReadyTasks(ctx context.Context, columnID int) (*models.Column, error) {
-	// Validate
-	if columnID <= 0 {
-		return nil, ErrInvalidColumnID
-	}
-
-	// Get column to verify it exists and get project ID
-	column, err := s.queries.GetColumnByID(ctx, int64(columnID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get column: %w", err)
-	}
-
-	// Check if a ready column already exists
-	existingReady, err := s.queries.GetReadyColumnByProject(ctx, column.ProjectID)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("failed to check for existing ready column: %w", err)
-	}
-
-	// If a ready column exists, return error
-	if err == nil {
-		return nil, fmt.Errorf("%w: column '%s' (ID: %d)", ErrReadyColumnExists, existingReady.Name, existingReady.ID)
-	}
-
-	// Start transaction
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
-		}
-	}()
-
-	qtx := generated.New(tx)
-
-	// Set this column as ready
-	if err := qtx.UpdateColumnHoldsReadyTasks(ctx, generated.UpdateColumnHoldsReadyTasksParams{
-		HoldsReadyTasks: true,
-		ID:              int64(columnID),
-	}); err != nil {
-		return nil, fmt.Errorf("failed to set column as ready: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	// Publish event
-	s.publishColumnEvent(ctx, columnID, int(column.ProjectID))
-
-	// Return updated column
-	return s.GetColumnByID(ctx, columnID)
+	return s.setSpecialColumnState(ctx, columnID, stateReady, false)
 }
 
-// SetHoldsCompletedTasks sets a column as holding completed tasks
-// Only one column per project can hold completed tasks
+// SetHoldsCompletedTasks sets a column as holding completed tasks.
+// Only one column per project can hold completed tasks.
 // This method will return an error if a completed column already exists,
-// unless the force flag is set to true
+// unless the force flag is set to true.
 func (s *service) SetHoldsCompletedTasks(ctx context.Context, columnID int, force bool) (*models.Column, error) {
-	// Validate
-	if columnID <= 0 {
-		return nil, ErrInvalidColumnID
-	}
-
-	// Get column to verify it exists and get project ID
-	column, err := s.queries.GetColumnByID(ctx, int64(columnID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get column: %w", err)
-	}
-
-	// Check if a completed column already exists
-	existingCompleted, err := s.queries.GetCompletedColumnByProject(ctx, column.ProjectID)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("failed to check for existing completed column: %w", err)
-	}
-
-	// If a completed column exists and force is not set, return error
-	if err == nil && !force {
-		return nil, fmt.Errorf("%w: column '%s' (ID: %d)", ErrCompletedColumnExists, existingCompleted.Name, existingCompleted.ID)
-	}
-
-	// Start transaction
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
-		}
-	}()
-
-	qtx := generated.New(tx)
-
-	// Clear any existing completed column
-	if err := qtx.ClearCompletedColumnByProject(ctx, column.ProjectID); err != nil {
-		return nil, fmt.Errorf("failed to clear existing completed column: %w", err)
-	}
-
-	// Set this column as completed
-	if err := qtx.UpdateColumnHoldsCompletedTasks(ctx, generated.UpdateColumnHoldsCompletedTasksParams{
-		HoldsCompletedTasks: true,
-		ID:                  int64(columnID),
-	}); err != nil {
-		return nil, fmt.Errorf("failed to set column as completed: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	// Publish event
-	s.publishColumnEvent(ctx, columnID, int(column.ProjectID))
-
-	// Return updated column
-	return s.GetColumnByID(ctx, columnID)
+	return s.setSpecialColumnState(ctx, columnID, stateCompleted, force)
 }
 
-// SetHoldsInProgressTasks sets a column as holding in-progress tasks
-// Only one column per project can hold in-progress tasks
+// SetHoldsInProgressTasks sets a column as holding in-progress tasks.
+// Only one column per project can hold in-progress tasks.
 func (s *service) SetHoldsInProgressTasks(ctx context.Context, columnID int) (*models.Column, error) {
-	// Validate
-	if columnID <= 0 {
-		return nil, ErrInvalidColumnID
-	}
-
-	// Get column to verify it exists and get project ID
-	column, err := s.queries.GetColumnByID(ctx, int64(columnID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get column: %w", err)
-	}
-
-	// Check if an in-progress column already exists
-	existingInProgress, err := s.queries.GetInProgressColumnByProject(ctx, column.ProjectID)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("failed to check for existing in-progress column: %w", err)
-	}
-
-	// If an in-progress column exists, return error
-	if err == nil {
-		return nil, fmt.Errorf("%w: column '%s' (ID: %d)", ErrInProgressColumnExists, existingInProgress.Name, existingInProgress.ID)
-	}
-
-	// Start transaction
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
-		}
-	}()
-
-	qtx := generated.New(tx)
-
-	// Set this column as in-progress
-	if err := qtx.UpdateColumnHoldsInProgressTasks(ctx, generated.UpdateColumnHoldsInProgressTasksParams{
-		HoldsInProgressTasks: true,
-		ID:                   int64(columnID),
-	}); err != nil {
-		return nil, fmt.Errorf("failed to set column as in-progress: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	// Publish event
-	s.publishColumnEvent(ctx, columnID, int(column.ProjectID))
-
-	// Return updated column
-	return s.GetColumnByID(ctx, columnID)
+	return s.setSpecialColumnState(ctx, columnID, stateInProgress, false)
 }
 
 // DeleteColumn deletes a column (business rule: must not have tasks)
