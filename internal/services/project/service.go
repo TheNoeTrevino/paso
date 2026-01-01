@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/database/generated"
@@ -94,40 +93,37 @@ func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest) (
 		return nil, err
 	}
 
-	// Start transaction
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
+	var project generated.Project
+
+	// Use WithTx helper for transaction management
+	err := database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		qtx := generated.New(tx)
+
+		// Create project record
+		var projErr error
+		project, projErr = qtx.CreateProjectRecord(ctx, generated.CreateProjectRecordParams{
+			Name:        req.Name,
+			Description: sql.NullString{String: req.Description, Valid: req.Description != ""},
+		})
+		if projErr != nil {
+			return fmt.Errorf("failed to create project: %w", projErr)
 		}
-	}()
 
-	qtx := generated.New(tx)
+		// Initialize project counter (for task ticket numbers)
+		if err := qtx.InitializeProjectCounter(ctx, project.ID); err != nil {
+			return fmt.Errorf("failed to initialize project counter: %w", err)
+		}
 
-	// Create project record
-	project, err := qtx.CreateProjectRecord(ctx, generated.CreateProjectRecordParams{
-		Name:        req.Name,
-		Description: sql.NullString{String: req.Description, Valid: req.Description != ""},
+		// Create default columns (Todo, In Progress, Done)
+		if err := database.CreateDefaultColumns(ctx, qtx, project.ID); err != nil {
+			return fmt.Errorf("failed to create default columns: %w", err)
+		}
+
+		return nil
 	})
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to create project: %w", err)
-	}
-
-	// Initialize project counter (for task ticket numbers)
-	if err := qtx.InitializeProjectCounter(ctx, project.ID); err != nil {
-		return nil, fmt.Errorf("failed to initialize project counter: %w", err)
-	}
-
-	// Create default columns (Todo, In Progress, Done)
-	if err := database.CreateDefaultColumns(ctx, qtx, project.ID); err != nil {
-		return nil, fmt.Errorf("failed to create default columns: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, err
 	}
 
 	// Publish event after successful commit
@@ -200,41 +196,35 @@ func (s *service) DeleteProject(ctx context.Context, id int, force bool) error {
 		}
 	}
 
-	// Start transaction
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
+	// Use WithTx helper for transaction management
+	err := database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		qtx := generated.New(tx)
+
+		// Delete tasks first
+		if err := qtx.DeleteTasksByProject(ctx, int64(id)); err != nil {
+			return fmt.Errorf("failed to delete tasks: %w", err)
 		}
-	}()
 
-	qtx := generated.New(tx)
+		// Delete columns
+		if err := qtx.DeleteColumnsByProject(ctx, int64(id)); err != nil {
+			return fmt.Errorf("failed to delete columns: %w", err)
+		}
 
-	// Delete tasks first
-	if err := qtx.DeleteTasksByProject(ctx, int64(id)); err != nil {
-		return fmt.Errorf("failed to delete tasks: %w", err)
-	}
+		// Delete project counter
+		if err := qtx.DeleteProjectCounter(ctx, int64(id)); err != nil {
+			return fmt.Errorf("failed to delete counter: %w", err)
+		}
 
-	// Delete columns
-	if err := qtx.DeleteColumnsByProject(ctx, int64(id)); err != nil {
-		return fmt.Errorf("failed to delete columns: %w", err)
-	}
+		// Delete project
+		if err := qtx.DeleteProject(ctx, int64(id)); err != nil {
+			return fmt.Errorf("failed to delete project: %w", err)
+		}
 
-	// Delete project counter
-	if err := qtx.DeleteProjectCounter(ctx, int64(id)); err != nil {
-		return fmt.Errorf("failed to delete counter: %w", err)
-	}
+		return nil
+	})
 
-	// Delete project
-	if err := qtx.DeleteProject(ctx, int64(id)); err != nil {
-		return fmt.Errorf("failed to delete project: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+	if err != nil {
+		return err
 	}
 
 	// Publish event after successful deletion
