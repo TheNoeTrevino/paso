@@ -72,7 +72,7 @@ func runUseProject(cmd *cobra.Command, args []string) error {
 	}
 
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		return fmt.Errorf("initialization error: %w", err)
 	}
@@ -118,7 +118,7 @@ func showCurrentProject() error {
 	}
 
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		return fmt.Errorf("initialization error: %w", err)
 	}
