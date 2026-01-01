@@ -51,10 +51,7 @@ Examples:
 		log.Printf("Error marking flag as required: %v", err)
 	}
 
-	cmd.Flags().Int("project", 0, "Project ID (required)")
-	if err := cmd.MarkFlagRequired("project"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
-	}
+	cmd.Flags().Int("project", 0, "Project ID (uses PASO_PROJECT env var if not specified)")
 
 	// Optional flags
 	cmd.Flags().String("description", "", "Task description (use - for stdin)")
@@ -83,11 +80,21 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	taskBlockedBy, _ := cmd.Flags().GetInt("blocked-by")
 	taskBlocks, _ := cmd.Flags().GetInt("blocks")
 	taskColumn, _ := cmd.Flags().GetString("column")
-	taskProject, _ := cmd.Flags().GetInt("project")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+
+	// Get project ID from flag or environment variable
+	taskProject, err := cli.GetProjectID(cmd)
+	if err != nil {
+		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
+			err.Error(),
+			"Set project with: eval $(paso use project <project-id>)"); fmtErr != nil {
+			log.Printf("Error formatting error message: %v", fmtErr)
+		}
+		os.Exit(cli.ExitUsage)
+	}
 
 	// Initialize CLI
 	cliInstance, err := cli.NewCLI(ctx)
