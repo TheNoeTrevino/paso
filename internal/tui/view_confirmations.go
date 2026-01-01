@@ -54,22 +54,3 @@ func (m Model) viewDeleteColumnConfirm() string {
 		confirmBox,
 	)
 }
-
-// viewDiscardConfirm renders the discard confirmation dialog with context-aware message
-func (m Model) viewDiscardConfirm() string {
-	ctx := m.UIState.DiscardContext()
-	if ctx == nil {
-		return ""
-	}
-
-	// Use context message for personalized prompt
-	confirmBox := components.DeleteConfirmBoxStyle.
-		Width(50).
-		Render(fmt.Sprintf("%s\n\n[y]es  [n]o", ctx.Message))
-
-	return lipgloss.Place(
-		m.UIState.Width(), m.UIState.Height(),
-		lipgloss.Center, lipgloss.Center,
-		confirmBox,
-	)
-}

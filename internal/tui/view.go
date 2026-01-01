@@ -47,6 +47,9 @@ func (m Model) View() tea.View {
 			modalLayer = m.renderCommentsViewLayer()
 		case state.HelpMode:
 			modalLayer = m.renderHelpLayer()
+		case state.DiscardConfirmMode:
+			layers = append(layers, m.renderTaskFormLayer())
+			modalLayer = m.renderDiscardConfirmLayer()
 		case state.TaskFormHelpMode:
 			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderTaskFormHelpLayer()
@@ -87,8 +90,6 @@ func (m Model) View() tea.View {
 		// Legacy full-screen rendering for modes not yet converted to layers
 		var content string
 		switch m.UIState.Mode() {
-		case state.DiscardConfirmMode:
-			content = m.viewDiscardConfirm()
 		case state.DeleteConfirmMode:
 			content = m.viewDeleteTaskConfirm()
 		case state.DeleteColumnConfirmMode:

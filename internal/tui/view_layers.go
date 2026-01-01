@@ -119,6 +119,20 @@ func (m Model) renderHelpLayer() *lipgloss.Layer {
 	return layers.CreateCenteredLayer(helpBox, m.UIState.Width(), m.UIState.Height())
 }
 
+// renderDiscardConfirmLayer renders the discard confirmation dialog as a layer
+func (m Model) renderDiscardConfirmLayer() *lipgloss.Layer {
+	ctx := m.UIState.DiscardContext()
+	if ctx == nil {
+		return nil
+	}
+
+	confirmBox := components.DeleteConfirmBoxStyle.
+		Width(50).
+		Render(fmt.Sprintf("%s\n\n[y]es  [n]o", ctx.Message))
+
+	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height())
+}
+
 // generateHelpText creates help text based on current key mappings
 func (m Model) generateHelpText() string {
 	km := m.Config.KeyMappings

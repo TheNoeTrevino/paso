@@ -401,7 +401,7 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Show discard confirmation
 				m.UIState.SetDiscardContext(&state.DiscardContext{
 					SourceMode: state.TicketFormMode,
-					Message:    "Discard task?",
+					Message:    "This task has unsaved changes. Discard?",
 				})
 				m.UIState.SetMode(state.DiscardConfirmMode)
 				return m, nil
