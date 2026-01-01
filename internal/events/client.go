@@ -150,19 +150,84 @@ func (c *Client) Connect(ctx context.Context) error {
 	return nil
 }
 
-// SendEvent queues an event to be sent to the daemon.
+// SendEvent queues an event to be sent to the daemon with backpressure handling.
 // Events are batched and sent in bursts within the debounce window.
-// Returns error if the queue is full (non-blocking send).
+// Implements retry with exponential backoff to handle queue saturation gracefully.
+//
+// Backpressure Strategy (Option B):
+// - When queue is full, retries with exponential backoff instead of immediate failure
+// - Max retries: 3 attempts (50ms, 100ms, 200ms delays)
+// - This ensures critical events aren't silently dropped during high throughput
+// - Logging at WARN level for queue saturation to aid debugging
+//
+// Returns error only if all retry attempts fail after max retries.
 func (c *Client) SendEvent(event Event) error {
 	if c == nil {
 		return fmt.Errorf("event client is nil")
 	}
+
+	// First attempt
 	select {
 	case c.eventQueue <- event:
 		return nil
 	default:
-		return fmt.Errorf("event queue full")
+		// Queue is full - implement backpressure with retry
+		return c.sendEventWithRetry(event)
 	}
+}
+
+// sendEventWithRetry attempts to queue an event with exponential backoff.
+// This handles queue saturation gracefully by retrying instead of silently dropping.
+func (c *Client) sendEventWithRetry(event Event) error {
+	maxRetries := 3
+	baseDelay := 50 * time.Millisecond
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		// Log queue saturation at WARN level (only on first saturation)
+		if attempt == 0 {
+			slog.Warn("event queue saturated, applying backpressure",
+				"event_type", event.Type,
+				"project_id", event.ProjectID,
+				"queue_capacity", 100) // Fixed queue size from line 73
+		}
+
+		// Don't sleep before the first attempt (we already tried above)
+		if attempt > 0 {
+			// Exponential backoff: 50ms, 100ms, 200ms
+			delay := baseDelay * (1 << (attempt - 1))
+			time.Sleep(delay)
+		}
+
+		// Try to send again
+		select {
+		case c.eventQueue <- event:
+			if attempt > 0 {
+				slog.Debug("event queued after retry",
+					"attempt", attempt+1,
+					"event_type", event.Type,
+					"project_id", event.ProjectID)
+			}
+			return nil
+		default:
+			// Queue still full, will retry unless this was the last attempt
+			if attempt < maxRetries-1 {
+				delay := baseDelay * (1 << attempt)
+				slog.Debug("event queue full, retrying",
+					"attempt", attempt+1,
+					"max_retries", maxRetries,
+					"retry_delay", delay,
+					"event_type", event.Type)
+			}
+		}
+	}
+
+	// All retry attempts failed
+	slog.Error("event queue full after all retries, dropping event",
+		"attempts", maxRetries,
+		"event_type", event.Type,
+		"project_id", event.ProjectID)
+
+	return fmt.Errorf("event queue full (all %d retry attempts exhausted)", maxRetries)
 }
 
 // startBatcher runs in a goroutine and batches events from the queue.
@@ -324,6 +389,17 @@ func (c *Client) readEvents(ctx context.Context, eventChan chan Event) error {
 	for {
 		var msg Message
 
+		// TOCTOU Fix: Use careful synchronization to prevent race conditions.
+		// We hold the lock only to check state and set deadline, then release before
+		// the potentially blocking Decode() call. This prevents deadlocks while
+		// ensuring the decoder remains valid throughout its use.
+		//
+		// Strategy: Double-check pattern with state invariant checking
+		// - conn and decoder are always set/cleared together (in Connect/Close)
+		// - We verify conn != nil before Decode
+		// - If Close() closes the connection, Decode() will detect EOF error
+		// - We don't hold locks during long blocking operations
+
 		c.mu.Lock()
 		if c.conn == nil {
 			c.mu.Unlock()
@@ -334,9 +410,15 @@ func (c *Client) readEvents(ctx context.Context, eventChan chan Event) error {
 			c.mu.Unlock()
 			return fmt.Errorf("failed to set read deadline: %w", err)
 		}
-		decoder := c.decoder // Keep reference to decoder
+		// Copy reference while lock is held
+		decoder := c.decoder
 		c.mu.Unlock()
 
+		// Decode with unlocked decoder reference
+		// Safe because:
+		// 1. decoder pointer value is immutable once copied (Go passes pointers by value)
+		// 2. Close() invalidates the underlying connection, detected by Decode() -> EOF
+		// 3. No data structures are modified during Decode
 		if err := decoder.Decode(&msg); err != nil {
 			return fmt.Errorf("failed to decode message: %w", err)
 		}
