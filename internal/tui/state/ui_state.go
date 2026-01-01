@@ -50,6 +50,7 @@ func (m Mode) UsesLayers() bool {
 		TypePickerMode,
 		RelationTypePickerMode,
 		StatusPickerMode,
+		DiscardConfirmMode,
 		NormalMode,
 		SearchMode:
 		return true
