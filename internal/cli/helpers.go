@@ -3,9 +3,11 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -120,4 +122,24 @@ func GetLabelByID(ctx context.Context, cliInstance *CLI, labelID int) (*struct {
 	}
 
 	return nil, fmt.Errorf("label %d not found", labelID)
+}
+
+// GetProjectID returns the project ID from flag or environment variable
+// Precedence: --project flag > PASO_PROJECT env var > error
+func GetProjectID(cmd *cobra.Command) (int, error) {
+	// Check if --project flag was explicitly set
+	projectFlag := cmd.Flags().Lookup("project")
+	if projectFlag != nil && projectFlag.Changed {
+		return cmd.Flags().GetInt("project")
+	}
+
+	// Fall back to PASO_PROJECT environment variable
+	if envProject := os.Getenv("PASO_PROJECT"); envProject != "" {
+		var projectID int
+		if _, err := fmt.Sscanf(envProject, "%d", &projectID); err == nil {
+			return projectID, nil
+		}
+	}
+
+	return 0, fmt.Errorf("no project specified: use --project flag or set with 'eval $(paso use project <project-id>)'")
 }
