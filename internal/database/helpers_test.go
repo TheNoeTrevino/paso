@@ -102,7 +102,7 @@ func TestWithTx_Success_Commit(t *testing.T) {
 	projectID := createTestProject(t, db, "Test Project")
 
 	// Execute transaction that should commit
-	err := withTx(ctx, db, func(tx *sql.Tx) error {
+	err := WithTx(ctx, db, func(tx *sql.Tx) error {
 		// Insert a column within transaction
 		_, err := tx.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Test Column")
 		return err
@@ -131,7 +131,7 @@ func TestWithTx_Error_Rollback(t *testing.T) {
 
 	// Execute transaction that should rollback
 	expectedErr := errors.New("intentional error")
-	err := withTx(ctx, db, func(tx *sql.Tx) error {
+	err := WithTx(ctx, db, func(tx *sql.Tx) error {
 		// Insert a column within transaction
 		_, err := tx.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Test Column")
 		if err != nil {
@@ -161,7 +161,7 @@ func TestWithTx_Error_BeginFails(t *testing.T) {
 	_ = db.Close()
 
 	ctx := context.Background()
-	err := withTx(ctx, db, func(tx *sql.Tx) error {
+	err := WithTx(ctx, db, func(tx *sql.Tx) error {
 		return nil
 	})
 
