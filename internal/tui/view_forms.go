@@ -17,7 +17,6 @@ func (m Model) renderFormTitleDescriptionZone(width, height int) string {
 		return ""
 	}
 
-	// Render the form view (which includes title and description)
 	formView := m.FormState.TaskForm.View()
 
 	style := lipgloss.NewStyle().

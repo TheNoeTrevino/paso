@@ -34,7 +34,7 @@ func (m Model) handleCommentsViewUp() (tea.Model, tea.Cmd) {
 	if moved {
 		// Calculate max visible for auto-scroll
 		// Must match the height calculation in renderCommentsViewContent
-		layerHeight := m.UiState.Height() * 8 / 10
+		layerHeight := m.UIState.Height() * 8 / 10
 		availableHeight := layerHeight - 4 // Reserve for title + help
 		_, _, maxVisible := calculateVisibleCommentRange(
 			m.CommentState.ScrollOffset,
@@ -53,7 +53,7 @@ func (m Model) handleCommentsViewDown() (tea.Model, tea.Cmd) {
 	if moved {
 		// Calculate max visible for auto-scroll
 		// Must match the height calculation in renderCommentsViewContent
-		layerHeight := m.UiState.Height() * 8 / 10
+		layerHeight := m.UIState.Height() * 8 / 10
 		availableHeight := layerHeight - 4 // Reserve for title + help
 		_, _, maxVisible := calculateVisibleCommentRange(
 			m.CommentState.ScrollOffset,
@@ -87,7 +87,7 @@ func (m Model) handleCommentsViewEdit() (tea.Model, tea.Cmd) {
 	m.FormState.SnapshotCommentFormInitialValues()
 
 	// Switch to comment form mode
-	m.UiState.SetMode(state.CommentFormMode)
+	m.UIState.SetMode(state.CommentFormMode)
 
 	return m, m.FormState.CommentForm.Init()
 }
@@ -108,7 +108,7 @@ func (m Model) handleCommentsViewAdd() (tea.Model, tea.Cmd) {
 	m.FormState.SnapshotCommentFormInitialValues()
 
 	// Switch to comment form mode
-	m.UiState.SetMode(state.CommentFormMode)
+	m.UIState.SetMode(state.CommentFormMode)
 
 	return m, m.FormState.CommentForm.Init()
 }
@@ -126,7 +126,7 @@ func (m Model) handleCommentsViewDelete() (tea.Model, tea.Cmd) {
 
 	// Show delete confirmation
 	// We'll use the same DeleteConfirmMode and handle comment deletion there
-	m.UiState.SetMode(state.DeleteConfirmMode)
+	m.UIState.SetMode(state.DeleteConfirmMode)
 
 	return m, nil
 }
@@ -134,6 +134,6 @@ func (m Model) handleCommentsViewDelete() (tea.Model, tea.Cmd) {
 // handleCommentsViewClose closes the comments view and returns to task form
 func (m Model) handleCommentsViewClose() (tea.Model, tea.Cmd) {
 	// Return to task form mode
-	m.UiState.SetMode(state.TicketFormMode)
+	m.UIState.SetMode(state.TicketFormMode)
 	return m, nil
 }
