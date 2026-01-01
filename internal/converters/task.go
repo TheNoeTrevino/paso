@@ -8,6 +8,10 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
+// labelSeparator is used to separate concatenated label fields in queries
+// Using CHAR(31) as a delimiter since it's a control character unlikely in text
+const labelSeparator = string(rune(31))
+
 // TaskToModel converts a generated.Task to models.Task
 func TaskToModel(t generated.Task) *models.Task {
 	task := &models.Task{
@@ -167,14 +171,17 @@ func ParseLabelsFromConcatenated(ids, names, colors string) []*models.Label {
 		return []*models.Label{}
 	}
 
-	idParts := strings.Split(ids, string(rune(31))) // CHAR(31) separator
-	nameParts := strings.Split(names, string(rune(31)))
-	colorParts := strings.Split(colors, string(rune(31)))
+	// Use pre-defined separator constant instead of allocating new string each time
+	// This optimization reduces allocations when parsing concatenated label fields
+	idParts := strings.Split(ids, labelSeparator)
+	nameParts := strings.Split(names, labelSeparator)
+	colorParts := strings.Split(colors, labelSeparator)
 
 	if len(idParts) != len(nameParts) || len(idParts) != len(colorParts) {
 		return []*models.Label{}
 	}
 
+	// Pre-allocate labels slice with exact capacity to avoid reallocation
 	labels := make([]*models.Label, 0, len(idParts))
 	for i := range idParts {
 		// Parse ID

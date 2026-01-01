@@ -5,8 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"sort"
+	"sync"
 
 	"github.com/thenoetrevino/paso/internal/converters"
 	"github.com/thenoetrevino/paso/internal/database"
@@ -14,6 +15,14 @@ import (
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 )
+
+// taskSummaryMapPool is a sync.Pool for reusing maps in batch processing operations
+// This reduces allocations when frequently querying task summaries
+var taskSummaryMapPool = sync.Pool{
+	New: func() interface{} {
+		return make(map[int][]*models.TaskSummary)
+	},
+}
 
 // ============================================================================
 // SEGREGATED INTERFACES - Following Interface Segregation Principle (ISP)
@@ -497,21 +506,37 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 }
 
 // GetTaskSummariesByProject retrieves task summaries for a project
+// Uses sync.Pool to optimize memory allocations for frequently called batch operations
 func (s *service) GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error) {
 	rows, err := s.queries.GetTaskSummariesByProject(ctx, int64(projectID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task summaries: %w", err)
 	}
 
+	// Get map from pool for reuse, reducing allocation overhead
+	result := taskSummaryMapPool.Get().(map[int][]*models.TaskSummary)
+	defer func() {
+		// Clear map before returning to pool for reuse
+		for k := range result {
+			delete(result, k)
+		}
+		taskSummaryMapPool.Put(result)
+	}()
+
 	// Group by column
-	result := make(map[int][]*models.TaskSummary)
 	for _, row := range rows {
 		summary := converters.TaskSummaryFromRowToModel(row)
 		columnID := int(row.ColumnID)
 		result[columnID] = append(result[columnID], summary)
 	}
 
-	return result, nil
+	// Create a copy to return since the original goes back to the pool
+	returnResult := make(map[int][]*models.TaskSummary, len(result))
+	for columnID, summaries := range result {
+		returnResult[columnID] = summaries
+	}
+
+	return returnResult, nil
 }
 
 // GetTaskSummariesByProjectFiltered retrieves filtered task summaries
@@ -978,7 +1003,10 @@ func (s *service) GetInProgressTasksByProject(ctx context.Context, projectID int
 		// Get full task detail for each in-progress task
 		taskDetail, err := s.GetTaskDetail(ctx, int(row.ID))
 		if err != nil {
-			log.Printf("failed to get details for task %d: %v", row.ID, err)
+			slog.Error("failed to load task details for in-progress task",
+				"task_id", row.ID,
+				"error", err.Error(),
+			)
 			continue
 		}
 		tasks = append(tasks, taskDetail)
@@ -1382,7 +1410,10 @@ func (s *service) publishTaskEvent(ctx context.Context, taskID int) {
 	// Get project ID for the task
 	projectID, err := s.queries.GetProjectIDFromTask(ctx, int64(taskID))
 	if err != nil {
-		log.Printf("failed to get project ID for task %d: %v", taskID, err)
+		slog.Error("failed to retrieve project ID for task event publishing",
+			"task_id", taskID,
+			"error", err.Error(),
+		)
 		return
 	}
 
