@@ -131,7 +131,7 @@ func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest) (
 	}
 
 	// Publish event after successful commit
-	s.publishProjectEvent(int(project.ID))
+	s.publishProjectEvent(ctx, int(project.ID))
 
 	return toProjectModel(project), nil
 }
@@ -178,7 +178,7 @@ func (s *service) UpdateProject(ctx context.Context, req UpdateProjectRequest) e
 	}
 
 	// Publish event
-	s.publishProjectEvent(req.ID)
+	s.publishProjectEvent(ctx, req.ID)
 
 	return nil
 }
@@ -238,7 +238,7 @@ func (s *service) DeleteProject(ctx context.Context, id int, force bool) error {
 	}
 
 	// Publish event after successful deletion
-	s.publishProjectEvent(id)
+	s.publishProjectEvent(ctx, id)
 
 	return nil
 }
@@ -254,18 +254,18 @@ func (s *service) validateCreateProject(req CreateProjectRequest) error {
 	return nil
 }
 
-// publishProjectEvent publishes a project event
-func (s *service) publishProjectEvent(projectID int) {
+// publishProjectEvent publishes a project event with retry logic
+func (s *service) publishProjectEvent(ctx context.Context, projectID int) {
 	if s.eventClient == nil {
 		return
 	}
 
-	if err := s.eventClient.SendEvent(events.Event{
+	// Publish with retry (3 attempts with exponential backoff)
+	// Non-blocking: errors are logged but don't affect the operation
+	_ = events.PublishWithRetry(s.eventClient, events.Event{
 		Type:      events.EventDatabaseChanged,
 		ProjectID: projectID,
-	}); err != nil {
-		log.Printf("failed to send event for project %d: %v", projectID, err)
-	}
+	}, 3)
 }
 
 // Model conversion helpers

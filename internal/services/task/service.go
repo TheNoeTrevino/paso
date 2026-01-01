@@ -246,7 +246,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 	}
 
 	// Publish event after successful commit
-	s.publishTaskEvent(int(createdTask.ID))
+	s.publishTaskEvent(ctx, int(createdTask.ID))
 
 	// Convert to model
 	return convertToTaskModel(createdTask), nil
@@ -330,7 +330,7 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 	}
 
 	// Publish event
-	s.publishTaskEvent(req.TaskID)
+	s.publishTaskEvent(ctx, req.TaskID)
 
 	return nil
 }
@@ -346,7 +346,7 @@ func (s *service) DeleteTask(ctx context.Context, taskID int) error {
 	}
 
 	// Publish event
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 
 	return nil
 }
@@ -683,7 +683,7 @@ func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -734,7 +734,7 @@ func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -770,7 +770,7 @@ func (s *service) MoveTaskToColumn(ctx context.Context, taskID, columnID int) er
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -976,7 +976,7 @@ func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -1040,7 +1040,7 @@ func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -1062,7 +1062,7 @@ func (s *service) AddParentRelation(ctx context.Context, taskID, parentID int, r
 		return fmt.Errorf("failed to add parent relation: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -1084,7 +1084,7 @@ func (s *service) AddChildRelation(ctx context.Context, taskID, childID int, rel
 		return fmt.Errorf("failed to add child relation: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -1101,7 +1101,7 @@ func (s *service) RemoveParentRelation(ctx context.Context, taskID, parentID int
 		return fmt.Errorf("failed to remove parent relation: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -1118,7 +1118,7 @@ func (s *service) RemoveChildRelation(ctx context.Context, taskID, childID int) 
 		return fmt.Errorf("failed to remove child relation: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -1138,7 +1138,7 @@ func (s *service) AttachLabel(ctx context.Context, taskID, labelID int) error {
 		return fmt.Errorf("failed to attach label: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -1158,7 +1158,7 @@ func (s *service) DetachLabel(ctx context.Context, taskID, labelID int) error {
 		return fmt.Errorf("failed to detach label: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -1197,7 +1197,7 @@ func (s *service) CreateComment(ctx context.Context, req CreateCommentRequest) (
 		return nil, fmt.Errorf("failed to create comment: %w", err)
 	}
 
-	s.publishTaskEvent(req.TaskID)
+	s.publishTaskEvent(ctx, req.TaskID)
 
 	return &models.Comment{
 		ID:        int(comment.ID),
@@ -1237,7 +1237,7 @@ func (s *service) UpdateComment(ctx context.Context, req UpdateCommentRequest) e
 		return fmt.Errorf("failed to update comment: %w", err)
 	}
 
-	s.publishTaskEvent(int(comment.TaskID))
+	s.publishTaskEvent(ctx, int(comment.TaskID))
 	return nil
 }
 
@@ -1262,7 +1262,7 @@ func (s *service) DeleteComment(ctx context.Context, commentID int) error {
 		return fmt.Errorf("failed to delete comment: %w", err)
 	}
 
-	s.publishTaskEvent(int(comment.TaskID))
+	s.publishTaskEvent(ctx, int(comment.TaskID))
 	return nil
 }
 
@@ -1314,25 +1314,25 @@ func validateCommentMessage(message string) error {
 	return nil
 }
 
-// publishTaskEvent publishes a task event
-func (s *service) publishTaskEvent(taskID int) {
+// publishTaskEvent publishes a task event with retry logic
+func (s *service) publishTaskEvent(ctx context.Context, taskID int) {
 	if s.eventClient == nil {
 		return
 	}
 
 	// Get project ID for the task
-	projectID, err := s.queries.GetProjectIDFromTask(context.Background(), int64(taskID))
+	projectID, err := s.queries.GetProjectIDFromTask(ctx, int64(taskID))
 	if err != nil {
 		log.Printf("failed to get project ID for task %d: %v", taskID, err)
 		return
 	}
 
-	if err := s.eventClient.SendEvent(events.Event{
+	// Publish with retry (3 attempts with exponential backoff)
+	// Non-blocking: errors are logged but don't affect the operation
+	_ = events.PublishWithRetry(s.eventClient, events.Event{
 		Type:      events.EventDatabaseChanged,
 		ProjectID: int(projectID),
-	}); err != nil {
-		log.Printf("failed to send event for task %d: %v", taskID, err)
-	}
+	}, 3)
 }
 
 // ============================================================================

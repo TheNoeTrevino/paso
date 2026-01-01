@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"regexp"
 
 	"github.com/thenoetrevino/paso/internal/database/generated"
@@ -99,7 +98,7 @@ func (s *service) CreateLabel(ctx context.Context, req CreateLabelRequest) (*mod
 	}
 
 	// Publish event
-	s.publishLabelEvent(int(label.ID), int(label.ProjectID))
+	s.publishLabelEvent(ctx, int(label.ID), int(label.ProjectID))
 
 	return toLabelModel(label), nil
 }
@@ -152,7 +151,7 @@ func (s *service) UpdateLabel(ctx context.Context, req UpdateLabelRequest) error
 	}
 
 	// Publish event
-	s.publishLabelEvent(req.ID, int(existing.ProjectID))
+	s.publishLabelEvent(ctx, req.ID, int(existing.ProjectID))
 
 	return nil
 }
@@ -181,7 +180,7 @@ func (s *service) DeleteLabel(ctx context.Context, id int) error {
 	}
 
 	// Publish event
-	s.publishLabelEvent(id, projectID)
+	s.publishLabelEvent(ctx, id, projectID)
 
 	return nil
 }
@@ -203,18 +202,18 @@ func (s *service) validateCreateLabel(req CreateLabelRequest) error {
 	return nil
 }
 
-// publishLabelEvent publishes a label event
-func (s *service) publishLabelEvent(labelID, projectID int) {
+// publishLabelEvent publishes a label event with retry logic
+func (s *service) publishLabelEvent(ctx context.Context, labelID, projectID int) {
 	if s.eventClient == nil {
 		return
 	}
 
-	if err := s.eventClient.SendEvent(events.Event{
+	// Publish with retry (3 attempts with exponential backoff)
+	// Non-blocking: errors are logged but don't affect the operation
+	_ = events.PublishWithRetry(s.eventClient, events.Event{
 		Type:      events.EventDatabaseChanged,
 		ProjectID: projectID,
-	}); err != nil {
-		log.Printf("failed to send event for label %d: %v", labelID, err)
-	}
+	}, 3)
 }
 
 // Model conversion helpers
