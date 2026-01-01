@@ -58,6 +58,9 @@ func createTestSchema(db *sql.DB) error {
 		name TEXT NOT NULL,
 		prev_id INTEGER,
 		next_id INTEGER,
+		holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
+		holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
+		holds_in_progress_tasks BOOLEAN NOT NULL DEFAULT 0,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 	);
@@ -201,7 +204,18 @@ func CreateTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int 
 // CreateTestTask creates a test task and returns its ID
 func CreateTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
 	t.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO tasks (column_id, title, position, type_id, priority_id) VALUES (?, ?, 0, 1, 3)", columnID, title)
+	// Get the next position for this column
+	var maxPosition int
+	err := db.QueryRowContext(context.Background(),
+		"SELECT COALESCE(MAX(position), -1) FROM tasks WHERE column_id = ?", columnID).Scan(&maxPosition)
+	if err != nil && err != sql.ErrNoRows {
+		t.Fatalf("Failed to get max position: %v", err)
+	}
+
+	nextPosition := maxPosition + 1
+	result, err := db.ExecContext(context.Background(),
+		"INSERT INTO tasks (column_id, title, position, type_id, priority_id) VALUES (?, ?, ?, 1, 3)",
+		columnID, title, nextPosition)
 	if err != nil {
 		t.Fatalf("Failed to create test task: %v", err)
 	}
