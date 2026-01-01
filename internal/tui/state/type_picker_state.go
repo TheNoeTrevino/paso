@@ -9,8 +9,8 @@ type TypePickerState struct {
 	// cursor is the current cursor position in the type picker
 	cursor int
 
-	// returnMode is the mode to return to after closing the picker
-	returnMode Mode
+	// ReturnMode is the mode to return to after closing the picker
+	ReturnMode Mode
 }
 
 // NewTypePickerState creates a new TypePickerState with default values.
@@ -18,7 +18,7 @@ func NewTypePickerState() *TypePickerState {
 	return &TypePickerState{
 		selectedTypeID: 1, // Default to task (id=1)
 		cursor:         0,
-		returnMode:     TicketFormMode,
+		ReturnMode:     TicketFormMode,
 	}
 }
 
@@ -42,16 +42,6 @@ func (s *TypePickerState) SetCursor(idx int) {
 	s.cursor = idx
 }
 
-// ReturnMode returns the mode to return to after closing.
-func (s *TypePickerState) ReturnMode() Mode {
-	return s.returnMode
-}
-
-// SetReturnMode updates the return mode.
-func (s *TypePickerState) SetReturnMode(mode Mode) {
-	s.returnMode = mode
-}
-
 // MoveUp moves the cursor up one position if possible.
 func (s *TypePickerState) MoveUp() {
 	if s.cursor > 0 {
@@ -72,5 +62,5 @@ func (s *TypePickerState) MoveDown() {
 func (s *TypePickerState) Reset() {
 	s.selectedTypeID = 1 // Default to task
 	s.cursor = 0
-	s.returnMode = TicketFormMode
+	s.ReturnMode = TicketFormMode
 }

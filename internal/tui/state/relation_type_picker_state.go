@@ -9,8 +9,8 @@ type RelationTypePickerState struct {
 	// cursor is the current cursor position in the relation type picker
 	cursor int
 
-	// returnMode is the mode to return to after closing the picker
-	returnMode Mode
+	// ReturnMode is the mode to return to after closing the picker (ParentPickerMode or ChildPickerMode)
+	ReturnMode Mode
 
 	// Context for the picker - which task picker item is being edited
 	currentTaskPickerIndex int
@@ -21,7 +21,7 @@ func NewRelationTypePickerState() *RelationTypePickerState {
 	return &RelationTypePickerState{
 		selectedRelationTypeID: 1, // Default to Parent/Child (id=1)
 		cursor:                 0,
-		returnMode:             ParentPickerMode,
+		ReturnMode:             ParentPickerMode,
 		currentTaskPickerIndex: -1,
 	}
 }
@@ -44,16 +44,6 @@ func (s *RelationTypePickerState) Cursor() int {
 // SetCursor updates the cursor position.
 func (s *RelationTypePickerState) SetCursor(idx int) {
 	s.cursor = idx
-}
-
-// ReturnMode returns the mode to return to after closing.
-func (s *RelationTypePickerState) ReturnMode() Mode {
-	return s.returnMode
-}
-
-// SetReturnMode updates the return mode.
-func (s *RelationTypePickerState) SetReturnMode(mode Mode) {
-	s.returnMode = mode
 }
 
 // CurrentTaskPickerIndex returns the index of the task picker item being edited.
@@ -86,6 +76,6 @@ func (s *RelationTypePickerState) MoveDown() {
 func (s *RelationTypePickerState) Reset() {
 	s.selectedRelationTypeID = 1 // Default to Parent/Child
 	s.cursor = 0
-	s.returnMode = ParentPickerMode
+	s.ReturnMode = ParentPickerMode
 	s.currentTaskPickerIndex = -1
 }

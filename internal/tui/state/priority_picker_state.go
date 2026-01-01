@@ -9,8 +9,8 @@ type PriorityPickerState struct {
 	// cursor is the current cursor position in the priority picker
 	cursor int
 
-	// returnMode is the mode to return to after closing the picker
-	returnMode Mode
+	// ReturnMode is the mode to return to after closing the picker
+	ReturnMode Mode
 }
 
 // NewPriorityPickerState creates a new PriorityPickerState with default values.
@@ -18,7 +18,7 @@ func NewPriorityPickerState() *PriorityPickerState {
 	return &PriorityPickerState{
 		selectedPriorityID: 3, // Default to medium (id=3)
 		cursor:             0,
-		returnMode:         TicketFormMode,
+		ReturnMode:         TicketFormMode,
 	}
 }
 
@@ -42,16 +42,6 @@ func (s *PriorityPickerState) SetCursor(idx int) {
 	s.cursor = idx
 }
 
-// ReturnMode returns the mode to return to after closing.
-func (s *PriorityPickerState) ReturnMode() Mode {
-	return s.returnMode
-}
-
-// SetReturnMode updates the return mode.
-func (s *PriorityPickerState) SetReturnMode(mode Mode) {
-	s.returnMode = mode
-}
-
 // MoveUp moves the cursor up one position if possible.
 func (s *PriorityPickerState) MoveUp() {
 	if s.cursor > 0 {
@@ -72,5 +62,5 @@ func (s *PriorityPickerState) MoveDown() {
 func (s *PriorityPickerState) Reset() {
 	s.selectedPriorityID = 3 // Default to medium
 	s.cursor = 0
-	s.returnMode = TicketFormMode
+	s.ReturnMode = TicketFormMode
 }
