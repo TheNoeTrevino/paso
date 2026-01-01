@@ -10,9 +10,9 @@ import (
 	"github.com/thenoetrevino/paso/internal/events"
 )
 
-// withTx executes a function within a database transaction.
+// WithTx executes a function within a database transaction.
 // It automatically handles begin, rollback on error, and commit on success.
-func withTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) error {
+func WithTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
