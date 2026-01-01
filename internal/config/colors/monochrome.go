@@ -13,9 +13,10 @@ func Monochrome() *ColorScheme {
 		ColumnBackground: "#1C1C1C",
 
 		// Semantic
-		Create: "#FFFFFF",
-		Edit:   "#FFFFFF",
-		Delete: "#FFFFFF",
+		Create:  "#FFFFFF",
+		Edit:    "#FFFFFF",
+		Delete:  "#FFFFFF",
+		Blocked: "#585858", // White for blocked task indicator in monochrome
 
 		// UI elements
 		ColumnBorder:   "#FFFFFF",
