@@ -14,47 +14,120 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// Service defines all task-related business operations
-type Service interface {
-	// Read operations
+// ============================================================================
+// SEGREGATED INTERFACES - Following Interface Segregation Principle (ISP)
+// ============================================================================
+
+// TaskReader defines read-only operations for retrieving task data.
+// This interface segregates read operations, making it easier to mock for testing
+// and understand which operations don't modify state.
+//
+// Use this interface when you only need to retrieve task information without
+// modification capabilities. This reduces coupling and makes testing easier.
+type TaskReader interface {
+	// Get single task details
 	GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error)
+
+	// Get task summaries/lists grouped by column
 	GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error)
 	GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error)
 	GetReadyTaskSummariesByProject(ctx context.Context, projectID int) ([]*models.TaskSummary, error)
+	GetInProgressTasksByProject(ctx context.Context, projectID int) ([]*models.TaskDetail, error)
+
+	// Get task references and hierarchies
 	GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error)
 	GetTaskTreeByProject(ctx context.Context, projectID int) ([]*models.TaskTreeNode, error)
+}
 
-	// Write operations
+// TaskWriter defines write operations for creating, updating, and deleting tasks.
+// This interface segregates state-modifying operations, allowing clients to specify
+// exactly what write capabilities they need.
+//
+// Use this interface when you need to modify tasks (create, update, delete) but don't
+// need movement or relationship operations. This provides focused control over write access.
+type TaskWriter interface {
+	// Create and update operations
 	CreateTask(ctx context.Context, req CreateTaskRequest) (*models.Task, error)
 	UpdateTask(ctx context.Context, req UpdateTaskRequest) error
 	DeleteTask(ctx context.Context, taskID int) error
+}
 
-	// Task movements
+// TaskMover defines task movement operations within the task management system.
+// This interface segregates operations that change task position/column, making
+// it clear which operations affect task workflow state.
+//
+// Use this interface when you need to move tasks between columns or reorder them,
+// but don't need other write operations like creation or deletion.
+type TaskMover interface {
+	// Column-based movement (workflow progression)
 	MoveTaskToNextColumn(ctx context.Context, taskID int) error
 	MoveTaskToPrevColumn(ctx context.Context, taskID int) error
 	MoveTaskToColumn(ctx context.Context, taskID, columnID int) error
 	MoveTaskToReadyColumn(ctx context.Context, taskID int) error
 	MoveTaskToCompletedColumn(ctx context.Context, taskID int) error
 	MoveTaskToInProgressColumn(ctx context.Context, taskID int) error
-	GetInProgressTasksByProject(ctx context.Context, projectID int) ([]*models.TaskDetail, error)
+
+	// Position-based movement (ordering within column)
 	MoveTaskUp(ctx context.Context, taskID int) error
 	MoveTaskDown(ctx context.Context, taskID int) error
+}
 
-	// Task relationships
+// TaskRelationer defines task relationship operations (parent/child/blocking relationships).
+// This interface segregates relationship management operations, allowing fine-grained
+// control over which clients can modify task dependencies.
+//
+// Use this interface when you need to manage task relationships (dependencies, blocking)
+// but don't need other modification operations.
+type TaskRelationer interface {
+	// Parent/child relationships
 	AddParentRelation(ctx context.Context, taskID, parentID int, relationTypeID int) error
 	AddChildRelation(ctx context.Context, taskID, childID int, relationTypeID int) error
 	RemoveParentRelation(ctx context.Context, taskID, parentID int) error
 	RemoveChildRelation(ctx context.Context, taskID, childID int) error
+}
 
+// TaskLabeler defines label management operations for tasks.
+// This interface segregates label operations, providing focused control over
+// label attachment and detachment.
+//
+// Use this interface when you only need to manage labels for tasks, allowing
+// independent control over label operations.
+type TaskLabeler interface {
 	// Label management
 	AttachLabel(ctx context.Context, taskID, labelID int) error
 	DetachLabel(ctx context.Context, taskID, labelID int) error
+}
 
+// TaskCommenter defines comment operations on tasks.
+// This interface segregates comment management, allowing independent control
+// over comment creation, updates, and deletion.
+//
+// Use this interface when you only need to manage comments on tasks,
+// independent from other task operations.
+type TaskCommenter interface {
 	// Comment operations
 	CreateComment(ctx context.Context, req CreateCommentRequest) (*models.Comment, error)
 	UpdateComment(ctx context.Context, req UpdateCommentRequest) error
 	DeleteComment(ctx context.Context, commentID int) error
 	GetCommentsByTask(ctx context.Context, taskID int) ([]*models.Comment, error)
+}
+
+// Service defines all task-related business operations as a composition of focused interfaces.
+// This composite interface maintains backward compatibility while providing better separation of concerns.
+//
+// Components that need only specific operations (e.g., reading, writing, moving) should depend on
+// the corresponding focused interface (TaskReader, TaskWriter, TaskMover, etc.) instead of this
+// composite interface. This makes the system more testable and maintainable by reducing coupling.
+//
+// The service implementation satisfies all segregated interfaces, so existing code can continue
+// to use the full Service interface without changes.
+type Service interface {
+	TaskReader
+	TaskMover
+	TaskWriter
+	TaskRelationer
+	TaskLabeler
+	TaskCommenter
 }
 
 // CreateTaskRequest encapsulates all data needed to create a task
