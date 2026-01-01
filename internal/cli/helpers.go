@@ -23,7 +23,9 @@ func ValidateColorHex(color string) error {
 	return nil
 }
 
-// ParseTaskType maps a type string to its ID
+// ParseTaskType maps a type string to its ID.
+// Returns an error with a helpful message if the type is not recognized.
+// This uses a map lookup with the ok pattern to detect invalid types.
 func ParseTaskType(typeStr string) (int, error) {
 	types := map[string]int{
 		"task":    1,
@@ -37,7 +39,9 @@ func ParseTaskType(typeStr string) (int, error) {
 	return id, nil
 }
 
-// ParsePriority maps a priority string to its ID
+// ParsePriority maps a priority string to its ID.
+// Returns an error with a helpful message if the priority is not recognized.
+// This uses a map lookup with the ok pattern to detect invalid priorities.
 func ParsePriority(priority string) (int, error) {
 	priorities := map[string]int{
 		"trivial":  1,
