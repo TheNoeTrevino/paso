@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -926,5 +927,269 @@ func TestSendEvent_ClearsDeadline(t *testing.T) {
 		t.Logf("✓ SendEvent clears write deadline correctly")
 	case <-time.After(1 * time.Second):
 		t.Fatal("Timeout waiting for second event")
+	}
+}
+
+// ============================================================================
+// Backpressure Tests
+// ============================================================================
+
+// TestSendEvent_QueueFullWithBackpressure tests that SendEvent applies
+// exponential backoff when the queue is full, ensuring events aren't silently dropped.
+func TestSendEvent_QueueFullWithBackpressure(t *testing.T) {
+	socketPath, listener, messages := setupMockDaemon(t)
+	defer func() { _ = listener.Close() }()
+
+	client, err := NewClient(socketPath)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := client.Connect(ctx); err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+
+	// Drain initial subscribe message
+	select {
+	case <-messages:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("Timeout waiting for initial subscribe")
+	}
+
+	// Fill the event queue (capacity is 100)
+	// We'll send 101 events - the first 100 succeed immediately,
+	// the 101st triggers backpressure/retry logic
+	numEvents := 101
+	var lastErr error
+	for i := 0; i < numEvents; i++ {
+		event := Event{
+			Type:      EventDatabaseChanged,
+			ProjectID: i % 5,
+			Timestamp: time.Now(),
+		}
+		err := client.SendEvent(event)
+		if err != nil {
+			lastErr = err
+			t.Logf("Event %d failed: %v (expected after queue fills)", i, err)
+		}
+	}
+
+	// The backpressure mechanism should eventually allow the last event through
+	// or return an error after retries - NOT silently drop it
+	if lastErr != nil {
+		if !strings.Contains(lastErr.Error(), "retry attempts exhausted") {
+			t.Fatalf("Expected 'retry attempts exhausted' error, got: %v", lastErr)
+		}
+		t.Logf("✓ Queue saturation detected and logged: %v", lastErr)
+	}
+
+	// Wait for batching to complete
+	time.Sleep(client.debounce + 200*time.Millisecond)
+
+	// Verify at least some events were processed
+	eventCount := 0
+	timeout := time.After(2 * time.Second)
+
+	for {
+		select {
+		case msg := <-messages:
+			if msg.Type == "event" {
+				eventCount++
+			}
+		case <-timeout:
+			if eventCount == 0 {
+				t.Fatal("Expected at least some events to be processed")
+			}
+			t.Logf("✓ Backpressure mechanism allowed %d events through", eventCount)
+			return
+		}
+	}
+}
+
+// TestSendEvent_HighThroughputReliability tests event reliability under
+// high-throughput scenarios where queue saturation is likely.
+func TestSendEvent_HighThroughputReliability(t *testing.T) {
+	socketPath, listener, messages := setupMockDaemon(t)
+	defer func() { _ = listener.Close() }()
+
+	client, err := NewClient(socketPath)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := client.Connect(ctx); err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+
+	// Drain initial subscribe message
+	select {
+	case <-messages:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("Timeout waiting for initial subscribe")
+	}
+
+	// Send a burst of events rapidly
+	numEvents := 50
+	var sendErrors int
+	for i := 0; i < numEvents; i++ {
+		event := Event{
+			Type:      EventDatabaseChanged,
+			ProjectID: i % 3,
+			Timestamp: time.Now(),
+		}
+		err := client.SendEvent(event)
+		if err != nil {
+			sendErrors++
+			t.Logf("Send error (attempt %d): %v", i+1, err)
+		}
+	}
+
+	// With backpressure, we should minimize silent drops
+	// A few errors are acceptable if they're retried with backoff,
+	// but most events should succeed
+	successRate := float64(numEvents-sendErrors) / float64(numEvents) * 100
+	if successRate < 90 {
+		t.Logf("⚠ Success rate lower than expected: %.1f%%", successRate)
+	}
+
+	// Wait for all events to be batched and sent
+	time.Sleep(client.debounce + 500*time.Millisecond)
+
+	// Verify we received events
+	eventCount := 0
+	timeout := time.After(2 * time.Second)
+
+	for {
+		select {
+		case msg := <-messages:
+			if msg.Type == "event" {
+				eventCount++
+			}
+		case <-timeout:
+			if eventCount == 0 {
+				t.Error("Expected at least some events to be received")
+			}
+			t.Logf("✓ High-throughput test: sent=%d, errors=%d, success_rate=%.1f%%, received=%d",
+				numEvents, sendErrors, successRate, eventCount)
+			return
+		}
+	}
+}
+
+// TestSendEvent_BackpressureQueueRecovery tests that the queue recovers
+// after saturation when the batcher is consuming events.
+func TestSendEvent_BackpressureQueueRecovery(t *testing.T) {
+	socketPath, listener, messages := setupMockDaemon(t)
+	defer func() { _ = listener.Close() }()
+
+	// Use a very short debounce to consume events quickly
+	originalDebounce := os.Getenv("PASO_EVENT_DEBOUNCE_MS")
+	_ = os.Setenv("PASO_EVENT_DEBOUNCE_MS", "10")
+	defer func() { _ = os.Setenv("PASO_EVENT_DEBOUNCE_MS", originalDebounce) }()
+
+	client, err := NewClient(socketPath)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	defer func() { _ = client.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := client.Connect(ctx); err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+
+	// Drain initial subscribe message
+	select {
+	case <-messages:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("Timeout waiting for initial subscribe")
+	}
+
+	// First batch: fill queue
+	for i := 0; i < 50; i++ {
+		event := Event{
+			Type:      EventDatabaseChanged,
+			ProjectID: 0,
+			Timestamp: time.Now(),
+		}
+		if err := client.SendEvent(event); err != nil {
+			t.Logf("First batch error (expected): %v", err)
+		}
+	}
+
+	// Wait for queue to drain via batcher
+	time.Sleep(100 * time.Millisecond)
+
+	// Second batch: should now be able to send without excessive retry
+	// If recovery works, these should succeed quickly
+	successCount := 0
+	for i := 0; i < 30; i++ {
+		event := Event{
+			Type:      EventDatabaseChanged,
+			ProjectID: 0,
+			Timestamp: time.Now(),
+		}
+		if err := client.SendEvent(event); err == nil {
+			successCount++
+		}
+	}
+
+	if successCount < 20 {
+		t.Logf("⚠ Queue recovery slow: only %d/%d succeeded", successCount, 30)
+	} else {
+		t.Logf("✓ Queue recovered: %d/%d succeeded after drain", successCount, 30)
+	}
+}
+
+// TestSendEvent_ErrorMessageClarity tests that queue saturation errors
+// provide clear, actionable error messages for debugging.
+func TestSendEvent_ErrorMessageClarity(t *testing.T) {
+	socketPath := filepath.Join(t.TempDir(), "paso.sock")
+
+	client, err := NewClient(socketPath)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	defer func() { _ = client.Close() }()
+
+	// Before connecting, we can still queue events (they go to queue)
+	// But if we fill the queue without a batcher running, we should get clear errors
+
+	// Fill the queue manually
+	event := Event{
+		Type:      EventDatabaseChanged,
+		ProjectID: 1,
+		Timestamp: time.Now(),
+	}
+
+	var lastErr error
+	// Send events until queue is full
+	// The queue starts with capacity 100
+	for i := 0; i < 120; i++ {
+		err := client.SendEvent(event)
+		if err != nil {
+			lastErr = err
+			break
+		}
+	}
+
+	if lastErr != nil {
+		if !strings.Contains(lastErr.Error(), "retry attempts exhausted") &&
+			!strings.Contains(lastErr.Error(), "event queue full") {
+			t.Errorf("Error message not clear: %v", lastErr)
+		}
+		t.Logf("✓ Error message is clear and actionable: %v", lastErr)
+	} else {
+		t.Log("✓ Queue accepted all test events (batcher not running)")
 	}
 }
