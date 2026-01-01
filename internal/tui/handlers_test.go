@@ -22,7 +22,7 @@ func setupTestModel(columns []*models.Column, tasks map[int][]*models.TaskSummar
 		App:               nil, // No app needed for navigation handlers
 		Config:            cfg,
 		AppState:          state.NewAppState(nil, 0, columns, tasks, nil),
-		UiState:           state.NewUIState(),
+		UIState:           state.NewUIState(),
 		InputState:        state.NewInputState(),
 		FormState:         state.NewFormState(),
 		LabelPickerState:  state.NewLabelPickerState(),
@@ -44,20 +44,20 @@ func TestHandleNavigateLeft_FirstColumn(t *testing.T) {
 		{ID: 2, Name: "Col2"},
 	}
 	m := setupTestModel(columns, nil)
-	m.UiState.SetSelectedColumn(0) // Already at first column
-	m.UiState.SetSelectedTask(5)   // Some task selected
+	m.UIState.SetSelectedColumn(0) // Already at first column
+	m.UIState.SetSelectedTask(5)   // Some task selected
 
 	newModel, _ := m.handleNavigateLeft()
 	m = newModel.(Model)
 
 	// Should not move left
-	if m.UiState.SelectedColumn() != 0 {
-		t.Errorf("SelectedColumn after navigate left from 0 = %d, want 0", m.UiState.SelectedColumn())
+	if m.UIState.SelectedColumn() != 0 {
+		t.Errorf("SelectedColumn after navigate left from 0 = %d, want 0", m.UIState.SelectedColumn())
 	}
 
 	// Task selection should remain unchanged (only resets when actually moving)
-	if m.UiState.SelectedTask() != 5 {
-		t.Errorf("SelectedTask after no-op navigate left = %d, want 5 (unchanged)", m.UiState.SelectedTask())
+	if m.UIState.SelectedTask() != 5 {
+		t.Errorf("SelectedTask after no-op navigate left = %d, want 5 (unchanged)", m.UIState.SelectedTask())
 	}
 }
 
@@ -71,20 +71,20 @@ func TestHandleNavigateRight_LastColumn(t *testing.T) {
 		{ID: 3, Name: "Col3"},
 	}
 	m := setupTestModel(columns, nil)
-	m.UiState.SetSelectedColumn(2) // At last column (index 2 of 3 columns)
-	m.UiState.SetSelectedTask(3)
+	m.UIState.SetSelectedColumn(2) // At last column (index 2 of 3 columns)
+	m.UIState.SetSelectedTask(3)
 
 	newModel, _ := m.handleNavigateRight()
 	m = newModel.(Model)
 
 	// Should not move right
-	if m.UiState.SelectedColumn() != 2 {
-		t.Errorf("SelectedColumn after navigate right from last = %d, want 2", m.UiState.SelectedColumn())
+	if m.UIState.SelectedColumn() != 2 {
+		t.Errorf("SelectedColumn after navigate right from last = %d, want 2", m.UIState.SelectedColumn())
 	}
 
 	// Task selection should remain unchanged
-	if m.UiState.SelectedTask() != 3 {
-		t.Errorf("SelectedTask after no-op navigate right = %d, want 3 (unchanged)", m.UiState.SelectedTask())
+	if m.UIState.SelectedTask() != 3 {
+		t.Errorf("SelectedTask after no-op navigate right = %d, want 3 (unchanged)", m.UIState.SelectedTask())
 	}
 }
 
@@ -93,14 +93,14 @@ func TestHandleNavigateRight_LastColumn(t *testing.T) {
 // Security value: No change, no panic.
 func TestHandleNavigateUp_FirstTask(t *testing.T) {
 	m := setupTestModel(nil, nil)
-	m.UiState.SetSelectedTask(0) // Already at first task
+	m.UIState.SetSelectedTask(0) // Already at first task
 
 	newModel, _ := m.handleNavigateUp()
 	m = newModel.(Model)
 
 	// Should not move up
-	if m.UiState.SelectedTask() != 0 {
-		t.Errorf("SelectedTask after navigate up from 0 = %d, want 0", m.UiState.SelectedTask())
+	if m.UIState.SelectedTask() != 0 {
+		t.Errorf("SelectedTask after navigate up from 0 = %d, want 0", m.UIState.SelectedTask())
 	}
 }
 
@@ -117,15 +117,15 @@ func TestHandleNavigateDown_LastTask(t *testing.T) {
 		},
 	}
 	m := setupTestModel(columns, tasks)
-	m.UiState.SetSelectedColumn(0)
-	m.UiState.SetSelectedTask(2) // At last task (index 2 of 3 tasks)
+	m.UIState.SetSelectedColumn(0)
+	m.UIState.SetSelectedTask(2) // At last task (index 2 of 3 tasks)
 
 	newModel, _ := m.handleNavigateDown()
 	m = newModel.(Model)
 
 	// Should not move down
-	if m.UiState.SelectedTask() != 2 {
-		t.Errorf("SelectedTask after navigate down from last = %d, want 2", m.UiState.SelectedTask())
+	if m.UIState.SelectedTask() != 2 {
+		t.Errorf("SelectedTask after navigate down from last = %d, want 2", m.UIState.SelectedTask())
 	}
 }
 
@@ -138,20 +138,20 @@ func TestHandleNavigateRight_ResetsTaskSelection(t *testing.T) {
 		{ID: 2, Name: "Col2"},
 	}
 	m := setupTestModel(columns, nil)
-	m.UiState.SetSelectedColumn(0)
-	m.UiState.SetSelectedTask(5) // Some task selected
+	m.UIState.SetSelectedColumn(0)
+	m.UIState.SetSelectedTask(5) // Some task selected
 
 	newModel, _ := m.handleNavigateRight()
 	m = newModel.(Model)
 
 	// Should move to column 1
-	if m.UiState.SelectedColumn() != 1 {
-		t.Errorf("SelectedColumn after navigate right = %d, want 1", m.UiState.SelectedColumn())
+	if m.UIState.SelectedColumn() != 1 {
+		t.Errorf("SelectedColumn after navigate right = %d, want 1", m.UIState.SelectedColumn())
 	}
 
 	// Task selection should reset to 0
-	if m.UiState.SelectedTask() != 0 {
-		t.Errorf("SelectedTask after navigate right = %d, want 0 (reset)", m.UiState.SelectedTask())
+	if m.UIState.SelectedTask() != 0 {
+		t.Errorf("SelectedTask after navigate right = %d, want 0 (reset)", m.UIState.SelectedTask())
 	}
 }
 
@@ -176,8 +176,8 @@ func TestHandleAddTask_NoColumns(t *testing.T) {
 	}
 
 	// Should not change mode
-	if m.UiState.Mode() != state.NormalMode {
-		t.Errorf("Mode after add task with no columns = %v, want NormalMode", m.UiState.Mode())
+	if m.UIState.Mode() != state.NormalMode {
+		t.Errorf("Mode after add task with no columns = %v, want NormalMode", m.UIState.Mode())
 	}
 }
 
@@ -188,8 +188,8 @@ func TestHandleEditTask_NoTask(t *testing.T) {
 	columns := []*models.Column{{ID: 1, Name: "Empty Column"}}
 	tasks := map[int][]*models.TaskSummary{1: {}} // Empty tasks
 	m := setupTestModel(columns, tasks)
-	m.UiState.SetSelectedColumn(0)
-	m.UiState.SetSelectedTask(0)
+	m.UIState.SetSelectedColumn(0)
+	m.UIState.SetSelectedTask(0)
 
 	newModel, _ := m.handleEditTask()
 	m = newModel.(Model)
@@ -206,8 +206,8 @@ func TestHandleEditTask_NoTask(t *testing.T) {
 	}
 
 	// Should not change mode
-	if m.UiState.Mode() != state.NormalMode {
-		t.Errorf("Mode after edit with no task = %v, want NormalMode", m.UiState.Mode())
+	if m.UIState.Mode() != state.NormalMode {
+		t.Errorf("Mode after edit with no task = %v, want NormalMode", m.UIState.Mode())
 	}
 }
 
@@ -234,8 +234,8 @@ func TestHandleDeleteTask_NoTask(t *testing.T) {
 	}
 
 	// Should not enter delete confirm mode
-	if m.UiState.Mode() != state.NormalMode {
-		t.Errorf("Mode after delete with no task = %v, want NormalMode", m.UiState.Mode())
+	if m.UIState.Mode() != state.NormalMode {
+		t.Errorf("Mode after delete with no task = %v, want NormalMode", m.UIState.Mode())
 	}
 }
 
@@ -251,26 +251,26 @@ func TestHandleScrollRight_SelectionFollows(t *testing.T) {
 		{ID: 5, Name: "Col5"},
 	}
 	m := setupTestModel(columns, nil)
-	m.UiState.SetWidth(100) // Viewport size will be 2 columns
-	m.UiState.SetSelectedColumn(0)
-	m.UiState.SetViewportOffset(0) // Showing columns 0-1
+	m.UIState.SetWidth(100) // Viewport size will be 2 columns
+	m.UIState.SetSelectedColumn(0)
+	m.UIState.SetViewportOffset(0) // Showing columns 0-1
 
 	// Scroll right - viewport becomes 1-2, selection at 0 is now out of view
 	newModel, _ := m.handleScrollRight()
 	m = newModel.(Model)
 
 	// Viewport should have scrolled
-	if m.UiState.ViewportOffset() != 1 {
-		t.Errorf("ViewportOffset after scroll right = %d, want 1", m.UiState.ViewportOffset())
+	if m.UIState.ViewportOffset() != 1 {
+		t.Errorf("ViewportOffset after scroll right = %d, want 1", m.UIState.ViewportOffset())
 	}
 
 	// Selection should follow viewport (adjust to 1, the new leftmost visible column)
-	if m.UiState.SelectedColumn() != 1 {
-		t.Errorf("SelectedColumn after scroll right = %d, want 1 (adjusted to viewport)", m.UiState.SelectedColumn())
+	if m.UIState.SelectedColumn() != 1 {
+		t.Errorf("SelectedColumn after scroll right = %d, want 1 (adjusted to viewport)", m.UIState.SelectedColumn())
 	}
 
 	// Task should reset to 0 when selection changes
-	if m.UiState.SelectedTask() != 0 {
-		t.Errorf("SelectedTask after scroll adjustment = %d, want 0", m.UiState.SelectedTask())
+	if m.UIState.SelectedTask() != 0 {
+		t.Errorf("SelectedTask after scroll adjustment = %d, want 0", m.UIState.SelectedTask())
 	}
 }

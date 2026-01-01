@@ -17,7 +17,7 @@ func TestModeDispatch_TaskFormMode(t *testing.T) {
 	m := setupTestModel(columns, nil)
 
 	// Create a simple form (will be nil initially, but mode is what matters)
-	m.UiState.SetMode(state.TicketFormMode)
+	m.UIState.SetMode(state.TicketFormMode)
 	title := ""
 	description := ""
 	confirm := false
@@ -31,8 +31,8 @@ func TestModeDispatch_TaskFormMode(t *testing.T) {
 	m = newModel.(Model)
 
 	// Mode should still be TicketFormMode (until form completes)
-	if m.UiState.Mode() != state.TicketFormMode {
-		t.Errorf("Mode after Update in TicketFormMode = %v, want TicketFormMode", m.UiState.Mode())
+	if m.UIState.Mode() != state.TicketFormMode {
+		t.Errorf("Mode after Update in TicketFormMode = %v, want TicketFormMode", m.UIState.Mode())
 	}
 
 	// Cmd should not be nil (form returns commands)
@@ -50,8 +50,8 @@ func TestModeDispatch_NormalMode(t *testing.T) {
 		{ID: 2, Name: "Col2"},
 	}
 	m := setupTestModel(columns, nil)
-	m.UiState.SetMode(state.NormalMode)
-	m.UiState.SetSelectedColumn(0)
+	m.UIState.SetMode(state.NormalMode)
+	m.UIState.SetSelectedColumn(0)
 
 	// Send a navigation key (right arrow)
 	keyMsg := tea.KeyPressMsg(tea.Key{Code: tea.KeyRight})
@@ -60,13 +60,13 @@ func TestModeDispatch_NormalMode(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should have navigated right
-	if m.UiState.SelectedColumn() != 1 {
-		t.Errorf("SelectedColumn after right arrow in NormalMode = %d, want 1", m.UiState.SelectedColumn())
+	if m.UIState.SelectedColumn() != 1 {
+		t.Errorf("SelectedColumn after right arrow in NormalMode = %d, want 1", m.UIState.SelectedColumn())
 	}
 
 	// Mode should still be NormalMode
-	if m.UiState.Mode() != state.NormalMode {
-		t.Errorf("Mode after navigation = %v, want NormalMode", m.UiState.Mode())
+	if m.UIState.Mode() != state.NormalMode {
+		t.Errorf("Mode after navigation = %v, want NormalMode", m.UIState.Mode())
 	}
 }
 
@@ -76,7 +76,7 @@ func TestUpdateTaskForm_EscapeCancels(t *testing.T) {
 	m := setupTestModel(columns, nil)
 
 	// Set up form mode
-	m.UiState.SetMode(state.TicketFormMode)
+	m.UIState.SetMode(state.TicketFormMode)
 	title := ""
 	description := ""
 	confirm := false
@@ -89,8 +89,8 @@ func TestUpdateTaskForm_EscapeCancels(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should return to NormalMode
-	if m.UiState.Mode() != state.NormalMode {
-		t.Errorf("Mode after ESC in TicketFormMode = %v, want NormalMode", m.UiState.Mode())
+	if m.UIState.Mode() != state.NormalMode {
+		t.Errorf("Mode after ESC in TicketFormMode = %v, want NormalMode", m.UIState.Mode())
 	}
 
 	// Form should be cleared
