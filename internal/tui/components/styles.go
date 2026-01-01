@@ -1,3 +1,5 @@
+// Package components provides reusable UI components and styles.
+// Call InitStyles() before use to initialize all style variables.
 package components
 
 import (
@@ -6,9 +8,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
-// Doing this to cache the draw
-// dont recompute every redraw
-
+// These are cached to avoid recomputing on every redraw.
 var (
 	// compared to the defaults, these feel like
 	// they take up less space
@@ -93,6 +93,10 @@ var (
 
 	// StatusBarSearchStyle defines the style for the search section in the status bar
 	StatusBarSearchStyle lipgloss.Style
+
+	// BlockedStyle defines the style for blocked tasks ! indicator
+	// Note that this needs its background passed in so it isn't transparent
+	BlockedStyle lipgloss.Style
 )
 
 // InitStyles initializes all styles with the given color scheme
@@ -204,4 +208,9 @@ func InitStyles(colors config.ColorScheme) {
 
 	StatusBarSearchStyle = lipgloss.NewStyle().
 		Background(lipgloss.Color(colors.Background))
+
+	BlockedStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Blocked)).
+		Bold(true).
+		Italic(true)
 }

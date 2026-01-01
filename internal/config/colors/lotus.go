@@ -13,9 +13,10 @@ func Lotus() *ColorScheme {
 		ColumnBackground: palette.lotusWhite2,
 
 		// Semantic colors
-		Create: palette.lotusGreen,
-		Edit:   palette.lotusBlue4,
-		Delete: palette.lotusRed,
+		Create:  palette.lotusGreen,
+		Edit:    palette.lotusBlue4,
+		Delete:  palette.lotusRed,
+		Blocked: palette.lotusRed, // Use lotusRed for blocked indicator
 
 		// UI element colors
 		ColumnBorder:   palette.lotusViolet1,

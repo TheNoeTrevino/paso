@@ -96,7 +96,7 @@ func createTestModelWithProjects(numProjects int, columnsPerProject int, tasksPe
 		App:               nil, // No app needed for subscription tests
 		Config:            cfg,
 		AppState:          state.NewAppState(projects, 0, columns, tasks, nil),
-		UiState:           state.NewUIState(),
+		UIState:           state.NewUIState(),
 		InputState:        state.NewInputState(),
 		FormState:         state.NewFormState(),
 		LabelPickerState:  state.NewLabelPickerState(),

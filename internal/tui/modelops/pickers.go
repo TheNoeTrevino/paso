@@ -20,7 +20,7 @@ func InitParentPickerForForm(m *tui.Model) bool {
 	}
 
 	// Get all task references for the entire project
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 	allTasks, err := m.App.TaskService.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
@@ -87,7 +87,7 @@ func InitChildPickerForForm(m *tui.Model) bool {
 	}
 
 	// Get all task references for the entire project
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 	allTasks, err := m.App.TaskService.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
@@ -192,7 +192,7 @@ func InitPriorityPickerForForm(m *tui.Model) bool {
 
 	// If editing an existing task, we need to get the current priority from database
 	if m.FormState.EditingTaskID != 0 {
-		ctx, cancel := m.DbContext()
+		ctx, cancel := m.DBContext()
 		defer cancel()
 
 		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.FormState.EditingTaskID)
@@ -216,7 +216,7 @@ func InitPriorityPickerForForm(m *tui.Model) bool {
 	m.PriorityPickerState.SetSelectedPriorityID(currentPriorityID)
 	// Set cursor to match the selected priority (adjust for 0-indexing)
 	m.PriorityPickerState.SetCursor(currentPriorityID - 1)
-	m.PriorityPickerState.SetReturnMode(state.TicketFormMode)
+	m.PriorityPickerState.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -231,7 +231,7 @@ func InitTypePickerForForm(m *tui.Model) bool {
 
 	// If editing an existing task, we need to get the current type from database
 	if m.FormState.EditingTaskID != 0 {
-		ctx, cancel := m.DbContext()
+		ctx, cancel := m.DBContext()
 		defer cancel()
 
 		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.FormState.EditingTaskID)
@@ -255,7 +255,7 @@ func InitTypePickerForForm(m *tui.Model) bool {
 	m.TypePickerState.SetSelectedTypeID(currentTypeID)
 	// Set cursor to match the selected type (adjust for 0-indexing)
 	m.TypePickerState.SetCursor(currentTypeID - 1)
-	m.TypePickerState.SetReturnMode(state.TicketFormMode)
+	m.TypePickerState.ReturnMode = state.TicketFormMode
 
 	return true
 }

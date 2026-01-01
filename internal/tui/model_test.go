@@ -13,7 +13,7 @@ import (
 func TestGetCurrentTasks_NoColumns(t *testing.T) {
 	m := Model{
 		AppState: state.NewAppState(nil, 0, []*models.Column{}, nil, nil),
-		UiState:  state.NewUIState(),
+		UIState:  state.NewUIState(),
 	}
 
 	tasks := m.getCurrentTasks()
@@ -40,11 +40,11 @@ func TestGetCurrentTasks_SelectedColumnOutOfBounds(t *testing.T) {
 
 	m := Model{
 		AppState: state.NewAppState(nil, 0, columns, tasks, nil),
-		UiState:  state.NewUIState(),
+		UIState:  state.NewUIState(),
 	}
 
 	// Set selected column out of bounds
-	m.UiState.SetSelectedColumn(5)
+	m.UIState.SetSelectedColumn(5)
 
 	// Should return empty slice safely without panic
 	result := m.getCurrentTasks()
@@ -67,10 +67,10 @@ func TestGetCurrentTask_NoTasks(t *testing.T) {
 
 	m := Model{
 		AppState: state.NewAppState(nil, 0, columns, tasks, nil),
-		UiState:  state.NewUIState(),
+		UIState:  state.NewUIState(),
 	}
-	m.UiState.SetSelectedColumn(0)
-	m.UiState.SetSelectedTask(0)
+	m.UIState.SetSelectedColumn(0)
+	m.UIState.SetSelectedTask(0)
 
 	task := m.getCurrentTask()
 	if task != nil {
@@ -92,10 +92,10 @@ func TestGetCurrentTask_SelectedTaskOutOfBounds(t *testing.T) {
 
 	m := Model{
 		AppState: state.NewAppState(nil, 0, columns, tasks, nil),
-		UiState:  state.NewUIState(),
+		UIState:  state.NewUIState(),
 	}
-	m.UiState.SetSelectedColumn(0)
-	m.UiState.SetSelectedTask(5) // Out of bounds
+	m.UIState.SetSelectedColumn(0)
+	m.UIState.SetSelectedTask(5) // Out of bounds
 
 	task := m.getCurrentTask()
 	if task != nil {
@@ -103,7 +103,7 @@ func TestGetCurrentTask_SelectedTaskOutOfBounds(t *testing.T) {
 	}
 
 	// Valid task for comparison
-	m.UiState.SetSelectedTask(1)
+	m.UIState.SetSelectedTask(1)
 	task = m.getCurrentTask()
 	if task == nil || task.ID != 2 {
 		t.Errorf("getCurrentTask() with valid index, got %v, want task with ID=2", task)
@@ -116,7 +116,7 @@ func TestGetCurrentTask_SelectedTaskOutOfBounds(t *testing.T) {
 func TestGetCurrentColumn_EmptyColumns(t *testing.T) {
 	m := Model{
 		AppState: state.NewAppState(nil, 0, []*models.Column{}, nil, nil),
-		UiState:  state.NewUIState(),
+		UIState:  state.NewUIState(),
 	}
 
 	col := m.getCurrentColumn()
@@ -140,17 +140,17 @@ func TestRemoveCurrentTask_LastTask(t *testing.T) {
 
 	m := Model{
 		AppState: state.NewAppState(nil, 0, columns, tasks, nil),
-		UiState:  state.NewUIState(),
+		UIState:  state.NewUIState(),
 	}
-	m.UiState.SetSelectedColumn(0)
-	m.UiState.SetSelectedTask(2) // Select last task (index 2)
+	m.UIState.SetSelectedColumn(0)
+	m.UIState.SetSelectedTask(2) // Select last task (index 2)
 
 	// Remove the last task
 	m.removeCurrentTask()
 
 	// Should adjust selection to previous task (index 1)
-	if m.UiState.SelectedTask() != 1 {
-		t.Errorf("SelectedTask after removing last task = %d, want 1", m.UiState.SelectedTask())
+	if m.UIState.SelectedTask() != 1 {
+		t.Errorf("SelectedTask after removing last task = %d, want 1", m.UIState.SelectedTask())
 	}
 
 	// Verify task was removed
@@ -170,10 +170,10 @@ func TestRemoveCurrentTask_EmptyColumn(t *testing.T) {
 
 	m := Model{
 		AppState: state.NewAppState(nil, 0, columns, tasks, nil),
-		UiState:  state.NewUIState(),
+		UIState:  state.NewUIState(),
 	}
-	m.UiState.SetSelectedColumn(0)
-	m.UiState.SetSelectedTask(0)
+	m.UIState.SetSelectedColumn(0)
+	m.UIState.SetSelectedTask(0)
 
 	// Should be no-op
 	m.removeCurrentTask()
@@ -196,22 +196,22 @@ func TestRemoveCurrentColumn_LastColumn(t *testing.T) {
 
 	m := Model{
 		AppState: state.NewAppState(nil, 0, columns, nil, nil),
-		UiState:  state.NewUIState(),
+		UIState:  state.NewUIState(),
 	}
-	m.UiState.SetSelectedColumn(2) // Select last column
-	m.UiState.SetSelectedTask(5)   // Some task
+	m.UIState.SetSelectedColumn(2) // Select last column
+	m.UIState.SetSelectedTask(5)   // Some task
 
 	// Remove the last column
 	m.removeCurrentColumn()
 
 	// Selection should adjust to column 1 (previous column)
-	if m.UiState.SelectedColumn() != 1 {
-		t.Errorf("SelectedColumn after removing last = %d, want 1", m.UiState.SelectedColumn())
+	if m.UIState.SelectedColumn() != 1 {
+		t.Errorf("SelectedColumn after removing last = %d, want 1", m.UIState.SelectedColumn())
 	}
 
 	// Task selection should reset to 0
-	if m.UiState.SelectedTask() != 0 {
-		t.Errorf("SelectedTask after removeCurrentColumn = %d, want 0", m.UiState.SelectedTask())
+	if m.UIState.SelectedTask() != 0 {
+		t.Errorf("SelectedTask after removeCurrentColumn = %d, want 0", m.UIState.SelectedTask())
 	}
 
 	// Verify column was removed

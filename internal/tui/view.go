@@ -15,24 +15,13 @@ func (m Model) View() tea.View {
 	view.BackgroundColor = lipgloss.Color(theme.Background) // Set root background color
 
 	// Wait for terminal size to be initialized
-	if m.UiState.Width() == 0 {
+	if m.UIState.Width() == 0 {
 		view.Content = "Loading..."
 		return view
 	}
 
 	// Check if current mode uses layer-based rendering
-	usesLayers := m.UiState.Mode() == state.TicketFormMode ||
-		m.UiState.Mode() == state.ProjectFormMode ||
-		m.UiState.Mode() == state.AddColumnFormMode ||
-		m.UiState.Mode() == state.EditColumnFormMode ||
-		m.UiState.Mode() == state.CommentFormMode ||
-		m.UiState.Mode() == state.CommentsViewMode ||
-		m.UiState.Mode() == state.HelpMode ||
-		m.UiState.Mode() == state.TaskFormHelpMode ||
-		m.UiState.Mode() == state.NormalMode ||
-		m.UiState.Mode() == state.SearchMode
-
-	if usesLayers {
+	if m.UIState.Mode().UsesLayers() {
 		// Layer-based rendering: always show base board with modal overlays
 		baseView := m.viewKanbanBoard()
 
@@ -43,7 +32,7 @@ func (m Model) View() tea.View {
 
 		// Add modal overlay based on mode
 		var modalLayer *lipgloss.Layer
-		switch m.UiState.Mode() {
+		switch m.UIState.Mode() {
 		case state.TicketFormMode:
 			modalLayer = m.renderTaskFormLayer()
 		case state.ProjectFormMode:
@@ -51,54 +40,60 @@ func (m Model) View() tea.View {
 		case state.AddColumnFormMode, state.EditColumnFormMode:
 			modalLayer = m.renderColumnFormLayer()
 		case state.CommentFormMode:
-			// Stack both task form AND comment form
 			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderCommentFormLayer()
 		case state.CommentsViewMode:
-			// Stack both task form AND comments view
 			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderCommentsViewLayer()
 		case state.HelpMode:
 			modalLayer = m.renderHelpLayer()
+		case state.DiscardConfirmMode:
+			layers = append(layers, m.renderTaskFormLayer())
+			modalLayer = m.renderDiscardConfirmLayer()
 		case state.TaskFormHelpMode:
-			// Stack both task form AND help menu
 			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderTaskFormHelpLayer()
+		case state.LabelPickerMode:
+			layers = m.buildPickerLayers(layers, m.LabelPickerState.ReturnMode, m.renderLabelPickerLayer())
+		case state.ParentPickerMode:
+			layers = m.buildPickerLayers(layers, m.ParentPickerState.ReturnMode, m.renderParentPickerLayer())
+		case state.ChildPickerMode:
+			layers = m.buildPickerLayers(layers, m.ChildPickerState.ReturnMode, m.renderChildPickerLayer())
+		case state.PriorityPickerMode:
+			layers = m.buildPickerLayers(layers, m.PriorityPickerState.ReturnMode, m.renderPriorityPickerLayer())
+		case state.TypePickerMode:
+			layers = m.buildPickerLayers(layers, m.TypePickerState.ReturnMode, m.renderTypePickerLayer())
+		case state.RelationTypePickerMode:
+			// RelationTypePicker is only accessible from ParentPicker or ChildPicker,
+			// so returnMode will always be one of those two modes (see update_pickers.go:329, 484).
+			// We render the appropriate intermediate layer to maintain the picker stack.
+			var intermediateLayer *lipgloss.Layer
+			returnMode := m.RelationTypePickerState.ReturnMode
+			switch returnMode {
+			case state.ParentPickerMode:
+				intermediateLayer = m.renderParentPickerLayer()
+			case state.ChildPickerMode:
+				intermediateLayer = m.renderChildPickerLayer()
+			}
+			layers = m.buildPickerLayers(layers, returnMode, m.renderRelationTypePickerLayer(), intermediateLayer)
+		case state.StatusPickerMode:
+			modalLayer = m.renderStatusPickerLayer()
 		}
 
 		if modalLayer != nil {
 			layers = append(layers, modalLayer)
 		}
 
-		// Notifications are now rendered inline with tabs, no need for floating layers
-
-		// Combine all layers into canvas
 		canvas := lipgloss.NewCanvas(layers...)
 		view.Content = canvas.Render()
 	} else {
 		// Legacy full-screen rendering for modes not yet converted to layers
 		var content string
-		switch m.UiState.Mode() {
-		case state.DiscardConfirmMode:
-			content = m.viewDiscardConfirm()
+		switch m.UIState.Mode() {
 		case state.DeleteConfirmMode:
 			content = m.viewDeleteTaskConfirm()
 		case state.DeleteColumnConfirmMode:
 			content = m.viewDeleteColumnConfirm()
-		case state.LabelPickerMode:
-			content = m.viewLabelPicker()
-		case state.ParentPickerMode:
-			content = m.viewParentPicker()
-		case state.ChildPickerMode:
-			content = m.viewChildPicker()
-		case state.PriorityPickerMode:
-			content = m.viewPriorityPicker()
-		case state.TypePickerMode:
-			content = m.viewTypePicker()
-		case state.RelationTypePickerMode:
-			content = m.viewRelationTypePicker()
-		case state.StatusPickerMode:
-			content = m.viewStatusPicker()
 		default:
 			content = m.viewKanbanBoard()
 		}
@@ -106,4 +101,40 @@ func (m Model) View() tea.View {
 	}
 
 	return view
+}
+
+// shouldStackTaskForm determines if the task form should be stacked below a picker.
+// The task form is stacked when:
+//   - The picker will return directly to TicketFormMode (picker opened from task form)
+//   - The picker will return to another picker that was opened from task form
+//     (e.g., RelationTypePicker returns to ParentPicker which was opened from task form)
+func (m Model) shouldStackTaskForm(returnMode state.Mode) bool {
+	return returnMode == state.TicketFormMode ||
+		returnMode == state.ParentPickerMode ||
+		returnMode == state.ChildPickerMode
+}
+
+// buildPickerLayers is a helper method that builds layer stacks for picker modes.
+// It handles the common pattern of stacking the task form layer when a picker was
+// opened from TicketFormMode, and supports stacking additional intermediate layers.
+//
+// Parameters:
+//   - layers: the base layer stack to append to
+//   - returnMode: the mode to return to when the picker closes
+//   - pickerLayer: the picker layer to render as the top modal
+//   - intermediateLayers: optional layers to stack between task form and picker
+//     (used by RelationTypePicker to stack parent/child picker)
+//
+// Returns the updated layers slice with picker layers appended.
+func (m Model) buildPickerLayers(layers []*lipgloss.Layer, returnMode state.Mode, pickerLayer *lipgloss.Layer, intermediateLayers ...*lipgloss.Layer) []*lipgloss.Layer {
+	if m.shouldStackTaskForm(returnMode) {
+		layers = append(layers, m.renderTaskFormLayer())
+		layers = append(layers, intermediateLayers...)
+	}
+
+	if pickerLayer != nil {
+		layers = append(layers, pickerLayer)
+	}
+
+	return layers
 }

@@ -34,10 +34,10 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.LabelPickerState.ReturnMode == state.TicketFormMode {
 			// In form mode: sync selections and return to form
 			m.syncLabelPickerToFormState()
-			m.UiState.SetMode(state.TicketFormMode)
+			m.UIState.SetMode(state.TicketFormMode)
 		} else {
 			// In view mode: return to NormalMode
-			m.UiState.SetMode(state.NormalMode)
+			m.UIState.SetMode(state.NormalMode)
 		}
 		m.LabelPickerState.Filter = ""
 		m.LabelPickerState.Cursor = 0
@@ -71,7 +71,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.LabelPickerState.Items[i].Selected = !m.LabelPickerState.Items[i].Selected
 					} else {
 						// In view mode: update database immediately
-						ctx, cancel := m.UiContext()
+						ctx, cancel := m.UIContext()
 						defer cancel()
 						if m.LabelPickerState.Items[i].Selected {
 							// Remove label from task
@@ -166,7 +166,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		ctx, cancel := m.DbContext()
+		ctx, cancel := m.DBContext()
 		defer cancel()
 		label, err := m.App.LabelService.CreateLabel(ctx, labelservice.CreateLabelRequest{
 			ProjectID: project.ID,
@@ -243,7 +243,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.syncParentPickerToFormState()
 		}
 
-		m.UiState.SetMode(returnMode)
+		m.UIState.SetMode(returnMode)
 		m.ParentPickerState.Filter = ""
 		m.ParentPickerState.Cursor = 0
 		return m, nil
@@ -277,7 +277,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					} else {
 						// View mode: apply changes to database immediately (existing behavior)
-						ctx, cancel := m.UiContext()
+						ctx, cancel := m.UIContext()
 						defer cancel()
 						if m.ParentPickerState.Items[i].Selected {
 							// Remove parent relationship
@@ -326,7 +326,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.RelationTypePickerState.SetSelectedRelationTypeID(currentRelationTypeID)
 			m.RelationTypePickerState.SetCurrentTaskPickerIndex(m.ParentPickerState.Cursor)
-			m.RelationTypePickerState.SetReturnMode(state.ParentPickerMode)
+			m.RelationTypePickerState.ReturnMode = state.ParentPickerMode
 
 			// Set cursor to match selected relation type
 			relationTypes := renderers.GetRelationTypeOptions()
@@ -337,7 +337,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-			m.UiState.SetMode(state.RelationTypePickerMode)
+			m.UIState.SetMode(state.RelationTypePickerMode)
 		}
 		return m, nil
 
@@ -398,7 +398,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.syncChildPickerToFormState()
 		}
 
-		m.UiState.SetMode(returnMode)
+		m.UIState.SetMode(returnMode)
 		m.ChildPickerState.Filter = ""
 		m.ChildPickerState.Cursor = 0
 		return m, nil
@@ -432,7 +432,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					} else {
 						// View mode: apply changes to database immediately (existing behavior)
-						ctx, cancel := m.UiContext()
+						ctx, cancel := m.UIContext()
 						defer cancel()
 						if m.ChildPickerState.Items[i].Selected {
 							// Remove child relationship
@@ -481,7 +481,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.RelationTypePickerState.SetSelectedRelationTypeID(currentRelationTypeID)
 			m.RelationTypePickerState.SetCurrentTaskPickerIndex(m.ChildPickerState.Cursor)
-			m.RelationTypePickerState.SetReturnMode(state.ChildPickerMode)
+			m.RelationTypePickerState.ReturnMode = state.ChildPickerMode
 
 			// Set cursor to match selected relation type
 			relationTypes := renderers.GetRelationTypeOptions()
@@ -492,7 +492,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-			m.UiState.SetMode(state.RelationTypePickerMode)
+			m.UIState.SetMode(state.RelationTypePickerMode)
 		}
 		return m, nil
 
@@ -531,7 +531,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		// Return to ticket form mode without changing priority
-		m.UiState.SetMode(m.PriorityPickerState.ReturnMode())
+		m.UIState.SetMode(m.PriorityPickerState.ReturnMode)
 		m.PriorityPickerState.Reset()
 		return m, nil
 
@@ -555,7 +555,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// If we're editing a task, update it in the database
 			if m.FormState.EditingTaskID != 0 {
-				ctx, cancel := m.DbContext()
+				ctx, cancel := m.DBContext()
 				defer cancel()
 
 				// Update the task's priority in the database
@@ -589,7 +589,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Return to ticket form mode
-		m.UiState.SetMode(m.PriorityPickerState.ReturnMode())
+		m.UIState.SetMode(m.PriorityPickerState.ReturnMode)
 		return m, nil
 	}
 
@@ -607,7 +607,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		// Return to ticket form mode without changing type
-		m.UiState.SetMode(m.TypePickerState.ReturnMode())
+		m.UIState.SetMode(m.TypePickerState.ReturnMode)
 		m.TypePickerState.Reset()
 		return m, nil
 
@@ -631,7 +631,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// If we're editing a task, update it in the database
 			if m.FormState.EditingTaskID != 0 {
-				ctx, cancel := m.DbContext()
+				ctx, cancel := m.DBContext()
 				defer cancel()
 
 				// Update the task's type in the database
@@ -663,7 +663,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Return to ticket form mode
-		m.UiState.SetMode(m.TypePickerState.ReturnMode())
+		m.UIState.SetMode(m.TypePickerState.ReturnMode)
 		return m, nil
 	}
 
@@ -680,7 +680,7 @@ func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		// Return to previous picker (parent or child) without changing relation type
-		m.UiState.SetMode(m.RelationTypePickerState.ReturnMode())
+		m.UIState.SetMode(m.RelationTypePickerState.ReturnMode)
 		m.RelationTypePickerState.Reset()
 		return m, nil
 
@@ -704,7 +704,7 @@ func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Update the TaskPickerItem's RelationTypeID
 			itemIdx := m.RelationTypePickerState.CurrentTaskPickerIndex()
-			returnMode := m.RelationTypePickerState.ReturnMode()
+			returnMode := m.RelationTypePickerState.ReturnMode
 
 			if returnMode == state.ParentPickerMode {
 				// Update parent picker item
@@ -739,7 +739,7 @@ func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Return to previous picker mode
-		m.UiState.SetMode(m.RelationTypePickerState.ReturnMode())
+		m.UIState.SetMode(m.RelationTypePickerState.ReturnMode)
 		return m, nil
 	}
 
@@ -847,7 +847,7 @@ func (m *Model) reloadCurrentColumnTasks() {
 		return
 	}
 
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 	tasksByColumn, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {

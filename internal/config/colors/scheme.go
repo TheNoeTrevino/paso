@@ -12,9 +12,10 @@ type ColorScheme struct {
 	Background string `yaml:"background"`
 
 	// Semantic colors
-	Create string `yaml:"create"` // Green - creation dialogs
-	Edit   string `yaml:"edit"`   // Blue - edit dialogs
-	Delete string `yaml:"delete"` // Red - delete confirmations
+	Create  string `yaml:"create"`  // Green - creation dialogs
+	Edit    string `yaml:"edit"`    // Blue - edit dialogs
+	Delete  string `yaml:"delete"`  // Red - delete confirmations
+	Blocked string `yaml:"blocked"` // Red - blocked task indicator
 
 	// UI element colors
 	ColumnBorder     string `yaml:"column_border"`
@@ -80,6 +81,9 @@ func (c *ColorScheme) MergeFrom(other ColorScheme) {
 	}
 	if other.Delete != "" {
 		c.Delete = other.Delete
+	}
+	if other.Blocked != "" {
+		c.Blocked = other.Blocked
 	}
 	if other.ColumnBorder != "" {
 		c.ColumnBorder = other.ColumnBorder
@@ -155,6 +159,9 @@ func (c *ColorScheme) ApplyDefaults() {
 	}
 	if c.Delete == "" {
 		c.Delete = preset.Delete
+	}
+	if c.Blocked == "" {
+		c.Blocked = preset.Blocked
 	}
 	if c.ColumnBorder == "" {
 		c.ColumnBorder = preset.ColumnBorder

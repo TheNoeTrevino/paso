@@ -9,6 +9,12 @@ import (
 // RenderTabs renders a tab bar with the given tab names
 // selectedIdx indicates which tab is active (0-indexed)
 // width is the total width to fill with the tab gap
+//
+// Layout:
+//
+//	╭──────╮ ╭──────╮                      [Notification]
+//	│ Tab1 │ │ Tab2 │──────────────────────
+//	      active    inactive
 func RenderTabs(tabs []string, selectedIdx int, width int, notificationContent string) string {
 	var renderedTabs []string
 

@@ -32,22 +32,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.subscribeToEvents()
 	}
 
-	if m.UiState.Mode() == state.TicketFormMode {
+	if m.UIState.Mode() == state.TicketFormMode {
 		return m.updateTaskForm(msg)
 	}
-	if m.UiState.Mode() == state.ProjectFormMode {
+	if m.UIState.Mode() == state.ProjectFormMode {
 		return m.updateProjectForm(msg)
 	}
 	// Handle column forms early to prevent key binding conflicts (e.g., space key)
-	if m.UiState.Mode() == state.AddColumnFormMode || m.UiState.Mode() == state.EditColumnFormMode {
+	if m.UIState.Mode() == state.AddColumnFormMode || m.UIState.Mode() == state.EditColumnFormMode {
 		return m.updateColumnForm(msg)
 	}
 	// Handle comment form early to prevent key binding conflicts (e.g., space key)
-	if m.UiState.Mode() == state.CommentFormMode {
+	if m.UIState.Mode() == state.CommentFormMode {
 		return m.updateCommentForm(msg)
 	}
 	// Handle CommentEditMode early to prevent key binding conflicts (e.g., space key mapped to ViewTask)
-	if m.UiState.Mode() == state.CommentEditMode {
+	if m.UIState.Mode() == state.CommentEditMode {
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
 			return m.updateCommentEdit(keyMsg)
 		}
@@ -97,7 +97,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch m.UiState.Mode() {
+	switch m.UIState.Mode() {
 	case state.NormalMode:
 		return m.handleNormalMode(msg)
 	case state.DiscardConfirmMode:
@@ -111,14 +111,14 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case state.HelpMode:
 		switch msg.String() {
 		case m.Config.KeyMappings.ShowHelp, m.Config.KeyMappings.Quit, "esc", "enter", " ":
-			m.UiState.SetMode(state.NormalMode)
+			m.UIState.SetMode(state.NormalMode)
 			return m, nil
 		}
 		return m, nil
 	case state.TaskFormHelpMode:
 		switch msg.String() {
 		case "ctrl+h", "esc":
-			m.UiState.SetMode(state.TicketFormMode)
+			m.UIState.SetMode(state.TicketFormMode)
 			return m, nil
 		}
 		return m, nil
@@ -143,13 +143,13 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
-	m.UiState.SetWidth(msg.Width)
-	m.UiState.SetHeight(msg.Height)
+	m.UIState.SetWidth(msg.Width)
+	m.UIState.SetHeight(msg.Height)
 
 	m.NotificationState.SetWindowSize(msg.Width, msg.Height)
 
-	if m.UiState.ViewportOffset()+m.UiState.ViewportSize() > len(m.AppState.Columns()) {
-		m.UiState.SetViewportOffset(max(0, len(m.AppState.Columns())-m.UiState.ViewportSize()))
+	if m.UIState.ViewportOffset()+m.UIState.ViewportSize() > len(m.AppState.Columns()) {
+		m.UIState.SetViewportOffset(max(0, len(m.AppState.Columns())-m.UIState.ViewportSize()))
 	}
 	return m, nil
 }

@@ -32,7 +32,7 @@ type Model struct {
 	App                     *app.App        // Application container with services
 	Config                  *config.Config
 	AppState                *state.AppState
-	UiState                 *state.UIState
+	UIState                 *state.UIState
 	InputState              *state.InputState
 	FormState               *state.FormState
 	LabelPickerState        *state.LabelPickerState
@@ -162,7 +162,7 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 		App:                     application,
 		Config:                  cfg,
 		AppState:                appState,
-		UiState:                 uiState,
+		UIState:                 uiState,
 		InputState:              inputState,
 		FormState:               formState,
 		LabelPickerState:        labelPickerState,
@@ -189,8 +189,8 @@ func (m *Model) withTimeout(timeout time.Duration) (context.Context, context.Can
 	return context.WithTimeout(m.Ctx, timeout)
 }
 
-// DbContext creates a context for database operations with 30s timeout
-func (m *Model) DbContext() (context.Context, context.CancelFunc) {
+// DBContext creates a context for database operations with 30s timeout
+func (m *Model) DBContext() (context.Context, context.CancelFunc) {
 	return m.withTimeout(timeoutDB)
 }
 
@@ -207,12 +207,12 @@ func (m *Model) listenForNotifications() tea.Cmd {
 	}
 }
 
-// UiContext creates a context for UI operations with 10s timeout
-func (m *Model) UiContext() (context.Context, context.CancelFunc) {
+// UIContext creates a context for UI operations with 10s timeout
+func (m *Model) UIContext() (context.Context, context.CancelFunc) {
 	return m.withTimeout(timeoutUI)
 }
 
-// handleDBError handles database errors with context-aware messages
+// HandleDBError handles database errors with context-aware messages
 // It distinguishes between cancellation, timeout, and other errors,
 // providing appropriate user feedback for each case.
 func (m *Model) HandleDBError(err error, operation string) {
@@ -250,10 +250,10 @@ func (m Model) getCurrentTasks() []*models.TaskSummary {
 	if len(m.AppState.Columns()) == 0 {
 		return []*models.TaskSummary{}
 	}
-	if m.UiState.SelectedColumn() >= len(m.AppState.Columns()) {
+	if m.UIState.SelectedColumn() >= len(m.AppState.Columns()) {
 		return []*models.TaskSummary{}
 	}
-	currentCol := m.AppState.Columns()[m.UiState.SelectedColumn()]
+	currentCol := m.AppState.Columns()[m.UIState.SelectedColumn()]
 	tasks := m.AppState.Tasks()[currentCol.ID]
 	if tasks == nil {
 		return []*models.TaskSummary{}
@@ -268,10 +268,10 @@ func (m Model) getCurrentTask() *models.TaskSummary {
 	if len(tasks) == 0 {
 		return nil
 	}
-	if m.UiState.SelectedTask() >= len(tasks) {
+	if m.UIState.SelectedTask() >= len(tasks) {
 		return nil
 	}
-	return tasks[m.UiState.SelectedTask()]
+	return tasks[m.UIState.SelectedTask()]
 }
 
 // removeCurrentTask removes the currently selected task from the model's local state
@@ -285,16 +285,16 @@ func (m Model) removeCurrentTask() {
 
 	tasks := m.getTasksForColumn(currentCol.ID)
 
-	if len(tasks) == 0 || m.UiState.SelectedTask() >= len(tasks) {
+	if len(tasks) == 0 || m.UIState.SelectedTask() >= len(tasks) {
 		return
 	}
 
 	// Remove the task at selectedTask index
-	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UiState.SelectedTask()], tasks[m.UiState.SelectedTask()+1:]...)
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UIState.SelectedTask()], tasks[m.UIState.SelectedTask()+1:]...)
 
 	// Adjust selectedTask if we removed the last task
-	if m.UiState.SelectedTask() >= len(m.AppState.Tasks()[currentCol.ID]) && m.UiState.SelectedTask() > 0 {
-		m.UiState.SetSelectedTask(m.UiState.SelectedTask() - 1)
+	if m.UIState.SelectedTask() >= len(m.AppState.Tasks()[currentCol.ID]) && m.UIState.SelectedTask() > 0 {
+		m.UIState.SetSelectedTask(m.UIState.SelectedTask() - 1)
 	}
 }
 
@@ -304,7 +304,7 @@ func (m Model) getCurrentColumn() *models.Column {
 	if len(m.AppState.Columns()) == 0 {
 		return nil
 	}
-	selectedIdx := m.UiState.SelectedColumn()
+	selectedIdx := m.UIState.SelectedColumn()
 	if selectedIdx < 0 || selectedIdx >= len(m.AppState.Columns()) {
 		return nil
 	}
@@ -327,7 +327,7 @@ func (m Model) getTasksForColumn(columnID int) []*models.TaskSummary {
 // It also adjusts the viewportOffset if needed
 func (m Model) removeCurrentColumn() {
 	columns := m.AppState.Columns()
-	selectedCol := m.UiState.SelectedColumn()
+	selectedCol := m.UIState.SelectedColumn()
 
 	if len(columns) == 0 || selectedCol >= len(columns) {
 		return
@@ -338,14 +338,14 @@ func (m Model) removeCurrentColumn() {
 
 	// Adjust selectedColumn if we removed the last column
 	if selectedCol >= len(m.AppState.Columns()) && selectedCol > 0 {
-		m.UiState.SetSelectedColumn(selectedCol - 1)
+		m.UIState.SetSelectedColumn(selectedCol - 1)
 	}
 
 	// Reset task selection
-	m.UiState.SetSelectedTask(0)
+	m.UIState.SetSelectedTask(0)
 
 	// Adjust viewportOffset using UIState helper
-	m.UiState.AdjustViewportAfterColumnRemoval(m.UiState.SelectedColumn(), len(m.AppState.Columns()))
+	m.UIState.AdjustViewportAfterColumnRemoval(m.UIState.SelectedColumn(), len(m.AppState.Columns()))
 }
 
 // moveTaskRight moves the currently selected task to the next column (right)
@@ -370,7 +370,7 @@ func (m Model) moveTaskRight() {
 	}
 
 	// Use the new database function to move task
-	ctx, cancel := m.UiContext()
+	ctx, cancel := m.UIContext()
 	defer cancel()
 	err := m.App.TaskService.MoveTaskToNextColumn(ctx, task.ID)
 	if err != nil {
@@ -383,7 +383,7 @@ func (m Model) moveTaskRight() {
 
 	// Update local state: remove from current column
 	tasks := m.AppState.Tasks()[currentCol.ID]
-	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UiState.SelectedTask()], tasks[m.UiState.SelectedTask()+1:]...)
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UIState.SelectedTask()], tasks[m.UIState.SelectedTask()+1:]...)
 
 	// Find the next column and add task there
 	nextColID := *currentCol.NextID
@@ -393,12 +393,12 @@ func (m Model) moveTaskRight() {
 	m.AppState.Tasks()[nextColID] = append(m.AppState.Tasks()[nextColID], task)
 
 	// Move selection to follow the task
-	m.UiState.SetSelectedColumn(m.UiState.SelectedColumn() + 1)
-	m.UiState.SetSelectedTask(newPosition)
+	m.UIState.SetSelectedColumn(m.UIState.SelectedColumn() + 1)
+	m.UIState.SetSelectedTask(newPosition)
 
 	// Ensure the moved task is visible (auto-scroll viewport if needed)
-	if m.UiState.SelectedColumn() >= m.UiState.ViewportOffset()+m.UiState.ViewportSize() {
-		m.UiState.SetViewportOffset(m.UiState.ViewportOffset() + 1)
+	if m.UIState.SelectedColumn() >= m.UIState.ViewportOffset()+m.UIState.ViewportSize() {
+		m.UIState.SetViewportOffset(m.UIState.ViewportOffset() + 1)
 	}
 }
 
@@ -424,7 +424,7 @@ func (m Model) moveTaskLeft() {
 	}
 
 	// Use the new database function to move task
-	ctx, cancel := m.UiContext()
+	ctx, cancel := m.UIContext()
 	defer cancel()
 	err := m.App.TaskService.MoveTaskToPrevColumn(ctx, task.ID)
 	if err != nil {
@@ -437,7 +437,7 @@ func (m Model) moveTaskLeft() {
 
 	// Update local state: remove from current column
 	tasks := m.AppState.Tasks()[currentCol.ID]
-	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UiState.SelectedTask()], tasks[m.UiState.SelectedTask()+1:]...)
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UIState.SelectedTask()], tasks[m.UIState.SelectedTask()+1:]...)
 
 	// Find the previous column and add task there
 	prevColID := *currentCol.PrevID
@@ -447,12 +447,12 @@ func (m Model) moveTaskLeft() {
 	m.AppState.Tasks()[prevColID] = append(m.AppState.Tasks()[prevColID], task)
 
 	// Move selection to follow the task
-	m.UiState.SetSelectedColumn(m.UiState.SelectedColumn() - 1)
-	m.UiState.SetSelectedTask(newPosition)
+	m.UIState.SetSelectedColumn(m.UIState.SelectedColumn() - 1)
+	m.UIState.SetSelectedTask(newPosition)
 
 	// Ensure the moved task is visible (auto-scroll viewport if needed)
-	if m.UiState.SelectedColumn() < m.UiState.ViewportOffset() {
-		m.UiState.SetViewportOffset(m.UiState.ViewportOffset() - 1)
+	if m.UIState.SelectedColumn() < m.UIState.ViewportOffset() {
+		m.UIState.SetViewportOffset(m.UIState.ViewportOffset() - 1)
 	}
 }
 
@@ -466,13 +466,13 @@ func (m Model) moveTaskUp() {
 	}
 
 	// Check if already at top (edge case handled here for quick feedback)
-	if m.UiState.SelectedTask() == 0 {
+	if m.UIState.SelectedTask() == 0 {
 		m.NotificationState.Add(state.LevelInfo, "Task is already at the top")
 		return
 	}
 
 	// Call database swap
-	ctx, cancel := m.UiContext()
+	ctx, cancel := m.UIContext()
 	defer cancel()
 	err := m.App.TaskService.MoveTaskUp(ctx, task.ID)
 	if err != nil {
@@ -494,7 +494,7 @@ func (m Model) moveTaskUp() {
 		return
 	}
 
-	selectedIdx := m.UiState.SelectedTask()
+	selectedIdx := m.UIState.SelectedTask()
 	if selectedIdx == 0 || selectedIdx >= len(tasks) {
 		return
 	}
@@ -507,7 +507,7 @@ func (m Model) moveTaskUp() {
 	tasks[selectedIdx-1].Position = selectedIdx - 1
 
 	// Move selection to follow the task
-	m.UiState.SetSelectedTask(selectedIdx - 1)
+	m.UIState.SetSelectedTask(selectedIdx - 1)
 }
 
 // moveTaskDown moves the currently selected task down within its column
@@ -526,7 +526,7 @@ func (m Model) moveTaskDown() {
 	}
 
 	tasks := m.getTasksForColumn(currentCol.ID)
-	selectedIdx := m.UiState.SelectedTask()
+	selectedIdx := m.UIState.SelectedTask()
 
 	// Check if already at bottom
 	if selectedIdx >= len(tasks)-1 {
@@ -535,7 +535,7 @@ func (m Model) moveTaskDown() {
 	}
 
 	// Call database swap
-	ctx, cancel := m.UiContext()
+	ctx, cancel := m.UIContext()
 	defer cancel()
 	err := m.App.TaskService.MoveTaskDown(ctx, task.ID)
 	if err != nil {
@@ -554,7 +554,7 @@ func (m Model) moveTaskDown() {
 	tasks[selectedIdx+1].Position = selectedIdx + 1
 
 	// Move selection to follow the task
-	m.UiState.SetSelectedTask(selectedIdx + 1)
+	m.UIState.SetSelectedTask(selectedIdx + 1)
 }
 
 // getCurrentProject returns the currently selected project
@@ -575,7 +575,7 @@ func (m Model) switchToProject(projectIndex int) {
 	project := m.AppState.Projects()[projectIndex]
 
 	// Create context for database operations
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 
 	// Reload columns for this project
@@ -613,12 +613,12 @@ func (m Model) switchToProject(projectIndex int) {
 	}
 
 	// Reset selection state
-	m.UiState.ResetSelection()
+	m.UIState.ResetSelection()
 }
 
 // reloadProjects reloads the projects list from the database
 func (m Model) reloadProjects() {
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 	projects, err := m.App.ProjectService.GetAllProjects(ctx)
 	if err != nil {
@@ -640,7 +640,7 @@ func (m *Model) initParentPickerForForm() bool {
 	}
 
 	// Get all task references for the entire project
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 	allTasks, err := m.App.TaskService.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
@@ -706,7 +706,7 @@ func (m *Model) initChildPickerForForm() bool {
 	}
 
 	// Get all task references for the entire project
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 	allTasks, err := m.App.TaskService.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
@@ -811,7 +811,7 @@ func (m *Model) initPriorityPickerForForm() bool {
 
 	// If editing an existing task, we need to get the current priority from database
 	if m.FormState.EditingTaskID != 0 {
-		ctx, cancel := m.DbContext()
+		ctx, cancel := m.DBContext()
 		defer cancel()
 
 		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.FormState.EditingTaskID)
@@ -835,7 +835,7 @@ func (m *Model) initPriorityPickerForForm() bool {
 	m.PriorityPickerState.SetSelectedPriorityID(currentPriorityID)
 	// Set cursor to match the selected priority (adjust for 0-indexing)
 	m.PriorityPickerState.SetCursor(currentPriorityID - 1)
-	m.PriorityPickerState.SetReturnMode(state.TicketFormMode)
+	m.PriorityPickerState.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -850,7 +850,7 @@ func (m *Model) initTypePickerForForm() bool {
 
 	// If editing an existing task, we need to get the current type from database
 	if m.FormState.EditingTaskID != 0 {
-		ctx, cancel := m.DbContext()
+		ctx, cancel := m.DBContext()
 		defer cancel()
 
 		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.FormState.EditingTaskID)
@@ -874,7 +874,7 @@ func (m *Model) initTypePickerForForm() bool {
 	m.TypePickerState.SetSelectedTypeID(currentTypeID)
 	// Set cursor to match the selected type (adjust for 0-indexing)
 	m.TypePickerState.SetCursor(currentTypeID - 1)
-	m.TypePickerState.SetReturnMode(state.TicketFormMode)
+	m.TypePickerState.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -971,9 +971,9 @@ func (m *Model) syncListToKanbanSelection() {
 		tasks := m.AppState.Tasks()[col.ID]
 		for taskIdx, task := range tasks {
 			if task.ID == selectedTask.ID {
-				m.UiState.SetSelectedColumn(colIdx)
-				m.UiState.SetSelectedTask(taskIdx)
-				m.UiState.EnsureSelectionVisible(colIdx)
+				m.UIState.SetSelectedColumn(colIdx)
+				m.UIState.SetSelectedTask(taskIdx)
+				m.UIState.EnsureSelectionVisible(colIdx)
 				return
 			}
 		}
@@ -1024,7 +1024,7 @@ func (m *Model) reloadCurrentProject() {
 		return
 	}
 
-	ctx, cancel := m.DbContext()
+	ctx, cancel := m.DBContext()
 	defer cancel()
 
 	// Reload columns
@@ -1055,4 +1055,31 @@ func (m *Model) reloadCurrentProject() {
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
+}
+
+// calculateDescriptionLines calculates the optimal number of lines for the
+// description field in the task form based on current screen dimensions.
+// This follows the same layout calculation as renderTaskFormLayer but is
+// called during Update to avoid state mutation in View.
+func (m Model) calculateDescriptionLines() int {
+	const ( // WARN: keep in sync with renderTaskFormLayer
+		chromeHeight       = 6  // border (2) + padding (2) + title (1) + blanks (1)
+		descChromeOverhead = 9  // title field (3) + confirmation (3) + spacing (3)
+		minDescLines       = 5  // minimum lines to view description
+		maxDescLines       = 15 // max description lines
+	)
+
+	layerHeight := m.UIState.Height() * 8 / 10
+
+	innerHeight := layerHeight - chromeHeight
+
+	// Top left zone (title/desc) is 70% of inner height
+	topLeftHeight := innerHeight * 7 / 10
+
+	descriptionLines := min(
+		max(topLeftHeight-descChromeOverhead, minDescLines),
+		maxDescLines,
+	)
+
+	return descriptionLines
 }

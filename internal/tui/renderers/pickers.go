@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
@@ -164,7 +165,7 @@ func RenderLabelPicker(
 
 	// Help text
 	content.WriteString("\n")
-	content.WriteString(dimStyle.Render("Enter: toggle/create  Esc: close") + "\n")
+	content.WriteString(dimStyle.Render(components.PickerFooterToggleCreate) + "\n")
 
 	return content.String()
 }
@@ -209,7 +210,7 @@ func RenderLabelColorPicker(
 
 	// Help text
 	content.WriteString("\n")
-	content.WriteString(dimStyle.Render("Enter: select  Esc: cancel") + "\n")
+	content.WriteString(dimStyle.Render(components.PickerFooterSelectConfirm) + "\n")
 
 	return content.String()
 }
@@ -274,8 +275,8 @@ func RenderTaskPicker(
 			checkbox = "[x]"
 		}
 
-		// Task identifier (PROJ-123 format)
-		taskID := fmt.Sprintf("%s-%d", item.TaskRef.ProjectName, item.TaskRef.TicketNumber)
+		// not adding project key as all tasks are from the same project
+		taskID := fmt.Sprintf("%d", item.TaskRef.TicketNumber)
 
 		// For selected items, show relation type
 		var relationLabel string
@@ -341,7 +342,7 @@ func RenderTaskPicker(
 
 	// Help text
 	content.WriteString("\n")
-	content.WriteString(dimStyle.Render("Enter: toggle  Esc: close") + "\n")
+	content.WriteString(dimStyle.Render(components.PickerFooterToggle) + "\n")
 
 	return content.String()
 }
@@ -395,7 +396,7 @@ func RenderPriorityPicker(
 
 	// Help text
 	content.WriteString("\n")
-	content.WriteString(dimStyle.Render("Enter: select  Esc: cancel") + "\n")
+	content.WriteString(dimStyle.Render(components.PickerFooterSelectConfirm) + "\n")
 
 	return content.String()
 }
@@ -449,7 +450,7 @@ func RenderTypePicker(
 
 	// Help text
 	content.WriteString("\n")
-	content.WriteString(dimStyle.Render("Enter: select  Esc: cancel") + "\n")
+	content.WriteString(dimStyle.Render(components.PickerFooterSelectConfirm) + "\n")
 
 	return content.String()
 }
@@ -514,7 +515,7 @@ func RenderRelationTypePicker(
 
 	// Help text
 	content.WriteString("\n")
-	content.WriteString(dimStyle.Render("Enter: select  Esc: cancel") + "\n")
+	content.WriteString(dimStyle.Render(components.PickerFooterSelectConfirm) + "\n")
 
 	return content.String()
 }

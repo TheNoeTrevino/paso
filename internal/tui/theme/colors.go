@@ -8,6 +8,7 @@ var (
 	Subtle         string
 	Normal         string
 	Create         string
+	Blocked        string
 	Background     string
 	SelectedBorder string
 	SelectedBg     string
@@ -29,6 +30,7 @@ func Init(colors config.ColorScheme) {
 	Subtle = colors.Subtle
 	Normal = colors.Normal
 	Create = colors.Create
+	Blocked = colors.Blocked
 	Background = colors.Background
 	SelectedBorder = colors.SelectedBorder
 	SelectedBg = colors.SelectedBg
