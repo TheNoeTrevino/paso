@@ -8,11 +8,13 @@ import (
 
 	"github.com/thenoetrevino/paso/internal/app"
 	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/services/column"
 	"github.com/thenoetrevino/paso/internal/services/label"
 	"github.com/thenoetrevino/paso/internal/services/project"
 	"github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
 // TestSnapshots verifies TUI rendering consistency across different application states
@@ -43,6 +45,42 @@ func TestSnapshots(t *testing.T) {
 			name: "board_with_labels",
 			setup: func(t *testing.T, db *sql.DB) Model {
 				return setupBoardWithLabels(t, db)
+			},
+		},
+		{
+			name: "no_projects",
+			setup: func(t *testing.T, db *sql.DB) Model {
+				return setupNoProjects(t, db)
+			},
+		},
+		{
+			name: "project_no_columns",
+			setup: func(t *testing.T, db *sql.DB) Model {
+				return setupProjectNoColumns(t, db)
+			},
+		},
+		{
+			name: "connection_disconnected",
+			setup: func(t *testing.T, db *sql.DB) Model {
+				return setupConnectionDisconnected(t, db)
+			},
+		},
+		{
+			name: "connection_reconnecting",
+			setup: func(t *testing.T, db *sql.DB) Model {
+				return setupConnectionReconnecting(t, db)
+			},
+		},
+		{
+			name: "notification_error",
+			setup: func(t *testing.T, db *sql.DB) Model {
+				return setupNotificationError(t, db)
+			},
+		},
+		{
+			name: "notification_warning",
+			setup: func(t *testing.T, db *sql.DB) Model {
+				return setupNotificationWarning(t, db)
 			},
 		},
 	}
@@ -213,6 +251,154 @@ func setupBoardWithLabels(t *testing.T, db *sql.DB) Model {
 	return m
 }
 
+// setupNoProjects creates a model with no projects at all
+func setupNoProjects(t *testing.T, db *sql.DB) Model {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Create app container but don't create any projects
+	appContainer := createAppContainer(db)
+
+	cfg, _ := config.Load()
+	m := InitialModel(ctx, appContainer, cfg, nil)
+
+	// Explicitly set empty state
+	m.AppState.SetColumns([]*models.Column{})
+	m.AppState.SetTasks(make(map[int][]*models.TaskSummary))
+	m.AppState.SetLabels([]*models.Label{})
+
+	return m
+}
+
+// setupProjectNoColumns creates a model with a project but no columns
+func setupProjectNoColumns(t *testing.T, db *sql.DB) Model {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Create project but don't create any columns
+	projectID := testutil.CreateTestProject(t, db, "Empty Project")
+	appContainer := createAppContainer(db)
+
+	// Delete default columns that were auto-created
+	_, err := db.ExecContext(ctx, "DELETE FROM columns WHERE project_id = ?", projectID)
+	if err != nil {
+		t.Fatalf("Failed to delete columns: %v", err)
+	}
+
+	cfg, _ := config.Load()
+	m := InitialModel(ctx, appContainer, cfg, nil)
+
+	// Set empty columns
+	m.AppState.SetColumns([]*models.Column{})
+	m.AppState.SetTasks(make(map[int][]*models.TaskSummary))
+	m.AppState.SetLabels([]*models.Label{})
+
+	return m
+}
+
+// setupConnectionDisconnected creates a model with disconnected daemon status
+func setupConnectionDisconnected(t *testing.T, db *sql.DB) Model {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	projectID := testutil.CreateTestProject(t, db, "Test Project")
+	appContainer := createAppContainer(db)
+
+	columns, _ := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
+	tasks, _ := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	labels, _ := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+
+	cfg, _ := config.Load()
+	// Pass nil for eventClient to simulate disconnected state
+	m := InitialModel(ctx, appContainer, cfg, nil)
+
+	m.AppState.SetColumns(columns)
+	m.AppState.SetTasks(tasks)
+	m.AppState.SetLabels(labels)
+
+	// Explicitly set disconnected status
+	m.ConnectionState.SetStatus(state.Disconnected)
+
+	return m
+}
+
+// setupConnectionReconnecting creates a model in reconnecting state
+func setupConnectionReconnecting(t *testing.T, db *sql.DB) Model {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	projectID := testutil.CreateTestProject(t, db, "Test Project")
+	appContainer := createAppContainer(db)
+
+	columns, _ := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
+	tasks, _ := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	labels, _ := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+
+	cfg, _ := config.Load()
+	m := InitialModel(ctx, appContainer, cfg, nil)
+
+	m.AppState.SetColumns(columns)
+	m.AppState.SetTasks(tasks)
+	m.AppState.SetLabels(labels)
+
+	// Explicitly set reconnecting status
+	m.ConnectionState.SetStatus(state.Reconnecting)
+
+	return m
+}
+
+// setupNotificationError creates a model with an error notification
+func setupNotificationError(t *testing.T, db *sql.DB) Model {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	projectID := testutil.CreateTestProject(t, db, "Test Project")
+	appContainer := createAppContainer(db)
+
+	columns, _ := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
+	tasks, _ := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	labels, _ := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+
+	cfg, _ := config.Load()
+	m := InitialModel(ctx, appContainer, cfg, nil)
+
+	m.AppState.SetColumns(columns)
+	m.AppState.SetTasks(tasks)
+	m.AppState.SetLabels(labels)
+
+	// Add error notification
+	m.UI.Notification.SetWindowSize(80, 24)
+	m.UI.Notification.Add(state.LevelError, "Failed to save task: database connection lost")
+
+	return m
+}
+
+// setupNotificationWarning creates a model with a warning notification
+func setupNotificationWarning(t *testing.T, db *sql.DB) Model {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	projectID := testutil.CreateTestProject(t, db, "Test Project")
+	appContainer := createAppContainer(db)
+
+	columns, _ := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
+	tasks, _ := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	labels, _ := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+
+	cfg, _ := config.Load()
+	m := InitialModel(ctx, appContainer, cfg, nil)
+
+	m.AppState.SetColumns(columns)
+	m.AppState.SetTasks(tasks)
+	m.AppState.SetLabels(labels)
+
+	// Add warning notification
+	m.UI.Notification.SetWindowSize(80, 24)
+	m.UI.Notification.Add(state.LevelWarning, "Daemon connection unstable - some features may be limited")
+
+	return m
+}
+
 // createAppContainer creates an app container with all services
 func createAppContainer(db *sql.DB) *app.App {
 	return &app.App{
@@ -233,6 +419,13 @@ func TestSnapshotRegressions(t *testing.T) {
 		"board_with_tasks",
 		"board_with_multiple_tasks",
 		"board_with_labels",
+		// New snapshots for error, empty, and connection states
+		"no_projects",
+		"project_no_columns",
+		"connection_disconnected",
+		"connection_reconnecting",
+		"notification_error",
+		"notification_warning",
 	}
 
 	for _, name := range snapshotNames {
