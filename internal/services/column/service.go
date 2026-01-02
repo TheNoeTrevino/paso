@@ -436,8 +436,8 @@ func (s *service) DeleteColumn(ctx context.Context, id int) error {
 		return fmt.Errorf("failed to get column info: %w", err)
 	}
 
-	prevID := database.InterfaceToIntPtr(linkedListInfo.PrevID)
-	nextID := database.InterfaceToIntPtr(linkedListInfo.NextID)
+	prevID := database.AnyToIntPtr(linkedListInfo.PrevID)
+	nextID := database.AnyToIntPtr(linkedListInfo.NextID)
 	projectID := int(linkedListInfo.ProjectID)
 
 	// Use WithTx helper for linked list updates
