@@ -28,29 +28,19 @@ const (
 
 // Model represents the application state for the TUI
 type Model struct {
-	Ctx                     context.Context // Application context for cancellation and timeouts
-	App                     *app.App        // Application container with services
-	Config                  *config.Config
-	AppState                *state.AppState
-	UIState                 *state.UIState
-	InputState              *state.InputState
-	FormState               *state.FormState
-	LabelPickerState        *state.LabelPickerState
-	ParentPickerState       *state.TaskPickerState
-	ChildPickerState        *state.TaskPickerState
-	PriorityPickerState     *state.PriorityPickerState
-	TypePickerState         *state.TypePickerState
-	RelationTypePickerState *state.RelationTypePickerState
-	CommentState            *state.CommentState
-	NotificationState       *state.NotificationState
-	SearchState             *state.SearchState
-	ListViewState           *state.ListViewState
-	StatusPickerState       *state.StatusPickerState
-	ConnectionState         *state.ConnectionState      // Connection status to daemon
-	EventClient             events.EventPublisher       // Connection to daemon for live updates
-	EventChan               <-chan events.Event         // Channel for receiving events
-	NotifyChan              chan events.NotificationMsg // Channel for user-facing notifications from events
-	SubscriptionStarted     bool                        // Track if we've started listening
+	Ctx                 context.Context // Application context for cancellation and timeouts
+	App                 *app.App        // Application container with services
+	Config              *config.Config
+	AppState            *state.AppState
+	UIState             *state.UIState
+	Pickers             *state.PickerStates         // Grouped picker states (Label, Parent, Child, Priority, Type, RelationType, Status)
+	Forms               *state.FormStates           // Grouped form states (Form, Input, Comment)
+	UI                  *state.UIElements           // Grouped UI element states (Notification, Search, ListView)
+	ConnectionState     *state.ConnectionState      // Connection status to daemon
+	EventClient         events.EventPublisher       // Connection to daemon for live updates
+	EventChan           <-chan events.Event         // Channel for receiving events
+	NotifyChan          chan events.NotificationMsg // Channel for user-facing notifications from events
+	SubscriptionStarted bool                        // Track if we've started listening
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
@@ -97,19 +87,9 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	// Initialize new state objects
 	appState := state.NewAppState(projects, 0, columns, tasks, labels)
 	uiState := state.NewUIState()
-	inputState := state.NewInputState()
-	formState := state.NewFormState()
-	labelPickerState := state.NewLabelPickerState()
-	parentPickerState := state.NewTaskPickerState()
-	childPickerState := state.NewTaskPickerState()
-	priorityPickerState := state.NewPriorityPickerState()
-	typePickerState := state.NewTypePickerState()
-	relationTypePickerState := state.NewRelationTypePickerState()
-	commentState := state.NewCommentState()
-	notificationState := state.NewNotificationState()
-	searchState := state.NewSearchState()
-	listViewState := state.NewListViewState()
-	statusPickerState := state.NewStatusPickerState()
+	pickerStates := state.NewPickerStates()
+	formStates := state.NewFormStates()
+	uiElements := state.NewUIElements()
 
 	// Determine initial connection status based on event client availability
 	initialStatus := state.Disconnected
@@ -158,29 +138,19 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	}
 
 	return Model{
-		Ctx:                     ctx, // Store root context
-		App:                     application,
-		Config:                  cfg,
-		AppState:                appState,
-		UIState:                 uiState,
-		InputState:              inputState,
-		FormState:               formState,
-		LabelPickerState:        labelPickerState,
-		ParentPickerState:       parentPickerState,
-		ChildPickerState:        childPickerState,
-		PriorityPickerState:     priorityPickerState,
-		TypePickerState:         typePickerState,
-		RelationTypePickerState: relationTypePickerState,
-		CommentState:            commentState,
-		NotificationState:       notificationState,
-		SearchState:             searchState,
-		ListViewState:           listViewState,
-		StatusPickerState:       statusPickerState,
-		ConnectionState:         connectionState,
-		EventClient:             eventClient,
-		EventChan:               eventChan,
-		NotifyChan:              notifyChan,
-		SubscriptionStarted:     false,
+		Ctx:                 ctx, // Store root context
+		App:                 application,
+		Config:              cfg,
+		AppState:            appState,
+		UIState:             uiState,
+		Pickers:             pickerStates,
+		Forms:               formStates,
+		UI:                  uiElements,
+		ConnectionState:     connectionState,
+		EventClient:         eventClient,
+		EventChan:           eventChan,
+		NotifyChan:          notifyChan,
+		SubscriptionStarted: false,
 	}
 }
 
@@ -229,12 +199,12 @@ func (m *Model) HandleDBError(err error, operation string) {
 
 	if errors.Is(err, context.DeadlineExceeded) {
 		// Operation timed out - show user-friendly message
-		m.NotificationState.Add(state.LevelError, fmt.Sprintf("%s timed out. Please try again.", operation))
+		m.UI.Notification.Add(state.LevelError, fmt.Sprintf("%s timed out. Please try again.", operation))
 		return
 	}
 
 	// Other errors - show detailed error message
-	m.NotificationState.Add(state.LevelError, fmt.Sprintf("%s failed: %v", operation, err))
+	m.UI.Notification.Add(state.LevelError, fmt.Sprintf("%s failed: %v", operation, err))
 }
 
 // Init initializes the Bubble Tea application
@@ -365,7 +335,7 @@ func (m Model) moveTaskRight() {
 	}
 	if currentCol.NextID == nil {
 		// Already at last column - show notification
-		m.NotificationState.Add(state.LevelInfo, "There are no more columns to move to.")
+		m.UI.Notification.Add(state.LevelInfo, "There are no more columns to move to.")
 		return
 	}
 
@@ -376,7 +346,7 @@ func (m Model) moveTaskRight() {
 	if err != nil {
 		slog.Error("Error moving task to next column", "error", err)
 		if err != models.ErrAlreadyLastColumn {
-			m.NotificationState.Add(state.LevelError, "Failed to move task to next column")
+			m.UI.Notification.Add(state.LevelError, "Failed to move task to next column")
 		}
 		return
 	}
@@ -419,7 +389,7 @@ func (m Model) moveTaskLeft() {
 	}
 	if currentCol.PrevID == nil {
 		// Already at first column - show notification
-		m.NotificationState.Add(state.LevelInfo, "There are no more columns to move to.")
+		m.UI.Notification.Add(state.LevelInfo, "There are no more columns to move to.")
 		return
 	}
 
@@ -430,7 +400,7 @@ func (m Model) moveTaskLeft() {
 	if err != nil {
 		slog.Error("Error moving task to previous column", "error", err)
 		if err != models.ErrAlreadyFirstColumn {
-			m.NotificationState.Add(state.LevelError, "Failed to move task to previous column")
+			m.UI.Notification.Add(state.LevelError, "Failed to move task to previous column")
 		}
 		return
 	}
@@ -467,7 +437,7 @@ func (m Model) moveTaskUp() {
 
 	// Check if already at top (edge case handled here for quick feedback)
 	if m.UIState.SelectedTask() == 0 {
-		m.NotificationState.Add(state.LevelInfo, "Task is already at the top")
+		m.UI.Notification.Add(state.LevelInfo, "Task is already at the top")
 		return
 	}
 
@@ -478,7 +448,7 @@ func (m Model) moveTaskUp() {
 	if err != nil {
 		slog.Error("Error moving task up", "error", err)
 		if err != models.ErrAlreadyFirstTask {
-			m.NotificationState.Add(state.LevelError, "Failed to move task up")
+			m.UI.Notification.Add(state.LevelError, "Failed to move task up")
 		}
 		return
 	}
@@ -530,7 +500,7 @@ func (m Model) moveTaskDown() {
 
 	// Check if already at bottom
 	if selectedIdx >= len(tasks)-1 {
-		m.NotificationState.Add(state.LevelInfo, "Task is already at the bottom")
+		m.UI.Notification.Add(state.LevelInfo, "Task is already at the bottom")
 		return
 	}
 
@@ -541,7 +511,7 @@ func (m Model) moveTaskDown() {
 	if err != nil {
 		slog.Error("Error moving task down", "error", err)
 		if err != models.ErrAlreadyLastTask {
-			m.NotificationState.Add(state.LevelError, "Failed to move task down")
+			m.UI.Notification.Add(state.LevelError, "Failed to move task down")
 		}
 		return
 	}
@@ -650,14 +620,14 @@ func (m *Model) initParentPickerForForm() bool {
 
 	// Build map of currently selected parent task IDs and their relation types from form state
 	parentTaskMap := make(map[int]int) // map[taskID]relationTypeID
-	for _, parentRef := range m.FormState.FormParentRefs {
+	for _, parentRef := range m.Forms.Form.FormParentRefs {
 		parentTaskMap[parentRef.ID] = parentRef.RelationTypeID
 	}
 
 	// Build map of child task IDs to exclude (prevent circular dependencies)
 	// A task that is already a child cannot become a parent
 	childTaskMap := make(map[int]bool)
-	for _, childID := range m.FormState.FormChildIDs {
+	for _, childID := range m.Forms.Form.FormChildIDs {
 		childTaskMap[childID] = true
 	}
 
@@ -666,7 +636,7 @@ func (m *Model) initParentPickerForForm() bool {
 	items := make([]state.TaskPickerItem, 0, len(allTasks))
 	for _, task := range allTasks {
 		// In edit mode, exclude the task being edited
-		if m.FormState.EditingTaskID != 0 && task.ID == m.FormState.EditingTaskID {
+		if m.Forms.Form.EditingTaskID != 0 && task.ID == m.Forms.Form.EditingTaskID {
 			continue
 		}
 
@@ -684,12 +654,12 @@ func (m *Model) initParentPickerForForm() bool {
 	}
 
 	// Initialize ParentPickerState
-	m.ParentPickerState.Items = items
-	m.ParentPickerState.TaskID = m.FormState.EditingTaskID // 0 for create mode
-	m.ParentPickerState.Cursor = 0
-	m.ParentPickerState.Filter = ""
-	m.ParentPickerState.PickerType = "parent"
-	m.ParentPickerState.ReturnMode = state.TicketFormMode
+	m.Pickers.Parent.Items = items
+	m.Pickers.Parent.TaskID = m.Forms.Form.EditingTaskID // 0 for create mode
+	m.Pickers.Parent.Cursor = 0
+	m.Pickers.Parent.Filter = ""
+	m.Pickers.Parent.PickerType = "parent"
+	m.Pickers.Parent.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -716,14 +686,14 @@ func (m *Model) initChildPickerForForm() bool {
 
 	// Build map of currently selected child task IDs and their relation types from form state
 	childTaskMap := make(map[int]int) // map[taskID]relationTypeID
-	for _, childRef := range m.FormState.FormChildRefs {
+	for _, childRef := range m.Forms.Form.FormChildRefs {
 		childTaskMap[childRef.ID] = childRef.RelationTypeID
 	}
 
 	// Build map of parent task IDs to exclude (prevent circular dependencies)
 	// A task that is already a parent cannot become a child
 	parentTaskMap := make(map[int]bool)
-	for _, parentID := range m.FormState.FormParentIDs {
+	for _, parentID := range m.Forms.Form.FormParentIDs {
 		parentTaskMap[parentID] = true
 	}
 
@@ -732,7 +702,7 @@ func (m *Model) initChildPickerForForm() bool {
 	items := make([]state.TaskPickerItem, 0, len(allTasks))
 	for _, task := range allTasks {
 		// In edit mode, exclude the task being edited
-		if m.FormState.EditingTaskID != 0 && task.ID == m.FormState.EditingTaskID {
+		if m.Forms.Form.EditingTaskID != 0 && task.ID == m.Forms.Form.EditingTaskID {
 			continue
 		}
 		if parentTaskMap[task.ID] {
@@ -749,12 +719,12 @@ func (m *Model) initChildPickerForForm() bool {
 	}
 
 	// Initialize ChildPickerState
-	m.ChildPickerState.Items = items
-	m.ChildPickerState.TaskID = m.FormState.EditingTaskID // 0 for create mode
-	m.ChildPickerState.Cursor = 0
-	m.ChildPickerState.Filter = ""
-	m.ChildPickerState.PickerType = "child"
-	m.ChildPickerState.ReturnMode = state.TicketFormMode
+	m.Pickers.Child.Items = items
+	m.Pickers.Child.TaskID = m.Forms.Form.EditingTaskID // 0 for create mode
+	m.Pickers.Child.Cursor = 0
+	m.Pickers.Child.Filter = ""
+	m.Pickers.Child.PickerType = "child"
+	m.Pickers.Child.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -772,7 +742,7 @@ func (m *Model) initLabelPickerForForm() bool {
 
 	// Build map of currently selected label IDs from form state
 	labelIDMap := make(map[int]bool)
-	for _, labelID := range m.FormState.FormLabelIDs {
+	for _, labelID := range m.Forms.Form.FormLabelIDs {
 		labelIDMap[labelID] = true
 	}
 
@@ -786,11 +756,11 @@ func (m *Model) initLabelPickerForForm() bool {
 	}
 
 	// Initialize LabelPickerState
-	m.LabelPickerState.Items = items
-	m.LabelPickerState.TaskID = m.FormState.EditingTaskID // 0 for create mode
-	m.LabelPickerState.Cursor = 0
-	m.LabelPickerState.Filter = ""
-	m.LabelPickerState.ReturnMode = state.TicketFormMode
+	m.Pickers.Label.Items = items
+	m.Pickers.Label.TaskID = m.Forms.Form.EditingTaskID // 0 for create mode
+	m.Pickers.Label.Cursor = 0
+	m.Pickers.Label.Filter = ""
+	m.Pickers.Label.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -798,7 +768,7 @@ func (m *Model) initLabelPickerForForm() bool {
 // getFilteredLabelPickerItems returns label picker items filtered by the current filter text
 func (m *Model) getFilteredLabelPickerItems() []state.LabelPickerItem {
 	// Delegate to LabelPickerState which now owns this logic
-	return m.LabelPickerState.GetFilteredItems()
+	return m.Pickers.Label.GetFilteredItems()
 }
 
 // initPriorityPickerForForm initializes the priority picker for use in task form mode.
@@ -810,11 +780,11 @@ func (m *Model) initPriorityPickerForForm() bool {
 	currentPriorityID := 3 // Default to medium
 
 	// If editing an existing task, we need to get the current priority from database
-	if m.FormState.EditingTaskID != 0 {
+	if m.Forms.Form.EditingTaskID != 0 {
 		ctx, cancel := m.DBContext()
 		defer cancel()
 
-		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.FormState.EditingTaskID)
+		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.Forms.Form.EditingTaskID)
 		if err != nil {
 			slog.Error("Error loading task detail for priority picker", "error", err)
 			return false
@@ -832,10 +802,10 @@ func (m *Model) initPriorityPickerForForm() bool {
 	}
 
 	// Initialize PriorityPickerState
-	m.PriorityPickerState.SetSelectedPriorityID(currentPriorityID)
+	m.Pickers.Priority.SetSelectedPriorityID(currentPriorityID)
 	// Set cursor to match the selected priority (adjust for 0-indexing)
-	m.PriorityPickerState.SetCursor(currentPriorityID - 1)
-	m.PriorityPickerState.ReturnMode = state.TicketFormMode
+	m.Pickers.Priority.SetCursor(currentPriorityID - 1)
+	m.Pickers.Priority.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -849,11 +819,11 @@ func (m *Model) initTypePickerForForm() bool {
 	currentTypeID := 1 // Default to task
 
 	// If editing an existing task, we need to get the current type from database
-	if m.FormState.EditingTaskID != 0 {
+	if m.Forms.Form.EditingTaskID != 0 {
 		ctx, cancel := m.DBContext()
 		defer cancel()
 
-		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.FormState.EditingTaskID)
+		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.Forms.Form.EditingTaskID)
 		if err != nil {
 			slog.Error("Error loading task detail for type picker", "error", err)
 			return false
@@ -871,10 +841,10 @@ func (m *Model) initTypePickerForForm() bool {
 	}
 
 	// Initialize TypePickerState
-	m.TypePickerState.SetSelectedTypeID(currentTypeID)
+	m.Pickers.Type.SetSelectedTypeID(currentTypeID)
 	// Set cursor to match the selected type (adjust for 0-indexing)
-	m.TypePickerState.SetCursor(currentTypeID - 1)
-	m.TypePickerState.ReturnMode = state.TicketFormMode
+	m.Pickers.Type.SetCursor(currentTypeID - 1)
+	m.Pickers.Type.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -901,13 +871,13 @@ func (m Model) buildListViewRows() []renderers.ListViewRow {
 
 // sortListViewRows sorts the rows based on current sort settings.
 func (m Model) sortListViewRows(rows []renderers.ListViewRow) {
-	if m.ListViewState.SortField() == state.SortNone {
+	if m.UI.ListView.SortField() == state.SortNone {
 		return
 	}
 
 	sort.Slice(rows, func(i, j int) bool {
 		var cmp int
-		switch m.ListViewState.SortField() {
+		switch m.UI.ListView.SortField() {
 		case state.SortByTitle:
 			cmp = strings.Compare(rows[i].Task.Title, rows[j].Task.Title)
 		case state.SortByStatus:
@@ -916,7 +886,7 @@ func (m Model) sortListViewRows(rows []renderers.ListViewRow) {
 			return false
 		}
 
-		if m.ListViewState.SortOrder() == state.SortDesc {
+		if m.UI.ListView.SortOrder() == state.SortDesc {
 			cmp = -cmp
 		}
 		return cmp < 0
@@ -928,24 +898,24 @@ func (m Model) sortListViewRows(rows []renderers.ListViewRow) {
 func (m *Model) syncKanbanToListSelection() {
 	rows := m.buildListViewRows()
 	if len(rows) == 0 {
-		m.ListViewState.SetSelectedRow(0)
+		m.UI.ListView.SetSelectedRow(0)
 		return
 	}
 
 	// Find the task that matches the current kanban selection
 	currentTask := m.getCurrentTask()
 	if currentTask == nil {
-		m.ListViewState.SetSelectedRow(0)
+		m.UI.ListView.SetSelectedRow(0)
 		return
 	}
 
 	for i, row := range rows {
 		if row.Task.ID == currentTask.ID {
-			m.ListViewState.SetSelectedRow(i)
+			m.UI.ListView.SetSelectedRow(i)
 			return
 		}
 	}
-	m.ListViewState.SetSelectedRow(0)
+	m.UI.ListView.SetSelectedRow(0)
 }
 
 // syncListToKanbanSelection maps the current list row to kanban column/task selection.
@@ -956,7 +926,7 @@ func (m *Model) syncListToKanbanSelection() {
 		return
 	}
 
-	selectedRow := m.ListViewState.SelectedRow()
+	selectedRow := m.UI.ListView.SelectedRow()
 	if selectedRow >= len(rows) {
 		selectedRow = len(rows) - 1
 	}
@@ -993,7 +963,7 @@ func (m Model) getTaskFromListRow(rowIdx int) *models.TaskSummary {
 // getSelectedListTask returns the currently selected task in list view.
 // This is a convenience method that uses getTaskFromListRow with the current selection.
 func (m Model) getSelectedListTask() *models.TaskSummary {
-	return m.getTaskFromListRow(m.ListViewState.SelectedRow())
+	return m.getTaskFromListRow(m.UI.ListView.SelectedRow())
 }
 
 // subscribeToEvents returns a command that listens for events from the daemon
