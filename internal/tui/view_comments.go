@@ -11,7 +11,7 @@ import (
 
 // renderCommentsViewContent renders the full comments view content (without layer wrapping)
 func (m Model) renderCommentsViewContent(width, height int) string {
-	if m.CommentState.TaskID == 0 {
+	if m.Forms.Comment.TaskID == 0 {
 		return "Error: No task selected"
 	}
 
@@ -23,7 +23,7 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 	}
 
 	// Title bar
-	commentCount := len(m.CommentState.Items)
+	commentCount := len(m.Forms.Comment.Items)
 	titleText := fmt.Sprintf("Task Comments - \"%s\" (%d comments)", taskTitle, commentCount)
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
@@ -31,7 +31,7 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 	titleBar := titleStyle.Render(titleText)
 
 	// Empty state
-	if m.CommentState.IsEmpty() {
+	if m.Forms.Comment.IsEmpty() {
 		emptyContent := renderEmptyCommentsState(width, height-4) // Reserve for title + help
 		helpText := renderCommentsHelpText()
 		return lipgloss.JoinVertical(lipgloss.Left, titleBar, "", emptyContent, "", helpText)
@@ -49,17 +49,17 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 	// Calculate which comments to render based on scroll position
 	availableHeight := height - 4 // Reserve for title + help
 	startIdx, endIdx, _ := calculateVisibleCommentRange(
-		m.CommentState.ScrollOffset,
-		len(m.CommentState.Items),
+		m.Forms.Comment.ScrollOffset,
+		len(m.Forms.Comment.Items),
 		availableHeight,
 	)
 
 	// Render only visible comment cards
 	var cards []string
-	visibleItems := m.CommentState.Items[startIdx:endIdx]
+	visibleItems := m.Forms.Comment.Items[startIdx:endIdx]
 	for i, item := range visibleItems {
 		actualIdx := startIdx + i
-		selected := (actualIdx == m.CommentState.Cursor)
+		selected := (actualIdx == m.Forms.Comment.Cursor)
 		card := components.RenderCommentCard(item.Comment, selected, cardWidth)
 		cards = append(cards, card)
 	}
@@ -69,10 +69,10 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 
 	// Calculate scroll indicators
 	scrollIndicators := calculateCommentsScrollIndicators(
-		m.CommentState.ScrollOffset,
+		m.Forms.Comment.ScrollOffset,
 		startIdx,
 		endIdx,
-		len(m.CommentState.Items),
+		len(m.Forms.Comment.Items),
 	)
 
 	// Combine content

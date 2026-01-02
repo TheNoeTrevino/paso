@@ -66,7 +66,7 @@ func MoveTaskRight(m *tui.Model) {
 	}
 	if currentCol.NextID == nil {
 		// Already at last column - show notification
-		m.NotificationState.Add(state.LevelInfo, "There are no more columns to move to.")
+		m.UI.Notification.Add(state.LevelInfo, "There are no more columns to move to.")
 		return
 	}
 
@@ -77,7 +77,7 @@ func MoveTaskRight(m *tui.Model) {
 	if err != nil {
 		slog.Error("Error moving task to next column", "error", err)
 		if err != models.ErrAlreadyLastColumn {
-			m.NotificationState.Add(state.LevelError, "Failed to move task to next column")
+			m.UI.Notification.Add(state.LevelError, "Failed to move task to next column")
 		}
 		return
 	}
@@ -117,7 +117,7 @@ func MoveTaskLeft(m *tui.Model) {
 	}
 	if currentCol.PrevID == nil {
 		// Already at first column - show notification
-		m.NotificationState.Add(state.LevelInfo, "There are no more columns to move to.")
+		m.UI.Notification.Add(state.LevelInfo, "There are no more columns to move to.")
 		return
 	}
 
@@ -128,7 +128,7 @@ func MoveTaskLeft(m *tui.Model) {
 	if err != nil {
 		slog.Error("Error moving task to previous column", "error", err)
 		if err != models.ErrAlreadyFirstColumn {
-			m.NotificationState.Add(state.LevelError, "Failed to move task to previous column")
+			m.UI.Notification.Add(state.LevelError, "Failed to move task to previous column")
 		}
 		return
 	}
@@ -162,7 +162,7 @@ func MoveTaskUp(m *tui.Model) {
 
 	// Check if already at top (edge case handled here for quick feedback)
 	if m.UIState.SelectedTask() == 0 {
-		m.NotificationState.Add(state.LevelInfo, "Task is already at the top")
+		m.UI.Notification.Add(state.LevelInfo, "Task is already at the top")
 		return
 	}
 
@@ -173,7 +173,7 @@ func MoveTaskUp(m *tui.Model) {
 	if err != nil {
 		slog.Error("Error moving task up", "error", err)
 		if err != models.ErrAlreadyFirstTask {
-			m.NotificationState.Add(state.LevelError, "Failed to move task up")
+			m.UI.Notification.Add(state.LevelError, "Failed to move task up")
 		}
 		return
 	}
@@ -222,7 +222,7 @@ func MoveTaskDown(m *tui.Model) {
 
 	// Check if already at bottom
 	if selectedIdx >= len(tasks)-1 {
-		m.NotificationState.Add(state.LevelInfo, "Task is already at the bottom")
+		m.UI.Notification.Add(state.LevelInfo, "Task is already at the bottom")
 		return
 	}
 
@@ -233,7 +233,7 @@ func MoveTaskDown(m *tui.Model) {
 	if err != nil {
 		slog.Error("Error moving task down", "error", err)
 		if err != models.ErrAlreadyLastTask {
-			m.NotificationState.Add(state.LevelError, "Failed to move task down")
+			m.UI.Notification.Add(state.LevelError, "Failed to move task down")
 		}
 		return
 	}

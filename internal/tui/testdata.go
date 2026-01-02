@@ -92,19 +92,29 @@ func createTestModelWithProjects(numProjects int, columnsPerProject int, tasksPe
 	}
 
 	return Model{
-		Ctx:               context.Background(),
-		App:               nil, // No app needed for subscription tests
-		Config:            cfg,
-		AppState:          state.NewAppState(projects, 0, columns, tasks, nil),
-		UIState:           state.NewUIState(),
-		InputState:        state.NewInputState(),
-		FormState:         state.NewFormState(),
-		LabelPickerState:  state.NewLabelPickerState(),
-		ParentPickerState: state.NewTaskPickerState(),
-		ChildPickerState:  state.NewTaskPickerState(),
-		NotificationState: state.NewNotificationState(),
-		SearchState:       state.NewSearchState(),
-		ListViewState:     state.NewListViewState(),
-		StatusPickerState: state.NewStatusPickerState(),
+		Ctx:      context.Background(),
+		App:      nil, // No app needed for subscription tests
+		Config:   cfg,
+		AppState: state.NewAppState(projects, 0, columns, tasks, nil),
+		UIState:  state.NewUIState(),
+		Pickers: &state.PickerStates{
+			Label:        state.NewLabelPickerState(),
+			Parent:       state.NewTaskPickerState(),
+			Child:        state.NewTaskPickerState(),
+			Priority:     state.NewPriorityPickerState(),
+			Type:         state.NewTypePickerState(),
+			RelationType: state.NewRelationTypePickerState(),
+			Status:       state.NewStatusPickerState(),
+		},
+		Forms: &state.FormStates{
+			Input:   state.NewInputState(),
+			Form:    state.NewFormState(),
+			Comment: state.NewCommentState(),
+		},
+		UI: &state.UIElements{
+			Notification: state.NewNotificationState(),
+			Search:       state.NewSearchState(),
+			ListView:     state.NewListViewState(),
+		},
 	}
 }

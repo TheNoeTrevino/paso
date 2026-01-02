@@ -13,7 +13,7 @@ import (
 
 // renderTaskFormLayer renders the task creation/edit form modal as a layer
 func (m Model) renderTaskFormLayer() *lipgloss.Layer {
-	if m.FormState.TaskForm == nil {
+	if m.Forms.Form.TaskForm == nil {
 		return nil
 	}
 
@@ -42,7 +42,7 @@ func (m Model) renderTaskFormLayer() *lipgloss.Layer {
 	helpHintStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
 
 	var formTitle string
-	if m.FormState.EditingTaskID == 0 {
+	if m.Forms.Form.EditingTaskID == 0 {
 		formTitle = titleStyle.Render("Create New Task")
 	} else {
 		formTitle = titleStyle.Render("Edit Task")
@@ -74,11 +74,11 @@ func (m Model) renderTaskFormLayer() *lipgloss.Layer {
 
 // renderProjectFormLayer renders the project creation form modal as a layer
 func (m Model) renderProjectFormLayer() *lipgloss.Layer {
-	if m.FormState.ProjectForm == nil {
+	if m.Forms.Form.ProjectForm == nil {
 		return nil
 	}
 
-	formView := m.FormState.ProjectForm.View()
+	formView := m.Forms.Form.ProjectForm.View()
 
 	formBox := components.ProjectFormBoxStyle.
 		Width(m.UIState.Width() * 3 / 4).
@@ -90,11 +90,11 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 
 // renderColumnFormLayer renders the column creation/rename form modal as a layer
 func (m Model) renderColumnFormLayer() *lipgloss.Layer {
-	if m.FormState.ColumnForm == nil {
+	if m.Forms.Form.ColumnForm == nil {
 		return nil
 	}
 
-	formView := m.FormState.ColumnForm.View()
+	formView := m.Forms.Form.ColumnForm.View()
 
 	var title string
 	if m.UIState.Mode() == state.AddColumnFormMode {
@@ -222,14 +222,14 @@ func (m Model) renderCommentsViewLayer() *lipgloss.Layer {
 
 // renderCommentFormLayer renders the comment creation/edit form modal as a layer
 func (m Model) renderCommentFormLayer() *lipgloss.Layer {
-	if m.FormState.CommentForm == nil {
+	if m.Forms.Form.CommentForm == nil {
 		return nil
 	}
 
-	formView := m.FormState.CommentForm.View()
+	formView := m.Forms.Form.CommentForm.View()
 
 	var title string
-	if m.FormState.EditingCommentID == 0 {
+	if m.Forms.Form.EditingCommentID == 0 {
 		title = "New Comment"
 	} else {
 		title = "Edit Comment"
@@ -359,7 +359,7 @@ func (m Model) createPickerLayer(config pickerLayerConfig) *lipgloss.Layer {
 
 // renderLabelPickerLayer renders the label picker modal as a layer
 func (m Model) renderLabelPickerLayer() *lipgloss.Layer {
-	if m.LabelPickerState.CreateMode {
+	if m.Pickers.Label.CreateMode {
 		return m.createPickerLayer(pickerLayerConfig{
 			dimensionStrategy: dynamicPickerDimensions{
 				itemCount: layers.PickerColorDefaultItemCount,
@@ -370,8 +370,8 @@ func (m Model) renderLabelPickerLayer() *lipgloss.Layer {
 			contentRenderer: func(width, height int) string {
 				return renderers.RenderLabelColorPicker(
 					renderers.GetDefaultLabelColors(),
-					m.LabelPickerState.ColorIdx,
-					m.FormState.FormLabelName,
+					m.Pickers.Label.ColorIdx,
+					m.Forms.Form.FormLabelName,
 					width-layers.PickerBorderPaddingWidth,
 				)
 			},
@@ -380,7 +380,7 @@ func (m Model) renderLabelPickerLayer() *lipgloss.Layer {
 	}
 
 	filteredItems := m.getFilteredLabelPickerItems()
-	hasFilter := m.LabelPickerState.Filter != ""
+	hasFilter := m.Pickers.Label.Filter != ""
 
 	return m.createPickerLayer(pickerLayerConfig{
 		dimensionStrategy: dynamicPickerDimensions{
@@ -392,8 +392,8 @@ func (m Model) renderLabelPickerLayer() *lipgloss.Layer {
 		contentRenderer: func(width, height int) string {
 			return renderers.RenderLabelPicker(
 				filteredItems,
-				m.LabelPickerState.Cursor,
-				m.LabelPickerState.Filter,
+				m.Pickers.Label.Cursor,
+				m.Pickers.Label.Filter,
 				true,
 				width-layers.PickerBorderPaddingWidth,
 				height-layers.PickerBorderPaddingHeight,
@@ -405,8 +405,8 @@ func (m Model) renderLabelPickerLayer() *lipgloss.Layer {
 
 // renderParentPickerLayer renders the parent task picker modal as a layer
 func (m Model) renderParentPickerLayer() *lipgloss.Layer {
-	filteredItems := m.ParentPickerState.GetFilteredItems()
-	hasFilter := m.ParentPickerState.Filter != ""
+	filteredItems := m.Pickers.Parent.GetFilteredItems()
+	hasFilter := m.Pickers.Parent.Filter != ""
 	isParentPicker := true
 
 	return m.createPickerLayer(pickerLayerConfig{
@@ -419,8 +419,8 @@ func (m Model) renderParentPickerLayer() *lipgloss.Layer {
 		contentRenderer: func(width, height int) string {
 			return renderers.RenderTaskPicker(
 				filteredItems,
-				m.ParentPickerState.Cursor,
-				m.ParentPickerState.Filter,
+				m.Pickers.Parent.Cursor,
+				m.Pickers.Parent.Filter,
 				"Parent Issues",
 				width-layers.PickerBorderPaddingWidth,
 				height-layers.PickerBorderPaddingHeight,
@@ -433,8 +433,8 @@ func (m Model) renderParentPickerLayer() *lipgloss.Layer {
 
 // renderChildPickerLayer renders the child task picker modal as a layer
 func (m Model) renderChildPickerLayer() *lipgloss.Layer {
-	filteredItems := m.ChildPickerState.GetFilteredItems()
-	hasFilter := m.ChildPickerState.Filter != ""
+	filteredItems := m.Pickers.Child.GetFilteredItems()
+	hasFilter := m.Pickers.Child.Filter != ""
 	isParentPicker := false
 
 	return m.createPickerLayer(pickerLayerConfig{
@@ -447,8 +447,8 @@ func (m Model) renderChildPickerLayer() *lipgloss.Layer {
 		contentRenderer: func(width, height int) string {
 			return renderers.RenderTaskPicker(
 				filteredItems,
-				m.ChildPickerState.Cursor,
-				m.ChildPickerState.Filter,
+				m.Pickers.Child.Cursor,
+				m.Pickers.Child.Filter,
 				"Child Issues",
 				width-layers.PickerBorderPaddingWidth,
 				height-layers.PickerBorderPaddingHeight,
@@ -469,8 +469,8 @@ func (m Model) renderPriorityPickerLayer() *lipgloss.Layer {
 		contentRenderer: func(width, height int) string {
 			return renderers.RenderPriorityPicker(
 				renderers.GetPriorityOptions(),
-				m.PriorityPickerState.SelectedPriorityID(),
-				m.PriorityPickerState.Cursor(),
+				m.Pickers.Priority.SelectedPriorityID(),
+				m.Pickers.Priority.Cursor(),
 				width-layers.PickerBorderPaddingWidth,
 			)
 		},
@@ -488,8 +488,8 @@ func (m Model) renderTypePickerLayer() *lipgloss.Layer {
 		contentRenderer: func(width, height int) string {
 			return renderers.RenderTypePicker(
 				renderers.GetTypeOptions(),
-				m.TypePickerState.SelectedTypeID(),
-				m.TypePickerState.Cursor(),
+				m.Pickers.Type.SelectedTypeID(),
+				m.Pickers.Type.Cursor(),
 				width-layers.PickerBorderPaddingWidth,
 			)
 		},
@@ -500,7 +500,7 @@ func (m Model) renderTypePickerLayer() *lipgloss.Layer {
 // renderRelationTypePickerLayer renders the relation type picker modal as a layer
 func (m Model) renderRelationTypePickerLayer() *lipgloss.Layer {
 	pickerType := "parent"
-	if m.RelationTypePickerState.ReturnMode == state.ChildPickerMode {
+	if m.Pickers.RelationType.ReturnMode == state.ChildPickerMode {
 		pickerType = "child"
 	}
 
@@ -512,8 +512,8 @@ func (m Model) renderRelationTypePickerLayer() *lipgloss.Layer {
 		contentRenderer: func(width, height int) string {
 			return renderers.RenderRelationTypePicker(
 				renderers.GetRelationTypeOptions(),
-				m.RelationTypePickerState.SelectedRelationTypeID(),
-				m.RelationTypePickerState.Cursor(),
+				m.Pickers.RelationType.SelectedRelationTypeID(),
+				m.Pickers.RelationType.Cursor(),
 				width-layers.PickerBorderPaddingWidth,
 				pickerType,
 			)
@@ -524,8 +524,8 @@ func (m Model) renderRelationTypePickerLayer() *lipgloss.Layer {
 
 // renderStatusPickerLayer renders the status/column selection picker modal as a layer
 func (m Model) renderStatusPickerLayer() *lipgloss.Layer {
-	columns := m.StatusPickerState.Columns()
-	cursor := m.StatusPickerState.Cursor()
+	columns := m.Pickers.Status.Columns()
+	cursor := m.Pickers.Status.Cursor()
 
 	return m.createPickerLayer(pickerLayerConfig{
 		dimensionStrategy: statusPickerDimensions{

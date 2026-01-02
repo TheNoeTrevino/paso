@@ -18,20 +18,14 @@ func setupTestModel(columns []*models.Column, tasks map[int][]*models.TaskSummar
 	}
 
 	return Model{
-		Ctx:               context.Background(),
-		App:               nil, // No app needed for navigation handlers
-		Config:            cfg,
-		AppState:          state.NewAppState(nil, 0, columns, tasks, nil),
-		UIState:           state.NewUIState(),
-		InputState:        state.NewInputState(),
-		FormState:         state.NewFormState(),
-		LabelPickerState:  state.NewLabelPickerState(),
-		ParentPickerState: state.NewTaskPickerState(),
-		ChildPickerState:  state.NewTaskPickerState(),
-		NotificationState: state.NewNotificationState(),
-		SearchState:       state.NewSearchState(),
-		ListViewState:     state.NewListViewState(),
-		StatusPickerState: state.NewStatusPickerState(),
+		Ctx:      context.Background(),
+		App:      nil, // No app needed for navigation handlers
+		Config:   cfg,
+		AppState: state.NewAppState(nil, 0, columns, tasks, nil),
+		UIState:  state.NewUIState(),
+		Pickers:  state.NewPickerStates(),
+		Forms:    state.NewFormStates(),
+		UI:       state.NewUIElements(),
 	}
 }
 
@@ -165,12 +159,12 @@ func TestHandleAddTask_NoColumns(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should set notification
-	if !m.NotificationState.HasAny() {
+	if !m.UI.Notification.HasAny() {
 		t.Error("handleAddTask with no columns should set notification, but HasAny() = false")
 	}
 
 	expectedError := "Cannot add task: No columns exist"
-	notifications := m.NotificationState.All()
+	notifications := m.UI.Notification.All()
 	if len(notifications) == 0 || !strings.Contains(notifications[0].Message, expectedError) {
 		t.Errorf("Notification message = %q, want to contain %q", notifications[0].Message, expectedError)
 	}
@@ -195,12 +189,12 @@ func TestHandleEditTask_NoTask(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should set notification (getCurrentTask returns nil, so notification is set)
-	if !m.NotificationState.HasAny() {
+	if !m.UI.Notification.HasAny() {
 		t.Error("handleEditTask with no task should set notification, but HasAny() = false")
 	}
 
 	expectedError := "No task selected to edit"
-	notifications := m.NotificationState.All()
+	notifications := m.UI.Notification.All()
 	if len(notifications) == 0 || notifications[0].Message != expectedError {
 		t.Errorf("Notification message = %q, want %q", notifications[0].Message, expectedError)
 	}
@@ -223,12 +217,12 @@ func TestHandleDeleteTask_NoTask(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should set notification
-	if !m.NotificationState.HasAny() {
+	if !m.UI.Notification.HasAny() {
 		t.Error("handleDeleteTask with no task should set notification, but HasAny() = false")
 	}
 
 	expectedError := "No task selected to delete"
-	notifications := m.NotificationState.All()
+	notifications := m.UI.Notification.All()
 	if len(notifications) == 0 || notifications[0].Message != expectedError {
 		t.Errorf("Notification message = %q, want %q", notifications[0].Message, expectedError)
 	}

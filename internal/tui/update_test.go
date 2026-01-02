@@ -21,7 +21,7 @@ func TestModeDispatch_TaskFormMode(t *testing.T) {
 	title := ""
 	description := ""
 	confirm := false
-	m.FormState.TaskForm = huhforms.CreateTaskForm(&title, &description, &confirm, 5)
+	m.Forms.Form.TaskForm = huhforms.CreateTaskForm(&title, &description, &confirm, 5)
 
 	// Send a key message
 	keyMsg := tea.KeyPressMsg(tea.Key{Text: "a", Code: 'a'})
@@ -80,7 +80,7 @@ func TestUpdateTaskForm_EscapeCancels(t *testing.T) {
 	title := ""
 	description := ""
 	confirm := false
-	m.FormState.TaskForm = huhforms.CreateTaskForm(&title, &description, &confirm, 5)
+	m.Forms.Form.TaskForm = huhforms.CreateTaskForm(&title, &description, &confirm, 5)
 
 	// Send ESC key
 	keyMsg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})
@@ -94,12 +94,12 @@ func TestUpdateTaskForm_EscapeCancels(t *testing.T) {
 	}
 
 	// Form should be cleared
-	if m.FormState.TaskForm != nil {
+	if m.Forms.Form.TaskForm != nil {
 		t.Error("TaskForm after ESC should be nil")
 	}
 
 	// Form should be cleared
-	if m.FormState.TaskForm != nil {
+	if m.Forms.Form.TaskForm != nil {
 		t.Error("TaskForm after ESC should be nil")
 	}
 
