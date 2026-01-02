@@ -10,158 +10,182 @@ import (
 )
 
 type Querier interface {
-	// ============================================================================
-	// TASK-LABEL ASSOCIATIONS
-	// ============================================================================
+	// Attaches a label to a task (ignores if already attached)
 	AddLabelToTask(ctx context.Context, arg AddLabelToTaskParams) error
+	// Creates a parent-child relationship between two tasks (ignores duplicates)
 	AddSubtask(ctx context.Context, arg AddSubtaskParams) error
+	// Creates or updates a parent-child relationship with a specific relation type
 	AddSubtaskWithRelationType(ctx context.Context, arg AddSubtaskWithRelationTypeParams) error
+	// Clears the completed task flag from all columns in a project
 	ClearCompletedColumnByProject(ctx context.Context, projectID int64) error
+	// Clears the in-progress task flag from all columns in a project
 	ClearInProgressColumnByProject(ctx context.Context, projectID int64) error
+	// Clears the ready task flag from all columns in a project
 	ClearReadyColumnByProject(ctx context.Context, projectID int64) error
-	// ============================================================================
-	// COLUMN VERIFICATION
-	// ============================================================================
+	// Checks if a column exists with the given ID
 	ColumnExists(ctx context.Context, id int64) (int64, error)
-	// ============================================================================
-	// COLUMN CRUD OPERATIONS
-	// ============================================================================
+	// Creates a new column in a project with optional
+	// linked list positioning and task type flags
 	CreateColumn(ctx context.Context, arg CreateColumnParams) (Column, error)
-	// ============================================================================
-	// TASK COMMENT CRUD OPERATIONS
-	// ============================================================================
 	// Creates a new comment for a task
 	CreateComment(ctx context.Context, arg CreateCommentParams) (TaskComment, error)
-	// ============================================================================
-	// LABEL CRUD OPERATIONS
-	// ============================================================================
+	// Creates a new label with name, color, and project association
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
-	// ============================================================================
-	// PROJECT CRUD OPERATIONS
-	// ============================================================================
+	// Creates a new project with name and description
 	CreateProjectRecord(ctx context.Context, arg CreateProjectRecordParams) (Project, error)
-	// ============================================================================
-	// TASK CRUD OPERATIONS
-	// ============================================================================
+	// Creates a new task with title, description, position, and ticket number
 	CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error)
+	// Removes all labels from a task
 	DeleteAllLabelsFromTask(ctx context.Context, taskID int64) error
+	// Permanently deletes a column by ID
 	DeleteColumn(ctx context.Context, id int64) error
+	// Deletes all columns belonging to a project
 	DeleteColumnsByProject(ctx context.Context, projectID int64) error
 	// Deletes a comment by ID
 	DeleteComment(ctx context.Context, id int64) error
+	// Permanently deletes a label by ID
 	DeleteLabel(ctx context.Context, id int64) error
+	// Permanently deletes a project by ID
 	DeleteProject(ctx context.Context, id int64) error
+	// Deletes the ticket counter for a project
 	DeleteProjectCounter(ctx context.Context, projectID int64) error
+	// Permanently deletes a task by ID
 	DeleteTask(ctx context.Context, id int64) error
+	// Deletes all tasks within a specific column
 	DeleteTasksByColumn(ctx context.Context, columnID int64) error
-	// ============================================================================
-	// PROJECT COLUMN MANAGEMENT
-	// ============================================================================
+	// Deletes all tasks belonging to a project
 	DeleteTasksByProject(ctx context.Context, projectID int64) error
-	// ============================================================================
-	// PRIORITIES AND TYPES
-	// ============================================================================
+	// Retrieves all available priority levels
 	GetAllPriorities(ctx context.Context) ([]Priority, error)
+	// Retrieves all projects ordered by ID
 	GetAllProjects(ctx context.Context) ([]Project, error)
+	// Retrieves all available relationship types for task links
 	GetAllRelationTypes(ctx context.Context) ([]RelationType, error)
+	// Retrieves all available task types
 	GetAllTypes(ctx context.Context) ([]Type, error)
+	// Retrieves all child tasks for a given parent task with relationship details
 	GetChildTasks(ctx context.Context, parentID int64) ([]GetChildTasksRow, error)
+	// Retrieves a column by its ID with all metadata
 	GetColumnByID(ctx context.Context, id int64) (GetColumnByIDRow, error)
+	// Retrieves the linked list pointers and project ID for a column
 	GetColumnLinkedListInfo(ctx context.Context, id int64) (GetColumnLinkedListInfoRow, error)
+	// Retrieves the next column ID in the linked list
 	GetColumnNextID(ctx context.Context, id int64) (interface{}, error)
+	// Retrieves all columns for a specific project
 	GetColumnsByProject(ctx context.Context, projectID int64) ([]GetColumnsByProjectRow, error)
-	// Gets a single comment by ID
+	// Retrieves a single comment by ID
 	GetComment(ctx context.Context, id int64) (TaskComment, error)
-	// Gets the count of comments for a task
+	// Returns the number of comments for a task
 	GetCommentCountByTask(ctx context.Context, taskID int64) (int64, error)
-	// Gets all comments for a task, ordered by creation time (newest first)
+	// Retrieves all comments for a task, ordered by creation time (newest first)
 	GetCommentsByTask(ctx context.Context, taskID int64) ([]TaskComment, error)
+	// Retrieves the column designated for completed tasks in a project
 	GetCompletedColumnByProject(ctx context.Context, projectID int64) (GetCompletedColumnByProjectRow, error)
+	// Retrieves the column designated for in-progress tasks in a project
 	GetInProgressColumnByProject(ctx context.Context, projectID int64) (GetInProgressColumnByProjectRow, error)
+	// Retrieves comprehensive details for all in-progress tasks using GROUP_CONCAT to avoid N+1 queries
+	GetInProgressTaskDetails(ctx context.Context, id int64) ([]GetInProgressTaskDetailsRow, error)
+	// Retrieves basic information for tasks currently in progress for a project
 	GetInProgressTasksByProject(ctx context.Context, id int64) ([]GetInProgressTasksByProjectRow, error)
+	// Retrieves a label by its ID
 	GetLabelByID(ctx context.Context, id int64) (Label, error)
+	// Retrieves all labels for a project, ordered alphabetically by name
 	GetLabelsByProject(ctx context.Context, projectID int64) ([]Label, error)
+	// Retrieves all labels attached to a specific task
 	GetLabelsForTask(ctx context.Context, taskID int64) ([]Label, error)
+	// Retrieves the ID of the next column in the linked list
 	GetNextColumnID(ctx context.Context, id int64) (interface{}, error)
-	// ============================================================================
-	// TICKET NUMBER MANAGEMENT
-	// ============================================================================
+	// Retrieves the next available ticket number for a project
 	GetNextTicketNumber(ctx context.Context, projectID int64) (sql.NullInt64, error)
-	// ============================================================================
-	// TASK RELATIONSHIPS (Subtasks, Parents, Blockers)
-	// ============================================================================
+	// Retrieves all parent tasks for a given child task with relationship details
 	GetParentTasks(ctx context.Context, childID int64) ([]GetParentTasksRow, error)
+	// Retrieves the ID of the previous column in the linked list
 	GetPrevColumnID(ctx context.Context, id int64) (interface{}, error)
+	// Retrieves a project by its ID with all metadata
 	GetProjectByID(ctx context.Context, id int64) (Project, error)
+	// Retrieves the project ID for a given column
 	GetProjectIDFromColumn(ctx context.Context, id int64) (int64, error)
-	// ============================================================================
-	// PROJECT HELPERS (for event notifications)
-	// ============================================================================
+	// Retrieves the project ID for a given task by joining through its column
 	GetProjectIDFromTask(ctx context.Context, id int64) (int64, error)
+	// Returns the total number of tasks in a project
 	GetProjectTaskCount(ctx context.Context, projectID int64) (int64, error)
+	// Retrieves the column designated for ready tasks in a project
 	GetReadyColumnByProject(ctx context.Context, projectID int64) (GetReadyColumnByProjectRow, error)
+	// Retrieves task summaries for ready tasks (tasks in columns marked as holds_ready_tasks)
 	GetReadyTaskSummariesByProject(ctx context.Context, projectID int64) ([]GetReadyTaskSummariesByProjectRow, error)
+	// Retrieves the last column in a project's linked list (where next_id is NULL)
 	GetTailColumnForProject(ctx context.Context, projectID int64) (int64, error)
+	// Retrieves basic task information by ID
 	GetTask(ctx context.Context, id int64) (GetTaskRow, error)
+	// Retrieves the task immediately above the given position in a column
 	GetTaskAbove(ctx context.Context, arg GetTaskAboveParams) (GetTaskAboveRow, error)
+	// Retrieves the task immediately below the given position in a column
 	GetTaskBelow(ctx context.Context, arg GetTaskBelowParams) (GetTaskBelowRow, error)
+	// Returns the number of tasks in a specific column
 	GetTaskCountByColumn(ctx context.Context, columnID int64) (int64, error)
-	// ============================================================================
-	// TASK DETAIL QUERIES
-	// ============================================================================
+	// Retrieves comprehensive task details including:
+	// type, priority, column, project, and blocking status
 	GetTaskDetail(ctx context.Context, id int64) (GetTaskDetailRow, error)
+	// Retrieves all labels attached to a specific task
 	GetTaskLabels(ctx context.Context, taskID int64) ([]Label, error)
-	// ============================================================================
-	// TASK MOVEMENT OPERATIONS
-	// ============================================================================
+	// Retrieves the current column and position of a task
 	GetTaskPosition(ctx context.Context, id int64) (GetTaskPositionRow, error)
+	// Retrieves basic task references for all tasks in a project
 	GetTaskReferencesForProject(ctx context.Context, id int64) ([]GetTaskReferencesForProjectRow, error)
-	// Gets all parent-child relationships for tasks in a project
+	// Retrieves all parent-child task relationships
+	// in a project for tree visualization
 	GetTaskRelationsForProject(ctx context.Context, projectID int64) ([]GetTaskRelationsForProjectRow, error)
-	// ============================================================================
-	// TASK SUMMARIES (Optimized with JOINs to avoid N+1 queries)
-	// ============================================================================
+	// Retrieves task summaries with aggregated labels for a specific column using GROUP_CONCAT to avoid N+1 queries
 	GetTaskSummariesByColumn(ctx context.Context, columnID int64) ([]GetTaskSummariesByColumnRow, error)
+	// Retrieves task summaries with aggregated labels and blocking status
+	// for all tasks in a project
 	GetTaskSummariesByProject(ctx context.Context, projectID int64) ([]GetTaskSummariesByProjectRow, error)
+	// Retrieves task summaries filtered by title search pattern with aggregated labels
 	GetTaskSummariesByProjectFiltered(ctx context.Context, arg GetTaskSummariesByProjectFilteredParams) ([]GetTaskSummariesByProjectFilteredRow, error)
+	// Retrieves all tasks in a column, ordered by position
 	GetTasksByColumn(ctx context.Context, columnID int64) ([]GetTasksByColumnRow, error)
-	// ============================================================================
-	// TASK TREE QUERIES (for project tree command)
-	// ============================================================================
-	// Gets all tasks in a project with their column names for tree display
+	// Retrieves all tasks in a project with column
+	// and project names for tree visualization
 	GetTasksForTree(ctx context.Context, id int64) ([]GetTasksForTreeRow, error)
+	// Increments the ticket counter for a project after assigning a ticket number
 	IncrementTicketNumber(ctx context.Context, projectID int64) error
-	// ============================================================================
-	// PROJECT COUNTERS
-	// ============================================================================
+	// Initializes the ticket number counter for a new project starting at 1
 	InitializeProjectCounter(ctx context.Context, projectID int64) error
+	// Creates a task-label association
 	InsertTaskLabel(ctx context.Context, arg InsertTaskLabelParams) error
+	// Moves a task to a different column and updates its position
 	MoveTaskToColumn(ctx context.Context, arg MoveTaskToColumnParams) error
+	// Removes a specific label from a task
 	RemoveLabelFromTask(ctx context.Context, arg RemoveLabelFromTaskParams) error
+	// Removes a parent-child relationship between two tasks
 	RemoveSubtask(ctx context.Context, arg RemoveSubtaskParams) error
+	// Updates a task's position within its current column
 	SetTaskPosition(ctx context.Context, arg SetTaskPositionParams) error
+	// Sets task position to -1 temporarily during reordering operations
 	SetTaskPositionTemporary(ctx context.Context, id int64) error
-	// ============================================================================
-	// COMPLETED COLUMN OPERATIONS
-	// ============================================================================
+	// Sets whether a column holds completed tasks
 	UpdateColumnHoldsCompletedTasks(ctx context.Context, arg UpdateColumnHoldsCompletedTasksParams) error
-	// ============================================================================
-	// IN-PROGRESS COLUMN OPERATIONS
-	// ============================================================================
+	// Sets whether a column holds in-progress tasks
 	UpdateColumnHoldsInProgressTasks(ctx context.Context, arg UpdateColumnHoldsInProgressTasksParams) error
-	// ============================================================================
-	// READY COLUMN OPERATIONS
-	// ============================================================================
+	// Sets whether a column holds ready tasks (tasks without blockers)
 	UpdateColumnHoldsReadyTasks(ctx context.Context, arg UpdateColumnHoldsReadyTasksParams) error
+	// Updates a column's display name
 	UpdateColumnName(ctx context.Context, arg UpdateColumnNameParams) error
+	// Updates the next column pointer in the linked list
 	UpdateColumnNextID(ctx context.Context, arg UpdateColumnNextIDParams) error
+	// Updates the previous column pointer in the linked list
 	UpdateColumnPrevID(ctx context.Context, arg UpdateColumnPrevIDParams) error
 	// Updates a comment's content
 	UpdateComment(ctx context.Context, arg UpdateCommentParams) error
+	// Updates a label's name and color
 	UpdateLabel(ctx context.Context, arg UpdateLabelParams) error
+	// Updates a project's name and description
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) error
+	// Updates a task's title and description
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) error
+	// Updates a task's priority level
 	UpdateTaskPriority(ctx context.Context, arg UpdateTaskPriorityParams) error
+	// Updates a task's type classification
 	UpdateTaskType(ctx context.Context, arg UpdateTaskTypeParams) error
 }
 

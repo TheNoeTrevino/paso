@@ -11,7 +11,9 @@ import (
 )
 
 const addSubtask = `-- name: AddSubtask :exec
-INSERT OR IGNORE INTO task_subtasks (parent_id, child_id) VALUES (?, ?)
+insert or ignore into
+task_subtasks (parent_id, child_id)
+values (?, ?)
 `
 
 type AddSubtaskParams struct {
@@ -19,14 +21,15 @@ type AddSubtaskParams struct {
 	ChildID  int64
 }
 
+// Creates a parent-child relationship between two tasks (ignores duplicates)
 func (q *Queries) AddSubtask(ctx context.Context, arg AddSubtaskParams) error {
 	_, err := q.db.ExecContext(ctx, addSubtask, arg.ParentID, arg.ChildID)
 	return err
 }
 
 const addSubtaskWithRelationType = `-- name: AddSubtaskWithRelationType :exec
-INSERT OR REPLACE INTO task_subtasks (parent_id, child_id, relation_type_id)
-VALUES (?, ?, ?)
+insert or replace into task_subtasks (parent_id, child_id, relation_type_id)
+values (?, ?, ?)
 `
 
 type AddSubtaskWithRelationTypeParams struct {
@@ -35,16 +38,21 @@ type AddSubtaskWithRelationTypeParams struct {
 	RelationTypeID int64
 }
 
+// Creates or updates a parent-child relationship with a specific relation type
 func (q *Queries) AddSubtaskWithRelationType(ctx context.Context, arg AddSubtaskWithRelationTypeParams) error {
 	_, err := q.db.ExecContext(ctx, addSubtaskWithRelationType, arg.ParentID, arg.ChildID, arg.RelationTypeID)
 	return err
 }
 
 const createTask = `-- name: CreateTask :one
-
-INSERT INTO tasks (title, description, column_id, position, ticket_number)
-VALUES (?, ?, ?, ?, ?)
-RETURNING id, title, description, column_id, position, ticket_number, type_id, priority_id, created_at, updated_at
+insert into tasks (
+    title,
+    description,
+    column_id,
+    position,
+    ticket_number)
+values (?, ?, ?, ?, ?)
+returning id, title, description, column_id, position, ticket_number, type_id, priority_id, created_at, updated_at
 `
 
 type CreateTaskParams struct {
@@ -55,9 +63,7 @@ type CreateTaskParams struct {
 	TicketNumber sql.NullInt64
 }
 
-// ============================================================================
-// TASK CRUD OPERATIONS
-// ============================================================================
+// Creates a new task with title, description, position, and ticket number
 func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error) {
 	row := q.db.QueryRowContext(ctx, createTask,
 		arg.Title,
@@ -83,22 +89,21 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 }
 
 const deleteTask = `-- name: DeleteTask :exec
-DELETE FROM tasks WHERE id = ?
+delete from tasks
+where id = ?
 `
 
+// Permanently deletes a task by ID
 func (q *Queries) DeleteTask(ctx context.Context, id int64) error {
 	_, err := q.db.ExecContext(ctx, deleteTask, id)
 	return err
 }
 
 const getAllPriorities = `-- name: GetAllPriorities :many
-
-SELECT id, description, color FROM priorities ORDER BY id
+select id, description, color from priorities order by id
 `
 
-// ============================================================================
-// PRIORITIES AND TYPES
-// ============================================================================
+// Retrieves all available priority levels
 func (q *Queries) GetAllPriorities(ctx context.Context) ([]Priority, error) {
 	rows, err := q.db.QueryContext(ctx, getAllPriorities)
 	if err != nil {
@@ -123,11 +128,12 @@ func (q *Queries) GetAllPriorities(ctx context.Context) ([]Priority, error) {
 }
 
 const getAllRelationTypes = `-- name: GetAllRelationTypes :many
-SELECT id, p_to_c_label, c_to_p_label, color, is_blocking
-FROM relation_types
-ORDER BY id
+select id, p_to_c_label, c_to_p_label, color, is_blocking
+from relation_types
+order by id
 `
 
+// Retrieves all available relationship types for task links
 func (q *Queries) GetAllRelationTypes(ctx context.Context) ([]RelationType, error) {
 	rows, err := q.db.QueryContext(ctx, getAllRelationTypes)
 	if err != nil {
@@ -158,9 +164,10 @@ func (q *Queries) GetAllRelationTypes(ctx context.Context) ([]RelationType, erro
 }
 
 const getAllTypes = `-- name: GetAllTypes :many
-SELECT id, description FROM types ORDER BY id
+select id, description from types order by id
 `
 
+// Retrieves all available task types
 func (q *Queries) GetAllTypes(ctx context.Context) ([]Type, error) {
 	rows, err := q.db.QueryContext(ctx, getAllTypes)
 	if err != nil {
@@ -185,15 +192,15 @@ func (q *Queries) GetAllTypes(ctx context.Context) ([]Type, error) {
 }
 
 const getChildTasks = `-- name: GetChildTasks :many
-SELECT t.id, t.ticket_number, t.title, p.name,
+select t.id, t.ticket_number, t.title, p.name,
 rt.id, rt.c_to_p_label, rt.color, rt.is_blocking
-FROM tasks t
-INNER JOIN task_subtasks ts ON t.id = ts.child_id
-INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
-INNER JOIN columns c ON t.column_id = c.id
-INNER JOIN projects p ON c.project_id = p.id
-WHERE ts.parent_id = ?
-ORDER BY p.name, t.ticket_number
+from tasks t
+inner join task_subtasks ts on t.id = ts.child_id
+inner join relation_types rt on ts.relation_type_id = rt.id
+inner join columns c on t.column_id = c.id
+inner join projects p on c.project_id = p.id
+where ts.parent_id = ?
+order by p.name, t.ticket_number
 `
 
 type GetChildTasksRow struct {
@@ -207,6 +214,7 @@ type GetChildTasksRow struct {
 	IsBlocking   bool
 }
 
+// Retrieves all child tasks for a given parent task with relationship details
 func (q *Queries) GetChildTasks(ctx context.Context, parentID int64) ([]GetChildTasksRow, error) {
 	rows, err := q.db.QueryContext(ctx, getChildTasks, parentID)
 	if err != nil {
@@ -239,19 +247,130 @@ func (q *Queries) GetChildTasks(ctx context.Context, parentID int64) ([]GetChild
 	return items, nil
 }
 
-const getInProgressTasksByProject = `-- name: GetInProgressTasksByProject :many
-SELECT
+const getInProgressTaskDetails = `-- name: GetInProgressTaskDetails :many
+select
     t.id,
     t.ticket_number,
     t.title,
     t.description,
-    c.name AS column_name,
-    proj.name AS project_name
-FROM tasks t
-INNER JOIN columns c ON t.column_id = c.id
-INNER JOIN projects proj ON c.project_id = proj.id
-WHERE proj.id = ? AND c.holds_in_progress_tasks = 1
-ORDER BY t.position
+    t.column_id,
+    t.position,
+    t.created_at,
+    t.updated_at,
+    c.name as column_name,
+    proj.name as project_name,
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    cast(coalesce(group_concat(l.id, char(31)), '') as text) as label_ids,
+    cast(coalesce(group_concat(l.name, char(31)), '') as text) as label_names,
+    cast(coalesce(group_concat(l.color, char(31)), '') as text) as label_colors,
+    exists(
+        select 1
+        from task_subtasks ts
+        inner join relation_types rt on ts.relation_type_id = rt.id
+        where ts.parent_id = t.id and rt.is_blocking = 1
+    ) as is_blocked
+from tasks t
+inner join columns c on t.column_id = c.id
+inner join projects proj on c.project_id = proj.id
+left join types ty on t.type_id = ty.id
+left join priorities p on t.priority_id = p.id
+left join task_labels tl on t.id = tl.task_id
+left join labels l on tl.label_id = l.id
+where proj.id = ? and c.holds_in_progress_tasks = 1
+group by
+    t.id,
+    t.ticket_number,
+    t.title,
+    t.description,
+    t.column_id,
+    t.position,
+    t.created_at,
+    t.updated_at,
+    c.name,
+    proj.name,
+    ty.description,
+    p.description,
+    p.color
+order by t.position
+`
+
+type GetInProgressTaskDetailsRow struct {
+	ID                  int64
+	TicketNumber        sql.NullInt64
+	Title               string
+	Description         sql.NullString
+	ColumnID            int64
+	Position            int64
+	CreatedAt           sql.NullTime
+	UpdatedAt           sql.NullTime
+	ColumnName          string
+	ProjectName         string
+	TypeDescription     sql.NullString
+	PriorityDescription sql.NullString
+	PriorityColor       sql.NullString
+	LabelIds            string
+	LabelNames          string
+	LabelColors         string
+	IsBlocked           int64
+}
+
+// Retrieves comprehensive details for all in-progress tasks using GROUP_CONCAT to avoid N+1 queries
+func (q *Queries) GetInProgressTaskDetails(ctx context.Context, id int64) ([]GetInProgressTaskDetailsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getInProgressTaskDetails, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetInProgressTaskDetailsRow{}
+	for rows.Next() {
+		var i GetInProgressTaskDetailsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TicketNumber,
+			&i.Title,
+			&i.Description,
+			&i.ColumnID,
+			&i.Position,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ColumnName,
+			&i.ProjectName,
+			&i.TypeDescription,
+			&i.PriorityDescription,
+			&i.PriorityColor,
+			&i.LabelIds,
+			&i.LabelNames,
+			&i.LabelColors,
+			&i.IsBlocked,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getInProgressTasksByProject = `-- name: GetInProgressTasksByProject :many
+select
+    t.id,
+    t.ticket_number,
+    t.title,
+    t.description,
+    c.name as column_name,
+    proj.name as project_name
+from tasks t
+inner join columns c on t.column_id = c.id
+inner join projects proj on c.project_id = proj.id
+where proj.id = ? and c.holds_in_progress_tasks = 1
+order by t.position
 `
 
 type GetInProgressTasksByProjectRow struct {
@@ -263,6 +382,7 @@ type GetInProgressTasksByProjectRow struct {
 	ProjectName  string
 }
 
+// Retrieves basic information for tasks currently in progress for a project
 func (q *Queries) GetInProgressTasksByProject(ctx context.Context, id int64) ([]GetInProgressTasksByProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, getInProgressTasksByProject, id)
 	if err != nil {
@@ -294,9 +414,11 @@ func (q *Queries) GetInProgressTasksByProject(ctx context.Context, id int64) ([]
 }
 
 const getNextColumnID = `-- name: GetNextColumnID :one
-SELECT next_id FROM columns WHERE id = ?
+select next_id
+from columns where id = ?
 `
 
+// Retrieves the ID of the next column in the linked list
 func (q *Queries) GetNextColumnID(ctx context.Context, id int64) (interface{}, error) {
 	row := q.db.QueryRowContext(ctx, getNextColumnID, id)
 	var next_id interface{}
@@ -305,13 +427,11 @@ func (q *Queries) GetNextColumnID(ctx context.Context, id int64) (interface{}, e
 }
 
 const getNextTicketNumber = `-- name: GetNextTicketNumber :one
-
-SELECT next_ticket_number FROM project_counters WHERE project_id = ?
+select next_ticket_number
+from project_counters where project_id = ?
 `
 
-// ============================================================================
-// TICKET NUMBER MANAGEMENT
-// ============================================================================
+// Retrieves the next available ticket number for a project
 func (q *Queries) GetNextTicketNumber(ctx context.Context, projectID int64) (sql.NullInt64, error) {
 	row := q.db.QueryRowContext(ctx, getNextTicketNumber, projectID)
 	var next_ticket_number sql.NullInt64
@@ -320,16 +440,15 @@ func (q *Queries) GetNextTicketNumber(ctx context.Context, projectID int64) (sql
 }
 
 const getParentTasks = `-- name: GetParentTasks :many
-
-SELECT t.id, t.ticket_number, t.title, p.name,
+select t.id, t.ticket_number, t.title, p.name,
 rt.id, rt.p_to_c_label, rt.color, rt.is_blocking
-FROM tasks t
-INNER JOIN task_subtasks ts ON t.id = ts.parent_id
-INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
-INNER JOIN columns c ON t.column_id = c.id
-INNER JOIN projects p ON c.project_id = p.id
-WHERE ts.child_id = ?
-ORDER BY p.name, t.ticket_number
+from tasks t
+inner join task_subtasks ts on t.id = ts.parent_id
+inner join relation_types rt on ts.relation_type_id = rt.id
+inner join columns c on t.column_id = c.id
+inner join projects p on c.project_id = p.id
+where ts.child_id = ?
+order by p.name, t.ticket_number
 `
 
 type GetParentTasksRow struct {
@@ -343,9 +462,7 @@ type GetParentTasksRow struct {
 	IsBlocking   bool
 }
 
-// ============================================================================
-// TASK RELATIONSHIPS (Subtasks, Parents, Blockers)
-// ============================================================================
+// Retrieves all parent tasks for a given child task with relationship details
 func (q *Queries) GetParentTasks(ctx context.Context, childID int64) ([]GetParentTasksRow, error) {
 	rows, err := q.db.QueryContext(ctx, getParentTasks, childID)
 	if err != nil {
@@ -379,9 +496,10 @@ func (q *Queries) GetParentTasks(ctx context.Context, childID int64) ([]GetParen
 }
 
 const getPrevColumnID = `-- name: GetPrevColumnID :one
-SELECT prev_id FROM columns WHERE id = ?
+select prev_id from columns where id = ?
 `
 
+// Retrieves the ID of the previous column in the linked list
 func (q *Queries) GetPrevColumnID(ctx context.Context, id int64) (interface{}, error) {
 	row := q.db.QueryRowContext(ctx, getPrevColumnID, id)
 	var prev_id interface{}
@@ -390,9 +508,11 @@ func (q *Queries) GetPrevColumnID(ctx context.Context, id int64) (interface{}, e
 }
 
 const getProjectIDFromColumn = `-- name: GetProjectIDFromColumn :one
-SELECT project_id FROM columns WHERE id = ?
+select project_id
+from columns where id = ?
 `
 
+// Retrieves the project ID for a given column
 func (q *Queries) GetProjectIDFromColumn(ctx context.Context, id int64) (int64, error) {
 	row := q.db.QueryRowContext(ctx, getProjectIDFromColumn, id)
 	var project_id int64
@@ -401,15 +521,13 @@ func (q *Queries) GetProjectIDFromColumn(ctx context.Context, id int64) (int64, 
 }
 
 const getProjectIDFromTask = `-- name: GetProjectIDFromTask :one
-
-SELECT c.project_id FROM tasks t
-INNER JOIN columns c ON t.column_id = c.id
-WHERE t.id = ?
+select c.project_id
+from tasks t
+inner join columns c on t.column_id = c.id
+where t.id = ?
 `
 
-// ============================================================================
-// PROJECT HELPERS (for event notifications)
-// ============================================================================
+// Retrieves the project ID for a given task by joining through its column
 func (q *Queries) GetProjectIDFromTask(ctx context.Context, id int64) (int64, error) {
 	row := q.db.QueryRowContext(ctx, getProjectIDFromTask, id)
 	var project_id int64
@@ -418,31 +536,31 @@ func (q *Queries) GetProjectIDFromTask(ctx context.Context, id int64) (int64, er
 }
 
 const getReadyTaskSummariesByProject = `-- name: GetReadyTaskSummariesByProject :many
-SELECT
+select
     t.id,
     t.title,
     t.column_id,
     t.position,
-    ty.description AS type_description,
-    p.description AS priority_description,
-    p.color AS priority_color,
-    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) AS label_ids,
-    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) AS label_names,
-    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) AS label_colors,
-    EXISTS(
-        SELECT 1
-        FROM task_subtasks ts
-        INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
-        WHERE ts.parent_id = t.id AND rt.is_blocking = 1
-    ) AS is_blocked
-FROM tasks t
-INNER JOIN columns c ON t.column_id = c.id
-LEFT JOIN types ty ON t.type_id = ty.id
-LEFT JOIN priorities p ON t.priority_id = p.id
-LEFT JOIN task_labels tl ON t.id = tl.task_id
-LEFT JOIN labels l ON tl.label_id = l.id
-WHERE c.project_id = ? AND c.holds_ready_tasks = 1
-GROUP BY
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    cast(coalesce(group_concat(l.id, char(31)), '') as text) as label_ids,
+    cast(coalesce(group_concat(l.name, char(31)), '') as text) as label_names,
+    cast(coalesce(group_concat(l.color, char(31)), '') as text) as label_colors,
+    exists(
+        select 1
+        from task_subtasks ts
+        inner join relation_types rt on ts.relation_type_id = rt.id
+        where ts.parent_id = t.id and rt.is_blocking = 1
+    ) as is_blocked
+from tasks t
+inner join columns c on t.column_id = c.id
+left join types ty on t.type_id = ty.id
+left join priorities p on t.priority_id = p.id
+left join task_labels tl on t.id = tl.task_id
+left join labels l on tl.label_id = l.id
+where c.project_id = ? and c.holds_ready_tasks = 1
+group by
     t.id,
     t.title,
     t.column_id,
@@ -450,7 +568,7 @@ GROUP BY
     ty.description,
     p.description,
     p.color
-ORDER BY t.position
+order by t.position
 `
 
 type GetReadyTaskSummariesByProjectRow struct {
@@ -467,6 +585,7 @@ type GetReadyTaskSummariesByProjectRow struct {
 	IsBlocked           int64
 }
 
+// Retrieves task summaries for ready tasks (tasks in columns marked as holds_ready_tasks)
 func (q *Queries) GetReadyTaskSummariesByProject(ctx context.Context, projectID int64) ([]GetReadyTaskSummariesByProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, getReadyTaskSummariesByProject, projectID)
 	if err != nil {
@@ -503,7 +622,7 @@ func (q *Queries) GetReadyTaskSummariesByProject(ctx context.Context, projectID 
 }
 
 const getTask = `-- name: GetTask :one
-SELECT
+select
     id,
     title,
     description,
@@ -511,8 +630,8 @@ SELECT
     position,
     created_at,
     updated_at
-FROM tasks
-WHERE id = ?
+from tasks
+where id = ?
 `
 
 type GetTaskRow struct {
@@ -525,6 +644,7 @@ type GetTaskRow struct {
 	UpdatedAt   sql.NullTime
 }
 
+// Retrieves basic task information by ID
 func (q *Queries) GetTask(ctx context.Context, id int64) (GetTaskRow, error) {
 	row := q.db.QueryRowContext(ctx, getTask, id)
 	var i GetTaskRow
@@ -541,9 +661,10 @@ func (q *Queries) GetTask(ctx context.Context, id int64) (GetTaskRow, error) {
 }
 
 const getTaskAbove = `-- name: GetTaskAbove :one
-SELECT id, position FROM tasks
-WHERE column_id = ? AND position < ?
-ORDER BY position DESC LIMIT 1
+select id, position 
+from tasks
+where column_id = ? and position < ?
+order by position desc limit 1
 `
 
 type GetTaskAboveParams struct {
@@ -556,6 +677,7 @@ type GetTaskAboveRow struct {
 	Position int64
 }
 
+// Retrieves the task immediately above the given position in a column
 func (q *Queries) GetTaskAbove(ctx context.Context, arg GetTaskAboveParams) (GetTaskAboveRow, error) {
 	row := q.db.QueryRowContext(ctx, getTaskAbove, arg.ColumnID, arg.Position)
 	var i GetTaskAboveRow
@@ -564,9 +686,10 @@ func (q *Queries) GetTaskAbove(ctx context.Context, arg GetTaskAboveParams) (Get
 }
 
 const getTaskBelow = `-- name: GetTaskBelow :one
-SELECT id, position FROM tasks
-WHERE column_id = ? AND position > ?
-ORDER BY position ASC LIMIT 1
+select id, position 
+from tasks
+where column_id = ? and position > ?
+order by position asc limit 1
 `
 
 type GetTaskBelowParams struct {
@@ -579,6 +702,7 @@ type GetTaskBelowRow struct {
 	Position int64
 }
 
+// Retrieves the task immediately below the given position in a column
 func (q *Queries) GetTaskBelow(ctx context.Context, arg GetTaskBelowParams) (GetTaskBelowRow, error) {
 	row := q.db.QueryRowContext(ctx, getTaskBelow, arg.ColumnID, arg.Position)
 	var i GetTaskBelowRow
@@ -587,9 +711,11 @@ func (q *Queries) GetTaskBelow(ctx context.Context, arg GetTaskBelowParams) (Get
 }
 
 const getTaskCountByColumn = `-- name: GetTaskCountByColumn :one
-SELECT COUNT(*) FROM tasks WHERE column_id = ?
+select count(*)
+from tasks where column_id = ?
 `
 
+// Returns the number of tasks in a specific column
 func (q *Queries) GetTaskCountByColumn(ctx context.Context, columnID int64) (int64, error) {
 	row := q.db.QueryRowContext(ctx, getTaskCountByColumn, columnID)
 	var count int64
@@ -598,8 +724,7 @@ func (q *Queries) GetTaskCountByColumn(ctx context.Context, columnID int64) (int
 }
 
 const getTaskDetail = `-- name: GetTaskDetail :one
-
-SELECT
+select
     t.id,
     t.title,
     t.description,
@@ -613,17 +738,17 @@ SELECT
     p.color as priority_color,
     c.name as column_name,
     proj.name as project_name,
-    EXISTS(
-        SELECT 1 FROM task_subtasks ts
-        INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
-        WHERE ts.parent_id = t.id AND rt.is_blocking = 1
+    exists(
+        select 1 from task_subtasks ts
+        inner join relation_types rt on ts.relation_type_id = rt.id
+        where ts.parent_id = t.id and rt.is_blocking = 1
     ) as is_blocked
-FROM tasks t
-INNER JOIN columns c ON t.column_id = c.id
-INNER JOIN projects proj ON c.project_id = proj.id
-LEFT JOIN types ty ON t.type_id = ty.id
-LEFT JOIN priorities p ON t.priority_id = p.id
-WHERE t.id = ?
+from tasks t
+inner join columns c on t.column_id = c.id
+inner join projects proj on c.project_id = proj.id
+left join types ty on t.type_id = ty.id
+left join priorities p on t.priority_id = p.id
+where t.id = ?
 `
 
 type GetTaskDetailRow struct {
@@ -643,9 +768,8 @@ type GetTaskDetailRow struct {
 	IsBlocked           int64
 }
 
-// ============================================================================
-// TASK DETAIL QUERIES
-// ============================================================================
+// Retrieves comprehensive task details including:
+// type, priority, column, project, and blocking status
 func (q *Queries) GetTaskDetail(ctx context.Context, id int64) (GetTaskDetailRow, error) {
 	row := q.db.QueryRowContext(ctx, getTaskDetail, id)
 	var i GetTaskDetailRow
@@ -669,13 +793,14 @@ func (q *Queries) GetTaskDetail(ctx context.Context, id int64) (GetTaskDetailRow
 }
 
 const getTaskLabels = `-- name: GetTaskLabels :many
-SELECT l.id, l.name, l.color, l.project_id
-FROM labels l
-INNER JOIN task_labels tl ON l.id = tl.label_id
-WHERE tl.task_id = ?
-ORDER BY l.name
+select l.id, l.name, l.color, l.project_id
+from labels l
+inner join task_labels tl on l.id = tl.label_id
+where tl.task_id = ?
+order by l.name
 `
 
+// Retrieves all labels attached to a specific task
 func (q *Queries) GetTaskLabels(ctx context.Context, taskID int64) ([]Label, error) {
 	rows, err := q.db.QueryContext(ctx, getTaskLabels, taskID)
 	if err != nil {
@@ -705,8 +830,9 @@ func (q *Queries) GetTaskLabels(ctx context.Context, taskID int64) ([]Label, err
 }
 
 const getTaskPosition = `-- name: GetTaskPosition :one
-
-SELECT column_id, position FROM tasks WHERE id = ?
+select column_id, position
+from tasks
+where id = ?
 `
 
 type GetTaskPositionRow struct {
@@ -714,9 +840,7 @@ type GetTaskPositionRow struct {
 	Position int64
 }
 
-// ============================================================================
-// TASK MOVEMENT OPERATIONS
-// ============================================================================
+// Retrieves the current column and position of a task
 func (q *Queries) GetTaskPosition(ctx context.Context, id int64) (GetTaskPositionRow, error) {
 	row := q.db.QueryRowContext(ctx, getTaskPosition, id)
 	var i GetTaskPositionRow
@@ -725,12 +849,12 @@ func (q *Queries) GetTaskPosition(ctx context.Context, id int64) (GetTaskPositio
 }
 
 const getTaskReferencesForProject = `-- name: GetTaskReferencesForProject :many
-SELECT t.id, t.ticket_number, t.title, p.name
-FROM tasks t
-INNER JOIN columns c ON t.column_id = c.id
-INNER JOIN projects p ON c.project_id = p.id
-WHERE p.id = ?
-ORDER BY p.name, t.ticket_number
+select t.id, t.ticket_number, t.title, p.name
+from tasks t
+inner join columns c on t.column_id = c.id
+inner join projects p on c.project_id = p.id
+where p.id = ?
+order by p.name, t.ticket_number
 `
 
 type GetTaskReferencesForProjectRow struct {
@@ -740,6 +864,7 @@ type GetTaskReferencesForProjectRow struct {
 	Name         string
 }
 
+// Retrieves basic task references for all tasks in a project
 func (q *Queries) GetTaskReferencesForProject(ctx context.Context, id int64) ([]GetTaskReferencesForProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, getTaskReferencesForProject, id)
 	if err != nil {
@@ -769,17 +894,17 @@ func (q *Queries) GetTaskReferencesForProject(ctx context.Context, id int64) ([]
 }
 
 const getTaskRelationsForProject = `-- name: GetTaskRelationsForProject :many
-SELECT
+select
     ts.parent_id,
     ts.child_id,
-    rt.c_to_p_label AS relation_label,
-    rt.color AS relation_color,
+    rt.c_to_p_label as relation_label,
+    rt.color as relation_color,
     rt.is_blocking
-FROM task_subtasks ts
-INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
-INNER JOIN tasks t_parent ON ts.parent_id = t_parent.id
-INNER JOIN columns c ON t_parent.column_id = c.id
-WHERE c.project_id = ?
+from task_subtasks ts
+inner join relation_types rt on ts.relation_type_id = rt.id
+inner join tasks t_parent on ts.parent_id = t_parent.id
+inner join columns c on t_parent.column_id = c.id
+where c.project_id = ?
 `
 
 type GetTaskRelationsForProjectRow struct {
@@ -790,7 +915,8 @@ type GetTaskRelationsForProjectRow struct {
 	IsBlocking    bool
 }
 
-// Gets all parent-child relationships for tasks in a project
+// Retrieves all parent-child task relationships
+// in a project for tree visualization
 func (q *Queries) GetTaskRelationsForProject(ctx context.Context, projectID int64) ([]GetTaskRelationsForProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, getTaskRelationsForProject, projectID)
 	if err != nil {
@@ -821,25 +947,24 @@ func (q *Queries) GetTaskRelationsForProject(ctx context.Context, projectID int6
 }
 
 const getTaskSummariesByColumn = `-- name: GetTaskSummariesByColumn :many
-
-SELECT
+select
     t.id,
     t.title,
     t.column_id,
     t.position,
-    ty.description AS type_description,
-    p.description AS priority_description,
-    p.color AS priority_color,
-    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) AS label_ids,
-    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) AS label_names,
-    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) AS label_colors
-FROM tasks t
-LEFT JOIN types ty ON t.type_id = ty.id
-LEFT JOIN priorities p ON t.priority_id = p.id
-LEFT JOIN task_labels tl ON t.id = tl.task_id
-LEFT JOIN labels l ON tl.label_id = l.id
-WHERE t.column_id = ?
-GROUP BY
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    cast(coalesce(group_concat(l.id, char(31)), '') as text) as label_ids,
+    cast(coalesce(group_concat(l.name, char(31)), '') as text) as label_names,
+    cast(coalesce(group_concat(l.color, char(31)), '') as text) as label_colors
+from tasks t
+left join types ty on t.type_id = ty.id
+left join priorities p on t.priority_id = p.id
+left join task_labels tl on t.id = tl.task_id
+left join labels l on tl.label_id = l.id
+where t.column_id = ?
+group by
     t.id,
     t.title,
     t.column_id,
@@ -847,7 +972,7 @@ GROUP BY
     ty.description,
     p.description,
     p.color
-ORDER BY t.position
+order by t.position
 `
 
 type GetTaskSummariesByColumnRow struct {
@@ -863,9 +988,7 @@ type GetTaskSummariesByColumnRow struct {
 	LabelColors         string
 }
 
-// ============================================================================
-// TASK SUMMARIES (Optimized with JOINs to avoid N+1 queries)
-// ============================================================================
+// Retrieves task summaries with aggregated labels for a specific column using GROUP_CONCAT to avoid N+1 queries
 func (q *Queries) GetTaskSummariesByColumn(ctx context.Context, columnID int64) ([]GetTaskSummariesByColumnRow, error) {
 	rows, err := q.db.QueryContext(ctx, getTaskSummariesByColumn, columnID)
 	if err != nil {
@@ -901,31 +1024,31 @@ func (q *Queries) GetTaskSummariesByColumn(ctx context.Context, columnID int64) 
 }
 
 const getTaskSummariesByProject = `-- name: GetTaskSummariesByProject :many
-SELECT
+select
     t.id,
     t.title,
     t.column_id,
     t.position,
-    ty.description AS type_description,
-    p.description AS priority_description,
-    p.color AS priority_color,
-    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) AS label_ids,
-    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) AS label_names,
-    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) AS label_colors,
-    EXISTS(
-        SELECT 1
-        FROM task_subtasks ts
-        INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
-        WHERE ts.parent_id = t.id AND rt.is_blocking = 1
-    ) AS is_blocked
-FROM tasks t
-INNER JOIN columns c ON t.column_id = c.id
-LEFT JOIN types ty ON t.type_id = ty.id
-LEFT JOIN priorities p ON t.priority_id = p.id
-LEFT JOIN task_labels tl ON t.id = tl.task_id
-LEFT JOIN labels l ON tl.label_id = l.id
-WHERE c.project_id = ?
-GROUP BY
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    cast(coalesce(group_concat(l.id, char(31)), '') as text) as label_ids,
+    cast(coalesce(group_concat(l.name, char(31)), '') as text) as label_names,
+    cast(coalesce(group_concat(l.color, char(31)), '') as text) as label_colors,
+    exists(
+        select 1
+        from task_subtasks ts
+        inner join relation_types rt on ts.relation_type_id = rt.id
+        where ts.parent_id = t.id and rt.is_blocking = 1
+    ) as is_blocked
+from tasks t
+inner join columns c on t.column_id = c.id
+left join types ty on t.type_id = ty.id
+left join priorities p on t.priority_id = p.id
+left join task_labels tl on t.id = tl.task_id
+left join labels l on tl.label_id = l.id
+where c.project_id = ?
+group by
     t.id,
     t.title,
     t.column_id,
@@ -933,7 +1056,7 @@ GROUP BY
     ty.description,
     p.description,
     p.color
-ORDER BY t.position
+order by t.position
 `
 
 type GetTaskSummariesByProjectRow struct {
@@ -950,6 +1073,8 @@ type GetTaskSummariesByProjectRow struct {
 	IsBlocked           int64
 }
 
+// Retrieves task summaries with aggregated labels and blocking status
+// for all tasks in a project
 func (q *Queries) GetTaskSummariesByProject(ctx context.Context, projectID int64) ([]GetTaskSummariesByProjectRow, error) {
 	rows, err := q.db.QueryContext(ctx, getTaskSummariesByProject, projectID)
 	if err != nil {
@@ -986,31 +1111,31 @@ func (q *Queries) GetTaskSummariesByProject(ctx context.Context, projectID int64
 }
 
 const getTaskSummariesByProjectFiltered = `-- name: GetTaskSummariesByProjectFiltered :many
-SELECT
+select
     t.id,
     t.title,
     t.column_id,
     t.position,
-    ty.description AS type_description,
-    p.description AS priority_description,
-    p.color AS priority_color,
-    CAST(COALESCE(GROUP_CONCAT(l.id, CHAR(31)), '') AS TEXT) AS label_ids,
-    CAST(COALESCE(GROUP_CONCAT(l.name, CHAR(31)), '') AS TEXT) AS label_names,
-    CAST(COALESCE(GROUP_CONCAT(l.color, CHAR(31)), '') AS TEXT) AS label_colors,
-    EXISTS(
-        SELECT 1
-        FROM task_subtasks ts
-        INNER JOIN relation_types rt ON ts.relation_type_id = rt.id
-        WHERE ts.parent_id = t.id AND rt.is_blocking = 1
-    ) AS is_blocked
-FROM tasks t
-INNER JOIN columns c ON t.column_id = c.id
-LEFT JOIN types ty ON t.type_id = ty.id
-LEFT JOIN priorities p ON t.priority_id = p.id
-LEFT JOIN task_labels tl ON t.id = tl.task_id
-LEFT JOIN labels l ON tl.label_id = l.id
-WHERE c.project_id = ? AND t.title LIKE ?
-GROUP BY
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    cast(coalesce(group_concat(l.id, char(31)), '') as text) as label_ids,
+    cast(coalesce(group_concat(l.name, char(31)), '') as text) as label_names,
+    cast(coalesce(group_concat(l.color, char(31)), '') as text) as label_colors,
+    exists(
+        select 1
+        from task_subtasks ts
+        inner join relation_types rt on ts.relation_type_id = rt.id
+        where ts.parent_id = t.id and rt.is_blocking = 1
+    ) as is_blocked
+from tasks t
+inner join columns c on t.column_id = c.id
+left join types ty on t.type_id = ty.id
+left join priorities p on t.priority_id = p.id
+left join task_labels tl on t.id = tl.task_id
+left join labels l on tl.label_id = l.id
+where c.project_id = ? and t.title like ?
+group by
     t.id,
     t.title,
     t.column_id,
@@ -1018,7 +1143,7 @@ GROUP BY
     ty.description,
     p.description,
     p.color
-ORDER BY t.position
+order by t.position
 `
 
 type GetTaskSummariesByProjectFilteredParams struct {
@@ -1040,6 +1165,7 @@ type GetTaskSummariesByProjectFilteredRow struct {
 	IsBlocked           int64
 }
 
+// Retrieves task summaries filtered by title search pattern with aggregated labels
 func (q *Queries) GetTaskSummariesByProjectFiltered(ctx context.Context, arg GetTaskSummariesByProjectFilteredParams) ([]GetTaskSummariesByProjectFilteredRow, error) {
 	rows, err := q.db.QueryContext(ctx, getTaskSummariesByProjectFiltered, arg.ProjectID, arg.Title)
 	if err != nil {
@@ -1076,10 +1202,17 @@ func (q *Queries) GetTaskSummariesByProjectFiltered(ctx context.Context, arg Get
 }
 
 const getTasksByColumn = `-- name: GetTasksByColumn :many
-SELECT id, title, description, column_id, position, created_at, updated_at
-FROM tasks
-WHERE column_id = ?
-ORDER BY position
+select
+    id,
+    title,
+    description,
+    column_id,
+    position,
+    created_at,
+    updated_at
+from tasks
+where column_id = ?
+order by position
 `
 
 type GetTasksByColumnRow struct {
@@ -1092,6 +1225,7 @@ type GetTasksByColumnRow struct {
 	UpdatedAt   sql.NullTime
 }
 
+// Retrieves all tasks in a column, ordered by position
 func (q *Queries) GetTasksByColumn(ctx context.Context, columnID int64) ([]GetTasksByColumnRow, error) {
 	rows, err := q.db.QueryContext(ctx, getTasksByColumn, columnID)
 	if err != nil {
@@ -1124,18 +1258,17 @@ func (q *Queries) GetTasksByColumn(ctx context.Context, columnID int64) ([]GetTa
 }
 
 const getTasksForTree = `-- name: GetTasksForTree :many
-
-SELECT
+select
     t.id,
     t.ticket_number,
     t.title,
-    c.name AS column_name,
-    proj.name AS project_name
-FROM tasks t
-INNER JOIN columns c ON t.column_id = c.id
-INNER JOIN projects proj ON c.project_id = proj.id
-WHERE proj.id = ?
-ORDER BY t.ticket_number
+    c.name as column_name,
+    proj.name as project_name
+from tasks t
+inner join columns c on t.column_id = c.id
+inner join projects proj on c.project_id = proj.id
+where proj.id = ?
+order by t.ticket_number
 `
 
 type GetTasksForTreeRow struct {
@@ -1146,10 +1279,8 @@ type GetTasksForTreeRow struct {
 	ProjectName  string
 }
 
-// ============================================================================
-// TASK TREE QUERIES (for project tree command)
-// ============================================================================
-// Gets all tasks in a project with their column names for tree display
+// Retrieves all tasks in a project with column
+// and project names for tree visualization
 func (q *Queries) GetTasksForTree(ctx context.Context, id int64) ([]GetTasksForTreeRow, error) {
 	rows, err := q.db.QueryContext(ctx, getTasksForTree, id)
 	if err != nil {
@@ -1180,18 +1311,23 @@ func (q *Queries) GetTasksForTree(ctx context.Context, id int64) ([]GetTasksForT
 }
 
 const incrementTicketNumber = `-- name: IncrementTicketNumber :exec
-UPDATE project_counters SET next_ticket_number = next_ticket_number + 1 WHERE project_id = ?
+update project_counters
+set next_ticket_number = next_ticket_number + 1
+where project_id = ?
 `
 
+// Increments the ticket counter for a project after assigning a ticket number
 func (q *Queries) IncrementTicketNumber(ctx context.Context, projectID int64) error {
 	_, err := q.db.ExecContext(ctx, incrementTicketNumber, projectID)
 	return err
 }
 
 const moveTaskToColumn = `-- name: MoveTaskToColumn :exec
-UPDATE tasks
-SET column_id = ?, position = ?, updated_at = CURRENT_TIMESTAMP
-WHERE id = ?
+update tasks
+set column_id = ?,
+    position = ?,
+    updated_at = current_timestamp
+where id = ?
 `
 
 type MoveTaskToColumnParams struct {
@@ -1200,13 +1336,14 @@ type MoveTaskToColumnParams struct {
 	ID       int64
 }
 
+// Moves a task to a different column and updates its position
 func (q *Queries) MoveTaskToColumn(ctx context.Context, arg MoveTaskToColumnParams) error {
 	_, err := q.db.ExecContext(ctx, moveTaskToColumn, arg.ColumnID, arg.Position, arg.ID)
 	return err
 }
 
 const removeSubtask = `-- name: RemoveSubtask :exec
-DELETE FROM task_subtasks WHERE parent_id = ? AND child_id = ?
+delete from task_subtasks where parent_id = ? and child_id = ?
 `
 
 type RemoveSubtaskParams struct {
@@ -1214,15 +1351,17 @@ type RemoveSubtaskParams struct {
 	ChildID  int64
 }
 
+// Removes a parent-child relationship between two tasks
 func (q *Queries) RemoveSubtask(ctx context.Context, arg RemoveSubtaskParams) error {
 	_, err := q.db.ExecContext(ctx, removeSubtask, arg.ParentID, arg.ChildID)
 	return err
 }
 
 const setTaskPosition = `-- name: SetTaskPosition :exec
-UPDATE tasks
-SET position = ?, updated_at = CURRENT_TIMESTAMP
-WHERE id = ?
+update tasks
+set position = ?,
+updated_at = current_timestamp
+where id = ?
 `
 
 type SetTaskPositionParams struct {
@@ -1230,24 +1369,29 @@ type SetTaskPositionParams struct {
 	ID       int64
 }
 
+// Updates a task's position within its current column
 func (q *Queries) SetTaskPosition(ctx context.Context, arg SetTaskPositionParams) error {
 	_, err := q.db.ExecContext(ctx, setTaskPosition, arg.Position, arg.ID)
 	return err
 }
 
 const setTaskPositionTemporary = `-- name: SetTaskPositionTemporary :exec
-UPDATE tasks SET position = -1, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+update tasks 
+set position = -1,
+updated_at = current_timestamp
+where id = ?
 `
 
+// Sets task position to -1 temporarily during reordering operations
 func (q *Queries) SetTaskPositionTemporary(ctx context.Context, id int64) error {
 	_, err := q.db.ExecContext(ctx, setTaskPositionTemporary, id)
 	return err
 }
 
 const updateTask = `-- name: UpdateTask :exec
-UPDATE tasks
-SET title = ?, description = ?, updated_at = CURRENT_TIMESTAMP
-WHERE id = ?
+update tasks
+set title = ?, description = ?, updated_at = current_timestamp
+where id = ?
 `
 
 type UpdateTaskParams struct {
@@ -1256,15 +1400,16 @@ type UpdateTaskParams struct {
 	ID          int64
 }
 
+// Updates a task's title and description
 func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) error {
 	_, err := q.db.ExecContext(ctx, updateTask, arg.Title, arg.Description, arg.ID)
 	return err
 }
 
 const updateTaskPriority = `-- name: UpdateTaskPriority :exec
-UPDATE tasks
-SET priority_id = ?, updated_at = CURRENT_TIMESTAMP
-WHERE id = ?
+update tasks
+set priority_id = ?, updated_at = current_timestamp
+where id = ?
 `
 
 type UpdateTaskPriorityParams struct {
@@ -1272,15 +1417,16 @@ type UpdateTaskPriorityParams struct {
 	ID         int64
 }
 
+// Updates a task's priority level
 func (q *Queries) UpdateTaskPriority(ctx context.Context, arg UpdateTaskPriorityParams) error {
 	_, err := q.db.ExecContext(ctx, updateTaskPriority, arg.PriorityID, arg.ID)
 	return err
 }
 
 const updateTaskType = `-- name: UpdateTaskType :exec
-UPDATE tasks
-SET type_id = ?, updated_at = CURRENT_TIMESTAMP
-WHERE id = ?
+update tasks
+set type_id = ?, updated_at = current_timestamp
+where id = ?
 `
 
 type UpdateTaskTypeParams struct {
@@ -1288,6 +1434,7 @@ type UpdateTaskTypeParams struct {
 	ID     int64
 }
 
+// Updates a task's type classification
 func (q *Queries) UpdateTaskType(ctx context.Context, arg UpdateTaskTypeParams) error {
 	_, err := q.db.ExecContext(ctx, updateTaskType, arg.TypeID, arg.ID)
 	return err
