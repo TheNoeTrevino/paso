@@ -7,7 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/config"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	testutilcli "github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
 // TestModelInitialization tests that a Model can be created without panic
@@ -15,8 +15,8 @@ func TestModelInitialization(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	db, app := testutil.SetupCLITest(t)
-	_ = testutil.CreateTestProject(t, db, "Test Project")
+	db, app := testutilcli.SetupCLITest(t)
+	_ = testutilcli.CreateTestProject(t, db, "Test Project")
 
 	cfg := &config.Config{
 		ColorScheme: config.DefaultColorScheme(),
@@ -36,8 +36,8 @@ func TestModelImplementsTeaModel(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	db, app := testutil.SetupCLITest(t)
-	_ = testutil.CreateTestProject(t, db, "Test Project")
+	db, app := testutilcli.SetupCLITest(t)
+	_ = testutilcli.CreateTestProject(t, db, "Test Project")
 
 	cfg := &config.Config{
 		ColorScheme: config.DefaultColorScheme(),
@@ -64,9 +64,9 @@ func TestModelViewGeneratesOutput(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	db, app := testutil.SetupCLITest(t)
-	projectID := testutil.CreateTestProject(t, db, "Test Project")
-	_ = testutil.CreateTestColumn(t, db, projectID, "Todo")
+	db, app := testutilcli.SetupCLITest(t)
+	projectID := testutilcli.CreateTestProject(t, db, "Test Project")
+	_ = testutilcli.CreateTestColumn(t, db, projectID, "Todo")
 
 	cfg := &config.Config{
 		ColorScheme: config.DefaultColorScheme(),
