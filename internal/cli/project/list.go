@@ -3,7 +3,7 @@ package project
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -38,13 +38,13 @@ func runList(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("Error formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("Error closing CLI", "error", err)
 		}
 	}()
 
@@ -52,7 +52,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	projects, err := cliInstance.App.ProjectService.GetAllProjects(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("PROJECT_FETCH_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("Error formatting error message", "error", fmtErr)
 		}
 		return err
 	}

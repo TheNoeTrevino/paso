@@ -3,7 +3,7 @@ package task
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -23,7 +23,7 @@ func UpdateCmd() *cobra.Command {
 	// Required flags
 	cmd.Flags().Int("id", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
+		slog.Error("Error marking flag as required", "error", err)
 	}
 
 	// Optional update flags
@@ -54,13 +54,13 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("Error formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("Error closing CLI", "error", err)
 		}
 	}()
 
@@ -71,7 +71,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	if !titleFlag.Changed && !descFlag.Changed && !priorityFlag.Changed {
 		if fmtErr := formatter.Error("NO_UPDATES", "at least one of --title, --description, or --priority must be specified"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("Error formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitUsage)
 	}
@@ -89,7 +89,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		}
 		if err := cliInstance.App.TaskService.UpdateTask(ctx, req); err != nil {
 			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-				log.Printf("Error formatting error message: %v", fmtErr)
+				slog.Error("Error formatting error message", "error", fmtErr)
 			}
 			return err
 		}
@@ -100,7 +100,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		priorityID, err := cli.ParsePriority(taskPriority)
 		if err != nil {
 			if fmtErr := formatter.Error("INVALID_PRIORITY", err.Error()); fmtErr != nil {
-				log.Printf("Error formatting error message: %v", fmtErr)
+				slog.Error("Error formatting error message", "error", fmtErr)
 			}
 			os.Exit(cli.ExitValidation)
 		}
@@ -110,7 +110,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		}
 		if err := cliInstance.App.TaskService.UpdateTask(ctx, req); err != nil {
 			if fmtErr := formatter.Error("PRIORITY_UPDATE_ERROR", err.Error()); fmtErr != nil {
-				log.Printf("Error formatting error message: %v", fmtErr)
+				slog.Error("Error formatting error message", "error", fmtErr)
 			}
 			return err
 		}

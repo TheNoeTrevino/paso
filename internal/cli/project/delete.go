@@ -3,7 +3,7 @@ package project
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -23,7 +23,7 @@ func DeleteCmd() *cobra.Command {
 	// Required flags
 	cmd.Flags().Int("id", 0, "Project ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
+		slog.Error("Error marking flag as required", "error", err)
 	}
 
 	// Optional flags
@@ -50,13 +50,13 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("Error formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("Error closing CLI", "error", err)
 		}
 	}()
 
@@ -64,7 +64,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, projectID)
 	if err != nil {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", projectID)); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("Error formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -74,7 +74,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Delete project #%d: '%s'? (y/N): ", projectID, project.Name)
 		var response string
 		if _, err := fmt.Scanln(&response); err != nil {
-			log.Printf("Error reading user input: %v", err)
+			slog.Error("Error reading user input", "error", err)
 		}
 		if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 			fmt.Println("Cancelled")
@@ -85,7 +85,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	// Delete the project
 	if err := cliInstance.App.ProjectService.DeleteProject(ctx, projectID, force); err != nil {
 		if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("Error formatting error message", "error", fmtErr)
 		}
 		return err
 	}

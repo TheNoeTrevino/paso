@@ -3,7 +3,7 @@ package project
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -60,7 +60,7 @@ func runTree(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.ErrorWithSuggestion("INVALID_PROJECT_ID",
 			"project ID must be a positive integer",
 			"Usage: paso project tree <project-id> or paso project tree --project-id=<id>"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("Error formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitUsage)
 	}
@@ -69,13 +69,13 @@ func runTree(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("Error formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("Error closing CLI", "error", err)
 		}
 	}()
 
@@ -83,7 +83,7 @@ func runTree(cmd *cobra.Command, args []string) error {
 	tree, err := cliInstance.App.TaskService.GetTaskTreeByProject(ctx, projectID)
 	if err != nil {
 		if fmtErr := formatter.Error("TREE_FETCH_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("Error formatting error message", "error", fmtErr)
 		}
 		return err
 	}

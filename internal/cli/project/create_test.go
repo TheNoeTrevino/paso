@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/thenoetrevino/paso/internal/testutil"
+	testutilcli "github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
 // TestCreateProjectCommand tests the create command
 func TestCreateProjectCommand(t *testing.T) {
-	_, app := testutil.SetupCLITest(t)
+	_, app := testutilcli.SetupCLITest(t)
 
 	tests := []struct {
 		name      string
@@ -42,7 +42,7 @@ func TestCreateProjectCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := CreateCmd()
-			output, err := testutil.ExecuteCLICommand(t, app, cmd, tt.args)
+			output, err := testutilcli.ExecuteCLICommand(t, app, cmd, tt.args)
 
 			if tt.shouldErr && err == nil {
 				t.Errorf("Expected error but got none")
