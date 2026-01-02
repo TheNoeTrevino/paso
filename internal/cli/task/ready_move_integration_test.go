@@ -179,8 +179,10 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Should not error - exits successfully
 		assert.NoError(t, err)
-		// Quiet mode should still output task ID
-		assert.Equal(t, fmt.Sprintf("%d\n", taskID), output)
+		// Output should contain the informational message and task ID
+		assert.Contains(t, output, "Task")
+		assert.Contains(t, output, "already in the ready column")
+		assert.Contains(t, output, fmt.Sprintf("%d", taskID))
 
 		// Verify task is still in ready column
 		var columnID int
@@ -188,9 +190,6 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, todoColumnID, columnID)
-
-		// Note: The command writes "Task X is already in the ready column" to stderr
-		// but we can't easily capture stderr in this test setup, so we verify behavior only
 	})
 
 	t.Run("Task already in ready column - default output", func(t *testing.T) {
@@ -205,8 +204,10 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Should not error - exits successfully
 		assert.NoError(t, err)
-		// Output is empty in default mode when already in target column
-		assert.Empty(t, output)
+		// Output should contain the informational message
+		assert.Contains(t, output, "Task")
+		assert.Contains(t, output, "already in the ready column")
+		assert.Contains(t, output, fmt.Sprintf("%d", taskID))
 
 		// Verify task is still in ready column
 		var columnID int

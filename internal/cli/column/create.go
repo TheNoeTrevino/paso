@@ -15,6 +15,8 @@ import (
 	columnservice "github.com/thenoetrevino/paso/internal/services/column"
 )
 
+// Note: os is still imported for os.Stdout used in JSON output
+
 // CreateCmd returns the column create subcommand
 func CreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -78,7 +80,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			"Set project with: eval $(paso use project <project-id>)"); fmtErr != nil {
 			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
-		os.Exit(cli.ExitUsage)
+		return err
 	}
 
 	// Initialize CLI
@@ -101,7 +103,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", columnProject)); fmtErr != nil {
 			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
-		os.Exit(cli.ExitNotFound)
+		return fmt.Errorf("project %d not found", columnProject)
 	}
 
 	// Validate after column if specified
@@ -112,14 +114,14 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnAfter)); fmtErr != nil {
 				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
-			os.Exit(cli.ExitNotFound)
+			return fmt.Errorf("column %d not found", columnAfter)
 		}
 		// Verify column belongs to same project
 		if afterCol.ProjectID != columnProject {
 			if fmtErr := formatter.Error("INVALID_COLUMN", fmt.Sprintf("column %d does not belong to project %d", columnAfter, columnProject)); fmtErr != nil {
 				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
-			os.Exit(cli.ExitValidation)
+			return fmt.Errorf("column %d does not belong to project %d", columnAfter, columnProject)
 		}
 		afterID = &columnAfter
 	}
@@ -139,7 +141,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 				fmt.Sprintf("%s\n\nUse the --force flag to change the done column.\nPaso uses the done column to move tasks with the {complete task command}.\nThis could lead to unexpected behavior, and this is not suggested.", err.Error())); fmtErr != nil {
 				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
-			os.Exit(cli.ExitValidation)
+			return err
 		}
 		if fmtErr := formatter.Error("COLUMN_CREATE_ERROR", err.Error()); fmtErr != nil {
 			slog.Error("failed to formatting error message", "error", fmtErr)

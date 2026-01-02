@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -12,39 +13,80 @@ import (
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
-// CaptureOutputFunc captures stdout during function execution
+// stdoutStderrMutex protects concurrent access to os.Stdout and os.Stderr
+// This is necessary because tests can run in parallel and all modify global stdio
+var stdoutStderrMutex sync.Mutex
+
+// CaptureOutputFunc captures stdout and stderr during function execution
 func CaptureOutputFunc(t *testing.T, fn func()) string {
 	t.Helper()
 
-	// Save original stdout
-	oldStdout := os.Stdout
+	// Lock to prevent concurrent modification of global stdout/stderr
+	stdoutStderrMutex.Lock()
+	defer stdoutStderrMutex.Unlock()
 
-	// Create pipe to capture output
-	r, w, err := os.Pipe()
+	// Save original stdout and stderr
+	oldStdout := os.Stdout
+	oldStderr := os.Stderr
+
+	// Create pipes to capture output
+	rOut, wOut, err := os.Pipe()
 	if err != nil {
-		t.Fatalf("Failed to create pipe: %v", err)
+		t.Fatalf("Failed to create stdout pipe: %v", err)
+	}
+	rErr, wErr, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("Failed to create stderr pipe: %v", err)
 	}
 
-	// Replace stdout with pipe writer
-	os.Stdout = w
+	// Replace stdout and stderr with pipe writers
+	os.Stdout = wOut
+	os.Stderr = wErr
 
-	// Channel to collect output
-	outC := make(chan string)
+	// Use buffered channels and WaitGroup to ensure proper synchronization
+	var wg sync.WaitGroup
+	outC := make(chan string, 1)
+	errC := make(chan string, 1)
+
+	// Goroutine to read stdout
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
+		_, _ = io.Copy(&buf, rOut)
 		outC <- buf.String()
+	}()
+
+	// Goroutine to read stderr
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, rErr)
+		errC <- buf.String()
 	}()
 
 	// Execute function
 	fn()
 
-	// Close writer and restore stdout
-	_ = w.Close()
+	// Close writers - this signals EOF to the goroutines
+	_ = wOut.Close()
+	_ = wErr.Close()
 	os.Stdout = oldStdout
+	os.Stderr = oldStderr
 
-	// Get captured output
-	return <-outC
+	// Wait for both goroutines to finish reading before collecting output
+	wg.Wait()
+
+	// Get captured output - both channels should have data now
+	stdoutText := <-outC
+	stderrText := <-errC
+
+	// Return combined output (stderr first since errors are more important)
+	if stderrText != "" {
+		return stderrText + stdoutText
+	}
+	return stdoutText
 }
 
 // ExecuteCLICommand executes a CLI command with a test app instance

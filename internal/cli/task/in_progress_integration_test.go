@@ -269,8 +269,10 @@ func TestInProgressTask_Positive(t *testing.T) {
 
 		// Should not error - command handles this gracefully
 		assert.NoError(t, err)
-		// In quiet mode, still outputs the task ID even if already in target column
-		assert.Equal(t, fmt.Sprintf("%d\n", taskID), output)
+		// Output should contain the informational message and task ID
+		assert.Contains(t, output, "Task")
+		assert.Contains(t, output, "already in the in-progress column")
+		assert.Contains(t, output, fmt.Sprintf("%d", taskID))
 	})
 
 	t.Run("Multiple tasks moved to in-progress", func(t *testing.T) {

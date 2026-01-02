@@ -79,7 +79,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnID)); fmtErr != nil {
 			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
-		os.Exit(cli.ExitNotFound)
+		return fmt.Errorf("column %d not found", columnID)
 	}
 
 	// Ask for confirmation unless force or quiet mode

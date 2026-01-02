@@ -53,6 +53,9 @@ type Client struct {
 
 	// Write deadline duration (configurable for tests)
 	writeDeadline time.Duration
+
+	// Batcher shutdown timeout (configurable for tests)
+	batcherShutdownTimeout time.Duration
 }
 
 // NewClient creates a new event client but does not connect.
@@ -70,17 +73,18 @@ func NewClient(socketPath string) (*Client, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Client{
-		socketPath:       socketPath,
-		eventQueue:       make(chan Event, 100),
-		debounce:         time.Duration(debounceMs) * time.Millisecond,
-		maxRetries:       5,
-		baseDelay:        1 * time.Second,
-		currentProjectID: 0,
-		lastSequence:     0,
-		ctx:              ctx,
-		cancel:           cancel,
-		batcherDone:      make(chan struct{}),
-		writeDeadline:    5 * time.Second, // Default: 5 seconds
+		socketPath:             socketPath,
+		eventQueue:             make(chan Event, 100),
+		debounce:               time.Duration(debounceMs) * time.Millisecond,
+		maxRetries:             5,
+		baseDelay:              1 * time.Second,
+		currentProjectID:       0,
+		lastSequence:           0,
+		ctx:                    ctx,
+		cancel:                 cancel,
+		batcherDone:            make(chan struct{}),
+		writeDeadline:          5 * time.Second, // Default: 5 seconds
+		batcherShutdownTimeout: 100 * time.Millisecond,
 	}, nil
 }
 
@@ -100,6 +104,14 @@ func (c *Client) setWriteDeadlineForTest(d time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.writeDeadline = d
+}
+
+// setBatcherShutdownTimeoutForTest allows tests to use shorter batcher shutdown timeouts.
+// This is an unexported method for test use only.
+func (c *Client) setBatcherShutdownTimeoutForTest(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.batcherShutdownTimeout = d
 }
 
 // notify calls the notification callback if it's set (thread-safe)
@@ -129,12 +141,26 @@ func (c *Client) Connect(ctx context.Context) error {
 		// We'll recreate it after the old batcher stops
 		close(c.eventQueue)
 
-		// Wait for old batcher to finish (unlock while waiting)
+		// Wait for old batcher to finish with timeout (unlock while waiting to prevent deadlock)
 		c.mu.Unlock()
-		<-oldBatcherDone
+
+		timeout := c.batcherShutdownTimeout
+		select {
+		case <-oldBatcherDone:
+			slog.Debug("old batcher exited cleanly before reconnection")
+		case <-time.After(timeout):
+			slog.Warn("old batcher shutdown timeout, proceeding with reconnection",
+				"timeout", timeout)
+		case <-ctx.Done():
+			// Need to reacquire lock before returning (defer will unlock)
+			c.mu.Lock()
+			return ctx.Err()
+		}
+
 		c.mu.Lock()
 
 		// Recreate eventQueue for the new batcher
+		// (old batcher may still be running, but it will exit when it reads from closed queue)
 		c.eventQueue = make(chan Event, 100)
 	}
 

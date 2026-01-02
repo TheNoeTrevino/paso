@@ -3016,10 +3016,11 @@ verify:
 //
 // This test validates:
 // - Client successfully connects to daemon initially
-// - When daemon stops and socket closes, client detects disconnection
-// - The readEvents function detects EOF from closed connection
-// - Reconnection is attempted but fails (daemon not running)
-// - Listen loop exits cleanly after failed reconnection
+// - When daemon stops, client detects the connection loss
+// - Listen() loop attempts reconnection (as designed)
+// - After max reconnection attempts fail, Listen() exits cleanly
+// - Disconnection is detected within a reasonable time (1-2 seconds)
+// - Client properly handles EOF error from closed socket
 func TestClient_DetectsDaemonDisconnect(t *testing.T) {
 	t.Parallel()
 
@@ -3032,76 +3033,110 @@ func TestClient_DetectsDaemonDisconnect(t *testing.T) {
 	}
 	t.Logf("✓ Mock daemon started")
 
-	// Create client
+	// Create and connect client
 	client, err := NewClient(socketPath)
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
 	defer func() { _ = client.Close() }()
 
-	// Set very short retry parameters for faster testing
-	client.baseDelay = 50 * time.Millisecond
-	client.maxRetries = 2
-	client.setBatcherShutdownTimeoutForTest(25 * time.Millisecond)
+	// Set short retry parameters for faster testing
+	client.baseDelay = 100 * time.Millisecond
+	client.maxRetries = 3 // Only try 3 times
 
-	// Connect
-	connectCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := client.Connect(connectCtx); err != nil {
+	if err := client.Connect(ctx); err != nil {
 		t.Fatalf("Failed to connect: %v", err)
 	}
-	t.Logf("✓ Client connected")
+	t.Logf("✓ Client connected to daemon")
 
-	// Drain initial subscribe
+	// Drain initial subscribe message (project 0)
 	select {
-	case <-messages:
-		t.Logf("✓ Initial subscribe received")
+	case msg := <-messages:
+		if msg.Type != "subscribe" {
+			t.Fatalf("Expected initial subscribe, got: %s", msg.Type)
+		}
+		t.Logf("✓ Initial subscribe message received: ProjectID=%d", msg.Subscribe.ProjectID)
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for subscribe")
+		t.Fatal("Timeout waiting for initial subscribe")
 	}
 
-	// Start Listen with client's internal context
-	eventChan, err := client.Listen(client.ctx)
+	// Verify client is connected
+	client.mu.Lock()
+	connected := client.conn != nil
+	client.mu.Unlock()
+
+	if !connected {
+		t.Fatal("Expected client to be connected")
+	}
+	t.Logf("✓ Client connection verified")
+
+	// Start Listen loop - this will detect disconnect and attempt reconnection
+	eventChan, err := client.Listen(ctx)
 	if err != nil {
-		t.Fatalf("Failed to start listen: %v", err)
+		t.Fatalf("Failed to start listen loop: %v", err)
 	}
 
-	// Monitor for channel close
-	done := make(chan struct{})
+	// Track disconnect detection and reconnection attempts
+	disconnectDetected := make(chan struct{})
+
 	go func() {
 		for range eventChan {
+			// Drain any events
 		}
-		close(done)
+		// When eventChan closes, either:
+		// 1. Disconnect was detected and reconnection succeeded (channel stays open)
+		// 2. Disconnect was detected and reconnection failed after max retries (channel closes)
+		close(disconnectDetected)
 	}()
 
-	// Wait a bit for Listen to start reading
-	time.Sleep(100 * time.Millisecond)
-
-	// Simulate daemon crash: stop daemon and remove socket
-	t.Logf("Simulating daemon disconnect...")
-	start := time.Now()
+	// Stop the daemon to simulate disconnect
+	t.Logf("Stopping daemon to simulate disconnect...")
 	stopFunc()
-	os.Remove(socketPath)
+	disconnectTime := time.Now()
 
-	// Wait for Listen loop to detect disconnect and exit
-	// With baseDelay=50ms and maxRetries=2: ~150ms for retries
-	// Plus time to detect EOF (should be immediate when decoder reads)
+	// Wait for client to detect disconnect and fail reconnection
+	// The Listen() loop should:
+	// 1. Detect EOF when reading from closed socket
+	// 2. Attempt to reconnect (will fail since daemon is stopped)
+	// 3. Give up after maxRetries and close eventChan
 	select {
-	case <-done:
-		elapsed := time.Since(start)
-		t.Logf("✓ Client detected disconnect in %v", elapsed)
+	case <-disconnectDetected:
+		detectionDelay := time.Since(disconnectTime)
+		t.Logf("✓ Client detected disconnect and completed reconnection attempts in %v", detectionDelay)
 
-		// Generous timeout: should complete in < 1 second
-		if elapsed > 1*time.Second {
-			t.Logf("⚠ Detection took longer than expected")
+		// Expected time: baseDelay * (2^0 + 2^1 + 2^2) = 100ms * (1+2+4) = 700ms
+		// Plus some overhead for connection attempts
+		expectedTime := 700 * time.Millisecond
+		maxTime := 3 * time.Second // Allow generous buffer
+
+		if detectionDelay > maxTime {
+			t.Errorf("Disconnect detection took too long (%v), expected ~%v", detectionDelay, expectedTime)
+		} else {
+			t.Logf("✓ Disconnect detected and handled within %v (expected ~%v)", detectionDelay, expectedTime)
+		}
+
+		// Verify the Listen loop has exited (eventChan closed)
+		select {
+		case _, ok := <-eventChan:
+			if ok {
+				t.Error("Event channel should be closed after reconnection fails")
+			} else {
+				t.Logf("✓ Event channel properly closed after failed reconnection")
+			}
+		default:
+			// Channel already drained and closed
+			t.Logf("✓ Event channel properly closed")
 		}
 
 	case <-time.After(10 * time.Second):
-		t.Fatal("Client did not detect disconnect within 10s")
+		t.Fatal("Client did not detect daemon disconnect within 10 seconds")
 	}
 
-	t.Logf("✓ Test completed: disconnect detection verified")
+	// Verify client handled the disconnect without crashing
+	t.Logf("✓ Test completed: client properly detects daemon disconnect via EOF")
 }
 
 // TestClient_ReconnectsAfterDaemonRestart verifies that the client successfully
@@ -3136,7 +3171,6 @@ func TestClient_ReconnectsAfterDaemonRestart(t *testing.T) {
 	// Set shorter retry parameters for faster test
 	client.baseDelay = 100 * time.Millisecond
 	client.maxRetries = 20
-	client.setBatcherShutdownTimeoutForTest(50 * time.Millisecond)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
