@@ -27,7 +27,7 @@ func main() {
 		var err error
 		home, err = os.UserHomeDir()
 		if err != nil {
-			slog.Error("Failed to get home directory", "error", err)
+			slog.Error("failed to get home directory", "error", err)
 			os.Exit(1)
 		}
 	}
@@ -38,24 +38,24 @@ func main() {
 
 	// Ensure .paso directory exists with secure permissions
 	if err := os.MkdirAll(pasoDir, 0700); err != nil {
-		slog.Error("Failed to create .paso directory", "error", err)
+		slog.Error("failed to create .paso directory", "error", err)
 		os.Exit(1)
 	}
 
 	// Create and start the daemon server
 	server, err := daemon.NewServer(socketPath)
 	if err != nil {
-		slog.Error("Failed to create daemon", "error", err)
+		slog.Error("failed to create daemon", "error", err)
 		os.Exit(1)
 	}
 
-	slog.Info("Paso daemon starting", "socket_path", socketPath, "pid", os.Getpid())
+	slog.Info("paso daemon starting", "socket_path", socketPath, "pid", os.Getpid())
 
 	// Start the daemon (blocks until shutdown)
 	if err := server.Start(ctx); err != nil {
-		slog.Error("Daemon error", "error", err)
+		slog.Error("daemon error", "error", err)
 		os.Exit(1)
 	}
 
-	slog.Info("Paso daemon shutting down gracefully")
+	slog.Info("paso daemon shutting down gracefully")
 }

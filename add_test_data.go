@@ -17,7 +17,7 @@ func main() {
 	// Initialize database
 	db, err := database.InitDB(context.Background())
 	if err != nil {
-		slog.Error("Failed to initialize database", "error", err)
+		slog.Error("failed to initialize database", "error", err)
 		return
 	}
 	defer db.Close()
@@ -25,7 +25,7 @@ func main() {
 	// Get all columns
 	columns, err := database.GetAllColumns(db)
 	if err != nil {
-		slog.Error("Failed to get columns", "error", err)
+		slog.Error("failed to get columns", "error", err)
 		return
 	}
 
@@ -44,7 +44,7 @@ func main() {
 	for i, title := range tasks {
 		_, err := database.CreateTask(db, title, "", todoCol.ID, i)
 		if err != nil {
-			slog.Error("Error creating task", "title", title, "error", err)
+			slog.Error("failed to create task", "title", title, "error", err)
 		} else {
 			slog.Info("Created task", "title", title)
 		}
@@ -59,7 +59,7 @@ func main() {
 	for i, title := range inProgressTasks {
 		_, err := database.CreateTask(db, title, "", inProgressCol.ID, i)
 		if err != nil {
-			slog.Error("Error creating task", "title", title, "error", err)
+			slog.Error("failed to create task", "title", title, "error", err)
 		} else {
 			slog.Info("Created task", "title", title)
 		}
@@ -74,7 +74,7 @@ func main() {
 	for i, title := range doneTasks {
 		_, err := database.CreateTask(db, title, "", doneCol.ID, i)
 		if err != nil {
-			slog.Error("Error creating task", "title", title, "error", err)
+			slog.Error("failed to create task", "title", title, "error", err)
 		} else {
 			slog.Info("Created task", "title", title)
 		}
