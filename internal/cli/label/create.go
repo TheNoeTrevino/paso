@@ -3,13 +3,13 @@
 package label
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"log"
-	"os"
+	"log/slog"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/handler"
 	labelservice "github.com/thenoetrevino/paso/internal/services/label"
 )
 
@@ -30,18 +30,18 @@ Examples:
   # Quiet mode for bash capture
   LABEL_ID=$(paso label create --name="bug" --color="#FF0000" --project=1 --quiet)
 `,
-		RunE: runCreate,
+		RunE: handler.Command(&createHandler{}, parseCreateFlags),
 	}
 
 	// Required flags
 	cmd.Flags().String("name", "", "Label name (required)")
 	if err := cmd.MarkFlagRequired("name"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
+		slog.Error("Error marking flag as required", "error", err)
 	}
 
 	cmd.Flags().String("color", "", "Label color in hex format #RRGGBB (required)")
 	if err := cmd.MarkFlagRequired("color"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
+		slog.Error("Error marking flag as required", "error", err)
 	}
 
 	cmd.Flags().Int("project", 0, "Project ID (uses PASO_PROJECT env var if not specified)")
@@ -53,57 +53,42 @@ Examples:
 	return cmd
 }
 
-func runCreate(cmd *cobra.Command, args []string) error {
-	ctx := cmd.Context()
+// createHandler implements handler.Handler for label creation
+type createHandler struct{}
 
-	// Get flag values
-	labelName, _ := cmd.Flags().GetString("name")
-	labelColor, _ := cmd.Flags().GetString("color")
-	jsonOutput, _ := cmd.Flags().GetBool("json")
-	quietMode, _ := cmd.Flags().GetBool("quiet")
-
-	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+// Execute implements the Handler interface
+func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (interface{}, error) {
+	// Get flag values from arguments
+	labelName := args.MustGetString("name")
+	labelColor := args.MustGetString("color")
 
 	// Get project ID from flag or environment variable
+	cmd := args.GetCmd()
 	labelProject, err := cli.GetProjectID(cmd)
 	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
-			err.Error(),
-			"Set project with: eval $(paso use project <project-id>)"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
+		return nil, fmt.Errorf("no project specified: use --project flag or set with 'eval $(paso use project <project-id>)'")
 	}
 
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		return err
+		return nil, fmt.Errorf("initialization error: %w", err)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("Error closing CLI", "error", err)
 		}
 	}()
 
 	// Validate color format
 	if err := cli.ValidateColorHex(labelColor); err != nil {
-		if fmtErr := formatter.Error("INVALID_COLOR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		os.Exit(cli.ExitValidation)
+		return nil, fmt.Errorf("invalid color: %w", err)
 	}
 
 	// Validate project exists
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, labelProject)
 	if err != nil {
-		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", labelProject)); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+		return nil, fmt.Errorf("project %d not found", labelProject)
 	}
 
 	// Create label
@@ -113,33 +98,43 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		Color:     labelColor,
 	})
 	if err != nil {
-		if fmtErr := formatter.Error("LABEL_CREATE_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		return err
+		return nil, fmt.Errorf("label creation error: %w", err)
 	}
 
-	// Output based on mode
-	if quietMode {
-		fmt.Printf("%d\n", label.ID)
-		return nil
+	return &labelCreateResult{
+		ID:        label.ID,
+		Name:      label.Name,
+		Color:     label.Color,
+		ProjectID: label.ProjectID,
+		Project:   project.Name,
+	}, nil
+}
+
+// labelCreateResult represents the result of label creation
+type labelCreateResult struct {
+	ID        int
+	Name      string
+	Color     string
+	ProjectID int
+	Project   string
+}
+
+// GetID implements the GetID interface for quiet mode output
+func (r *labelCreateResult) GetID() int {
+	return r.ID
+}
+
+func parseCreateFlags(cmd *cobra.Command) error {
+	// Validate required flags
+	name, _ := cmd.Flags().GetString("name")
+	if name == "" {
+		return fmt.Errorf("label name is required")
 	}
 
-	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
-			"success": true,
-			"label": map[string]interface{}{
-				"id":         label.ID,
-				"name":       label.Name,
-				"color":      label.Color,
-				"project_id": label.ProjectID,
-			},
-		})
+	color, _ := cmd.Flags().GetString("color")
+	if color == "" {
+		return fmt.Errorf("label color is required")
 	}
 
-	// Human-readable output
-	fmt.Printf("✓ Label '%s' created successfully (ID: %d)\n", labelName, label.ID)
-	fmt.Printf("  Project: %s\n", project.Name)
-	fmt.Printf("  Color: %s\n", labelColor)
 	return nil
 }
