@@ -80,7 +80,7 @@ func (m Model) executeSearch() (tea.Model, tea.Cmd) {
 	}
 
 	if err != nil {
-		slog.Error("Error filtering tasks", "error", err)
+		slog.Error("failed to filtering tasks", "error", err)
 		return m, nil
 	}
 

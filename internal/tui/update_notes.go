@@ -63,7 +63,7 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			commentID := m.Forms.Comment.Items[m.Forms.Comment.Cursor].Comment.ID
 			err := m.App.TaskService.DeleteComment(ctx, commentID)
 			if err != nil {
-				slog.Error("Error deleting comment", "error", err)
+				slog.Error("failed to deleting comment", "error", err)
 				m.UI.Notification.Add(state.LevelError, "Failed to delete comment")
 				return m, nil
 			}
@@ -72,7 +72,7 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			taskID := m.Forms.Form.EditingTaskID
 			comments, err := m.App.TaskService.GetCommentsByTask(ctx, taskID)
 			if err != nil {
-				slog.Error("Error reloading comments", "error", err)
+				slog.Error("failed to reloading comments", "error", err)
 				m.UI.Notification.Add(state.LevelError, "Failed to reload comments")
 				return m, nil
 			}

@@ -24,7 +24,7 @@ func InitParentPickerForForm(m *tui.Model) bool {
 	defer cancel()
 	allTasks, err := m.App.TaskService.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading project tasks", "error", err)
+		slog.Error("failed to loading project tasks", "error", err)
 		return false
 	}
 
@@ -91,7 +91,7 @@ func InitChildPickerForForm(m *tui.Model) bool {
 	defer cancel()
 	allTasks, err := m.App.TaskService.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading project tasks", "error", err)
+		slog.Error("failed to loading project tasks", "error", err)
 		return false
 	}
 
@@ -197,7 +197,7 @@ func InitPriorityPickerForForm(m *tui.Model) bool {
 
 		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.Forms.Form.EditingTaskID)
 		if err != nil {
-			slog.Error("Error loading task detail for priority picker", "error", err)
+			slog.Error("failed to loading task detail for priority picker", "error", err)
 			return false
 		}
 
@@ -236,7 +236,7 @@ func InitTypePickerForForm(m *tui.Model) bool {
 
 		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.Forms.Form.EditingTaskID)
 		if err != nil {
-			slog.Error("Error loading task detail for type picker", "error", err)
+			slog.Error("failed to loading task detail for type picker", "error", err)
 			return false
 		}
 
