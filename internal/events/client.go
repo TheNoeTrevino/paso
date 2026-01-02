@@ -45,7 +45,8 @@ type Client struct {
 	cancel context.CancelFunc
 
 	// Batching goroutine
-	batcherDone chan struct{}
+	batcherDone    chan struct{}
+	batcherRunning bool // Track if batcher is currently running
 
 	// Notification callback for user-facing messages
 	onNotify NotifyFunc
@@ -118,6 +119,25 @@ func (c *Client) Connect(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	// Stop any existing batcher before starting a new one
+	// This prevents multiple batchers from running simultaneously
+	if c.batcherRunning {
+		oldBatcherDone := c.batcherDone
+		c.batcherRunning = false
+
+		// Close eventQueue to signal batcher to exit
+		// We'll recreate it after the old batcher stops
+		close(c.eventQueue)
+
+		// Wait for old batcher to finish (unlock while waiting)
+		c.mu.Unlock()
+		<-oldBatcherDone
+		c.mu.Lock()
+
+		// Recreate eventQueue for the new batcher
+		c.eventQueue = make(chan Event, 100)
+	}
+
 	// Dial the Unix domain socket
 	dialer := net.Dialer{}
 	conn, err := dialer.DialContext(ctx, "unix", c.socketPath)
@@ -144,7 +164,9 @@ func (c *Client) Connect(ctx context.Context) error {
 		return fmt.Errorf("failed to send subscription: %w", err)
 	}
 
-	// Start the batching goroutine
+	// Start the new batching goroutine
+	c.batcherDone = make(chan struct{})
+	c.batcherRunning = true
 	go c.startBatcher()
 
 	return nil
@@ -234,7 +256,12 @@ func (c *Client) sendEventWithRetry(event Event) error {
 // It sends a single event every debounce duration if any events are pending.
 // If events from multiple projects are batched together, sends projectID 0 (all projects).
 func (c *Client) startBatcher() {
-	defer close(c.batcherDone)
+	defer func() {
+		close(c.batcherDone)
+		c.mu.Lock()
+		c.batcherRunning = false
+		c.mu.Unlock()
+	}()
 
 	ticker := time.NewTicker(c.debounce)
 	defer ticker.Stop()
@@ -559,12 +586,19 @@ func (c *Client) Close() error {
 		c.mu.Unlock()
 
 		if wasConnected {
-			// Close the event queue to signal no more events coming
-			// This allows batcher to flush pending events before exiting
-			close(c.eventQueue)
+			// Check if batcher is running before closing channels
+			c.mu.Lock()
+			batcherRunning := c.batcherRunning
+			c.mu.Unlock()
 
-			// Wait for batcher to finish (it will flush pending events)
-			<-c.batcherDone
+			if batcherRunning {
+				// Close the event queue to signal no more events coming
+				// This allows batcher to flush pending events before exiting
+				close(c.eventQueue)
+
+				// Wait for batcher to finish (it will flush pending events)
+				<-c.batcherDone
+			}
 
 			// Close the connection
 			c.mu.Lock()
