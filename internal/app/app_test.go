@@ -27,8 +27,8 @@ func TestNew(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	// Create app with nil event client
-	app := New(db, nil)
+	// Create app with no options (defaults)
+	app := New(db)
 
 	if app == nil {
 		t.Fatal("Expected app to be created, got nil")
@@ -55,7 +55,7 @@ func TestClose(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	app := New(db, nil)
+	app := New(db)
 
 	err := app.Close()
 	if err != nil {
