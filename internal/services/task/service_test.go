@@ -6,180 +6,18 @@ import (
 	"errors"
 	"testing"
 
-	_ "modernc.org/sqlite"
+	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
 // ============================================================================
 // TEST HELPERS
 // ============================================================================
 
-// setupTestDB creates an in-memory database and runs migrations
+// setupTestDB creates an in-memory database with full schema using testutil
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	// Enable foreign key constraints
-	_, err = db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
-	if err != nil {
-		t.Fatalf("Failed to enable foreign keys: %v", err)
-	}
-
-	// Run migrations inline
-	if err := createTestSchema(db); err != nil {
-		t.Fatalf("Failed to create schema: %v", err)
-	}
-
-	return db
-}
-
-// createTestSchema creates the minimal schema needed for task service tests
-func createTestSchema(db *sql.DB) error {
-	schema := `
-	-- Types lookup table
-	CREATE TABLE IF NOT EXISTS types (
-		id INTEGER PRIMARY KEY,
-		description TEXT NOT NULL UNIQUE
-	);
-
-	INSERT OR IGNORE INTO types (id, description) VALUES
-		(1, 'task'),
-		(2, 'feature'),
-		(3, 'bug');
-
-	-- Priorities lookup table
-	CREATE TABLE IF NOT EXISTS priorities (
-		id INTEGER PRIMARY KEY,
-		description TEXT NOT NULL UNIQUE,
-		color TEXT NOT NULL
-	);
-
-	INSERT OR IGNORE INTO priorities (id, description, color) VALUES
-		(1, 'trivial', '#3B82F6'),
-		(2, 'low', '#22C55E'),
-		(3, 'medium', '#EAB308'),
-		(4, 'high', '#F97316'),
-		(5, 'critical', '#EF4444');
-
-	-- Relation types
-	CREATE TABLE IF NOT EXISTS relation_types (
-		id INTEGER PRIMARY KEY,
-		p_to_c_label TEXT NOT NULL,
-		c_to_p_label TEXT NOT NULL,
-		color TEXT NOT NULL,
-		is_blocking BOOLEAN NOT NULL DEFAULT 0
-	);
-
-	INSERT OR IGNORE INTO relation_types (id, p_to_c_label, c_to_p_label, color, is_blocking) VALUES
-		(1, 'Parent', 'Child', '#6B7280', 0),
-		(2, 'Blocked By', 'Blocker', '#EF4444', 1),
-		(3, 'Related To', 'Related To', '#3B82F6', 0);
-
-	-- Projects table
-	CREATE TABLE IF NOT EXISTS projects (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		description TEXT DEFAULT '',
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);
-
-	-- Project counters for ticket numbers
-	CREATE TABLE IF NOT EXISTS project_counters (
-		project_id INTEGER PRIMARY KEY,
-		next_ticket_number INTEGER DEFAULT 1,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-	);
-
-	-- Columns table
-	CREATE TABLE IF NOT EXISTS columns (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		prev_id INTEGER NULL,
-		next_id INTEGER NULL,
-		project_id INTEGER NOT NULL,
-		holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
-		holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
-		holds_in_progress_tasks BOOLEAN NOT NULL DEFAULT 0,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-	);
-
-	-- Labels table
-	CREATE TABLE IF NOT EXISTS labels (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		color TEXT NOT NULL DEFAULT '#7D56F4',
-		project_id INTEGER NOT NULL,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-		UNIQUE(name, project_id)
-	);
-
-	-- Tasks table
-	CREATE TABLE IF NOT EXISTS tasks (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		title TEXT NOT NULL,
-		description TEXT,
-		column_id INTEGER NOT NULL,
-		position INTEGER NOT NULL,
-		ticket_number INTEGER,
-		type_id INTEGER NOT NULL DEFAULT 1,
-		priority_id INTEGER NOT NULL DEFAULT 3,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
-		FOREIGN KEY (type_id) REFERENCES types(id),
-		FOREIGN KEY (priority_id) REFERENCES priorities(id)
-	);
-
-	-- Task-labels join table
-	CREATE TABLE IF NOT EXISTS task_labels (
-		task_id INTEGER NOT NULL,
-		label_id INTEGER NOT NULL,
-		PRIMARY KEY (task_id, label_id),
-		FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-		FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE
-	);
-
-	-- Task relationships (parent-child, blocking, etc.)
-	CREATE TABLE IF NOT EXISTS task_subtasks (
-		parent_id INTEGER NOT NULL,
-		child_id INTEGER NOT NULL,
-		relation_type_id INTEGER NOT NULL DEFAULT 1,
-		PRIMARY KEY (parent_id, child_id),
-		FOREIGN KEY (parent_id) REFERENCES tasks(id) ON DELETE CASCADE,
-		FOREIGN KEY (child_id) REFERENCES tasks(id) ON DELETE CASCADE,
-		FOREIGN KEY (relation_type_id) REFERENCES relation_types(id)
-	);
-
-	-- Task comments table
-	CREATE TABLE IF NOT EXISTS task_comments (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		task_id INTEGER NOT NULL,
-		content TEXT NOT NULL CHECK(length(content) <= 1000),
-		author TEXT NOT NULL DEFAULT '',
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
-	);
-
-	-- Indexes for performance
-	CREATE INDEX IF NOT EXISTS idx_tasks_column ON tasks(column_id, position);
-	CREATE INDEX IF NOT EXISTS idx_columns_project ON columns(project_id);
-	CREATE INDEX IF NOT EXISTS idx_labels_project ON labels(project_id);
-	CREATE INDEX IF NOT EXISTS idx_task_labels_label ON task_labels(label_id);
-	CREATE INDEX IF NOT EXISTS idx_task_subtasks_parent ON task_subtasks(parent_id);
-	CREATE INDEX IF NOT EXISTS idx_task_subtasks_child ON task_subtasks(child_id);
-	CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);
-
-	-- Unique partial indexes for column constraints
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_ready_per_project ON columns(project_id) WHERE holds_ready_tasks = 1;
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_completed_per_project ON columns(project_id) WHERE holds_completed_tasks = 1;
-	`
-
-	_, err := db.ExecContext(context.Background(), schema)
-	return err
+	return testutil.SetupTestDB(t)
 }
 
 // createTestProject creates a test project and returns its ID
@@ -337,114 +175,110 @@ func TestCreateTask(t *testing.T) {
 	// We could verify it via GetTaskDetail if needed, but basic task creation is sufficient here
 }
 
-func TestCreateTask_EmptyTitle(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	projectID := createTestProject(t, db)
-	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
-
-	req := CreateTaskRequest{
-		Title:    "", // Empty title
-		ColumnID: columnID,
-		Position: 0,
+func TestCreateTask_Validation(t *testing.T) {
+	type args struct {
+		req CreateTaskRequest
+		// If setupFn is provided, it sets up additional DB state
+		setupFn func(*sql.DB, int) CreateTaskRequest
 	}
 
-	_, err := svc.CreateTask(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected validation error for empty title")
+	tests := []struct {
+		name      string
+		args      args
+		wantErr   bool
+		errType   error
+		needsTest bool // Whether this test needs a valid column for setup
+	}{
+		{
+			name: "empty title",
+			args: args{
+				req: CreateTaskRequest{
+					Title:    "",
+					ColumnID: 1,
+					Position: 0,
+				},
+			},
+			wantErr: true,
+			errType: ErrEmptyTitle,
+		},
+		{
+			name: "title too long",
+			args: args{
+				setupFn: func(db *sql.DB, _ int) CreateTaskRequest {
+					longTitle := ""
+					for i := 0; i < 256; i++ {
+						longTitle += "a"
+					}
+					return CreateTaskRequest{
+						Title:    longTitle,
+						ColumnID: 1,
+						Position: 0,
+					}
+				},
+			},
+			wantErr: true,
+			errType: ErrTitleTooLong,
+		},
+		{
+			name: "invalid column ID",
+			args: args{
+				req: CreateTaskRequest{
+					Title:    "Test Task",
+					ColumnID: 0,
+					Position: 0,
+				},
+			},
+			wantErr: true,
+			errType: ErrInvalidColumnID,
+		},
+		{
+			name:      "invalid position",
+			needsTest: true,
+			args: args{
+				setupFn: func(db *sql.DB, columnID int) CreateTaskRequest {
+					return CreateTaskRequest{
+						Title:    "Test Task",
+						ColumnID: columnID,
+						Position: -1,
+					}
+				},
+			},
+			wantErr: true,
+			errType: ErrInvalidPosition,
+		},
 	}
 
-	if err != ErrEmptyTitle {
-		t.Errorf("Expected ErrEmptyTitle, got %v", err)
-	}
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-func TestCreateTask_TitleTooLong(t *testing.T) {
-	t.Parallel()
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+			req := tt.args.req
 
-	projectID := createTestProject(t, db)
-	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+			// Setup database if needed
+			if tt.needsTest || tt.args.setupFn != nil {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
 
-	longTitle := ""
-	for i := 0; i < 256; i++ {
-		longTitle += "a"
-	}
+				if tt.args.setupFn != nil {
+					req = tt.args.setupFn(db, columnID)
+				}
+			}
 
-	req := CreateTaskRequest{
-		Title:    longTitle,
-		ColumnID: columnID,
-		Position: 0,
-	}
+			svc := NewService(db, nil)
+			_, err := svc.CreateTask(context.Background(), req)
 
-	_, err := svc.CreateTask(context.Background(), req)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CreateTask() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 
-	if err == nil {
-		t.Fatal("Expected validation error for long title")
-	}
-
-	if err != ErrTitleTooLong {
-		t.Errorf("Expected ErrTitleTooLong, got %v", err)
-	}
-}
-
-func TestCreateTask_InvalidColumnID(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	svc := NewService(db, nil)
-
-	req := CreateTaskRequest{
-		Title:    "Test Task",
-		ColumnID: 0, // Invalid
-		Position: 0,
-	}
-
-	_, err := svc.CreateTask(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected validation error for invalid column ID")
-	}
-
-	if err != ErrInvalidColumnID {
-		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
-	}
-}
-
-func TestCreateTask_InvalidPosition(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	projectID := createTestProject(t, db)
-	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
-
-	req := CreateTaskRequest{
-		Title:    "Test Task",
-		ColumnID: columnID,
-		Position: -1, // Invalid
-	}
-
-	_, err := svc.CreateTask(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected validation error for invalid position")
-	}
-
-	if err != ErrInvalidPosition {
-		t.Errorf("Expected ErrInvalidPosition, got %v", err)
+			if tt.errType != nil && err != tt.errType {
+				t.Errorf("CreateTask() error = %v, want %v", err, tt.errType)
+			}
+		})
 	}
 }
 
@@ -674,67 +508,75 @@ func TestUpdateTask(t *testing.T) {
 	}
 }
 
-func TestUpdateTask_EmptyTitle(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	projectID := createTestProject(t, db)
-	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
-
-	// Create a task
-	created, err := svc.CreateTask(context.Background(), CreateTaskRequest{
-		Title:    "Old Title",
-		ColumnID: columnID,
-		Position: 0,
-	})
-	if err != nil {
-		t.Fatalf("Failed to create task: %v", err)
+func TestUpdateTask_Validation(t *testing.T) {
+	tests := []struct {
+		name    string
+		taskID  int
+		title   *string
+		wantErr bool
+		errType error
+		setupFn func(*sql.DB) int // Returns task ID if needed
+	}{
+		{
+			name:    "empty title",
+			title:   ptrString(""),
+			wantErr: true,
+			errType: ErrEmptyTitle,
+			setupFn: func(db *sql.DB) int {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				task, _ := NewService(db, nil).CreateTask(context.Background(), CreateTaskRequest{
+					Title:    "Old Title",
+					ColumnID: columnID,
+					Position: 0,
+				})
+				return task.ID
+			},
+		},
+		{
+			name:    "invalid ID",
+			taskID:  0,
+			title:   ptrString("New Title"),
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
 	}
 
-	// Try to update with empty title
-	emptyTitle := ""
-	req := UpdateTaskRequest{
-		TaskID: created.ID,
-		Title:  &emptyTitle,
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	err = svc.UpdateTask(context.Background(), req)
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
 
-	if err == nil {
-		t.Fatal("Expected validation error for empty title")
-	}
+			taskID := tt.taskID
+			if tt.setupFn != nil {
+				taskID = tt.setupFn(db)
+			}
 
-	if err != ErrEmptyTitle {
-		t.Errorf("Expected ErrEmptyTitle, got %v", err)
+			svc := NewService(db, nil)
+			req := UpdateTaskRequest{
+				TaskID: taskID,
+				Title:  tt.title,
+			}
+
+			err := svc.UpdateTask(context.Background(), req)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("UpdateTask() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && err != tt.errType {
+				t.Errorf("UpdateTask() error = %v, want %v", err, tt.errType)
+			}
+		})
 	}
 }
 
-func TestUpdateTask_InvalidID(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	svc := NewService(db, nil)
-
-	newTitle := "New Title"
-	req := UpdateTaskRequest{
-		TaskID: 0,
-		Title:  &newTitle,
-	}
-
-	err := svc.UpdateTask(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected error for invalid ID")
-	}
-
-	if err != ErrInvalidTaskID {
-		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
-	}
+// ptrString is a helper function that returns a pointer to a string
+func ptrString(s string) *string {
+	return &s
 }
 
 // ============================================================================
@@ -2656,115 +2498,94 @@ func TestCreateComment(t *testing.T) {
 	}
 }
 
-func TestCreateComment_EmptyMessage(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	projectID := createTestProject(t, db)
-	columnID := createTestColumn(t, db, projectID, "To Do")
-	taskID := createTestTask(t, db, columnID, "Test Task")
-	svc := NewService(db, nil)
-
-	req := CreateCommentRequest{
-		TaskID:  taskID,
-		Message: "", // Empty message
-		Author:  "testuser",
+func TestCreateComment_Validation(t *testing.T) {
+	tests := []struct {
+		name    string
+		taskID  int
+		message string
+		author  string
+		wantErr bool
+		errType error
+		setupFn func(*sql.DB) int // Returns task ID if needed
+	}{
+		{
+			name:    "empty message",
+			message: "",
+			author:  "testuser",
+			wantErr: true,
+			errType: ErrEmptyCommentMessage,
+			setupFn: func(db *sql.DB) int {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return createTestTask(t, db, columnID, "Test Task")
+			},
+		},
+		{
+			name: "message too long",
+			setupFn: func(db *sql.DB) int {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return createTestTask(t, db, columnID, "Test Task")
+			},
+			message: func() string {
+				msg := ""
+				for i := 0; i < 1001; i++ {
+					msg += "a"
+				}
+				return msg
+			}(),
+			author:  "testuser",
+			wantErr: true,
+			errType: ErrCommentMessageTooLong,
+		},
+		{
+			name:    "invalid task ID",
+			taskID:  0,
+			message: "Test comment",
+			author:  "testuser",
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name:    "non-existent task",
+			taskID:  999,
+			message: "Test comment",
+			author:  "testuser",
+			wantErr: true,
+			errType: ErrTaskNotFound,
+		},
 	}
 
-	_, err := svc.CreateComment(context.Background(), req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	if err == nil {
-		t.Fatal("Expected validation error for empty message")
-	}
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
 
-	if err != ErrEmptyCommentMessage {
-		t.Errorf("Expected ErrEmptyCommentMessage, got %v", err)
-	}
-}
+			taskID := tt.taskID
+			if tt.setupFn != nil {
+				taskID = tt.setupFn(db)
+			}
 
-func TestCreateComment_MessageTooLong(t *testing.T) {
-	t.Parallel()
+			svc := NewService(db, nil)
+			req := CreateCommentRequest{
+				TaskID:  taskID,
+				Message: tt.message,
+				Author:  tt.author,
+			}
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+			_, err := svc.CreateComment(context.Background(), req)
 
-	projectID := createTestProject(t, db)
-	columnID := createTestColumn(t, db, projectID, "To Do")
-	taskID := createTestTask(t, db, columnID, "Test Task")
-	svc := NewService(db, nil)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CreateComment() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 
-	// Create message > 1000 characters
-	longMessage := ""
-	for i := 0; i < 1001; i++ {
-		longMessage += "a"
-	}
-
-	req := CreateCommentRequest{
-		TaskID:  taskID,
-		Message: longMessage,
-		Author:  "testuser",
-	}
-
-	_, err := svc.CreateComment(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected validation error for long message")
-	}
-
-	if err != ErrCommentMessageTooLong {
-		t.Errorf("Expected ErrCommentMessageTooLong, got %v", err)
-	}
-}
-
-func TestCreateComment_InvalidTaskID(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	svc := NewService(db, nil)
-
-	req := CreateCommentRequest{
-		TaskID:  0, // Invalid
-		Message: "Test comment",
-		Author:  "testuser",
-	}
-
-	_, err := svc.CreateComment(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected validation error for invalid task ID")
-	}
-
-	if err != ErrInvalidTaskID {
-		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
-	}
-}
-
-func TestCreateComment_NonExistentTask(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	svc := NewService(db, nil)
-
-	req := CreateCommentRequest{
-		TaskID:  999, // Non-existent task
-		Message: "Test comment",
-		Author:  "testuser",
-	}
-
-	_, err := svc.CreateComment(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected error for non-existent task")
-	}
-
-	if err != ErrTaskNotFound {
-		t.Errorf("Expected ErrTaskNotFound, got %v", err)
+			if tt.errType != nil && err != tt.errType {
+				t.Errorf("CreateComment() error = %v, want %v", err, tt.errType)
+			}
+		})
 	}
 }
 
@@ -2804,113 +2625,90 @@ func TestUpdateComment(t *testing.T) {
 	}
 }
 
-func TestUpdateComment_EmptyMessage(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	projectID := createTestProject(t, db)
-	columnID := createTestColumn(t, db, projectID, "To Do")
-	taskID := createTestTask(t, db, columnID, "Test Task")
-	commentID := createTestComment(t, db, taskID, "Original message", "testuser")
-	svc := NewService(db, nil)
-
-	req := UpdateCommentRequest{
-		CommentID: commentID,
-		Message:   "", // Empty message
+func TestUpdateComment_Validation(t *testing.T) {
+	tests := []struct {
+		name      string
+		commentID int
+		message   string
+		wantErr   bool
+		errType   error
+		setupFn   func(*sql.DB) int // Returns comment ID if needed
+	}{
+		{
+			name:    "empty message",
+			message: "",
+			wantErr: true,
+			errType: ErrEmptyCommentMessage,
+			setupFn: func(db *sql.DB) int {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Test Task")
+				return createTestComment(t, db, taskID, "Original message", "testuser")
+			},
+		},
+		{
+			name: "message too long",
+			setupFn: func(db *sql.DB) int {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Test Task")
+				return createTestComment(t, db, taskID, "Original message", "testuser")
+			},
+			message: func() string {
+				msg := ""
+				for i := 0; i < 1001; i++ {
+					msg += "a"
+				}
+				return msg
+			}(),
+			wantErr: true,
+			errType: ErrCommentMessageTooLong,
+		},
+		{
+			name:      "invalid ID",
+			commentID: 0,
+			message:   "Updated message",
+			wantErr:   true,
+			errType:   ErrInvalidCommentID,
+		},
+		{
+			name:      "non-existent comment",
+			commentID: 999,
+			message:   "Updated message",
+			wantErr:   true,
+			errType:   ErrCommentNotFound,
+		},
 	}
 
-	err := svc.UpdateComment(context.Background(), req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	if err == nil {
-		t.Fatal("Expected validation error for empty message")
-	}
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
 
-	if err != ErrEmptyCommentMessage {
-		t.Errorf("Expected ErrEmptyCommentMessage, got %v", err)
-	}
-}
+			commentID := tt.commentID
+			if tt.setupFn != nil {
+				commentID = tt.setupFn(db)
+			}
 
-func TestUpdateComment_MessageTooLong(t *testing.T) {
-	t.Parallel()
+			svc := NewService(db, nil)
+			req := UpdateCommentRequest{
+				CommentID: commentID,
+				Message:   tt.message,
+			}
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+			err := svc.UpdateComment(context.Background(), req)
 
-	projectID := createTestProject(t, db)
-	columnID := createTestColumn(t, db, projectID, "To Do")
-	taskID := createTestTask(t, db, columnID, "Test Task")
-	commentID := createTestComment(t, db, taskID, "Original message", "testuser")
-	svc := NewService(db, nil)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("UpdateComment() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 
-	// Create message > 1000 characters
-	longMessage := ""
-	for i := 0; i < 1001; i++ {
-		longMessage += "a"
-	}
-
-	req := UpdateCommentRequest{
-		CommentID: commentID,
-		Message:   longMessage,
-	}
-
-	err := svc.UpdateComment(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected validation error for long message")
-	}
-
-	if err != ErrCommentMessageTooLong {
-		t.Errorf("Expected ErrCommentMessageTooLong, got %v", err)
-	}
-}
-
-func TestUpdateComment_InvalidID(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	svc := NewService(db, nil)
-
-	req := UpdateCommentRequest{
-		CommentID: 0, // Invalid
-		Message:   "Updated message",
-	}
-
-	err := svc.UpdateComment(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected validation error for invalid comment ID")
-	}
-
-	if err != ErrInvalidCommentID {
-		t.Errorf("Expected ErrInvalidCommentID, got %v", err)
-	}
-}
-
-func TestUpdateComment_NonExistentComment(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	svc := NewService(db, nil)
-
-	req := UpdateCommentRequest{
-		CommentID: 999, // Non-existent comment
-		Message:   "Updated message",
-	}
-
-	err := svc.UpdateComment(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected error for non-existent comment")
-	}
-
-	if err != ErrCommentNotFound {
-		t.Errorf("Expected ErrCommentNotFound, got %v", err)
+			if tt.errType != nil && err != tt.errType {
+				t.Errorf("UpdateComment() error = %v, want %v", err, tt.errType)
+			}
+		})
 	}
 }
 
@@ -3201,4 +2999,691 @@ func TestDeleteTask_CascadesComments(t *testing.T) {
 	if count != 0 {
 		t.Errorf("Expected comments to be cascade deleted, but found %d comments", count)
 	}
+}
+
+// ============================================================================
+// TEST - GetInProgressTasksByProject (N+1 Query Optimization)
+// ============================================================================
+
+func TestGetInProgressTasksByProject(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	// Setup: Create project with in-progress column
+	projectID := createTestProject(t, db)
+	inProgressCol := createTestColumnWithFlag(t, db, projectID, "In Progress", true, false, false)
+
+	svc := NewService(db, nil)
+
+	// Create multiple in-progress tasks with labels
+	label1ID := createTestLabel(t, db, projectID, "urgent")
+	label2ID := createTestLabel(t, db, projectID, "review")
+
+	task1, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 1",
+		ColumnID: inProgressCol,
+		Position: 0,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create task 1: %v", err)
+	}
+
+	task2, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 2",
+		ColumnID: inProgressCol,
+		Position: 1,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create task 2: %v", err)
+	}
+
+	// Attach labels to tasks
+	if err := svc.AttachLabel(context.Background(), task1.ID, label1ID); err != nil {
+		t.Fatalf("Failed to attach label to task 1: %v", err)
+	}
+	if err := svc.AttachLabel(context.Background(), task2.ID, label2ID); err != nil {
+		t.Fatalf("Failed to attach label to task 2: %v", err)
+	}
+
+	// Get in-progress tasks
+	tasks, err := svc.GetInProgressTasksByProject(context.Background(), projectID)
+	if err != nil {
+		t.Fatalf("Failed to get in-progress tasks: %v", err)
+	}
+
+	// Verify results
+	if len(tasks) != 2 {
+		t.Fatalf("Expected 2 in-progress tasks, got %d", len(tasks))
+	}
+
+	// Check first task
+	if tasks[0].Title != "Task 1" {
+		t.Errorf("Expected task 1 title 'Task 1', got '%s'", tasks[0].Title)
+	}
+	if len(tasks[0].Labels) != 1 {
+		t.Errorf("Expected 1 label on task 1, got %d", len(tasks[0].Labels))
+	}
+	if tasks[0].Labels[0].Name != "urgent" {
+		t.Errorf("Expected label 'urgent' on task 1, got '%s'", tasks[0].Labels[0].Name)
+	}
+
+	// Check second task
+	if tasks[1].Title != "Task 2" {
+		t.Errorf("Expected task 2 title 'Task 2', got '%s'", tasks[1].Title)
+	}
+	if len(tasks[1].Labels) != 1 {
+		t.Errorf("Expected 1 label on task 2, got %d", len(tasks[1].Labels))
+	}
+	if tasks[1].Labels[0].Name != "review" {
+		t.Errorf("Expected label 'review' on task 2, got '%s'", tasks[1].Labels[0].Name)
+	}
+}
+
+func TestGetInProgressTasksByProject_InvalidProjectID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	// Test with invalid project ID
+	_, err := svc.GetInProgressTasksByProject(context.Background(), -1)
+	if err == nil {
+		t.Errorf("Expected error for invalid project ID, got nil")
+	}
+
+	_, err = svc.GetInProgressTasksByProject(context.Background(), 0)
+	if err == nil {
+		t.Errorf("Expected error for zero project ID, got nil")
+	}
+}
+
+func TestGetInProgressTasksByProject_EmptyProject(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	svc := NewService(db, nil)
+
+	// Project has no in-progress column
+	tasks, err := svc.GetInProgressTasksByProject(context.Background(), projectID)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// Should return empty slice
+	if len(tasks) != 0 {
+		t.Errorf("Expected 0 tasks, got %d", len(tasks))
+	}
+}
+
+// createTestColumnWithFlag creates a test column with specific column type flags
+func createTestColumnWithFlag(t *testing.T, db *sql.DB, projectID int, name string, holdsInProgress, holdsReady, holdsCompleted bool) int {
+	t.Helper()
+
+	var columnID int
+	err := db.QueryRowContext(
+		context.Background(),
+		`INSERT INTO columns (name, project_id, holds_in_progress_tasks, holds_ready_tasks, holds_completed_tasks)
+		 VALUES (?, ?, ?, ?, ?)
+		 RETURNING id`,
+		name, projectID, holdsInProgress, holdsReady, holdsCompleted,
+	).Scan(&columnID)
+	if err != nil {
+		t.Fatalf("Failed to create test column: %v", err)
+	}
+
+	return columnID
+}
+
+// ============================================================================
+// INTEGRATION TESTS - TREE BUILDING AND CIRCULAR DEPENDENCIES
+// ============================================================================
+
+// Helper function to add a relationship between tasks
+func addTaskRelation(t *testing.T, db *sql.DB, parentID, childID int, relationTypeID int) {
+	t.Helper()
+	_, err := db.ExecContext(context.Background(),
+		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, ?)",
+		parentID, childID, relationTypeID)
+	if err != nil {
+		t.Fatalf("Failed to add task relation: %v", err)
+	}
+}
+
+// TestGetTaskTreeByProject_SingleTask tests tree with a single task (no relationships)
+func TestGetTaskTreeByProject_SingleTask(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create a single task
+	task1ID := createTestTask(t, db, columnID, "Task 1")
+
+	// Get tree
+	nodes, err := svc.GetTaskTreeByProject(context.Background(), projectID)
+	if err != nil {
+		t.Fatalf("Failed to get task tree: %v", err)
+	}
+
+	// Should have exactly one root node
+	if len(nodes) != 1 {
+		t.Fatalf("Expected 1 root node, got %d", len(nodes))
+	}
+
+	node := nodes[0]
+	if node.ID != task1ID {
+		t.Errorf("Expected task ID %d, got %d", task1ID, node.ID)
+	}
+	if node.Title != "Task 1" {
+		t.Errorf("Expected title 'Task 1', got '%s'", node.Title)
+	}
+	if len(node.Children) != 0 {
+		t.Errorf("Expected 0 children, got %d", len(node.Children))
+	}
+}
+
+// TestGetTaskTreeByProject_SimpleLinearTree tests a linear chain: A -> B -> C
+func TestGetTaskTreeByProject_SimpleLinearTree(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create three tasks in a linear chain: A -> B -> C
+	// A is parent (root), B is child of A, C is child of B
+	taskA := createTestTask(t, db, columnID, "Task A")
+	taskB := createTestTask(t, db, columnID, "Task B")
+	taskC := createTestTask(t, db, columnID, "Task C")
+
+	// Create parent-child relationships
+	addTaskRelation(t, db, taskA, taskB, 1) // A -> B (parent-child)
+	addTaskRelation(t, db, taskB, taskC, 1) // B -> C (parent-child)
+
+	// Get tree
+	nodes, err := svc.GetTaskTreeByProject(context.Background(), projectID)
+	if err != nil {
+		t.Fatalf("Failed to get task tree: %v", err)
+	}
+
+	// Should have 1 root (Task A)
+	if len(nodes) != 1 {
+		t.Fatalf("Expected 1 root node, got %d", len(nodes))
+	}
+
+	// Check root node
+	rootNode := nodes[0]
+	if rootNode.ID != taskA {
+		t.Errorf("Expected root ID %d, got %d", taskA, rootNode.ID)
+	}
+	if rootNode.Title != "Task A" {
+		t.Errorf("Expected root title 'Task A', got '%s'", rootNode.Title)
+	}
+
+	// Check first level child (B)
+	if len(rootNode.Children) != 1 {
+		t.Fatalf("Expected 1 child for root, got %d", len(rootNode.Children))
+	}
+	childB := rootNode.Children[0]
+	if childB.ID != taskB {
+		t.Errorf("Expected child ID %d, got %d", taskB, childB.ID)
+	}
+	if childB.Title != "Task B" {
+		t.Errorf("Expected child title 'Task B', got '%s'", childB.Title)
+	}
+
+	// Check second level child (C)
+	if len(childB.Children) != 1 {
+		t.Fatalf("Expected 1 child for Task B, got %d", len(childB.Children))
+	}
+	childC := childB.Children[0]
+	if childC.ID != taskC {
+		t.Errorf("Expected grandchild ID %d, got %d", taskC, childC.ID)
+	}
+	if childC.Title != "Task C" {
+		t.Errorf("Expected grandchild title 'Task C', got '%s'", childC.Title)
+	}
+
+	// Check that C has no children
+	if len(childC.Children) != 0 {
+		t.Errorf("Expected 0 children for Task C, got %d", len(childC.Children))
+	}
+}
+
+// TestGetTaskTreeByProject_MultipleRoots tests multiple independent roots
+func TestGetTaskTreeByProject_MultipleRoots(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create 3 independent root tasks
+	task1 := createTestTask(t, db, columnID, "Root 1")
+	task2 := createTestTask(t, db, columnID, "Root 2")
+	task3 := createTestTask(t, db, columnID, "Root 3")
+
+	// Get tree
+	nodes, err := svc.GetTaskTreeByProject(context.Background(), projectID)
+	if err != nil {
+		t.Fatalf("Failed to get task tree: %v", err)
+	}
+
+	// Should have 3 roots
+	if len(nodes) != 3 {
+		t.Fatalf("Expected 3 root nodes, got %d", len(nodes))
+	}
+
+	// Verify roots are sorted by ticket number (ascending)
+	if nodes[0].ID != task1 || nodes[1].ID != task2 || nodes[2].ID != task3 {
+		t.Errorf("Roots not in expected order")
+	}
+
+	for _, node := range nodes {
+		if len(node.Children) != 0 {
+			t.Errorf("Expected 0 children for root %d, got %d", node.ID, len(node.Children))
+		}
+	}
+}
+
+// TestGetTaskTreeByProject_DiamondDependencies tests diamond pattern: A -> (B,C) -> D
+func TestGetTaskTreeByProject_DiamondDependencies(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create diamond pattern:
+	//       A
+	//      / \
+	//     B   C
+	//      \ /
+	//       D
+	taskA := createTestTask(t, db, columnID, "Task A")
+	taskB := createTestTask(t, db, columnID, "Task B")
+	taskC := createTestTask(t, db, columnID, "Task C")
+	taskD := createTestTask(t, db, columnID, "Task D")
+
+	// Build relationships
+	addTaskRelation(t, db, taskA, taskB, 1) // A -> B
+	addTaskRelation(t, db, taskA, taskC, 1) // A -> C
+	addTaskRelation(t, db, taskB, taskD, 1) // B -> D
+	addTaskRelation(t, db, taskC, taskD, 1) // C -> D
+
+	// Get tree
+	nodes, err := svc.GetTaskTreeByProject(context.Background(), projectID)
+	if err != nil {
+		t.Fatalf("Failed to get task tree: %v", err)
+	}
+
+	// Should have 1 root (Task A)
+	if len(nodes) != 1 {
+		t.Fatalf("Expected 1 root node, got %d", len(nodes))
+	}
+
+	rootA := nodes[0]
+	if rootA.ID != taskA {
+		t.Errorf("Expected root ID %d, got %d", taskA, rootA.ID)
+	}
+
+	// A should have 2 children (B and C)
+	if len(rootA.Children) != 2 {
+		t.Fatalf("Expected 2 children for A, got %d", len(rootA.Children))
+	}
+
+	// Check children are B and C (order may vary)
+	childIDs := map[int]bool{rootA.Children[0].ID: true, rootA.Children[1].ID: true}
+	if !childIDs[taskB] || !childIDs[taskC] {
+		t.Errorf("Expected children to be B and C, got %d and %d", rootA.Children[0].ID, rootA.Children[1].ID)
+	}
+
+	// Both B and C should have D as child
+	for _, child := range rootA.Children {
+		if len(child.Children) != 1 {
+			t.Fatalf("Expected 1 child for %d, got %d", child.ID, len(child.Children))
+		}
+		if child.Children[0].ID != taskD {
+			t.Errorf("Expected child to be D (%d), got %d", taskD, child.Children[0].ID)
+		}
+	}
+}
+
+// TestGetTaskTreeByProject_SelfDependency tests self-referencing task (A -> A)
+func TestGetTaskTreeByProject_SelfDependency(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	taskA := createTestTask(t, db, columnID, "Task A")
+
+	// Create self-dependency
+	addTaskRelation(t, db, taskA, taskA, 1) // A -> A
+
+	// Should handle gracefully (not panic or hang)
+	nodes, err := svc.GetTaskTreeByProject(context.Background(), projectID)
+	if err != nil {
+		t.Fatalf("Failed to get task tree: %v", err)
+	}
+
+	// With self-dependency, the task is marked as having a parent (itself)
+	// So it won't appear as a root. This is a quirk of how circular dependencies are handled.
+	// The important thing is that it doesn't panic or infinite loop.
+	// Traverse the entire tree to ensure no infinite loops
+	nodeCount := 0
+	var traverse func(*models.TaskTreeNode)
+	traverse = func(node *models.TaskTreeNode) {
+		nodeCount++
+		if nodeCount > 100 {
+			t.Fatalf("Tree traversal exceeded 100 nodes - likely infinite loop")
+		}
+		for _, child := range node.Children {
+			traverse(child)
+		}
+	}
+
+	for _, root := range nodes {
+		traverse(root)
+	}
+
+	// Even if task is not a root, total node count should be <= 1
+	if nodeCount > 1 {
+		t.Errorf("Excessive node count: %d (should be 0 or 1)", nodeCount)
+	}
+}
+
+// TestGetTaskTreeByProject_BlockingRelationships tests tree with blocking relationships
+func TestGetTaskTreeByProject_BlockingRelationships(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create tasks with blocking relationships
+	taskA := createTestTask(t, db, columnID, "Task A (Blocker)")
+	taskB := createTestTask(t, db, columnID, "Task B (Blocked)")
+
+	// A blocks B (relation type 2)
+	// Note: The tree building logic treats ALL relationships as parent-child hierarchies
+	// So one will be a root and the other will be a child
+	addTaskRelation(t, db, taskB, taskA, 2) // B is blocked by A (A is parent)
+
+	// Get tree
+	nodes, err := svc.GetTaskTreeByProject(context.Background(), projectID)
+	if err != nil {
+		t.Fatalf("Failed to get task tree: %v", err)
+	}
+
+	// Should have exactly 1 root (the parent in the relationship)
+	if len(nodes) != 1 {
+		t.Fatalf("Expected 1 root node, got %d", len(nodes))
+	}
+
+	root := nodes[0]
+
+	// Root should have 1 child (the child in the relationship)
+	if len(root.Children) != 1 {
+		t.Fatalf("Expected 1 child for root, got %d", len(root.Children))
+	}
+
+	child := root.Children[0]
+
+	// Verify it's the A->B relationship with blocking flag
+	taskIDs := map[int]bool{root.ID: true, child.ID: true}
+	if !taskIDs[taskA] || !taskIDs[taskB] {
+		t.Errorf("Expected tasks A and B in tree, got %d and %d", root.ID, child.ID)
+	}
+
+	// The relation should be marked as blocking
+	if !child.IsBlocking {
+		t.Errorf("Expected IsBlocking to be true for blocking relationship")
+	}
+}
+
+// TestGetTaskTreeByProject_MixedRelationships tests tree with both parent-child and blocking
+func TestGetTaskTreeByProject_MixedRelationships(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create 4 tasks
+	taskA := createTestTask(t, db, columnID, "Task A")
+	taskB := createTestTask(t, db, columnID, "Task B")
+	taskC := createTestTask(t, db, columnID, "Task C")
+	taskD := createTestTask(t, db, columnID, "Task D")
+
+	// A -> B (parent-child), B -> C (parent-child), C blocks D
+	addTaskRelation(t, db, taskA, taskB, 1) // A -> B (parent-child)
+	addTaskRelation(t, db, taskB, taskC, 1) // B -> C (parent-child)
+	addTaskRelation(t, db, taskD, taskC, 2) // C is blocked by D
+
+	// Get tree
+	nodes, err := svc.GetTaskTreeByProject(context.Background(), projectID)
+	if err != nil {
+		t.Fatalf("Failed to get task tree: %v", err)
+	}
+
+	// Should have 2 roots: A and D
+	if len(nodes) != 2 {
+		t.Fatalf("Expected 2 root nodes, got %d", len(nodes))
+	}
+
+	// Find root A
+	var rootA *models.TaskTreeNode
+	for _, node := range nodes {
+		if node.ID == taskA {
+			rootA = node
+			break
+		}
+	}
+
+	if rootA == nil {
+		t.Fatalf("Could not find root A")
+	}
+
+	// Verify A -> B -> C hierarchy
+	if len(rootA.Children) != 1 {
+		t.Fatalf("Expected 1 child for A, got %d", len(rootA.Children))
+	}
+
+	childB := rootA.Children[0]
+	if childB.ID != taskB {
+		t.Errorf("Expected child to be B, got %d", childB.ID)
+	}
+
+	if len(childB.Children) != 1 {
+		t.Fatalf("Expected 1 child for B, got %d", len(childB.Children))
+	}
+
+	childC := childB.Children[0]
+	if childC.ID != taskC {
+		t.Errorf("Expected grandchild to be C, got %d", childC.ID)
+	}
+}
+
+// TestAddParentRelation_CircularDependencyCheck tests AddParentRelation doesn't create circles
+func TestAddParentRelation_CircularDependencyCheck(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create two tasks
+	task1, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 1",
+		ColumnID: columnID,
+		Position: 0,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create task 1: %v", err)
+	}
+
+	task2, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 2",
+		ColumnID: columnID,
+		Position: 1,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create task 2: %v", err)
+	}
+
+	// Add parent relationship: 2 -> 1
+	err = svc.AddParentRelation(context.Background(), task2.ID, task1.ID, 1)
+	if err != nil {
+		t.Fatalf("Failed to add parent relation: %v", err)
+	}
+
+	// Try to add reverse relationship which would create a circle: 1 -> 2 when 2 -> 1 exists
+	// Note: The current implementation doesn't prevent this at the service level,
+	// so we're just testing that it doesn't panic
+	err = svc.AddChildRelation(context.Background(), task1.ID, task2.ID, 1)
+	if err != nil {
+		// This is acceptable - the service might prevent circular deps
+		t.Logf("Service prevented circular dependency: %v", err)
+	}
+}
+
+// TestAddParentRelation_SelfRelationPrevention tests that self-relations are prevented
+func TestAddParentRelation_SelfRelationPrevention(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task 1",
+		ColumnID: columnID,
+		Position: 0,
+	})
+	if err != nil {
+		t.Fatalf("Failed to create task: %v", err)
+	}
+
+	// Try to create a self-relation
+	err = svc.AddParentRelation(context.Background(), task.ID, task.ID, 1)
+	if err == nil {
+		t.Fatalf("Expected error for self-relation, got nil")
+	}
+	if !errors.Is(err, ErrSelfRelation) {
+		t.Errorf("Expected ErrSelfRelation, got %v", err)
+	}
+}
+
+// TestRemoveParentRelation_RestructuresTree tests that removing relations restructures tree
+func TestRemoveParentRelation_RestructuresTree(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Create three tasks
+	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task A",
+		ColumnID: columnID,
+		Position: 0,
+	})
+
+	task2, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task B",
+		ColumnID: columnID,
+		Position: 1,
+	})
+
+	task3, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+		Title:    "Task C",
+		ColumnID: columnID,
+		Position: 2,
+	})
+
+	// Create chain: A -> B -> C
+	svc.AddChildRelation(context.Background(), task1.ID, task2.ID, 1)
+	svc.AddChildRelation(context.Background(), task2.ID, task3.ID, 1)
+
+	// Verify structure
+	nodes, _ := svc.GetTaskTreeByProject(context.Background(), projectID)
+	if len(nodes) != 1 {
+		t.Fatalf("Expected 1 root, got %d", len(nodes))
+	}
+
+	// Remove middle relationship: B from A
+	err := svc.RemoveChildRelation(context.Background(), task1.ID, task2.ID)
+	if err != nil {
+		t.Fatalf("Failed to remove relation: %v", err)
+	}
+
+	// Now A and B should both be roots
+	nodes, _ = svc.GetTaskTreeByProject(context.Background(), projectID)
+	if len(nodes) != 2 {
+		t.Errorf("Expected 2 roots after removing relation, got %d", len(nodes))
+	}
+}
+
+// countNodes recursively counts all nodes in tree (used for large hierarchy testing)
+func countNodes(node *models.TaskTreeNode) int {
+	count := 1
+	for _, child := range node.Children {
+		count += countNodes(child)
+	}
+	return count
+}
+
+// getMaxDepth recursively finds maximum depth of tree
+func getMaxDepth(node *models.TaskTreeNode) int {
+	if len(node.Children) == 0 {
+		return 0
+	}
+	maxChildDepth := 0
+	for _, child := range node.Children {
+		childDepth := getMaxDepth(child)
+		if childDepth > maxChildDepth {
+			maxChildDepth = childDepth
+		}
+	}
+	return maxChildDepth + 1
 }

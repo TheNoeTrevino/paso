@@ -5,79 +5,17 @@ import (
 	"database/sql"
 	"testing"
 
-	_ "modernc.org/sqlite"
+	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
 // ============================================================================
 // TEST HELPERS
 // ============================================================================
 
-// setupTestDB creates an in-memory database and runs migrations
+// setupTestDB creates an in-memory database with full schema using testutil
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	// Enable foreign key constraints
-	_, err = db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
-	if err != nil {
-		t.Fatalf("Failed to enable foreign keys: %v", err)
-	}
-
-	// Run migrations inline (simplified version for tests)
-	if err := createTestSchema(db); err != nil {
-		t.Fatalf("Failed to create schema: %v", err)
-	}
-
-	return db
-}
-
-// createTestSchema creates the minimal schema needed for label service tests
-func createTestSchema(db *sql.DB) error {
-	schema := `
-	-- Create projects table (labels belong to projects)
-	CREATE TABLE IF NOT EXISTS projects (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		description TEXT,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
-
-	-- Create labels table
-	CREATE TABLE IF NOT EXISTS labels (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		color TEXT NOT NULL DEFAULT '#7D56F4',
-		project_id INTEGER NOT NULL,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-	);
-
-	-- Create tasks table (for GetLabelsForTask)
-	CREATE TABLE IF NOT EXISTS tasks (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		project_id INTEGER NOT NULL,
-		title TEXT NOT NULL,
-		description TEXT,
-		status TEXT DEFAULT 'todo',
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-	);
-
-	-- Create task_labels join table
-	CREATE TABLE IF NOT EXISTS task_labels (
-		task_id INTEGER NOT NULL,
-		label_id INTEGER NOT NULL,
-		PRIMARY KEY (task_id, label_id),
-		FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-		FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE
-	);
-	`
-
-	_, err := db.ExecContext(context.Background(), schema)
-	return err
+	return testutil.SetupTestDB(t)
 }
 
 // createTestProject creates a test project and returns its ID
@@ -97,7 +35,15 @@ func createTestProject(t *testing.T, db *sql.DB) int {
 // createTestTask creates a test task and returns its ID
 func createTestTask(t *testing.T, db *sql.DB, projectID int) int {
 	t.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO tasks (project_id, title, description) VALUES (?, ?, ?)", projectID, "Test Task", "Test Description")
+	// First create a column for the task
+	columnResult, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Default")
+	if err != nil {
+		t.Fatalf("Failed to create test column: %v", err)
+	}
+	columnID, _ := columnResult.LastInsertId()
+
+	// Create task in that column
+	result, err := db.ExecContext(context.Background(), "INSERT INTO tasks (column_id, title, description, position) VALUES (?, ?, ?, ?)", columnID, "Test Task", "Test Description", 0)
 	if err != nil {
 		t.Fatalf("Failed to create test task: %v", err)
 	}
@@ -163,60 +109,80 @@ func TestCreateLabel(t *testing.T) {
 	}
 }
 
-func TestCreateLabel_EmptyName(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
-
-	req := CreateLabelRequest{
-		ProjectID: projectID,
-		Name:      "", // Empty name
-		Color:     "#FF5733",
+func TestCreateLabel_Validation(t *testing.T) {
+	tests := []struct {
+		name      string
+		labelName string
+		color     string
+		projectID int
+		wantErr   bool
+		errType   error
+		setupFn   func(*sql.DB) int // Returns project ID if needed
+	}{
+		{
+			name:      "empty name",
+			labelName: "",
+			color:     "#FF5733",
+			projectID: 1,
+			wantErr:   true,
+			errType:   ErrEmptyName,
+		},
+		{
+			name:  "name too long",
+			color: "#FF5733",
+			setupFn: func(db *sql.DB) int {
+				return createTestProject(t, db)
+			},
+			labelName: func() string {
+				name := ""
+				for i := 0; i < 51; i++ {
+					name += "a"
+				}
+				return name
+			}(),
+			wantErr: true,
+			errType: ErrNameTooLong,
+		},
+		{
+			name:      "invalid project ID",
+			labelName: "Bug",
+			color:     "#FF5733",
+			projectID: 0,
+			wantErr:   true,
+			errType:   ErrInvalidProjectID,
+		},
 	}
 
-	_, err := svc.CreateLabel(context.Background(), req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	if err == nil {
-		t.Fatal("Expected validation error for empty name")
-	}
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
 
-	if err != ErrEmptyName {
-		t.Errorf("Expected ErrEmptyName, got %v", err)
-	}
-}
+			projectID := tt.projectID
+			if tt.setupFn != nil {
+				projectID = tt.setupFn(db)
+			}
 
-func TestCreateLabel_NameTooLong(t *testing.T) {
-	t.Parallel()
+			svc := NewService(db, nil)
+			req := CreateLabelRequest{
+				ProjectID: projectID,
+				Name:      tt.labelName,
+				Color:     tt.color,
+			}
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+			_, err := svc.CreateLabel(context.Background(), req)
 
-	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CreateLabel() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 
-	longName := ""
-	for i := 0; i < 51; i++ {
-		longName += "a"
-	}
-
-	req := CreateLabelRequest{
-		ProjectID: projectID,
-		Name:      longName,
-		Color:     "#FF5733",
-	}
-
-	_, err := svc.CreateLabel(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected validation error for long name")
-	}
-
-	if err != ErrNameTooLong {
-		t.Errorf("Expected ErrNameTooLong, got %v", err)
+			if tt.errType != nil && err != tt.errType {
+				t.Errorf("CreateLabel() error = %v, want %v", err, tt.errType)
+			}
+		})
 	}
 }
 
@@ -569,101 +535,91 @@ func TestUpdateLabel_OnlyName(t *testing.T) {
 	}
 }
 
-func TestUpdateLabel_EmptyName(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
-
-	// Create a label
-	created, err := svc.CreateLabel(context.Background(), CreateLabelRequest{
-		ProjectID: projectID,
-		Name:      "Bug",
-		Color:     "#FF5733",
-	})
-	if err != nil {
-		t.Fatalf("Failed to create label: %v", err)
+func TestUpdateLabel_Validation(t *testing.T) {
+	tests := []struct {
+		name     string
+		labelID  int
+		newName  *string
+		newColor *string
+		wantErr  bool
+		errType  error
+		setupFn  func(*sql.DB) int // Returns label ID if needed
+	}{
+		{
+			name:    "empty name",
+			newName: ptrStr(""),
+			wantErr: true,
+			errType: ErrEmptyName,
+			setupFn: func(db *sql.DB) int {
+				projectID := createTestProject(t, db)
+				label, _ := NewService(db, nil).CreateLabel(context.Background(), CreateLabelRequest{
+					ProjectID: projectID,
+					Name:      "Bug",
+					Color:     "#FF5733",
+				})
+				return label.ID
+			},
+		},
+		{
+			name:     "invalid color",
+			newColor: ptrStr("FF5733"), // Missing hash
+			wantErr:  true,
+			errType:  ErrInvalidColor,
+			setupFn: func(db *sql.DB) int {
+				projectID := createTestProject(t, db)
+				label, _ := NewService(db, nil).CreateLabel(context.Background(), CreateLabelRequest{
+					ProjectID: projectID,
+					Name:      "Bug",
+					Color:     "#FF5733",
+				})
+				return label.ID
+			},
+		},
+		{
+			name:    "invalid ID",
+			labelID: 0,
+			newName: ptrStr("Updated Bug"),
+			wantErr: true,
+			errType: ErrInvalidLabelID,
+		},
 	}
 
-	emptyName := ""
-	req := UpdateLabelRequest{
-		ID:   created.ID,
-		Name: &emptyName,
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	err = svc.UpdateLabel(context.Background(), req)
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
 
-	if err == nil {
-		t.Fatal("Expected validation error for empty name")
-	}
+			labelID := tt.labelID
+			if tt.setupFn != nil {
+				labelID = tt.setupFn(db)
+			}
 
-	if err != ErrEmptyName {
-		t.Errorf("Expected ErrEmptyName, got %v", err)
+			svc := NewService(db, nil)
+			req := UpdateLabelRequest{
+				ID:    labelID,
+				Name:  tt.newName,
+				Color: tt.newColor,
+			}
+
+			err := svc.UpdateLabel(context.Background(), req)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("UpdateLabel() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && err != tt.errType {
+				t.Errorf("UpdateLabel() error = %v, want %v", err, tt.errType)
+			}
+		})
 	}
 }
 
-func TestUpdateLabel_InvalidColor(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
-
-	// Create a label
-	created, err := svc.CreateLabel(context.Background(), CreateLabelRequest{
-		ProjectID: projectID,
-		Name:      "Bug",
-		Color:     "#FF5733",
-	})
-	if err != nil {
-		t.Fatalf("Failed to create label: %v", err)
-	}
-
-	invalidColor := "FF5733" // Missing hash
-	req := UpdateLabelRequest{
-		ID:    created.ID,
-		Color: &invalidColor,
-	}
-
-	err = svc.UpdateLabel(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected validation error for invalid color")
-	}
-
-	if err != ErrInvalidColor {
-		t.Errorf("Expected ErrInvalidColor, got %v", err)
-	}
-}
-
-func TestUpdateLabel_InvalidID(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	svc := NewService(db, nil)
-
-	newName := "Updated Bug"
-	req := UpdateLabelRequest{
-		ID:   0,
-		Name: &newName,
-	}
-
-	err := svc.UpdateLabel(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected error for invalid ID")
-	}
-
-	if err != ErrInvalidLabelID {
-		t.Errorf("Expected ErrInvalidLabelID, got %v", err)
-	}
+// ptrStr is a helper function that returns a pointer to a string
+func ptrStr(s string) *string {
+	return &s
 }
 
 func TestDeleteLabel(t *testing.T) {
@@ -702,22 +658,40 @@ func TestDeleteLabel(t *testing.T) {
 	}
 }
 
-func TestDeleteLabel_InvalidID(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	svc := NewService(db, nil)
-
-	err := svc.DeleteLabel(context.Background(), 0)
-
-	if err == nil {
-		t.Fatal("Expected error for invalid ID")
+func TestDeleteLabel_Validation(t *testing.T) {
+	tests := []struct {
+		name    string
+		labelID int
+		wantErr bool
+		errType error
+	}{
+		{
+			name:    "invalid ID",
+			labelID: 0,
+			wantErr: true,
+			errType: ErrInvalidLabelID,
+		},
 	}
 
-	if err != ErrInvalidLabelID {
-		t.Errorf("Expected ErrInvalidLabelID, got %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
+
+			svc := NewService(db, nil)
+			err := svc.DeleteLabel(context.Background(), tt.labelID)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DeleteLabel() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && err != tt.errType {
+				t.Errorf("DeleteLabel() error = %v, want %v", err, tt.errType)
+			}
+		})
 	}
 }
 
