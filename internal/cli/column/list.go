@@ -56,7 +56,7 @@ func runList(cmd *cobra.Command, args []string) error {
 			"Set project with: eval $(paso use project <project-id>)"); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		os.Exit(cli.ExitUsage)
+		return err
 	}
 
 	// Initialize CLI
@@ -79,7 +79,7 @@ func runList(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", columnProject)); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		os.Exit(cli.ExitNotFound)
+		return fmt.Errorf("project %d not found", columnProject)
 	}
 
 	// Get columns
@@ -103,11 +103,12 @@ func runList(cmd *cobra.Command, args []string) error {
 		columnList := make([]map[string]any, len(columns))
 		for i, col := range columns {
 			columnList[i] = map[string]any{
-				"id":                    col.ID,
-				"name":                  col.Name,
-				"project_id":            col.ProjectID,
-				"holds_ready_tasks":     col.HoldsReadyTasks,
-				"holds_completed_tasks": col.HoldsCompletedTasks,
+				"id":                      col.ID,
+				"name":                    col.Name,
+				"project_id":              col.ProjectID,
+				"holds_ready_tasks":       col.HoldsReadyTasks,
+				"holds_in_progress_tasks": col.HoldsInProgressTasks,
+				"holds_completed_tasks":   col.HoldsCompletedTasks,
 			}
 		}
 		return json.NewEncoder(os.Stdout).Encode(map[string]any{

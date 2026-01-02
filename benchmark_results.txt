@@ -1,0 +1,20 @@
+goos: linux
+goarch: amd64
+pkg: github.com/thenoetrevino/paso/internal/services/task
+cpu: AMD Ryzen AI 7 350 w/ Radeon 860M              
+BenchmarkGetTaskDetail-16                        	   13411	    268584 ns/op	    9096 B/op	     256 allocs/op
+BenchmarkGetInProgressTasksByProject-16          	    3888	   1010043 ns/op	  149671 B/op	    3016 allocs/op
+BenchmarkGetTaskSummariesByProject-16            	    1210	   2857415 ns/op	  294787 B/op	    6819 allocs/op
+BenchmarkGetTaskSummariesByProjectFiltered-16    	    3956	    936679 ns/op	   96192 B/op	    1444 allocs/op
+BenchmarkGetTaskTreeByProject-16                 	   10000	    331216 ns/op	   59208 B/op	    1105 allocs/op
+BenchmarkUpdateTask-16                           	  186386	     17438 ns/op	     328 B/op	      11 allocs/op
+BenchmarkCreateTask-16                           	   14244	    253144 ns/op	    5107 B/op	     147 allocs/op
+BenchmarkAttachLabel-16                          	  106470	     33527 ns/op	     192 B/op	       6 allocs/op
+BenchmarkDetachLabel-16                          	  112117	     33528 ns/op	     191 B/op	       6 allocs/op
+BenchmarkMoveTaskToColumn-16                     	   10000	    472034 ns/op	    1230 B/op	      39 allocs/op
+BenchmarkCreateComment-16                        	   42858	     85016 ns/op	    3584 B/op	      97 allocs/op
+BenchmarkGetReadyTaskSummariesByProject-16       	    4724	    791039 ns/op	   92120 B/op	    1432 allocs/op
+BenchmarkAddParentRelation-16                    	   83611	     42876 ns/op	     256 B/op	       6 allocs/op
+BenchmarkGetTaskReferencesForProject-16          	    8034	    483684 ns/op	   81328 B/op	    1626 allocs/op
+PASS
+ok  	github.com/thenoetrevino/paso/internal/services/task	80.056s

@@ -93,7 +93,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnID)); fmtErr != nil {
 			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
-		os.Exit(cli.ExitNotFound)
+		return fmt.Errorf("column %d not found", columnID)
 	}
 
 	oldName := column.Name
@@ -130,7 +130,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 					fmt.Sprintf("%s\n\nUse the --force flag to change the done column.\nPaso uses the done column to move tasks with the {complete task command}.\nThis could lead to unexpected behavior, and this is not suggested.", err.Error())); fmtErr != nil {
 					slog.Error("failed to formatting error message", "error", fmtErr)
 				}
-				os.Exit(cli.ExitValidation)
+				return err
 			}
 			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
 				slog.Error("failed to formatting error message", "error", fmtErr)

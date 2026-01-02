@@ -156,8 +156,10 @@ func TestDoneTask_Positive(t *testing.T) {
 
 		// Should not error - exits successfully
 		assert.NoError(t, err)
-		// Quiet mode should still output task ID
-		assert.Equal(t, fmt.Sprintf("%d\n", taskID), output)
+		// Output should contain the informational message and task ID
+		assert.Contains(t, output, "Task")
+		assert.Contains(t, output, "already in the completed column")
+		assert.Contains(t, output, fmt.Sprintf("%d", taskID))
 
 		// Verify task is still in done column
 		var columnID int
@@ -165,9 +167,6 @@ func TestDoneTask_Positive(t *testing.T) {
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, doneColumnID, columnID)
-
-		// Note: The command writes "Task X is already in the completed column" to stderr
-		// but we can't easily capture stderr in this test setup, so we verify behavior only
 	})
 
 	t.Run("Multiple tasks marked done", func(t *testing.T) {
