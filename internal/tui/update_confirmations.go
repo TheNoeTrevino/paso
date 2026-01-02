@@ -43,7 +43,7 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 		defer cancel()
 		err := m.App.TaskService.DeleteTask(ctx, task.ID)
 		if err != nil {
-			slog.Error("Error deleting task", "error", err)
+			slog.Error("failed to delete task", "error", err)
 			m.UI.Notification.Add(state.LevelError, "Failed to delete task")
 		} else {
 			m.removeCurrentTask()
@@ -63,7 +63,7 @@ func (m Model) confirmDeleteComment() (tea.Model, tea.Cmd) {
 		defer cancel()
 		err := m.App.TaskService.DeleteComment(ctx, commentID)
 		if err != nil {
-			slog.Error("Error deleting comment", "error", err)
+			slog.Error("failed to delete comment", "error", err)
 			m.UI.Notification.Add(state.LevelError, "Failed to delete comment")
 		} else {
 			// Remove from local state
@@ -166,7 +166,7 @@ func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 		defer cancel()
 		err := m.App.ColumnService.DeleteColumn(ctx, column.ID)
 		if err != nil {
-			slog.Error("Error deleting column", "error", err)
+			slog.Error("failed to delete column", "error", err)
 			m.UI.Notification.Add(state.LevelError, "Failed to delete column")
 		} else {
 			delete(m.AppState.Tasks(), column.ID)

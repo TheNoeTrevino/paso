@@ -52,7 +52,7 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	// Load all projects
 	projects, err := application.ProjectService.GetAllProjects(loadCtx)
 	if err != nil {
-		slog.Error("Error loading projects", "error", err)
+		slog.Error("failed to loading projects", "error", err)
 		projects = []*models.Project{}
 	}
 
@@ -65,7 +65,7 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	// Load columns for the current project
 	columns, err := application.ColumnService.GetColumnsByProject(loadCtx, currentProjectID)
 	if err != nil {
-		slog.Error("Error loading columns", "error", err)
+		slog.Error("failed to loading columns", "error", err)
 		columns = []*models.Column{}
 	}
 
@@ -73,14 +73,14 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	// Uses batch query to avoid N+1 pattern
 	tasks, err := application.TaskService.GetTaskSummariesByProject(loadCtx, currentProjectID)
 	if err != nil {
-		slog.Error("Error loading tasks for project", "project_id", currentProjectID, "error", err)
+		slog.Error("failed to loading tasks for project", "project_id", currentProjectID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
 
 	// Load labels for the current project
 	labels, err := application.LabelService.GetLabelsByProject(loadCtx, currentProjectID)
 	if err != nil {
-		slog.Error("Error loading labels", "error", err)
+		slog.Error("failed to loading labels", "error", err)
 		labels = []*models.Label{}
 	}
 
@@ -344,7 +344,7 @@ func (m Model) moveTaskRight() {
 	defer cancel()
 	err := m.App.TaskService.MoveTaskToNextColumn(ctx, task.ID)
 	if err != nil {
-		slog.Error("Error moving task to next column", "error", err)
+		slog.Error("failed to moving task to next column", "error", err)
 		if err != models.ErrAlreadyLastColumn {
 			m.UI.Notification.Add(state.LevelError, "Failed to move task to next column")
 		}
@@ -398,7 +398,7 @@ func (m Model) moveTaskLeft() {
 	defer cancel()
 	err := m.App.TaskService.MoveTaskToPrevColumn(ctx, task.ID)
 	if err != nil {
-		slog.Error("Error moving task to previous column", "error", err)
+		slog.Error("failed to moving task to previous column", "error", err)
 		if err != models.ErrAlreadyFirstColumn {
 			m.UI.Notification.Add(state.LevelError, "Failed to move task to previous column")
 		}
@@ -446,7 +446,7 @@ func (m Model) moveTaskUp() {
 	defer cancel()
 	err := m.App.TaskService.MoveTaskUp(ctx, task.ID)
 	if err != nil {
-		slog.Error("Error moving task up", "error", err)
+		slog.Error("failed to moving task up", "error", err)
 		if err != models.ErrAlreadyFirstTask {
 			m.UI.Notification.Add(state.LevelError, "Failed to move task up")
 		}
@@ -509,7 +509,7 @@ func (m Model) moveTaskDown() {
 	defer cancel()
 	err := m.App.TaskService.MoveTaskDown(ctx, task.ID)
 	if err != nil {
-		slog.Error("Error moving task down", "error", err)
+		slog.Error("failed to moving task down", "error", err)
 		if err != models.ErrAlreadyLastTask {
 			m.UI.Notification.Add(state.LevelError, "Failed to move task down")
 		}
@@ -551,7 +551,7 @@ func (m Model) switchToProject(projectIndex int) {
 	// Reload columns for this project
 	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading columns for project", "project_id", project.ID, "error", err)
+		slog.Error("failed to loading columns for project", "project_id", project.ID, "error", err)
 		columns = []*models.Column{}
 	}
 	m.AppState.SetColumns(columns)
@@ -559,7 +559,7 @@ func (m Model) switchToProject(projectIndex int) {
 	// Reload task summaries for the entire project
 	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading tasks for project", "project_id", project.ID, "error", err)
+		slog.Error("failed to loading tasks for project", "project_id", project.ID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
 	m.AppState.SetTasks(tasks)
@@ -567,7 +567,7 @@ func (m Model) switchToProject(projectIndex int) {
 	// Reload labels for this project
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading labels for project", "project_id", project.ID, "error", err)
+		slog.Error("failed to loading labels for project", "project_id", project.ID, "error", err)
 		labels = []*models.Label{}
 	}
 	m.AppState.SetLabels(labels)
@@ -592,7 +592,7 @@ func (m Model) reloadProjects() {
 	defer cancel()
 	projects, err := m.App.ProjectService.GetAllProjects(ctx)
 	if err != nil {
-		slog.Error("Error reloading projects", "error", err)
+		slog.Error("failed to reloading projects", "error", err)
 		return
 	}
 	m.AppState.SetProjects(projects)
@@ -614,7 +614,7 @@ func (m *Model) initParentPickerForForm() bool {
 	defer cancel()
 	allTasks, err := m.App.TaskService.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading project tasks", "error", err)
+		slog.Error("failed to loading project tasks", "error", err)
 		return false
 	}
 
@@ -680,7 +680,7 @@ func (m *Model) initChildPickerForForm() bool {
 	defer cancel()
 	allTasks, err := m.App.TaskService.GetTaskReferencesForProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading project tasks", "error", err)
+		slog.Error("failed to loading project tasks", "error", err)
 		return false
 	}
 
@@ -786,7 +786,7 @@ func (m *Model) initPriorityPickerForForm() bool {
 
 		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.Forms.Form.EditingTaskID)
 		if err != nil {
-			slog.Error("Error loading task detail for priority picker", "error", err)
+			slog.Error("failed to loading task detail for priority picker", "error", err)
 			return false
 		}
 
@@ -825,7 +825,7 @@ func (m *Model) initTypePickerForForm() bool {
 
 		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.Forms.Form.EditingTaskID)
 		if err != nil {
-			slog.Error("Error loading task detail for type picker", "error", err)
+			slog.Error("failed to loading task detail for type picker", "error", err)
 			return false
 		}
 
@@ -1000,7 +1000,7 @@ func (m *Model) reloadCurrentProject() {
 	// Reload columns
 	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, currentProject.ID)
 	if err != nil {
-		slog.Error("Error reloading columns", "error", err)
+		slog.Error("failed to reloading columns", "error", err)
 		m.HandleDBError(err, "reload columns")
 		return
 	}
@@ -1008,7 +1008,7 @@ func (m *Model) reloadCurrentProject() {
 	// Reload tasks
 	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, currentProject.ID)
 	if err != nil {
-		slog.Error("Error reloading tasks", "error", err)
+		slog.Error("failed to reloading tasks", "error", err)
 		m.HandleDBError(err, "reload tasks")
 		return
 	}
@@ -1016,7 +1016,7 @@ func (m *Model) reloadCurrentProject() {
 	// Reload labels
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, currentProject.ID)
 	if err != nil {
-		slog.Error("Error reloading labels", "error", err)
+		slog.Error("failed to reloading labels", "error", err)
 		m.HandleDBError(err, "reload labels")
 		return
 	}

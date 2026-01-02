@@ -77,7 +77,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Remove label from task
 							err := m.App.TaskService.DetachLabel(ctx, m.Pickers.Label.TaskID, item.Label.ID)
 							if err != nil {
-								slog.Error("Error removing label", "error", err)
+								slog.Error("failed to removing label", "error", err)
 								m.UI.Notification.Add(state.LevelError, "Failed to remove label from task")
 							} else {
 								m.Pickers.Label.Items[i].Selected = false
@@ -86,7 +86,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Add label to task
 							err := m.App.TaskService.AttachLabel(ctx, m.Pickers.Label.TaskID, item.Label.ID)
 							if err != nil {
-								slog.Error("Error adding label", "error", err)
+								slog.Error("failed to adding label", "error", err)
 								m.UI.Notification.Add(state.LevelError, "Failed to add label to task")
 							} else {
 								m.Pickers.Label.Items[i].Selected = true
@@ -174,7 +174,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			Color:     color,
 		})
 		if err != nil {
-			slog.Error("Error creating label", "error", err)
+			slog.Error("failed to creating label", "error", err)
 			m.UI.Notification.Add(state.LevelError, "Failed to create label")
 			m.Pickers.Label.CreateMode = false
 			return m, nil
@@ -192,7 +192,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Assign to current task
 		err = m.App.TaskService.AttachLabel(ctx, m.Pickers.Label.TaskID, label.ID)
 		if err != nil {
-			slog.Error("Error assigning new label to task", "error", err)
+			slog.Error("failed to assigning new label to task", "error", err)
 			m.UI.Notification.Add(state.LevelError, "Failed to assign label to task")
 		}
 
@@ -285,7 +285,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// selectedTask (parent) blocks on currentTask (child)
 							err := m.App.TaskService.RemoveParentRelation(ctx, m.Pickers.Parent.TaskID, item.TaskRef.ID)
 							if err != nil {
-								slog.Error("Error removing parent", "error", err)
+								slog.Error("failed to removing parent", "error", err)
 								m.UI.Notification.Add(state.LevelError, "Failed to remove parent from task")
 							} else {
 								m.Pickers.Parent.Items[i].Selected = false
@@ -297,7 +297,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Meaning: selectedTask depends on completion of currentTask
 							err := m.App.TaskService.AddParentRelation(ctx, m.Pickers.Parent.TaskID, item.TaskRef.ID, 1)
 							if err != nil {
-								slog.Error("Error adding parent", "error", err)
+								slog.Error("failed to adding parent", "error", err)
 								m.UI.Notification.Add(state.LevelError, "Failed to add parent to task")
 							} else {
 								m.Pickers.Parent.Items[i].Selected = true
@@ -440,7 +440,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// currentTask (parent) blocks on selectedTask (child)
 							err := m.App.TaskService.RemoveChildRelation(ctx, m.Pickers.Child.TaskID, item.TaskRef.ID)
 							if err != nil {
-								slog.Error("Error removing child", "error", err)
+								slog.Error("failed to removing child", "error", err)
 								m.UI.Notification.Add(state.LevelError, "Failed to remove child from task")
 							} else {
 								m.Pickers.Child.Items[i].Selected = false
@@ -452,7 +452,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Meaning: currentTask depends on completion of selectedTask
 							err := m.App.TaskService.AddChildRelation(ctx, m.Pickers.Child.TaskID, item.TaskRef.ID, 1)
 							if err != nil {
-								slog.Error("Error adding child", "error", err)
+								slog.Error("failed to adding child", "error", err)
 								m.UI.Notification.Add(state.LevelError, "Failed to add child to task")
 							} else {
 								m.Pickers.Child.Items[i].Selected = true
@@ -566,7 +566,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				})
 
 				if err != nil {
-					slog.Error("Error updating task priority", "error", err)
+					slog.Error("failed to updating task priority", "error", err)
 					m.UI.Notification.Add(state.LevelError, "Failed to update priority")
 				} else {
 					// Update form state with new priority
@@ -642,7 +642,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				})
 
 				if err != nil {
-					slog.Error("Error updating task type", "error", err)
+					slog.Error("failed to updating task type", "error", err)
 					m.UI.Notification.Add(state.LevelError, "Failed to update type")
 				} else {
 					// Update form state with new type
@@ -851,7 +851,7 @@ func (m *Model) reloadCurrentColumnTasks() {
 	defer cancel()
 	tasksByColumn, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error reloading tasks", "error", err)
+		slog.Error("failed to reloading tasks", "error", err)
 		return
 	}
 	m.AppState.SetTasks(tasksByColumn)

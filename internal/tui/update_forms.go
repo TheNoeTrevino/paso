@@ -72,7 +72,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 		ChildIDs:    childIDs,
 	})
 	if err != nil {
-		slog.Error("Error creating task", "error", err)
+		slog.Error("failed to creating task", "error", err)
 		m.UI.Notification.Add(state.LevelError, "Error creating task")
 		return
 	}
@@ -88,7 +88,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 	if project != nil {
 		tasksByColumn, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 		if err != nil {
-			slog.Error("Error reloading tasks", "error", err)
+			slog.Error("failed to reloading tasks", "error", err)
 		} else {
 			m.AppState.SetTasks(tasksByColumn)
 		}
@@ -111,7 +111,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 		Description: &description,
 	})
 	if err != nil {
-		slog.Error("Error updating task", "error", err)
+		slog.Error("failed to updating task", "error", err)
 		m.UI.Notification.Add(state.LevelError, "Error updating task")
 		return
 	}
@@ -120,7 +120,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 	// First, get current labels
 	taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		slog.Error("Error getting task detail for label sync", "error", err)
+		slog.Error("failed to getting task detail for label sync", "error", err)
 	} else {
 		// Build current label map
 		currentLabelMap := make(map[int]bool)
@@ -138,7 +138,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 		for _, lbl := range taskDetail.Labels {
 			if !newLabelMap[lbl.ID] {
 				if err := m.App.TaskService.DetachLabel(ctx, taskID, lbl.ID); err != nil {
-					slog.Error("Error detaching label", "error", err)
+					slog.Error("failed to detaching label", "error", err)
 				}
 			}
 		}
@@ -147,7 +147,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 		for _, labelID := range values.labelIDs {
 			if !currentLabelMap[labelID] {
 				if err := m.App.TaskService.AttachLabel(ctx, taskID, labelID); err != nil {
-					slog.Error("Error attaching label", "error", err)
+					slog.Error("failed to attaching label", "error", err)
 				}
 			}
 		}
@@ -162,7 +162,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 	if project != nil {
 		tasksByColumn, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 		if err != nil {
-			slog.Error("Error reloading tasks", "error", err)
+			slog.Error("failed to reloading tasks", "error", err)
 		} else {
 			m.AppState.SetTasks(tasksByColumn)
 		}
@@ -179,7 +179,7 @@ func (m *Model) applyParentRelationships(ctx context.Context, taskID int) {
 			}
 			err := m.App.TaskService.AddParentRelation(ctx, taskID, item.TaskRef.ID, relationTypeID)
 			if err != nil {
-				slog.Error("Error adding parent relationship", "error", err)
+				slog.Error("failed to adding parent relationship", "error", err)
 			}
 		}
 	}
@@ -195,7 +195,7 @@ func (m *Model) applyChildRelationships(ctx context.Context, taskID int) {
 			}
 			err := m.App.TaskService.AddChildRelation(ctx, taskID, item.TaskRef.ID, relationTypeID)
 			if err != nil {
-				slog.Error("Error adding child relationship", "error", err)
+				slog.Error("failed to adding child relationship", "error", err)
 			}
 		}
 	}
@@ -206,7 +206,7 @@ func (m *Model) syncParentRelationships(ctx context.Context, taskID int) {
 	// Get current parents from database
 	taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		slog.Error("Error getting current parents", "error", err)
+		slog.Error("failed to getting current parents", "error", err)
 		return
 	}
 	currentParents := taskDetail.ParentTasks
@@ -236,7 +236,7 @@ func (m *Model) syncParentRelationships(ctx context.Context, taskID int) {
 		if _, exists := newParentMap[parentID]; !exists {
 			err = m.App.TaskService.RemoveParentRelation(ctx, taskID, parentID)
 			if err != nil {
-				slog.Error("Error removing parent", "parentID", parentID, "error", err)
+				slog.Error("failed to removing parent", "parentID", parentID, "error", err)
 			}
 		}
 	}
@@ -248,7 +248,7 @@ func (m *Model) syncParentRelationships(ctx context.Context, taskID int) {
 			// Add new parent or update existing parent's relation type
 			err = m.App.TaskService.AddParentRelation(ctx, taskID, parentID, relationTypeID)
 			if err != nil {
-				slog.Error("Error adding/updating parent", "parentID", parentID, "error", err)
+				slog.Error("failed to adding/updating parent", "parentID", parentID, "error", err)
 			}
 		}
 	}
@@ -259,7 +259,7 @@ func (m *Model) syncChildRelationships(ctx context.Context, taskID int) {
 	// Get current children from database
 	taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		slog.Error("Error getting current children", "error", err)
+		slog.Error("failed to getting current children", "error", err)
 		return
 	}
 	currentChildren := taskDetail.ChildTasks
@@ -289,7 +289,7 @@ func (m *Model) syncChildRelationships(ctx context.Context, taskID int) {
 		if _, exists := newChildMap[childID]; !exists {
 			err = m.App.TaskService.RemoveChildRelation(ctx, taskID, childID)
 			if err != nil {
-				slog.Error("Error removing child", "childID", childID, "error", err)
+				slog.Error("failed to removing child", "childID", childID, "error", err)
 			}
 		}
 	}
@@ -301,7 +301,7 @@ func (m *Model) syncChildRelationships(ctx context.Context, taskID int) {
 			// Add new child or update existing child's relation type
 			err = m.App.TaskService.AddChildRelation(ctx, taskID, childID, relationTypeID)
 			if err != nil {
-				slog.Error("Error adding/updating child", "childID", childID, "error", err)
+				slog.Error("failed to adding/updating child", "childID", childID, "error", err)
 			}
 		}
 	}
@@ -584,7 +584,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 							Description: description,
 						})
 						if err != nil {
-							slog.Error("Error creating project", "error", err)
+							slog.Error("failed to creating project", "error", err)
 							m.UI.Notification.Add(state.LevelError, "Error creating project")
 						} else {
 							m.reloadProjects()
@@ -630,7 +630,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Description: description,
 				})
 				if err != nil {
-					slog.Error("Error creating project", "error", err)
+					slog.Error("failed to creating project", "error", err)
 					m.UI.Notification.Add(state.LevelError, "Error creating project")
 				} else {
 					// Reload projects list
@@ -706,7 +706,7 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					AfterID:   nil, // Append to end
 				})
 				if err != nil {
-					slog.Error("Error creating column", "error", err)
+					slog.Error("failed to creating column", "error", err)
 					m.UI.Notification.Add(state.LevelError, "Error creating column")
 					return
 				}
@@ -717,7 +717,7 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Rename existing column
 				err := m.App.ColumnService.UpdateColumnName(ctx, m.Forms.Form.EditingColumnID, name)
 				if err != nil {
-					slog.Error("Error renaming column", "error", err)
+					slog.Error("failed to renaming column", "error", err)
 					m.UI.Notification.Add(state.LevelError, "Error renaming column")
 					return
 				}
@@ -793,7 +793,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Author:  userutil.GetCurrentUsername(),
 				})
 				if err != nil {
-					slog.Error("Error creating comment", "error", err)
+					slog.Error("failed to creating comment", "error", err)
 					m.UI.Notification.Add(state.LevelError, "Error creating comment")
 					return
 				}
@@ -806,7 +806,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Message:   message,
 				})
 				if err != nil {
-					slog.Error("Error updating comment", "error", err)
+					slog.Error("failed to updating comment", "error", err)
 					m.UI.Notification.Add(state.LevelError, "Error updating comment")
 					return
 				}
@@ -818,7 +818,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			taskID := m.Forms.Form.EditingTaskID
 			comments, err := m.App.TaskService.GetCommentsByTask(ctx, taskID)
 			if err != nil {
-				slog.Error("Error reloading comments", "error", err)
+				slog.Error("failed to reloading comments", "error", err)
 				m.UI.Notification.Add(state.LevelError, "Failed to reload comments")
 			} else {
 				m.Forms.Form.FormComments = comments

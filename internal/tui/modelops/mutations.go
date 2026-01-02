@@ -75,7 +75,7 @@ func MoveTaskRight(m *tui.Model) {
 	defer cancel()
 	err := m.App.TaskService.MoveTaskToNextColumn(ctx, task.ID)
 	if err != nil {
-		slog.Error("Error moving task to next column", "error", err)
+		slog.Error("failed to moving task to next column", "error", err)
 		if err != models.ErrAlreadyLastColumn {
 			m.UI.Notification.Add(state.LevelError, "Failed to move task to next column")
 		}
@@ -126,7 +126,7 @@ func MoveTaskLeft(m *tui.Model) {
 	defer cancel()
 	err := m.App.TaskService.MoveTaskToPrevColumn(ctx, task.ID)
 	if err != nil {
-		slog.Error("Error moving task to previous column", "error", err)
+		slog.Error("failed to moving task to previous column", "error", err)
 		if err != models.ErrAlreadyFirstColumn {
 			m.UI.Notification.Add(state.LevelError, "Failed to move task to previous column")
 		}
@@ -171,7 +171,7 @@ func MoveTaskUp(m *tui.Model) {
 	defer cancel()
 	err := m.App.TaskService.MoveTaskUp(ctx, task.ID)
 	if err != nil {
-		slog.Error("Error moving task up", "error", err)
+		slog.Error("failed to moving task up", "error", err)
 		if err != models.ErrAlreadyFirstTask {
 			m.UI.Notification.Add(state.LevelError, "Failed to move task up")
 		}
@@ -231,7 +231,7 @@ func MoveTaskDown(m *tui.Model) {
 	defer cancel()
 	err := m.App.TaskService.MoveTaskDown(ctx, task.ID)
 	if err != nil {
-		slog.Error("Error moving task down", "error", err)
+		slog.Error("failed to moving task down", "error", err)
 		if err != models.ErrAlreadyLastTask {
 			m.UI.Notification.Add(state.LevelError, "Failed to move task down")
 		}
@@ -268,7 +268,7 @@ func SwitchToProject(m *tui.Model, projectIndex int) {
 	// Reload columns for this project
 	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading columns for project", "project_id", project.ID, "error", err)
+		slog.Error("failed to loading columns for project", "project_id", project.ID, "error", err)
 		columns = []*models.Column{}
 	}
 	m.AppState.SetColumns(columns)
@@ -276,7 +276,7 @@ func SwitchToProject(m *tui.Model, projectIndex int) {
 	// Reload task summaries for the entire project
 	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading tasks for project", "project_id", project.ID, "error", err)
+		slog.Error("failed to loading tasks for project", "project_id", project.ID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
 	m.AppState.SetTasks(tasks)
@@ -284,7 +284,7 @@ func SwitchToProject(m *tui.Model, projectIndex int) {
 	// Reload labels for this project
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("Error loading labels for project", "project_id", project.ID, "error", err)
+		slog.Error("failed to loading labels for project", "project_id", project.ID, "error", err)
 		labels = []*models.Label{}
 	}
 	m.AppState.SetLabels(labels)
