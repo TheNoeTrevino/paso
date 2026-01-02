@@ -1,3 +1,23 @@
+// Package converters provides type-safe conversion between
+// database models (from SQLC) and domain models.
+//
+// All conversions handle:
+// - NULL database values (sql.Null* types)
+// - Type coercions (int64 from database to int in domain)
+// - Relationship parsing (GROUP_CONCAT labels)
+//
+// Conversion failures are explicit - never silent type coercions.
+//
+// Example usage:
+//
+//	// Converting a single task
+//	task := converters.TaskToModel(dbTask)
+//
+//	// Converting labels
+//	labels := converters.LabelsToModels(dbLabels)
+//
+//	// Parsing GROUP_CONCAT results
+//	labels := converters.ParseLabelsFromConcatenated(ids, names, colors)
 package converters
 
 import (
@@ -12,7 +32,14 @@ import (
 // Using CHAR(31) as a delimiter since it's a control character unlikely in text
 const labelSeparator = string(rune(31))
 
-// TaskToModel converts a generated.Task to models.Task
+// TaskToModel converts a generated.Task (SQLC database model) to models.Task (domain model).
+//
+// Handles NULL values for optional fields:
+// - description (sql.NullString)
+// - created_at, updated_at (sql.NullTime)
+//
+// Type conversions:
+// - All ID fields: int64 → int
 func TaskToModel(t generated.Task) *models.Task {
 	task := &models.Task{
 		ID:         int(t.ID),
@@ -166,6 +193,27 @@ func FilteredTaskSummaryFromRowToModel(row generated.GetTaskSummariesByProjectFi
 }
 
 // ParseLabelsFromConcatenated parses GROUP_CONCAT label data into Label slice
+// ParseLabelsFromConcatenated parses GROUP_CONCAT label data from SQL queries.
+//
+// SQL queries use GROUP_CONCAT to return multiple labels in a single row:
+//
+//	SELECT
+//	  GROUP_CONCAT(l.id, CHAR(31)) as label_ids,
+//	  GROUP_CONCAT(l.name, CHAR(31)) as label_names,
+//	  GROUP_CONCAT(l.color, CHAR(31)) as label_colors
+//
+// This function splits the concatenated strings and reconstructs the label objects.
+//
+// Returns empty slice if:
+// - Any input string is empty
+// - The number of IDs, names, and colors don't match (data integrity issue)
+//
+// Example:
+//
+//	ids    = "1\x1f2\x1f3"
+//	names  = "bug\x1ffeature\x1furgent"
+//	colors = "#FF0000\x1f#00FF00\x1f#0000FF"
+//	result = []*models.Label{{ID:1, Name:"bug", Color:"#FF0000"}, ...}
 func ParseLabelsFromConcatenated(ids, names, colors string) []*models.Label {
 	if ids == "" || names == "" || colors == "" {
 		return []*models.Label{}
