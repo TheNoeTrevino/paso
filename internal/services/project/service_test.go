@@ -5,89 +5,17 @@ import (
 	"database/sql"
 	"testing"
 
-	_ "modernc.org/sqlite"
+	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
 // ============================================================================
 // TEST HELPERS
 // ============================================================================
 
-// setupTestDB creates an in-memory database and runs migrations
+// setupTestDB creates an in-memory database with full schema using testutil
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	// Enable foreign key constraints
-	_, err = db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
-	if err != nil {
-		t.Fatalf("Failed to enable foreign keys: %v", err)
-	}
-
-	// Run migrations inline (simplified version for tests)
-	if err := createTestSchema(db); err != nil {
-		t.Fatalf("Failed to create schema: %v", err)
-	}
-
-	return db
-}
-
-// createTestSchema creates the minimal schema needed for project service tests
-func createTestSchema(db *sql.DB) error {
-	schema := `
-	-- Create projects table
-	CREATE TABLE IF NOT EXISTS projects (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		description TEXT,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
-
-	-- Create project_counters table (for ticket numbers)
-	CREATE TABLE IF NOT EXISTS project_counters (
-		project_id INTEGER PRIMARY KEY,
-		next_ticket_number INTEGER DEFAULT 1,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-	);
-
-	-- Create columns table (for deletion constraint checking)
-	CREATE TABLE IF NOT EXISTS columns (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		project_id INTEGER NOT NULL,
-		name TEXT NOT NULL,
-		prev_id INTEGER,
-		next_id INTEGER,
-		holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
-		holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
-		holds_in_progress_tasks BOOLEAN NOT NULL DEFAULT 0,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-	);
-
-	-- Create tasks table (for task count queries)
-	CREATE TABLE IF NOT EXISTS tasks (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		project_id INTEGER NOT NULL,
-		column_id INTEGER,
-		title TEXT NOT NULL,
-		description TEXT,
-		ticket_number INTEGER,
-		status TEXT DEFAULT 'todo',
-		priority_id INTEGER,
-		type_id INTEGER,
-		position REAL DEFAULT 0,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-		FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE SET NULL
-	);
-	`
-
-	_, err := db.ExecContext(context.Background(), schema)
-	return err
+	return testutil.SetupTestDB(t)
 }
 
 // ============================================================================
@@ -482,7 +410,7 @@ func TestDeleteProject_WithTasks(t *testing.T) {
 	}
 
 	// Create a task in the column
-	_, err = db.ExecContext(context.Background(), "INSERT INTO tasks (project_id, column_id, title) VALUES (?, ?, ?)", created.ID, columnID, "Test Task")
+	_, err = db.ExecContext(context.Background(), "INSERT INTO tasks (column_id, title, position) VALUES (?, ?, ?)", columnID, "Test Task", 0)
 	if err != nil {
 		t.Fatalf("Failed to create task: %v", err)
 	}
@@ -527,7 +455,7 @@ func TestDeleteProject_WithTasksForce(t *testing.T) {
 	}
 
 	// Create a task in the column
-	_, err = db.ExecContext(context.Background(), "INSERT INTO tasks (project_id, column_id, title) VALUES (?, ?, ?)", created.ID, columnID, "Test Task")
+	_, err = db.ExecContext(context.Background(), "INSERT INTO tasks (column_id, title, position) VALUES (?, ?, ?)", columnID, "Test Task", 0)
 	if err != nil {
 		t.Fatalf("Failed to create task: %v", err)
 	}

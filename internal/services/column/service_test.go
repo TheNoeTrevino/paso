@@ -6,95 +6,17 @@ import (
 	"strings"
 	"testing"
 
-	_ "modernc.org/sqlite"
+	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
 // ============================================================================
 // TEST HELPERS
 // ============================================================================
 
-// setupTestDB creates an in-memory database and runs migrations
+// setupTestDB creates an in-memory database with full schema using testutil
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	// Enable foreign key constraints
-	_, err = db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
-	if err != nil {
-		t.Fatalf("Failed to enable foreign keys: %v", err)
-	}
-
-	// Run migrations inline (simplified version for tests)
-	if err := createTestSchema(db); err != nil {
-		t.Fatalf("Failed to create schema: %v", err)
-	}
-
-	return db
-}
-
-// createTestSchema creates the minimal schema needed for column service tests
-func createTestSchema(db *sql.DB) error {
-	schema := `
-	-- Create projects table
-	CREATE TABLE IF NOT EXISTS projects (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		description TEXT,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
-
-	-- Create columns table (linked list structure)
-	CREATE TABLE IF NOT EXISTS columns (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		project_id INTEGER NOT NULL,
-		name TEXT NOT NULL,
-		prev_id INTEGER,
-		next_id INTEGER,
-		holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
-		holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
-		holds_in_progress_tasks BOOLEAN NOT NULL DEFAULT 0,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-		FOREIGN KEY (prev_id) REFERENCES columns(id) ON DELETE SET NULL,
-		FOREIGN KEY (next_id) REFERENCES columns(id) ON DELETE SET NULL
-	);
-
-	-- Unique partial index: only one column per project can have holds_ready_tasks = 1
-	CREATE UNIQUE INDEX idx_columns_ready_per_project
-	ON columns(project_id) WHERE holds_ready_tasks = 1;
-
-	-- Unique partial index: only one column per project can have holds_completed_tasks = 1
-	CREATE UNIQUE INDEX idx_columns_completed_per_project
-	ON columns(project_id) WHERE holds_completed_tasks = 1;
-
-	-- Unique partial index: only one column per project can have holds_in_progress_tasks = 1
-	CREATE UNIQUE INDEX idx_columns_in_progress_per_project
-	ON columns(project_id) WHERE holds_in_progress_tasks = 1;
-
-	-- Create tasks table (for deletion constraint checking)
-	CREATE TABLE IF NOT EXISTS tasks (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		column_id INTEGER NOT NULL,
-		title TEXT NOT NULL,
-		description TEXT,
-		position INTEGER NOT NULL DEFAULT 0,
-		ticket_number INTEGER,
-		type_id INTEGER NOT NULL DEFAULT 1,
-		priority_id INTEGER NOT NULL DEFAULT 3,
-		status TEXT DEFAULT 'todo',
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
-		UNIQUE(column_id, position)
-	);
-	`
-
-	_, err := db.ExecContext(context.Background(), schema)
-	return err
+	return testutil.SetupTestDB(t)
 }
 
 // createTestProject creates a test project and returns its ID
@@ -176,82 +98,75 @@ func TestCreateColumn(t *testing.T) {
 	}
 }
 
-func TestCreateColumn_EmptyName(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
-
-	req := CreateColumnRequest{
-		Name:      "", // Empty name
-		ProjectID: projectID,
+func TestCreateColumn_Validation(t *testing.T) {
+	tests := []struct {
+		name      string
+		colName   string
+		projectID int
+		wantErr   bool
+		errType   error
+		setupFn   func(*sql.DB) int // Returns project ID if needed
+	}{
+		{
+			name:      "empty name",
+			colName:   "",
+			projectID: 1,
+			wantErr:   true,
+			errType:   ErrEmptyName,
+		},
+		{
+			name: "name too long",
+			setupFn: func(db *sql.DB) int {
+				return createTestProject(t, db)
+			},
+			colName: func() string {
+				name := ""
+				for i := 0; i < 51; i++ {
+					name += "a"
+				}
+				return name
+			}(),
+			wantErr: true,
+			errType: ErrNameTooLong,
+		},
+		{
+			name:      "invalid project ID",
+			colName:   "To Do",
+			projectID: 0,
+			wantErr:   true,
+			errType:   ErrInvalidProjectID,
+		},
 	}
 
-	_, err := svc.CreateColumn(context.Background(), req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	if err == nil {
-		t.Fatal("Expected validation error for empty name")
-	}
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
 
-	if err != ErrEmptyName {
-		t.Errorf("Expected ErrEmptyName, got %v", err)
-	}
-}
+			projectID := tt.projectID
+			if tt.setupFn != nil {
+				projectID = tt.setupFn(db)
+			}
 
-func TestCreateColumn_NameTooLong(t *testing.T) {
-	t.Parallel()
+			svc := NewService(db, nil)
+			req := CreateColumnRequest{
+				Name:      tt.colName,
+				ProjectID: projectID,
+			}
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+			_, err := svc.CreateColumn(context.Background(), req)
 
-	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CreateColumn() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 
-	longName := ""
-	for i := 0; i < 51; i++ {
-		longName += "a"
-	}
-
-	req := CreateColumnRequest{
-		Name:      longName,
-		ProjectID: projectID,
-	}
-
-	_, err := svc.CreateColumn(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected validation error for long name")
-	}
-
-	if err != ErrNameTooLong {
-		t.Errorf("Expected ErrNameTooLong, got %v", err)
-	}
-}
-
-func TestCreateColumn_InvalidProjectID(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	svc := NewService(db, nil)
-
-	req := CreateColumnRequest{
-		Name:      "To Do",
-		ProjectID: 0, // Invalid
-	}
-
-	_, err := svc.CreateColumn(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("Expected validation error for invalid project ID")
-	}
-
-	if err != ErrInvalidProjectID {
-		t.Errorf("Expected ErrInvalidProjectID, got %v", err)
+			if tt.errType != nil && err != tt.errType {
+				t.Errorf("CreateColumn() error = %v, want %v", err, tt.errType)
+			}
+		})
 	}
 }
 
@@ -576,50 +491,62 @@ func TestUpdateColumnName(t *testing.T) {
 	}
 }
 
-func TestUpdateColumnName_EmptyName(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
-
-	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
-		Name:      "To Do",
-		ProjectID: projectID,
-	})
-	if err != nil {
-		t.Fatalf("Failed to create column: %v", err)
+func TestUpdateColumnName_Validation(t *testing.T) {
+	tests := []struct {
+		name     string
+		columnID int
+		newName  string
+		wantErr  bool
+		errType  error
+		setupFn  func(*sql.DB) int // Returns column ID if needed
+	}{
+		{
+			name:    "empty name",
+			newName: "",
+			wantErr: true,
+			errType: ErrEmptyName,
+			setupFn: func(db *sql.DB) int {
+				projectID := createTestProject(t, db)
+				col, _ := NewService(db, nil).CreateColumn(context.Background(), CreateColumnRequest{
+					Name:      "To Do",
+					ProjectID: projectID,
+				})
+				return col.ID
+			},
+		},
+		{
+			name:     "invalid ID",
+			columnID: 0,
+			newName:  "Backlog",
+			wantErr:  true,
+			errType:  ErrInvalidColumnID,
+		},
 	}
 
-	err = svc.UpdateColumnName(context.Background(), created.ID, "")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	if err == nil {
-		t.Fatal("Expected validation error for empty name")
-	}
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
 
-	if err != ErrEmptyName {
-		t.Errorf("Expected ErrEmptyName, got %v", err)
-	}
-}
+			columnID := tt.columnID
+			if tt.setupFn != nil {
+				columnID = tt.setupFn(db)
+			}
 
-func TestUpdateColumnName_InvalidID(t *testing.T) {
-	t.Parallel()
+			svc := NewService(db, nil)
+			err := svc.UpdateColumnName(context.Background(), columnID, tt.newName)
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("UpdateColumnName() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 
-	svc := NewService(db, nil)
-
-	err := svc.UpdateColumnName(context.Background(), 0, "Backlog")
-
-	if err == nil {
-		t.Fatal("Expected error for invalid ID")
-	}
-
-	if err != ErrInvalidColumnID {
-		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
+			if tt.errType != nil && err != tt.errType {
+				t.Errorf("UpdateColumnName() error = %v, want %v", err, tt.errType)
+			}
+		})
 	}
 }
 
@@ -653,53 +580,60 @@ func TestDeleteColumn(t *testing.T) {
 	}
 }
 
-func TestDeleteColumn_InvalidID(t *testing.T) {
-	t.Parallel()
-
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	svc := NewService(db, nil)
-
-	err := svc.DeleteColumn(context.Background(), 0)
-
-	if err == nil {
-		t.Fatal("Expected error for invalid ID")
+func TestDeleteColumn_Validation(t *testing.T) {
+	tests := []struct {
+		name     string
+		columnID int
+		wantErr  bool
+		errType  error
+		setupFn  func(*sql.DB) int // Returns column ID if needed
+	}{
+		{
+			name:     "invalid ID",
+			columnID: 0,
+			wantErr:  true,
+			errType:  ErrInvalidColumnID,
+		},
+		{
+			name:    "column has tasks",
+			wantErr: true,
+			errType: ErrColumnHasTasks,
+			setupFn: func(db *sql.DB) int {
+				projectID := createTestProject(t, db)
+				col, _ := NewService(db, nil).CreateColumn(context.Background(), CreateColumnRequest{
+					Name:      "To Do",
+					ProjectID: projectID,
+				})
+				createTestTask(t, db, col.ID)
+				return col.ID
+			},
+		},
 	}
 
-	if err != ErrInvalidColumnID {
-		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
-	}
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-func TestDeleteColumn_HasTasks(t *testing.T) {
-	t.Parallel()
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+			columnID := tt.columnID
+			if tt.setupFn != nil {
+				columnID = tt.setupFn(db)
+			}
 
-	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+			svc := NewService(db, nil)
+			err := svc.DeleteColumn(context.Background(), columnID)
 
-	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
-		Name:      "To Do",
-		ProjectID: projectID,
-	})
-	if err != nil {
-		t.Fatalf("Failed to create column: %v", err)
-	}
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DeleteColumn() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 
-	// Create a task in the column
-	createTestTask(t, db, created.ID)
-
-	err = svc.DeleteColumn(context.Background(), created.ID)
-
-	if err == nil {
-		t.Fatal("Expected error for column with tasks")
-	}
-
-	if err != ErrColumnHasTasks {
-		t.Errorf("Expected ErrColumnHasTasks, got %v", err)
+			if tt.errType != nil && err != tt.errType {
+				t.Errorf("DeleteColumn() error = %v, want %v", err, tt.errType)
+			}
+		})
 	}
 }
 
