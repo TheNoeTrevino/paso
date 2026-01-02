@@ -80,7 +80,13 @@ func NewCLIWithApp(ctx context.Context, testApp *app.App) (*CLI, error) {
 		}
 	}
 
-	application := app.New(db, eventClient)
+	// Build options for app initialization
+	var appOpts []app.Option
+	if eventClient != nil {
+		appOpts = append(appOpts, app.WithEventPublisher(eventClient))
+	}
+
+	application := app.New(db, appOpts...)
 
 	return &CLI{
 		App:         application,
