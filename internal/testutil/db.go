@@ -142,7 +142,8 @@ func createTestSchema(db *sql.DB) error {
 
 	INSERT OR IGNORE INTO relation_types (id, p_to_c_label, c_to_p_label, color, is_blocking) VALUES
 		(1, 'Parent', 'Child', '#6B7280', 0),
-		(2, 'Blocks', 'Blocked By', '#EF4444', 1);
+		(2, 'Blocked By', 'Blocker', '#EF4444', 1),
+		(3, 'Related To', 'Related To', '#3B82F6', 0);
 
 	-- Tasks table
 	CREATE TABLE IF NOT EXISTS tasks (

@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/thenoetrevino/paso/internal/events"
@@ -19,7 +19,7 @@ func WithTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) error {
 	}
 	defer func() {
 		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
+			slog.Error("failed to rollback transaction", "error", err)
 		}
 	}()
 
@@ -42,7 +42,7 @@ func sendEvent(eventClient events.EventPublisher, projectID int) {
 			Type:      events.EventDatabaseChanged,
 			ProjectID: projectID,
 		}); err != nil {
-			log.Printf("failed to send event for project %d: %v", projectID, err)
+			slog.Error("failed to send event for project", "project_id", projectID, "error", err)
 		}
 	}
 }
@@ -87,9 +87,9 @@ func NullTimeToTime(nt sql.NullTime) time.Time {
 	return time.Time{}
 }
 
-// InterfaceToIntPtr converts interface{} to *int.
+// AnyToIntPtr converts any to *int.
 // Used for converting SQLC query results to pointer types.
-func InterfaceToIntPtr(v interface{}) *int {
+func AnyToIntPtr(v any) *int {
 	if v == nil {
 		return nil
 	}
