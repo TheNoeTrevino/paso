@@ -179,7 +179,8 @@ func createTestSchema(db *sql.DB) error {
 		name TEXT NOT NULL,
 		color TEXT NOT NULL,
 		project_id INTEGER NOT NULL,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+		UNIQUE(name, project_id)
 	);
 
 	-- Task-labels join table
