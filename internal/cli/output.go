@@ -60,6 +60,11 @@ func (f *OutputFormatter) ErrorWithSuggestion(code string, message string, sugge
 		})
 	}
 
+	// In quiet mode, suppress error output to stderr (error will still be returned)
+	if f.Quiet {
+		return nil
+	}
+
 	// Human-readable error
 	fmt.Fprintf(os.Stderr, "❌ Error: %s\n", message)
 	if suggestion != "" {
