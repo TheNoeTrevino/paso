@@ -43,7 +43,7 @@ Examples:
 	// Required flags
 	cmd.Flags().Int("id", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
-		slog.Error("Error marking flag as required", "error", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Agent-friendly flags
@@ -67,13 +67,13 @@ func runMove(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("Error closing CLI", "error", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
@@ -81,7 +81,7 @@ func runMove(cmd *cobra.Command, args []string) error {
 	taskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -90,7 +90,7 @@ func runMove(cmd *cobra.Command, args []string) error {
 	currentColumn, err := cliInstance.App.ColumnService.GetColumnByID(ctx, taskDetail.ColumnID)
 	if err != nil {
 		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
@@ -99,7 +99,7 @@ func runMove(cmd *cobra.Command, args []string) error {
 	columns, err := cliInstance.App.ColumnService.GetColumnsByProject(ctx, currentColumn.ProjectID)
 	if err != nil {
 		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
@@ -115,12 +115,12 @@ func runMove(cmd *cobra.Command, args []string) error {
 			if strings.Contains(err.Error(), "no next column") {
 				if fmtErr := formatter.Error("NO_NEXT_COLUMN",
 					fmt.Sprintf("task is already in the last column (%s)", currentColumnName)); fmtErr != nil {
-					slog.Error("Error formatting error message", "error", fmtErr)
+					slog.Error("failed to formatting error message", "error", fmtErr)
 				}
 				os.Exit(cli.ExitValidation)
 			}
 			if fmtErr := formatter.Error("MOVE_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("Error formatting error message", "error", fmtErr)
+				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
 			return err
 		}
@@ -133,12 +133,12 @@ func runMove(cmd *cobra.Command, args []string) error {
 			if strings.Contains(err.Error(), "no previous column") {
 				if fmtErr := formatter.Error("NO_PREV_COLUMN",
 					fmt.Sprintf("task is already in the first column (%s)", currentColumnName)); fmtErr != nil {
-					slog.Error("Error formatting error message", "error", fmtErr)
+					slog.Error("failed to formatting error message", "error", fmtErr)
 				}
 				os.Exit(cli.ExitValidation)
 			}
 			if fmtErr := formatter.Error("MOVE_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("Error formatting error message", "error", fmtErr)
+				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
 			return err
 		}
@@ -153,7 +153,7 @@ func runMove(cmd *cobra.Command, args []string) error {
 				fmt.Sprintf("column '%s' not found", target),
 				fmt.Sprintf("Task is currently in: %s\nAvailable columns: %s",
 					currentColumnName, cli.FormatAvailableColumns(columns))); fmtErr != nil {
-				slog.Error("Error formatting error message", "error", fmtErr)
+				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
 			os.Exit(cli.ExitNotFound)
 		}
@@ -166,7 +166,7 @@ func runMove(cmd *cobra.Command, args []string) error {
 			err = cliInstance.App.TaskService.MoveTaskToColumn(ctx, taskID, targetColumn.ID)
 			if err != nil {
 				if fmtErr := formatter.Error("MOVE_ERROR", err.Error()); fmtErr != nil {
-					slog.Error("Error formatting error message", "error", fmtErr)
+					slog.Error("failed to formatting error message", "error", fmtErr)
 				}
 				return err
 			}
@@ -181,7 +181,7 @@ func runMove(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success":     true,
 			"task_id":     taskID,
 			"from_column": currentColumnName,

@@ -41,12 +41,12 @@ Examples:
 	// Required flags
 	cmd.Flags().Int("parent", 0, "Parent task ID (required)")
 	if err := cmd.MarkFlagRequired("parent"); err != nil {
-		slog.Error("Error marking flag as required", "error", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	cmd.Flags().Int("child", 0, "Child task ID (required)")
 	if err := cmd.MarkFlagRequired("child"); err != nil {
-		slog.Error("Error marking flag as required", "error", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Agent-friendly flags
@@ -76,7 +76,7 @@ func runLink(cmd *cobra.Command, args []string) error {
 	if blocker && related {
 		if fmtErr := formatter.Error("INVALID_FLAGS",
 			"cannot specify both --blocker and --related flags"); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitUsage)
 	}
@@ -97,20 +97,20 @@ func runLink(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("Error closing CLI", "error", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
 	// Create the relationship with specific type
 	if err := cliInstance.App.TaskService.AddChildRelation(ctx, parentID, childID, relationTypeID); err != nil {
 		if fmtErr := formatter.Error("LINK_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
@@ -121,7 +121,7 @@ func runLink(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success":          true,
 			"parent_id":        parentID,
 			"child_id":         childID,

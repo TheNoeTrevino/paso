@@ -54,7 +54,7 @@ func runList(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
 			err.Error(),
 			"Set project with: eval $(paso use project <project-id>)"); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitUsage)
 	}
@@ -63,13 +63,13 @@ func runList(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("Error closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
@@ -77,7 +77,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, columnProject)
 	if err != nil {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", columnProject)); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -86,7 +86,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	columns, err := cliInstance.App.ColumnService.GetColumnsByProject(ctx, columnProject)
 	if err != nil {
 		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
 		return err
 	}
@@ -100,9 +100,9 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonOutput {
-		columnList := make([]map[string]interface{}, len(columns))
+		columnList := make([]map[string]any, len(columns))
 		for i, col := range columns {
-			columnList[i] = map[string]interface{}{
+			columnList[i] = map[string]any{
 				"id":                    col.ID,
 				"name":                  col.Name,
 				"project_id":            col.ProjectID,
@@ -110,7 +110,7 @@ func runList(cmd *cobra.Command, args []string) error {
 				"holds_completed_tasks": col.HoldsCompletedTasks,
 			}
 		}
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success": true,
 			"columns": columnList,
 		})
@@ -127,6 +127,9 @@ func runList(cmd *cobra.Command, args []string) error {
 		flags := ""
 		if col.HoldsReadyTasks {
 			flags += " [READY]"
+		}
+		if col.HoldsInProgressTasks {
+			flags += " [IN-PROGRESS]"
 		}
 		if col.HoldsCompletedTasks {
 			flags += " [COMPLETED]"

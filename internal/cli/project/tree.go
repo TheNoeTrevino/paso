@@ -60,7 +60,7 @@ func runTree(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.ErrorWithSuggestion("INVALID_PROJECT_ID",
 			"project ID must be a positive integer",
 			"Usage: paso project tree <project-id> or paso project tree --project-id=<id>"); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitUsage)
 	}
@@ -69,13 +69,13 @@ func runTree(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("Error closing CLI", "error", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
@@ -83,7 +83,7 @@ func runTree(cmd *cobra.Command, args []string) error {
 	tree, err := cliInstance.App.TaskService.GetTaskTreeByProject(ctx, projectID)
 	if err != nil {
 		if fmtErr := formatter.Error("TREE_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
@@ -94,10 +94,10 @@ func runTree(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		if jsonOutput {
-			return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+			return json.NewEncoder(os.Stdout).Encode(map[string]any{
 				"success":    true,
 				"project_id": projectID,
-				"tree":       []interface{}{},
+				"tree":       []any{},
 			})
 		}
 		fmt.Println("No tasks found")
@@ -191,7 +191,7 @@ func convertToJSONTree(nodes []*models.TaskTreeNode) []*treeNodeJSON {
 }
 
 func outputJSONTree(projectID int, tree []*models.TaskTreeNode) error {
-	return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+	return json.NewEncoder(os.Stdout).Encode(map[string]any{
 		"success":    true,
 		"project_id": projectID,
 		"tree":       convertToJSONTree(tree),
