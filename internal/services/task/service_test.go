@@ -3687,3 +3687,1327 @@ func getMaxDepth(node *models.TaskTreeNode) int {
 	}
 	return maxChildDepth + 1
 }
+
+// ============================================================================
+// ERROR PATH TESTS - COMPREHENSIVE ERROR SCENARIOS
+// ============================================================================
+
+// TestCreateTask_ErrorPaths tests various error scenarios for CreateTask
+func TestCreateTask_ErrorPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		setupFn func(*sql.DB) CreateTaskRequest
+		wantErr bool
+		errType error
+	}{
+		{
+			name: "negative column ID",
+			setupFn: func(db *sql.DB) CreateTaskRequest {
+				return CreateTaskRequest{
+					Title:    "Test Task",
+					ColumnID: -1,
+					Position: 0,
+				}
+			},
+			wantErr: true,
+			errType: ErrInvalidColumnID,
+		},
+		{
+			name: "non-existent column ID",
+			setupFn: func(db *sql.DB) CreateTaskRequest {
+				return CreateTaskRequest{
+					Title:    "Test Task",
+					ColumnID: 99999,
+					Position: 0,
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "position exceeds int64 max",
+			setupFn: func(db *sql.DB) CreateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return CreateTaskRequest{
+					Title:    "Test Task",
+					ColumnID: columnID,
+					Position: 9223372036854775807, // max int64
+				}
+			},
+			wantErr: false, // Large position should work
+		},
+		{
+			name: "non-existent label IDs",
+			setupFn: func(db *sql.DB) CreateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return CreateTaskRequest{
+					Title:    "Test Task",
+					ColumnID: columnID,
+					Position: 0,
+					LabelIDs: []int{99999, 88888},
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "mixed valid and invalid label IDs",
+			setupFn: func(db *sql.DB) CreateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				labelID := createTestLabel(t, db, projectID, "Valid")
+				return CreateTaskRequest{
+					Title:    "Test Task",
+					ColumnID: columnID,
+					Position: 0,
+					LabelIDs: []int{labelID, 99999},
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "zero label ID",
+			setupFn: func(db *sql.DB) CreateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return CreateTaskRequest{
+					Title:    "Test Task",
+					ColumnID: columnID,
+					Position: 0,
+					LabelIDs: []int{0},
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "negative label ID",
+			setupFn: func(db *sql.DB) CreateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return CreateTaskRequest{
+					Title:    "Test Task",
+					ColumnID: columnID,
+					Position: 0,
+					LabelIDs: []int{-1},
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "non-existent parent IDs",
+			setupFn: func(db *sql.DB) CreateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return CreateTaskRequest{
+					Title:     "Test Task",
+					ColumnID:  columnID,
+					Position:  0,
+					ParentIDs: []int{99999},
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "zero parent ID",
+			setupFn: func(db *sql.DB) CreateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return CreateTaskRequest{
+					Title:     "Test Task",
+					ColumnID:  columnID,
+					Position:  0,
+					ParentIDs: []int{0},
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "negative parent ID",
+			setupFn: func(db *sql.DB) CreateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return CreateTaskRequest{
+					Title:     "Test Task",
+					ColumnID:  columnID,
+					Position:  0,
+					ParentIDs: []int{-1},
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid priority ID negative",
+			setupFn: func(db *sql.DB) CreateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return CreateTaskRequest{
+					Title:      "Test Task",
+					ColumnID:   columnID,
+					Position:   0,
+					PriorityID: -1,
+				}
+			},
+			wantErr: true,
+			errType: ErrInvalidPriority,
+		},
+		{
+			name: "invalid priority ID too high - database constraint",
+			setupFn: func(db *sql.DB) CreateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return CreateTaskRequest{
+					Title:      "Test Task",
+					ColumnID:   columnID,
+					Position:   0,
+					PriorityID: 999,
+				}
+			},
+			wantErr: true, // Database will catch foreign key constraint
+		},
+		{
+			name: "invalid type ID negative",
+			setupFn: func(db *sql.DB) CreateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return CreateTaskRequest{
+					Title:    "Test Task",
+					ColumnID: columnID,
+					Position: 0,
+					TypeID:   -1,
+				}
+			},
+			wantErr: true,
+			errType: ErrInvalidType,
+		},
+		{
+			name: "invalid type ID too high - database constraint",
+			setupFn: func(db *sql.DB) CreateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return CreateTaskRequest{
+					Title:    "Test Task",
+					ColumnID: columnID,
+					Position: 0,
+					TypeID:   999,
+				}
+			},
+			wantErr: true, // Database will catch foreign key constraint
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
+
+			svc := NewService(db, nil)
+			req := tt.setupFn(db)
+
+			_, err := svc.CreateTask(context.Background(), req)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CreateTask() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
+				t.Errorf("CreateTask() error = %v, want %v", err, tt.errType)
+			}
+		})
+	}
+}
+
+// TestUpdateTask_ErrorPaths tests various error scenarios for UpdateTask
+func TestUpdateTask_ErrorPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		setupFn func(*sql.DB) UpdateTaskRequest
+		wantErr bool
+		errType error
+	}{
+		{
+			name: "negative task ID",
+			setupFn: func(db *sql.DB) UpdateTaskRequest {
+				title := "New Title"
+				return UpdateTaskRequest{
+					TaskID: -1,
+					Title:  &title,
+				}
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "non-existent task ID",
+			setupFn: func(db *sql.DB) UpdateTaskRequest {
+				title := "New Title"
+				return UpdateTaskRequest{
+					TaskID: 99999,
+					Title:  &title,
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "title too long (exactly 256 chars)",
+			setupFn: func(db *sql.DB) UpdateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				task, _ := NewService(db, nil).CreateTask(context.Background(), CreateTaskRequest{
+					Title:    "Old Title",
+					ColumnID: columnID,
+					Position: 0,
+				})
+				longTitle := ""
+				for i := 0; i < 256; i++ {
+					longTitle += "a"
+				}
+				return UpdateTaskRequest{
+					TaskID: task.ID,
+					Title:  &longTitle,
+				}
+			},
+			wantErr: true,
+			errType: ErrTitleTooLong,
+		},
+		{
+			name: "update with invalid priority ID - database constraint",
+			setupFn: func(db *sql.DB) UpdateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				task, _ := NewService(db, nil).CreateTask(context.Background(), CreateTaskRequest{
+					Title:    "Test Task",
+					ColumnID: columnID,
+					Position: 0,
+				})
+				priority := 999
+				return UpdateTaskRequest{
+					TaskID:     task.ID,
+					PriorityID: &priority,
+				}
+			},
+			wantErr: true, // Database constraint
+		},
+		{
+			name: "update with invalid type ID - database constraint",
+			setupFn: func(db *sql.DB) UpdateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				task, _ := NewService(db, nil).CreateTask(context.Background(), CreateTaskRequest{
+					Title:    "Test Task",
+					ColumnID: columnID,
+					Position: 0,
+				})
+				typeID := 999
+				return UpdateTaskRequest{
+					TaskID: task.ID,
+					TypeID: &typeID,
+				}
+			},
+			wantErr: true, // Database constraint
+		},
+		{
+			name: "whitespace-only title - may or may not be validated",
+			setupFn: func(db *sql.DB) UpdateTaskRequest {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				task, _ := NewService(db, nil).CreateTask(context.Background(), CreateTaskRequest{
+					Title:    "Test Task",
+					ColumnID: columnID,
+					Position: 0,
+				})
+				title := "   "
+				return UpdateTaskRequest{
+					TaskID: task.ID,
+					Title:  &title,
+				}
+			},
+			wantErr: false, // Whitespace title may be allowed
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
+
+			svc := NewService(db, nil)
+			req := tt.setupFn(db)
+
+			err := svc.UpdateTask(context.Background(), req)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("UpdateTask() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
+				t.Errorf("UpdateTask() error = %v, want %v", err, tt.errType)
+			}
+		})
+	}
+}
+
+// TestDeleteTask_ErrorPaths tests various error scenarios for DeleteTask
+func TestDeleteTask_ErrorPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		taskID  int
+		wantErr bool
+		errType error
+	}{
+		{
+			name:    "negative task ID",
+			taskID:  -1,
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name:    "non-existent task ID - may succeed",
+			taskID:  99999,
+			wantErr: false, // DELETE operations may succeed even if row doesn't exist
+		},
+		{
+			name:    "very large task ID - may succeed",
+			taskID:  999999999,
+			wantErr: false, // DELETE operations may succeed even if row doesn't exist
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
+
+			svc := NewService(db, nil)
+
+			err := svc.DeleteTask(context.Background(), tt.taskID)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DeleteTask() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
+				t.Errorf("DeleteTask() error = %v, want %v", err, tt.errType)
+			}
+		})
+	}
+}
+
+// TestAttachLabel_ErrorPaths tests various error scenarios for AttachLabel
+func TestAttachLabel_ErrorPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		setupFn func(*sql.DB) (int, int)
+		wantErr bool
+		errType error
+	}{
+		{
+			name: "invalid task ID zero",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				labelID := createTestLabel(t, db, projectID, "Bug")
+				return 0, labelID
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "negative task ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				labelID := createTestLabel(t, db, projectID, "Bug")
+				return -1, labelID
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "invalid label ID zero",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Test Task")
+				return taskID, 0
+			},
+			wantErr: true,
+			errType: ErrInvalidLabelID,
+		},
+		{
+			name: "negative label ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Test Task")
+				return taskID, -1
+			},
+			wantErr: true,
+			errType: ErrInvalidLabelID,
+		},
+		{
+			name: "non-existent task ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				labelID := createTestLabel(t, db, projectID, "Bug")
+				return 99999, labelID
+			},
+			wantErr: true,
+		},
+		{
+			name: "non-existent label ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Test Task")
+				return taskID, 99999
+			},
+			wantErr: true,
+		},
+		{
+			name: "duplicate label attachment - may succeed silently",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				labelID := createTestLabel(t, db, projectID, "Bug")
+				svc := NewService(db, nil)
+				task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+					Title:    "Test Task",
+					ColumnID: columnID,
+					Position: 0,
+					LabelIDs: []int{labelID},
+				})
+				return task.ID, labelID
+			},
+			wantErr: false, // May succeed or may error - database dependent
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
+
+			svc := NewService(db, nil)
+			taskID, labelID := tt.setupFn(db)
+
+			err := svc.AttachLabel(context.Background(), taskID, labelID)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AttachLabel() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
+				t.Errorf("AttachLabel() error = %v, want %v", err, tt.errType)
+			}
+		})
+	}
+}
+
+// TestDetachLabel_ErrorPaths tests various error scenarios for DetachLabel
+func TestDetachLabel_ErrorPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		setupFn func(*sql.DB) (int, int)
+		wantErr bool
+		errType error
+	}{
+		{
+			name: "invalid task ID zero",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				labelID := createTestLabel(t, db, projectID, "Bug")
+				return 0, labelID
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "negative task ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				labelID := createTestLabel(t, db, projectID, "Bug")
+				return -1, labelID
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "invalid label ID zero",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Test Task")
+				return taskID, 0
+			},
+			wantErr: true,
+			errType: ErrInvalidLabelID,
+		},
+		{
+			name: "negative label ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Test Task")
+				return taskID, -1
+			},
+			wantErr: true,
+			errType: ErrInvalidLabelID,
+		},
+		{
+			name: "non-existent task ID - may succeed",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				labelID := createTestLabel(t, db, projectID, "Bug")
+				return 99999, labelID
+			},
+			wantErr: false, // May succeed even if task doesn't exist
+		},
+		{
+			name: "non-existent label ID - may succeed",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Test Task")
+				return taskID, 99999
+			},
+			wantErr: false, // May succeed even if label doesn't exist
+		},
+		{
+			name: "label not attached to task - may succeed",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				labelID := createTestLabel(t, db, projectID, "Bug")
+				taskID := createTestTask(t, db, columnID, "Test Task")
+				return taskID, labelID
+			},
+			wantErr: false, // May succeed even if label not attached
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
+
+			svc := NewService(db, nil)
+			taskID, labelID := tt.setupFn(db)
+
+			err := svc.DetachLabel(context.Background(), taskID, labelID)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DetachLabel() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
+				t.Errorf("DetachLabel() error = %v, want %v", err, tt.errType)
+			}
+		})
+	}
+}
+
+// TestAddParentRelation_ErrorPaths tests various error scenarios for AddParentRelation
+func TestAddParentRelation_ErrorPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		setupFn func(*sql.DB) (int, int)
+		wantErr bool
+		errType error
+	}{
+		{
+			name: "invalid child ID zero",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Parent")
+				return 0, taskID
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "negative child ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Parent")
+				return -1, taskID
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "invalid parent ID zero",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Child")
+				return taskID, 0
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "negative parent ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Child")
+				return taskID, -1
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "non-existent child task",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Parent")
+				return 99999, taskID
+			},
+			wantErr: true,
+		},
+		{
+			name: "non-existent parent task",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Child")
+				return taskID, 99999
+			},
+			wantErr: true,
+		},
+		{
+			name: "duplicate parent relation - may succeed silently",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				svc := NewService(db, nil)
+				parent, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+					Title:    "Parent",
+					ColumnID: columnID,
+					Position: 0,
+				})
+				child, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+					Title:     "Child",
+					ColumnID:  columnID,
+					Position:  1,
+					ParentIDs: []int{parent.ID},
+				})
+				return child.ID, parent.ID
+			},
+			wantErr: false, // May succeed or may error - database dependent
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
+
+			svc := NewService(db, nil)
+			childID, parentID := tt.setupFn(db)
+
+			err := svc.AddParentRelation(context.Background(), childID, parentID, 1)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AddParentRelation() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
+				t.Errorf("AddParentRelation() error = %v, want %v", err, tt.errType)
+			}
+		})
+	}
+}
+
+// TestAddChildRelation_ErrorPaths tests various error scenarios for AddChildRelation
+func TestAddChildRelation_ErrorPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		setupFn func(*sql.DB) (int, int)
+		wantErr bool
+		errType error
+	}{
+		{
+			name: "invalid parent ID zero",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Child")
+				return 0, taskID
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "negative parent ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Child")
+				return -1, taskID
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "invalid child ID zero",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Parent")
+				return taskID, 0
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "negative child ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Parent")
+				return taskID, -1
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "non-existent parent task",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Child")
+				return 99999, taskID
+			},
+			wantErr: true,
+		},
+		{
+			name: "non-existent child task",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Parent")
+				return taskID, 99999
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
+
+			svc := NewService(db, nil)
+			parentID, childID := tt.setupFn(db)
+
+			err := svc.AddChildRelation(context.Background(), parentID, childID, 1)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AddChildRelation() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
+				t.Errorf("AddChildRelation() error = %v, want %v", err, tt.errType)
+			}
+		})
+	}
+}
+
+// TestRemoveParentRelation_ErrorPaths tests various error scenarios for RemoveParentRelation
+func TestRemoveParentRelation_ErrorPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		setupFn func(*sql.DB) (int, int)
+		wantErr bool
+		errType error
+	}{
+		{
+			name: "invalid child ID zero",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Parent")
+				return 0, taskID
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "negative child ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Parent")
+				return -1, taskID
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "invalid parent ID zero",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Child")
+				return taskID, 0
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "negative parent ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Child")
+				return taskID, -1
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "non-existent relationship - may succeed silently",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				task1 := createTestTask(t, db, columnID, "Task 1")
+				task2 := createTestTask(t, db, columnID, "Task 2")
+				return task1, task2
+			},
+			wantErr: false, // May succeed even if no relationship exists
+		},
+		{
+			name: "non-existent child task - may succeed silently",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Parent")
+				return 99999, taskID
+			},
+			wantErr: false, // May succeed even if task doesn't exist
+		},
+		{
+			name: "non-existent parent task - may succeed silently",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Child")
+				return taskID, 99999
+			},
+			wantErr: false, // May succeed even if task doesn't exist
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
+
+			svc := NewService(db, nil)
+			childID, parentID := tt.setupFn(db)
+
+			err := svc.RemoveParentRelation(context.Background(), childID, parentID)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("RemoveParentRelation() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
+				t.Errorf("RemoveParentRelation() error = %v, want %v", err, tt.errType)
+			}
+		})
+	}
+}
+
+// TestRemoveChildRelation_ErrorPaths tests various error scenarios for RemoveChildRelation
+func TestRemoveChildRelation_ErrorPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		setupFn func(*sql.DB) (int, int)
+		wantErr bool
+		errType error
+	}{
+		{
+			name: "invalid parent ID zero",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Child")
+				return 0, taskID
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "negative parent ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Child")
+				return -1, taskID
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "invalid child ID zero",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Parent")
+				return taskID, 0
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "negative child ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Parent")
+				return taskID, -1
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "non-existent relationship - may succeed silently",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				task1 := createTestTask(t, db, columnID, "Task 1")
+				task2 := createTestTask(t, db, columnID, "Task 2")
+				return task1, task2
+			},
+			wantErr: false, // May succeed even if no relationship exists
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
+
+			svc := NewService(db, nil)
+			parentID, childID := tt.setupFn(db)
+
+			err := svc.RemoveChildRelation(context.Background(), parentID, childID)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("RemoveChildRelation() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
+				t.Errorf("RemoveChildRelation() error = %v, want %v", err, tt.errType)
+			}
+		})
+	}
+}
+
+// TestMoveTaskToColumn_ErrorPaths tests various error scenarios for MoveTaskToColumn
+func TestMoveTaskToColumn_ErrorPaths(t *testing.T) {
+	tests := []struct {
+		name    string
+		setupFn func(*sql.DB) (int, int)
+		wantErr bool
+		errType error
+	}{
+		{
+			name: "invalid task ID zero",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return 0, columnID
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "negative task ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				return -1, columnID
+			},
+			wantErr: true,
+			errType: ErrInvalidTaskID,
+		},
+		{
+			name: "invalid column ID zero",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Test Task")
+				return taskID, 0
+			},
+			wantErr: true,
+			errType: ErrInvalidColumnID,
+		},
+		{
+			name: "negative column ID",
+			setupFn: func(db *sql.DB) (int, int) {
+				projectID := createTestProject(t, db)
+				columnID := createTestColumn(t, db, projectID, "To Do")
+				taskID := createTestTask(t, db, columnID, "Test Task")
+				return taskID, -1
+			},
+			wantErr: true,
+			errType: ErrInvalidColumnID,
+		},
+		{
+			name: "both task and column non-existent",
+			setupFn: func(db *sql.DB) (int, int) {
+				return 99999, 88888
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
+
+			svc := NewService(db, nil)
+			taskID, columnID := tt.setupFn(db)
+
+			err := svc.MoveTaskToColumn(context.Background(), taskID, columnID)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("MoveTaskToColumn() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
+				t.Errorf("MoveTaskToColumn() error = %v, want %v", err, tt.errType)
+			}
+		})
+	}
+}
+
+// TestGetTaskSummariesByProject_ErrorPaths tests error scenarios for GetTaskSummariesByProject
+func TestGetTaskSummariesByProject_ErrorPaths(t *testing.T) {
+	tests := []struct {
+		name      string
+		projectID int
+		wantErr   bool
+		errType   error
+	}{
+		{
+			name:      "negative project ID - may not validate",
+			projectID: -1,
+			wantErr:   false, // May return empty result instead of error
+		},
+		{
+			name:      "zero project ID - may not validate",
+			projectID: 0,
+			wantErr:   false, // May return empty result instead of error
+		},
+		{
+			name:      "non-existent project ID",
+			projectID: 99999,
+			wantErr:   false, // Should return empty map, not error
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
+
+			svc := NewService(db, nil)
+
+			result, err := svc.GetTaskSummariesByProject(context.Background(), tt.projectID)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetTaskSummariesByProject() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
+				t.Errorf("GetTaskSummariesByProject() error = %v, want %v", err, tt.errType)
+			}
+
+			// For non-existent project, should return empty map
+			if !tt.wantErr && err == nil && tt.projectID == 99999 {
+				if len(result) != 0 {
+					t.Errorf("Expected empty map for non-existent project, got %d entries", len(result))
+				}
+			}
+		})
+	}
+}
+
+// TestGetTaskDetail_NegativeID tests GetTaskDetail with negative ID
+func TestGetTaskDetail_NegativeID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	svc := NewService(db, nil)
+
+	_, err := svc.GetTaskDetail(context.Background(), -1)
+
+	if err == nil {
+		t.Fatal("Expected error for negative task ID")
+	}
+
+	if !errors.Is(err, ErrInvalidTaskID) {
+		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
+	}
+}
+
+// TestGetTaskReferencesForProject_ErrorPaths tests error scenarios
+func TestGetTaskReferencesForProject_ErrorPaths(t *testing.T) {
+	tests := []struct {
+		name      string
+		projectID int
+		wantErr   bool
+		errType   error
+	}{
+		{
+			name:      "negative project ID - may not validate",
+			projectID: -1,
+			wantErr:   false, // May return empty result instead of error
+		},
+		{
+			name:      "zero project ID - may not validate",
+			projectID: 0,
+			wantErr:   false, // May return empty result instead of error
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupTestDB(t)
+			defer func() { _ = db.Close() }()
+
+			svc := NewService(db, nil)
+
+			_, err := svc.GetTaskReferencesForProject(context.Background(), tt.projectID)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetTaskReferencesForProject() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
+				t.Errorf("GetTaskReferencesForProject() error = %v, want %v", err, tt.errType)
+			}
+		})
+	}
+}
+
+// TestComment_BoundaryConditions tests boundary conditions for comments
+func TestComment_BoundaryConditions(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+	svc := NewService(db, nil)
+
+	// Test exactly at max length (1000 chars)
+	maxMessage := ""
+	for i := 0; i < 1000; i++ {
+		maxMessage += "a"
+	}
+
+	req := CreateCommentRequest{
+		TaskID:  taskID,
+		Message: maxMessage,
+		Author:  "testuser",
+	}
+
+	result, err := svc.CreateComment(context.Background(), req)
+
+	if err != nil {
+		t.Fatalf("Expected no error for 1000 char message, got %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("Expected comment result, got nil")
+	}
+
+	if len(result.Message) != 1000 {
+		t.Errorf("Expected message length 1000, got %d", len(result.Message))
+	}
+}
+
+// TestCreateTask_MaxLengthTitle tests title at exact max length
+func TestCreateTask_MaxLengthTitle(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	svc := NewService(db, nil)
+
+	// Test exactly at max length (255 chars)
+	maxTitle := ""
+	for i := 0; i < 255; i++ {
+		maxTitle += "a"
+	}
+
+	req := CreateTaskRequest{
+		Title:    maxTitle,
+		ColumnID: columnID,
+		Position: 0,
+	}
+
+	result, err := svc.CreateTask(context.Background(), req)
+
+	if err != nil {
+		t.Fatalf("Expected no error for 255 char title, got %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("Expected task result, got nil")
+	}
+
+	if len(result.Title) != 255 {
+		t.Errorf("Expected title length 255, got %d", len(result.Title))
+	}
+}
