@@ -54,21 +54,21 @@ func (m Model) View() tea.View {
 			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderTaskFormHelpLayer()
 		case state.LabelPickerMode:
-			layers = m.buildPickerLayers(layers, m.LabelPickerState.ReturnMode, m.renderLabelPickerLayer())
+			layers = m.buildPickerLayers(layers, m.Pickers.Label.ReturnMode, m.renderLabelPickerLayer())
 		case state.ParentPickerMode:
-			layers = m.buildPickerLayers(layers, m.ParentPickerState.ReturnMode, m.renderParentPickerLayer())
+			layers = m.buildPickerLayers(layers, m.Pickers.Parent.ReturnMode, m.renderParentPickerLayer())
 		case state.ChildPickerMode:
-			layers = m.buildPickerLayers(layers, m.ChildPickerState.ReturnMode, m.renderChildPickerLayer())
+			layers = m.buildPickerLayers(layers, m.Pickers.Child.ReturnMode, m.renderChildPickerLayer())
 		case state.PriorityPickerMode:
-			layers = m.buildPickerLayers(layers, m.PriorityPickerState.ReturnMode, m.renderPriorityPickerLayer())
+			layers = m.buildPickerLayers(layers, m.Pickers.Priority.ReturnMode, m.renderPriorityPickerLayer())
 		case state.TypePickerMode:
-			layers = m.buildPickerLayers(layers, m.TypePickerState.ReturnMode, m.renderTypePickerLayer())
+			layers = m.buildPickerLayers(layers, m.Pickers.Type.ReturnMode, m.renderTypePickerLayer())
 		case state.RelationTypePickerMode:
 			// RelationTypePicker is only accessible from ParentPicker or ChildPicker,
 			// so returnMode will always be one of those two modes (see update_pickers.go:329, 484).
 			// We render the appropriate intermediate layer to maintain the picker stack.
 			var intermediateLayer *lipgloss.Layer
-			returnMode := m.RelationTypePickerState.ReturnMode
+			returnMode := m.Pickers.RelationType.ReturnMode
 			switch returnMode {
 			case state.ParentPickerMode:
 				intermediateLayer = m.renderParentPickerLayer()

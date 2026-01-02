@@ -30,14 +30,14 @@ func InitParentPickerForForm(m *tui.Model) bool {
 
 	// Build map of currently selected parent task IDs and their relation types from form state
 	parentTaskMap := make(map[int]int) // map[taskID]relationTypeID
-	for _, parentRef := range m.FormState.FormParentRefs {
+	for _, parentRef := range m.Forms.Form.FormParentRefs {
 		parentTaskMap[parentRef.ID] = parentRef.RelationTypeID
 	}
 
 	// Build map of child task IDs to exclude (prevent circular dependencies)
 	// A task that is already a child cannot become a parent
 	childTaskMap := make(map[int]bool)
-	for _, childID := range m.FormState.FormChildIDs {
+	for _, childID := range m.Forms.Form.FormChildIDs {
 		childTaskMap[childID] = true
 	}
 
@@ -46,7 +46,7 @@ func InitParentPickerForForm(m *tui.Model) bool {
 	items := make([]state.TaskPickerItem, 0, len(allTasks))
 	for _, task := range allTasks {
 		// In edit mode, exclude the task being edited
-		if m.FormState.EditingTaskID != 0 && task.ID == m.FormState.EditingTaskID {
+		if m.Forms.Form.EditingTaskID != 0 && task.ID == m.Forms.Form.EditingTaskID {
 			continue
 		}
 
@@ -65,12 +65,12 @@ func InitParentPickerForForm(m *tui.Model) bool {
 	}
 
 	// Initialize ParentPickerState
-	m.ParentPickerState.Items = items
-	m.ParentPickerState.TaskID = m.FormState.EditingTaskID // 0 for create mode
-	m.ParentPickerState.Cursor = 0
-	m.ParentPickerState.Filter = ""
-	m.ParentPickerState.PickerType = "parent"
-	m.ParentPickerState.ReturnMode = state.TicketFormMode
+	m.Pickers.Parent.Items = items
+	m.Pickers.Parent.TaskID = m.Forms.Form.EditingTaskID // 0 for create mode
+	m.Pickers.Parent.Cursor = 0
+	m.Pickers.Parent.Filter = ""
+	m.Pickers.Parent.PickerType = "parent"
+	m.Pickers.Parent.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -97,14 +97,14 @@ func InitChildPickerForForm(m *tui.Model) bool {
 
 	// Build map of currently selected child task IDs and their relation types from form state
 	childTaskMap := make(map[int]int) // map[taskID]relationTypeID
-	for _, childRef := range m.FormState.FormChildRefs {
+	for _, childRef := range m.Forms.Form.FormChildRefs {
 		childTaskMap[childRef.ID] = childRef.RelationTypeID
 	}
 
 	// Build map of parent task IDs to exclude (prevent circular dependencies)
 	// A task that is already a parent cannot become a child
 	parentTaskMap := make(map[int]bool)
-	for _, parentID := range m.FormState.FormParentIDs {
+	for _, parentID := range m.Forms.Form.FormParentIDs {
 		parentTaskMap[parentID] = true
 	}
 
@@ -113,7 +113,7 @@ func InitChildPickerForForm(m *tui.Model) bool {
 	items := make([]state.TaskPickerItem, 0, len(allTasks))
 	for _, task := range allTasks {
 		// In edit mode, exclude the task being edited
-		if m.FormState.EditingTaskID != 0 && task.ID == m.FormState.EditingTaskID {
+		if m.Forms.Form.EditingTaskID != 0 && task.ID == m.Forms.Form.EditingTaskID {
 			continue
 		}
 		if parentTaskMap[task.ID] {
@@ -130,12 +130,12 @@ func InitChildPickerForForm(m *tui.Model) bool {
 	}
 
 	// Initialize ChildPickerState
-	m.ChildPickerState.Items = items
-	m.ChildPickerState.TaskID = m.FormState.EditingTaskID // 0 for create mode
-	m.ChildPickerState.Cursor = 0
-	m.ChildPickerState.Filter = ""
-	m.ChildPickerState.PickerType = "child"
-	m.ChildPickerState.ReturnMode = state.TicketFormMode
+	m.Pickers.Child.Items = items
+	m.Pickers.Child.TaskID = m.Forms.Form.EditingTaskID // 0 for create mode
+	m.Pickers.Child.Cursor = 0
+	m.Pickers.Child.Filter = ""
+	m.Pickers.Child.PickerType = "child"
+	m.Pickers.Child.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -153,7 +153,7 @@ func InitLabelPickerForForm(m *tui.Model) bool {
 
 	// Build map of currently selected label IDs from form state
 	labelIDMap := make(map[int]bool)
-	for _, labelID := range m.FormState.FormLabelIDs {
+	for _, labelID := range m.Forms.Form.FormLabelIDs {
 		labelIDMap[labelID] = true
 	}
 
@@ -167,11 +167,11 @@ func InitLabelPickerForForm(m *tui.Model) bool {
 	}
 
 	// Initialize LabelPickerState
-	m.LabelPickerState.Items = items
-	m.LabelPickerState.TaskID = m.FormState.EditingTaskID // 0 for create mode
-	m.LabelPickerState.Cursor = 0
-	m.LabelPickerState.Filter = ""
-	m.LabelPickerState.ReturnMode = state.TicketFormMode
+	m.Pickers.Label.Items = items
+	m.Pickers.Label.TaskID = m.Forms.Form.EditingTaskID // 0 for create mode
+	m.Pickers.Label.Cursor = 0
+	m.Pickers.Label.Filter = ""
+	m.Pickers.Label.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -179,7 +179,7 @@ func InitLabelPickerForForm(m *tui.Model) bool {
 // GetFilteredLabelPickerItems returns label picker items filtered by the current filter text
 func GetFilteredLabelPickerItems(m *tui.Model) []state.LabelPickerItem {
 	// Delegate to LabelPickerState which now owns this logic
-	return m.LabelPickerState.GetFilteredItems()
+	return m.Pickers.Label.GetFilteredItems()
 }
 
 // InitPriorityPickerForForm initializes the priority picker for use in task form mode.
@@ -191,11 +191,11 @@ func InitPriorityPickerForForm(m *tui.Model) bool {
 	currentPriorityID := 3 // Default to medium
 
 	// If editing an existing task, we need to get the current priority from database
-	if m.FormState.EditingTaskID != 0 {
+	if m.Forms.Form.EditingTaskID != 0 {
 		ctx, cancel := m.DBContext()
 		defer cancel()
 
-		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.FormState.EditingTaskID)
+		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.Forms.Form.EditingTaskID)
 		if err != nil {
 			slog.Error("Error loading task detail for priority picker", "error", err)
 			return false
@@ -213,10 +213,10 @@ func InitPriorityPickerForForm(m *tui.Model) bool {
 	}
 
 	// Initialize PriorityPickerState
-	m.PriorityPickerState.SetSelectedPriorityID(currentPriorityID)
+	m.Pickers.Priority.SetSelectedPriorityID(currentPriorityID)
 	// Set cursor to match the selected priority (adjust for 0-indexing)
-	m.PriorityPickerState.SetCursor(currentPriorityID - 1)
-	m.PriorityPickerState.ReturnMode = state.TicketFormMode
+	m.Pickers.Priority.SetCursor(currentPriorityID - 1)
+	m.Pickers.Priority.ReturnMode = state.TicketFormMode
 
 	return true
 }
@@ -230,11 +230,11 @@ func InitTypePickerForForm(m *tui.Model) bool {
 	currentTypeID := 1 // Default to task
 
 	// If editing an existing task, we need to get the current type from database
-	if m.FormState.EditingTaskID != 0 {
+	if m.Forms.Form.EditingTaskID != 0 {
 		ctx, cancel := m.DBContext()
 		defer cancel()
 
-		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.FormState.EditingTaskID)
+		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.Forms.Form.EditingTaskID)
 		if err != nil {
 			slog.Error("Error loading task detail for type picker", "error", err)
 			return false
@@ -252,10 +252,10 @@ func InitTypePickerForForm(m *tui.Model) bool {
 	}
 
 	// Initialize TypePickerState
-	m.TypePickerState.SetSelectedTypeID(currentTypeID)
+	m.Pickers.Type.SetSelectedTypeID(currentTypeID)
 	// Set cursor to match the selected type (adjust for 0-indexing)
-	m.TypePickerState.SetCursor(currentTypeID - 1)
-	m.TypePickerState.ReturnMode = state.TicketFormMode
+	m.Pickers.Type.SetCursor(currentTypeID - 1)
+	m.Pickers.Type.ReturnMode = state.TicketFormMode
 
 	return true
 }

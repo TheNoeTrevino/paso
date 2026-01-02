@@ -17,14 +17,14 @@ func (m Model) handleDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y", "Y":
 		// Check if we're deleting a comment or task
-		if m.FormState.EditingCommentID != 0 {
+		if m.Forms.Form.EditingCommentID != 0 {
 			return m.confirmDeleteComment()
 		}
 		return m.confirmDeleteTask()
 	case "n", "N", "esc":
 		// Return to appropriate mode
-		if m.FormState.EditingCommentID != 0 {
-			m.FormState.EditingCommentID = 0
+		if m.Forms.Form.EditingCommentID != 0 {
+			m.Forms.Form.EditingCommentID = 0
 			m.UIState.SetMode(state.CommentsViewMode)
 		} else {
 			m.UIState.SetMode(state.NormalMode)
@@ -44,7 +44,7 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 		err := m.App.TaskService.DeleteTask(ctx, task.ID)
 		if err != nil {
 			slog.Error("Error deleting task", "error", err)
-			m.NotificationState.Add(state.LevelError, "Failed to delete task")
+			m.UI.Notification.Add(state.LevelError, "Failed to delete task")
 		} else {
 			m.removeCurrentTask()
 		}
@@ -55,8 +55,8 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 
 // confirmDeleteComment performs the actual comment deletion.
 func (m Model) confirmDeleteComment() (tea.Model, tea.Cmd) {
-	commentID := m.FormState.EditingCommentID
-	taskID := m.CommentState.TaskID
+	commentID := m.Forms.Form.EditingCommentID
+	taskID := m.Forms.Comment.TaskID
 
 	if commentID != 0 && taskID != 0 {
 		ctx, cancel := m.DBContext()
@@ -64,22 +64,22 @@ func (m Model) confirmDeleteComment() (tea.Model, tea.Cmd) {
 		err := m.App.TaskService.DeleteComment(ctx, commentID)
 		if err != nil {
 			slog.Error("Error deleting comment", "error", err)
-			m.NotificationState.Add(state.LevelError, "Failed to delete comment")
+			m.UI.Notification.Add(state.LevelError, "Failed to delete comment")
 		} else {
 			// Remove from local state
-			m.CommentState.DeleteSelected()
-			m.NotificationState.Add(state.LevelInfo, "Comment deleted")
+			m.Forms.Comment.DeleteSelected()
+			m.UI.Notification.Add(state.LevelInfo, "Comment deleted")
 
 			// Refresh comments in form state
 			comments, err := m.App.TaskService.GetCommentsByTask(ctx, taskID)
 			if err == nil {
-				m.FormState.FormComments = comments
-				m.CommentState.SetComments(comments)
+				m.Forms.Form.FormComments = comments
+				m.Forms.Comment.SetComments(comments)
 			}
 		}
 	}
 
-	m.FormState.EditingCommentID = 0
+	m.Forms.Form.EditingCommentID = 0
 	m.UIState.SetMode(state.CommentsViewMode)
 	return m, nil
 }
@@ -121,16 +121,16 @@ func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
 	// Clear the appropriate form/input based on source mode
 	switch ctx.SourceMode {
 	case state.TicketFormMode:
-		m.FormState.ClearTaskForm()
+		m.Forms.Form.ClearTaskForm()
 
 	case state.ProjectFormMode:
-		m.FormState.ClearProjectForm()
+		m.Forms.Form.ClearProjectForm()
 
 	case state.AddColumnFormMode, state.EditColumnFormMode:
-		m.FormState.ClearColumnForm()
+		m.Forms.Form.ClearColumnForm()
 
 	case state.CommentFormMode:
-		m.FormState.ClearCommentForm()
+		m.Forms.Form.ClearCommentForm()
 		// Return to comment list instead of normal mode
 		m.UIState.SetMode(state.CommentEditMode)
 		m.UIState.ClearDiscardContext()
@@ -167,7 +167,7 @@ func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 		err := m.App.ColumnService.DeleteColumn(ctx, column.ID)
 		if err != nil {
 			slog.Error("Error deleting column", "error", err)
-			m.NotificationState.Add(state.LevelError, "Failed to delete column")
+			m.UI.Notification.Add(state.LevelError, "Failed to delete column")
 		} else {
 			delete(m.AppState.Tasks(), column.ID)
 			m.removeCurrentColumn()

@@ -1,5 +1,7 @@
 package state
 
+import "github.com/thenoetrevino/paso/internal/models"
+
 // RelationTypePickerState manages the relation type picker modal state.
 // This modal allows users to change the relation type when adding parent/child tasks.
 type RelationTypePickerState struct {
@@ -19,7 +21,7 @@ type RelationTypePickerState struct {
 // NewRelationTypePickerState creates a new RelationTypePickerState with default values.
 func NewRelationTypePickerState() *RelationTypePickerState {
 	return &RelationTypePickerState{
-		selectedRelationTypeID: 1, // Default to Parent/Child (id=1)
+		selectedRelationTypeID: models.DefaultRelationTypeID, // Default to Parent/Child
 		cursor:                 0,
 		ReturnMode:             ParentPickerMode,
 		currentTaskPickerIndex: -1,
@@ -66,15 +68,14 @@ func (s *RelationTypePickerState) MoveUp() {
 // MoveDown moves the cursor down one position if possible.
 // There are 3 relation types (indices 0-2).
 func (s *RelationTypePickerState) MoveDown() {
-	const maxRelationTypes = 3
-	if s.cursor < maxRelationTypes-1 {
+	if s.cursor < models.MaxRelationTypes-1 {
 		s.cursor++
 	}
 }
 
 // Reset resets all state to default values.
 func (s *RelationTypePickerState) Reset() {
-	s.selectedRelationTypeID = 1 // Default to Parent/Child
+	s.selectedRelationTypeID = models.DefaultRelationTypeID // Default to Parent/Child
 	s.cursor = 0
 	s.ReturnMode = ParentPickerMode
 	s.currentTaskPickerIndex = -1

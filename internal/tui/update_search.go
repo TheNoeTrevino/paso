@@ -13,8 +13,8 @@ import (
 // handleEnterSearch enters search mode and clears any previous search state.
 // Inlined from search.go (deleted to reduce duplication)
 func (m Model) handleEnterSearch() (tea.Model, tea.Cmd) {
-	m.SearchState.Clear()
-	m.SearchState.Deactivate()
+	m.UI.Search.Clear()
+	m.UI.Search.Deactivate()
 	m.UIState.SetMode(state.SearchMode)
 	return m, nil
 }
@@ -28,14 +28,14 @@ func (m Model) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		return m.handleSearchCancel()
 	case "backspace", "ctrl+h":
-		if m.SearchState.Backspace() {
+		if m.UI.Search.Backspace() {
 			return m.executeSearch()
 		}
 		return m, nil
 	default:
 		key := msg.String()
 		if len(key) == 1 {
-			if m.SearchState.AppendChar(rune(key[0])) {
+			if m.UI.Search.AppendChar(rune(key[0])) {
 				return m.executeSearch()
 			}
 		}
@@ -46,7 +46,7 @@ func (m Model) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // handleSearchConfirm activates the filter and returns to normal mode.
 // Inlined from search.go (deleted to reduce duplication)
 func (m Model) handleSearchConfirm() (tea.Model, tea.Cmd) {
-	m.SearchState.Activate()
+	m.UI.Search.Activate()
 	m.UIState.SetMode(state.NormalMode)
 	return m, nil
 }
@@ -54,8 +54,8 @@ func (m Model) handleSearchConfirm() (tea.Model, tea.Cmd) {
 // handleSearchCancel clears the search and returns to normal mode.
 // Inlined from search.go (deleted to reduce duplication)
 func (m Model) handleSearchCancel() (tea.Model, tea.Cmd) {
-	m.SearchState.Clear()
-	m.SearchState.Deactivate()
+	m.UI.Search.Clear()
+	m.UI.Search.Deactivate()
 	m.UIState.SetMode(state.NormalMode)
 	return m.executeSearch()
 }
@@ -73,10 +73,10 @@ func (m Model) executeSearch() (tea.Model, tea.Cmd) {
 	var tasksByColumn map[int][]*models.TaskSummary
 	var err error
 
-	if m.SearchState.Query == "" {
+	if m.UI.Search.Query == "" {
 		tasksByColumn, err = m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 	} else {
-		tasksByColumn, err = m.App.TaskService.GetTaskSummariesByProjectFiltered(ctx, project.ID, m.SearchState.Query)
+		tasksByColumn, err = m.App.TaskService.GetTaskSummariesByProjectFiltered(ctx, project.ID, m.UI.Search.Query)
 	}
 
 	if err != nil {

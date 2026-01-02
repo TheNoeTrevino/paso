@@ -15,11 +15,11 @@ import (
 // getInlineNotification returns the inline notification content for the tab bar
 // Returns empty string if no notifications
 func (m Model) getInlineNotification() string {
-	if !m.NotificationState.HasAny() {
+	if !m.UI.Notification.HasAny() {
 		return ""
 	}
 	// Get the first (most recent) notification
-	allNotifications := m.NotificationState.All()
+	allNotifications := m.UI.Notification.All()
 	if len(allNotifications) == 0 {
 		return ""
 	}
@@ -29,7 +29,7 @@ func (m Model) getInlineNotification() string {
 // viewKanbanBoard renders the main kanban board (normal mode)
 func (m Model) viewKanbanBoard() string {
 	// Check if list view is active
-	if m.ListViewState.IsListView() {
+	if m.UI.ListView.IsListView() {
 		return m.viewListView()
 	}
 
@@ -106,8 +106,8 @@ func (m Model) viewKanbanBoard() string {
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
 		Width:            m.UIState.Width(),
-		SearchMode:       m.UIState.Mode() == state.SearchMode || m.SearchState.IsActive,
-		SearchQuery:      m.SearchState.Query,
+		SearchMode:       m.UIState.Mode() == state.SearchMode || m.UI.Search.IsActive,
+		SearchQuery:      m.UI.Search.Query,
 		ConnectionStatus: m.ConnectionState.Status(),
 	})
 
@@ -128,7 +128,7 @@ func (m Model) viewKanbanBoard() string {
 	baseView := constrainedContent + "\n" + footer
 
 	// If no notifications, return base view directly
-	if !m.NotificationState.HasAny() {
+	if !m.UI.Notification.HasAny() {
 		return baseView
 	}
 
@@ -164,18 +164,18 @@ func (m Model) viewListView() string {
 	// Render list content with sort indicator
 	listContent := renderers.RenderListView(
 		rows,
-		m.ListViewState.SelectedRow(),
-		m.ListViewState.ScrollOffset(),
-		m.ListViewState.SortField(),
-		m.ListViewState.SortOrder(),
+		m.UI.ListView.SelectedRow(),
+		m.UI.ListView.ScrollOffset(),
+		m.UI.ListView.SortField(),
+		m.UI.ListView.SortOrder(),
 		m.UIState.Width(),
 		listHeight,
 	)
 
 	statusBar := components.RenderStatusBar(components.StatusBarProps{
 		Width:            m.UIState.Width(),
-		SearchMode:       m.UIState.Mode() == state.SearchMode || m.SearchState.IsActive,
-		SearchQuery:      m.SearchState.Query,
+		SearchMode:       m.UIState.Mode() == state.SearchMode || m.UI.Search.IsActive,
+		SearchQuery:      m.UI.Search.Query,
 		ConnectionStatus: m.ConnectionState.Status(),
 	})
 

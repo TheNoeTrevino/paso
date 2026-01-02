@@ -33,7 +33,7 @@ func (m Model) viewDeleteColumnConfirm() string {
 	}
 
 	var content string
-	taskCount := m.InputState.DeleteColumnTaskCount
+	taskCount := m.Forms.Input.DeleteColumnTaskCount
 	if taskCount > 0 {
 		content = fmt.Sprintf(
 			"Delete column '%s'?\nThis will also delete %d task(s).\n\n[y]es  [n]o",
