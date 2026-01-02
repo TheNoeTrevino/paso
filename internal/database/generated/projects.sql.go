@@ -11,10 +11,9 @@ import (
 )
 
 const createProjectRecord = `-- name: CreateProjectRecord :one
-
-INSERT INTO projects (name, description)
-VALUES (?, ?)
-RETURNING id, name, description, created_at, updated_at
+insert into projects (name, description)
+values (?, ?)
+returning id, name, description, created_at, updated_at
 `
 
 type CreateProjectRecordParams struct {
@@ -22,9 +21,7 @@ type CreateProjectRecordParams struct {
 	Description sql.NullString
 }
 
-// ============================================================================
-// PROJECT CRUD OPERATIONS
-// ============================================================================
+// Creates a new project with name and description
 func (q *Queries) CreateProjectRecord(ctx context.Context, arg CreateProjectRecordParams) (Project, error) {
 	row := q.db.QueryRowContext(ctx, createProjectRecord, arg.Name, arg.Description)
 	var i Project
@@ -39,51 +36,52 @@ func (q *Queries) CreateProjectRecord(ctx context.Context, arg CreateProjectReco
 }
 
 const deleteColumnsByProject = `-- name: DeleteColumnsByProject :exec
-DELETE FROM columns
-WHERE project_id = ?
+delete from columns
+where project_id = ?
 `
 
+// Deletes all columns belonging to a project
 func (q *Queries) DeleteColumnsByProject(ctx context.Context, projectID int64) error {
 	_, err := q.db.ExecContext(ctx, deleteColumnsByProject, projectID)
 	return err
 }
 
 const deleteProject = `-- name: DeleteProject :exec
-DELETE FROM projects WHERE id = ?
+delete from projects where id = ?
 `
 
+// Permanently deletes a project by ID
 func (q *Queries) DeleteProject(ctx context.Context, id int64) error {
 	_, err := q.db.ExecContext(ctx, deleteProject, id)
 	return err
 }
 
 const deleteProjectCounter = `-- name: DeleteProjectCounter :exec
-DELETE FROM project_counters WHERE project_id = ?
+delete from project_counters where project_id = ?
 `
 
+// Deletes the ticket counter for a project
 func (q *Queries) DeleteProjectCounter(ctx context.Context, projectID int64) error {
 	_, err := q.db.ExecContext(ctx, deleteProjectCounter, projectID)
 	return err
 }
 
 const deleteTasksByProject = `-- name: DeleteTasksByProject :exec
-
-DELETE FROM tasks
-WHERE column_id IN (SELECT id FROM columns WHERE project_id = ?)
+delete from tasks
+where column_id in (select id from columns where project_id = ?)
 `
 
-// ============================================================================
-// PROJECT COLUMN MANAGEMENT
-// ============================================================================
+// Deletes all tasks belonging to a project
 func (q *Queries) DeleteTasksByProject(ctx context.Context, projectID int64) error {
 	_, err := q.db.ExecContext(ctx, deleteTasksByProject, projectID)
 	return err
 }
 
 const getAllProjects = `-- name: GetAllProjects :many
-SELECT id, name, description, created_at, updated_at FROM projects ORDER BY id
+select id, name, description, created_at, updated_at from projects order by id
 `
 
+// Retrieves all projects ordered by ID
 func (q *Queries) GetAllProjects(ctx context.Context) ([]Project, error) {
 	rows, err := q.db.QueryContext(ctx, getAllProjects)
 	if err != nil {
@@ -114,15 +112,16 @@ func (q *Queries) GetAllProjects(ctx context.Context) ([]Project, error) {
 }
 
 const getProjectByID = `-- name: GetProjectByID :one
-SELECT
+select
     id,
     name,
     description,
     created_at,
     updated_at
-FROM projects WHERE id = ?
+from projects where id = ?
 `
 
+// Retrieves a project by its ID with all metadata
 func (q *Queries) GetProjectByID(ctx context.Context, id int64) (Project, error) {
 	row := q.db.QueryRowContext(ctx, getProjectByID, id)
 	var i Project
@@ -137,12 +136,13 @@ func (q *Queries) GetProjectByID(ctx context.Context, id int64) (Project, error)
 }
 
 const getProjectTaskCount = `-- name: GetProjectTaskCount :one
-SELECT COUNT(*)
-FROM tasks t
-JOIN columns c ON t.column_id = c.id
-WHERE c.project_id = ?
+select count(*)
+from tasks t
+join columns c on t.column_id = c.id
+where c.project_id = ?
 `
 
+// Returns the total number of tasks in a project
 func (q *Queries) GetProjectTaskCount(ctx context.Context, projectID int64) (int64, error) {
 	row := q.db.QueryRowContext(ctx, getProjectTaskCount, projectID)
 	var count int64
@@ -151,22 +151,19 @@ func (q *Queries) GetProjectTaskCount(ctx context.Context, projectID int64) (int
 }
 
 const initializeProjectCounter = `-- name: InitializeProjectCounter :exec
-
-INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)
+insert into project_counters (project_id, next_ticket_number) values (?, 1)
 `
 
-// ============================================================================
-// PROJECT COUNTERS
-// ============================================================================
+// Initializes the ticket number counter for a new project starting at 1
 func (q *Queries) InitializeProjectCounter(ctx context.Context, projectID int64) error {
 	_, err := q.db.ExecContext(ctx, initializeProjectCounter, projectID)
 	return err
 }
 
 const updateProject = `-- name: UpdateProject :exec
-UPDATE projects SET name = ?,
+update projects set name = ?,
 description = ?,
-updated_at = CURRENT_TIMESTAMP WHERE id = ?
+updated_at = current_timestamp where id = ?
 `
 
 type UpdateProjectParams struct {
@@ -175,6 +172,7 @@ type UpdateProjectParams struct {
 	ID          int64
 }
 
+// Updates a project's name and description
 func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) error {
 	_, err := q.db.ExecContext(ctx, updateProject, arg.Name, arg.Description, arg.ID)
 	return err
