@@ -49,7 +49,7 @@ Examples:
 	// Required flags
 	cmd.Flags().String("title", "", "Task title (required)")
 	if err := cmd.MarkFlagRequired("title"); err != nil {
-		slog.Error("Error marking flag as required", "error", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	cmd.Flags().Int("project", 0, "Project ID (uses PASO_PROJECT env var if not specified)")
@@ -74,7 +74,7 @@ Examples:
 type createHandler struct{}
 
 // Execute implements the Handler interface
-func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (interface{}, error) {
+func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (any, error) {
 	// Get flag values from arguments
 	taskTitle := args.MustGetString("title")
 	taskDescription := args.GetString("description", "")
@@ -99,7 +99,7 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (i
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("Error closing CLI", "error", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 

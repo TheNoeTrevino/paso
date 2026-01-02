@@ -33,12 +33,12 @@ Examples:
 	// Required flags
 	cmd.Flags().Int("task", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("task"); err != nil {
-		slog.Error("Error marking flag as required", "error", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	cmd.Flags().Int("label", 0, "Label ID (required)")
 	if err := cmd.MarkFlagRequired("label"); err != nil {
-		slog.Error("Error marking flag as required", "error", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Agent-friendly flags
@@ -62,20 +62,20 @@ func runDetach(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("Error closing CLI", "error", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
 	// Detach label from task (no validation needed - removing non-existent association is not an error)
 	if err := cliInstance.App.TaskService.DetachLabel(ctx, taskID, labelID); err != nil {
 		if fmtErr := formatter.Error("DETACH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}

@@ -33,12 +33,12 @@ Examples:
 	// Required flags
 	cmd.Flags().Int("task", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("task"); err != nil {
-		slog.Error("Error marking flag as required", "error", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	cmd.Flags().Int("label", 0, "Label ID (required)")
 	if err := cmd.MarkFlagRequired("label"); err != nil {
-		slog.Error("Error marking flag as required", "error", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Agent-friendly flags
@@ -62,13 +62,13 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("Error closing CLI", "error", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
@@ -76,7 +76,7 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	task, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -85,7 +85,7 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	column, err := cliInstance.App.ColumnService.GetColumnByID(ctx, task.ColumnID)
 	if err != nil {
 		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
@@ -95,7 +95,7 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	label, err := cli.GetLabelByID(ctx, cliInstance, labelID)
 	if err != nil {
 		if fmtErr := formatter.Error("LABEL_NOT_FOUND", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -103,7 +103,7 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	// Verify task and label belong to same project
 	if taskProjectID != label.ProjectID {
 		if fmtErr := formatter.Error("PROJECT_MISMATCH", fmt.Sprintf("task %d and label %d do not belong to the same project", taskID, labelID)); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitValidation)
 	}
@@ -111,7 +111,7 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	// Attach label to task
 	if err := cliInstance.App.TaskService.AttachLabel(ctx, taskID, labelID); err != nil {
 		if fmtErr := formatter.Error("ATTACH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}

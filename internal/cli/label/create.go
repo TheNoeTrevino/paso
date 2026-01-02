@@ -36,12 +36,12 @@ Examples:
 	// Required flags
 	cmd.Flags().String("name", "", "Label name (required)")
 	if err := cmd.MarkFlagRequired("name"); err != nil {
-		slog.Error("Error marking flag as required", "error", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	cmd.Flags().String("color", "", "Label color in hex format #RRGGBB (required)")
 	if err := cmd.MarkFlagRequired("color"); err != nil {
-		slog.Error("Error marking flag as required", "error", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	cmd.Flags().Int("project", 0, "Project ID (uses PASO_PROJECT env var if not specified)")
@@ -76,7 +76,7 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (i
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("Error closing CLI", "error", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 

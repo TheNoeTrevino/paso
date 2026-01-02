@@ -36,7 +36,7 @@ Examples:
 	// Required flags
 	cmd.Flags().Int("id", 0, "Column ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
-		slog.Error("Error marking flag as required", "error", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Optional flags
@@ -63,13 +63,13 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("Error closing CLI", "error", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
@@ -77,7 +77,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	column, err := cliInstance.App.ColumnService.GetColumnByID(ctx, columnID)
 	if err != nil {
 		if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnID)); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -88,7 +88,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Delete column #%d: '%s'? (y/N): ", columnID, column.Name)
 		var response string
 		if _, err := fmt.Scanln(&response); err != nil {
-			slog.Error("Error reading user input", "error", err)
+			slog.Error("failed to reading user input", "error", err)
 		}
 		if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 			fmt.Println("Cancelled")
@@ -99,7 +99,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	// Delete the column
 	if err := cliInstance.App.ColumnService.DeleteColumn(ctx, columnID); err != nil {
 		if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
@@ -110,7 +110,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success":   true,
 			"column_id": columnID,
 		})

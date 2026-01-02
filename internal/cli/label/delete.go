@@ -34,7 +34,7 @@ Examples:
 	// Required flags
 	cmd.Flags().Int("id", 0, "Label ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
-		slog.Error("Error marking flag as required", "error", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Optional flags
@@ -61,13 +61,13 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("Error closing CLI", "error", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
@@ -75,7 +75,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	label, err := cli.GetLabelByID(ctx, cliInstance, labelID)
 	if err != nil {
 		if fmtErr := formatter.Error("LABEL_NOT_FOUND", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -85,7 +85,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Delete label #%d: '%s'? (y/N): ", labelID, label.Name)
 		var response string
 		if _, err := fmt.Scanln(&response); err != nil {
-			slog.Error("Error reading user input", "error", err)
+			slog.Error("failed to reading user input", "error", err)
 		}
 		if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 			fmt.Println("Cancelled")
@@ -96,7 +96,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	// Delete the label
 	if err := cliInstance.App.LabelService.DeleteLabel(ctx, labelID); err != nil {
 		if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}

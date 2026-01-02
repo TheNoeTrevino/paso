@@ -34,7 +34,7 @@ Examples:
 	// Required flags
 	cmd.Flags().Int("id", 0, "Column ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
-		slog.Error("Error marking flag as required", "error", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Optional flags
@@ -68,7 +68,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	// Validate at least one update flag is provided
 	if columnName == "" && !setReady && !setCompleted && !setInProgress {
 		if fmtErr := formatter.Error("INVALID_INPUT", "at least one of --name, --ready, --completed, or --in-progress must be provided"); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return fmt.Errorf("at least one of --name, --ready, --completed, or --in-progress must be provided")
 	}
@@ -77,13 +77,13 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("Error closing CLI", "error", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
@@ -91,7 +91,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	column, err := cliInstance.App.ColumnService.GetColumnByID(ctx, columnID)
 	if err != nil {
 		if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnID)); fmtErr != nil {
-			slog.Error("Error formatting error message", "error", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -103,7 +103,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if columnName != "" {
 		if err := cliInstance.App.ColumnService.UpdateColumnName(ctx, columnID, columnName); err != nil {
 			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("Error formatting error message", "error", fmtErr)
+				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
 			return err
 		}
@@ -114,7 +114,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		updatedColumn, err = cliInstance.App.ColumnService.SetHoldsReadyTasks(ctx, columnID)
 		if err != nil {
 			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("Error formatting error message", "error", fmtErr)
+				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
 			return err
 		}
@@ -128,12 +128,12 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 			if strings.Contains(err.Error(), "completed column already exists") {
 				if fmtErr := formatter.Error("COMPLETED_COLUMN_EXISTS",
 					fmt.Sprintf("%s\n\nUse the --force flag to change the done column.\nPaso uses the done column to move tasks with the {complete task command}.\nThis could lead to unexpected behavior, and this is not suggested.", err.Error())); fmtErr != nil {
-					slog.Error("Error formatting error message", "error", fmtErr)
+					slog.Error("failed to formatting error message", "error", fmtErr)
 				}
 				os.Exit(cli.ExitValidation)
 			}
 			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("Error formatting error message", "error", fmtErr)
+				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
 			return err
 		}
@@ -144,7 +144,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		updatedColumn, err = cliInstance.App.ColumnService.SetHoldsInProgressTasks(ctx, columnID)
 		if err != nil {
 			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("Error formatting error message", "error", fmtErr)
+				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
 			return err
 		}
@@ -156,9 +156,9 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success": true,
-			"column": map[string]interface{}{
+			"column": map[string]any{
 				"id":                      columnID,
 				"name":                    updatedColumn.Name,
 				"old_name":                oldName,
