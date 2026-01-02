@@ -4,14 +4,14 @@
 package project
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"log"
-	"os"
+	"log/slog"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/handler"
 	projectservice "github.com/thenoetrevino/paso/internal/services/project"
 )
 
@@ -37,13 +37,13 @@ Examples:
     --title="Backend API" \
     --description="REST API for mobile app"
 `,
-		RunE: runCreate,
+		RunE: handler.Command(&createHandler{}, parseCreateFlags),
 	}
 
 	// Required flags
 	cmd.Flags().String("title", "", "Project title (required)")
 	if err := cmd.MarkFlagRequired("title"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
+		slog.Error("Error marking flag as required", "error", err)
 	}
 
 	// Optional flags
@@ -56,37 +56,25 @@ Examples:
 	return cmd
 }
 
-func runCreate(cmd *cobra.Command, args []string) error {
-	ctx := cmd.Context()
+// createHandler implements handler.Handler for project creation
+type createHandler struct{}
 
-	projectTitle, _ := cmd.Flags().GetString("title")
-	projectDescription, _ := cmd.Flags().GetString("description")
-	jsonOutput, _ := cmd.Flags().GetBool("json")
-	quietMode, _ := cmd.Flags().GetBool("quiet")
-
-	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+// Execute implements the Handler interface
+func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (interface{}, error) {
+	// Get flag values from arguments
+	projectTitle := args.MustGetString("title")
+	projectDescription := args.GetString("description", "")
 
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		return err
+		return nil, fmt.Errorf("initialization error: %w", err)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("Error closing CLI", "error", err)
 		}
 	}()
-
-	// Validate title is not empty
-	if strings.TrimSpace(projectTitle) == "" {
-		if fmtErr := formatter.Error("VALIDATION_ERROR", "project title cannot be empty"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		os.Exit(cli.ExitValidation)
-	}
 
 	// Create project
 	project, err := cliInstance.App.ProjectService.CreateProject(ctx, projectservice.CreateProjectRequest{
@@ -94,35 +82,35 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		Description: projectDescription,
 	})
 	if err != nil {
-		if fmtErr := formatter.Error("PROJECT_CREATE_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		return err
+		return nil, fmt.Errorf("project creation error: %w", err)
 	}
 
-	// Output based on mode (JSON/Quiet/Human)
-	if quietMode {
-		fmt.Printf("%d\n", project.ID)
-		return nil
-	}
+	return &projectCreateResult{
+		ID:          project.ID,
+		Name:        project.Name,
+		Description: project.Description,
+		CreatedAt:   project.CreatedAt.String(),
+	}, nil
+}
 
-	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
-			"success": true,
-			"project": map[string]interface{}{
-				"id":          project.ID,
-				"name":        project.Name,
-				"description": project.Description,
-				"created_at":  project.CreatedAt,
-			},
-		})
-	}
+// projectCreateResult represents the result of project creation
+type projectCreateResult struct {
+	ID          int
+	Name        string
+	Description string
+	CreatedAt   string
+}
 
-	// Human-readable output
-	fmt.Printf("✓ Project '%s' created successfully (ID: %d)\n", projectTitle, project.ID)
-	if projectDescription != "" {
-		fmt.Printf("  Description: %s\n", projectDescription)
-	}
+// GetID implements the GetID interface for quiet mode output
+func (r *projectCreateResult) GetID() int {
+	return r.ID
+}
 
+func parseCreateFlags(cmd *cobra.Command) error {
+	// Validate required flags
+	title, _ := cmd.Flags().GetString("title")
+	if strings.TrimSpace(title) == "" {
+		return fmt.Errorf("project title cannot be empty")
+	}
 	return nil
 }

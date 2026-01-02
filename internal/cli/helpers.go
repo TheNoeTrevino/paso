@@ -28,8 +28,8 @@ func ValidateColorHex(color string) error {
 // This uses a map lookup with the ok pattern to detect invalid types.
 func ParseTaskType(typeStr string) (int, error) {
 	types := map[string]int{
-		"task":    1,
-		"feature": 2,
+		"task":    models.TaskTypeTask,
+		"feature": models.TaskTypeFeature,
 	}
 
 	id, ok := types[strings.ToLower(typeStr)]
@@ -44,11 +44,11 @@ func ParseTaskType(typeStr string) (int, error) {
 // This uses a map lookup with the ok pattern to detect invalid priorities.
 func ParsePriority(priority string) (int, error) {
 	priorities := map[string]int{
-		"trivial":  1,
-		"low":      2,
-		"medium":   3,
-		"high":     4,
-		"critical": 5,
+		"trivial":  models.PriorityTrivial,
+		"low":      models.PriorityLow,
+		"medium":   models.PriorityMedium,
+		"high":     models.PriorityHigh,
+		"critical": models.PriorityCritical,
 	}
 
 	id, ok := priorities[strings.ToLower(priority)]

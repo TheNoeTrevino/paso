@@ -3,15 +3,17 @@
 package task
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/handler"
+	"github.com/thenoetrevino/paso/internal/models"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 )
 
@@ -41,13 +43,13 @@ Examples:
     --parent=3 \
     --project=1
 `,
-		RunE: runCreate,
+		RunE: handler.Command(&createHandler{}, parseCreateFlags),
 	}
 
 	// Required flags
 	cmd.Flags().String("title", "", "Task title (required)")
 	if err := cmd.MarkFlagRequired("title"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
+		slog.Error("Error marking flag as required", "error", err)
 	}
 
 	cmd.Flags().Int("project", 0, "Project ID (uses PASO_PROJECT env var if not specified)")
@@ -68,73 +70,52 @@ Examples:
 	return cmd
 }
 
-func runCreate(cmd *cobra.Command, args []string) error {
-	ctx := cmd.Context()
+// createHandler implements handler.Handler for task creation
+type createHandler struct{}
 
-	taskTitle, _ := cmd.Flags().GetString("title")
-	taskDescription, _ := cmd.Flags().GetString("description")
-	taskType, _ := cmd.Flags().GetString("type")
-	taskPriority, _ := cmd.Flags().GetString("priority")
-	taskParent, _ := cmd.Flags().GetInt("parent")
-	taskBlockedBy, _ := cmd.Flags().GetInt("blocked-by")
-	taskBlocks, _ := cmd.Flags().GetInt("blocks")
-	taskColumn, _ := cmd.Flags().GetString("column")
-	jsonOutput, _ := cmd.Flags().GetBool("json")
-	quietMode, _ := cmd.Flags().GetBool("quiet")
-
-	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
+// Execute implements the Handler interface
+func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (interface{}, error) {
+	// Get flag values from arguments
+	taskTitle := args.MustGetString("title")
+	taskDescription := args.GetString("description", "")
+	taskType := args.GetString("type", "task")
+	taskPriority := args.GetString("priority", "medium")
+	taskParent := args.GetInt("parent", 0)
+	taskBlockedBy := args.GetInt("blocked-by", 0)
+	taskBlocks := args.GetInt("blocks", 0)
+	taskColumn := args.GetString("column", "")
 
 	// Get project ID from flag or environment variable
+	cmd := args.GetCmd()
 	taskProject, err := cli.GetProjectID(cmd)
 	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
-			err.Error(),
-			"Set project with: eval $(paso use project <project-id>)"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
+		return nil, fmt.Errorf("no project specified: use --project flag or set with 'eval $(paso use project <project-id>)'")
 	}
 
 	// Initialize CLI (uses injected instance from context if in test mode)
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		return err
+		return nil, fmt.Errorf("initialization error: %w", err)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("Error closing CLI", "error", err)
 		}
 	}()
 
 	// Validate project exists
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, taskProject)
 	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("PROJECT_NOT_FOUND",
-			fmt.Sprintf("project %d not found", taskProject),
-			"Use 'paso project list' to see available projects or 'paso project create' to create a new one"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+		return nil, fmt.Errorf("project %d not found", taskProject)
 	}
 
 	// Get columns for project
 	columns, err := cliInstance.App.ColumnService.GetColumnsByProject(ctx, taskProject)
 	if err != nil {
-		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		return err
+		return nil, fmt.Errorf("failed to fetch columns: %w", err)
 	}
 	if len(columns) == 0 {
-		if fmtErr := formatter.ErrorWithSuggestion("NO_COLUMNS",
-			"project has no columns",
-			"Create columns using 'paso column create --name=<name> --project="+fmt.Sprintf("%d", taskProject)+"'"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		return fmt.Errorf("project has no columns")
+		return nil, fmt.Errorf("project has no columns")
 	}
 
 	// Determine target column
@@ -142,26 +123,11 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	if taskColumn == "" {
 		targetColumnID = columns[0].ID
 	} else {
-		found := false
-		for _, col := range columns {
-			if strings.EqualFold(col.Name, taskColumn) {
-				targetColumnID = col.ID
-				found = true
-				break
-			}
+		col, err := cli.FindColumnByName(columns, taskColumn)
+		if err != nil {
+			return nil, fmt.Errorf("column '%s' not found", taskColumn)
 		}
-		if !found {
-			availableColumns := make([]string, len(columns))
-			for i, col := range columns {
-				availableColumns[i] = col.Name
-			}
-			if fmtErr := formatter.ErrorWithSuggestion("COLUMN_NOT_FOUND",
-				fmt.Sprintf("column '%s' not found", taskColumn),
-				fmt.Sprintf("Available columns: %s", strings.Join(availableColumns, ", "))); fmtErr != nil {
-				log.Printf("Error formatting error message: %v", fmtErr)
-			}
-			os.Exit(cli.ExitNotFound)
-		}
+		targetColumnID = col.ID
 	}
 
 	// Handle description from stdin
@@ -169,49 +135,30 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	if description == "-" {
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
-			if fmtErr := formatter.Error("STDIN_READ_ERROR", err.Error()); fmtErr != nil {
-				log.Printf("Error formatting error message: %v", fmtErr)
-			}
-			return err
+			return nil, fmt.Errorf("stdin read error: %w", err)
 		}
 		description = string(data)
 	}
 
 	// Parse type
-	ttype := taskType
-	if ttype == "" {
-		ttype = "task"
-	}
-	typeID, err := cli.ParseTaskType(ttype)
+	typeID, err := cli.ParseTaskType(taskType)
 	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("INVALID_TYPE", err.Error(),
-			"Valid types are: task, feature"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		os.Exit(cli.ExitValidation)
+		return nil, err
 	}
 
 	// Parse priority
-	priority := taskPriority
-	if priority == "" {
-		priority = "medium"
-	}
-	priorityID, err := cli.ParsePriority(priority)
+	priorityID, err := cli.ParsePriority(taskPriority)
 	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("INVALID_PRIORITY", err.Error(),
-			"Valid priorities are: trivial, low, medium, high, critical"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		os.Exit(cli.ExitValidation)
+		return nil, err
 	}
 
 	// Create task with all parameters
-	// Position set to 9999 to append to end (will be adjusted if needed)
+	// Position set to DefaultTaskPosition to append to end (will be adjusted if needed)
 	req := taskservice.CreateTaskRequest{
 		Title:       taskTitle,
 		Description: description,
 		ColumnID:    targetColumnID,
-		Position:    9999,
+		Position:    models.DefaultTaskPosition,
 		PriorityID:  priorityID,
 		TypeID:      typeID,
 	}
@@ -231,47 +178,41 @@ func runCreate(cmd *cobra.Command, args []string) error {
 
 	task, err := cliInstance.App.TaskService.CreateTask(ctx, req)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_CREATE_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
-		}
-		return err
+		return nil, fmt.Errorf("task creation error: %w", err)
 	}
 
-	// Output based on mode (JSON/Quiet/Human)
-	if quietMode {
-		fmt.Printf("%d\n", task.ID)
-		return nil
-	}
+	return &taskCreateResult{
+		ID:          task.ID,
+		Title:       task.Title,
+		Description: task.Description,
+		Project:     project.Name,
+		Type:        taskType,
+		Priority:    taskPriority,
+		CreatedAt:   task.CreatedAt.String(),
+	}, nil
+}
 
-	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
-			"success": true,
-			"task": map[string]interface{}{
-				"id":          task.ID,
-				"title":       task.Title,
-				"description": task.Description,
-				"project":     map[string]interface{}{"id": project.ID, "name": project.Name},
-				"type":        taskType,
-				"priority":    taskPriority,
-				"created_at":  task.CreatedAt,
-			},
-		})
-	}
+// taskCreateResult represents the result of task creation
+type taskCreateResult struct {
+	ID          int
+	Title       string
+	Description string
+	Project     string
+	Type        string
+	Priority    string
+	CreatedAt   string
+}
 
-	// Human-readable output
-	fmt.Printf("✓ Task '%s' created successfully (ID: %d)\n", taskTitle, task.ID)
-	fmt.Printf("  Project: %s\n", project.Name)
-	fmt.Printf("  Type: %s\n", taskType)
-	fmt.Printf("  Priority: %s\n", taskPriority)
-	if taskParent > 0 {
-		fmt.Printf("  Parent: #%d\n", taskParent)
-	}
-	if taskBlockedBy > 0 {
-		fmt.Printf("  Blocked by: #%d\n", taskBlockedBy)
-	}
-	if taskBlocks > 0 {
-		fmt.Printf("  Blocks: #%d\n", taskBlocks)
-	}
+// GetID implements the GetID interface for quiet mode output
+func (r *taskCreateResult) GetID() int {
+	return r.ID
+}
 
+func parseCreateFlags(cmd *cobra.Command) error {
+	// Validate required flags
+	title, _ := cmd.Flags().GetString("title")
+	if strings.TrimSpace(title) == "" {
+		return fmt.Errorf("title is required")
+	}
 	return nil
 }
