@@ -8,7 +8,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"github.com/thenoetrevino/paso/internal/database"
 )
@@ -17,18 +17,21 @@ func main() {
 	// Initialize database
 	db, err := database.InitDB(context.Background())
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		slog.Error("Failed to initialize database", "error", err)
+		return
 	}
 	defer db.Close()
 
 	// Get all columns
 	columns, err := database.GetAllColumns(db)
 	if err != nil {
-		log.Fatalf("Failed to get columns: %v", err)
+		slog.Error("Failed to get columns", "error", err)
+		return
 	}
 
 	if len(columns) < 3 {
-		log.Fatal("Expected at least 3 columns (Todo, In Progress, Done)")
+		slog.Error("Expected at least 3 columns (Todo, In Progress, Done)")
+		return
 	}
 
 	// Add tasks to Todo column (first column)
@@ -41,9 +44,9 @@ func main() {
 	for i, title := range tasks {
 		_, err := database.CreateTask(db, title, "", todoCol.ID, i)
 		if err != nil {
-			log.Printf("Error creating task '%s': %v", title, err)
+			slog.Error("Error creating task", "title", title, "error", err)
 		} else {
-			log.Printf("Created task: %s", title)
+			slog.Info("Created task", "title", title)
 		}
 	}
 
@@ -56,9 +59,9 @@ func main() {
 	for i, title := range inProgressTasks {
 		_, err := database.CreateTask(db, title, "", inProgressCol.ID, i)
 		if err != nil {
-			log.Printf("Error creating task '%s': %v", title, err)
+			slog.Error("Error creating task", "title", title, "error", err)
 		} else {
-			log.Printf("Created task: %s", title)
+			slog.Info("Created task", "title", title)
 		}
 	}
 
@@ -71,11 +74,11 @@ func main() {
 	for i, title := range doneTasks {
 		_, err := database.CreateTask(db, title, "", doneCol.ID, i)
 		if err != nil {
-			log.Printf("Error creating task '%s': %v", title, err)
+			slog.Error("Error creating task", "title", title, "error", err)
 		} else {
-			log.Printf("Created task: %s", title)
+			slog.Info("Created task", "title", title)
 		}
 	}
 
-	log.Println("Test data added successfully!")
+	slog.Info("Test data added successfully")
 }
