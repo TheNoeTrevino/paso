@@ -12,6 +12,19 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
+// Re-export error variables from models package for backward compatibility
+var (
+	ErrEmptyName              = models.ErrEmptyName
+	ErrNameTooLong            = models.ErrNameTooLong
+	ErrInvalidColumnID        = models.ErrInvalidColumnID
+	ErrInvalidProjectID       = models.ErrInvalidProjectID
+	ErrColumnNotFound         = models.ErrColumnNotFound
+	ErrColumnHasTasks         = models.ErrColumnHasTasks
+	ErrCompletedColumnExists  = models.ErrCompletedColumnExists
+	ErrReadyColumnExists      = models.ErrReadyColumnExists
+	ErrInProgressColumnExists = models.ErrInProgressColumnExists
+)
+
 // Service defines all column-related business operations
 type Service interface {
 	// Read operations

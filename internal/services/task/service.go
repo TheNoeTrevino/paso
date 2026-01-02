@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
-	"sync"
 
 	"github.com/thenoetrevino/paso/internal/converters"
 	"github.com/thenoetrevino/paso/internal/database"
@@ -16,13 +15,27 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// taskSummaryMapPool is a sync.Pool for reusing maps in batch processing operations
-// This reduces allocations when frequently querying task summaries
-var taskSummaryMapPool = sync.Pool{
-	New: func() interface{} {
-		return make(map[int][]*models.TaskSummary)
-	},
-}
+// Re-export error variables from models package for backward compatibility
+var (
+	ErrEmptyTitle                = models.ErrEmptyTitle
+	ErrTitleTooLong              = models.ErrTitleTooLong
+	ErrInvalidColumnID           = models.ErrInvalidColumnID
+	ErrInvalidPosition           = models.ErrInvalidPosition
+	ErrInvalidTaskID             = models.ErrInvalidTaskID
+	ErrInvalidProjectID          = models.ErrInvalidProjectID
+	ErrInvalidPriority           = models.ErrInvalidPriority
+	ErrInvalidType               = models.ErrInvalidType
+	ErrInvalidLabelID            = models.ErrInvalidLabelID
+	ErrTaskNotFound              = models.ErrTaskNotFound
+	ErrCircularRelation          = models.ErrCircularRelation
+	ErrDuplicateRelation         = models.ErrDuplicateRelation
+	ErrSelfRelation              = models.ErrSelfRelation
+	ErrTaskAlreadyInTargetColumn = models.ErrTaskAlreadyInTargetColumn
+	ErrEmptyCommentMessage       = models.ErrEmptyCommentMessage
+	ErrCommentMessageTooLong     = models.ErrCommentMessageTooLong
+	ErrInvalidCommentID          = models.ErrInvalidCommentID
+	ErrCommentNotFound           = models.ErrCommentNotFound
+)
 
 // ============================================================================
 // SEGREGATED INTERFACES - Following Interface Segregation Principle (ISP)
@@ -277,7 +290,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
 				ParentID:       int64(parentID),
 				ChildID:        createdTask.ID,
-				RelationTypeID: 1,
+				RelationTypeID: models.RelationTypeParentChild,
 			}); err != nil {
 				return fmt.Errorf("failed to add parent relation: %w", err)
 			}
@@ -288,7 +301,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
 				ParentID:       createdTask.ID,
 				ChildID:        int64(childID),
-				RelationTypeID: 1,
+				RelationTypeID: models.RelationTypeParentChild,
 			}); err != nil {
 				return fmt.Errorf("failed to add child relation: %w", err)
 			}
@@ -300,7 +313,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
 				ParentID:       createdTask.ID,
 				ChildID:        int64(blockerID),
-				RelationTypeID: 2, // Blocking relationship
+				RelationTypeID: models.RelationTypeBlocking,
 			}); err != nil {
 				return fmt.Errorf("failed to add blocked-by relation: %w", err)
 			}
@@ -312,7 +325,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
 				ParentID:       int64(blockedID),
 				ChildID:        createdTask.ID,
-				RelationTypeID: 2, // Blocking relationship
+				RelationTypeID: models.RelationTypeBlocking,
 			}); err != nil {
 				return fmt.Errorf("failed to add blocks relation: %w", err)
 			}
@@ -355,29 +368,29 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 
 	// Update basic fields if provided
 	if req.Title != nil || req.Description != nil {
-		title := ""
+		var title string
 		var description sql.NullString
 
-		if req.Title != nil {
-			title = *req.Title
-		} else {
-			// Need to get existing title
+		// Only query if we need to preserve existing values for fields not being updated
+		if req.Title == nil || req.Description == nil {
 			detail, err := s.queries.GetTaskDetail(ctx, int64(req.TaskID))
 			if err != nil {
 				return fmt.Errorf("failed to get task: %w", err)
 			}
-			title = detail.Title
+			if req.Title == nil {
+				title = detail.Title
+			}
+			if req.Description == nil {
+				description = detail.Description
+			}
 		}
 
+		// Use provided values or fall back to existing values
+		if req.Title != nil {
+			title = *req.Title
+		}
 		if req.Description != nil {
 			description = sql.NullString{String: *req.Description, Valid: true}
-		} else {
-			// Need to get existing description
-			detail, err := s.queries.GetTaskDetail(ctx, int64(req.TaskID))
-			if err != nil {
-				return fmt.Errorf("failed to get task: %w", err)
-			}
-			description = detail.Description
 		}
 
 		if err := s.queries.UpdateTask(ctx, generated.UpdateTaskParams{
@@ -505,38 +518,21 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 	return detail, nil
 }
 
-// GetTaskSummariesByProject retrieves task summaries for a project
-// Uses sync.Pool to optimize memory allocations for frequently called batch operations
+// GetTaskSummariesByProject retrieves task summaries for a project, grouped by column
 func (s *service) GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error) {
 	rows, err := s.queries.GetTaskSummariesByProject(ctx, int64(projectID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task summaries: %w", err)
 	}
 
-	// Get map from pool for reuse, reducing allocation overhead
-	result := taskSummaryMapPool.Get().(map[int][]*models.TaskSummary)
-	defer func() {
-		// Clear map before returning to pool for reuse
-		for k := range result {
-			delete(result, k)
-		}
-		taskSummaryMapPool.Put(result)
-	}()
-
-	// Group by column
+	result := make(map[int][]*models.TaskSummary)
 	for _, row := range rows {
 		summary := converters.TaskSummaryFromRowToModel(row)
 		columnID := int(row.ColumnID)
 		result[columnID] = append(result[columnID], summary)
 	}
 
-	// Create a copy to return since the original goes back to the pool
-	returnResult := make(map[int][]*models.TaskSummary, len(result))
-	for columnID, summaries := range result {
-		returnResult[columnID] = summaries
-	}
-
-	return returnResult, nil
+	return result, nil
 }
 
 // GetTaskSummariesByProjectFiltered retrieves filtered task summaries
@@ -732,6 +728,23 @@ func (s *service) GetTaskTreeByProject(ctx context.Context, projectID int) ([]*m
 	return roots, nil
 }
 
+// extractColumnID safely converts the interface{} result from GetNextColumnID or GetPrevColumnID
+// to an int64, handling NULL values properly.
+func extractColumnID(columnID interface{}) (int64, error) {
+	if columnID == nil {
+		return 0, fmt.Errorf("column ID is NULL")
+	}
+
+	switch v := columnID.(type) {
+	case int64:
+		return v, nil
+	case float64:
+		return int64(v), nil
+	default:
+		return 0, fmt.Errorf("unexpected column ID type: %T", v)
+	}
+}
+
 // MoveTaskToNextColumn moves task to next column
 func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 	if taskID <= 0 {
@@ -749,19 +762,11 @@ func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 	if err != nil {
 		return fmt.Errorf("failed to get next column: %w", err)
 	}
-	if nextColumnID == nil {
-		return fmt.Errorf("no next column available")
-	}
 
-	// Convert interface{} to int64
-	var nextColID int64
-	switch v := nextColumnID.(type) {
-	case int64:
-		nextColID = v
-	case nil:
+	// Convert interface{} to int64 with proper error handling
+	nextColID, err := extractColumnID(nextColumnID)
+	if err != nil {
 		return fmt.Errorf("no next column available")
-	default:
-		return fmt.Errorf("unexpected column ID type")
 	}
 
 	// Get task count in target column to append at the end
@@ -800,19 +805,11 @@ func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 	if err != nil {
 		return fmt.Errorf("failed to get previous column: %w", err)
 	}
-	if prevColumnID == nil {
-		return fmt.Errorf("no previous column available")
-	}
 
-	// Convert interface{} to int64
-	var prevColID int64
-	switch v := prevColumnID.(type) {
-	case int64:
-		prevColID = v
-	case nil:
+	// Convert interface{} to int64 with proper error handling
+	prevColID, err := extractColumnID(prevColumnID)
+	if err != nil {
 		return fmt.Errorf("no previous column available")
-	default:
-		return fmt.Errorf("unexpected column ID type")
 	}
 
 	// Get task count in target column to append at the end
@@ -988,27 +985,57 @@ func (s *service) MoveTaskToInProgressColumn(ctx context.Context, taskID int) er
 }
 
 // GetInProgressTasksByProject retrieves all tasks in in-progress columns for a project
+// OPTIMIZED: Uses a single efficiently-designed query that fetches task details,
+// labels, and blocking status in one go. This avoids the N+1 query problem where
+// the old implementation called GetTaskDetail for each task, which itself made
+// 5+ additional queries (labels, comments, parents, children, etc).
+//
+// Performance improvement: Reduces queries from O(N*5+) to O(1)
+// where N is the number of in-progress tasks.
 func (s *service) GetInProgressTasksByProject(ctx context.Context, projectID int) ([]*models.TaskDetail, error) {
 	if projectID <= 0 {
 		return nil, ErrInvalidProjectID
 	}
 
-	rows, err := s.queries.GetInProgressTasksByProject(ctx, int64(projectID))
+	// Fetch all in-progress tasks with their details in a SINGLE efficient query
+	detailRows, err := s.queries.GetInProgressTaskDetails(ctx, int64(projectID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get in-progress tasks: %w", err)
 	}
 
-	tasks := make([]*models.TaskDetail, 0, len(rows))
-	for _, row := range rows {
-		// Get full task detail for each in-progress task
-		taskDetail, err := s.GetTaskDetail(ctx, int(row.ID))
-		if err != nil {
-			slog.Error("failed to load task details for in-progress task",
-				"task_id", row.ID,
-				"error", err.Error(),
-			)
-			continue
+	tasks := make([]*models.TaskDetail, 0, len(detailRows))
+	for _, row := range detailRows {
+		// Convert row to TaskDetail - no additional queries needed!
+		taskDetail := &models.TaskDetail{
+			ID:           int(row.ID),
+			Title:        row.Title,
+			Description:  row.Description.String,
+			ColumnID:     int(row.ColumnID),
+			ColumnName:   row.ColumnName,
+			ProjectName:  row.ProjectName,
+			Position:     int(row.Position),
+			TicketNumber: int(row.TicketNumber.Int64),
+			Labels:       converters.ParseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
+			IsBlocked:    row.IsBlocked > 0,
+			CreatedAt:    row.CreatedAt.Time,
+			UpdatedAt:    row.UpdatedAt.Time,
 		}
+
+		// Set optional fields
+		if row.TypeDescription.Valid {
+			taskDetail.TypeDescription = row.TypeDescription.String
+		}
+		if row.PriorityDescription.Valid {
+			taskDetail.PriorityDescription = row.PriorityDescription.String
+		}
+		if row.PriorityColor.Valid {
+			taskDetail.PriorityColor = row.PriorityColor.String
+		}
+
+		// NOTE: Parent/child tasks and comments are NOT fetched here.
+		// If full task relationships are needed, use GetTaskDetail instead,
+		// but only for the specific tasks that require it, not in bulk.
+
 		tasks = append(tasks, taskDetail)
 	}
 

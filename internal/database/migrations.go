@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/pressly/goose/v3"
 	"github.com/thenoetrevino/paso/internal/database/generated"
@@ -191,7 +191,7 @@ func seedDefaultLabels(ctx context.Context, db *sql.DB) error {
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Printf("failed to close rows: %v", err)
+			slog.Error("failed to close rows", "error", err)
 		}
 	}()
 

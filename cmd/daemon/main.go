@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -12,10 +12,6 @@ import (
 )
 
 func main() {
-	// Set up logging for systemd
-	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
-	log.SetPrefix("paso-daemon: ")
-
 	// Set up signal handling for graceful shutdown
 	ctx, cancel := signal.NotifyContext(
 		context.Background(),
@@ -31,7 +27,8 @@ func main() {
 		var err error
 		home, err = os.UserHomeDir()
 		if err != nil {
-			log.Fatalf("Failed to get home directory: %v", err)
+			slog.Error("Failed to get home directory", "error", err)
+			os.Exit(1)
 		}
 	}
 
@@ -41,22 +38,24 @@ func main() {
 
 	// Ensure .paso directory exists with secure permissions
 	if err := os.MkdirAll(pasoDir, 0700); err != nil {
-		log.Fatalf("Failed to create .paso directory: %v", err)
+		slog.Error("Failed to create .paso directory", "error", err)
+		os.Exit(1)
 	}
 
 	// Create and start the daemon server
 	server, err := daemon.NewServer(socketPath)
 	if err != nil {
-		log.Fatalf("Failed to create daemon: %v", err)
+		slog.Error("Failed to create daemon", "error", err)
+		os.Exit(1)
 	}
 
-	log.Printf("Paso daemon starting on %s", socketPath)
-	log.Printf("Process ID: %d", os.Getpid())
+	slog.Info("Paso daemon starting", "socket_path", socketPath, "pid", os.Getpid())
 
 	// Start the daemon (blocks until shutdown)
 	if err := server.Start(ctx); err != nil {
-		log.Fatalf("Daemon error: %v", err)
+		slog.Error("Daemon error", "error", err)
+		os.Exit(1)
 	}
 
-	log.Println("Paso daemon shutting down gracefully")
+	slog.Info("Paso daemon shutting down gracefully")
 }

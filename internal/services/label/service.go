@@ -12,6 +12,17 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
+// Re-export error variables from models package for backward compatibility
+var (
+	ErrEmptyName        = models.ErrEmptyName
+	ErrNameTooLong      = models.ErrNameTooLong
+	ErrInvalidColor     = models.ErrInvalidColor
+	ErrInvalidLabelID   = models.ErrInvalidLabelID
+	ErrInvalidProjectID = models.ErrInvalidProjectID
+	ErrInvalidTaskID    = models.ErrInvalidTaskID
+	ErrLabelNotFound    = models.ErrLabelNotFound
+)
+
 // Hex color regex pattern
 var hexColorRegex = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 
