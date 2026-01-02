@@ -1158,6 +1158,45 @@ func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
 	return nil
 }
 
+// wouldCreateCycle checks if adding a parent->child relationship would create a cycle
+// by checking if parentID is reachable from childID through existing relationships
+func (s *service) wouldCreateCycle(ctx context.Context, parentID, childID int) (bool, error) {
+	// Use BFS to check if parentID is reachable from childID
+	visited := make(map[int]bool)
+	queue := []int{childID}
+
+	for len(queue) > 0 {
+		currentID := queue[0]
+		queue = queue[1:]
+
+		if visited[currentID] {
+			continue
+		}
+		visited[currentID] = true
+
+		// If we reach the parent, we found a cycle
+		if currentID == parentID {
+			return true, nil
+		}
+
+		// Get all children of current task
+		children, err := s.queries.GetChildTasks(ctx, int64(currentID))
+		if err != nil {
+			return false, fmt.Errorf("failed to get child tasks: %w", err)
+		}
+
+		// Add unvisited children to queue
+		for _, child := range children {
+			childTaskID := int(child.ID)
+			if !visited[childTaskID] {
+				queue = append(queue, childTaskID)
+			}
+		}
+	}
+
+	return false, nil
+}
+
 // AddParentRelation adds a parent relationship (parent depends on this task)
 func (s *service) AddParentRelation(ctx context.Context, taskID, parentID int, relationTypeID int) error {
 	if taskID <= 0 || parentID <= 0 {
@@ -1165,6 +1204,15 @@ func (s *service) AddParentRelation(ctx context.Context, taskID, parentID int, r
 	}
 	if taskID == parentID {
 		return ErrSelfRelation
+	}
+
+	// Check for circular dependency before adding
+	wouldCycle, err := s.wouldCreateCycle(ctx, parentID, taskID)
+	if err != nil {
+		return err
+	}
+	if wouldCycle {
+		return ErrCircularRelation
 	}
 
 	// Add the relationship (this task is the child)
@@ -1187,6 +1235,15 @@ func (s *service) AddChildRelation(ctx context.Context, taskID, childID int, rel
 	}
 	if taskID == childID {
 		return ErrSelfRelation
+	}
+
+	// Check for circular dependency before adding
+	wouldCycle, err := s.wouldCreateCycle(ctx, taskID, childID)
+	if err != nil {
+		return err
+	}
+	if wouldCycle {
+		return ErrCircularRelation
 	}
 
 	// Add the relationship (this task is the parent)
