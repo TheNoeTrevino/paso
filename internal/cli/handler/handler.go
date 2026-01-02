@@ -15,12 +15,12 @@ import (
 // Handler defines the interface for command execution
 type Handler interface {
 	// Execute runs the command with parsed arguments
-	Execute(ctx context.Context, args *Arguments) (interface{}, error)
+	Execute(ctx context.Context, args *Arguments) (any, error)
 }
 
 // Arguments captures parsed CLI arguments and flags
 type Arguments struct {
-	Flags map[string]interface{}
+	Flags map[string]any
 	Args  []string
 	cmd   *cobra.Command
 }
@@ -79,8 +79,8 @@ func SimpleCommand(handler Handler) func(*cobra.Command, []string) error {
 }
 
 // parseFlagsToMap converts cobra command flags to a map
-func parseFlagsToMap(cmd *cobra.Command) map[string]interface{} {
-	flags := make(map[string]interface{})
+func parseFlagsToMap(cmd *cobra.Command) map[string]any {
+	flags := make(map[string]any)
 
 	// Visit all flags that were explicitly set
 	cmd.Flags().Visit(func(f *pflag.Flag) {
