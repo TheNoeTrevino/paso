@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/thenoetrevino/paso/internal/converters"
 	"github.com/thenoetrevino/paso/internal/database/generated"
@@ -106,6 +107,10 @@ func (s *service) CreateLabel(ctx context.Context, req CreateLabelRequest) (*mod
 		ProjectID: int64(req.ProjectID),
 	})
 	if err != nil {
+		// Check for unique constraint violation
+		if isUniqueConstraintError(err) {
+			return nil, fmt.Errorf("label creation error: label with name '%s' already exists in this project", req.Name)
+		}
 		return nil, fmt.Errorf("failed to create label: %w", err)
 	}
 
@@ -226,4 +231,14 @@ func (s *service) publishLabelEvent(ctx context.Context, labelID, projectID int)
 		Type:      events.EventDatabaseChanged,
 		ProjectID: projectID,
 	}, 3)
+}
+
+// isUniqueConstraintError checks if an error is a SQLite unique constraint violation
+func isUniqueConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// SQLite returns "UNIQUE constraint failed" in the error message
+	errStr := err.Error()
+	return strings.Contains(errStr, "UNIQUE constraint failed") || strings.Contains(errStr, "constraint failed")
 }
