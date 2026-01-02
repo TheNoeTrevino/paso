@@ -3,7 +3,7 @@ package column
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -54,7 +54,7 @@ func runList(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
 			err.Error(),
 			"Set project with: eval $(paso use project <project-id>)"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("Error formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitUsage)
 	}
@@ -63,13 +63,13 @@ func runList(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("Error formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("Error closing CLI", "error", err)
 		}
 	}()
 
@@ -77,7 +77,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, columnProject)
 	if err != nil {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", columnProject)); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("Error formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -86,7 +86,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	columns, err := cliInstance.App.ColumnService.GetColumnsByProject(ctx, columnProject)
 	if err != nil {
 		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("Error formatting error message", "error", fmtErr)
 		}
 		return err
 	}

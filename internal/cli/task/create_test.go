@@ -7,11 +7,12 @@ import (
 	"testing"
 
 	"github.com/thenoetrevino/paso/internal/testutil"
+	testutilcli "github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
 // TestCreateTaskCommand tests the create command
 func TestCreateTaskCommand(t *testing.T) {
-	db, app := testutil.SetupCLITest(t)
+	db, app := testutilcli.SetupCLITest(t)
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
 	columnID := testutil.CreateTestColumn(t, db, projectID, "Todo")
 
@@ -52,7 +53,7 @@ func TestCreateTaskCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := CreateCmd()
-			output, err := testutil.ExecuteCLICommand(t, app, cmd, tt.args)
+			output, err := testutilcli.ExecuteCLICommand(t, app, cmd, tt.args)
 
 			if tt.shouldErr && err == nil {
 				t.Errorf("Expected error but got none")

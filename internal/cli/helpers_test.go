@@ -6,6 +6,7 @@ import (
 
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/testutil"
+	testutilcli "github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
 // ============================================================================
@@ -171,7 +172,7 @@ func TestParseTaskType_Invalid(t *testing.T) {
 // ============================================================================
 
 func TestGetLabelByID_Found(t *testing.T) {
-	db, appInstance := testutil.SetupCLITest(t)
+	db, appInstance := testutilcli.SetupCLITest(t)
 	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
@@ -207,7 +208,7 @@ func TestGetLabelByID_Found(t *testing.T) {
 }
 
 func TestGetLabelByID_Found_MultipleProjects(t *testing.T) {
-	db, appInstance := testutil.SetupCLITest(t)
+	db, appInstance := testutilcli.SetupCLITest(t)
 	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
@@ -240,7 +241,7 @@ func TestGetLabelByID_Found_MultipleProjects(t *testing.T) {
 }
 
 func TestGetLabelByID_NotFound(t *testing.T) {
-	db, appInstance := testutil.SetupCLITest(t)
+	db, appInstance := testutilcli.SetupCLITest(t)
 	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
@@ -265,7 +266,7 @@ func TestGetLabelByID_NotFound(t *testing.T) {
 }
 
 func TestGetLabelByID_EmptyDatabase(t *testing.T) {
-	db, appInstance := testutil.SetupCLITest(t)
+	db, appInstance := testutilcli.SetupCLITest(t)
 	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
