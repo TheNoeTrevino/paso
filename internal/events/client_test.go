@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -83,6 +84,9 @@ func setupMockDaemon(t *testing.T) (string, net.Listener, chan Message) {
 // setupMockDaemonWithControl creates a mock daemon server that can be stopped
 // and restarted on demand for reconnection testing.
 //
+// It properly tracks and closes all active client connections when stopped, ensuring
+// clients detect disconnection immediately rather than blocking indefinitely.
+//
 // Returns:
 //   - socketPath: path to the Unix socket
 //   - startFunc: function to start/restart the daemon (returns error if start fails)
@@ -104,6 +108,10 @@ func setupMockDaemonWithControl(t *testing.T) (string, func() error, func(), cha
 	// Track the current listener and its cancel function
 	var currentListener net.Listener
 	var cancelAccept context.CancelFunc
+
+	// Track active connections for proper cleanup when daemon stops
+	var activeConns map[net.Conn]struct{}
+	var connsMu sync.Mutex
 	var listenerMu struct {
 		mu       *testing.T // Prevents direct mutex usage, uses test helper pattern
 		listener net.Listener
@@ -138,6 +146,11 @@ func setupMockDaemonWithControl(t *testing.T) (string, func() error, func(), cha
 		currentListener = listener
 		cancelAccept = cancel
 
+		// Initialize connection tracking map for this daemon instance
+		connsMu.Lock()
+		activeConns = make(map[net.Conn]struct{})
+		connsMu.Unlock()
+
 		// Accept connections in background
 		go func() {
 			for {
@@ -160,8 +173,19 @@ func setupMockDaemonWithControl(t *testing.T) (string, func() error, func(), cha
 					}
 				}
 
+				// Track this connection for cleanup when daemon stops
+				connsMu.Lock()
+				activeConns[conn] = struct{}{}
+				connsMu.Unlock()
 				go func(c net.Conn) {
-					defer func() { _ = c.Close() }()
+					// Remove from active connections when handler exits (any reason: error, normal, panic)
+					defer func() {
+						connsMu.Lock()
+						delete(activeConns, c)
+						connsMu.Unlock()
+						_ = c.Close()
+					}()
+
 					decoder := json.NewDecoder(c)
 					encoder := json.NewEncoder(c)
 
@@ -193,16 +217,34 @@ func setupMockDaemonWithControl(t *testing.T) (string, func() error, func(), cha
 		return nil
 	}
 
-	// stopFunc stops the daemon by closing the listener
+	// stopFunc stops the daemon by closing the listener AND all active connections
 	stopFunc := func() {
+		// Step 1: Stop accepting new connections
 		if cancelAccept != nil {
 			cancelAccept()
 		}
 		if currentListener != nil {
 			_ = currentListener.Close()
 		}
-		// Give it a moment to fully close
-		time.Sleep(50 * time.Millisecond)
+
+		// Step 2: Close all active connections (THE CRITICAL FIX)
+		connsMu.Lock()
+		// Copy connections to slice to avoid holding lock during Close()
+		connsToClose := make([]net.Conn, 0, len(activeConns))
+		for conn := range activeConns {
+			connsToClose = append(connsToClose, conn)
+		}
+		// Clear map while we have the lock
+		activeConns = make(map[net.Conn]struct{})
+		connsMu.Unlock()
+
+		// Close without holding mutex (prevents deadlock)
+		for _, conn := range connsToClose {
+			_ = conn.Close()
+		}
+
+		// Shorter sleep since we actively close connections
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	// Register cleanup to ensure resources are released
