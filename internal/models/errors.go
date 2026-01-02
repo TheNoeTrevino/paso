@@ -14,9 +14,9 @@ var (
 
 	// Business logic errors
 	ErrTaskNotFound              = errors.New("task not found")
-	ErrCircularRelation          = errors.New("circular relationship detected")
+	ErrCircularRelation          = errors.New("circular dependency detected")
 	ErrDuplicateRelation         = errors.New("relationship already exists")
-	ErrSelfRelation              = errors.New("task cannot have a relationship with itself")
+	ErrSelfRelation              = errors.New("circular dependency: task cannot have a relationship with itself")
 	ErrTaskAlreadyInTargetColumn = errors.New("task is already in target column")
 
 	// Comment validation errors
