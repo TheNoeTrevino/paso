@@ -49,40 +49,6 @@ const (
 	RelationTypeRelated     RelationTypeID = 3
 )
 
-// ToInt converts type alias back to int for compatibility with legacy code
-func (id ProjectID) ToInt() int {
-	return int(id)
-}
-
-func (id ColumnID) ToInt() int {
-	return int(id)
-}
-
-func (id TaskID) ToInt() int {
-	return int(id)
-}
-
-func (id LabelID) ToInt() int {
-	return int(id)
-}
-
-func (id TypeID) ToInt() int {
-	return int(id)
-}
-
-func (id PriorityID) ToInt() int {
-	return int(id)
-}
-
-func (id RelationTypeID) ToInt() int {
-	return int(id)
-}
-
-func (id CommentID) ToInt() int {
-	return int(id)
-}
-
-// FromInt creates type aliases from int values
 func ProjectIDFromInt(i int) ProjectID {
 	return ProjectID(i)
 }

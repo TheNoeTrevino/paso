@@ -69,33 +69,6 @@ if task.PriorityID == types.PriorityHigh {
 }
 ```
 
-### Converting Back
-
-For compatibility with legacy code, conversion methods are provided:
-
-```go
-id := types.TaskID(42)
-intID := id.ToInt()  // Returns int(42)
-```
-
-Or use constructor functions:
-
-```go
-intID := 42
-taskID := types.TaskIDFromInt(intID)
-```
-
-## Migration Strategy
-
-This is a non-breaking addition:
-
-1. **Phase 1** (Current): Introduce type aliases, keep all existing `int` types
-2. **Phase 2** (Optional): Update hot paths to use type aliases
-3. **Phase 3** (Optional): Migrate remaining code gradually
-4. **Phase 4** (Optional): Remove legacy int types when fully migrated
-
-Existing code using `int` continues to work unchanged. New code can use type aliases.
-
 ## Type Alias Hierarchy
 
 ```
