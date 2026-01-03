@@ -10,23 +10,6 @@ import (
 )
 
 // ============================================================================
-// TEST HELPERS
-// ============================================================================
-
-// ptrString returns a pointer to a string
-func ptrString(s string) *string {
-	return &s
-}
-
-// ptrTime returns a pointer to a time.Time
-func ptrTime(t time.Time) *time.Time {
-	return &t
-}
-
-// sep is the separator used in concatenated strings (matching SQL GROUP_CONCAT default)
-const sep = ","
-
-// ============================================================================
 // TEST CASES - TaskToModel
 // ============================================================================
 
