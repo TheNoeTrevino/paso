@@ -14,7 +14,9 @@ import (
 func TestUpdateColumn_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cliutil.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project - this creates default columns (Todo, In Progress, Done)
 	projectID := cliutil.CreateTestProject(t, db, "Test Project")
@@ -311,7 +313,9 @@ func TestUpdateColumn_Positive(t *testing.T) {
 func TestUpdateColumn_EdgeCases(t *testing.T) {
 	// Setup test DB and App
 	db, app := cliutil.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project
 	projectID := cliutil.CreateTestProject(t, db, "Test Project")

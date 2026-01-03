@@ -15,7 +15,9 @@ import (
 func TestCreateColumn_Integration(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project with default columns (Todo, In Progress, Done)
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -184,7 +186,9 @@ func TestCreateColumn_Integration(t *testing.T) {
 func TestCreateColumn_ErrorCases(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -235,7 +239,9 @@ func TestCreateColumn_ErrorCases(t *testing.T) {
 
 func TestCreateColumn_FlagCombinations(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	projectID := cli.CreateTestProject(t, db, "Combo Test Project")
 

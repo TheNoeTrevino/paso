@@ -15,7 +15,9 @@ import (
 func TestReadyMoveTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project with columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -464,7 +466,9 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 func TestReadyMoveTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project with columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")

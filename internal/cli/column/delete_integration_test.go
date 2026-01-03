@@ -14,7 +14,9 @@ import (
 func TestDeleteColumnIntegration_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project with default columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -187,10 +189,12 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 
 		// Verify both are deleted
 		var count1, count2 int
-		db.QueryRowContext(context.Background(),
+		err3 := db.QueryRowContext(context.Background(),
 			"SELECT COUNT(*) FROM columns WHERE id = ?", columnID1).Scan(&count1)
-		db.QueryRowContext(context.Background(),
+		assert.NoError(t, err3)
+		err4 := db.QueryRowContext(context.Background(),
 			"SELECT COUNT(*) FROM columns WHERE id = ?", columnID2).Scan(&count2)
+		assert.NoError(t, err4)
 
 		assert.Equal(t, 0, count1, "First column should be deleted")
 		assert.Equal(t, 0, count2, "Second column should be deleted")
@@ -200,10 +204,9 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 func TestDeleteColumnIntegration_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
-
-	// Create test project (unused in skipped tests, but kept for potential future use)
-	_ = cli.CreateTestProject(t, db, "Test Project")
+	defer func() {
+		_ = db.Close()
+	}()
 
 	t.Run("Delete non-existent column", func(t *testing.T) {
 		// Note: This test case calls os.Exit() in delete.go which terminates the process

@@ -15,7 +15,12 @@ import (
 func TestCommentTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			t.Errorf("Failed to close database: %v", err)
+		}
+	}()
 
 	// Create test project with default columns (Todo, In Progress, Done)
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -540,7 +545,9 @@ func TestCommentTask_Positive(t *testing.T) {
 func TestCommentTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project
 	projectID := cli.CreateTestProject(t, db, "Test Project")

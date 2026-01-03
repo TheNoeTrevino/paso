@@ -12,7 +12,10 @@ import (
 func TestCreateProject_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		err := db.Close()
+		assert.NoError(t, err)
+	}()
 
 	t.Run("Create project with title only", func(t *testing.T) {
 		cmd := CreateCmd()
@@ -72,7 +75,10 @@ func TestCreateProject_Positive(t *testing.T) {
 		rows, err := db.QueryContext(context.Background(),
 			"SELECT name FROM columns WHERE project_id = ? ORDER BY id", projectIDStr)
 		assert.NoError(t, err)
-		defer rows.Close()
+		defer func() {
+			err := rows.Close()
+			assert.NoError(t, err)
+		}()
 
 		var columns []string
 		for rows.Next() {

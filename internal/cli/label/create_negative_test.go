@@ -11,7 +11,10 @@ import (
 func TestCreateLabel_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		err := db.Close()
+		assert.NoError(t, err)
+	}()
 
 	// Create test project
 	projectID := cli.CreateTestProject(t, db, "Test Project")

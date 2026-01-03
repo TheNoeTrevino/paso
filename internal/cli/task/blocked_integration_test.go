@@ -15,7 +15,12 @@ import (
 func TestBlockedTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			t.Errorf("Failed to close database: %v", err)
+		}
+	}()
 
 	// Create test project with columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -532,7 +537,12 @@ func TestBlockedTask_Positive(t *testing.T) {
 func TestBlockedTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			t.Errorf("Failed to close database: %v", err)
+		}
+	}()
 
 	t.Run("Missing project ID - no flag and no env var", func(t *testing.T) {
 		// Note: This test will trigger os.Exit() call in the command

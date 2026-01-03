@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	testutilcli "github.com/thenoetrevino/paso/internal/testutil/cli"
@@ -475,14 +476,17 @@ func TestGetProjectID_EnvVarSet(t *testing.T) {
 	originalEnv := os.Getenv("PASO_PROJECT")
 	defer func() {
 		if originalEnv != "" {
-			os.Setenv("PASO_PROJECT", originalEnv)
+			err := os.Setenv("PASO_PROJECT", originalEnv)
+			assert.NoError(t, err)
 		} else {
-			os.Unsetenv("PASO_PROJECT")
+			err := os.Unsetenv("PASO_PROJECT")
+			assert.NoError(t, err)
 		}
 	}()
 
 	// Set environment variable
-	os.Setenv("PASO_PROJECT", "123")
+	err := os.Setenv("PASO_PROJECT", "123")
+	assert.NoError(t, err)
 
 	// Create a command without setting the flag
 	cmd := &cobra.Command{
@@ -506,14 +510,17 @@ func TestGetProjectID_FlagTakesPrecedence(t *testing.T) {
 	originalEnv := os.Getenv("PASO_PROJECT")
 	defer func() {
 		if originalEnv != "" {
-			os.Setenv("PASO_PROJECT", originalEnv)
+			err := os.Setenv("PASO_PROJECT", originalEnv)
+			assert.NoError(t, err)
 		} else {
-			os.Unsetenv("PASO_PROJECT")
+			err := os.Unsetenv("PASO_PROJECT")
+			assert.NoError(t, err)
 		}
 	}()
 
 	// Set environment variable
-	os.Setenv("PASO_PROJECT", "100")
+	err := os.Setenv("PASO_PROJECT", "100")
+	assert.NoError(t, err)
 
 	// Create a command and set the flag
 	cmd := &cobra.Command{
@@ -521,10 +528,8 @@ func TestGetProjectID_FlagTakesPrecedence(t *testing.T) {
 		Run: func(cmd *cobra.Command, args []string) {},
 	}
 	cmd.Flags().Int("project", 0, "Project ID")
-	err := cmd.Flags().Set("project", "200")
-	if err != nil {
-		t.Fatalf("Failed to set project flag: %v", err)
-	}
+	err = cmd.Flags().Set("project", "200")
+	assert.NoError(t, err)
 
 	// Test that flag takes precedence over env var
 	projectID, err := GetProjectID(cmd)
@@ -541,14 +546,17 @@ func TestGetProjectID_NeitherSet(t *testing.T) {
 	originalEnv := os.Getenv("PASO_PROJECT")
 	defer func() {
 		if originalEnv != "" {
-			os.Setenv("PASO_PROJECT", originalEnv)
+			err := os.Setenv("PASO_PROJECT", originalEnv)
+			assert.NoError(t, err)
 		} else {
-			os.Unsetenv("PASO_PROJECT")
+			err := os.Unsetenv("PASO_PROJECT")
+			assert.NoError(t, err)
 		}
 	}()
 
 	// Ensure env var is not set
-	os.Unsetenv("PASO_PROJECT")
+	err := os.Unsetenv("PASO_PROJECT")
+	assert.NoError(t, err)
 
 	// Create a command without setting the flag
 	cmd := &cobra.Command{
@@ -558,7 +566,7 @@ func TestGetProjectID_NeitherSet(t *testing.T) {
 	cmd.Flags().Int("project", 0, "Project ID")
 
 	// Test that we get an error
-	_, err := GetProjectID(cmd)
+	_, err = GetProjectID(cmd)
 	if err == nil {
 		t.Error("Expected error when neither flag nor env var is set, got nil")
 	}
@@ -575,14 +583,17 @@ func TestGetProjectID_InvalidEnvVar(t *testing.T) {
 	originalEnv := os.Getenv("PASO_PROJECT")
 	defer func() {
 		if originalEnv != "" {
-			os.Setenv("PASO_PROJECT", originalEnv)
+			err := os.Setenv("PASO_PROJECT", originalEnv)
+			assert.NoError(t, err)
 		} else {
-			os.Unsetenv("PASO_PROJECT")
+			err := os.Unsetenv("PASO_PROJECT")
+			assert.NoError(t, err)
 		}
 	}()
 
 	// Set invalid environment variable (non-numeric)
-	os.Setenv("PASO_PROJECT", "invalid")
+	err := os.Setenv("PASO_PROJECT", "invalid")
+	assert.NoError(t, err)
 
 	// Create a command without setting the flag
 	cmd := &cobra.Command{
@@ -592,10 +603,8 @@ func TestGetProjectID_InvalidEnvVar(t *testing.T) {
 	cmd.Flags().Int("project", 0, "Project ID")
 
 	// Test that we get an error for invalid env var
-	_, err := GetProjectID(cmd)
-	if err == nil {
-		t.Error("Expected error for invalid env var format, got nil")
-	}
+	_, err = GetProjectID(cmd)
+	assert.Error(t, err)
 }
 
 func TestGetProjectID_NoProjectFlag(t *testing.T) {
@@ -603,14 +612,17 @@ func TestGetProjectID_NoProjectFlag(t *testing.T) {
 	originalEnv := os.Getenv("PASO_PROJECT")
 	defer func() {
 		if originalEnv != "" {
-			os.Setenv("PASO_PROJECT", originalEnv)
+			err := os.Setenv("PASO_PROJECT", originalEnv)
+			assert.NoError(t, err)
 		} else {
-			os.Unsetenv("PASO_PROJECT")
+			err := os.Unsetenv("PASO_PROJECT")
+			assert.NoError(t, err)
 		}
 	}()
 
 	// Set environment variable
-	os.Setenv("PASO_PROJECT", "456")
+	err := os.Setenv("PASO_PROJECT", "456")
+	assert.NoError(t, err)
 
 	// Create a command WITHOUT the --project flag
 	cmd := &cobra.Command{
@@ -633,14 +645,17 @@ func TestGetProjectID_ZeroValueFlag(t *testing.T) {
 	originalEnv := os.Getenv("PASO_PROJECT")
 	defer func() {
 		if originalEnv != "" {
-			os.Setenv("PASO_PROJECT", originalEnv)
+			err := os.Setenv("PASO_PROJECT", originalEnv)
+			assert.NoError(t, err)
 		} else {
-			os.Unsetenv("PASO_PROJECT")
+			err := os.Unsetenv("PASO_PROJECT")
+			assert.NoError(t, err)
 		}
 	}()
 
 	// Set environment variable
-	os.Setenv("PASO_PROJECT", "789")
+	err := os.Setenv("PASO_PROJECT", "789")
+	assert.NoError(t, err)
 
 	// Create a command with the --project flag but don't set it
 	cmd := &cobra.Command{

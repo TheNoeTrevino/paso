@@ -16,7 +16,9 @@ import (
 func TestReadyTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project with default columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -181,7 +183,8 @@ func TestReadyTask_Positive(t *testing.T) {
 		for _, line := range lines {
 			assert.Regexp(t, `^\d+$`, line, "Each line should be a numeric ID")
 			var id int
-			fmt.Sscanf(line, "%d", &id)
+			_, err := fmt.Sscanf(line, "%d", &id)
+			assert.NoError(t, err)
 			foundIDs[id] = true
 		}
 
@@ -636,7 +639,9 @@ func TestReadyTask_Positive(t *testing.T) {
 func TestReadyTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	t.Run("Missing project ID - no flag and no env var", func(t *testing.T) {
 		// Note: This test case calls os.Exit() in ready.go:63 (ExitUsage)

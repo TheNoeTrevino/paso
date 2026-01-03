@@ -40,7 +40,6 @@ func (m *mockDataWithPointerID) GetID() int {
 // ============================================================================
 
 func TestOutputFormatter_Success_JSON(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		data     interface{}
@@ -112,9 +111,7 @@ func TestOutputFormatter_Success_JSON(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
 			// Capture stdout
 			oldStdout := os.Stdout
 			r, w, _ := os.Pipe()
@@ -149,7 +146,6 @@ func TestOutputFormatter_Success_JSON(t *testing.T) {
 // ============================================================================
 
 func TestOutputFormatter_Success_Quiet_WithID(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		data       interface{}
@@ -190,7 +186,6 @@ func TestOutputFormatter_Success_Quiet_WithID(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
 			// Capture stdout
 			oldStdout := os.Stdout
 			r, w, _ := os.Pipe()
@@ -223,7 +218,6 @@ func TestOutputFormatter_Success_Quiet_WithID(t *testing.T) {
 // ============================================================================
 
 func TestOutputFormatter_Success_Quiet_WithoutID(t *testing.T) {
-
 	tests := []struct {
 		name          string
 		data          interface{}
@@ -252,9 +246,7 @@ func TestOutputFormatter_Success_Quiet_WithoutID(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
 			// Capture stdout
 			oldStdout := os.Stdout
 			r, w, _ := os.Pipe()
@@ -286,7 +278,6 @@ func TestOutputFormatter_Success_Quiet_WithoutID(t *testing.T) {
 // ============================================================================
 
 func TestOutputFormatter_Success_HumanReadable(t *testing.T) {
-
 	tests := []struct {
 		name          string
 		data          interface{}
@@ -317,7 +308,6 @@ func TestOutputFormatter_Success_HumanReadable(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
 			// Capture stdout
 			oldStdout := os.Stdout
 			r, w, _ := os.Pipe()
@@ -348,7 +338,6 @@ func TestOutputFormatter_Success_HumanReadable(t *testing.T) {
 // ============================================================================
 
 func TestOutputFormatter_Error_JSON(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		code    string
@@ -379,7 +368,6 @@ func TestOutputFormatter_Error_JSON(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
 			// Capture stdout
 			oldStdout := os.Stdout
 			r, w, _ := os.Pipe()
@@ -429,7 +417,6 @@ func TestOutputFormatter_Error_JSON(t *testing.T) {
 // ============================================================================
 
 func TestOutputFormatter_Error_Quiet(t *testing.T) {
-
 	// Capture stderr (should be empty in quiet mode)
 	oldStderr := os.Stderr
 	r, w, _ := os.Pipe()
@@ -459,7 +446,6 @@ func TestOutputFormatter_Error_Quiet(t *testing.T) {
 // ============================================================================
 
 func TestOutputFormatter_Error_HumanReadable(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		code    string
@@ -485,7 +471,6 @@ func TestOutputFormatter_Error_HumanReadable(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
 			// Capture stderr
 			oldStderr := os.Stderr
 			r, w, _ := os.Pipe()
@@ -523,7 +508,6 @@ func TestOutputFormatter_Error_HumanReadable(t *testing.T) {
 // ============================================================================
 
 func TestOutputFormatter_ErrorWithSuggestion_JSON(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		code       string
@@ -557,7 +541,6 @@ func TestOutputFormatter_ErrorWithSuggestion_JSON(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
 			// Capture stdout
 			oldStdout := os.Stdout
 			r, w, _ := os.Pipe()
@@ -612,7 +595,6 @@ func TestOutputFormatter_ErrorWithSuggestion_JSON(t *testing.T) {
 // ============================================================================
 
 func TestOutputFormatter_ErrorWithSuggestion_Quiet(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		suggestion string
@@ -630,7 +612,6 @@ func TestOutputFormatter_ErrorWithSuggestion_Quiet(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
 			// Capture stderr (should be empty in quiet mode)
 			oldStderr := os.Stderr
 			r, w, _ := os.Pipe()
@@ -662,7 +643,6 @@ func TestOutputFormatter_ErrorWithSuggestion_Quiet(t *testing.T) {
 // ============================================================================
 
 func TestOutputFormatter_ErrorWithSuggestion_HumanReadable(t *testing.T) {
-
 	tests := []struct {
 		name             string
 		code             string
@@ -705,7 +685,6 @@ func TestOutputFormatter_ErrorWithSuggestion_HumanReadable(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
 			// Capture stderr
 			oldStderr := os.Stderr
 			r, w, _ := os.Pipe()
@@ -744,11 +723,9 @@ func TestOutputFormatter_ErrorWithSuggestion_HumanReadable(t *testing.T) {
 // ============================================================================
 
 func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
-
 	// When Quiet is true and data has GetID(), it should output ID only
 	// even if JSON is also true (Quiet check happens first)
 	t.Run("Quiet takes precedence over JSON when GetID exists", func(t *testing.T) {
-
 		oldStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
@@ -776,7 +753,6 @@ func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 
 	// When Quiet is true but data has no GetID(), it falls through to JSON
 	t.Run("Quiet without GetID falls through to JSON", func(t *testing.T) {
-
 		oldStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
@@ -805,7 +781,6 @@ func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 
 	// JSON should take precedence for Error
 	t.Run("JSON takes precedence over Quiet for Error", func(t *testing.T) {
-
 		oldStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
@@ -833,7 +808,6 @@ func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 }
 
 func TestOutputFormatter_NilData(t *testing.T) {
-
 	tests := []struct {
 		name  string
 		json  bool
@@ -847,7 +821,6 @@ func TestOutputFormatter_NilData(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
 			oldStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
@@ -877,7 +850,6 @@ func TestOutputFormatter_NilData(t *testing.T) {
 }
 
 func TestOutputFormatter_ErrorCallsErrorWithSuggestion(t *testing.T) {
-
 	// Verify that Error() correctly calls ErrorWithSuggestion() with empty suggestion
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
