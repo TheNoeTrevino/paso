@@ -160,9 +160,8 @@ func TestProjectForm_Creation(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Verify form was processed
-	if m.UIState.Mode() == state.ProjectFormMode {
-		// Still in form mode, form may not support quick save
-	}
+	// Still in form mode, form may not support quick save
+	_ = m.UIState.Mode() == state.ProjectFormMode
 }
 
 // TestColumnForm_Creation tests creating a new column
@@ -269,9 +268,8 @@ func TestProjectForm_DiscardChanges(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify escape was processed
-	if m.UIState.Mode() != initialMode {
-		// Mode changed, which is expected
-	}
+	// Mode changed, which is expected
+	_ = m.UIState.Mode() != initialMode
 }
 
 // TestTaskForm_CharacterInput tests typing characters into task form

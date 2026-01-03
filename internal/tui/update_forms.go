@@ -832,7 +832,6 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Forms.Comment.SetComments(m.Forms.Form.FormComments)
 				m.UIState.SetMode(state.CommentsViewMode)
 			} else {
-				// Return to ticket form (legacy path)
 				m.UIState.SetMode(state.TicketFormMode)
 			}
 		},

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/app"
 	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/models"
@@ -16,6 +17,10 @@ import (
 	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
+
+// If you are here bc you changed the ui layout,
+// run the following command to update snapshots:
+// UPDATE_SNAPSHOTS=1 go test ./internal/tui -run TestSnapshots
 
 // TestSnapshots verifies TUI rendering consistency across different application states
 func TestSnapshots(t *testing.T) {
@@ -88,7 +93,9 @@ func TestSnapshots(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			db := testutil.SetupTestDB(t)
-			defer db.Close()
+			defer func() {
+				_ = db.Close()
+			}()
 
 			m := tt.setup(t, db)
 
@@ -160,10 +167,10 @@ func setupBoardWithTasks(t *testing.T, db *sql.DB) Model {
 	}
 
 	// Create tasks in different columns
-	_ = testutil.CreateTestTask(t, db, columns[0].ID, "Setup database")
-	_ = testutil.CreateTestTask(t, db, columns[0].ID, "Configure service")
-	_ = testutil.CreateTestTask(t, db, columns[1].ID, "Implement API endpoints")
-	_ = testutil.CreateTestTask(t, db, columns[2].ID, "Deploy to production")
+	testutil.CreateTestTask(t, db, columns[0].ID, "Setup database")
+	testutil.CreateTestTask(t, db, columns[0].ID, "Configure service")
+	testutil.CreateTestTask(t, db, columns[1].ID, "Implement API endpoints")
+	testutil.CreateTestTask(t, db, columns[2].ID, "Deploy to production")
 
 	tasks, _ := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
 	labels, _ := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
@@ -189,13 +196,13 @@ func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) Model {
 	columns, _ := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
 
 	// Create multiple tasks per column
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		_ = testutil.CreateTestTask(t, db, columns[0].ID, "Task "+string(rune(65+i)))
 	}
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		_ = testutil.CreateTestTask(t, db, columns[1].ID, "In Progress Task "+string(rune(65+i)))
 	}
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		_ = testutil.CreateTestTask(t, db, columns[2].ID, "Done Task "+string(rune(65+i)))
 	}
 
@@ -233,15 +240,22 @@ func setupBoardWithLabels(t *testing.T, db *sql.DB) Model {
 	task3ID := testutil.CreateTestTask(t, db, columns[1].ID, "Write API docs")
 
 	// Attach labels
-	db.ExecContext(ctx, "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", task1ID, labelBug)
-	db.ExecContext(ctx, "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", task2ID, labelFeature)
-	db.ExecContext(ctx, "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", task2ID, labelDoc)
-	db.ExecContext(ctx, "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", task3ID, labelDoc)
+	_, err := db.ExecContext(ctx, "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", task1ID, labelBug)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", task2ID, labelFeature)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", task2ID, labelDoc)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", task3ID, labelDoc)
+	require.NoError(t, err)
 
-	tasks, _ := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
-	labels, _ := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	tasks, err := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	require.NoError(t, err)
+	labels, err := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	require.NoError(t, err)
 
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	require.NoError(t, err)
 	m := InitialModel(ctx, appContainer, cfg, nil)
 
 	m.AppState.SetColumns(columns)
@@ -259,7 +273,11 @@ func setupNoProjects(t *testing.T, db *sql.DB) Model {
 	// Create app container but don't create any projects
 	appContainer := createAppContainer(db)
 
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+
 	m := InitialModel(ctx, appContainer, cfg, nil)
 
 	// Explicitly set empty state
@@ -304,11 +322,15 @@ func setupConnectionDisconnected(t *testing.T, db *sql.DB) Model {
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
 	appContainer := createAppContainer(db)
 
-	columns, _ := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
-	tasks, _ := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
-	labels, _ := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err)
+	tasks, err := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	require.NoError(t, err)
+	labels, err := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	require.NoError(t, err)
 
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	require.NoError(t, err)
 	// Pass nil for eventClient to simulate disconnected state
 	m := InitialModel(ctx, appContainer, cfg, nil)
 
@@ -355,9 +377,12 @@ func setupNotificationError(t *testing.T, db *sql.DB) Model {
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
 	appContainer := createAppContainer(db)
 
-	columns, _ := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
-	tasks, _ := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
-	labels, _ := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err)
+	tasks, err := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	require.NoError(t, err)
+	labels, err := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	require.NoError(t, err)
 
 	cfg, _ := config.Load()
 	m := InitialModel(ctx, appContainer, cfg, nil)
@@ -381,11 +406,15 @@ func setupNotificationWarning(t *testing.T, db *sql.DB) Model {
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
 	appContainer := createAppContainer(db)
 
-	columns, _ := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
+	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err)
 	tasks, _ := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	require.NoError(t, err)
 	labels, _ := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	require.NoError(t, err)
 
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	require.NoError(t, err)
 	m := InitialModel(ctx, appContainer, cfg, nil)
 
 	m.AppState.SetColumns(columns)
