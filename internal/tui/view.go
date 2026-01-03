@@ -87,7 +87,6 @@ func (m Model) View() tea.View {
 		canvas := lipgloss.NewCanvas(layers...)
 		view.Content = canvas.Render()
 	} else {
-		// Legacy full-screen rendering for modes not yet converted to layers
 		var content string
 		switch m.UIState.Mode() {
 		case state.DeleteConfirmMode:

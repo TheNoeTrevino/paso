@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/thenoetrevino/paso/internal/models"
+	tasksvc "github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -76,7 +77,7 @@ func MoveTaskRight(m *tui.Model) {
 	err := m.App.TaskService.MoveTaskToNextColumn(ctx, task.ID)
 	if err != nil {
 		slog.Error("failed to moving task to next column", "error", err)
-		if err != models.ErrAlreadyLastColumn {
+		if err != tasksvc.ErrAlreadyLastColumn {
 			m.UI.Notification.Add(state.LevelError, "Failed to move task to next column")
 		}
 		return
@@ -127,7 +128,7 @@ func MoveTaskLeft(m *tui.Model) {
 	err := m.App.TaskService.MoveTaskToPrevColumn(ctx, task.ID)
 	if err != nil {
 		slog.Error("failed to moving task to previous column", "error", err)
-		if err != models.ErrAlreadyFirstColumn {
+		if err != tasksvc.ErrAlreadyFirstColumn {
 			m.UI.Notification.Add(state.LevelError, "Failed to move task to previous column")
 		}
 		return
@@ -172,7 +173,7 @@ func MoveTaskUp(m *tui.Model) {
 	err := m.App.TaskService.MoveTaskUp(ctx, task.ID)
 	if err != nil {
 		slog.Error("failed to moving task up", "error", err)
-		if err != models.ErrAlreadyFirstTask {
+		if err != tasksvc.ErrAlreadyFirstTask {
 			m.UI.Notification.Add(state.LevelError, "Failed to move task up")
 		}
 		return
@@ -232,7 +233,7 @@ func MoveTaskDown(m *tui.Model) {
 	err := m.App.TaskService.MoveTaskDown(ctx, task.ID)
 	if err != nil {
 		slog.Error("failed to moving task down", "error", err)
-		if err != models.ErrAlreadyLastTask {
+		if err != tasksvc.ErrAlreadyLastTask {
 			m.UI.Notification.Add(state.LevelError, "Failed to move task down")
 		}
 		return

@@ -25,9 +25,8 @@ func TestNavigation_MoveRightWithArrow(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify model was updated
-	if m.UIState.SelectedColumn() > 0 {
-		// Moved to next column
-	}
+	// Moved to next column
+	_ = m.UIState.SelectedColumn() > 0
 }
 
 // TestNavigation_MoveLeftWithArrow tests left arrow key to navigate between columns
@@ -130,9 +129,8 @@ func TestNavigation_CreateNewTaskWithN(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode may have changed to form or task creation
-	if m.UIState.Mode() == state.TicketFormMode || m.UIState.Mode() == state.NormalMode {
-		// Mode is valid
-	}
+	// Mode is valid
+	_ = m.UIState.Mode() == state.TicketFormMode || m.UIState.Mode() == state.NormalMode
 }
 
 // TestNavigation_DeleteTaskWithD tests pressing 'd' to delete a task
@@ -242,9 +240,8 @@ func TestNavigation_EscapeExitsMode(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify escape was handled
-	if m.UIState.Mode() == state.NormalMode {
-		// Still in normal mode, which is expected
-	}
+	// Still in normal mode, which is expected
+	_ = m.UIState.Mode() == state.NormalMode
 }
 
 // TestNavigation_MultipleNavigationSequence tests a sequence of navigation commands

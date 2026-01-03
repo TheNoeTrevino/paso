@@ -335,9 +335,8 @@ func TestLabelPicker_EscapeExitsMode(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify something happened (mode change or escape handled)
-	if m.UIState.Mode() == initialMode {
-		// Escape was processed but mode didn't change (acceptable)
-	}
+	// Escape was processed but mode didn't change (acceptable)
+	_ = m.UIState.Mode() == initialMode
 }
 
 // TestPriorityPicker_UpDownNavigation tests up and down navigation in priority picker

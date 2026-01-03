@@ -12,6 +12,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // ============================================================================
@@ -1786,6 +1788,7 @@ func TestClient_RestoresSubscriptionAfterReconnect(t *testing.T) {
 	resubscribeReceived := false
 
 	// Collect subscribe messages (we expect project 0 from Connect, then project 123 from restoration)
+ResubscribeLoop:
 	for !resubscribeReceived && subscribeCount < 10 {
 		select {
 		case msg := <-messages:
@@ -1798,10 +1801,10 @@ func TestClient_RestoresSubscriptionAfterReconnect(t *testing.T) {
 				}
 			}
 		case <-timeout:
-			break
+			break ResubscribeLoop
 		default:
 			if subscribeCount > 0 && time.Since(time.Now()) > 500*time.Millisecond {
-				break
+				break ResubscribeLoop
 			}
 			time.Sleep(50 * time.Millisecond)
 		}
@@ -3124,7 +3127,8 @@ func TestClient_DetectsDaemonDisconnect(t *testing.T) {
 	t.Logf("Simulating daemon disconnect...")
 	start := time.Now()
 	stopFunc()
-	os.Remove(socketPath)
+	rmErr := os.Remove(socketPath)
+	assert.NoError(t, rmErr)
 
 	// Wait for Listen loop to detect disconnect and exit
 	// With baseDelay=50ms and maxRetries=2: ~150ms for retries

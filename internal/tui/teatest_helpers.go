@@ -22,7 +22,9 @@ import (
 func SetupTestModelWithDB(t *testing.T) (Model, *sql.DB) {
 	t.Helper()
 	db := testutil.SetupTestDB(t)
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
 
 	// Create app container with all services
 	appContainer := &app.App{
