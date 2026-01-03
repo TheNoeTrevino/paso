@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"charm.land/lipgloss/v2"
-	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/config/colors"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -29,7 +29,7 @@ var (
 )
 
 // Init initializes all CLI styles with the given color scheme
-func Init(colors config.ColorScheme) {
+func Init(colors colors.ColorScheme) {
 	CardStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(colors.Accent)).
@@ -149,7 +149,7 @@ func RenderCard(content string) string {
 const TreeConnector = "∟"
 
 // RenderTreeConnector renders the tree connector with appropriate color
-func RenderTreeConnector(isBlocking bool, colors config.ColorScheme) string {
+func RenderTreeConnector(isBlocking bool, colors colors.ColorScheme) string {
 	if isBlocking {
 		return lipgloss.NewStyle().
 			Bold(true).
@@ -162,7 +162,7 @@ func RenderTreeConnector(isBlocking bool, colors config.ColorScheme) string {
 }
 
 // RenderRelationChip renders a relation type label like "Blocker", "Child"
-func RenderRelationChip(label string, color string, isBlocking bool, colors config.ColorScheme) string {
+func RenderRelationChip(label string, color string, isBlocking bool, colors colors.ColorScheme) string {
 	if isBlocking {
 		return lipgloss.NewStyle().
 			Bold(true).
@@ -176,7 +176,7 @@ func RenderRelationChip(label string, color string, isBlocking bool, colors conf
 
 // RenderTreeTaskInfo renders task info for tree display
 // Format: "PROJ-123: Title - ColumnName"
-func RenderTreeTaskInfo(projectName string, ticketNumber int, title string, columnName string, isBlocking bool, colors config.ColorScheme) string {
+func RenderTreeTaskInfo(projectName string, ticketNumber int, title string, columnName string, isBlocking bool, colors colors.ColorScheme) string {
 	taskInfo := fmt.Sprintf("%s-%d: %s - %s", projectName, ticketNumber, title, columnName)
 	if isBlocking {
 		return lipgloss.NewStyle().
@@ -189,7 +189,7 @@ func RenderTreeTaskInfo(projectName string, ticketNumber int, title string, colu
 }
 
 // RenderTreeRootTask renders a root task (no connector, no relation)
-func RenderTreeRootTask(projectName string, ticketNumber int, title string, columnName string, colors config.ColorScheme) string {
+func RenderTreeRootTask(projectName string, ticketNumber int, title string, columnName string, colors colors.ColorScheme) string {
 	return lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color(colors.Title)).
@@ -198,7 +198,7 @@ func RenderTreeRootTask(projectName string, ticketNumber int, title string, colu
 
 // RenderTreeChildLine renders a complete child line in the tree
 // Format: "  ∟ RelationLabel - PROJ-123: Title - ColumnName"
-func RenderTreeChildLine(indent string, node *models.TaskTreeNode, colors config.ColorScheme) string {
+func RenderTreeChildLine(indent string, node *models.TaskTreeNode, colors colors.ColorScheme) string {
 	// The connector (∟) is red if in blocking path OR if it's a blocking relationship
 	connector := RenderTreeConnector(node.InBlockingPath, colors)
 

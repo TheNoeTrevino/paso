@@ -30,99 +30,99 @@ func (m Model) handleCommentsViewInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleCommentsViewUp moves cursor up in comments list
 func (m Model) handleCommentsViewUp() (tea.Model, tea.Cmd) {
-	moved := m.CommentState.MoveCursorUp()
+	moved := m.Forms.Comment.MoveCursorUp()
 	if moved {
 		// Calculate max visible for auto-scroll
 		// Must match the height calculation in renderCommentsViewContent
 		layerHeight := m.UIState.Height() * 8 / 10
 		availableHeight := layerHeight - 4 // Reserve for title + help
 		_, _, maxVisible := calculateVisibleCommentRange(
-			m.CommentState.ScrollOffset,
-			len(m.CommentState.Items),
+			m.Forms.Comment.ScrollOffset,
+			len(m.Forms.Comment.Items),
 			availableHeight,
 		)
-		m.CommentState.EnsureCommentVisible(maxVisible)
+		m.Forms.Comment.EnsureCommentVisible(maxVisible)
 	}
 	return m, nil
 }
 
 // handleCommentsViewDown moves cursor down in comments list
 func (m Model) handleCommentsViewDown() (tea.Model, tea.Cmd) {
-	maxIdx := len(m.CommentState.Items) - 1
-	moved := m.CommentState.MoveCursorDown(maxIdx)
+	maxIdx := len(m.Forms.Comment.Items) - 1
+	moved := m.Forms.Comment.MoveCursorDown(maxIdx)
 	if moved {
 		// Calculate max visible for auto-scroll
 		// Must match the height calculation in renderCommentsViewContent
 		layerHeight := m.UIState.Height() * 8 / 10
 		availableHeight := layerHeight - 4 // Reserve for title + help
 		_, _, maxVisible := calculateVisibleCommentRange(
-			m.CommentState.ScrollOffset,
-			len(m.CommentState.Items),
+			m.Forms.Comment.ScrollOffset,
+			len(m.Forms.Comment.Items),
 			availableHeight,
 		)
-		m.CommentState.EnsureCommentVisible(maxVisible)
+		m.Forms.Comment.EnsureCommentVisible(maxVisible)
 	}
 	return m, nil
 }
 
 // handleCommentsViewEdit opens the comment form to edit the selected comment
 func (m Model) handleCommentsViewEdit() (tea.Model, tea.Cmd) {
-	selectedComment := m.CommentState.GetSelectedComment()
+	selectedComment := m.Forms.Comment.GetSelectedComment()
 	if selectedComment == nil {
-		m.NotificationState.Add(state.LevelError, "No comment selected")
+		m.UI.Notification.Add(state.LevelError, "No comment selected")
 		return m, nil
 	}
 
 	// Set up form state for editing
-	m.FormState.FormCommentMessage = selectedComment.Message
-	m.FormState.EditingCommentID = selectedComment.ID
-	m.FormState.CommentFormReturnMode = state.CommentsViewMode
+	m.Forms.Form.FormCommentMessage = selectedComment.Message
+	m.Forms.Form.EditingCommentID = selectedComment.ID
+	m.Forms.Form.CommentFormReturnMode = state.CommentsViewMode
 
 	// Create comment form
 	isEdit := true
-	m.FormState.CommentForm = huhforms.CreateCommentForm(
-		&m.FormState.FormCommentMessage,
+	m.Forms.Form.CommentForm = huhforms.CreateCommentForm(
+		&m.Forms.Form.FormCommentMessage,
 		isEdit,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.FormState.SnapshotCommentFormInitialValues()
+	m.Forms.Form.SnapshotCommentFormInitialValues()
 
 	// Switch to comment form mode
 	m.UIState.SetMode(state.CommentFormMode)
 
-	return m, m.FormState.CommentForm.Init()
+	return m, m.Forms.Form.CommentForm.Init()
 }
 
 // handleCommentsViewAdd opens the comment form to create a new comment
 func (m Model) handleCommentsViewAdd() (tea.Model, tea.Cmd) {
 	// Set up form state for creating
-	m.FormState.FormCommentMessage = ""
-	m.FormState.EditingCommentID = 0
-	m.FormState.CommentFormReturnMode = state.CommentsViewMode
+	m.Forms.Form.FormCommentMessage = ""
+	m.Forms.Form.EditingCommentID = 0
+	m.Forms.Form.CommentFormReturnMode = state.CommentsViewMode
 
 	// Create comment form
 	isEdit := false
-	m.FormState.CommentForm = huhforms.CreateCommentForm(
-		&m.FormState.FormCommentMessage,
+	m.Forms.Form.CommentForm = huhforms.CreateCommentForm(
+		&m.Forms.Form.FormCommentMessage,
 		isEdit,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.FormState.SnapshotCommentFormInitialValues()
+	m.Forms.Form.SnapshotCommentFormInitialValues()
 
 	// Switch to comment form mode
 	m.UIState.SetMode(state.CommentFormMode)
 
-	return m, m.FormState.CommentForm.Init()
+	return m, m.Forms.Form.CommentForm.Init()
 }
 
 // handleCommentsViewDelete shows confirmation dialog for deleting the selected comment
 func (m Model) handleCommentsViewDelete() (tea.Model, tea.Cmd) {
-	selectedComment := m.CommentState.GetSelectedComment()
+	selectedComment := m.Forms.Comment.GetSelectedComment()
 	if selectedComment == nil {
-		m.NotificationState.Add(state.LevelError, "No comment selected")
+		m.UI.Notification.Add(state.LevelError, "No comment selected")
 		return m, nil
 	}
 
 	// Store comment ID for deletion
-	m.FormState.EditingCommentID = selectedComment.ID
+	m.Forms.Form.EditingCommentID = selectedComment.ID
 
 	// Show delete confirmation
 	// We'll use the same DeleteConfirmMode and handle comment deletion there

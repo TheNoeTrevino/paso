@@ -1,6 +1,6 @@
 package theme
 
-import "github.com/thenoetrevino/paso/internal/config"
+import "github.com/thenoetrevino/paso/internal/config/colors"
 
 // Colors holds the current theme colors, initialized by Init
 var (
@@ -25,7 +25,7 @@ var (
 )
 
 // Init initializes the theme colors from the given color scheme
-func Init(colors config.ColorScheme) {
+func Init(colors colors.ColorScheme) {
 	Highlight = colors.Accent
 	Subtle = colors.Subtle
 	Normal = colors.Normal

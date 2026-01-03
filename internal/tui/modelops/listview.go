@@ -33,13 +33,13 @@ func BuildListViewRows(m *tui.Model) []renderers.ListViewRow {
 // SortListViewRows sorts the rows based on current sort settings.
 // Modifies rows in place.
 func SortListViewRows(m *tui.Model, rows []renderers.ListViewRow) {
-	if m.ListViewState.SortField() == state.SortNone {
+	if m.UI.ListView.SortField() == state.SortNone {
 		return
 	}
 
 	sort.Slice(rows, func(i, j int) bool {
 		var cmp int
-		switch m.ListViewState.SortField() {
+		switch m.UI.ListView.SortField() {
 		case state.SortByTitle:
 			cmp = strings.Compare(rows[i].Task.Title, rows[j].Task.Title)
 		case state.SortByStatus:
@@ -48,7 +48,7 @@ func SortListViewRows(m *tui.Model, rows []renderers.ListViewRow) {
 			return false
 		}
 
-		if m.ListViewState.SortOrder() == state.SortDesc {
+		if m.UI.ListView.SortOrder() == state.SortDesc {
 			cmp = -cmp
 		}
 		return cmp < 0
@@ -60,24 +60,24 @@ func SortListViewRows(m *tui.Model, rows []renderers.ListViewRow) {
 func SyncKanbanToListSelection(m *tui.Model) {
 	rows := BuildListViewRows(m)
 	if len(rows) == 0 {
-		m.ListViewState.SetSelectedRow(0)
+		m.UI.ListView.SetSelectedRow(0)
 		return
 	}
 
 	// Find the task that matches the current kanban selection
 	currentTask := GetCurrentTask(m)
 	if currentTask == nil {
-		m.ListViewState.SetSelectedRow(0)
+		m.UI.ListView.SetSelectedRow(0)
 		return
 	}
 
 	for i, row := range rows {
 		if row.Task.ID == currentTask.ID {
-			m.ListViewState.SetSelectedRow(i)
+			m.UI.ListView.SetSelectedRow(i)
 			return
 		}
 	}
-	m.ListViewState.SetSelectedRow(0)
+	m.UI.ListView.SetSelectedRow(0)
 }
 
 // SyncListToKanbanSelection maps the current list row to kanban column/task selection.
@@ -88,7 +88,7 @@ func SyncListToKanbanSelection(m *tui.Model) {
 		return
 	}
 
-	selectedRow := m.ListViewState.SelectedRow()
+	selectedRow := m.UI.ListView.SelectedRow()
 	if selectedRow >= len(rows) {
 		selectedRow = len(rows) - 1
 	}
@@ -125,5 +125,5 @@ func GetTaskFromListRow(m *tui.Model, rowIdx int) *models.TaskSummary {
 // GetSelectedListTask returns the currently selected task in list view.
 // This is a convenience method that uses GetTaskFromListRow with the current selection.
 func GetSelectedListTask(m *tui.Model) *models.TaskSummary {
-	return GetTaskFromListRow(m, m.ListViewState.SelectedRow())
+	return GetTaskFromListRow(m, m.UI.ListView.SelectedRow())
 }

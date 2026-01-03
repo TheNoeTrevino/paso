@@ -75,16 +75,16 @@ func InstallOpenCode(project bool) {
 	}
 
 	// Ensure parent directory exists
-	if err := EnsureDir(filepath.Dir(configPath), 0755); err != nil {
+	if err := EnsureDir(filepath.Dir(configPath), 0o755); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Load or create config
-	var config map[string]interface{}
+	var config map[string]any
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		config = make(map[string]interface{})
+		config = make(map[string]any)
 	} else {
 		if err := json.Unmarshal(data, &config); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: failed to parse opencode.json: %v\n", err)
@@ -93,9 +93,9 @@ func InstallOpenCode(project bool) {
 	}
 
 	// Get or create plugin array
-	plugins, ok := config["plugin"].([]interface{})
+	plugins, ok := config["plugin"].([]any)
 	if !ok {
-		plugins = []interface{}{}
+		plugins = []any{}
 	}
 
 	// Check if already installed
@@ -177,20 +177,20 @@ func RemoveOpenCode(project bool) {
 		return
 	}
 
-	var config map[string]interface{}
+	var config map[string]any
 	if err := json.Unmarshal(data, &config); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: failed to parse opencode.json: %v\n", err)
 		os.Exit(1)
 	}
 
-	plugins, ok := config["plugin"].([]interface{})
+	plugins, ok := config["plugin"].([]any)
 	if !ok {
 		fmt.Println("No plugins configured")
 		return
 	}
 
 	// Filter out paso plugin
-	var filtered []interface{}
+	var filtered []any
 	removed := false
 	for _, p := range plugins {
 		if p == "opencode-paso" {
@@ -228,12 +228,12 @@ func hasPasoPlugin(configPath string) bool {
 		return false
 	}
 
-	var config map[string]interface{}
+	var config map[string]any
 	if err := json.Unmarshal(data, &config); err != nil {
 		return false
 	}
 
-	plugins, ok := config["plugin"].([]interface{})
+	plugins, ok := config["plugin"].([]any)
 	if !ok {
 		return false
 	}

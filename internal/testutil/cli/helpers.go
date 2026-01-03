@@ -1,49 +1,12 @@
-package testutil
+package cli
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
-	"os"
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/testutil"
 )
-
-// CaptureOutput captures stdout during function execution
-func CaptureOutput(t *testing.T, fn func()) string {
-	t.Helper()
-
-	// Save original stdout
-	oldStdout := os.Stdout
-
-	// Create pipe to capture output
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("Failed to create pipe: %v", err)
-	}
-
-	// Replace stdout with pipe writer
-	os.Stdout = w
-
-	// Channel to collect output
-	outC := make(chan string)
-	go func() {
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		outC <- buf.String()
-	}()
-
-	// Execute function
-	fn()
-
-	// Close writer and restore stdout
-	_ = w.Close()
-	os.Stdout = oldStdout
-
-	// Get captured output
-	return <-outC
-}
 
 // ExecuteCommand runs a cobra command and captures its output
 func ExecuteCommand(t *testing.T, cmd *cobra.Command) (string, error) {
@@ -53,7 +16,7 @@ func ExecuteCommand(t *testing.T, cmd *cobra.Command) (string, error) {
 	var output string
 	var executeErr error
 
-	output = CaptureOutput(t, func() {
+	output = testutil.CaptureOutput(t, func() {
 		executeErr = cmd.Execute()
 	})
 

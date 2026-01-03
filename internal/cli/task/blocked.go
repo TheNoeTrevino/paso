@@ -1,10 +1,9 @@
 package task
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -46,7 +45,7 @@ Examples:
 }
 
 func runBlocked(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
@@ -59,22 +58,22 @@ func runBlocked(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
 			err.Error(),
 			"Set project with: eval $(paso use project <project-id>)"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitUsage)
 	}
 
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
@@ -84,7 +83,7 @@ func runBlocked(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.ErrorWithSuggestion("PROJECT_NOT_FOUND",
 			fmt.Sprintf("project %d not found", taskProject),
 			"Use 'paso project list' to see available projects"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -93,7 +92,7 @@ func runBlocked(cmd *cobra.Command, args []string) error {
 	tasksByColumn, err := cliInstance.App.TaskService.GetTaskSummariesByProject(ctx, taskProject)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
@@ -118,7 +117,7 @@ func runBlocked(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success": true,
 			"tasks":   blockedTasks,
 			"count":   len(blockedTasks),

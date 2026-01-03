@@ -26,15 +26,27 @@ type App struct {
 // New creates a new App with all services initialized.
 // This is the single entry point for creating the application container.
 // Services use SQLC directly - no repository layer needed.
-func New(db *sql.DB, eventClient events.EventPublisher) *App {
+// Use functional options to customize the App initialization.
+func New(db *sql.DB, opts ...Option) *App {
+	// Create default configuration
+	cfg := &appConfig{
+		eventClient: nil,
+		logger:      nil,
+	}
+
+	// Apply provided options
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
 	// Create services with database connection
 	// Each service creates its own SQLC queries instance internally
 	return &App{
-		eventClient:    eventClient,
-		TaskService:    taskservice.NewService(db, eventClient),
-		ProjectService: projectservice.NewService(db, eventClient),
-		ColumnService:  columnservice.NewService(db, eventClient),
-		LabelService:   labelservice.NewService(db, eventClient),
+		eventClient:    cfg.eventClient,
+		TaskService:    taskservice.NewService(db, cfg.eventClient),
+		ProjectService: projectservice.NewService(db, cfg.eventClient),
+		ColumnService:  columnservice.NewService(db, cfg.eventClient),
+		LabelService:   labelservice.NewService(db, cfg.eventClient),
 	}
 }
 

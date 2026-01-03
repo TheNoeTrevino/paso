@@ -5,7 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -33,9 +33,9 @@ func InitDB(ctx context.Context) (*sql.DB, error) {
 	// Enable foreign key constraints (required for CASCADE deletions)
 	_, err = db.ExecContext(ctx, "PRAGMA foreign_keys = ON")
 	if err != nil {
-		log.Printf("Failed to enable foreign keys: %v", err)
+		slog.Error("failed to enable foreign keys", "error", err)
 		if closeErr := db.Close(); closeErr != nil {
-			log.Printf("error closing db: %v", closeErr)
+			slog.Error("failed to close db", "error", closeErr)
 		}
 		return nil, err
 	}
@@ -43,9 +43,9 @@ func InitDB(ctx context.Context) (*sql.DB, error) {
 	// Enable WAL mode for better concurrency
 	_, err = db.ExecContext(ctx, "PRAGMA journal_mode = WAL")
 	if err != nil {
-		log.Printf("Failed to enable WAL mode: %v", err)
+		slog.Error("failed to enable WAL mode", "error", err)
 		if closeErr := db.Close(); closeErr != nil {
-			log.Printf("error closing db: %v", closeErr)
+			slog.Error("failed to close db", "error", closeErr)
 		}
 		return nil, err
 	}
@@ -53,16 +53,16 @@ func InitDB(ctx context.Context) (*sql.DB, error) {
 	// Set busy timeout to 5 seconds (SQLite will retry for this duration)
 	_, err = db.ExecContext(ctx, "PRAGMA busy_timeout = 5000")
 	if err != nil {
-		log.Printf("Failed to set busy timeout: %v", err)
+		slog.Error("failed to set busy timeout", "error", err)
 		if closeErr := db.Close(); closeErr != nil {
-			log.Printf("error closing db: %v", closeErr)
+			slog.Error("failed to close db", "error", closeErr)
 		}
 		return nil, err
 	}
 
 	if err := db.PingContext(ctx); err != nil {
 		if closeErr := db.Close(); closeErr != nil {
-			log.Printf("error closing db: %v", closeErr)
+			slog.Error("failed to close db", "error", closeErr)
 		}
 		return nil, fmt.Errorf("database ping failed: %w", err)
 	}
@@ -73,7 +73,7 @@ func InitDB(ctx context.Context) (*sql.DB, error) {
 
 	if err := runMigrations(ctx, db); err != nil {
 		if closeErr := db.Close(); closeErr != nil {
-			log.Printf("error closing db: %v", closeErr)
+			slog.Error("failed to close db", "error", closeErr)
 		}
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}

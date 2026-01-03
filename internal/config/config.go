@@ -4,13 +4,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/thenoetrevino/paso/internal/config/colors"
 	"gopkg.in/yaml.v3"
 )
 
 // Config represents the application configuration
 type Config struct {
-	KeyMappings KeyMappings `yaml:"key_mappings"`
-	ColorScheme ColorScheme `yaml:"theme"`
+	KeyMappings KeyMappings        `yaml:"key_mappings"`
+	ColorScheme colors.ColorScheme `yaml:"theme"`
 }
 
 // loadThemeFile loads and merges theme from PASO_THEME_FILE environment variable
@@ -30,11 +31,11 @@ func loadThemeFile(config *Config) {
 	}
 
 	var themeConfig struct {
-		Theme ColorScheme `yaml:"theme"`
+		Theme colors.ColorScheme `yaml:"theme"`
 	}
 
 	if yaml.Unmarshal(themeData, &themeConfig) == nil {
-		config.ColorScheme.MergeFrom(themeConfig.Theme)
+		(&config.ColorScheme).MergeFrom(themeConfig.Theme)
 	}
 }
 

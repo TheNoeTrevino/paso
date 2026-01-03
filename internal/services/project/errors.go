@@ -2,11 +2,11 @@ package project
 
 import "errors"
 
-// Domain errors for project service
+// Project-related errors
 var (
 	// Validation errors
-	ErrEmptyName        = errors.New("project name cannot be empty")
-	ErrNameTooLong      = errors.New("project name cannot exceed 100 characters")
+	ErrEmptyName        = errors.New("name cannot be empty")
+	ErrNameTooLong      = errors.New("name cannot exceed 50 characters")
 	ErrInvalidProjectID = errors.New("invalid project ID")
 
 	// Business logic errors

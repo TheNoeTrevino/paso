@@ -13,11 +13,11 @@ import (
 
 // renderFormTitleDescriptionZone renders the top-left zone with title and description fields
 func (m Model) renderFormTitleDescriptionZone(width, height int) string {
-	if m.FormState.TaskForm == nil {
+	if m.Forms.Form.TaskForm == nil {
 		return ""
 	}
 
-	formView := m.FormState.TaskForm.View()
+	formView := m.Forms.Form.TaskForm.View()
 
 	style := lipgloss.NewStyle().
 		Width(width).
@@ -39,18 +39,18 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 
 	// Get current timestamps - for create mode, show placeholders
 	var createdStr, updatedStr string
-	if m.FormState.EditingTaskID == 0 {
+	if m.Forms.Form.EditingTaskID == 0 {
 		createdStr = subtleStyle.Render("(not created yet)")
 		updatedStr = subtleStyle.Render("(not created yet)")
 	} else {
 		// In edit mode, show actual timestamps from FormState
-		createdStr = m.FormState.FormCreatedAt.Format("Jan 2, 2006 3:04 PM")
-		updatedStr = m.FormState.FormUpdatedAt.Format("Jan 2, 2006 3:04 PM")
+		createdStr = m.Forms.Form.FormCreatedAt.Format("Jan 2, 2006 3:04 PM")
+		updatedStr = m.Forms.Form.FormUpdatedAt.Format("Jan 2, 2006 3:04 PM")
 	}
 
 	// Edited indicator (unsaved changes)
 	parts = append(parts, labelHeaderStyle.Render("Status"))
-	if m.FormState.HasTaskFormChanges() {
+	if m.Forms.Form.HasTaskFormChanges() {
 		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight))
 		parts = append(parts, warningStyle.Render("● Unsaved Changes"))
 	} else {
@@ -60,8 +60,8 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 
 	// Type section
 	parts = append(parts, labelHeaderStyle.Render("Type"))
-	if m.FormState.FormTypeDescription != "" {
-		parts = append(parts, m.FormState.FormTypeDescription)
+	if m.Forms.Form.FormTypeDescription != "" {
+		parts = append(parts, m.Forms.Form.FormTypeDescription)
 	} else {
 		parts = append(parts, subtleStyle.Render("task"))
 	}
@@ -69,9 +69,9 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 
 	// Priority section
 	parts = append(parts, labelHeaderStyle.Render("Priority"))
-	if m.FormState.FormPriorityDescription != "" && m.FormState.FormPriorityColor != "" {
-		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.FormState.FormPriorityColor))
-		parts = append(parts, priorityStyle.Render(m.FormState.FormPriorityDescription))
+	if m.Forms.Form.FormPriorityDescription != "" && m.Forms.Form.FormPriorityColor != "" {
+		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.Forms.Form.FormPriorityColor))
+		parts = append(parts, priorityStyle.Render(m.Forms.Form.FormPriorityDescription))
 	} else {
 		// Default to medium priority if not set
 		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EAB308"))
@@ -91,7 +91,7 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 
 	// Labels section
 	parts = append(parts, labelHeaderStyle.Render("Labels"))
-	if len(m.FormState.FormLabelIDs) == 0 {
+	if len(m.Forms.Form.FormLabelIDs) == 0 {
 		parts = append(parts, subtleStyle.Render("No labels"))
 	} else {
 		// Get label objects from IDs
@@ -100,7 +100,7 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 			labelMap[label.ID] = label
 		}
 
-		for _, labelID := range m.FormState.FormLabelIDs {
+		for _, labelID := range m.Forms.Form.FormLabelIDs {
 			if label, ok := labelMap[labelID]; ok {
 				parts = append(parts, components.RenderLabelChip(label, ""))
 			}
@@ -110,10 +110,10 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 
 	// Parent Tasks section (moved from associations zone)
 	parts = append(parts, labelHeaderStyle.Render("Parent Tasks"))
-	if len(m.FormState.FormParentRefs) == 0 {
+	if len(m.Forms.Form.FormParentRefs) == 0 {
 		parts = append(parts, subtleStyle.Render("No parents"))
 	} else {
-		for _, parent := range m.FormState.FormParentRefs {
+		for _, parent := range m.Forms.Form.FormParentRefs {
 			taskLine := fmt.Sprintf("#%d - %s", parent.TicketNumber, parent.Title)
 			parts = append(parts, taskLine)
 		}
@@ -122,10 +122,10 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 
 	// Child Tasks section (moved from associations zone)
 	parts = append(parts, labelHeaderStyle.Render("Child Tasks"))
-	if len(m.FormState.FormChildRefs) == 0 {
+	if len(m.Forms.Form.FormChildRefs) == 0 {
 		parts = append(parts, subtleStyle.Render("No children"))
 	} else {
-		for _, child := range m.FormState.FormChildRefs {
+		for _, child := range m.Forms.Form.FormChildRefs {
 			taskLine := fmt.Sprintf("#%d - %s", child.TicketNumber, child.Title)
 			parts = append(parts, taskLine)
 		}
@@ -157,7 +157,7 @@ func (m *Model) renderFormCommentsPreview(width, height int) string {
 		Foreground(lipgloss.Color(theme.Subtle)).
 		Italic(true)
 
-	commentCount := len(m.FormState.FormComments)
+	commentCount := len(m.Forms.Form.FormComments)
 
 	// Header: "Comments · {count} total · ctrl+n to open"
 	var headerText string
@@ -187,7 +187,7 @@ func (m *Model) renderFormCommentsPreview(width, height int) string {
 
 		// Show most recent comments first
 		for i := commentCount - 1; i >= max(commentCount-displayCount, 0); i-- {
-			comment := m.FormState.FormComments[i]
+			comment := m.Forms.Form.FormComments[i]
 
 			// Truncate comment content to fit preview
 			contentWidth := max(width-4, 20)

@@ -1,10 +1,9 @@
 package task
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/styles"
 	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/config/colors"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -34,7 +34,7 @@ func ShowCmd() *cobra.Command {
 }
 
 func runShow(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	// Parse task ID from positional arg or flag
 	var taskID int
@@ -56,23 +56,23 @@ func runShow(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.ErrorWithSuggestion("INVALID_TASK_ID",
 			"task ID must be a positive integer",
 			"Usage: paso task show <id> or paso task show --id=<id>"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitUsage)
 		return nil
 	}
 
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
@@ -80,7 +80,7 @@ func runShow(cmd *cobra.Command, args []string) error {
 	task, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 		return nil
@@ -110,7 +110,7 @@ func runShow(cmd *cobra.Command, args []string) error {
 }
 
 func outputJSON(task *models.TaskDetail) error {
-	return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+	return json.NewEncoder(os.Stdout).Encode(map[string]any{
 		"success": true,
 		"task": map[string]any{
 			"id":            task.ID,
@@ -138,7 +138,7 @@ func outputJSON(task *models.TaskDetail) error {
 	})
 }
 
-func outputHuman(task *models.TaskDetail, colors config.ColorScheme) error {
+func outputHuman(task *models.TaskDetail, colors colors.ColorScheme) error {
 	// Initialize styles with the color scheme
 	styles.Init(colors)
 

@@ -2,11 +2,11 @@ package column
 
 import "errors"
 
-// Domain errors for column service
+// Column-related errors
 var (
 	// Validation errors
-	ErrEmptyName        = errors.New("column name cannot be empty")
-	ErrNameTooLong      = errors.New("column name cannot exceed 50 characters")
+	ErrEmptyName        = errors.New("name cannot be empty")
+	ErrNameTooLong      = errors.New("name cannot exceed 50 characters")
 	ErrInvalidColumnID  = errors.New("invalid column ID")
 	ErrInvalidProjectID = errors.New("invalid project ID")
 

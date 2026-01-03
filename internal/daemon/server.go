@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"os"
 	"path/filepath"
@@ -98,7 +98,7 @@ func NewServer(socketPath string) (*Server, error) {
 // Start runs the daemon server
 // It starts three main goroutines: accept, broadcast, and health monitoring
 func (s *Server) Start(ctx context.Context) error {
-	log.Printf("Daemon starting, listening on %s", s.socketPath)
+	slog.Info("daemon starting, listening on", "socketPath", s.socketPath)
 
 	// Create a combined context that cancels when either the daemon context or caller context is done
 	combinedCtx, cancel := context.WithCancel(ctx)
@@ -124,10 +124,10 @@ func (s *Server) Start(ctx context.Context) error {
 	// Wait for context or accept error
 	select {
 	case <-combinedCtx.Done():
-		log.Println("Daemon context cancelled, shutting down")
+		slog.Info("daemon context cancelled, shutting down")
 	case err := <-acceptErr:
 		if err != nil {
-			log.Printf("Accept loop error: %v", err)
+			slog.Error("accept loop error", "error", err)
 		}
 	}
 
@@ -146,7 +146,7 @@ func (s *Server) acceptLoop(ctx context.Context) error {
 
 		// Set a read deadline so we can check for context cancellation
 		if err := s.listener.(*net.UnixListener).SetDeadline(time.Now().Add(1 * time.Second)); err != nil {
-			log.Printf("Error setting listener deadline: %v", err)
+			slog.Error("failed to setting listener deadline", "error", err)
 		}
 
 		conn, err := s.listener.Accept()
@@ -172,7 +172,7 @@ func (s *Server) acceptLoop(ctx context.Context) error {
 		// Update metrics
 		s.updateClientCount()
 
-		log.Printf("Client connected, total clients: %d", s.getClientCount())
+		slog.Info("client connected", "total_clients", s.getClientCount())
 
 		// Start client handler goroutines
 		go s.handleClient(c)
@@ -211,7 +211,7 @@ func (s *Server) broadcastLoop(ctx context.Context) {
 
 					// Non-blocking send - if client is slow, skip
 					if !s.sendToClient(c, msg) {
-						log.Printf("Client send queue full, event dropped")
+						slog.Warn("client send queue full, event dropped")
 					}
 				}
 			}
@@ -224,7 +224,7 @@ func (s *Server) broadcastLoop(ctx context.Context) {
 func (s *Server) handleClient(c *client) {
 	defer func() {
 		s.removeClient(c)
-		log.Printf("Client disconnected, total clients: %d", s.getClientCount())
+		slog.Info("client disconnected", "total_clients", s.getClientCount())
 	}()
 
 	decoder := json.NewDecoder(c.conn)
@@ -238,7 +238,7 @@ func (s *Server) handleClient(c *client) {
 
 		// Check protocol version - log warning if mismatch
 		if msg.Version != 0 && msg.Version != events.ProtocolVersion {
-			log.Printf("Warning: received message with protocol version %d, expected %d", msg.Version, events.ProtocolVersion)
+			slog.Warn("received message with protocol version mismatch", "received", msg.Version, "expected", events.ProtocolVersion)
 		}
 
 		switch msg.Type {
@@ -249,7 +249,7 @@ func (s *Server) handleClient(c *client) {
 				select {
 				case s.broadcast <- *msg.Event:
 				default:
-					log.Printf("Broadcast channel full")
+					slog.Warn("broadcast channel full")
 				}
 			}
 
@@ -258,7 +258,7 @@ func (s *Server) handleClient(c *client) {
 				c.mu.Lock()
 				c.subscription = *msg.Subscribe
 				c.mu.Unlock()
-				log.Printf("Client subscribed to project %d", msg.Subscribe.ProjectID)
+				slog.Info("client subscribed to project", "projectID", msg.Subscribe.ProjectID)
 			}
 
 		case "pong":
@@ -312,7 +312,7 @@ func (s *Server) monitorHealth(ctx context.Context) {
 
 			for _, c := range clients {
 				if !s.sendToClient(c, pingMsg) {
-					log.Printf("Failed to send ping to client (queue full)")
+					slog.Warn("failed to send ping to client (queue full)")
 				}
 			}
 
@@ -335,7 +335,7 @@ func (s *Server) monitorHealth(ctx context.Context) {
 
 			// Remove stale clients (outside of server lock to avoid deadlock)
 			for _, c := range staleClients {
-				log.Printf("Removing stale client (last pong: %v ago)", now.Sub(c.lastPong))
+				slog.Info("removing stale client", "last_pong_ago", now.Sub(c.lastPong))
 				s.removeClient(c)
 			}
 		}
@@ -356,14 +356,14 @@ func (s *Server) Broadcast(event events.Event) error {
 func (s *Server) Shutdown() error {
 	var err error
 	s.shutdownOnce.Do(func() {
-		log.Println("Shutting down daemon...")
+		slog.Info("shutting down daemon")
 
 		s.cancel()
 
 		// Close listener
 		if s.listener != nil {
 			if closeErr := s.listener.Close(); closeErr != nil {
-				log.Printf("Error closing listener: %v", closeErr)
+				slog.Error("failed to closing listener", "error", closeErr)
 			}
 		}
 
@@ -371,7 +371,7 @@ func (s *Server) Shutdown() error {
 		s.mu.Lock()
 		for c := range s.clients {
 			if closeErr := c.conn.Close(); closeErr != nil {
-				log.Printf("Error closing client connection: %v", closeErr)
+				slog.Error("failed to closing client connection", "error", closeErr)
 			}
 			c.closeOnce.Do(func() {
 				close(c.send)
@@ -382,7 +382,7 @@ func (s *Server) Shutdown() error {
 
 		// Remove socket file
 		if removeErr := os.Remove(s.socketPath); removeErr != nil && !os.IsNotExist(removeErr) {
-			log.Printf("Warning: failed to remove socket file: %v", removeErr)
+			slog.Warn("failed to remove socket file", "error", removeErr)
 		}
 
 		// Close broadcast channel
@@ -412,7 +412,7 @@ func (s *Server) removeClient(c *client) {
 	s.mu.Unlock()
 
 	if err := c.conn.Close(); err != nil {
-		log.Printf("Error closing client connection: %v", err)
+		slog.Error("failed to closing client connection", "error", err)
 	}
 	c.closeOnce.Do(func() {
 		close(c.send)

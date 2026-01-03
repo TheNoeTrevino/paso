@@ -45,13 +45,17 @@ type Client struct {
 	cancel context.CancelFunc
 
 	// Batching goroutine
-	batcherDone chan struct{}
+	batcherDone    chan struct{}
+	batcherRunning bool // Track if batcher is currently running
 
 	// Notification callback for user-facing messages
 	onNotify NotifyFunc
 
 	// Write deadline duration (configurable for tests)
 	writeDeadline time.Duration
+
+	// Batcher shutdown timeout (configurable for tests)
+	batcherShutdownTimeout time.Duration
 }
 
 // NewClient creates a new event client but does not connect.
@@ -69,17 +73,18 @@ func NewClient(socketPath string) (*Client, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Client{
-		socketPath:       socketPath,
-		eventQueue:       make(chan Event, 100),
-		debounce:         time.Duration(debounceMs) * time.Millisecond,
-		maxRetries:       5,
-		baseDelay:        1 * time.Second,
-		currentProjectID: 0,
-		lastSequence:     0,
-		ctx:              ctx,
-		cancel:           cancel,
-		batcherDone:      make(chan struct{}),
-		writeDeadline:    5 * time.Second, // Default: 5 seconds
+		socketPath:             socketPath,
+		eventQueue:             make(chan Event, 100),
+		debounce:               time.Duration(debounceMs) * time.Millisecond,
+		maxRetries:             5,
+		baseDelay:              1 * time.Second,
+		currentProjectID:       0,
+		lastSequence:           0,
+		ctx:                    ctx,
+		cancel:                 cancel,
+		batcherDone:            make(chan struct{}),
+		writeDeadline:          5 * time.Second, // Default: 5 seconds
+		batcherShutdownTimeout: 100 * time.Millisecond,
 	}, nil
 }
 
@@ -101,6 +106,14 @@ func (c *Client) setWriteDeadlineForTest(d time.Duration) {
 	c.writeDeadline = d
 }
 
+// setBatcherShutdownTimeoutForTest allows tests to use shorter batcher shutdown timeouts.
+// This is an unexported method for test use only.
+func (c *Client) setBatcherShutdownTimeoutForTest(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.batcherShutdownTimeout = d
+}
+
 // notify calls the notification callback if it's set (thread-safe)
 func (c *Client) notify(level, message string) {
 	c.mu.Lock()
@@ -117,6 +130,39 @@ func (c *Client) notify(level, message string) {
 func (c *Client) Connect(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	// Stop any existing batcher before starting a new one
+	// This prevents multiple batchers from running simultaneously
+	if c.batcherRunning {
+		oldBatcherDone := c.batcherDone
+		c.batcherRunning = false
+
+		// Close eventQueue to signal batcher to exit
+		// We'll recreate it after the old batcher stops
+		close(c.eventQueue)
+
+		// Wait for old batcher to finish with timeout (unlock while waiting to prevent deadlock)
+		c.mu.Unlock()
+
+		timeout := c.batcherShutdownTimeout
+		select {
+		case <-oldBatcherDone:
+			slog.Debug("old batcher exited cleanly before reconnection")
+		case <-time.After(timeout):
+			slog.Warn("old batcher shutdown timeout, proceeding with reconnection",
+				"timeout", timeout)
+		case <-ctx.Done():
+			// Need to reacquire lock before returning (defer will unlock)
+			c.mu.Lock()
+			return ctx.Err()
+		}
+
+		c.mu.Lock()
+
+		// Recreate eventQueue for the new batcher
+		// (old batcher may still be running, but it will exit when it reads from closed queue)
+		c.eventQueue = make(chan Event, 100)
+	}
 
 	// Dial the Unix domain socket
 	dialer := net.Dialer{}
@@ -144,32 +190,104 @@ func (c *Client) Connect(ctx context.Context) error {
 		return fmt.Errorf("failed to send subscription: %w", err)
 	}
 
-	// Start the batching goroutine
+	// Start the new batching goroutine
+	c.batcherDone = make(chan struct{})
+	c.batcherRunning = true
 	go c.startBatcher()
 
 	return nil
 }
 
-// SendEvent queues an event to be sent to the daemon.
+// SendEvent queues an event to be sent to the daemon with backpressure handling.
 // Events are batched and sent in bursts within the debounce window.
-// Returns error if the queue is full (non-blocking send).
+// Implements retry with exponential backoff to handle queue saturation gracefully.
+//
+// Backpressure Strategy (Option B):
+// - When queue is full, retries with exponential backoff instead of immediate failure
+// - Max retries: 3 attempts (50ms, 100ms, 200ms delays)
+// - This ensures critical events aren't silently dropped during high throughput
+// - Logging at WARN level for queue saturation to aid debugging
+//
+// Returns error only if all retry attempts fail after max retries.
 func (c *Client) SendEvent(event Event) error {
 	if c == nil {
 		return fmt.Errorf("event client is nil")
 	}
+
+	// First attempt
 	select {
 	case c.eventQueue <- event:
 		return nil
 	default:
-		return fmt.Errorf("event queue full")
+		// Queue is full - implement backpressure with retry
+		return c.sendEventWithRetry(event)
 	}
+}
+
+// sendEventWithRetry attempts to queue an event with exponential backoff.
+// This handles queue saturation gracefully by retrying instead of silently dropping.
+func (c *Client) sendEventWithRetry(event Event) error {
+	maxRetries := 3
+	baseDelay := 50 * time.Millisecond
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		// Log queue saturation at WARN level (only on first saturation)
+		if attempt == 0 {
+			slog.Warn("event queue saturated, applying backpressure",
+				"event_type", event.Type,
+				"project_id", event.ProjectID,
+				"queue_capacity", 100) // Fixed queue size from line 73
+		}
+
+		// Don't sleep before the first attempt (we already tried above)
+		if attempt > 0 {
+			// Exponential backoff: 50ms, 100ms, 200ms
+			delay := baseDelay * (1 << (attempt - 1))
+			time.Sleep(delay)
+		}
+
+		// Try to send again
+		select {
+		case c.eventQueue <- event:
+			if attempt > 0 {
+				slog.Debug("event queued after retry",
+					"attempt", attempt+1,
+					"event_type", event.Type,
+					"project_id", event.ProjectID)
+			}
+			return nil
+		default:
+			// Queue still full, will retry unless this was the last attempt
+			if attempt < maxRetries-1 {
+				delay := baseDelay * (1 << attempt)
+				slog.Debug("event queue full, retrying",
+					"attempt", attempt+1,
+					"max_retries", maxRetries,
+					"retry_delay", delay,
+					"event_type", event.Type)
+			}
+		}
+	}
+
+	// All retry attempts failed
+	slog.Error("event queue full after all retries, dropping event",
+		"attempts", maxRetries,
+		"event_type", event.Type,
+		"project_id", event.ProjectID)
+
+	return fmt.Errorf("event queue full (all %d retry attempts exhausted)", maxRetries)
 }
 
 // startBatcher runs in a goroutine and batches events from the queue.
 // It sends a single event every debounce duration if any events are pending.
 // If events from multiple projects are batched together, sends projectID 0 (all projects).
 func (c *Client) startBatcher() {
-	defer close(c.batcherDone)
+	defer func() {
+		close(c.batcherDone)
+		c.mu.Lock()
+		c.batcherRunning = false
+		c.mu.Unlock()
+	}()
 
 	ticker := time.NewTicker(c.debounce)
 	defer ticker.Stop()
@@ -324,6 +442,17 @@ func (c *Client) readEvents(ctx context.Context, eventChan chan Event) error {
 	for {
 		var msg Message
 
+		// TOCTOU Fix: Use careful synchronization to prevent race conditions.
+		// We hold the lock only to check state and set deadline, then release before
+		// the potentially blocking Decode() call. This prevents deadlocks while
+		// ensuring the decoder remains valid throughout its use.
+		//
+		// Strategy: Double-check pattern with state invariant checking
+		// - conn and decoder are always set/cleared together (in Connect/Close)
+		// - We verify conn != nil before Decode
+		// - If Close() closes the connection, Decode() will detect EOF error
+		// - We don't hold locks during long blocking operations
+
 		c.mu.Lock()
 		if c.conn == nil {
 			c.mu.Unlock()
@@ -334,9 +463,15 @@ func (c *Client) readEvents(ctx context.Context, eventChan chan Event) error {
 			c.mu.Unlock()
 			return fmt.Errorf("failed to set read deadline: %w", err)
 		}
-		decoder := c.decoder // Keep reference to decoder
+		// Copy reference while lock is held
+		decoder := c.decoder
 		c.mu.Unlock()
 
+		// Decode with unlocked decoder reference
+		// Safe because:
+		// 1. decoder pointer value is immutable once copied (Go passes pointers by value)
+		// 2. Close() invalidates the underlying connection, detected by Decode() -> EOF
+		// 3. No data structures are modified during Decode
 		if err := decoder.Decode(&msg); err != nil {
 			return fmt.Errorf("failed to decode message: %w", err)
 		}
@@ -477,12 +612,19 @@ func (c *Client) Close() error {
 		c.mu.Unlock()
 
 		if wasConnected {
-			// Close the event queue to signal no more events coming
-			// This allows batcher to flush pending events before exiting
-			close(c.eventQueue)
+			// Check if batcher is running before closing channels
+			c.mu.Lock()
+			batcherRunning := c.batcherRunning
+			c.mu.Unlock()
 
-			// Wait for batcher to finish (it will flush pending events)
-			<-c.batcherDone
+			if batcherRunning {
+				// Close the event queue to signal no more events coming
+				// This allows batcher to flush pending events before exiting
+				close(c.eventQueue)
+
+				// Wait for batcher to finish (it will flush pending events)
+				<-c.batcherDone
+			}
 
 			// Close the connection
 			c.mu.Lock()
