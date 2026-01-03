@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	testutilcli "github.com/thenoetrevino/paso/internal/testutil/cli"
@@ -31,9 +32,7 @@ func TestValidateColorHex_Valid(t *testing.T) {
 	for _, color := range tests {
 		t.Run(color, func(t *testing.T) {
 			err := ValidateColorHex(color)
-			if err != nil {
-				t.Errorf("Expected %s to be valid, got error: %v", color, err)
-			}
+			assert.NoError(t, err, "Color should be valid: %s", color)
 		})
 	}
 }
@@ -88,9 +87,7 @@ func TestParsePriority_Valid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			result, err := ParsePriority(tt.input)
-			if err != nil {
-				t.Errorf("Expected no error for '%s', got: %v", tt.input, err)
-			}
+			assert.NoError(t, err, "ParsePriority should not return error for: %s", tt.input)
 			if result != tt.expected {
 				t.Errorf("Expected %d for '%s', got %d", tt.expected, tt.input, result)
 			}
@@ -139,9 +136,7 @@ func TestParseTaskType_Valid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			result, err := ParseTaskType(tt.input)
-			if err != nil {
-				t.Errorf("Expected no error for '%s', got: %v", tt.input, err)
-			}
+			assert.NoError(t, err, "ParseTaskType should not return error for: %s", tt.input)
 			if result != tt.expected {
 				t.Errorf("Expected %d for '%s', got %d", tt.expected, tt.input, result)
 			}
@@ -192,9 +187,7 @@ func TestGetLabelByID_Found(t *testing.T) {
 
 	// Test finding the label
 	label, err := GetLabelByID(ctx, cliInstance, labelID)
-	if err != nil {
-		t.Fatalf("Expected to find label, got error: %v", err)
-	}
+	require.NoError(t, err, "Should find label successfully")
 
 	if label.ID != labelID {
 		t.Errorf("Expected label ID %d, got %d", labelID, label.ID)
@@ -231,9 +224,7 @@ func TestGetLabelByID_Found_MultipleProjects(t *testing.T) {
 
 	// Test finding label from second project
 	label, err := GetLabelByID(ctx, cliInstance, label2ID)
-	if err != nil {
-		t.Fatalf("Expected to find label, got error: %v", err)
-	}
+	require.NoError(t, err, "Should find label successfully")
 
 	if label.Name != "Label 2" {
 		t.Errorf("Expected label name 'Label 2', got '%s'", label.Name)
@@ -315,10 +306,8 @@ func TestFindColumnByName_Found(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			col, err := FindColumnByName(columns, tt.searchName)
-			if err != nil {
-				t.Errorf("Expected to find column '%s', got error: %v", tt.searchName, err)
-			}
-			if col.ID != tt.expectedID {
+			assert.NoError(t, err, "FindColumnByName should not return error for: %s", tt.searchName)
+			if col != nil && col.ID != tt.expectedID {
 				t.Errorf("Expected column ID %d, got %d", tt.expectedID, col.ID)
 			}
 		})
@@ -457,15 +446,11 @@ func TestGetProjectID_FlagSet(t *testing.T) {
 
 	// Set the flag value
 	err := cmd.Flags().Set("project", "42")
-	if err != nil {
-		t.Fatalf("Failed to set project flag: %v", err)
-	}
+	require.NoError(t, err, "Failed to set project flag")
 
 	// Test getting the project ID
 	projectID, err := GetProjectID(cmd)
-	if err != nil {
-		t.Errorf("Expected no error, got: %v", err)
-	}
+	assert.NoError(t, err, "GetProjectID should not return error")
 	if projectID != 42 {
 		t.Errorf("Expected project ID 42, got %d", projectID)
 	}
@@ -497,9 +482,7 @@ func TestGetProjectID_EnvVarSet(t *testing.T) {
 
 	// Test getting the project ID from env var
 	projectID, err := GetProjectID(cmd)
-	if err != nil {
-		t.Errorf("Expected no error, got: %v", err)
-	}
+	assert.NoError(t, err, "GetProjectID should not return error")
 	if projectID != 123 {
 		t.Errorf("Expected project ID 123, got %d", projectID)
 	}
@@ -533,9 +516,7 @@ func TestGetProjectID_FlagTakesPrecedence(t *testing.T) {
 
 	// Test that flag takes precedence over env var
 	projectID, err := GetProjectID(cmd)
-	if err != nil {
-		t.Errorf("Expected no error, got: %v", err)
-	}
+	assert.NoError(t, err, "GetProjectID should not return error")
 	if projectID != 200 {
 		t.Errorf("Expected project ID 200 (from flag), got %d", projectID)
 	}
@@ -632,9 +613,7 @@ func TestGetProjectID_NoProjectFlag(t *testing.T) {
 
 	// Test that env var still works when flag doesn't exist
 	projectID, err := GetProjectID(cmd)
-	if err != nil {
-		t.Errorf("Expected no error, got: %v", err)
-	}
+	assert.NoError(t, err, "GetProjectID should not return error")
 	if projectID != 456 {
 		t.Errorf("Expected project ID 456, got %d", projectID)
 	}
@@ -666,9 +645,7 @@ func TestGetProjectID_ZeroValueFlag(t *testing.T) {
 
 	// Test that env var is used when flag is not changed (even if it's 0)
 	projectID, err := GetProjectID(cmd)
-	if err != nil {
-		t.Errorf("Expected no error, got: %v", err)
-	}
+	assert.NoError(t, err, "GetProjectID should not return error")
 	if projectID != 789 {
 		t.Errorf("Expected project ID 789 (from env var), got %d", projectID)
 	}

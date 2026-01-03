@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -22,7 +23,8 @@ func TestLabelPicker_NavigationAndSelection(t *testing.T) {
 	testutil.CreateTestLabel(t, db, projectID, "docs", "#0000FF")
 
 	// Reload labels
-	labels, _ := m.App.LabelService.GetLabelsByProject(ctx, projectID)
+	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load labels for test setup")
 	m.AppState.SetLabels(labels)
 
 	// Enter label picker mode and set labels
@@ -69,7 +71,8 @@ func TestLabelPicker_FilteringAndBackspace(t *testing.T) {
 	testutil.CreateTestLabel(t, db, projectID, "backend", "#00FF00")
 	testutil.CreateTestLabel(t, db, projectID, "frontend", "#0000FF")
 
-	labels, _ := m.App.LabelService.GetLabelsByProject(ctx, projectID)
+	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load labels for test setup")
 	m.AppState.SetLabels(labels)
 	m.UIState.SetMode(state.LabelPickerMode)
 	for _, label := range labels {
@@ -104,7 +107,8 @@ func TestLabelPicker_MultiSelectToggle(t *testing.T) {
 	testutil.CreateTestLabel(t, db, projectID, "bug", "#FF0000")
 	testutil.CreateTestLabel(t, db, projectID, "feature", "#00FF00")
 
-	labels, _ := m.App.LabelService.GetLabelsByProject(ctx, projectID)
+	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load labels for test setup")
 	m.AppState.SetLabels(labels)
 	m.UIState.SetMode(state.LabelPickerMode)
 	for _, label := range labels {
@@ -192,7 +196,8 @@ func TestParentPicker_SearchAndSelect(t *testing.T) {
 	// Create a parent task
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	columns, _ := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load columns for test setup")
 	if len(columns) == 0 {
 		t.Skip("No columns available for testing")
 	}
@@ -200,7 +205,8 @@ func TestParentPicker_SearchAndSelect(t *testing.T) {
 	testutil.CreateTestTask(t, db, columns[0].ID, "Parent Task")
 
 	// Reload tasks
-	tasks, _ := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load tasks for test setup")
 	m.AppState.SetTasks(tasks)
 
 	// Enter parent picker mode
@@ -229,7 +235,8 @@ func TestChildPicker_SearchAndSelect(t *testing.T) {
 	// Create a child task
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	columns, _ := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load columns for test setup")
 	if len(columns) == 0 {
 		t.Skip("No columns available for testing")
 	}
@@ -237,7 +244,8 @@ func TestChildPicker_SearchAndSelect(t *testing.T) {
 	testutil.CreateTestTask(t, db, columns[0].ID, "Child Task")
 
 	// Reload tasks
-	tasks, _ := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load tasks for test setup")
 	m.AppState.SetTasks(tasks)
 
 	// Enter child picker mode
@@ -291,7 +299,8 @@ func TestStatusPicker_ColumnSelection(t *testing.T) {
 
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	columns, _ := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load columns for test setup")
 	m.Pickers.Status.SetColumns(columns)
 
 	// Navigate down arrow
@@ -319,7 +328,8 @@ func TestLabelPicker_EscapeExitsMode(t *testing.T) {
 	projectID := m.AppState.GetCurrentProjectID()
 	testutil.CreateTestLabel(t, db, projectID, "test", "#FFFFFF")
 
-	labels, _ := m.App.LabelService.GetLabelsByProject(ctx, projectID)
+	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load labels for test setup")
 	m.AppState.SetLabels(labels)
 	m.UIState.SetMode(state.LabelPickerMode)
 	for _, label := range labels {

@@ -6,6 +6,9 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ============================================================================
@@ -114,14 +117,13 @@ func TestOutputFormatter_Success_JSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stdout
 			oldStdout := os.Stdout
-			r, w, _ := os.Pipe()
+			r, w, err := os.Pipe()
+			require.NoError(t, err, "Failed to create pipe for test")
 			os.Stdout = w
 
 			formatter := &OutputFormatter{JSON: true, Quiet: false}
-			err := formatter.Success(tt.data)
-			if err != nil {
-				t.Errorf("Expected no error, got %v", err)
-			}
+			err = formatter.Success(tt.data)
+			assert.NoError(t, err, "Success method should not return error")
 
 			_ = w.Close()
 			os.Stdout = oldStdout
@@ -132,9 +134,7 @@ func TestOutputFormatter_Success_JSON(t *testing.T) {
 
 			// Verify JSON output
 			var result map[string]interface{}
-			if err := json.Unmarshal([]byte(output), &result); err != nil {
-				t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
-			}
+			require.NoError(t, json.Unmarshal([]byte(output), &result), "Failed to parse JSON output")
 
 			tt.validate(t, result)
 		})
@@ -188,19 +188,17 @@ func TestOutputFormatter_Success_Quiet_WithID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stdout
 			oldStdout := os.Stdout
-			r, w, _ := os.Pipe()
+			r, w, err := os.Pipe()
+			require.NoError(t, err, "Failed to create pipe for test")
 			os.Stdout = w
 
 			formatter := &OutputFormatter{JSON: false, Quiet: true}
-			err := formatter.Success(tt.data)
+			err = formatter.Success(tt.data)
+			assert.NoError(t, err, "Success method should not return error")
 
 			// Close writer before checking error or reading output
 			_ = w.Close()
 			os.Stdout = oldStdout
-
-			if err != nil {
-				t.Errorf("Expected no error, got %v", err)
-			}
 
 			var buf bytes.Buffer
 			_, _ = buf.ReadFrom(r)
@@ -249,14 +247,13 @@ func TestOutputFormatter_Success_Quiet_WithoutID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stdout
 			oldStdout := os.Stdout
-			r, w, _ := os.Pipe()
+			r, w, err := os.Pipe()
+			require.NoError(t, err, "Failed to create pipe for test")
 			os.Stdout = w
 
 			formatter := &OutputFormatter{JSON: false, Quiet: true}
-			err := formatter.Success(tt.data)
-			if err != nil {
-				t.Errorf("Expected no error, got %v", err)
-			}
+			err = formatter.Success(tt.data)
+			assert.NoError(t, err, "Success method should not return error")
 
 			_ = w.Close()
 			os.Stdout = oldStdout
@@ -310,14 +307,13 @@ func TestOutputFormatter_Success_HumanReadable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stdout
 			oldStdout := os.Stdout
-			r, w, _ := os.Pipe()
+			r, w, err := os.Pipe()
+			require.NoError(t, err, "Failed to create pipe for test")
 			os.Stdout = w
 
 			formatter := &OutputFormatter{JSON: false, Quiet: false}
-			err := formatter.Success(tt.data)
-			if err != nil {
-				t.Errorf("Expected no error, got %v", err)
-			}
+			err = formatter.Success(tt.data)
+			assert.NoError(t, err, "Success method should not return error")
 
 			_ = w.Close()
 			os.Stdout = oldStdout
@@ -370,14 +366,13 @@ func TestOutputFormatter_Error_JSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stdout
 			oldStdout := os.Stdout
-			r, w, _ := os.Pipe()
+			r, w, err := os.Pipe()
+			require.NoError(t, err, "Failed to create pipe for test")
 			os.Stdout = w
 
 			formatter := &OutputFormatter{JSON: true, Quiet: false}
-			err := formatter.Error(tt.code, tt.message)
-			if err != nil {
-				t.Errorf("Expected no error, got %v", err)
-			}
+			err = formatter.Error(tt.code, tt.message)
+			assert.NoError(t, err, "Error method should not return error")
 
 			_ = w.Close()
 			os.Stdout = oldStdout
@@ -388,9 +383,7 @@ func TestOutputFormatter_Error_JSON(t *testing.T) {
 
 			// Verify JSON output
 			var result map[string]interface{}
-			if err := json.Unmarshal([]byte(output), &result); err != nil {
-				t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
-			}
+			require.NoError(t, json.Unmarshal([]byte(output), &result), "Failed to parse JSON output")
 
 			if result["success"].(bool) {
 				t.Error("Expected success to be false")
@@ -419,14 +412,13 @@ func TestOutputFormatter_Error_JSON(t *testing.T) {
 func TestOutputFormatter_Error_Quiet(t *testing.T) {
 	// Capture stderr (should be empty in quiet mode)
 	oldStderr := os.Stderr
-	r, w, _ := os.Pipe()
+	r, w, err := os.Pipe()
+	require.NoError(t, err, "Failed to create pipe for test")
 	os.Stderr = w
 
 	formatter := &OutputFormatter{JSON: false, Quiet: true}
-	err := formatter.Error("TEST_ERROR", "this should be suppressed")
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
+	err = formatter.Error("TEST_ERROR", "this should be suppressed")
+	assert.NoError(t, err, "Error method should not return error")
 
 	_ = w.Close()
 	os.Stderr = oldStderr
@@ -473,14 +465,13 @@ func TestOutputFormatter_Error_HumanReadable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stderr
 			oldStderr := os.Stderr
-			r, w, _ := os.Pipe()
+			r, w, err := os.Pipe()
+			require.NoError(t, err, "Failed to create pipe for test")
 			os.Stderr = w
 
 			formatter := &OutputFormatter{JSON: false, Quiet: false}
-			err := formatter.Error(tt.code, tt.message)
-			if err != nil {
-				t.Errorf("Expected no error, got %v", err)
-			}
+			err = formatter.Error(tt.code, tt.message)
+			assert.NoError(t, err, "Error method should not return error")
 
 			_ = w.Close()
 			os.Stderr = oldStderr
@@ -543,14 +534,13 @@ func TestOutputFormatter_ErrorWithSuggestion_JSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stdout
 			oldStdout := os.Stdout
-			r, w, _ := os.Pipe()
+			r, w, err := os.Pipe()
+			require.NoError(t, err, "Failed to create pipe for test")
 			os.Stdout = w
 
 			formatter := &OutputFormatter{JSON: true, Quiet: false}
-			err := formatter.ErrorWithSuggestion(tt.code, tt.message, tt.suggestion)
-			if err != nil {
-				t.Errorf("Expected no error, got %v", err)
-			}
+			err = formatter.ErrorWithSuggestion(tt.code, tt.message, tt.suggestion)
+			assert.NoError(t, err, "ErrorWithSuggestion method should not return error")
 
 			_ = w.Close()
 			os.Stdout = oldStdout
@@ -561,9 +551,7 @@ func TestOutputFormatter_ErrorWithSuggestion_JSON(t *testing.T) {
 
 			// Verify JSON output
 			var result map[string]interface{}
-			if err := json.Unmarshal([]byte(output), &result); err != nil {
-				t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
-			}
+			require.NoError(t, json.Unmarshal([]byte(output), &result), "Failed to parse JSON output")
 
 			if result["success"].(bool) {
 				t.Error("Expected success to be false")
@@ -614,14 +602,13 @@ func TestOutputFormatter_ErrorWithSuggestion_Quiet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stderr (should be empty in quiet mode)
 			oldStderr := os.Stderr
-			r, w, _ := os.Pipe()
+			r, w, err := os.Pipe()
+			require.NoError(t, err, "Failed to create pipe for test")
 			os.Stderr = w
 
 			formatter := &OutputFormatter{JSON: false, Quiet: true}
-			err := formatter.ErrorWithSuggestion("ERR", "message", tt.suggestion)
-			if err != nil {
-				t.Errorf("Expected no error, got %v", err)
-			}
+			err = formatter.ErrorWithSuggestion("ERR", "message", tt.suggestion)
+			assert.NoError(t, err, "ErrorWithSuggestion method should not return error")
 
 			_ = w.Close()
 			os.Stderr = oldStderr
@@ -687,19 +674,17 @@ func TestOutputFormatter_ErrorWithSuggestion_HumanReadable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stderr
 			oldStderr := os.Stderr
-			r, w, _ := os.Pipe()
+			r, w, err := os.Pipe()
+			require.NoError(t, err, "Failed to create pipe for test")
 			os.Stderr = w
 
 			formatter := &OutputFormatter{JSON: false, Quiet: false}
-			err := formatter.ErrorWithSuggestion(tt.code, tt.message, tt.suggestion)
+			err = formatter.ErrorWithSuggestion(tt.code, tt.message, tt.suggestion)
+			assert.NoError(t, err, "ErrorWithSuggestion method should not return error")
 
 			// Close writer before checking error
 			_ = w.Close()
 			os.Stderr = oldStderr
-
-			if err != nil {
-				t.Errorf("Expected no error, got %v", err)
-			}
 
 			var buf bytes.Buffer
 			_, _ = buf.ReadFrom(r)
@@ -727,19 +712,17 @@ func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 	// even if JSON is also true (Quiet check happens first)
 	t.Run("Quiet takes precedence over JSON when GetID exists", func(t *testing.T) {
 		oldStdout := os.Stdout
-		r, w, _ := os.Pipe()
+		r, w, err := os.Pipe()
+		require.NoError(t, err, "Failed to create pipe for test")
 		os.Stdout = w
 
 		formatter := &OutputFormatter{JSON: true, Quiet: true}
 		data := mockDataWithID{ID: 42, Name: "Test"}
-		err := formatter.Success(data)
+		err = formatter.Success(data)
+		assert.NoError(t, err, "Success method should not return error")
 
 		_ = w.Close()
 		os.Stdout = oldStdout
-
-		if err != nil {
-			t.Errorf("Expected no error, got %v", err)
-		}
 
 		var buf bytes.Buffer
 		_, _ = buf.ReadFrom(r)
@@ -754,19 +737,17 @@ func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 	// When Quiet is true but data has no GetID(), it falls through to JSON
 	t.Run("Quiet without GetID falls through to JSON", func(t *testing.T) {
 		oldStdout := os.Stdout
-		r, w, _ := os.Pipe()
+		r, w, err := os.Pipe()
+		require.NoError(t, err, "Failed to create pipe for test")
 		os.Stdout = w
 
 		formatter := &OutputFormatter{JSON: true, Quiet: true}
 		data := mockDataWithoutID{Name: "Test", Value: 42}
-		err := formatter.Success(data)
+		err = formatter.Success(data)
+		assert.NoError(t, err, "Success method should not return error")
 
 		_ = w.Close()
 		os.Stdout = oldStdout
-
-		if err != nil {
-			t.Errorf("Expected no error, got %v", err)
-		}
 
 		var buf bytes.Buffer
 		_, _ = buf.ReadFrom(r)
@@ -774,26 +755,22 @@ func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 
 		// Should output JSON
 		var result map[string]interface{}
-		if err := json.Unmarshal([]byte(output), &result); err != nil {
-			t.Fatalf("Expected JSON output when Quiet=true without GetID(), got: %s", output)
-		}
+		require.NoError(t, json.Unmarshal([]byte(output), &result), "Expected JSON output when Quiet=true without GetID()")
 	})
 
 	// JSON should take precedence for Error
 	t.Run("JSON takes precedence over Quiet for Error", func(t *testing.T) {
 		oldStdout := os.Stdout
-		r, w, _ := os.Pipe()
+		r, w, err := os.Pipe()
+		require.NoError(t, err, "Failed to create pipe for test")
 		os.Stdout = w
 
 		formatter := &OutputFormatter{JSON: true, Quiet: true}
-		err := formatter.Error("TEST", "message")
+		err = formatter.Error("TEST", "message")
+		assert.NoError(t, err, "Error method should not return error")
 
 		_ = w.Close()
 		os.Stdout = oldStdout
-
-		if err != nil {
-			t.Errorf("Expected no error, got %v", err)
-		}
 
 		var buf bytes.Buffer
 		_, _ = buf.ReadFrom(r)
@@ -801,9 +778,7 @@ func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 
 		// Should output JSON
 		var result map[string]interface{}
-		if err := json.Unmarshal([]byte(output), &result); err != nil {
-			t.Fatalf("Expected JSON output when JSON=true, got: %s", output)
-		}
+		require.NoError(t, json.Unmarshal([]byte(output), &result), "Expected JSON output when JSON=true")
 	})
 }
 
@@ -822,14 +797,13 @@ func TestOutputFormatter_NilData(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			oldStdout := os.Stdout
-			r, w, _ := os.Pipe()
+			r, w, err := os.Pipe()
+			require.NoError(t, err, "Failed to create pipe for test")
 			os.Stdout = w
 
 			formatter := &OutputFormatter{JSON: tt.json, Quiet: tt.quiet}
-			err := formatter.Success(nil)
-			if err != nil {
-				t.Errorf("Expected no error with nil data, got %v", err)
-			}
+			err = formatter.Success(nil)
+			assert.NoError(t, err, "Success method should not return error with nil data")
 
 			_ = w.Close()
 			os.Stdout = oldStdout
@@ -841,9 +815,7 @@ func TestOutputFormatter_NilData(t *testing.T) {
 			// Should handle nil gracefully - just verify no panic occurred
 			if tt.json {
 				var result map[string]interface{}
-				if err := json.Unmarshal([]byte(output), &result); err != nil {
-					t.Fatalf("Failed to parse JSON with nil data: %v", err)
-				}
+				require.NoError(t, json.Unmarshal([]byte(output), &result), "Failed to parse JSON with nil data")
 			}
 		})
 	}
@@ -852,14 +824,13 @@ func TestOutputFormatter_NilData(t *testing.T) {
 func TestOutputFormatter_ErrorCallsErrorWithSuggestion(t *testing.T) {
 	// Verify that Error() correctly calls ErrorWithSuggestion() with empty suggestion
 	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
+	r, w, err := os.Pipe()
+	require.NoError(t, err, "Failed to create pipe for test")
 	os.Stdout = w
 
 	formatter := &OutputFormatter{JSON: true, Quiet: false}
-	err := formatter.Error("CODE", "message")
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
+	err = formatter.Error("CODE", "message")
+	assert.NoError(t, err, "Error method should not return error")
 
 	_ = w.Close()
 	os.Stdout = oldStdout
@@ -869,9 +840,7 @@ func TestOutputFormatter_ErrorCallsErrorWithSuggestion(t *testing.T) {
 	output := buf.String()
 
 	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("Failed to parse JSON: %v", err)
-	}
+	require.NoError(t, json.Unmarshal([]byte(output), &result), "Failed to parse JSON output")
 
 	errorData := result["error"].(map[string]interface{})
 	// Verify no suggestion field is present

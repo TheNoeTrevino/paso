@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
@@ -18,8 +19,9 @@ func setupLinkedColumns(t *testing.T, db *sql.DB) (projectID, column1ID, column2
 	// Create project manually
 	result, err := db.ExecContext(context.Background(),
 		"INSERT INTO projects (name, description) VALUES (?, ?)", "Test Project", "Test description")
-	assert.NoError(t, err)
-	projID, _ := result.LastInsertId()
+	require.NoError(t, err, "Failed to insert project")
+	projID, err := result.LastInsertId()
+	require.NoError(t, err, "Failed to get project ID")
 	projectID = int(projID)
 
 	// Initialize project counter
@@ -31,16 +33,18 @@ func setupLinkedColumns(t *testing.T, db *sql.DB) (projectID, column1ID, column2
 	result, err = db.ExecContext(context.Background(),
 		"INSERT INTO columns (project_id, name, prev_id, next_id) VALUES (?, ?, NULL, NULL)",
 		projectID, "Todo")
-	assert.NoError(t, err)
-	col1ID, _ := result.LastInsertId()
+	require.NoError(t, err, "Failed to insert first column")
+	col1ID, err := result.LastInsertId()
+	require.NoError(t, err, "Failed to get first column ID")
 	column1ID = int(col1ID)
 
 	// Create second column (In Progress)
 	result, err = db.ExecContext(context.Background(),
 		"INSERT INTO columns (project_id, name, prev_id, next_id) VALUES (?, ?, ?, NULL)",
 		projectID, "In Progress", column1ID)
-	assert.NoError(t, err)
-	col2ID, _ := result.LastInsertId()
+	require.NoError(t, err, "Failed to insert second column")
+	col2ID, err := result.LastInsertId()
+	require.NoError(t, err, "Failed to get second column ID")
 	column2ID = int(col2ID)
 
 	// Link column1 to column2
@@ -52,8 +56,9 @@ func setupLinkedColumns(t *testing.T, db *sql.DB) (projectID, column1ID, column2
 	result, err = db.ExecContext(context.Background(),
 		"INSERT INTO columns (project_id, name, prev_id, next_id) VALUES (?, ?, ?, NULL)",
 		projectID, "Done", column2ID)
-	assert.NoError(t, err)
-	col3ID, _ := result.LastInsertId()
+	require.NoError(t, err, "Failed to insert third column")
+	col3ID, err := result.LastInsertId()
+	require.NoError(t, err, "Failed to get third column ID")
 	column3ID = int(col3ID)
 
 	// Link column2 to column3
