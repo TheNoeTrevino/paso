@@ -692,7 +692,7 @@ func TestUpdateProject_ErrorCases(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	t.Cleanup(func() { _ = db.Close() })
 
 	svc := NewService(db, nil)
 
@@ -752,6 +752,7 @@ func TestUpdateProject_ErrorCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			err := svc.UpdateProject(context.Background(), tt.req)
 
 			if tt.expectedErr != nil {

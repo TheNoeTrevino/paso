@@ -6,121 +6,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
-
-// ============================================================================
-// TEST HELPERS
-// ============================================================================
-
-// setupTestDB creates an in-memory database with full schema using testutil
-func setupTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-	return testutil.SetupTestDB(t)
-}
-
-// createTestProject creates a test project and returns its ID
-func createTestProject(t *testing.T, db *sql.DB) int {
-	t.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name, description) VALUES (?, ?)", "Test Project", "Description")
-	if err != nil {
-		t.Fatalf("Failed to create test project: %v", err)
-	}
-
-	// Initialize project counter
-	id, _ := result.LastInsertId()
-	_, err = db.ExecContext(context.Background(), "INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)", id)
-	if err != nil {
-		t.Fatalf("Failed to initialize project counter: %v", err)
-	}
-
-	return int(id)
-}
-
-// createTestColumn creates a test column and returns its ID
-func createTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
-	t.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name, holds_ready_tasks) VALUES (?, ?, ?)", projectID, name, false)
-	if err != nil {
-		t.Fatalf("Failed to create test column: %v", err)
-	}
-	id, _ := result.LastInsertId()
-	return int(id)
-}
-
-// createTestReadyColumn creates a test column with holds_ready_tasks=true and returns its ID
-func createTestReadyColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
-	t.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name, holds_ready_tasks) VALUES (?, ?, ?)", projectID, name, true)
-	if err != nil {
-		t.Fatalf("Failed to create test ready column: %v", err)
-	}
-	id, _ := result.LastInsertId()
-	return int(id)
-}
-
-// createTestCompletedColumn creates a test column with holds_completed_tasks=true and returns its ID
-func createTestCompletedColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
-	t.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name, holds_completed_tasks) VALUES (?, ?, ?)", projectID, name, true)
-	if err != nil {
-		t.Fatalf("Failed to create test completed column: %v", err)
-	}
-	id, _ := result.LastInsertId()
-	return int(id)
-}
-
-// createTestTask creates a test task and returns its ID
-func createTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
-	t.Helper()
-
-	// Get the next position for this column
-	var maxPos sql.NullInt64
-	err := db.QueryRowContext(context.Background(),
-		"SELECT MAX(position) FROM tasks WHERE column_id = ?", columnID).Scan(&maxPos)
-	if err != nil && err != sql.ErrNoRows {
-		t.Fatalf("Failed to get max position: %v", err)
-	}
-
-	nextPos := 0
-	if maxPos.Valid {
-		nextPos = int(maxPos.Int64) + 1
-	}
-
-	result, err := db.ExecContext(context.Background(),
-		"INSERT INTO tasks (column_id, title, position, type_id, priority_id) VALUES (?, ?, ?, 1, 3)",
-		columnID, title, nextPos)
-	if err != nil {
-		t.Fatalf("Failed to create test task: %v", err)
-	}
-	id, _ := result.LastInsertId()
-	return int(id)
-}
-
-// createTestLabel creates a test label and returns its ID
-func createTestLabel(t *testing.T, db *sql.DB, projectID int, name string) int {
-	t.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)", projectID, name, "#FF5733")
-	if err != nil {
-		t.Fatalf("Failed to create test label: %v", err)
-	}
-	id, _ := result.LastInsertId()
-	return int(id)
-}
-
-// createTestComment creates a test comment and returns its ID
-func createTestComment(t *testing.T, db *sql.DB, taskID int, message, author string) int {
-	t.Helper()
-	result, err := db.ExecContext(context.Background(),
-		"INSERT INTO task_comments (task_id, content, author) VALUES (?, ?, ?)",
-		taskID, message, author)
-	if err != nil {
-		t.Fatalf("Failed to create test comment: %v", err)
-	}
-	id, _ := result.LastInsertId()
-	return int(id)
-}
 
 // ============================================================================
 // TEST CASES - CREATE
@@ -146,7 +35,6 @@ func TestCreateTask(t *testing.T) {
 	}
 
 	result, err := svc.CreateTask(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -176,6 +64,7 @@ func TestCreateTask(t *testing.T) {
 }
 
 func TestCreateTask_Validation(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		req CreateTaskRequest
 		// If setupFn is provided, it sets up additional DB state
@@ -302,7 +191,6 @@ func TestCreateTask_WithLabels(t *testing.T) {
 	}
 
 	result, err := svc.CreateTask(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -348,7 +236,6 @@ func TestGetTaskDetail(t *testing.T) {
 
 	// Get task detail
 	result, err := svc.GetTaskDetail(context.Background(), created.ID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -436,7 +323,6 @@ func TestGetTaskSummariesByProject(t *testing.T) {
 
 	// Get summaries
 	results, err := svc.GetTaskSummariesByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -488,7 +374,6 @@ func TestUpdateTask(t *testing.T) {
 	}
 
 	err = svc.UpdateTask(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -509,6 +394,7 @@ func TestUpdateTask(t *testing.T) {
 }
 
 func TestUpdateTask_Validation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		taskID  int
@@ -605,7 +491,6 @@ func TestDeleteTask(t *testing.T) {
 
 	// Delete task
 	err = svc.DeleteTask(context.Background(), created.ID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -663,7 +548,6 @@ func TestAttachLabel(t *testing.T) {
 
 	// Attach label
 	err = svc.AttachLabel(context.Background(), created.ID, labelID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -704,7 +588,6 @@ func TestDetachLabel(t *testing.T) {
 
 	// Detach label
 	err = svc.DetachLabel(context.Background(), created.ID, labelID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -750,7 +633,6 @@ func TestAddParentRelation(t *testing.T) {
 
 	// Add parent relation (task1 is parent of task2)
 	err := svc.AddParentRelation(context.Background(), task2.ID, task1.ID, 1)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -792,7 +674,6 @@ func TestAddChildRelation(t *testing.T) {
 
 	// Add child relation (task2 is child of task1)
 	err := svc.AddChildRelation(context.Background(), task1.ID, task2.ID, 1)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -835,7 +716,6 @@ func TestRemoveParentRelation(t *testing.T) {
 
 	// Remove parent relation
 	err := svc.RemoveParentRelation(context.Background(), task2.ID, task1.ID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -883,7 +763,6 @@ func TestRemoveChildRelation(t *testing.T) {
 
 	// Remove child relation
 	err = svc.RemoveChildRelation(context.Background(), task1.ID, task2.ID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -931,7 +810,6 @@ func TestMoveTaskToNextColumn(t *testing.T) {
 
 	// Move to next column
 	err = svc.MoveTaskToNextColumn(context.Background(), task.ID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1019,7 +897,6 @@ func TestMoveTaskToPrevColumn(t *testing.T) {
 
 	// Move to previous column
 	err = svc.MoveTaskToPrevColumn(context.Background(), task.ID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1096,7 +973,6 @@ func TestMoveTaskToColumn(t *testing.T) {
 
 	// Move to specific column
 	err := svc.MoveTaskToColumn(context.Background(), task.ID, col2ID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1181,7 +1057,6 @@ func TestMoveTaskUp(t *testing.T) {
 
 	// Move task2 up (should swap positions with task1)
 	err := svc.MoveTaskUp(context.Background(), task2.ID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1268,7 +1143,6 @@ func TestMoveTaskDown(t *testing.T) {
 
 	// Move task1 down (should swap positions with task2)
 	err := svc.MoveTaskDown(context.Background(), task1.ID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1365,7 +1239,6 @@ func TestGetTaskSummariesByProjectFiltered(t *testing.T) {
 
 	// Filter by "bug"
 	results, err := svc.GetTaskSummariesByProjectFiltered(context.Background(), projectID, "bug")
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1400,7 +1273,6 @@ func TestGetTaskSummariesByProjectFiltered_NoResults(t *testing.T) {
 
 	// Filter by non-existent term
 	results, err := svc.GetTaskSummariesByProjectFiltered(context.Background(), projectID, "nonexistent")
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1441,7 +1313,6 @@ func TestGetTaskSummariesByProjectFiltered_EmptyQuery(t *testing.T) {
 
 	// Filter with empty query (should return all)
 	results, err := svc.GetTaskSummariesByProjectFiltered(context.Background(), projectID, "")
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1482,7 +1353,6 @@ func TestGetTaskReferencesForProject(t *testing.T) {
 
 	// Get task references
 	refs, err := svc.GetTaskReferencesForProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1503,7 +1373,6 @@ func TestGetTaskReferencesForProject_EmptyProject(t *testing.T) {
 
 	// Get task references for empty project
 	refs, err := svc.GetTaskReferencesForProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1538,7 +1407,6 @@ func TestGetReadyTaskSummariesByProject_OnlyReadyColumn(t *testing.T) {
 
 	// Get ready tasks
 	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1587,7 +1455,6 @@ func TestGetReadyTaskSummariesByProject_ExcludesBlockedTasks(t *testing.T) {
 
 	// Get ready tasks
 	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1620,7 +1487,6 @@ func TestGetReadyTaskSummariesByProject_EmptyWhenNoReadyColumn(t *testing.T) {
 
 	// Get ready tasks
 	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1644,7 +1510,6 @@ func TestGetReadyTaskSummariesByProject_EmptyReadyColumn(t *testing.T) {
 
 	// Get ready tasks
 	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1686,7 +1551,6 @@ func TestGetReadyTaskSummariesByProject_IncludesTaskDetails(t *testing.T) {
 
 	// Get ready tasks
 	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1730,7 +1594,6 @@ func TestGetTaskTreeByProject_EmptyProject(t *testing.T) {
 
 	// Get tree for empty project
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1764,7 +1627,6 @@ func TestGetTaskTreeByProject_SimpleHierarchy(t *testing.T) {
 
 	// Get tree
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1816,7 +1678,6 @@ func TestGetTaskTreeByProject_CircularDependency(t *testing.T) {
 
 	// Get tree - should handle circular dependency gracefully
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1856,7 +1717,6 @@ func TestGetTaskTreeByProject_DeepNesting(t *testing.T) {
 
 	// Get tree
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1908,7 +1768,6 @@ func TestGetTaskTreeByProject_BlockingRelationship(t *testing.T) {
 
 	// Get tree
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1950,7 +1809,6 @@ func TestGetTaskTreeByProject_SortedByTicketNumber(t *testing.T) {
 
 	// Get tree
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1998,7 +1856,6 @@ func TestGetTaskTreeByProject_MultipleRootsWithChildren(t *testing.T) {
 
 	// Get tree
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -2468,7 +2325,6 @@ func TestCreateComment(t *testing.T) {
 	}
 
 	result, err := svc.CreateComment(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -2499,6 +2355,7 @@ func TestCreateComment(t *testing.T) {
 }
 
 func TestCreateComment_Validation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		taskID  int
@@ -2607,7 +2464,6 @@ func TestUpdateComment(t *testing.T) {
 	}
 
 	err := svc.UpdateComment(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -2626,6 +2482,7 @@ func TestUpdateComment(t *testing.T) {
 }
 
 func TestUpdateComment_Validation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		commentID int
@@ -2725,7 +2582,6 @@ func TestDeleteComment(t *testing.T) {
 	svc := NewService(db, nil)
 
 	err := svc.DeleteComment(context.Background(), commentID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -2799,7 +2655,6 @@ func TestGetCommentsByTask(t *testing.T) {
 	svc := NewService(db, nil)
 
 	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -2832,7 +2687,6 @@ func TestGetCommentsByTask_NoComments(t *testing.T) {
 	svc := NewService(db, nil)
 
 	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -2885,7 +2739,6 @@ func TestGetCommentsByTask_OrderedByCreatedAt(t *testing.T) {
 	svc := NewService(db, nil)
 
 	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -2938,7 +2791,6 @@ func TestGetTaskDetail_IncludesComments(t *testing.T) {
 
 	// Get task detail
 	detail, err := svc.GetTaskDetail(context.Background(), task.ID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -2983,7 +2835,6 @@ func TestDeleteTask_CascadesComments(t *testing.T) {
 
 	// Delete the task
 	err := svc.DeleteTask(context.Background(), taskID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -3642,8 +3493,10 @@ func TestRemoveParentRelation_RestructuresTree(t *testing.T) {
 	})
 
 	// Create chain: A -> B -> C
-	svc.AddChildRelation(context.Background(), task1.ID, task2.ID, 1)
-	svc.AddChildRelation(context.Background(), task2.ID, task3.ID, 1)
+	err := svc.AddChildRelation(context.Background(), task1.ID, task2.ID, 1)
+	assert.NoError(t, err)
+	err = svc.AddChildRelation(context.Background(), task2.ID, task3.ID, 1)
+	assert.NoError(t, err)
 
 	// Verify structure
 	nodes, _ := svc.GetTaskTreeByProject(context.Background(), projectID)
@@ -3652,10 +3505,8 @@ func TestRemoveParentRelation_RestructuresTree(t *testing.T) {
 	}
 
 	// Remove middle relationship: B from A
-	err := svc.RemoveChildRelation(context.Background(), task1.ID, task2.ID)
-	if err != nil {
-		t.Fatalf("Failed to remove relation: %v", err)
-	}
+	err = svc.RemoveChildRelation(context.Background(), task1.ID, task2.ID)
+	assert.NoError(t, err)
 
 	// Now A and B should both be roots
 	nodes, _ = svc.GetTaskTreeByProject(context.Background(), projectID)
@@ -3664,36 +3515,13 @@ func TestRemoveParentRelation_RestructuresTree(t *testing.T) {
 	}
 }
 
-// countNodes recursively counts all nodes in tree (used for large hierarchy testing)
-func countNodes(node *models.TaskTreeNode) int {
-	count := 1
-	for _, child := range node.Children {
-		count += countNodes(child)
-	}
-	return count
-}
-
-// getMaxDepth recursively finds maximum depth of tree
-func getMaxDepth(node *models.TaskTreeNode) int {
-	if len(node.Children) == 0 {
-		return 0
-	}
-	maxChildDepth := 0
-	for _, child := range node.Children {
-		childDepth := getMaxDepth(child)
-		if childDepth > maxChildDepth {
-			maxChildDepth = childDepth
-		}
-	}
-	return maxChildDepth + 1
-}
-
 // ============================================================================
 // ERROR PATH TESTS - COMPREHENSIVE ERROR SCENARIOS
 // ============================================================================
 
 // TestCreateTask_ErrorPaths tests various error scenarios for CreateTask
 func TestCreateTask_ErrorPaths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		setupFn func(*sql.DB) CreateTaskRequest
@@ -3921,6 +3749,7 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 
 // TestUpdateTask_ErrorPaths tests various error scenarios for UpdateTask
 func TestUpdateTask_ErrorPaths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		setupFn func(*sql.DB) UpdateTaskRequest
@@ -4054,6 +3883,7 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 
 // TestDeleteTask_ErrorPaths tests various error scenarios for DeleteTask
 func TestDeleteTask_ErrorPaths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		taskID  int
@@ -4103,6 +3933,7 @@ func TestDeleteTask_ErrorPaths(t *testing.T) {
 
 // TestAttachLabel_ErrorPaths tests various error scenarios for AttachLabel
 func TestAttachLabel_ErrorPaths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		setupFn func(*sql.DB) (int, int)
@@ -4215,6 +4046,7 @@ func TestAttachLabel_ErrorPaths(t *testing.T) {
 
 // TestDetachLabel_ErrorPaths tests various error scenarios for DetachLabel
 func TestDetachLabel_ErrorPaths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		setupFn func(*sql.DB) (int, int)
@@ -4321,6 +4153,7 @@ func TestDetachLabel_ErrorPaths(t *testing.T) {
 
 // TestAddParentRelation_ErrorPaths tests various error scenarios for AddParentRelation
 func TestAddParentRelation_ErrorPaths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		setupFn func(*sql.DB) (int, int)
@@ -4440,6 +4273,7 @@ func TestAddParentRelation_ErrorPaths(t *testing.T) {
 
 // TestAddChildRelation_ErrorPaths tests various error scenarios for AddChildRelation
 func TestAddChildRelation_ErrorPaths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		setupFn func(*sql.DB) (int, int)
@@ -4538,6 +4372,7 @@ func TestAddChildRelation_ErrorPaths(t *testing.T) {
 
 // TestRemoveParentRelation_ErrorPaths tests various error scenarios for RemoveParentRelation
 func TestRemoveParentRelation_ErrorPaths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		setupFn func(*sql.DB) (int, int)
@@ -4647,6 +4482,7 @@ func TestRemoveParentRelation_ErrorPaths(t *testing.T) {
 
 // TestRemoveChildRelation_ErrorPaths tests various error scenarios for RemoveChildRelation
 func TestRemoveChildRelation_ErrorPaths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		setupFn func(*sql.DB) (int, int)
@@ -4736,6 +4572,7 @@ func TestRemoveChildRelation_ErrorPaths(t *testing.T) {
 
 // TestMoveTaskToColumn_ErrorPaths tests various error scenarios for MoveTaskToColumn
 func TestMoveTaskToColumn_ErrorPaths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		setupFn func(*sql.DB) (int, int)
@@ -4819,6 +4656,7 @@ func TestMoveTaskToColumn_ErrorPaths(t *testing.T) {
 
 // TestGetTaskSummariesByProject_ErrorPaths tests error scenarios for GetTaskSummariesByProject
 func TestGetTaskSummariesByProject_ErrorPaths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		projectID int
@@ -4894,6 +4732,7 @@ func TestGetTaskDetail_NegativeID(t *testing.T) {
 
 // TestGetTaskReferencesForProject_ErrorPaths tests error scenarios
 func TestGetTaskReferencesForProject_ErrorPaths(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		projectID int
@@ -4960,7 +4799,6 @@ func TestComment_BoundaryConditions(t *testing.T) {
 	}
 
 	result, err := svc.CreateComment(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error for 1000 char message, got %v", err)
 	}
@@ -4998,7 +4836,6 @@ func TestCreateTask_MaxLengthTitle(t *testing.T) {
 	}
 
 	result, err := svc.CreateTask(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error for 255 char title, got %v", err)
 	}
@@ -5010,4 +4847,114 @@ func TestCreateTask_MaxLengthTitle(t *testing.T) {
 	if len(result.Title) != 255 {
 		t.Errorf("Expected title length 255, got %d", len(result.Title))
 	}
+}
+
+// helpers
+
+// setupTestDB creates an in-memory database with full schema using testutil
+func setupTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+	return testutil.SetupTestDB(t)
+}
+
+// createTestProject creates a test project and returns its ID
+func createTestProject(t *testing.T, db *sql.DB) int {
+	t.Helper()
+	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name, description) VALUES (?, ?)", "Test Project", "Description")
+	if err != nil {
+		t.Fatalf("Failed to create test project: %v", err)
+	}
+
+	// Initialize project counter
+	id, _ := result.LastInsertId()
+	_, err = db.ExecContext(context.Background(), "INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)", id)
+	if err != nil {
+		t.Fatalf("Failed to initialize project counter: %v", err)
+	}
+
+	return int(id)
+}
+
+// createTestColumn creates a test column and returns its ID
+func createTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
+	t.Helper()
+	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name, holds_ready_tasks) VALUES (?, ?, ?)", projectID, name, false)
+	if err != nil {
+		t.Fatalf("Failed to create test column: %v", err)
+	}
+	id, _ := result.LastInsertId()
+	return int(id)
+}
+
+// createTestReadyColumn creates a test column with holds_ready_tasks=true and returns its ID
+func createTestReadyColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
+	t.Helper()
+	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name, holds_ready_tasks) VALUES (?, ?, ?)", projectID, name, true)
+	if err != nil {
+		t.Fatalf("Failed to create test ready column: %v", err)
+	}
+	id, _ := result.LastInsertId()
+	return int(id)
+}
+
+// createTestCompletedColumn creates a test column with holds_completed_tasks=true and returns its ID
+func createTestCompletedColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
+	t.Helper()
+	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name, holds_completed_tasks) VALUES (?, ?, ?)", projectID, name, true)
+	if err != nil {
+		t.Fatalf("Failed to create test completed column: %v", err)
+	}
+	id, _ := result.LastInsertId()
+	return int(id)
+}
+
+// createTestTask creates a test task and returns its ID
+func createTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
+	t.Helper()
+
+	// Get the next position for this column
+	var maxPos sql.NullInt64
+	err := db.QueryRowContext(context.Background(),
+		"SELECT MAX(position) FROM tasks WHERE column_id = ?", columnID).Scan(&maxPos)
+	if err != nil && err != sql.ErrNoRows {
+		t.Fatalf("Failed to get max position: %v", err)
+	}
+
+	nextPos := 0
+	if maxPos.Valid {
+		nextPos = int(maxPos.Int64) + 1
+	}
+
+	result, err := db.ExecContext(context.Background(),
+		"INSERT INTO tasks (column_id, title, position, type_id, priority_id) VALUES (?, ?, ?, 1, 3)",
+		columnID, title, nextPos)
+	if err != nil {
+		t.Fatalf("Failed to create test task: %v", err)
+	}
+	id, _ := result.LastInsertId()
+	return int(id)
+}
+
+// createTestLabel creates a test label and returns its ID
+func createTestLabel(t *testing.T, db *sql.DB, projectID int, name string) int {
+	t.Helper()
+	result, err := db.ExecContext(context.Background(), "INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)", projectID, name, "#FF5733")
+	if err != nil {
+		t.Fatalf("Failed to create test label: %v", err)
+	}
+	id, _ := result.LastInsertId()
+	return int(id)
+}
+
+// createTestComment creates a test comment and returns its ID
+func createTestComment(t *testing.T, db *sql.DB, taskID int, message, author string) int {
+	t.Helper()
+	result, err := db.ExecContext(context.Background(),
+		"INSERT INTO task_comments (task_id, content, author) VALUES (?, ?, ?)",
+		taskID, message, author)
+	if err != nil {
+		t.Fatalf("Failed to create test comment: %v", err)
+	}
+	id, _ := result.LastInsertId()
+	return int(id)
 }

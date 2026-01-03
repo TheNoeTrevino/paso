@@ -146,7 +146,12 @@ func addBenchmarkTaskRelation(b *testing.B, db *sql.DB, parentID, childID, relat
 // The optimized version should efficiently fetch all related data
 func BenchmarkGetTaskDetail(b *testing.B) {
 	db := setupBenchmarkDB(b)
-	defer db.Close()
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			b.Fatalf("Failed to close DB: %v", err)
+		}
+	}()
 
 	projectID := createBenchmarkProject(b, db)
 	columnID := createBenchmarkColumn(b, db, projectID)
@@ -187,7 +192,9 @@ func BenchmarkGetTaskDetail(b *testing.B) {
 // This is the most impactful optimization as it's a common operation
 func BenchmarkGetInProgressTasksByProject(b *testing.B) {
 	db := setupBenchmarkDB(b)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	projectID := createBenchmarkProject(b, db)
 	inProgressColumnID := createInProgressColumn(b, db, projectID)
@@ -236,7 +243,9 @@ func BenchmarkGetInProgressTasksByProject(b *testing.B) {
 // The optimized version efficiently groups tasks by column
 func BenchmarkGetTaskSummariesByProject(b *testing.B) {
 	db := setupBenchmarkDB(b)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	projectID := createBenchmarkProject(b, db)
 
@@ -286,7 +295,9 @@ func BenchmarkGetTaskSummariesByProject(b *testing.B) {
 // Tests the search/filter functionality on the board
 func BenchmarkGetTaskSummariesByProjectFiltered(b *testing.B) {
 	db := setupBenchmarkDB(b)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	projectID := createBenchmarkProject(b, db)
 	columnID := createBenchmarkColumn(b, db, projectID)
@@ -314,7 +325,9 @@ func BenchmarkGetTaskSummariesByProjectFiltered(b *testing.B) {
 // Performance depends on the depth and breadth of the task hierarchy
 func BenchmarkGetTaskTreeByProject(b *testing.B) {
 	db := setupBenchmarkDB(b)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	projectID := createBenchmarkProject(b, db)
 	columnID := createBenchmarkColumn(b, db, projectID)
@@ -356,7 +369,9 @@ func BenchmarkGetTaskTreeByProject(b *testing.B) {
 // Tests single field updates vs. multi-field updates
 func BenchmarkUpdateTask(b *testing.B) {
 	db := setupBenchmarkDB(b)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	projectID := createBenchmarkProject(b, db)
 	columnID := createBenchmarkColumn(b, db, projectID)
@@ -385,7 +400,9 @@ func BenchmarkUpdateTask(b *testing.B) {
 // Tests the full creation pipeline including label attachment
 func BenchmarkCreateTask(b *testing.B) {
 	db := setupBenchmarkDB(b)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	projectID := createBenchmarkProject(b, db)
 	columnID := createBenchmarkColumn(b, db, projectID)
@@ -418,7 +435,9 @@ func BenchmarkCreateTask(b *testing.B) {
 // This is frequently used when editing tasks
 func BenchmarkAttachLabel(b *testing.B) {
 	db := setupBenchmarkDB(b)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	projectID := createBenchmarkProject(b, db)
 	columnID := createBenchmarkColumn(b, db, projectID)
@@ -445,7 +464,9 @@ func BenchmarkAttachLabel(b *testing.B) {
 // BenchmarkDetachLabel measures label detachment performance
 func BenchmarkDetachLabel(b *testing.B) {
 	db := setupBenchmarkDB(b)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	projectID := createBenchmarkProject(b, db)
 	columnID := createBenchmarkColumn(b, db, projectID)
@@ -476,7 +497,9 @@ func BenchmarkDetachLabel(b *testing.B) {
 // This is frequent during task workflow changes
 func BenchmarkMoveTaskToColumn(b *testing.B) {
 	db := setupBenchmarkDB(b)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	projectID := createBenchmarkProject(b, db)
 	columnID := createBenchmarkColumn(b, db, projectID)
@@ -503,7 +526,9 @@ func BenchmarkMoveTaskToColumn(b *testing.B) {
 // BenchmarkCreateComment measures comment creation performance
 func BenchmarkCreateComment(b *testing.B) {
 	db := setupBenchmarkDB(b)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	projectID := createBenchmarkProject(b, db)
 	columnID := createBenchmarkColumn(b, db, projectID)
@@ -528,7 +553,9 @@ func BenchmarkCreateComment(b *testing.B) {
 // BenchmarkGetReadyTaskSummariesByProject measures fetching ready tasks (for "Start Work" flow)
 func BenchmarkGetReadyTaskSummariesByProject(b *testing.B) {
 	db := setupBenchmarkDB(b)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	projectID := createBenchmarkProject(b, db)
 	readyColumnID := createReadyColumn(b, db, projectID)
@@ -561,7 +588,9 @@ func BenchmarkGetReadyTaskSummariesByProject(b *testing.B) {
 // BenchmarkAddParentRelation measures adding parent-child relationships
 func BenchmarkAddParentRelation(b *testing.B) {
 	db := setupBenchmarkDB(b)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	projectID := createBenchmarkProject(b, db)
 	columnID := createBenchmarkColumn(b, db, projectID)
@@ -591,7 +620,9 @@ func BenchmarkAddParentRelation(b *testing.B) {
 // This is used in the task linking interface
 func BenchmarkGetTaskReferencesForProject(b *testing.B) {
 	db := setupBenchmarkDB(b)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	projectID := createBenchmarkProject(b, db)
 	columnID := createBenchmarkColumn(b, db, projectID)
