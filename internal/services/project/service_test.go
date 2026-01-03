@@ -630,8 +630,6 @@ func TestGetProjectByID_VeryLargeID(t *testing.T) {
 
 // TestUpdateProject_ErrorCases tests various error scenarios for UpdateProject
 func TestUpdateProject_ErrorCases(t *testing.T) {
-	t.Parallel()
-
 	db := setupTestDB(t)
 	t.Cleanup(func() { _ = db.Close() })
 
