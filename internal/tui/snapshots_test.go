@@ -130,14 +130,15 @@ func setupEmptyProject(t *testing.T, db *sql.DB) Model {
 	}
 
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to get columns: %v", err)
-	}
+	require.NoError(t, err)
 
-	tasks, _ := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
-	labels, _ := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	tasks, err := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	require.NoError(t, err)
+	labels, err := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	require.NoError(t, err)
 
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	require.NoError(t, err)
 	m := InitialModel(ctx, appContainer, cfg, nil)
 
 	// Override with loaded data
@@ -158,13 +159,9 @@ func setupBoardWithTasks(t *testing.T, db *sql.DB) Model {
 
 	// Get columns
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to get columns: %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(columns) < 3 {
-		t.Fatalf("Expected at least 3 columns, got %d", len(columns))
-	}
+	require.GreaterOrEqual(t, len(columns), 3, "Expected at least 3 columns")
 
 	// Create tasks in different columns
 	testutil.CreateTestTask(t, db, columns[0].ID, "Setup database")
@@ -172,10 +169,13 @@ func setupBoardWithTasks(t *testing.T, db *sql.DB) Model {
 	testutil.CreateTestTask(t, db, columns[1].ID, "Implement API endpoints")
 	testutil.CreateTestTask(t, db, columns[2].ID, "Deploy to production")
 
-	tasks, _ := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
-	labels, _ := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	tasks, err := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	require.NoError(t, err)
+	labels, err := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	require.NoError(t, err)
 
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	require.NoError(t, err)
 	m := InitialModel(ctx, appContainer, cfg, nil)
 
 	m.AppState.SetColumns(columns)
@@ -193,7 +193,8 @@ func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) Model {
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
 	appContainer := createAppContainer(db)
 
-	columns, _ := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
+	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err)
 
 	// Create multiple tasks per column
 	for i := range 5 {
@@ -206,10 +207,13 @@ func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) Model {
 		_ = testutil.CreateTestTask(t, db, columns[2].ID, "Done Task "+string(rune(65+i)))
 	}
 
-	tasks, _ := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
-	labels, _ := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	tasks, err := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	require.NoError(t, err)
+	labels, err := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	require.NoError(t, err)
 
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	require.NoError(t, err)
 	m := InitialModel(ctx, appContainer, cfg, nil)
 
 	m.AppState.SetColumns(columns)
@@ -299,11 +303,10 @@ func setupProjectNoColumns(t *testing.T, db *sql.DB) Model {
 
 	// Delete default columns that were auto-created
 	_, err := db.ExecContext(ctx, "DELETE FROM columns WHERE project_id = ?", projectID)
-	if err != nil {
-		t.Fatalf("Failed to delete columns: %v", err)
-	}
+	require.NoError(t, err)
 
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	require.NoError(t, err)
 	m := InitialModel(ctx, appContainer, cfg, nil)
 
 	// Set empty columns
@@ -352,11 +355,15 @@ func setupConnectionReconnecting(t *testing.T, db *sql.DB) Model {
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
 	appContainer := createAppContainer(db)
 
-	columns, _ := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
-	tasks, _ := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
-	labels, _ := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err)
+	tasks, err := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	require.NoError(t, err)
+	labels, err := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	require.NoError(t, err)
 
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	require.NoError(t, err)
 	m := InitialModel(ctx, appContainer, cfg, nil)
 
 	m.AppState.SetColumns(columns)
@@ -384,7 +391,8 @@ func setupNotificationError(t *testing.T, db *sql.DB) Model {
 	labels, err := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
 	require.NoError(t, err)
 
-	cfg, _ := config.Load()
+	cfg, err := config.Load()
+	require.NoError(t, err)
 	m := InitialModel(ctx, appContainer, cfg, nil)
 
 	m.AppState.SetColumns(columns)
@@ -408,9 +416,9 @@ func setupNotificationWarning(t *testing.T, db *sql.DB) Model {
 
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err)
-	tasks, _ := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	tasks, err := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
 	require.NoError(t, err)
-	labels, _ := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
+	labels, err := appContainer.LabelService.GetLabelsByProject(ctx, projectID)
 	require.NoError(t, err)
 
 	cfg, err := config.Load()

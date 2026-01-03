@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -54,7 +55,8 @@ func TestNavigation_MoveDownBetweenTasks(t *testing.T) {
 	// Create tasks in a column
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	columns, _ := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load columns for test setup")
 	if len(columns) == 0 {
 		t.Skip("No columns available for testing")
 	}
@@ -88,7 +90,8 @@ func TestNavigation_MoveUpBetweenTasks(t *testing.T) {
 	// Create tasks
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	columns, _ := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load columns for test setup")
 	if len(columns) == 0 {
 		t.Skip("No columns available for testing")
 	}
@@ -97,7 +100,8 @@ func TestNavigation_MoveUpBetweenTasks(t *testing.T) {
 	testutil.CreateTestTask(t, db, columns[0].ID, "Task 2")
 
 	// Reload tasks
-	tasks, _ := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load tasks for test setup")
 	m.AppState.SetTasks(tasks)
 
 	// Set normal mode at second task
@@ -140,12 +144,14 @@ func TestNavigation_DeleteTaskWithD(t *testing.T) {
 	// Create a task to delete
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	columns, _ := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load columns for test setup")
 	if len(columns) > 0 {
 		testutil.CreateTestTask(t, db, columns[0].ID, "Task to delete")
 
 		// Reload tasks
-		tasks, _ := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+		tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+		require.NoError(t, err, "Failed to load tasks for test setup")
 		m.AppState.SetTasks(tasks)
 
 		// Set normal mode
@@ -171,12 +177,14 @@ func TestNavigation_MoveTaskRight(t *testing.T) {
 	// Create a task
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	columns, _ := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load columns for test setup")
 	if len(columns) > 1 {
 		testutil.CreateTestTask(t, db, columns[0].ID, "Task to move")
 
 		// Reload tasks
-		tasks, _ := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+		tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+		require.NoError(t, err, "Failed to load tasks for test setup")
 		m.AppState.SetTasks(tasks)
 
 		// Set normal mode
@@ -202,12 +210,14 @@ func TestNavigation_MoveTaskLeft(t *testing.T) {
 	// Create a task in middle column
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	columns, _ := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load columns for test setup")
 	if len(columns) > 1 {
 		testutil.CreateTestTask(t, db, columns[1].ID, "Task to move")
 
 		// Reload tasks
-		tasks, _ := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+		tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+		require.NoError(t, err, "Failed to load tasks for test setup")
 		m.AppState.SetTasks(tasks)
 
 		// Set normal mode at column 1
@@ -251,13 +261,15 @@ func TestNavigation_MultipleNavigationSequence(t *testing.T) {
 	// Create some tasks
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	columns, _ := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load columns for test setup")
 	if len(columns) > 0 {
 		testutil.CreateTestTask(t, db, columns[0].ID, "Task 1")
 		testutil.CreateTestTask(t, db, columns[0].ID, "Task 2")
 
 		// Reload tasks
-		tasks, _ := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+		tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+		require.NoError(t, err, "Failed to load tasks for test setup")
 		m.AppState.SetTasks(tasks)
 
 		// Set normal mode

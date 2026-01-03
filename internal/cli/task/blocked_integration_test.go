@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
@@ -16,10 +17,7 @@ func TestBlockedTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
 	defer func() {
-		err := db.Close()
-		if err != nil {
-			t.Errorf("Failed to close database: %v", err)
-		}
+		require.NoError(t, db.Close(), "Failed to close database")
 	}()
 
 	// Create test project with columns
@@ -30,7 +28,7 @@ func TestBlockedTask_Positive(t *testing.T) {
 	err := db.QueryRowContext(context.Background(),
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 		projectID).Scan(&todoColumnID)
-	assert.NoError(t, err)
+	require.NoError(t, err, "Failed to query Todo column")
 
 	// Create an "In Progress" column
 	inProgressColumnID := cli.CreateTestColumn(t, db, projectID, "In Progress")
@@ -260,7 +258,8 @@ func TestBlockedTask_Positive(t *testing.T) {
 		ids := make(map[int]bool)
 		for _, line := range lines {
 			if line != "" {
-				id, _ := strconv.Atoi(line)
+				id, err := strconv.Atoi(line)
+				require.NoError(t, err, "Failed to parse task ID from output")
 				ids[id] = true
 			}
 		}
@@ -538,10 +537,7 @@ func TestBlockedTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
 	defer func() {
-		err := db.Close()
-		if err != nil {
-			t.Errorf("Failed to close database: %v", err)
-		}
+		require.NoError(t, db.Close(), "Failed to close database")
 	}()
 
 	t.Run("Missing project ID - no flag and no env var", func(t *testing.T) {

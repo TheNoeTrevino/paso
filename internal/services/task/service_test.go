@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
@@ -35,13 +36,9 @@ func TestCreateTask(t *testing.T) {
 	}
 
 	result, err := svc.CreateTask(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
-	if result == nil {
-		t.Fatal("Expected task result, got nil")
-	}
+	require.NotNil(t, result, "Expected task result, got nil")
 
 	if result.Title != "Fix bug in login" {
 		t.Errorf("Expected title 'Fix bug in login', got '%s'", result.Title)
@@ -191,9 +188,7 @@ func TestCreateTask_WithLabels(t *testing.T) {
 	}
 
 	result, err := svc.CreateTask(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify labels are attached
 	var count int
@@ -236,9 +231,7 @@ func TestGetTaskDetail(t *testing.T) {
 
 	// Get task detail
 	result, err := svc.GetTaskDetail(context.Background(), created.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if result.ID != created.ID {
 		t.Errorf("Expected ID %d, got %d", created.ID, result.ID)
@@ -323,9 +316,7 @@ func TestGetTaskSummariesByProject(t *testing.T) {
 
 	// Get summaries
 	results, err := svc.GetTaskSummariesByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(results) != 2 {
 		t.Fatalf("Expected 2 columns with tasks, got %d", len(results))
@@ -374,9 +365,7 @@ func TestUpdateTask(t *testing.T) {
 	}
 
 	err = svc.UpdateTask(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify update
 	updated, err := svc.GetTaskDetail(context.Background(), created.ID)
@@ -491,9 +480,7 @@ func TestDeleteTask(t *testing.T) {
 
 	// Delete task
 	err = svc.DeleteTask(context.Background(), created.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify task is deleted
 	_, err = svc.GetTaskDetail(context.Background(), created.ID)
@@ -548,9 +535,7 @@ func TestAttachLabel(t *testing.T) {
 
 	// Attach label
 	err = svc.AttachLabel(context.Background(), created.ID, labelID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify label is attached
 	var count int
@@ -588,9 +573,7 @@ func TestDetachLabel(t *testing.T) {
 
 	// Detach label
 	err = svc.DetachLabel(context.Background(), created.ID, labelID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify label is detached
 	var count int
@@ -633,9 +616,7 @@ func TestAddParentRelation(t *testing.T) {
 
 	// Add parent relation (task1 is parent of task2)
 	err := svc.AddParentRelation(context.Background(), task2.ID, task1.ID, 1)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify relationship exists
 	var count int
@@ -674,9 +655,7 @@ func TestAddChildRelation(t *testing.T) {
 
 	// Add child relation (task2 is child of task1)
 	err := svc.AddChildRelation(context.Background(), task1.ID, task2.ID, 1)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify relationship exists
 	var count int
@@ -716,9 +695,7 @@ func TestRemoveParentRelation(t *testing.T) {
 
 	// Remove parent relation
 	err := svc.RemoveParentRelation(context.Background(), task2.ID, task1.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify relationship is removed
 	var count int
@@ -763,9 +740,7 @@ func TestRemoveChildRelation(t *testing.T) {
 
 	// Remove child relation
 	err = svc.RemoveChildRelation(context.Background(), task1.ID, task2.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify relationship is removed
 	var count int
@@ -810,9 +785,7 @@ func TestMoveTaskToNextColumn(t *testing.T) {
 
 	// Move to next column
 	err = svc.MoveTaskToNextColumn(context.Background(), task.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved to col2
 	var columnID int
@@ -897,9 +870,7 @@ func TestMoveTaskToPrevColumn(t *testing.T) {
 
 	// Move to previous column
 	err = svc.MoveTaskToPrevColumn(context.Background(), task.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved to col1
 	var columnID int
@@ -973,9 +944,7 @@ func TestMoveTaskToColumn(t *testing.T) {
 
 	// Move to specific column
 	err := svc.MoveTaskToColumn(context.Background(), task.ID, col2ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved
 	var columnID int
@@ -1057,9 +1026,7 @@ func TestMoveTaskUp(t *testing.T) {
 
 	// Move task2 up (should swap positions with task1)
 	err := svc.MoveTaskUp(context.Background(), task2.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify positions swapped
 	var pos1, pos2 int64
@@ -1143,9 +1110,7 @@ func TestMoveTaskDown(t *testing.T) {
 
 	// Move task1 down (should swap positions with task2)
 	err := svc.MoveTaskDown(context.Background(), task1.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify positions swapped
 	var pos1, pos2 int64
@@ -1239,9 +1204,7 @@ func TestGetTaskSummariesByProjectFiltered(t *testing.T) {
 
 	// Filter by "bug"
 	results, err := svc.GetTaskSummariesByProjectFiltered(context.Background(), projectID, "bug")
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Should return 2 tasks with "bug" in title
 	totalTasks := 0
@@ -1273,9 +1236,7 @@ func TestGetTaskSummariesByProjectFiltered_NoResults(t *testing.T) {
 
 	// Filter by non-existent term
 	results, err := svc.GetTaskSummariesByProjectFiltered(context.Background(), projectID, "nonexistent")
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Should return empty map
 	totalTasks := 0
@@ -1313,9 +1274,7 @@ func TestGetTaskSummariesByProjectFiltered_EmptyQuery(t *testing.T) {
 
 	// Filter with empty query (should return all)
 	results, err := svc.GetTaskSummariesByProjectFiltered(context.Background(), projectID, "")
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Should return all tasks
 	totalTasks := 0
@@ -1353,9 +1312,7 @@ func TestGetTaskReferencesForProject(t *testing.T) {
 
 	// Get task references
 	refs, err := svc.GetTaskReferencesForProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(refs) != 2 {
 		t.Errorf("Expected 2 task references, got %d", len(refs))
@@ -1373,9 +1330,7 @@ func TestGetTaskReferencesForProject_EmptyProject(t *testing.T) {
 
 	// Get task references for empty project
 	refs, err := svc.GetTaskReferencesForProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(refs) != 0 {
 		t.Errorf("Expected 0 task references, got %d", len(refs))
@@ -1407,9 +1362,7 @@ func TestGetReadyTaskSummariesByProject_OnlyReadyColumn(t *testing.T) {
 
 	// Get ready tasks
 	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(readyTasks) != 1 {
 		t.Fatalf("Expected 1 ready task, got %d", len(readyTasks))
@@ -1455,9 +1408,7 @@ func TestGetReadyTaskSummariesByProject_ExcludesBlockedTasks(t *testing.T) {
 
 	// Get ready tasks
 	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Should only get task1 (task2 is blocked)
 	if len(readyTasks) != 1 {
@@ -1487,9 +1438,7 @@ func TestGetReadyTaskSummariesByProject_EmptyWhenNoReadyColumn(t *testing.T) {
 
 	// Get ready tasks
 	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(readyTasks) != 0 {
 		t.Errorf("Expected 0 ready tasks when no column is marked as ready, got %d", len(readyTasks))
@@ -1510,9 +1459,7 @@ func TestGetReadyTaskSummariesByProject_EmptyReadyColumn(t *testing.T) {
 
 	// Get ready tasks
 	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(readyTasks) != 0 {
 		t.Errorf("Expected 0 ready tasks for empty ready column, got %d", len(readyTasks))
@@ -1551,9 +1498,7 @@ func TestGetReadyTaskSummariesByProject_IncludesTaskDetails(t *testing.T) {
 
 	// Get ready tasks
 	readyTasks, err := svc.GetReadyTaskSummariesByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(readyTasks) != 1 {
 		t.Fatalf("Expected 1 task, got %d", len(readyTasks))
@@ -1594,9 +1539,7 @@ func TestGetTaskTreeByProject_EmptyProject(t *testing.T) {
 
 	// Get tree for empty project
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(tree) != 0 {
 		t.Errorf("Expected 0 root tasks, got %d", len(tree))
@@ -1627,9 +1570,7 @@ func TestGetTaskTreeByProject_SimpleHierarchy(t *testing.T) {
 
 	// Get tree
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(tree) != 1 {
 		t.Fatalf("Expected 1 root task, got %d", len(tree))
@@ -1678,9 +1619,7 @@ func TestGetTaskTreeByProject_CircularDependency(t *testing.T) {
 
 	// Get tree - should handle circular dependency gracefully
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// With circular dependency, none are truly "root" tasks
 	// This is expected behavior - the function should not crash or hang
@@ -1717,9 +1656,7 @@ func TestGetTaskTreeByProject_DeepNesting(t *testing.T) {
 
 	// Get tree
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(tree) != 1 {
 		t.Fatalf("Expected 1 root task, got %d", len(tree))
@@ -1768,9 +1705,7 @@ func TestGetTaskTreeByProject_BlockingRelationship(t *testing.T) {
 
 	// Get tree
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(tree) != 1 {
 		t.Fatalf("Expected 1 root task, got %d", len(tree))
@@ -1809,9 +1744,7 @@ func TestGetTaskTreeByProject_SortedByTicketNumber(t *testing.T) {
 
 	// Get tree
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(tree) != 3 {
 		t.Fatalf("Expected 3 root tasks, got %d", len(tree))
@@ -1856,9 +1789,7 @@ func TestGetTaskTreeByProject_MultipleRootsWithChildren(t *testing.T) {
 
 	// Get tree
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(tree) != 2 {
 		t.Fatalf("Expected 2 root tasks, got %d", len(tree))
@@ -1898,9 +1829,7 @@ func TestMoveTaskToReadyColumn(t *testing.T) {
 
 	// Move to ready column
 	err = svc.MoveTaskToReadyColumn(context.Background(), task.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved to ready column
 	var columnID int
@@ -2053,9 +1982,7 @@ func TestMoveTaskToCompletedColumn(t *testing.T) {
 
 	// Move to completed column
 	err = svc.MoveTaskToCompletedColumn(context.Background(), task.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved to completed column
 	var columnID int
@@ -2325,13 +2252,9 @@ func TestCreateComment(t *testing.T) {
 	}
 
 	result, err := svc.CreateComment(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
-	if result == nil {
-		t.Fatal("Expected comment result, got nil")
-	}
+	require.NotNil(t, result, "Expected comment result, got nil")
 
 	if result.ID == 0 {
 		t.Error("Expected comment ID to be set")
@@ -2464,9 +2387,7 @@ func TestUpdateComment(t *testing.T) {
 	}
 
 	err := svc.UpdateComment(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify the comment was updated
 	var updatedMessage string
@@ -2582,9 +2503,7 @@ func TestDeleteComment(t *testing.T) {
 	svc := NewService(db, nil)
 
 	err := svc.DeleteComment(context.Background(), commentID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify the comment was deleted
 	var count int
@@ -2655,9 +2574,7 @@ func TestGetCommentsByTask(t *testing.T) {
 	svc := NewService(db, nil)
 
 	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(comments) != 3 {
 		t.Fatalf("Expected 3 comments, got %d", len(comments))
@@ -2687,9 +2604,7 @@ func TestGetCommentsByTask_NoComments(t *testing.T) {
 	svc := NewService(db, nil)
 
 	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(comments) != 0 {
 		t.Errorf("Expected 0 comments, got %d", len(comments))
@@ -2739,9 +2654,7 @@ func TestGetCommentsByTask_OrderedByCreatedAt(t *testing.T) {
 	svc := NewService(db, nil)
 
 	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	if len(comments) != 3 {
 		t.Fatalf("Expected 3 comments, got %d", len(comments))
@@ -2791,9 +2704,7 @@ func TestGetTaskDetail_IncludesComments(t *testing.T) {
 
 	// Get task detail
 	detail, err := svc.GetTaskDetail(context.Background(), task.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify comments are included
 	if len(detail.Comments) != 2 {
@@ -2835,9 +2746,7 @@ func TestDeleteTask_CascadesComments(t *testing.T) {
 
 	// Delete the task
 	err := svc.DeleteTask(context.Background(), taskID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Verify comments were cascade deleted
 	var count int
@@ -2963,9 +2872,7 @@ func TestGetInProgressTasksByProject_EmptyProject(t *testing.T) {
 
 	// Project has no in-progress column
 	tasks, err := svc.GetInProgressTasksByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err, "Operation failed")
 
 	// Should return empty slice
 	if len(tasks) != 0 {
@@ -4803,9 +4710,7 @@ func TestComment_BoundaryConditions(t *testing.T) {
 		t.Fatalf("Expected no error for 1000 char message, got %v", err)
 	}
 
-	if result == nil {
-		t.Fatal("Expected comment result, got nil")
-	}
+	require.NotNil(t, result, "Expected comment result, got nil")
 
 	if len(result.Message) != 1000 {
 		t.Errorf("Expected message length 1000, got %d", len(result.Message))
@@ -4840,9 +4745,7 @@ func TestCreateTask_MaxLengthTitle(t *testing.T) {
 		t.Fatalf("Expected no error for 255 char title, got %v", err)
 	}
 
-	if result == nil {
-		t.Fatal("Expected task result, got nil")
-	}
+	require.NotNil(t, result, "Expected task result, got nil")
 
 	if len(result.Title) != 255 {
 		t.Errorf("Expected title length 255, got %d", len(result.Title))

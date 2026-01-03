@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
@@ -36,14 +38,9 @@ func TestCreateProject(t *testing.T) {
 	}
 
 	result, err := svc.CreateProject(context.Background(), req)
+	require.NoError(t, err, "Failed to create project")
 
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result == nil {
-		t.Fatal("Expected project result, got nil")
-	}
+	require.NotNil(t, result, "Expected project result, got nil")
 
 	if result.Name != "Test Project" {
 		t.Errorf("Expected name 'Test Project', got '%s'", result.Name)
@@ -124,23 +121,16 @@ func TestGetAllProjects(t *testing.T) {
 		Name:        "Project 1",
 		Description: "Desc 1",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create project 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create project 1")
 
 	_, err = svc.CreateProject(context.Background(), CreateProjectRequest{
 		Name:        "Project 2",
 		Description: "Desc 2",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create project 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create project 2")
 
 	results, err := svc.GetAllProjects(context.Background())
-
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	assert.NoError(t, err, "Failed to get all projects")
 
 	if len(results) != 2 {
 		t.Fatalf("Expected 2 projects, got %d", len(results))
@@ -165,9 +155,7 @@ func TestGetAllProjects_Empty(t *testing.T) {
 
 	results, err := svc.GetAllProjects(context.Background())
 
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	assert.NoError(t, err, "Failed to get all projects")
 
 	if len(results) != 0 {
 		t.Errorf("Expected 0 projects, got %d", len(results))
@@ -187,15 +175,10 @@ func TestGetProjectByID(t *testing.T) {
 		Name:        "Test Project",
 		Description: "Test Description",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create project: %v", err)
-	}
+	require.NoError(t, err, "Failed to create project")
 
 	result, err := svc.GetProjectByID(context.Background(), created.ID)
-
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	assert.NoError(t, err, "Failed to get project by ID")
 
 	if result.ID != created.ID {
 		t.Errorf("Expected ID %d, got %d", created.ID, result.ID)
@@ -261,9 +244,7 @@ func TestUpdateProject(t *testing.T) {
 		Name:        "Old Name",
 		Description: "Old Description",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create project: %v", err)
-	}
+	require.NoError(t, err, "Failed to create project")
 
 	newName := "Updated Project"
 	req := UpdateProjectRequest{
@@ -272,16 +253,11 @@ func TestUpdateProject(t *testing.T) {
 	}
 
 	err = svc.UpdateProject(context.Background(), req)
-
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	assert.NoError(t, err, "Failed to update project")
 
 	// Verify update
 	updated, err := svc.GetProjectByID(context.Background(), created.ID)
-	if err != nil {
-		t.Fatalf("Failed to get updated project: %v", err)
-	}
+	require.NoError(t, err, "Failed to get updated project")
 
 	if updated.Name != "Updated Project" {
 		t.Errorf("Expected name 'Updated Project', got '%s'", updated.Name)
@@ -305,9 +281,7 @@ func TestUpdateProject_EmptyName(t *testing.T) {
 		Name:        "Old Name",
 		Description: "Old Description",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create project: %v", err)
-	}
+	require.NoError(t, err, "Failed to create project")
 
 	emptyName := ""
 	req := UpdateProjectRequest{
@@ -364,16 +338,11 @@ func TestDeleteProject(t *testing.T) {
 		Name:        "Test Project",
 		Description: "Test Description",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create project: %v", err)
-	}
+	require.NoError(t, err, "Failed to create project")
 
 	// Delete should succeed since project has no tasks (columns don't matter)
 	err = svc.DeleteProject(context.Background(), created.ID, false)
-
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	assert.NoError(t, err, "Failed to delete project")
 
 	// Verify project is deleted
 	_, err = svc.GetProjectByID(context.Background(), created.ID)
@@ -395,25 +364,17 @@ func TestDeleteProject_WithTasks(t *testing.T) {
 		Name:        "Test Project",
 		Description: "Test Description",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create project: %v", err)
-	}
+	require.NoError(t, err, "Failed to create project")
 
 	// Create a column first (tasks are associated via column)
 	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", created.ID, "Test Column")
-	if err != nil {
-		t.Fatalf("Failed to create column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column")
 	columnID, err := result.LastInsertId()
-	if err != nil {
-		t.Fatalf("Failed to get column ID: %v", err)
-	}
+	require.NoError(t, err, "Failed to get column ID")
 
 	// Create a task in the column
 	_, err = db.ExecContext(context.Background(), "INSERT INTO tasks (column_id, title, position) VALUES (?, ?, ?)", columnID, "Test Task", 0)
-	if err != nil {
-		t.Fatalf("Failed to create task: %v", err)
-	}
+	require.NoError(t, err, "Failed to create task")
 
 	// This should fail because project has tasks and force=false
 	err = svc.DeleteProject(context.Background(), created.ID, false)
@@ -440,32 +401,21 @@ func TestDeleteProject_WithTasksForce(t *testing.T) {
 		Name:        "Test Project",
 		Description: "Test Description",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create project: %v", err)
-	}
+	require.NoError(t, err, "Failed to create project")
 
 	// Create a column first (tasks are associated via column)
 	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", created.ID, "Test Column")
-	if err != nil {
-		t.Fatalf("Failed to create column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column")
 	columnID, err := result.LastInsertId()
-	if err != nil {
-		t.Fatalf("Failed to get column ID: %v", err)
-	}
+	require.NoError(t, err, "Failed to get column ID")
 
 	// Create a task in the column
 	_, err = db.ExecContext(context.Background(), "INSERT INTO tasks (column_id, title, position) VALUES (?, ?, ?)", columnID, "Test Task", 0)
-	if err != nil {
-		t.Fatalf("Failed to create task: %v", err)
-	}
+	require.NoError(t, err, "Failed to create task")
 
 	// This should succeed because force=true
 	err = svc.DeleteProject(context.Background(), created.ID, true)
-
-	if err != nil {
-		t.Fatalf("Expected no error with force=true, got %v", err)
-	}
+	assert.NoError(t, err, "Failed to delete project with force=true")
 
 	// Verify project is deleted
 	_, err = svc.GetProjectByID(context.Background(), created.ID)
@@ -506,16 +456,11 @@ func TestGetTaskCount(t *testing.T) {
 		Name:        "Test Project",
 		Description: "Test Description",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create project: %v", err)
-	}
+	require.NoError(t, err, "Failed to create project")
 
 	// Initially should have 0 tasks
 	count, err := svc.GetTaskCount(context.Background(), created.ID)
-
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	assert.NoError(t, err, "Failed to get task count")
 
 	if count != 0 {
 		t.Errorf("Expected count 0, got %d", count)
@@ -618,12 +563,8 @@ func TestCreateProject_ErrorCases(t *testing.T) {
 					t.Errorf("Expected error %v, got %v", tt.expectedErr, err)
 				}
 			} else {
-				if err != nil {
-					t.Fatalf("Expected no error, got %v", err)
-				}
-				if result == nil {
-					t.Fatal("Expected project result, got nil")
-				}
+				require.NoError(t, err, "Failed to create project")
+				require.NotNil(t, result, "Expected project result, got nil")
 				if result.ID == 0 {
 					t.Error("Expected project ID to be set")
 				}
@@ -701,9 +642,7 @@ func TestUpdateProject_ErrorCases(t *testing.T) {
 		Name:        "Original Name",
 		Description: "Original Description",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create project: %v", err)
-	}
+	require.NoError(t, err, "Failed to create project")
 
 	tests := []struct {
 		name        string
@@ -752,7 +691,6 @@ func TestUpdateProject_ErrorCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			err := svc.UpdateProject(context.Background(), tt.req)
 
 			if tt.expectedErr != nil {
@@ -767,9 +705,7 @@ func TestUpdateProject_ErrorCases(t *testing.T) {
 					t.Errorf("Error check failed for %v", err)
 				}
 			} else {
-				if err != nil {
-					t.Fatalf("Expected no error, got %v", err)
-				}
+				require.NoError(t, err, "Failed to update project")
 			}
 		})
 	}
@@ -866,9 +802,7 @@ func TestDeleteProject_ErrorCases(t *testing.T) {
 					t.Errorf("Expected error %v, got %v", tt.expectedErr, err)
 				}
 			} else {
-				if err != nil {
-					t.Fatalf("Expected no error, got %v", err)
-				}
+				require.NoError(t, err, "Failed to delete project")
 			}
 		})
 	}
@@ -886,9 +820,7 @@ func TestDeleteProject_NonExistentProject(t *testing.T) {
 	// Deleting a non-existent project should succeed (idempotent operation)
 	err := svc.DeleteProject(context.Background(), 999999, false)
 
-	if err != nil {
-		t.Errorf("Expected no error when deleting non-existent project (idempotent), got %v", err)
-	}
+	assert.NoError(t, err, "Expected no error when deleting non-existent project (idempotent)")
 }
 
 // TestGetTaskCount_ErrorCases tests various error scenarios for GetTaskCount
@@ -955,9 +887,7 @@ func TestGetTaskCount_NonExistentProject(t *testing.T) {
 	// Getting task count for non-existent project should return 0
 	count, err := svc.GetTaskCount(context.Background(), 999999)
 
-	if err != nil {
-		t.Errorf("Expected no error for non-existent project, got %v", err)
-	}
+	assert.NoError(t, err, "Expected no error for non-existent project")
 
 	if count != 0 {
 		t.Errorf("Expected count 0 for non-existent project, got %d", count)
@@ -978,29 +908,21 @@ func TestGetAllProjects_AfterDelete(t *testing.T) {
 		Name:        "Project 1",
 		Description: "Desc 1",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create project 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create project 1")
 
 	proj2, err := svc.CreateProject(context.Background(), CreateProjectRequest{
 		Name:        "Project 2",
 		Description: "Desc 2",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create project 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create project 2")
 
 	// Delete first project
 	err = svc.DeleteProject(context.Background(), proj1.ID, false)
-	if err != nil {
-		t.Fatalf("Failed to delete project 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to delete project 1")
 
 	// Get all projects
 	results, err := svc.GetAllProjects(context.Background())
-	if err != nil {
-		t.Fatalf("Failed to get all projects: %v", err)
-	}
+	require.NoError(t, err, "Failed to get all projects")
 
 	// Should only have project 2
 	if len(results) != 1 {

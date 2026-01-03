@@ -16,10 +16,7 @@ func TestCommentTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
 	defer func() {
-		err := db.Close()
-		if err != nil {
-			t.Errorf("Failed to close database: %v", err)
-		}
+		require.NoError(t, db.Close(), "Failed to close database")
 	}()
 
 	// Create test project with default columns (Todo, In Progress, Done)
@@ -131,7 +128,8 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Equal(t, "Quiet comment test", taskDetail.Comments[0].Message)
 
 		// Verify the comment ID matches
-		commentID, _ := strconv.Atoi(commentIDStr)
+		commentID, err := strconv.Atoi(commentIDStr)
+		require.NoError(t, err, "Failed to parse comment ID")
 		assert.Equal(t, commentID, taskDetail.Comments[0].ID)
 	})
 
@@ -546,7 +544,7 @@ func TestCommentTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
 	defer func() {
-		_ = db.Close()
+		require.NoError(t, db.Close(), "Failed to close database")
 	}()
 
 	// Create test project
