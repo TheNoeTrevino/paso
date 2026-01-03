@@ -12,6 +12,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/styles"
 	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/config/colors"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -218,7 +219,7 @@ func outputStyledTree(tree []*models.TaskTreeNode) error {
 	return nil
 }
 
-func renderTreeNodes(output *strings.Builder, nodes []*models.TaskTreeNode, depth int, colors config.ColorScheme) {
+func renderTreeNodes(output *strings.Builder, nodes []*models.TaskTreeNode, depth int, colors colors.ColorScheme) {
 	for _, node := range nodes {
 		indent := strings.Repeat("  ", depth)
 

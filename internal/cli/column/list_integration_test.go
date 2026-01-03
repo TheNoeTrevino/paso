@@ -14,7 +14,9 @@ import (
 func TestListColumns_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -319,7 +321,9 @@ func TestListColumns_Positive(t *testing.T) {
 func TestListColumns_Errors(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	t.Run("Invalid project ID error handling", func(t *testing.T) {
 		cmd := ListCmd()
@@ -357,7 +361,9 @@ func TestListColumns_Errors(t *testing.T) {
 func TestListColumns_EdgeCases(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	t.Run("List columns with special characters in names", func(t *testing.T) {
 		var projectID int

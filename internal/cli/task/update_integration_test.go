@@ -15,7 +15,9 @@ import (
 func TestUpdateTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project - this creates default columns (Todo, In Progress, Done)
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -402,7 +404,9 @@ func TestUpdateTask_Positive(t *testing.T) {
 func TestUpdateTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project
 	_ = cli.CreateTestProject(t, db, "Test Project")

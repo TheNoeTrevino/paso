@@ -11,6 +11,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/styles"
 	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/config/colors"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -137,7 +138,7 @@ func outputJSON(task *models.TaskDetail) error {
 	})
 }
 
-func outputHuman(task *models.TaskDetail, colors config.ColorScheme) error {
+func outputHuman(task *models.TaskDetail, colors colors.ColorScheme) error {
 	// Initialize styles with the color scheme
 	styles.Init(colors)
 

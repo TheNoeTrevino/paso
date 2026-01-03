@@ -67,7 +67,9 @@ func setupLinkedColumns(t *testing.T, db *sql.DB) (projectID, column1ID, column2
 func TestMoveTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project with properly linked columns
 	_, column1ID, column2ID, column3ID := setupLinkedColumns(t, db)
@@ -389,7 +391,9 @@ func TestMoveTask_Positive(t *testing.T) {
 func TestMoveTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project with properly linked columns
 	_, column1ID, _, column3ID := setupLinkedColumns(t, db)

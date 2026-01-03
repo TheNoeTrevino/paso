@@ -14,7 +14,9 @@ import (
 func TestDeleteTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	// Create test project with default columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")
