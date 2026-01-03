@@ -15,28 +15,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// Re-export error variables from models package for backward compatibility
-var (
-	ErrEmptyTitle                = models.ErrEmptyTitle
-	ErrTitleTooLong              = models.ErrTitleTooLong
-	ErrInvalidColumnID           = models.ErrInvalidColumnID
-	ErrInvalidPosition           = models.ErrInvalidPosition
-	ErrInvalidTaskID             = models.ErrInvalidTaskID
-	ErrInvalidProjectID          = models.ErrInvalidProjectID
-	ErrInvalidPriority           = models.ErrInvalidPriority
-	ErrInvalidType               = models.ErrInvalidType
-	ErrInvalidLabelID            = models.ErrInvalidLabelID
-	ErrTaskNotFound              = models.ErrTaskNotFound
-	ErrCircularRelation          = models.ErrCircularRelation
-	ErrDuplicateRelation         = models.ErrDuplicateRelation
-	ErrSelfRelation              = models.ErrSelfRelation
-	ErrTaskAlreadyInTargetColumn = models.ErrTaskAlreadyInTargetColumn
-	ErrEmptyCommentMessage       = models.ErrEmptyCommentMessage
-	ErrCommentMessageTooLong     = models.ErrCommentMessageTooLong
-	ErrInvalidCommentID          = models.ErrInvalidCommentID
-	ErrCommentNotFound           = models.ErrCommentNotFound
-)
-
 // ============================================================================
 // SEGREGATED INTERFACES - Following Interface Segregation Principle (ISP)
 // ============================================================================
@@ -136,14 +114,14 @@ type TaskCommenter interface {
 }
 
 // Service defines all task-related business operations as a composition of focused interfaces.
-// This composite interface maintains backward compatibility while providing better separation of concerns.
+// This composite interface provides better separation of concerns through interface segregation.
 //
 // Components that need only specific operations (e.g., reading, writing, moving) should depend on
 // the corresponding focused interface (TaskReader, TaskWriter, TaskMover, etc.) instead of this
 // composite interface. This makes the system more testable and maintainable by reducing coupling.
 //
-// The service implementation satisfies all segregated interfaces, so existing code can continue
-// to use the full Service interface without changes.
+// The service implementation satisfies all segregated interfaces, making it convenient for
+// components that need multiple operation types.
 type Service interface {
 	TaskReader
 	TaskMover
@@ -333,7 +311,6 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -1091,7 +1068,6 @@ func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
@@ -1149,7 +1125,6 @@ func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}

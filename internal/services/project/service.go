@@ -11,16 +11,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// Re-export error variables from models package for backward compatibility
-var (
-	ErrEmptyName         = models.ErrEmptyName
-	ErrNameTooLong       = models.ErrNameTooLong
-	ErrInvalidProjectID  = models.ErrInvalidProjectID
-	ErrProjectNotFound   = models.ErrProjectNotFound
-	ErrProjectHasColumns = models.ErrProjectHasColumns
-	ErrProjectHasTasks   = models.ErrProjectHasTasks
-)
-
 // Service defines all project-related business operations
 type Service interface {
 	// Read operations

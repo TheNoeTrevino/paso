@@ -67,7 +67,6 @@ func TestCreateColumn(t *testing.T) {
 	}
 
 	result, err := svc.CreateColumn(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -99,6 +98,7 @@ func TestCreateColumn(t *testing.T) {
 }
 
 func TestCreateColumn_Validation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		colName   string
@@ -121,7 +121,7 @@ func TestCreateColumn_Validation(t *testing.T) {
 			},
 			colName: func() string {
 				name := ""
-				for i := 0; i < 51; i++ {
+				for range 51 {
 					name += "a"
 				}
 				return name
@@ -330,7 +330,6 @@ func TestGetColumnsByProject(t *testing.T) {
 	}
 
 	results, err := svc.GetColumnsByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -358,7 +357,6 @@ func TestGetColumnsByProject_Empty(t *testing.T) {
 	svc := NewService(db, nil)
 
 	results, err := svc.GetColumnsByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -405,7 +403,6 @@ func TestGetColumnByID(t *testing.T) {
 	}
 
 	result, err := svc.GetColumnByID(context.Background(), created.ID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -475,7 +472,6 @@ func TestUpdateColumnName(t *testing.T) {
 	}
 
 	err = svc.UpdateColumnName(context.Background(), created.ID, "Backlog")
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -492,6 +488,7 @@ func TestUpdateColumnName(t *testing.T) {
 }
 
 func TestUpdateColumnName_Validation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		columnID int
@@ -568,7 +565,6 @@ func TestDeleteColumn(t *testing.T) {
 	}
 
 	err = svc.DeleteColumn(context.Background(), created.ID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -581,6 +577,7 @@ func TestDeleteColumn(t *testing.T) {
 }
 
 func TestDeleteColumn_Validation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		columnID int
@@ -702,7 +699,6 @@ func TestCreateColumn_WithHoldsReadyTasks(t *testing.T) {
 	}
 
 	result, err := svc.CreateColumn(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1077,7 +1073,6 @@ func TestGetColumnsByProject_NonExistentProject(t *testing.T) {
 
 	// Non-existent project should return empty list, not error
 	results, err := svc.GetColumnsByProject(context.Background(), 999999)
-
 	if err != nil {
 		t.Fatalf("Expected no error for non-existent project, got %v", err)
 	}
@@ -1199,6 +1194,7 @@ func TestDeleteColumn_NonExistentColumn(t *testing.T) {
 // ============================================================================
 
 func TestCreateColumn_InvalidAfterID(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		afterID int
@@ -1291,7 +1287,6 @@ func TestCreateColumn_AfterColumnFromDifferentProject(t *testing.T) {
 		ProjectID: projectID2,
 		AfterID:   &afterID,
 	})
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1609,7 +1604,6 @@ func TestCreateColumn_WithHoldsInProgressTasks(t *testing.T) {
 	}
 
 	result, err := svc.CreateColumn(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1980,7 +1974,6 @@ func TestCreateColumn_NameExactly50Characters(t *testing.T) {
 	}
 
 	result, err := svc.CreateColumn(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error for 50-character name, got %v", err)
 	}
@@ -2035,7 +2028,6 @@ func TestUpdateColumnName_Exact50Characters(t *testing.T) {
 	name50 := strings.Repeat("a", 50)
 
 	err = svc.UpdateColumnName(context.Background(), created.ID, name50)
-
 	if err != nil {
 		t.Fatalf("Expected no error for 50-character name, got %v", err)
 	}
@@ -2070,7 +2062,6 @@ func TestCreateColumn_AllSpecialFlagsTrue(t *testing.T) {
 	}
 
 	result, err := svc.CreateColumn(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -2133,7 +2124,6 @@ func TestCreateColumn_WithHoldsCompletedTasks(t *testing.T) {
 	}
 
 	result, err := svc.CreateColumn(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}

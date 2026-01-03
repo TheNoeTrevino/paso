@@ -84,7 +84,6 @@ func TestCreateLabel(t *testing.T) {
 	}
 
 	result, err := svc.CreateLabel(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -111,6 +110,7 @@ func TestCreateLabel(t *testing.T) {
 }
 
 func TestCreateLabel_Validation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		labelName string
@@ -136,7 +136,7 @@ func TestCreateLabel_Validation(t *testing.T) {
 			},
 			labelName: func() string {
 				name := ""
-				for i := 0; i < 51; i++ {
+				for range 51 {
 					name += "a"
 				}
 				return name
@@ -284,7 +284,6 @@ func TestGetLabelsByProject(t *testing.T) {
 	}
 
 	results, err := svc.GetLabelsByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -312,7 +311,6 @@ func TestGetLabelsByProject_Empty(t *testing.T) {
 	svc := NewService(db, nil)
 
 	results, err := svc.GetLabelsByProject(context.Background(), projectID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -374,7 +372,6 @@ func TestGetLabelsForTask(t *testing.T) {
 	attachLabelToTask(t, db, taskID, label2.ID)
 
 	results, err := svc.GetLabelsForTask(context.Background(), taskID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -409,7 +406,6 @@ func TestGetLabelsForTask_Empty(t *testing.T) {
 	svc := NewService(db, nil)
 
 	results, err := svc.GetLabelsForTask(context.Background(), taskID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -466,7 +462,6 @@ func TestUpdateLabel(t *testing.T) {
 	}
 
 	err = svc.UpdateLabel(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -516,7 +511,6 @@ func TestUpdateLabel_OnlyName(t *testing.T) {
 	}
 
 	err = svc.UpdateLabel(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -537,6 +531,7 @@ func TestUpdateLabel_OnlyName(t *testing.T) {
 }
 
 func TestUpdateLabel_Validation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		labelID  int
@@ -643,7 +638,6 @@ func TestDeleteLabel(t *testing.T) {
 	}
 
 	err = svc.DeleteLabel(context.Background(), created.ID)
-
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -660,6 +654,7 @@ func TestDeleteLabel(t *testing.T) {
 }
 
 func TestDeleteLabel_Validation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		labelID int
@@ -979,7 +974,6 @@ func TestGetLabelsByProject_NonExistentProject(t *testing.T) {
 
 	// Query non-existent project (should return empty list, not error)
 	labels, err := svc.GetLabelsByProject(context.Background(), 999999)
-
 	if err != nil {
 		t.Errorf("GetLabelsByProject() for non-existent project should not error, got %v", err)
 	}
@@ -1018,7 +1012,6 @@ func TestGetLabelsForTask_NonExistentTask(t *testing.T) {
 
 	// Query non-existent task (should return empty list, not error)
 	labels, err := svc.GetLabelsForTask(context.Background(), 999999)
-
 	if err != nil {
 		t.Errorf("GetLabelsForTask() for non-existent task should not error, got %v", err)
 	}
@@ -1144,7 +1137,6 @@ func TestUpdateLabel_InvalidColorFormats(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
 	svc := NewService(db, nil)
@@ -1219,7 +1211,6 @@ func TestUpdateLabel_NoFieldsToUpdate(t *testing.T) {
 	}
 
 	err = svc.UpdateLabel(context.Background(), req)
-
 	if err != nil {
 		t.Errorf("UpdateLabel() with no fields should succeed, got error: %v", err)
 	}
@@ -1291,7 +1282,6 @@ func TestDeleteLabel_NonExistentLabel(t *testing.T) {
 
 	// Try to delete non-existent label (should succeed as per service implementation)
 	err := svc.DeleteLabel(context.Background(), 999999)
-
 	if err != nil {
 		t.Errorf("DeleteLabel() for non-existent label should succeed (idempotent), got error: %v", err)
 	}
