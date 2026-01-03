@@ -12,8 +12,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 // ============================================================================
@@ -133,7 +131,9 @@ func setupMockDaemonWithControl(t *testing.T) (string, func() error, func(), cha
 	// startFunc creates a new listener and starts accepting connections
 	startFunc := func() error {
 		// Remove old socket file if it exists
-		_ = os.Remove(socketPath)
+		if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to remove old socket: %w", err)
+		}
 
 		// Create Unix socket listener
 		listener, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", socketPath)
@@ -253,7 +253,9 @@ func setupMockDaemonWithControl(t *testing.T) (string, func() error, func(), cha
 	t.Cleanup(func() {
 		*cleanupMu.cleanedUp = true
 		stopFunc()
-		_ = os.Remove(socketPath)
+		if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
+			t.Logf("Warning: failed to remove socket during cleanup: %v", err)
+		}
 	})
 
 	return socketPath, startFunc, stopFunc, messages
@@ -3127,8 +3129,10 @@ func TestClient_DetectsDaemonDisconnect(t *testing.T) {
 	t.Logf("Simulating daemon disconnect...")
 	start := time.Now()
 	stopFunc()
-	rmErr := os.Remove(socketPath)
-	assert.NoError(t, rmErr)
+	// Remove socket to fully simulate daemon crash (may already be removed by listener close)
+	if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
+		t.Fatalf("Failed to remove socket: %v", err)
+	}
 
 	// Wait for Listen loop to detect disconnect and exit
 	// With baseDelay=50ms and maxRetries=2: ~150ms for retries
