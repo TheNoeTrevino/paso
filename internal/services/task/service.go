@@ -5,56 +5,130 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"sort"
-	"strings"
 
+	"github.com/thenoetrevino/paso/internal/converters"
+	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/database/generated"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// Service defines all task-related business operations
-type Service interface {
-	// Read operations
+// ============================================================================
+// SEGREGATED INTERFACES - Following Interface Segregation Principle (ISP)
+// ============================================================================
+
+// TaskReader defines read-only operations for retrieving task data.
+// This interface segregates read operations, making it easier to mock for testing
+// and understand which operations don't modify state.
+//
+// Use this interface when you only need to retrieve task information without
+// modification capabilities. This reduces coupling and makes testing easier.
+type TaskReader interface {
+	// Get single task details
 	GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error)
+
+	// Get task summaries/lists grouped by column
 	GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error)
 	GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error)
 	GetReadyTaskSummariesByProject(ctx context.Context, projectID int) ([]*models.TaskSummary, error)
+	GetInProgressTasksByProject(ctx context.Context, projectID int) ([]*models.TaskDetail, error)
+
+	// Get task references and hierarchies
 	GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error)
 	GetTaskTreeByProject(ctx context.Context, projectID int) ([]*models.TaskTreeNode, error)
+}
 
-	// Write operations
+// TaskWriter defines write operations for creating, updating, and deleting tasks.
+// This interface segregates state-modifying operations, allowing clients to specify
+// exactly what write capabilities they need.
+//
+// Use this interface when you need to modify tasks (create, update, delete) but don't
+// need movement or relationship operations. This provides focused control over write access.
+type TaskWriter interface {
+	// Create and update operations
 	CreateTask(ctx context.Context, req CreateTaskRequest) (*models.Task, error)
 	UpdateTask(ctx context.Context, req UpdateTaskRequest) error
 	DeleteTask(ctx context.Context, taskID int) error
+}
 
-	// Task movements
+// TaskMover defines task movement operations within the task management system.
+// This interface segregates operations that change task position/column, making
+// it clear which operations affect task workflow state.
+//
+// Use this interface when you need to move tasks between columns or reorder them,
+// but don't need other write operations like creation or deletion.
+type TaskMover interface {
+	// Column-based movement (workflow progression)
 	MoveTaskToNextColumn(ctx context.Context, taskID int) error
 	MoveTaskToPrevColumn(ctx context.Context, taskID int) error
 	MoveTaskToColumn(ctx context.Context, taskID, columnID int) error
 	MoveTaskToReadyColumn(ctx context.Context, taskID int) error
 	MoveTaskToCompletedColumn(ctx context.Context, taskID int) error
 	MoveTaskToInProgressColumn(ctx context.Context, taskID int) error
-	GetInProgressTasksByProject(ctx context.Context, projectID int) ([]*models.TaskDetail, error)
+
+	// Position-based movement (ordering within column)
 	MoveTaskUp(ctx context.Context, taskID int) error
 	MoveTaskDown(ctx context.Context, taskID int) error
+}
 
-	// Task relationships
+// TaskRelationer defines task relationship operations (parent/child/blocking relationships).
+// This interface segregates relationship management operations, allowing fine-grained
+// control over which clients can modify task dependencies.
+//
+// Use this interface when you need to manage task relationships (dependencies, blocking)
+// but don't need other modification operations.
+type TaskRelationer interface {
+	// Parent/child relationships
 	AddParentRelation(ctx context.Context, taskID, parentID int, relationTypeID int) error
 	AddChildRelation(ctx context.Context, taskID, childID int, relationTypeID int) error
 	RemoveParentRelation(ctx context.Context, taskID, parentID int) error
 	RemoveChildRelation(ctx context.Context, taskID, childID int) error
+}
 
+// TaskLabeler defines label management operations for tasks.
+// This interface segregates label operations, providing focused control over
+// label attachment and detachment.
+//
+// Use this interface when you only need to manage labels for tasks, allowing
+// independent control over label operations.
+type TaskLabeler interface {
 	// Label management
 	AttachLabel(ctx context.Context, taskID, labelID int) error
 	DetachLabel(ctx context.Context, taskID, labelID int) error
+}
 
+// TaskCommenter defines comment operations on tasks.
+// This interface segregates comment management, allowing independent control
+// over comment creation, updates, and deletion.
+//
+// Use this interface when you only need to manage comments on tasks,
+// independent from other task operations.
+type TaskCommenter interface {
 	// Comment operations
 	CreateComment(ctx context.Context, req CreateCommentRequest) (*models.Comment, error)
 	UpdateComment(ctx context.Context, req UpdateCommentRequest) error
 	DeleteComment(ctx context.Context, commentID int) error
 	GetCommentsByTask(ctx context.Context, taskID int) ([]*models.Comment, error)
+}
+
+// Service defines all task-related business operations as a composition of focused interfaces.
+// This composite interface provides better separation of concerns through interface segregation.
+//
+// Components that need only specific operations (e.g., reading, writing, moving) should depend on
+// the corresponding focused interface (TaskReader, TaskWriter, TaskMover, etc.) instead of this
+// composite interface. This makes the system more testable and maintainable by reducing coupling.
+//
+// The service implementation satisfies all segregated interfaces, making it convenient for
+// components that need multiple operation types.
+type Service interface {
+	TaskReader
+	TaskMover
+	TaskWriter
+	TaskRelationer
+	TaskLabeler
+	TaskCommenter
 }
 
 // CreateTaskRequest encapsulates all data needed to create a task
@@ -124,132 +198,128 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 		return nil, fmt.Errorf("failed to get project ID: %w", err)
 	}
 
-	// Start transaction
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
+	var createdTask generated.Task
+
+	// Use WithTx helper for transaction management
+	err = database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		qtx := generated.New(tx)
+
+		// Get next ticket number
+		ticketNumber, err := qtx.GetNextTicketNumber(ctx, projectID)
+		if err != nil {
+			return fmt.Errorf("failed to get ticket number: %w", err)
 		}
-	}()
 
-	qtx := generated.New(tx)
+		// Create task
+		var desc sql.NullString
+		if req.Description != "" {
+			desc = sql.NullString{String: req.Description, Valid: true}
+		}
 
-	// Get next ticket number
-	ticketNumber, err := qtx.GetNextTicketNumber(ctx, projectID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get ticket number: %w", err)
-	}
+		var taskErr error
+		createdTask, taskErr = qtx.CreateTask(ctx, generated.CreateTaskParams{
+			Title:        req.Title,
+			Description:  desc,
+			ColumnID:     int64(req.ColumnID),
+			Position:     int64(req.Position),
+			TicketNumber: ticketNumber,
+		})
+		if taskErr != nil {
+			return fmt.Errorf("failed to create task: %w", taskErr)
+		}
 
-	// Create task
-	var desc sql.NullString
-	if req.Description != "" {
-		desc = sql.NullString{String: req.Description, Valid: true}
-	}
+		// Increment ticket number
+		if err := qtx.IncrementTicketNumber(ctx, projectID); err != nil {
+			return fmt.Errorf("failed to increment ticket number: %w", err)
+		}
 
-	createdTask, err := qtx.CreateTask(ctx, generated.CreateTaskParams{
-		Title:        req.Title,
-		Description:  desc,
-		ColumnID:     int64(req.ColumnID),
-		Position:     int64(req.Position),
-		TicketNumber: ticketNumber,
+		// Set priority if provided (default is handled by database)
+		if req.PriorityID > 0 {
+			if err := qtx.UpdateTaskPriority(ctx, generated.UpdateTaskPriorityParams{
+				PriorityID: int64(req.PriorityID),
+				ID:         createdTask.ID,
+			}); err != nil {
+				return fmt.Errorf("failed to set priority: %w", err)
+			}
+		}
+
+		// Set type if provided (default is handled by database)
+		if req.TypeID > 0 {
+			if err := qtx.UpdateTaskType(ctx, generated.UpdateTaskTypeParams{
+				TypeID: int64(req.TypeID),
+				ID:     createdTask.ID,
+			}); err != nil {
+				return fmt.Errorf("failed to set type: %w", err)
+			}
+		}
+
+		// Attach labels
+		for _, labelID := range req.LabelIDs {
+			if err := qtx.AddLabelToTask(ctx, generated.AddLabelToTaskParams{
+				TaskID:  createdTask.ID,
+				LabelID: int64(labelID),
+			}); err != nil {
+				return fmt.Errorf("failed to attach label %d: %w", labelID, err)
+			}
+		}
+
+		// Add parent relationships (tasks that depend on this task)
+		for _, parentID := range req.ParentIDs {
+			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+				ParentID:       int64(parentID),
+				ChildID:        createdTask.ID,
+				RelationTypeID: models.RelationTypeParentChild,
+			}); err != nil {
+				return fmt.Errorf("failed to add parent relation: %w", err)
+			}
+		}
+
+		// Add child relationships (tasks this task depends on)
+		for _, childID := range req.ChildIDs {
+			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+				ParentID:       createdTask.ID,
+				ChildID:        int64(childID),
+				RelationTypeID: models.RelationTypeParentChild,
+			}); err != nil {
+				return fmt.Errorf("failed to add child relation: %w", err)
+			}
+		}
+
+		// Add blocking relationships (tasks that block this task)
+		for _, blockerID := range req.BlockedByIDs {
+			// This task (Parent) is blocked by blockerID (Child)
+			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+				ParentID:       createdTask.ID,
+				ChildID:        int64(blockerID),
+				RelationTypeID: models.RelationTypeBlocking,
+			}); err != nil {
+				return fmt.Errorf("failed to add blocked-by relation: %w", err)
+			}
+		}
+
+		// Add blocked relationships (tasks that are blocked by this task)
+		for _, blockedID := range req.BlocksIDs {
+			// blockedID (Parent) is blocked by this task (Child)
+			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+				ParentID:       int64(blockedID),
+				ChildID:        createdTask.ID,
+				RelationTypeID: models.RelationTypeBlocking,
+			}); err != nil {
+				return fmt.Errorf("failed to add blocks relation: %w", err)
+			}
+		}
+
+		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create task: %w", err)
-	}
-
-	// Increment ticket number
-	if err := qtx.IncrementTicketNumber(ctx, projectID); err != nil {
-		return nil, fmt.Errorf("failed to increment ticket number: %w", err)
-	}
-
-	// Set priority if provided (default is handled by database)
-	if req.PriorityID > 0 {
-		if err := qtx.UpdateTaskPriority(ctx, generated.UpdateTaskPriorityParams{
-			PriorityID: int64(req.PriorityID),
-			ID:         createdTask.ID,
-		}); err != nil {
-			return nil, fmt.Errorf("failed to set priority: %w", err)
-		}
-	}
-
-	// Set type if provided (default is handled by database)
-	if req.TypeID > 0 {
-		if err := qtx.UpdateTaskType(ctx, generated.UpdateTaskTypeParams{
-			TypeID: int64(req.TypeID),
-			ID:     createdTask.ID,
-		}); err != nil {
-			return nil, fmt.Errorf("failed to set type: %w", err)
-		}
-	}
-
-	// Attach labels
-	for _, labelID := range req.LabelIDs {
-		if err := qtx.AddLabelToTask(ctx, generated.AddLabelToTaskParams{
-			TaskID:  createdTask.ID,
-			LabelID: int64(labelID),
-		}); err != nil {
-			return nil, fmt.Errorf("failed to attach label %d: %w", labelID, err)
-		}
-	}
-
-	// Add parent relationships (tasks that depend on this task)
-	for _, parentID := range req.ParentIDs {
-		if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
-			ParentID:       int64(parentID),
-			ChildID:        createdTask.ID,
-			RelationTypeID: 1,
-		}); err != nil {
-			return nil, fmt.Errorf("failed to add parent relation: %w", err)
-		}
-	}
-
-	// Add child relationships (tasks this task depends on)
-	for _, childID := range req.ChildIDs {
-		if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
-			ParentID:       createdTask.ID,
-			ChildID:        int64(childID),
-			RelationTypeID: 1,
-		}); err != nil {
-			return nil, fmt.Errorf("failed to add child relation: %w", err)
-		}
-	}
-
-	// Add blocking relationships (tasks that block this task)
-	for _, blockerID := range req.BlockedByIDs {
-		// This task (Parent) is blocked by blockerID (Child)
-		if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
-			ParentID:       createdTask.ID,
-			ChildID:        int64(blockerID),
-			RelationTypeID: 2, // Blocking relationship
-		}); err != nil {
-			return nil, fmt.Errorf("failed to add blocked-by relation: %w", err)
-		}
-	}
-
-	// Add blocked relationships (tasks that are blocked by this task)
-	for _, blockedID := range req.BlocksIDs {
-		// blockedID (Parent) is blocked by this task (Child)
-		if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
-			ParentID:       int64(blockedID),
-			ChildID:        createdTask.ID,
-			RelationTypeID: 2, // Blocking relationship
-		}); err != nil {
-			return nil, fmt.Errorf("failed to add blocks relation: %w", err)
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, err
 	}
 
 	// Publish event after successful commit
-	s.publishTaskEvent(int(createdTask.ID))
+	s.publishTaskEvent(ctx, int(createdTask.ID))
 
 	// Convert to model
-	return convertToTaskModel(createdTask), nil
+	return converters.TaskToModel(createdTask), nil
 }
 
 // UpdateTask handles task updates with validation
@@ -275,29 +345,29 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 
 	// Update basic fields if provided
 	if req.Title != nil || req.Description != nil {
-		title := ""
+		var title string
 		var description sql.NullString
 
-		if req.Title != nil {
-			title = *req.Title
-		} else {
-			// Need to get existing title
+		// Only query if we need to preserve existing values for fields not being updated
+		if req.Title == nil || req.Description == nil {
 			detail, err := s.queries.GetTaskDetail(ctx, int64(req.TaskID))
 			if err != nil {
 				return fmt.Errorf("failed to get task: %w", err)
 			}
-			title = detail.Title
+			if req.Title == nil {
+				title = detail.Title
+			}
+			if req.Description == nil {
+				description = detail.Description
+			}
 		}
 
+		// Use provided values or fall back to existing values
+		if req.Title != nil {
+			title = *req.Title
+		}
 		if req.Description != nil {
 			description = sql.NullString{String: *req.Description, Valid: true}
-		} else {
-			// Need to get existing description
-			detail, err := s.queries.GetTaskDetail(ctx, int64(req.TaskID))
-			if err != nil {
-				return fmt.Errorf("failed to get task: %w", err)
-			}
-			description = detail.Description
 		}
 
 		if err := s.queries.UpdateTask(ctx, generated.UpdateTaskParams{
@@ -330,7 +400,7 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 	}
 
 	// Publish event
-	s.publishTaskEvent(req.TaskID)
+	s.publishTaskEvent(ctx, req.TaskID)
 
 	return nil
 }
@@ -346,7 +416,7 @@ func (s *service) DeleteTask(ctx context.Context, taskID int) error {
 	}
 
 	// Publish event
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 
 	return nil
 }
@@ -396,10 +466,10 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 		ColumnName:  taskRow.ColumnName,
 		ProjectName: taskRow.ProjectName,
 		Position:    int(taskRow.Position),
-		Labels:      convertLabelsToModels(labels),
-		ParentTasks: convertParentTasksToReferences(parentRows),
-		ChildTasks:  convertChildTasksToReferences(childRows),
-		Comments:    convertCommentsToModels(commentRows),
+		Labels:      converters.LabelsToModels(labels),
+		ParentTasks: converters.ParentTasksToReferences(parentRows),
+		ChildTasks:  converters.ChildTasksToReferences(childRows),
+		Comments:    converters.CommentsToModels(commentRows),
 		IsBlocked:   taskRow.IsBlocked > 0,
 	}
 
@@ -425,17 +495,16 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 	return detail, nil
 }
 
-// GetTaskSummariesByProject retrieves task summaries for a project
+// GetTaskSummariesByProject retrieves task summaries for a project, grouped by column
 func (s *service) GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error) {
 	rows, err := s.queries.GetTaskSummariesByProject(ctx, int64(projectID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task summaries: %w", err)
 	}
 
-	// Group by column
 	result := make(map[int][]*models.TaskSummary)
 	for _, row := range rows {
-		summary := convertTaskSummaryRowToModel(row)
+		summary := converters.TaskSummaryFromRowToModel(row)
 		columnID := int(row.ColumnID)
 		result[columnID] = append(result[columnID], summary)
 	}
@@ -459,7 +528,7 @@ func (s *service) GetTaskSummariesByProjectFiltered(ctx context.Context, project
 	// Group by column
 	result := make(map[int][]*models.TaskSummary)
 	for _, row := range rows {
-		summary := convertFilteredTaskSummaryRowToModel(row)
+		summary := converters.FilteredTaskSummaryFromRowToModel(row)
 		columnID := int(row.ColumnID)
 		result[columnID] = append(result[columnID], summary)
 	}
@@ -478,7 +547,7 @@ func (s *service) GetReadyTaskSummariesByProject(ctx context.Context, projectID 
 	for _, row := range rows {
 		// Only include unblocked tasks
 		if row.IsBlocked == 0 {
-			summary := convertReadyTaskSummaryRowToModel(row)
+			summary := converters.ReadyTaskSummaryFromRowToModel(row)
 			result = append(result, summary)
 		}
 	}
@@ -636,6 +705,23 @@ func (s *service) GetTaskTreeByProject(ctx context.Context, projectID int) ([]*m
 	return roots, nil
 }
 
+// extractColumnID safely converts the interface{} result from GetNextColumnID or GetPrevColumnID
+// to an int64, handling NULL values properly.
+func extractColumnID(columnID interface{}) (int64, error) {
+	if columnID == nil {
+		return 0, fmt.Errorf("column ID is NULL")
+	}
+
+	switch v := columnID.(type) {
+	case int64:
+		return v, nil
+	case float64:
+		return int64(v), nil
+	default:
+		return 0, fmt.Errorf("unexpected column ID type: %T", v)
+	}
+}
+
 // MoveTaskToNextColumn moves task to next column
 func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 	if taskID <= 0 {
@@ -653,19 +739,11 @@ func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 	if err != nil {
 		return fmt.Errorf("failed to get next column: %w", err)
 	}
-	if nextColumnID == nil {
-		return fmt.Errorf("no next column available")
-	}
 
-	// Convert interface{} to int64
-	var nextColID int64
-	switch v := nextColumnID.(type) {
-	case int64:
-		nextColID = v
-	case nil:
+	// Convert interface{} to int64 with proper error handling
+	nextColID, err := extractColumnID(nextColumnID)
+	if err != nil {
 		return fmt.Errorf("no next column available")
-	default:
-		return fmt.Errorf("unexpected column ID type")
 	}
 
 	// Get task count in target column to append at the end
@@ -683,7 +761,7 @@ func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -704,19 +782,11 @@ func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 	if err != nil {
 		return fmt.Errorf("failed to get previous column: %w", err)
 	}
-	if prevColumnID == nil {
-		return fmt.Errorf("no previous column available")
-	}
 
-	// Convert interface{} to int64
-	var prevColID int64
-	switch v := prevColumnID.(type) {
-	case int64:
-		prevColID = v
-	case nil:
+	// Convert interface{} to int64 with proper error handling
+	prevColID, err := extractColumnID(prevColumnID)
+	if err != nil {
 		return fmt.Errorf("no previous column available")
-	default:
-		return fmt.Errorf("unexpected column ID type")
 	}
 
 	// Get task count in target column to append at the end
@@ -734,7 +804,7 @@ func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -770,7 +840,7 @@ func (s *service) MoveTaskToColumn(ctx context.Context, taskID, columnID int) er
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -892,24 +962,57 @@ func (s *service) MoveTaskToInProgressColumn(ctx context.Context, taskID int) er
 }
 
 // GetInProgressTasksByProject retrieves all tasks in in-progress columns for a project
+// OPTIMIZED: Uses a single efficiently-designed query that fetches task details,
+// labels, and blocking status in one go. This avoids the N+1 query problem where
+// the old implementation called GetTaskDetail for each task, which itself made
+// 5+ additional queries (labels, comments, parents, children, etc).
+//
+// Performance improvement: Reduces queries from O(N*5+) to O(1)
+// where N is the number of in-progress tasks.
 func (s *service) GetInProgressTasksByProject(ctx context.Context, projectID int) ([]*models.TaskDetail, error) {
 	if projectID <= 0 {
 		return nil, ErrInvalidProjectID
 	}
 
-	rows, err := s.queries.GetInProgressTasksByProject(ctx, int64(projectID))
+	// Fetch all in-progress tasks with their details in a SINGLE efficient query
+	detailRows, err := s.queries.GetInProgressTaskDetails(ctx, int64(projectID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get in-progress tasks: %w", err)
 	}
 
-	tasks := make([]*models.TaskDetail, 0, len(rows))
-	for _, row := range rows {
-		// Get full task detail for each in-progress task
-		taskDetail, err := s.GetTaskDetail(ctx, int(row.ID))
-		if err != nil {
-			log.Printf("failed to get details for task %d: %v", row.ID, err)
-			continue
+	tasks := make([]*models.TaskDetail, 0, len(detailRows))
+	for _, row := range detailRows {
+		// Convert row to TaskDetail - no additional queries needed!
+		taskDetail := &models.TaskDetail{
+			ID:           int(row.ID),
+			Title:        row.Title,
+			Description:  row.Description.String,
+			ColumnID:     int(row.ColumnID),
+			ColumnName:   row.ColumnName,
+			ProjectName:  row.ProjectName,
+			Position:     int(row.Position),
+			TicketNumber: int(row.TicketNumber.Int64),
+			Labels:       converters.ParseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
+			IsBlocked:    row.IsBlocked > 0,
+			CreatedAt:    row.CreatedAt.Time,
+			UpdatedAt:    row.UpdatedAt.Time,
 		}
+
+		// Set optional fields
+		if row.TypeDescription.Valid {
+			taskDetail.TypeDescription = row.TypeDescription.String
+		}
+		if row.PriorityDescription.Valid {
+			taskDetail.PriorityDescription = row.PriorityDescription.String
+		}
+		if row.PriorityColor.Valid {
+			taskDetail.PriorityColor = row.PriorityColor.String
+		}
+
+		// NOTE: Parent/child tasks and comments are NOT fetched here.
+		// If full task relationships are needed, use GetTaskDetail instead,
+		// but only for the specific tasks that require it, not in bulk.
+
 		tasks = append(tasks, taskDetail)
 	}
 
@@ -922,61 +1025,54 @@ func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 		return ErrInvalidTaskID
 	}
 
-	// Start transaction to avoid UNIQUE constraint violations during swap
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
+	// Use WithTx helper to avoid UNIQUE constraint violations during swap
+	err := database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		qtx := generated.New(tx)
+
+		// Get task position
+		posRow, err := qtx.GetTaskPosition(ctx, int64(taskID))
+		if err != nil {
+			return fmt.Errorf("failed to get task position: %w", err)
 		}
-	}()
 
-	qtx := generated.New(tx)
+		// Get task above
+		aboveRow, err := qtx.GetTaskAbove(ctx, generated.GetTaskAboveParams(posRow))
+		if err != nil {
+			return fmt.Errorf("no task above: %w", err)
+		}
 
-	// Get task position
-	posRow, err := qtx.GetTaskPosition(ctx, int64(taskID))
+		// Swap positions using temporary negative position to avoid UNIQUE constraint violation
+		// Step 1: Move current task to temporary position
+		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+			Position: -1,
+			ID:       int64(taskID),
+		}); err != nil {
+			return fmt.Errorf("failed to set temporary position: %w", err)
+		}
+
+		// Step 2: Move task above to current task's position
+		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+			Position: posRow.Position,
+			ID:       aboveRow.ID,
+		}); err != nil {
+			return fmt.Errorf("failed to move other task down: %w", err)
+		}
+
+		// Step 3: Move current task to above position
+		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+			Position: aboveRow.Position,
+			ID:       int64(taskID),
+		}); err != nil {
+			return fmt.Errorf("failed to move task up: %w", err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("failed to get task position: %w", err)
+		return err
 	}
 
-	// Get task above
-	aboveRow, err := qtx.GetTaskAbove(ctx, generated.GetTaskAboveParams(posRow))
-	if err != nil {
-		return fmt.Errorf("no task above: %w", err)
-	}
-
-	// Swap positions using temporary negative position to avoid UNIQUE constraint violation
-	// Step 1: Move current task to temporary position
-	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
-		Position: -1,
-		ID:       int64(taskID),
-	}); err != nil {
-		return fmt.Errorf("failed to set temporary position: %w", err)
-	}
-
-	// Step 2: Move task above to current task's position
-	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
-		Position: posRow.Position,
-		ID:       aboveRow.ID,
-	}); err != nil {
-		return fmt.Errorf("failed to move other task down: %w", err)
-	}
-
-	// Step 3: Move current task to above position
-	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
-		Position: aboveRow.Position,
-		ID:       int64(taskID),
-	}); err != nil {
-		return fmt.Errorf("failed to move task up: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -986,62 +1082,94 @@ func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
 		return ErrInvalidTaskID
 	}
 
-	// Start transaction to avoid UNIQUE constraint violations during swap
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
-			log.Printf("failed to rollback transaction: %v", err)
+	// Use WithTx helper to avoid UNIQUE constraint violations during swap
+	err := database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		qtx := generated.New(tx)
+
+		// Get task position
+		posRow, err := qtx.GetTaskPosition(ctx, int64(taskID))
+		if err != nil {
+			return fmt.Errorf("failed to get task position: %w", err)
 		}
-	}()
 
-	qtx := generated.New(tx)
+		// Get task below
+		belowRow, err := qtx.GetTaskBelow(ctx, generated.GetTaskBelowParams(posRow))
+		if err != nil {
+			return fmt.Errorf("no task below: %w", err)
+		}
 
-	// Get task position
-	posRow, err := qtx.GetTaskPosition(ctx, int64(taskID))
+		// Swap positions using temporary negative position to avoid UNIQUE constraint violation
+		// Step 1: Move current task to temporary position
+		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+			Position: -1,
+			ID:       int64(taskID),
+		}); err != nil {
+			return fmt.Errorf("failed to set temporary position: %w", err)
+		}
+
+		// Step 2: Move task below to current task's position
+		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+			Position: posRow.Position,
+			ID:       belowRow.ID,
+		}); err != nil {
+			return fmt.Errorf("failed to move other task up: %w", err)
+		}
+
+		// Step 3: Move current task to below position
+		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+			Position: belowRow.Position,
+			ID:       int64(taskID),
+		}); err != nil {
+			return fmt.Errorf("failed to move task down: %w", err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("failed to get task position: %w", err)
+		return err
 	}
 
-	// Get task below
-	belowRow, err := qtx.GetTaskBelow(ctx, generated.GetTaskBelowParams(posRow))
-	if err != nil {
-		return fmt.Errorf("no task below: %w", err)
-	}
-
-	// Swap positions using temporary negative position to avoid UNIQUE constraint violation
-	// Step 1: Move current task to temporary position
-	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
-		Position: -1,
-		ID:       int64(taskID),
-	}); err != nil {
-		return fmt.Errorf("failed to set temporary position: %w", err)
-	}
-
-	// Step 2: Move task below to current task's position
-	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
-		Position: posRow.Position,
-		ID:       belowRow.ID,
-	}); err != nil {
-		return fmt.Errorf("failed to move other task up: %w", err)
-	}
-
-	// Step 3: Move current task to below position
-	if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
-		Position: belowRow.Position,
-		ID:       int64(taskID),
-	}); err != nil {
-		return fmt.Errorf("failed to move task down: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
+}
+
+// wouldCreateCycle checks if adding a parent->child relationship would create a cycle
+// by checking if parentID is reachable from childID through existing relationships
+func (s *service) wouldCreateCycle(ctx context.Context, parentID, childID int) (bool, error) {
+	// Use BFS to check if parentID is reachable from childID
+	visited := make(map[int]bool)
+	queue := []int{childID}
+
+	for len(queue) > 0 {
+		currentID := queue[0]
+		queue = queue[1:]
+
+		if visited[currentID] {
+			continue
+		}
+		visited[currentID] = true
+
+		// If we reach the parent, we found a cycle
+		if currentID == parentID {
+			return true, nil
+		}
+
+		// Get all children of current task
+		children, err := s.queries.GetChildTasks(ctx, int64(currentID))
+		if err != nil {
+			return false, fmt.Errorf("failed to get child tasks: %w", err)
+		}
+
+		// Add unvisited children to queue
+		for _, child := range children {
+			childTaskID := int(child.ID)
+			if !visited[childTaskID] {
+				queue = append(queue, childTaskID)
+			}
+		}
+	}
+
+	return false, nil
 }
 
 // AddParentRelation adds a parent relationship (parent depends on this task)
@@ -1053,6 +1181,15 @@ func (s *service) AddParentRelation(ctx context.Context, taskID, parentID int, r
 		return ErrSelfRelation
 	}
 
+	// Check for circular dependency before adding
+	wouldCycle, err := s.wouldCreateCycle(ctx, parentID, taskID)
+	if err != nil {
+		return err
+	}
+	if wouldCycle {
+		return ErrCircularRelation
+	}
+
 	// Add the relationship (this task is the child)
 	if err := s.queries.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
 		ParentID:       int64(parentID),
@@ -1062,7 +1199,7 @@ func (s *service) AddParentRelation(ctx context.Context, taskID, parentID int, r
 		return fmt.Errorf("failed to add parent relation: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -1075,6 +1212,15 @@ func (s *service) AddChildRelation(ctx context.Context, taskID, childID int, rel
 		return ErrSelfRelation
 	}
 
+	// Check for circular dependency before adding
+	wouldCycle, err := s.wouldCreateCycle(ctx, taskID, childID)
+	if err != nil {
+		return err
+	}
+	if wouldCycle {
+		return ErrCircularRelation
+	}
+
 	// Add the relationship (this task is the parent)
 	if err := s.queries.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
 		ParentID:       int64(taskID),
@@ -1084,7 +1230,7 @@ func (s *service) AddChildRelation(ctx context.Context, taskID, childID int, rel
 		return fmt.Errorf("failed to add child relation: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -1101,7 +1247,7 @@ func (s *service) RemoveParentRelation(ctx context.Context, taskID, parentID int
 		return fmt.Errorf("failed to remove parent relation: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -1118,7 +1264,7 @@ func (s *service) RemoveChildRelation(ctx context.Context, taskID, childID int) 
 		return fmt.Errorf("failed to remove child relation: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -1138,7 +1284,7 @@ func (s *service) AttachLabel(ctx context.Context, taskID, labelID int) error {
 		return fmt.Errorf("failed to attach label: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -1158,7 +1304,7 @@ func (s *service) DetachLabel(ctx context.Context, taskID, labelID int) error {
 		return fmt.Errorf("failed to detach label: %w", err)
 	}
 
-	s.publishTaskEvent(taskID)
+	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
@@ -1197,7 +1343,7 @@ func (s *service) CreateComment(ctx context.Context, req CreateCommentRequest) (
 		return nil, fmt.Errorf("failed to create comment: %w", err)
 	}
 
-	s.publishTaskEvent(req.TaskID)
+	s.publishTaskEvent(ctx, req.TaskID)
 
 	return &models.Comment{
 		ID:        int(comment.ID),
@@ -1237,7 +1383,7 @@ func (s *service) UpdateComment(ctx context.Context, req UpdateCommentRequest) e
 		return fmt.Errorf("failed to update comment: %w", err)
 	}
 
-	s.publishTaskEvent(int(comment.TaskID))
+	s.publishTaskEvent(ctx, int(comment.TaskID))
 	return nil
 }
 
@@ -1262,7 +1408,7 @@ func (s *service) DeleteComment(ctx context.Context, commentID int) error {
 		return fmt.Errorf("failed to delete comment: %w", err)
 	}
 
-	s.publishTaskEvent(int(comment.TaskID))
+	s.publishTaskEvent(ctx, int(comment.TaskID))
 	return nil
 }
 
@@ -1277,7 +1423,7 @@ func (s *service) GetCommentsByTask(ctx context.Context, taskID int) ([]*models.
 		return nil, fmt.Errorf("failed to get comments: %w", err)
 	}
 
-	return convertCommentsToModels(rows), nil
+	return converters.CommentsToModels(rows), nil
 }
 
 // validateCreateTask validates a CreateTaskRequest
@@ -1314,224 +1460,26 @@ func validateCommentMessage(message string) error {
 	return nil
 }
 
-// publishTaskEvent publishes a task event
-func (s *service) publishTaskEvent(taskID int) {
+// publishTaskEvent publishes a task event with retry logic
+func (s *service) publishTaskEvent(ctx context.Context, taskID int) {
 	if s.eventClient == nil {
 		return
 	}
 
 	// Get project ID for the task
-	projectID, err := s.queries.GetProjectIDFromTask(context.Background(), int64(taskID))
+	projectID, err := s.queries.GetProjectIDFromTask(ctx, int64(taskID))
 	if err != nil {
-		log.Printf("failed to get project ID for task %d: %v", taskID, err)
+		slog.Error("failed to retrieve project ID for task event publishing",
+			"task_id", taskID,
+			"error", err.Error(),
+		)
 		return
 	}
 
-	if err := s.eventClient.SendEvent(events.Event{
+	// Publish with retry (3 attempts with exponential backoff)
+	// Non-blocking: errors are logged but don't affect the operation
+	_ = events.PublishWithRetry(s.eventClient, events.Event{
 		Type:      events.EventDatabaseChanged,
 		ProjectID: int(projectID),
-	}); err != nil {
-		log.Printf("failed to send event for task %d: %v", taskID, err)
-	}
-}
-
-// ============================================================================
-// MODEL CONVERSION FUNCTIONS
-// ============================================================================
-
-// convertToTaskModel converts a generated.Task to models.Task
-func convertToTaskModel(t generated.Task) *models.Task {
-	task := &models.Task{
-		ID:         int(t.ID),
-		Title:      t.Title,
-		ColumnID:   int(t.ColumnID),
-		Position:   int(t.Position),
-		TypeID:     int(t.TypeID),
-		PriorityID: int(t.PriorityID),
-	}
-
-	if t.Description.Valid {
-		task.Description = t.Description.String
-	}
-	if t.CreatedAt.Valid {
-		task.CreatedAt = t.CreatedAt.Time
-	}
-	if t.UpdatedAt.Valid {
-		task.UpdatedAt = t.UpdatedAt.Time
-	}
-
-	return task
-}
-
-// convertLabelsToModels converts generated.Label slice to models.Label slice
-func convertLabelsToModels(labels []generated.Label) []*models.Label {
-	result := make([]*models.Label, 0, len(labels))
-	for _, l := range labels {
-		result = append(result, &models.Label{
-			ID:        int(l.ID),
-			Name:      l.Name,
-			Color:     l.Color,
-			ProjectID: int(l.ProjectID),
-		})
-	}
-	return result
-}
-
-// convertParentTasksToReferences converts parent task rows to TaskReference slice
-func convertParentTasksToReferences(rows []generated.GetParentTasksRow) []*models.TaskReference {
-	result := make([]*models.TaskReference, 0, len(rows))
-	for _, row := range rows {
-		ref := &models.TaskReference{
-			ID:             int(row.ID),
-			Title:          row.Title,
-			ProjectName:    row.Name,
-			RelationTypeID: int(row.ID_2),
-			RelationLabel:  row.PToCLabel,
-			RelationColor:  row.Color,
-			IsBlocking:     row.IsBlocking,
-		}
-		if row.TicketNumber.Valid {
-			ref.TicketNumber = int(row.TicketNumber.Int64)
-		}
-		result = append(result, ref)
-	}
-	return result
-}
-
-// convertChildTasksToReferences converts child task rows to TaskReference slice
-func convertChildTasksToReferences(rows []generated.GetChildTasksRow) []*models.TaskReference {
-	result := make([]*models.TaskReference, 0, len(rows))
-	for _, row := range rows {
-		ref := &models.TaskReference{
-			ID:             int(row.ID),
-			Title:          row.Title,
-			ProjectName:    row.Name,
-			RelationTypeID: int(row.ID_2),
-			RelationLabel:  row.CToPLabel,
-			RelationColor:  row.Color,
-			IsBlocking:     row.IsBlocking,
-		}
-		if row.TicketNumber.Valid {
-			ref.TicketNumber = int(row.TicketNumber.Int64)
-		}
-		result = append(result, ref)
-	}
-	return result
-}
-
-// convertCommentsToModels converts generated.TaskComment slice to models.Comment slice
-func convertCommentsToModels(comments []generated.TaskComment) []*models.Comment {
-	result := make([]*models.Comment, 0, len(comments))
-	for _, c := range comments {
-		result = append(result, &models.Comment{
-			ID:        int(c.ID),
-			TaskID:    int(c.TaskID),
-			Message:   c.Content,
-			Author:    c.Author,
-			CreatedAt: c.CreatedAt.Time,
-		})
-	}
-	return result
-}
-
-// convertTaskSummaryRowToModel converts a task summary row to models.TaskSummary
-func convertTaskSummaryRowToModel(row generated.GetTaskSummariesByProjectRow) *models.TaskSummary {
-	summary := &models.TaskSummary{
-		ID:        int(row.ID),
-		Title:     row.Title,
-		ColumnID:  int(row.ColumnID),
-		Position:  int(row.Position),
-		IsBlocked: row.IsBlocked > 0,
-		Labels:    parseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
-	}
-
-	if row.TypeDescription.Valid {
-		summary.TypeDescription = row.TypeDescription.String
-	}
-	if row.PriorityDescription.Valid {
-		summary.PriorityDescription = row.PriorityDescription.String
-	}
-	if row.PriorityColor.Valid {
-		summary.PriorityColor = row.PriorityColor.String
-	}
-
-	return summary
-}
-
-// convertReadyTaskSummaryRowToModel converts a ready task summary row to models.TaskSummary
-func convertReadyTaskSummaryRowToModel(row generated.GetReadyTaskSummariesByProjectRow) *models.TaskSummary {
-	summary := &models.TaskSummary{
-		ID:        int(row.ID),
-		Title:     row.Title,
-		ColumnID:  int(row.ColumnID),
-		Position:  int(row.Position),
-		IsBlocked: row.IsBlocked > 0,
-		Labels:    parseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
-	}
-
-	if row.TypeDescription.Valid {
-		summary.TypeDescription = row.TypeDescription.String
-	}
-	if row.PriorityDescription.Valid {
-		summary.PriorityDescription = row.PriorityDescription.String
-	}
-	if row.PriorityColor.Valid {
-		summary.PriorityColor = row.PriorityColor.String
-	}
-
-	return summary
-}
-
-// convertFilteredTaskSummaryRowToModel converts a filtered task summary row to models.TaskSummary
-func convertFilteredTaskSummaryRowToModel(row generated.GetTaskSummariesByProjectFilteredRow) *models.TaskSummary {
-	summary := &models.TaskSummary{
-		ID:        int(row.ID),
-		Title:     row.Title,
-		ColumnID:  int(row.ColumnID),
-		Position:  int(row.Position),
-		IsBlocked: row.IsBlocked > 0,
-		Labels:    parseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
-	}
-
-	if row.TypeDescription.Valid {
-		summary.TypeDescription = row.TypeDescription.String
-	}
-	if row.PriorityDescription.Valid {
-		summary.PriorityDescription = row.PriorityDescription.String
-	}
-	if row.PriorityColor.Valid {
-		summary.PriorityColor = row.PriorityColor.String
-	}
-
-	return summary
-}
-
-// parseLabelsFromConcatenated parses GROUP_CONCAT label data into Label slice
-func parseLabelsFromConcatenated(ids, names, colors string) []*models.Label {
-	if ids == "" || names == "" || colors == "" {
-		return []*models.Label{}
-	}
-
-	idParts := strings.Split(ids, string(rune(31))) // CHAR(31) separator
-	nameParts := strings.Split(names, string(rune(31)))
-	colorParts := strings.Split(colors, string(rune(31)))
-
-	if len(idParts) != len(nameParts) || len(idParts) != len(colorParts) {
-		return []*models.Label{}
-	}
-
-	labels := make([]*models.Label, 0, len(idParts))
-	for i := range idParts {
-		// Parse ID
-		var id int
-		_, _ = fmt.Sscanf(idParts[i], "%d", &id)
-
-		labels = append(labels, &models.Label{
-			ID:    id,
-			Name:  nameParts[i],
-			Color: colorParts[i],
-		})
-	}
-
-	return labels
+	}, 3)
 }

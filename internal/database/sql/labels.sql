@@ -1,52 +1,54 @@
--- ============================================================================
--- LABEL CRUD OPERATIONS
--- ============================================================================
-
 -- name: CreateLabel :one
-INSERT INTO labels (name, color, project_id)
-VALUES (?, ?, ?)
-RETURNING *;
+-- Creates a new label with name, color, and project association
+insert into labels (name, color, project_id)
+values (?, ?, ?)
+returning *;
 
 -- name: GetLabelsByProject :many
-SELECT
+-- Retrieves all labels for a project, ordered alphabetically by name
+select
     id,
     name,
     color,
     project_id
-FROM labels
-WHERE project_id = ?
-ORDER BY name;
+from labels
+where project_id = ?
+order by name;
 
 -- name: GetLabelByID :one
-SELECT id, name, color, project_id
-FROM labels
-WHERE id = ?;
+-- Retrieves a label by its ID
+select id, name, color, project_id
+from labels
+where id = ?;
 
 -- name: GetLabelsForTask :many
-SELECT l.id, l.name, l.color, l.project_id
-FROM labels l
-INNER JOIN task_labels tl ON l.id = tl.label_id
-WHERE tl.task_id = ?
-ORDER BY l.name;
+-- Retrieves all labels attached to a specific task
+select l.id, l.name, l.color, l.project_id
+from labels l
+inner join task_labels tl on l.id = tl.label_id
+where tl.task_id = ?
+order by l.name;
 
 -- name: UpdateLabel :exec
-UPDATE labels SET name = ?, color = ? WHERE id = ?;
+-- Updates a label's name and color
+update labels set name = ?, color = ? where id = ?;
 
 -- name: DeleteLabel :exec
-DELETE FROM labels WHERE id = ?;
-
--- ============================================================================
--- TASK-LABEL ASSOCIATIONS
--- ============================================================================
+-- Permanently deletes a label by ID
+delete from labels where id = ?;
 
 -- name: AddLabelToTask :exec
-INSERT OR IGNORE INTO task_labels (task_id, label_id) VALUES (?, ?);
+-- Attaches a label to a task (ignores if already attached)
+insert or ignore into task_labels (task_id, label_id) values (?, ?);
 
 -- name: RemoveLabelFromTask :exec
-DELETE FROM task_labels WHERE task_id = ? AND label_id = ?;
+-- Removes a specific label from a task
+delete from task_labels where task_id = ? and label_id = ?;
 
 -- name: DeleteAllLabelsFromTask :exec
-DELETE FROM task_labels WHERE task_id = ?;
+-- Removes all labels from a task
+delete from task_labels where task_id = ?;
 
 -- name: InsertTaskLabel :exec
-INSERT INTO task_labels (task_id, label_id) VALUES (?, ?);
+-- Creates a task-label association
+insert into task_labels (task_id, label_id) values (?, ?);

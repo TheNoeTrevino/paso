@@ -5,7 +5,7 @@ package use
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -39,7 +39,7 @@ this environment variable.`,
 }
 
 func runUseProject(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	clearFlag, _ := cmd.Flags().GetBool("clear")
 	showFlag, _ := cmd.Flags().GetBool("show")
@@ -72,13 +72,13 @@ func runUseProject(cmd *cobra.Command, args []string) error {
 	}
 
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		return fmt.Errorf("initialization error: %w", err)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
@@ -118,13 +118,13 @@ func showCurrentProject() error {
 	}
 
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		return fmt.Errorf("initialization error: %w", err)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 

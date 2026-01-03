@@ -1,10 +1,9 @@
 package label
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -34,12 +33,12 @@ Examples:
 	// Required flags
 	cmd.Flags().Int("task", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("task"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	cmd.Flags().Int("label", 0, "Label ID (required)")
 	if err := cmd.MarkFlagRequired("label"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Agent-friendly flags
@@ -50,7 +49,7 @@ Examples:
 }
 
 func runDetach(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	taskID, _ := cmd.Flags().GetInt("task")
 	labelID, _ := cmd.Flags().GetInt("label")
@@ -60,23 +59,23 @@ func runDetach(cmd *cobra.Command, args []string) error {
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
 	// Detach label from task (no validation needed - removing non-existent association is not an error)
 	if err := cliInstance.App.TaskService.DetachLabel(ctx, taskID, labelID); err != nil {
 		if fmtErr := formatter.Error("DETACH_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}

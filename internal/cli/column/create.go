@@ -4,10 +4,9 @@
 package column
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -15,6 +14,8 @@ import (
 	"github.com/thenoetrevino/paso/internal/cli"
 	columnservice "github.com/thenoetrevino/paso/internal/services/column"
 )
+
+// Note: os is still imported for os.Stdout used in JSON output
 
 // CreateCmd returns the column create subcommand
 func CreateCmd() *cobra.Command {
@@ -42,7 +43,7 @@ Examples:
 	// Required flags
 	cmd.Flags().String("name", "", "Column name (required)")
 	if err := cmd.MarkFlagRequired("name"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	cmd.Flags().Int("project", 0, "Project ID (uses PASO_PROJECT env var if not specified)")
@@ -60,7 +61,7 @@ Examples:
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	columnName, _ := cmd.Flags().GetString("name")
 	columnAfter, _ := cmd.Flags().GetInt("after")
@@ -77,22 +78,22 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
 			err.Error(),
 			"Set project with: eval $(paso use project <project-id>)"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
-		os.Exit(cli.ExitUsage)
+		return err
 	}
 
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
@@ -100,9 +101,9 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, columnProject)
 	if err != nil {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", columnProject)); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
-		os.Exit(cli.ExitNotFound)
+		return fmt.Errorf("project %d not found", columnProject)
 	}
 
 	// Validate after column if specified
@@ -111,16 +112,16 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		afterCol, err := cliInstance.App.ColumnService.GetColumnByID(ctx, columnAfter)
 		if err != nil {
 			if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnAfter)); fmtErr != nil {
-				log.Printf("Error formatting error message: %v", fmtErr)
+				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
-			os.Exit(cli.ExitNotFound)
+			return fmt.Errorf("column %d not found", columnAfter)
 		}
 		// Verify column belongs to same project
 		if afterCol.ProjectID != columnProject {
 			if fmtErr := formatter.Error("INVALID_COLUMN", fmt.Sprintf("column %d does not belong to project %d", columnAfter, columnProject)); fmtErr != nil {
-				log.Printf("Error formatting error message: %v", fmtErr)
+				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
-			os.Exit(cli.ExitValidation)
+			return fmt.Errorf("column %d does not belong to project %d", columnAfter, columnProject)
 		}
 		afterID = &columnAfter
 	}
@@ -138,12 +139,12 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		if strings.Contains(err.Error(), "completed column already exists") {
 			if fmtErr := formatter.Error("COMPLETED_COLUMN_EXISTS",
 				fmt.Sprintf("%s\n\nUse the --force flag to change the done column.\nPaso uses the done column to move tasks with the {complete task command}.\nThis could lead to unexpected behavior, and this is not suggested.", err.Error())); fmtErr != nil {
-				log.Printf("Error formatting error message: %v", fmtErr)
+				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
-			os.Exit(cli.ExitValidation)
+			return err
 		}
 		if fmtErr := formatter.Error("COLUMN_CREATE_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
@@ -155,9 +156,9 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success": true,
-			"column": map[string]interface{}{
+			"column": map[string]any{
 				"id":         column.ID,
 				"name":       column.Name,
 				"project_id": column.ProjectID,

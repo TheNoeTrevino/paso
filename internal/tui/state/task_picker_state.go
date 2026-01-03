@@ -19,7 +19,7 @@ type TaskPickerItem struct {
 	// Selected indicates whether this task is currently selected
 	Selected bool
 
-	// RelationTypeID is the relation type for this relationship (defaults to 1 for Parent/Child)
+	// RelationTypeID is the relation type for this relationship (defaults to models.DefaultRelationTypeID for Parent/Child)
 	RelationTypeID int
 }
 
@@ -69,16 +69,23 @@ func (s *TaskPickerState) GetFilteredItems() []TaskPickerItem {
 
 	lowerFilter := strings.ToLower(s.Filter)
 	var filtered []TaskPickerItem
+
+	// Pre-allocate filtered slice to reduce allocations during append
+	filtered = make([]TaskPickerItem, 0, len(s.Items))
+
 	for _, item := range s.Items {
-		// Match on ticket number (PROJ-123 format)
-		ticketNum := fmt.Sprintf("%s-%d", item.TaskRef.ProjectName, item.TaskRef.TicketNumber)
-		if strings.Contains(strings.ToLower(ticketNum), lowerFilter) {
+		// Optimize: Check title first (typically shorter string to convert)
+		// This avoids the fmt.Sprintf allocation if title matches
+		if strings.Contains(strings.ToLower(item.TaskRef.Title), lowerFilter) {
 			filtered = append(filtered, item)
 			continue
 		}
 
-		// Match on title
-		if strings.Contains(strings.ToLower(item.TaskRef.Title), lowerFilter) {
+		// Match on ticket number (PROJ-123 format)
+		// Use string concatenation instead of fmt.Sprintf to reduce allocations
+		// Only convert to lowercase once
+		ticketNum := item.TaskRef.ProjectName + "-" + fmt.Sprintf("%d", item.TaskRef.TicketNumber)
+		if strings.Contains(strings.ToLower(ticketNum), lowerFilter) {
 			filtered = append(filtered, item)
 		}
 	}

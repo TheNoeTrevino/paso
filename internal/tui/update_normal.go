@@ -11,7 +11,7 @@ import (
 )
 
 func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	m.NotificationState.Clear()
+	m.UI.Notification.Clear()
 
 	key := msg.String()
 	km := m.Config.KeyMappings
@@ -89,7 +89,7 @@ func (m Model) handleNavigateLeft() (tea.Model, tea.Cmd) {
 		m.UIState.SetSelectedTask(0)
 		m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn())
 	} else {
-		m.NotificationState.Add(state.LevelInfo, "Already at the first column")
+		m.UI.Notification.Add(state.LevelInfo, "Already at the first column")
 	}
 	return m, nil
 }
@@ -100,22 +100,22 @@ func (m Model) handleNavigateRight() (tea.Model, tea.Cmd) {
 		m.UIState.SetSelectedTask(0)
 		m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn())
 	} else {
-		m.NotificationState.Add(state.LevelInfo, "Already at the last column")
+		m.UI.Notification.Add(state.LevelInfo, "Already at the last column")
 	}
 	return m, nil
 }
 
 func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
-	if m.ListViewState.IsListView() {
-		if m.ListViewState.SelectedRow() > 0 {
-			m.ListViewState.SetSelectedRow(m.ListViewState.SelectedRow() - 1)
+	if m.UI.ListView.IsListView() {
+		if m.UI.ListView.SelectedRow() > 0 {
+			m.UI.ListView.SetSelectedRow(m.UI.ListView.SelectedRow() - 1)
 
 			listHeight := m.UIState.ContentHeight()
 			const reservedHeight = 6
 			visibleRows := max(listHeight-reservedHeight, 1)
-			m.ListViewState.EnsureRowVisible(visibleRows)
+			m.UI.ListView.EnsureRowVisible(visibleRows)
 		} else {
-			m.NotificationState.Add(state.LevelInfo, "Already at the first task")
+			m.UI.Notification.Add(state.LevelInfo, "Already at the first task")
 		}
 		return m, nil
 	}
@@ -131,23 +131,23 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask(), maxTasksVisible)
 		}
 	} else {
-		m.NotificationState.Add(state.LevelInfo, "Already at the first task")
+		m.UI.Notification.Add(state.LevelInfo, "Already at the first task")
 	}
 	return m, nil
 }
 
 func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
-	if m.ListViewState.IsListView() {
+	if m.UI.ListView.IsListView() {
 		rows := m.buildListViewRows()
-		if m.ListViewState.SelectedRow() < len(rows)-1 {
-			m.ListViewState.SetSelectedRow(m.ListViewState.SelectedRow() + 1)
+		if m.UI.ListView.SelectedRow() < len(rows)-1 {
+			m.UI.ListView.SetSelectedRow(m.UI.ListView.SelectedRow() + 1)
 
 			listHeight := m.UIState.ContentHeight()
 			const reservedHeight = 6
 			visibleRows := max(listHeight-reservedHeight, 1)
-			m.ListViewState.EnsureRowVisible(visibleRows)
+			m.UI.ListView.EnsureRowVisible(visibleRows)
 		} else if len(rows) > 0 {
-			m.NotificationState.Add(state.LevelInfo, "Already at the last task")
+			m.UI.Notification.Add(state.LevelInfo, "Already at the last task")
 		}
 		return m, nil
 	}
@@ -164,7 +164,7 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask(), maxTasksVisible)
 		}
 	} else if len(currentTasks) > 0 {
-		m.NotificationState.Add(state.LevelInfo, "Already at the last task")
+		m.UI.Notification.Add(state.LevelInfo, "Already at the last task")
 	}
 	return m, nil
 }
@@ -177,7 +177,7 @@ func (m Model) handleScrollRight() (tea.Model, tea.Cmd) {
 			m.UIState.SetSelectedTask(0)
 		}
 	} else {
-		m.NotificationState.Add(state.LevelInfo, "Already at the rightmost view")
+		m.UI.Notification.Add(state.LevelInfo, "Already at the rightmost view")
 	}
 	return m, nil
 }
@@ -190,44 +190,44 @@ func (m Model) handleScrollLeft() (tea.Model, tea.Cmd) {
 			m.UIState.SetSelectedTask(0)
 		}
 	} else {
-		m.NotificationState.Add(state.LevelInfo, "Already at the leftmost view")
+		m.UI.Notification.Add(state.LevelInfo, "Already at the leftmost view")
 	}
 	return m, nil
 }
 
 func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 	if len(m.AppState.Columns()) == 0 {
-		m.NotificationState.Add(state.LevelError, "Cannot add task: No columns exist. Create a column first with 'C'")
+		m.UI.Notification.Add(state.LevelError, "Cannot add task: No columns exist. Create a column first with 'C'")
 		return m, nil
 	}
-	m.FormState.FormTitle = ""
-	m.FormState.FormDescription = ""
-	m.FormState.FormLabelIDs = []int{}
-	m.FormState.FormParentIDs = []int{}
-	m.FormState.FormChildIDs = []int{}
-	m.FormState.FormParentRefs = []*models.TaskReference{}
-	m.FormState.FormChildRefs = []*models.TaskReference{}
-	m.FormState.FormConfirm = true
-	m.FormState.EditingTaskID = 0
+	m.Forms.Form.FormTitle = ""
+	m.Forms.Form.FormDescription = ""
+	m.Forms.Form.FormLabelIDs = []int{}
+	m.Forms.Form.FormParentIDs = []int{}
+	m.Forms.Form.FormChildIDs = []int{}
+	m.Forms.Form.FormParentRefs = []*models.TaskReference{}
+	m.Forms.Form.FormChildRefs = []*models.TaskReference{}
+	m.Forms.Form.FormConfirm = true
+	m.Forms.Form.EditingTaskID = 0
 
 	// Calculate description lines based on current screen size
 	descriptionLines := m.calculateDescriptionLines()
 
-	m.FormState.TaskForm = huhforms.CreateTaskForm(
-		&m.FormState.FormTitle,
-		&m.FormState.FormDescription,
-		&m.FormState.FormConfirm,
+	m.Forms.Form.TaskForm = huhforms.CreateTaskForm(
+		&m.Forms.Form.FormTitle,
+		&m.Forms.Form.FormDescription,
+		&m.Forms.Form.FormConfirm,
 		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.FormState.SnapshotTaskFormInitialValues()
+	m.Forms.Form.SnapshotTaskFormInitialValues()
 	m.UIState.SetMode(state.TicketFormMode)
-	return m, m.FormState.TaskForm.Init()
+	return m, m.Forms.Form.TaskForm.Init()
 }
 
 func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 	task := m.getCurrentTask()
 	if task == nil {
-		m.NotificationState.Add(state.LevelError, "No task selected to edit")
+		m.UI.Notification.Add(state.LevelError, "No task selected to edit")
 		return m, nil
 	}
 
@@ -239,56 +239,56 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	m.FormState.FormTitle = taskDetail.Title
-	m.FormState.FormDescription = taskDetail.Description
-	m.FormState.FormLabelIDs = make([]int, len(taskDetail.Labels))
+	m.Forms.Form.FormTitle = taskDetail.Title
+	m.Forms.Form.FormDescription = taskDetail.Description
+	m.Forms.Form.FormLabelIDs = make([]int, len(taskDetail.Labels))
 	for i, label := range taskDetail.Labels {
-		m.FormState.FormLabelIDs[i] = label.ID
+		m.Forms.Form.FormLabelIDs[i] = label.ID
 	}
 
-	m.FormState.FormParentIDs = make([]int, len(taskDetail.ParentTasks))
-	m.FormState.FormParentRefs = taskDetail.ParentTasks
+	m.Forms.Form.FormParentIDs = make([]int, len(taskDetail.ParentTasks))
+	m.Forms.Form.FormParentRefs = taskDetail.ParentTasks
 	for i, parent := range taskDetail.ParentTasks {
-		m.FormState.FormParentIDs[i] = parent.ID
+		m.Forms.Form.FormParentIDs[i] = parent.ID
 	}
 
-	m.FormState.FormChildIDs = make([]int, len(taskDetail.ChildTasks))
-	m.FormState.FormChildRefs = taskDetail.ChildTasks
+	m.Forms.Form.FormChildIDs = make([]int, len(taskDetail.ChildTasks))
+	m.Forms.Form.FormChildRefs = taskDetail.ChildTasks
 	for i, child := range taskDetail.ChildTasks {
-		m.FormState.FormChildIDs[i] = child.ID
+		m.Forms.Form.FormChildIDs[i] = child.ID
 	}
 
 	// Load comments for the task
-	m.FormState.FormComments = taskDetail.Comments
-	m.FormState.InitialFormComments = make([]*models.Comment, len(taskDetail.Comments))
-	copy(m.FormState.InitialFormComments, taskDetail.Comments)
+	m.Forms.Form.FormComments = taskDetail.Comments
+	m.Forms.Form.InitialFormComments = make([]*models.Comment, len(taskDetail.Comments))
+	copy(m.Forms.Form.InitialFormComments, taskDetail.Comments)
 
-	m.FormState.FormCreatedAt = taskDetail.CreatedAt
-	m.FormState.FormUpdatedAt = taskDetail.UpdatedAt
-	m.FormState.FormTypeDescription = taskDetail.TypeDescription
-	m.FormState.FormPriorityDescription = taskDetail.PriorityDescription
-	m.FormState.FormPriorityColor = taskDetail.PriorityColor
+	m.Forms.Form.FormCreatedAt = taskDetail.CreatedAt
+	m.Forms.Form.FormUpdatedAt = taskDetail.UpdatedAt
+	m.Forms.Form.FormTypeDescription = taskDetail.TypeDescription
+	m.Forms.Form.FormPriorityDescription = taskDetail.PriorityDescription
+	m.Forms.Form.FormPriorityColor = taskDetail.PriorityColor
 
-	m.FormState.FormConfirm = true
-	m.FormState.EditingTaskID = task.ID
+	m.Forms.Form.FormConfirm = true
+	m.Forms.Form.EditingTaskID = task.ID
 
 	// Calculate description lines based on current screen size
 	descriptionLines := m.calculateDescriptionLines()
 
-	m.FormState.TaskForm = huhforms.CreateTaskForm(
-		&m.FormState.FormTitle,
-		&m.FormState.FormDescription,
-		&m.FormState.FormConfirm,
+	m.Forms.Form.TaskForm = huhforms.CreateTaskForm(
+		&m.Forms.Form.FormTitle,
+		&m.Forms.Form.FormDescription,
+		&m.Forms.Form.FormConfirm,
 		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.FormState.SnapshotTaskFormInitialValues()
+	m.Forms.Form.SnapshotTaskFormInitialValues()
 	m.UIState.SetMode(state.TicketFormMode)
-	return m, m.FormState.TaskForm.Init()
+	return m, m.Forms.Form.TaskForm.Init()
 }
 
 func (m Model) handleDeleteTask() (tea.Model, tea.Cmd) {
 	if m.getCurrentTask() == nil {
-		m.NotificationState.Add(state.LevelError, "No task selected to delete")
+		m.UI.Notification.Add(state.LevelError, "No task selected to delete")
 		return m, nil
 	}
 	m.UIState.SetMode(state.DeleteConfirmMode)
@@ -324,37 +324,37 @@ func (m Model) handleMoveTaskDown() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleCreateColumn() (tea.Model, tea.Cmd) {
-	m.FormState.FormColumnName = ""
-	m.FormState.EditingColumnID = 0
-	m.FormState.ColumnForm = huhforms.CreateColumnForm(&m.FormState.FormColumnName, false).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.FormState.SnapshotColumnFormInitialValues()
+	m.Forms.Form.FormColumnName = ""
+	m.Forms.Form.EditingColumnID = 0
+	m.Forms.Form.ColumnForm = huhforms.CreateColumnForm(&m.Forms.Form.FormColumnName, false).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+	m.Forms.Form.SnapshotColumnFormInitialValues()
 	m.UIState.SetMode(state.AddColumnFormMode)
-	return m, m.FormState.ColumnForm.Init()
+	return m, m.Forms.Form.ColumnForm.Init()
 }
 
 func (m Model) handleRenameColumn() (tea.Model, tea.Cmd) {
 	column := m.getCurrentColumn()
 	if column == nil {
-		m.NotificationState.Add(state.LevelError, "No column selected to rename")
+		m.UI.Notification.Add(state.LevelError, "No column selected to rename")
 		return m, nil
 	}
-	m.FormState.FormColumnName = column.Name
-	m.FormState.EditingColumnID = column.ID
-	m.FormState.ColumnForm = huhforms.CreateColumnForm(&m.FormState.FormColumnName, true).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.FormState.SnapshotColumnFormInitialValues()
+	m.Forms.Form.FormColumnName = column.Name
+	m.Forms.Form.EditingColumnID = column.ID
+	m.Forms.Form.ColumnForm = huhforms.CreateColumnForm(&m.Forms.Form.FormColumnName, true).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+	m.Forms.Form.SnapshotColumnFormInitialValues()
 	m.UIState.SetMode(state.EditColumnFormMode)
-	return m, m.FormState.ColumnForm.Init()
+	return m, m.Forms.Form.ColumnForm.Init()
 }
 
 func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 	column := m.getCurrentColumn()
 	if column == nil {
-		m.NotificationState.Add(state.LevelError, "No column selected to delete")
+		m.UI.Notification.Add(state.LevelError, "No column selected to delete")
 		return m, nil
 	}
 	// Count tasks in the column from current state
 	taskCount := len(m.AppState.Tasks()[column.ID])
-	m.InputState.DeleteColumnTaskCount = taskCount
+	m.Forms.Input.DeleteColumnTaskCount = taskCount
 	m.UIState.SetMode(state.DeleteColumnConfirmMode)
 	return m, nil
 }
@@ -365,7 +365,7 @@ func (m Model) handlePrevProject() (tea.Model, tea.Cmd) {
 		slog.Info("navigating to previous project", "current_index", m.AppState.SelectedProject(), "new_index", newIndex)
 		m.switchToProject(newIndex)
 	} else {
-		m.NotificationState.Add(state.LevelInfo, "Already at the first project")
+		m.UI.Notification.Add(state.LevelInfo, "Already at the first project")
 	}
 	return m, nil
 }
@@ -376,21 +376,21 @@ func (m Model) handleNextProject() (tea.Model, tea.Cmd) {
 		slog.Info("navigating to next project", "current_index", m.AppState.SelectedProject(), "new_index", newIndex)
 		m.switchToProject(newIndex)
 	} else {
-		m.NotificationState.Add(state.LevelInfo, "Already at the last project")
+		m.UI.Notification.Add(state.LevelInfo, "Already at the last project")
 	}
 	return m, nil
 }
 
 func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
-	m.FormState.FormProjectName = ""
-	m.FormState.FormProjectDescription = ""
-	m.FormState.FormProjectConfirm = true
-	m.FormState.ProjectForm = huhforms.CreateProjectForm(
-		&m.FormState.FormProjectName,
-		&m.FormState.FormProjectDescription,
-		&m.FormState.FormProjectConfirm,
+	m.Forms.Form.FormProjectName = ""
+	m.Forms.Form.FormProjectDescription = ""
+	m.Forms.Form.FormProjectConfirm = true
+	m.Forms.Form.ProjectForm = huhforms.CreateProjectForm(
+		&m.Forms.Form.FormProjectName,
+		&m.Forms.Form.FormProjectDescription,
+		&m.Forms.Form.FormProjectConfirm,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.FormState.SnapshotProjectFormInitialValues()
+	m.Forms.Form.SnapshotProjectFormInitialValues()
 	m.UIState.SetMode(state.ProjectFormMode)
-	return m, m.FormState.ProjectForm.Init()
+	return m, m.Forms.Form.ProjectForm.Init()
 }

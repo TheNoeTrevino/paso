@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -51,7 +51,7 @@ Examples:
 }
 
 func runInProgress(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	projectID, _ := cmd.Flags().GetInt("project")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
@@ -68,7 +68,7 @@ func runInProgress(cmd *cobra.Command, args []string) error {
 	// Move mode - require task ID
 	if len(args) == 0 {
 		if fmtErr := formatter.Error("INVALID_INPUT", "either provide a task ID or use --project flag to list tasks"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return fmt.Errorf("either provide a task ID or use --project flag to list tasks")
 	}
@@ -83,16 +83,16 @@ func runInProgress(cmd *cobra.Command, args []string) error {
 
 func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.OutputFormatter) error {
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
@@ -102,7 +102,7 @@ func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.Outp
 		if fmtErr := formatter.ErrorWithSuggestion("PROJECT_NOT_FOUND",
 			fmt.Sprintf("project %d not found", projectID),
 			"Use 'paso project list' to see available projects"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -111,7 +111,7 @@ func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.Outp
 	tasks, err := cliInstance.App.TaskService.GetInProgressTasksByProject(ctx, projectID)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
@@ -150,7 +150,7 @@ func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.Outp
 	}
 
 	if formatter.JSON {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success": true,
 			"tasks":   displayTasks,
 			"count":   len(displayTasks),
@@ -185,16 +185,16 @@ func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.Outp
 
 func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.OutputFormatter) error {
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
@@ -202,7 +202,7 @@ func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.Output
 	taskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -226,12 +226,12 @@ func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.Output
 			if fmtErr := formatter.ErrorWithSuggestion("NO_IN_PROGRESS_COLUMN",
 				"no in-progress column configured for this project",
 				"Use 'paso column update --id=<column_id> --in-progress' to designate an in-progress column"); fmtErr != nil {
-				log.Printf("Error formatting error message: %v", fmtErr)
+				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
 			os.Exit(cli.ExitValidation)
 		}
 		if fmtErr := formatter.Error("MOVE_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
@@ -240,7 +240,7 @@ func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.Output
 	updatedTaskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
@@ -254,7 +254,7 @@ func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.Output
 	}
 
 	if formatter.JSON {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success":     true,
 			"task_id":     taskID,
 			"from_column": currentColumnName,

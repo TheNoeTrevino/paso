@@ -10,8 +10,7 @@ import (
 )
 
 const addLabelToTask = `-- name: AddLabelToTask :exec
-
-INSERT OR IGNORE INTO task_labels (task_id, label_id) VALUES (?, ?)
+insert or ignore into task_labels (task_id, label_id) values (?, ?)
 `
 
 type AddLabelToTaskParams struct {
@@ -19,19 +18,16 @@ type AddLabelToTaskParams struct {
 	LabelID int64
 }
 
-// ============================================================================
-// TASK-LABEL ASSOCIATIONS
-// ============================================================================
+// Attaches a label to a task (ignores if already attached)
 func (q *Queries) AddLabelToTask(ctx context.Context, arg AddLabelToTaskParams) error {
 	_, err := q.db.ExecContext(ctx, addLabelToTask, arg.TaskID, arg.LabelID)
 	return err
 }
 
 const createLabel = `-- name: CreateLabel :one
-
-INSERT INTO labels (name, color, project_id)
-VALUES (?, ?, ?)
-RETURNING id, name, color, project_id
+insert into labels (name, color, project_id)
+values (?, ?, ?)
+returning id, name, color, project_id
 `
 
 type CreateLabelParams struct {
@@ -40,9 +36,7 @@ type CreateLabelParams struct {
 	ProjectID int64
 }
 
-// ============================================================================
-// LABEL CRUD OPERATIONS
-// ============================================================================
+// Creates a new label with name, color, and project association
 func (q *Queries) CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error) {
 	row := q.db.QueryRowContext(ctx, createLabel, arg.Name, arg.Color, arg.ProjectID)
 	var i Label
@@ -56,29 +50,32 @@ func (q *Queries) CreateLabel(ctx context.Context, arg CreateLabelParams) (Label
 }
 
 const deleteAllLabelsFromTask = `-- name: DeleteAllLabelsFromTask :exec
-DELETE FROM task_labels WHERE task_id = ?
+delete from task_labels where task_id = ?
 `
 
+// Removes all labels from a task
 func (q *Queries) DeleteAllLabelsFromTask(ctx context.Context, taskID int64) error {
 	_, err := q.db.ExecContext(ctx, deleteAllLabelsFromTask, taskID)
 	return err
 }
 
 const deleteLabel = `-- name: DeleteLabel :exec
-DELETE FROM labels WHERE id = ?
+delete from labels where id = ?
 `
 
+// Permanently deletes a label by ID
 func (q *Queries) DeleteLabel(ctx context.Context, id int64) error {
 	_, err := q.db.ExecContext(ctx, deleteLabel, id)
 	return err
 }
 
 const getLabelByID = `-- name: GetLabelByID :one
-SELECT id, name, color, project_id
-FROM labels
-WHERE id = ?
+select id, name, color, project_id
+from labels
+where id = ?
 `
 
+// Retrieves a label by its ID
 func (q *Queries) GetLabelByID(ctx context.Context, id int64) (Label, error) {
 	row := q.db.QueryRowContext(ctx, getLabelByID, id)
 	var i Label
@@ -92,16 +89,17 @@ func (q *Queries) GetLabelByID(ctx context.Context, id int64) (Label, error) {
 }
 
 const getLabelsByProject = `-- name: GetLabelsByProject :many
-SELECT
+select
     id,
     name,
     color,
     project_id
-FROM labels
-WHERE project_id = ?
-ORDER BY name
+from labels
+where project_id = ?
+order by name
 `
 
+// Retrieves all labels for a project, ordered alphabetically by name
 func (q *Queries) GetLabelsByProject(ctx context.Context, projectID int64) ([]Label, error) {
 	rows, err := q.db.QueryContext(ctx, getLabelsByProject, projectID)
 	if err != nil {
@@ -131,13 +129,14 @@ func (q *Queries) GetLabelsByProject(ctx context.Context, projectID int64) ([]La
 }
 
 const getLabelsForTask = `-- name: GetLabelsForTask :many
-SELECT l.id, l.name, l.color, l.project_id
-FROM labels l
-INNER JOIN task_labels tl ON l.id = tl.label_id
-WHERE tl.task_id = ?
-ORDER BY l.name
+select l.id, l.name, l.color, l.project_id
+from labels l
+inner join task_labels tl on l.id = tl.label_id
+where tl.task_id = ?
+order by l.name
 `
 
+// Retrieves all labels attached to a specific task
 func (q *Queries) GetLabelsForTask(ctx context.Context, taskID int64) ([]Label, error) {
 	rows, err := q.db.QueryContext(ctx, getLabelsForTask, taskID)
 	if err != nil {
@@ -167,7 +166,7 @@ func (q *Queries) GetLabelsForTask(ctx context.Context, taskID int64) ([]Label, 
 }
 
 const insertTaskLabel = `-- name: InsertTaskLabel :exec
-INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)
+insert into task_labels (task_id, label_id) values (?, ?)
 `
 
 type InsertTaskLabelParams struct {
@@ -175,13 +174,14 @@ type InsertTaskLabelParams struct {
 	LabelID int64
 }
 
+// Creates a task-label association
 func (q *Queries) InsertTaskLabel(ctx context.Context, arg InsertTaskLabelParams) error {
 	_, err := q.db.ExecContext(ctx, insertTaskLabel, arg.TaskID, arg.LabelID)
 	return err
 }
 
 const removeLabelFromTask = `-- name: RemoveLabelFromTask :exec
-DELETE FROM task_labels WHERE task_id = ? AND label_id = ?
+delete from task_labels where task_id = ? and label_id = ?
 `
 
 type RemoveLabelFromTaskParams struct {
@@ -189,13 +189,14 @@ type RemoveLabelFromTaskParams struct {
 	LabelID int64
 }
 
+// Removes a specific label from a task
 func (q *Queries) RemoveLabelFromTask(ctx context.Context, arg RemoveLabelFromTaskParams) error {
 	_, err := q.db.ExecContext(ctx, removeLabelFromTask, arg.TaskID, arg.LabelID)
 	return err
 }
 
 const updateLabel = `-- name: UpdateLabel :exec
-UPDATE labels SET name = ?, color = ? WHERE id = ?
+update labels set name = ?, color = ? where id = ?
 `
 
 type UpdateLabelParams struct {
@@ -204,6 +205,7 @@ type UpdateLabelParams struct {
 	ID    int64
 }
 
+// Updates a label's name and color
 func (q *Queries) UpdateLabel(ctx context.Context, arg UpdateLabelParams) error {
 	_, err := q.db.ExecContext(ctx, updateLabel, arg.Name, arg.Color, arg.ID)
 	return err

@@ -4,7 +4,7 @@ package components
 
 import (
 	"charm.land/lipgloss/v2"
-	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/config/colors"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
@@ -100,7 +100,7 @@ var (
 )
 
 // InitStyles initializes all styles with the given color scheme
-func InitStyles(colors config.ColorScheme) {
+func InitStyles(colors colors.ColorScheme) {
 	// Initialize theme colors
 	theme.Init(colors)
 

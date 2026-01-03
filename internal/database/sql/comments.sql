@@ -1,36 +1,38 @@
--- ============================================================================
--- TASK COMMENT CRUD OPERATIONS
--- ============================================================================
-
 -- name: CreateComment :one
 -- Creates a new comment for a task
-INSERT INTO task_comments (task_id, content, author)
-VALUES (?, ?, ?)
-RETURNING *;
+insert into task_comments (task_id, content, author)
+values (?, ?, ?)
+returning *;
 
 -- name: GetComment :one
--- Gets a single comment by ID
-SELECT id, task_id, content, author, created_at, updated_at
-FROM task_comments
-WHERE id = ?;
+-- Retrieves a single comment by ID
+select
+id,
+task_id,
+content,
+author,
+created_at,
+updated_at
+from task_comments
+where id = ?;
 
 -- name: GetCommentsByTask :many
--- Gets all comments for a task, ordered by creation time (newest first)
-SELECT id, task_id, content, author, created_at, updated_at
-FROM task_comments
-WHERE task_id = ?
-ORDER BY created_at DESC;
+-- Retrieves all comments for a task, ordered by creation time (newest first)
+select id, task_id, content, author, created_at, updated_at
+from task_comments
+where task_id = ?
+order by created_at desc;
 
 -- name: UpdateComment :exec
 -- Updates a comment's content
-UPDATE task_comments
-SET content = ?, updated_at = CURRENT_TIMESTAMP
-WHERE id = ?;
+update task_comments
+set content = ?, updated_at = current_timestamp
+where id = ?;
 
 -- name: DeleteComment :exec
 -- Deletes a comment by ID
-DELETE FROM task_comments WHERE id = ?;
+delete from task_comments where id = ?;
 
 -- name: GetCommentCountByTask :one
--- Gets the count of comments for a task
-SELECT COUNT(*) FROM task_comments WHERE task_id = ?;
+-- Returns the number of comments for a task
+select count(*) from task_comments where task_id = ?;

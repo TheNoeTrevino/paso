@@ -102,12 +102,11 @@ func TestWithTx_Success_Commit(t *testing.T) {
 	projectID := createTestProject(t, db, "Test Project")
 
 	// Execute transaction that should commit
-	err := withTx(ctx, db, func(tx *sql.Tx) error {
+	err := WithTx(ctx, db, func(tx *sql.Tx) error {
 		// Insert a column within transaction
 		_, err := tx.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Test Column")
 		return err
 	})
-
 	if err != nil {
 		t.Fatalf("Expected transaction to succeed, got error: %v", err)
 	}
@@ -131,7 +130,7 @@ func TestWithTx_Error_Rollback(t *testing.T) {
 
 	// Execute transaction that should rollback
 	expectedErr := errors.New("intentional error")
-	err := withTx(ctx, db, func(tx *sql.Tx) error {
+	err := WithTx(ctx, db, func(tx *sql.Tx) error {
 		// Insert a column within transaction
 		_, err := tx.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Test Column")
 		if err != nil {
@@ -161,7 +160,7 @@ func TestWithTx_Error_BeginFails(t *testing.T) {
 	_ = db.Close()
 
 	ctx := context.Background()
-	err := withTx(ctx, db, func(tx *sql.Tx) error {
+	err := WithTx(ctx, db, func(tx *sql.Tx) error {
 		return nil
 	})
 
@@ -232,9 +231,9 @@ func TestNullTimeToTime_Null(t *testing.T) {
 	}
 }
 
-func TestInterfaceToIntPtr_Int64(t *testing.T) {
-	var val interface{} = int64(123)
-	result := InterfaceToIntPtr(val)
+func TestAnyToIntPtr_Int64(t *testing.T) {
+	var val any = int64(123)
+	result := AnyToIntPtr(val)
 
 	if result == nil {
 		t.Fatal("Expected non-nil pointer, got nil")
@@ -244,9 +243,9 @@ func TestInterfaceToIntPtr_Int64(t *testing.T) {
 	}
 }
 
-func TestInterfaceToIntPtr_Int(t *testing.T) {
-	var val interface{} = int(456)
-	result := InterfaceToIntPtr(val)
+func TestAnyToIntPtr_Int(t *testing.T) {
+	var val any = int(456)
+	result := AnyToIntPtr(val)
 
 	if result == nil {
 		t.Fatal("Expected non-nil pointer, got nil")
@@ -256,18 +255,18 @@ func TestInterfaceToIntPtr_Int(t *testing.T) {
 	}
 }
 
-func TestInterfaceToIntPtr_Nil(t *testing.T) {
-	var val interface{} = nil
-	result := InterfaceToIntPtr(val)
+func TestAnyToIntPtr_Nil(t *testing.T) {
+	var val any = nil
+	result := AnyToIntPtr(val)
 
 	if result != nil {
 		t.Errorf("Expected nil for nil interface, got %v", result)
 	}
 }
 
-func TestInterfaceToIntPtr_InvalidType(t *testing.T) {
-	var val interface{} = "not an int"
-	result := InterfaceToIntPtr(val)
+func TestAnyToIntPtr_InvalidType(t *testing.T) {
+	var val any = "not an int"
+	result := AnyToIntPtr(val)
 
 	if result != nil {
 		t.Errorf("Expected nil for invalid type, got %v", result)

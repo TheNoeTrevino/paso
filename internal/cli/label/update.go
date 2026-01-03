@@ -1,10 +1,9 @@
 package label
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -37,7 +36,7 @@ Examples:
 
 	cmd.Flags().Int("id", 0, "Label ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 	cmd.Flags().String("name", "", "New label name")
 	cmd.Flags().String("color", "", "New label color in hex format #RRGGBB")
@@ -49,7 +48,7 @@ Examples:
 }
 
 func runUpdate(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	labelID, _ := cmd.Flags().GetInt("id")
 	labelName, _ := cmd.Flags().GetString("name")
@@ -60,16 +59,16 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
@@ -79,7 +78,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	if !nameProvided && !colorProvided {
 		if fmtErr := formatter.Error("MISSING_FLAGS", "at least one of --name or --color must be provided"); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitUsage)
 	}
@@ -88,7 +87,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	currentLabel, err := cli.GetLabelByID(ctx, cliInstance, labelID)
 	if err != nil {
 		if fmtErr := formatter.Error("LABEL_NOT_FOUND", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -104,7 +103,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		// Validate color format
 		if err := cli.ValidateColorHex(labelColor); err != nil {
 			if fmtErr := formatter.Error("INVALID_COLOR", err.Error()); fmtErr != nil {
-				log.Printf("Error formatting error message: %v", fmtErr)
+				slog.Error("failed to formatting error message", "error", fmtErr)
 			}
 			os.Exit(cli.ExitValidation)
 		}
@@ -124,7 +123,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	if err := cliInstance.App.LabelService.UpdateLabel(ctx, req); err != nil {
 		if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}

@@ -1,10 +1,9 @@
 package task
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -23,7 +22,7 @@ func DeleteCmd() *cobra.Command {
 
 	cmd.Flags().Int("id", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
-		log.Printf("Error marking flag as required: %v", err)
+		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	cmd.Flags().Bool("force", false, "Skip confirmation")
@@ -35,7 +34,7 @@ func DeleteCmd() *cobra.Command {
 }
 
 func runDelete(cmd *cobra.Command, args []string) error {
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	taskID, _ := cmd.Flags().GetInt("id")
 	force, _ := cmd.Flags().GetBool("force")
@@ -45,16 +44,16 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Initialize CLI
-	cliInstance, err := cli.NewCLI(ctx)
+	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			log.Printf("Error closing CLI: %v", err)
+			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
 
@@ -62,7 +61,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	task, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -72,7 +71,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Delete task #%d: '%s'? (y/N): ", taskID, task.Title)
 		var response string
 		if _, err := fmt.Scanln(&response); err != nil {
-			log.Printf("Error reading user input: %v", err)
+			slog.Error("failed to reading user input", "error", err)
 		}
 		if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 			fmt.Println("Cancelled")
@@ -83,7 +82,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	// Delete the task
 	if err := cliInstance.App.TaskService.DeleteTask(ctx, taskID); err != nil {
 		if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
-			log.Printf("Error formatting error message: %v", fmtErr)
+			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		return err
 	}
@@ -94,7 +93,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success": true,
 			"task_id": taskID,
 		})

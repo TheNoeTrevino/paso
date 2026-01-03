@@ -58,7 +58,7 @@ func renderTaskSummaryTitle(task *models.TaskSummary, bg string) string {
 
 	return lipgloss.NewStyle().
 		Bold(true).
-		Render(title + blockedIndicator)
+		Render(" " + title + blockedIndicator)
 }
 
 // padTitleForIndicator pads the title to ensure the blocked indicator aligns on the right

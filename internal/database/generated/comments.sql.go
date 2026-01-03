@@ -10,10 +10,9 @@ import (
 )
 
 const createComment = `-- name: CreateComment :one
-
-INSERT INTO task_comments (task_id, content, author)
-VALUES (?, ?, ?)
-RETURNING id, task_id, content, author, created_at, updated_at
+insert into task_comments (task_id, content, author)
+values (?, ?, ?)
+returning id, task_id, content, author, created_at, updated_at
 `
 
 type CreateCommentParams struct {
@@ -22,9 +21,6 @@ type CreateCommentParams struct {
 	Author  string
 }
 
-// ============================================================================
-// TASK COMMENT CRUD OPERATIONS
-// ============================================================================
 // Creates a new comment for a task
 func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (TaskComment, error) {
 	row := q.db.QueryRowContext(ctx, createComment, arg.TaskID, arg.Content, arg.Author)
@@ -41,7 +37,7 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (T
 }
 
 const deleteComment = `-- name: DeleteComment :exec
-DELETE FROM task_comments WHERE id = ?
+delete from task_comments where id = ?
 `
 
 // Deletes a comment by ID
@@ -51,12 +47,18 @@ func (q *Queries) DeleteComment(ctx context.Context, id int64) error {
 }
 
 const getComment = `-- name: GetComment :one
-SELECT id, task_id, content, author, created_at, updated_at
-FROM task_comments
-WHERE id = ?
+select
+id,
+task_id,
+content,
+author,
+created_at,
+updated_at
+from task_comments
+where id = ?
 `
 
-// Gets a single comment by ID
+// Retrieves a single comment by ID
 func (q *Queries) GetComment(ctx context.Context, id int64) (TaskComment, error) {
 	row := q.db.QueryRowContext(ctx, getComment, id)
 	var i TaskComment
@@ -72,10 +74,10 @@ func (q *Queries) GetComment(ctx context.Context, id int64) (TaskComment, error)
 }
 
 const getCommentCountByTask = `-- name: GetCommentCountByTask :one
-SELECT COUNT(*) FROM task_comments WHERE task_id = ?
+select count(*) from task_comments where task_id = ?
 `
 
-// Gets the count of comments for a task
+// Returns the number of comments for a task
 func (q *Queries) GetCommentCountByTask(ctx context.Context, taskID int64) (int64, error) {
 	row := q.db.QueryRowContext(ctx, getCommentCountByTask, taskID)
 	var count int64
@@ -84,13 +86,13 @@ func (q *Queries) GetCommentCountByTask(ctx context.Context, taskID int64) (int6
 }
 
 const getCommentsByTask = `-- name: GetCommentsByTask :many
-SELECT id, task_id, content, author, created_at, updated_at
-FROM task_comments
-WHERE task_id = ?
-ORDER BY created_at DESC
+select id, task_id, content, author, created_at, updated_at
+from task_comments
+where task_id = ?
+order by created_at desc
 `
 
-// Gets all comments for a task, ordered by creation time (newest first)
+// Retrieves all comments for a task, ordered by creation time (newest first)
 func (q *Queries) GetCommentsByTask(ctx context.Context, taskID int64) ([]TaskComment, error) {
 	rows, err := q.db.QueryContext(ctx, getCommentsByTask, taskID)
 	if err != nil {
@@ -122,9 +124,9 @@ func (q *Queries) GetCommentsByTask(ctx context.Context, taskID int64) ([]TaskCo
 }
 
 const updateComment = `-- name: UpdateComment :exec
-UPDATE task_comments
-SET content = ?, updated_at = CURRENT_TIMESTAMP
-WHERE id = ?
+update task_comments
+set content = ?, updated_at = current_timestamp
+where id = ?
 `
 
 type UpdateCommentParams struct {

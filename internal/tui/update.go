@@ -146,7 +146,7 @@ func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.UIState.SetWidth(msg.Width)
 	m.UIState.SetHeight(msg.Height)
 
-	m.NotificationState.SetWindowSize(msg.Width, msg.Height)
+	m.UI.Notification.SetWindowSize(msg.Width, msg.Height)
 
 	if m.UIState.ViewportOffset()+m.UIState.ViewportSize() > len(m.AppState.Columns()) {
 		m.UIState.SetViewportOffset(max(0, len(m.AppState.Columns())-m.UIState.ViewportSize()))
@@ -162,7 +162,7 @@ func (m Model) handleNotificationMsg(msg events.NotificationMsg) (tea.Model, tea
 	case "warning":
 		level = state.LevelWarning
 	}
-	m.NotificationState.Add(level, msg.Message)
+	m.UI.Notification.Add(level, msg.Message)
 
 	m.updateConnectionStateFromMessage(msg.Message)
 

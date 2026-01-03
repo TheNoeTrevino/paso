@@ -26,10 +26,10 @@ type taskFormValues struct {
 // Since our forms update pointers in place, we can just read from formState
 func (m Model) extractTaskFormValues() taskFormValues {
 	return taskFormValues{
-		title:       strings.TrimSpace(m.FormState.FormTitle),
-		description: strings.TrimSpace(m.FormState.FormDescription),
-		confirm:     m.FormState.FormConfirm,
-		labelIDs:    m.FormState.FormLabelIDs,
+		title:       strings.TrimSpace(m.Forms.Form.FormTitle),
+		description: strings.TrimSpace(m.Forms.Form.FormDescription),
+		confirm:     m.Forms.Form.FormConfirm,
+		labelIDs:    m.Forms.Form.FormLabelIDs,
 	}
 }
 
@@ -37,7 +37,7 @@ func (m Model) extractTaskFormValues() taskFormValues {
 func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 	currentCol := m.getCurrentColumn()
 	if currentCol == nil {
-		m.NotificationState.Add(state.LevelError, "No column selected")
+		m.UI.Notification.Add(state.LevelError, "No column selected")
 		return
 	}
 
@@ -47,7 +47,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 
 	// Build parent IDs with relation types
 	parentIDs := make([]int, 0)
-	for _, item := range m.ParentPickerState.Items {
+	for _, item := range m.Pickers.Parent.Items {
 		if item.Selected {
 			parentIDs = append(parentIDs, item.TaskRef.ID)
 		}
@@ -55,7 +55,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 
 	// Build child IDs with relation types
 	childIDs := make([]int, 0)
-	for _, item := range m.ChildPickerState.Items {
+	for _, item := range m.Pickers.Child.Items {
 		if item.Selected {
 			childIDs = append(childIDs, item.TaskRef.ID)
 		}
@@ -72,8 +72,8 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 		ChildIDs:    childIDs,
 	})
 	if err != nil {
-		slog.Error("Error creating task", "error", err)
-		m.NotificationState.Add(state.LevelError, "Error creating task")
+		slog.Error("failed to creating task", "error", err)
+		m.UI.Notification.Add(state.LevelError, "Error creating task")
 		return
 	}
 
@@ -88,7 +88,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 	if project != nil {
 		tasksByColumn, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 		if err != nil {
-			slog.Error("Error reloading tasks", "error", err)
+			slog.Error("failed to reloading tasks", "error", err)
 		} else {
 			m.AppState.SetTasks(tasksByColumn)
 		}
@@ -100,7 +100,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 	// create context for database operations
 	ctx, cancel := m.DBContext()
 	defer cancel()
-	taskID := m.FormState.EditingTaskID
+	taskID := m.Forms.Form.EditingTaskID
 
 	// update task basic fields
 	title := values.title
@@ -111,8 +111,8 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 		Description: &description,
 	})
 	if err != nil {
-		slog.Error("Error updating task", "error", err)
-		m.NotificationState.Add(state.LevelError, "Error updating task")
+		slog.Error("failed to updating task", "error", err)
+		m.UI.Notification.Add(state.LevelError, "Error updating task")
 		return
 	}
 
@@ -120,7 +120,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 	// First, get current labels
 	taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		slog.Error("Error getting task detail for label sync", "error", err)
+		slog.Error("failed to getting task detail for label sync", "error", err)
 	} else {
 		// Build current label map
 		currentLabelMap := make(map[int]bool)
@@ -138,7 +138,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 		for _, lbl := range taskDetail.Labels {
 			if !newLabelMap[lbl.ID] {
 				if err := m.App.TaskService.DetachLabel(ctx, taskID, lbl.ID); err != nil {
-					slog.Error("Error detaching label", "error", err)
+					slog.Error("failed to detaching label", "error", err)
 				}
 			}
 		}
@@ -147,7 +147,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 		for _, labelID := range values.labelIDs {
 			if !currentLabelMap[labelID] {
 				if err := m.App.TaskService.AttachLabel(ctx, taskID, labelID); err != nil {
-					slog.Error("Error attaching label", "error", err)
+					slog.Error("failed to attaching label", "error", err)
 				}
 			}
 		}
@@ -162,7 +162,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 	if project != nil {
 		tasksByColumn, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 		if err != nil {
-			slog.Error("Error reloading tasks", "error", err)
+			slog.Error("failed to reloading tasks", "error", err)
 		} else {
 			m.AppState.SetTasks(tasksByColumn)
 		}
@@ -171,7 +171,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 
 // applyParentRelationships applies parent relationships from ParentPickerState to a task
 func (m *Model) applyParentRelationships(ctx context.Context, taskID int) {
-	for _, item := range m.ParentPickerState.Items {
+	for _, item := range m.Pickers.Parent.Items {
 		if item.Selected {
 			relationTypeID := item.RelationTypeID
 			if relationTypeID == 0 {
@@ -179,7 +179,7 @@ func (m *Model) applyParentRelationships(ctx context.Context, taskID int) {
 			}
 			err := m.App.TaskService.AddParentRelation(ctx, taskID, item.TaskRef.ID, relationTypeID)
 			if err != nil {
-				slog.Error("Error adding parent relationship", "error", err)
+				slog.Error("failed to adding parent relationship", "error", err)
 			}
 		}
 	}
@@ -187,7 +187,7 @@ func (m *Model) applyParentRelationships(ctx context.Context, taskID int) {
 
 // applyChildRelationships applies child relationships from ChildPickerState to a task
 func (m *Model) applyChildRelationships(ctx context.Context, taskID int) {
-	for _, item := range m.ChildPickerState.Items {
+	for _, item := range m.Pickers.Child.Items {
 		if item.Selected {
 			relationTypeID := item.RelationTypeID
 			if relationTypeID == 0 {
@@ -195,7 +195,7 @@ func (m *Model) applyChildRelationships(ctx context.Context, taskID int) {
 			}
 			err := m.App.TaskService.AddChildRelation(ctx, taskID, item.TaskRef.ID, relationTypeID)
 			if err != nil {
-				slog.Error("Error adding child relationship", "error", err)
+				slog.Error("failed to adding child relationship", "error", err)
 			}
 		}
 	}
@@ -206,7 +206,7 @@ func (m *Model) syncParentRelationships(ctx context.Context, taskID int) {
 	// Get current parents from database
 	taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		slog.Error("Error getting current parents", "error", err)
+		slog.Error("failed to getting current parents", "error", err)
 		return
 	}
 	currentParents := taskDetail.ParentTasks
@@ -221,7 +221,7 @@ func (m *Model) syncParentRelationships(ctx context.Context, taskID int) {
 	}
 
 	newParentMap := make(map[int]int)
-	for _, item := range m.ParentPickerState.Items {
+	for _, item := range m.Pickers.Parent.Items {
 		if item.Selected {
 			relationTypeID := item.RelationTypeID
 			if relationTypeID == 0 {
@@ -236,7 +236,7 @@ func (m *Model) syncParentRelationships(ctx context.Context, taskID int) {
 		if _, exists := newParentMap[parentID]; !exists {
 			err = m.App.TaskService.RemoveParentRelation(ctx, taskID, parentID)
 			if err != nil {
-				slog.Error("Error removing parent", "parentID", parentID, "error", err)
+				slog.Error("failed to removing parent", "parentID", parentID, "error", err)
 			}
 		}
 	}
@@ -248,7 +248,7 @@ func (m *Model) syncParentRelationships(ctx context.Context, taskID int) {
 			// Add new parent or update existing parent's relation type
 			err = m.App.TaskService.AddParentRelation(ctx, taskID, parentID, relationTypeID)
 			if err != nil {
-				slog.Error("Error adding/updating parent", "parentID", parentID, "error", err)
+				slog.Error("failed to adding/updating parent", "parentID", parentID, "error", err)
 			}
 		}
 	}
@@ -259,7 +259,7 @@ func (m *Model) syncChildRelationships(ctx context.Context, taskID int) {
 	// Get current children from database
 	taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		slog.Error("Error getting current children", "error", err)
+		slog.Error("failed to getting current children", "error", err)
 		return
 	}
 	currentChildren := taskDetail.ChildTasks
@@ -274,7 +274,7 @@ func (m *Model) syncChildRelationships(ctx context.Context, taskID int) {
 	}
 
 	newChildMap := make(map[int]int)
-	for _, item := range m.ChildPickerState.Items {
+	for _, item := range m.Pickers.Child.Items {
 		if item.Selected {
 			relationTypeID := item.RelationTypeID
 			if relationTypeID == 0 {
@@ -289,7 +289,7 @@ func (m *Model) syncChildRelationships(ctx context.Context, taskID int) {
 		if _, exists := newChildMap[childID]; !exists {
 			err = m.App.TaskService.RemoveChildRelation(ctx, taskID, childID)
 			if err != nil {
-				slog.Error("Error removing child", "childID", childID, "error", err)
+				slog.Error("failed to removing child", "childID", childID, "error", err)
 			}
 		}
 	}
@@ -301,7 +301,7 @@ func (m *Model) syncChildRelationships(ctx context.Context, taskID int) {
 			// Add new child or update existing child's relation type
 			err = m.App.TaskService.AddChildRelation(ctx, taskID, childID, relationTypeID)
 			if err != nil {
-				slog.Error("Error adding/updating child", "childID", childID, "error", err)
+				slog.Error("failed to adding/updating child", "childID", childID, "error", err)
 			}
 		}
 	}
@@ -373,15 +373,15 @@ func (m Model) handleFormSave(cfg formConfig) (tea.Model, tea.Cmd) {
 // This is separated out because forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Delegate viewport events first if viewport has focus
-	if m.FormState.ViewportFocused && m.FormState.ViewportReady {
+	if m.Forms.Form.ViewportFocused && m.Forms.Form.ViewportReady {
 		var cmd tea.Cmd
-		m.FormState.CommentsViewport, cmd = m.FormState.CommentsViewport.Update(msg)
+		m.Forms.Form.CommentsViewport, cmd = m.Forms.Form.CommentsViewport.Update(msg)
 
 		// Check if we should release focus back to form
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
 			if keyMsg.String() == "tab" || keyMsg.String() == "shift+tab" {
 				// Tab from viewport back to form
-				m.FormState.ViewportFocused = false
+				m.Forms.Form.ViewportFocused = false
 				return m, nil
 			}
 		}
@@ -397,7 +397,7 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch keyMsg.String() {
 		case "esc":
 			// Check for changes before allowing abort
-			if m.FormState.HasTaskFormChanges() {
+			if m.Forms.Form.HasTaskFormChanges() {
 				// Show discard confirmation
 				m.UIState.SetDiscardContext(&state.DiscardContext{
 					SourceMode: state.TicketFormMode,
@@ -408,7 +408,7 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// No changes - allow immediate close
 			m.UIState.SetMode(state.NormalMode)
-			m.FormState.ClearTaskForm()
+			m.Forms.Form.ClearTaskForm()
 			return m, tea.ClearScreen
 
 		case "ctrl+p":
@@ -453,21 +453,21 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+down":
 			// Focus comments viewport (explicit)
-			if len(m.FormState.FormComments) > 0 && m.FormState.ViewportReady {
-				m.FormState.ViewportFocused = true
-				m.FormState.CommentsViewport.GotoBottom() // Start at most recent
+			if len(m.Forms.Form.FormComments) > 0 && m.Forms.Form.ViewportReady {
+				m.Forms.Form.ViewportFocused = true
+				m.Forms.Form.CommentsViewport.GotoBottom() // Start at most recent
 				return m, nil
 			}
 			return m, nil
 
 		case "down":
 			// Auto-focus viewport on down arrow (implicit)
-			if len(m.FormState.FormComments) > 0 && !m.FormState.ViewportFocused && m.FormState.ViewportReady {
-				m.FormState.ViewportFocused = true
-				m.FormState.CommentsViewport.GotoBottom()
+			if len(m.Forms.Form.FormComments) > 0 && !m.Forms.Form.ViewportFocused && m.Forms.Form.ViewportReady {
+				m.Forms.Form.ViewportFocused = true
+				m.Forms.Form.CommentsViewport.GotoBottom()
 				// Let viewport handle the down arrow
 				var cmd tea.Cmd
-				m.FormState.CommentsViewport, cmd = m.FormState.CommentsViewport.Update(msg)
+				m.Forms.Form.CommentsViewport, cmd = m.Forms.Form.CommentsViewport.Update(msg)
 				return m, cmd
 			}
 			// Otherwise let form handle it
@@ -479,13 +479,13 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case m.Config.KeyMappings.SaveForm:
 			// Quick save via C-s
 			return m.handleFormSave(formConfig{
-				form: m.FormState.TaskForm,
+				form: m.Forms.Form.TaskForm,
 				setForm: func(f *huh.Form) {
-					m.FormState.TaskForm = f
+					m.Forms.Form.TaskForm = f
 				},
 				clearForm: func() {
-					m.FormState.ClearTaskForm()
-					m.FormState.EditingTaskID = 0
+					m.Forms.Form.ClearTaskForm()
+					m.Forms.Form.EditingTaskID = 0
 				},
 				onComplete: func() {
 					values := m.extractTaskFormValues()
@@ -493,27 +493,27 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return
 					}
 					if values.title != "" {
-						if m.FormState.EditingTaskID == 0 {
+						if m.Forms.Form.EditingTaskID == 0 {
 							m.createNewTaskWithLabelsAndRelationships(values)
 						} else {
 							m.updateExistingTaskWithLabelsAndRelationships(values)
 						}
 					}
 				},
-				confirmPtr: &m.FormState.FormConfirm,
+				confirmPtr: &m.Forms.Form.FormConfirm,
 			})
 		}
 	}
 
 	// Pass through to existing form handler
 	return m.handleFormUpdate(msg, formConfig{
-		form: m.FormState.TaskForm,
+		form: m.Forms.Form.TaskForm,
 		setForm: func(f *huh.Form) {
-			m.FormState.TaskForm = f
+			m.Forms.Form.TaskForm = f
 		},
 		clearForm: func() {
-			m.FormState.ClearTaskForm()
-			m.FormState.EditingTaskID = 0
+			m.Forms.Form.ClearTaskForm()
+			m.Forms.Form.EditingTaskID = 0
 		},
 		onComplete: func() {
 			values := m.extractTaskFormValues()
@@ -525,14 +525,14 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if values.title != "" {
-				if m.FormState.EditingTaskID == 0 {
+				if m.Forms.Form.EditingTaskID == 0 {
 					m.createNewTaskWithLabelsAndRelationships(values)
 				} else {
 					m.updateExistingTaskWithLabelsAndRelationships(values)
 				}
 			}
 		},
-		confirmPtr: &m.FormState.FormConfirm,
+		confirmPtr: &m.Forms.Form.FormConfirm,
 	})
 }
 
@@ -544,7 +544,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch keyMsg.String() {
 		case "esc":
 			// Check for changes before allowing abort
-			if m.FormState.HasProjectFormChanges() {
+			if m.Forms.Form.HasProjectFormChanges() {
 				// Show discard confirmation
 				m.UIState.SetDiscardContext(&state.DiscardContext{
 					SourceMode: state.ProjectFormMode,
@@ -555,22 +555,22 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// No changes - allow immediate close
 			m.UIState.SetMode(state.NormalMode)
-			m.FormState.ClearProjectForm()
+			m.Forms.Form.ClearProjectForm()
 			return m, tea.ClearScreen
 
 		case m.Config.KeyMappings.SaveForm:
 			return m.handleFormSave(formConfig{
-				form: m.FormState.ProjectForm,
+				form: m.Forms.Form.ProjectForm,
 				setForm: func(f *huh.Form) {
-					m.FormState.ProjectForm = f
+					m.Forms.Form.ProjectForm = f
 				},
 				clearForm: func() {
-					m.FormState.ClearProjectForm()
+					m.Forms.Form.ClearProjectForm()
 				},
 				onComplete: func() {
-					name := strings.TrimSpace(m.FormState.FormProjectName)
-					description := strings.TrimSpace(m.FormState.FormProjectDescription)
-					confirm := m.FormState.FormProjectConfirm
+					name := strings.TrimSpace(m.Forms.Form.FormProjectName)
+					description := strings.TrimSpace(m.Forms.Form.FormProjectDescription)
+					confirm := m.Forms.Form.FormProjectConfirm
 
 					if !confirm {
 						return
@@ -584,8 +584,8 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 							Description: description,
 						})
 						if err != nil {
-							slog.Error("Error creating project", "error", err)
-							m.NotificationState.Add(state.LevelError, "Error creating project")
+							slog.Error("failed to creating project", "error", err)
+							m.UI.Notification.Add(state.LevelError, "Error creating project")
 						} else {
 							m.reloadProjects()
 							for i, p := range m.AppState.Projects() {
@@ -597,24 +597,24 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					}
 				},
-				confirmPtr: &m.FormState.FormProjectConfirm,
+				confirmPtr: &m.Forms.Form.FormProjectConfirm,
 			})
 		}
 	}
 
 	return m.handleFormUpdate(msg, formConfig{
-		form: m.FormState.ProjectForm,
+		form: m.Forms.Form.ProjectForm,
 		setForm: func(f *huh.Form) {
-			m.FormState.ProjectForm = f
+			m.Forms.Form.ProjectForm = f
 		},
 		clearForm: func() {
-			m.FormState.ClearProjectForm()
+			m.Forms.Form.ClearProjectForm()
 		},
 		onComplete: func() {
 			// Read values from form state (forms update pointers in place)
-			name := strings.TrimSpace(m.FormState.FormProjectName)
-			description := strings.TrimSpace(m.FormState.FormProjectDescription)
-			confirm := m.FormState.FormProjectConfirm
+			name := strings.TrimSpace(m.Forms.Form.FormProjectName)
+			description := strings.TrimSpace(m.Forms.Form.FormProjectDescription)
+			confirm := m.Forms.Form.FormProjectConfirm
 
 			// Form submitted - check confirmation and create the project
 			if !confirm {
@@ -630,8 +630,8 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Description: description,
 				})
 				if err != nil {
-					slog.Error("Error creating project", "error", err)
-					m.NotificationState.Add(state.LevelError, "Error creating project")
+					slog.Error("failed to creating project", "error", err)
+					m.UI.Notification.Add(state.LevelError, "Error creating project")
 				} else {
 					// Reload projects list
 					m.reloadProjects()
@@ -657,7 +657,7 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch keyMsg.String() {
 		case "esc":
 			// For edit mode, check for changes before allowing abort
-			if m.UIState.Mode() == state.EditColumnFormMode && m.FormState.HasColumnFormChanges() {
+			if m.UIState.Mode() == state.EditColumnFormMode && m.Forms.Form.HasColumnFormChanges() {
 				// Show discard confirmation
 				m.UIState.SetDiscardContext(&state.DiscardContext{
 					SourceMode: state.EditColumnFormMode,
@@ -668,22 +668,22 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// No changes or in create mode - allow immediate close
 			m.UIState.SetMode(state.NormalMode)
-			m.FormState.ClearColumnForm()
+			m.Forms.Form.ClearColumnForm()
 			return m, tea.ClearScreen
 		}
 	}
 
 	return m.handleFormUpdate(msg, formConfig{
-		form: m.FormState.ColumnForm,
+		form: m.Forms.Form.ColumnForm,
 		setForm: func(f *huh.Form) {
-			m.FormState.ColumnForm = f
+			m.Forms.Form.ColumnForm = f
 		},
 		clearForm: func() {
-			m.FormState.ClearColumnForm()
+			m.Forms.Form.ClearColumnForm()
 		},
 		onComplete: func() {
 			// Read values from form state (forms update pointers in place)
-			name := strings.TrimSpace(m.FormState.FormColumnName)
+			name := strings.TrimSpace(m.Forms.Form.FormColumnName)
 
 			if name == "" {
 				return
@@ -692,11 +692,11 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			ctx, cancel := m.DBContext()
 			defer cancel()
 
-			if m.FormState.EditingColumnID == 0 {
+			if m.Forms.Form.EditingColumnID == 0 {
 				// Create new column
 				project := m.getCurrentProject()
 				if project == nil {
-					m.NotificationState.Add(state.LevelError, "No project selected")
+					m.UI.Notification.Add(state.LevelError, "No project selected")
 					return
 				}
 
@@ -706,8 +706,8 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					AfterID:   nil, // Append to end
 				})
 				if err != nil {
-					slog.Error("Error creating column", "error", err)
-					m.NotificationState.Add(state.LevelError, "Error creating column")
+					slog.Error("failed to creating column", "error", err)
+					m.UI.Notification.Add(state.LevelError, "Error creating column")
 					return
 				}
 
@@ -715,10 +715,10 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.reloadCurrentProject()
 			} else {
 				// Rename existing column
-				err := m.App.ColumnService.UpdateColumnName(ctx, m.FormState.EditingColumnID, name)
+				err := m.App.ColumnService.UpdateColumnName(ctx, m.Forms.Form.EditingColumnID, name)
 				if err != nil {
-					slog.Error("Error renaming column", "error", err)
-					m.NotificationState.Add(state.LevelError, "Error renaming column")
+					slog.Error("failed to renaming column", "error", err)
+					m.UI.Notification.Add(state.LevelError, "Error renaming column")
 					return
 				}
 
@@ -738,7 +738,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch keyMsg.String() {
 		case "esc":
 			// For edit mode, check for changes before allowing abort
-			if m.FormState.EditingCommentID != 0 && m.FormState.HasCommentFormChanges() {
+			if m.Forms.Form.EditingCommentID != 0 && m.Forms.Form.HasCommentFormChanges() {
 				// Show discard confirmation
 				m.UIState.SetDiscardContext(&state.DiscardContext{
 					SourceMode: state.CommentFormMode,
@@ -748,29 +748,29 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			// No changes or in create mode - return to appropriate mode
-			returnMode := m.FormState.CommentFormReturnMode
+			returnMode := m.Forms.Form.CommentFormReturnMode
 			if returnMode == state.CommentsViewMode {
-				m.CommentState.SetComments(m.FormState.FormComments)
+				m.Forms.Comment.SetComments(m.Forms.Form.FormComments)
 				m.UIState.SetMode(state.CommentsViewMode)
 			} else {
 				m.UIState.SetMode(state.TicketFormMode)
 			}
-			m.FormState.ClearCommentForm()
+			m.Forms.Form.ClearCommentForm()
 			return m, tea.ClearScreen
 		}
 	}
 
 	return m.handleFormUpdate(msg, formConfig{
-		form: m.FormState.CommentForm,
+		form: m.Forms.Form.CommentForm,
 		setForm: func(f *huh.Form) {
-			m.FormState.CommentForm = f
+			m.Forms.Form.CommentForm = f
 		},
 		clearForm: func() {
-			m.FormState.ClearCommentForm()
+			m.Forms.Form.ClearCommentForm()
 		},
 		onComplete: func() {
 			// Read values from form state (forms update pointers in place)
-			message := strings.TrimSpace(m.FormState.FormCommentMessage)
+			message := strings.TrimSpace(m.Forms.Form.FormCommentMessage)
 
 			if message == "" {
 				return
@@ -779,11 +779,11 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			ctx, cancel := m.DBContext()
 			defer cancel()
 
-			if m.FormState.EditingCommentID == 0 {
+			if m.Forms.Form.EditingCommentID == 0 {
 				// Create new comment
-				taskID := m.FormState.EditingTaskID
+				taskID := m.Forms.Form.EditingTaskID
 				if taskID == 0 {
-					m.NotificationState.Add(state.LevelError, "No task selected")
+					m.UI.Notification.Add(state.LevelError, "No task selected")
 					return
 				}
 
@@ -793,46 +793,45 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Author:  userutil.GetCurrentUsername(),
 				})
 				if err != nil {
-					slog.Error("Error creating comment", "error", err)
-					m.NotificationState.Add(state.LevelError, "Error creating comment")
+					slog.Error("failed to creating comment", "error", err)
+					m.UI.Notification.Add(state.LevelError, "Error creating comment")
 					return
 				}
 
-				m.NotificationState.Add(state.LevelInfo, "Comment added")
+				m.UI.Notification.Add(state.LevelInfo, "Comment added")
 			} else {
 				// Update existing comment
 				err := m.App.TaskService.UpdateComment(ctx, taskService.UpdateCommentRequest{
-					CommentID: m.FormState.EditingCommentID,
+					CommentID: m.Forms.Form.EditingCommentID,
 					Message:   message,
 				})
 				if err != nil {
-					slog.Error("Error updating comment", "error", err)
-					m.NotificationState.Add(state.LevelError, "Error updating comment")
+					slog.Error("failed to updating comment", "error", err)
+					m.UI.Notification.Add(state.LevelError, "Error updating comment")
 					return
 				}
 
-				m.NotificationState.Add(state.LevelInfo, "Comment updated")
+				m.UI.Notification.Add(state.LevelInfo, "Comment updated")
 			}
 
 			// Reload comments
-			taskID := m.FormState.EditingTaskID
+			taskID := m.Forms.Form.EditingTaskID
 			comments, err := m.App.TaskService.GetCommentsByTask(ctx, taskID)
 			if err != nil {
-				slog.Error("Error reloading comments", "error", err)
-				m.NotificationState.Add(state.LevelError, "Failed to reload comments")
+				slog.Error("failed to reloading comments", "error", err)
+				m.UI.Notification.Add(state.LevelError, "Failed to reload comments")
 			} else {
-				m.FormState.FormComments = comments
-				m.CommentState.Items = convertToCommentItems(comments)
+				m.Forms.Form.FormComments = comments
+				m.Forms.Comment.Items = convertToCommentItems(comments)
 			}
 
 			// Return to appropriate mode based on where we came from
-			returnMode := m.FormState.CommentFormReturnMode
+			returnMode := m.Forms.Form.CommentFormReturnMode
 			if returnMode == state.CommentsViewMode {
 				// Refresh comments view and return to it
-				m.CommentState.SetComments(m.FormState.FormComments)
+				m.Forms.Comment.SetComments(m.Forms.Form.FormComments)
 				m.UIState.SetMode(state.CommentsViewMode)
 			} else {
-				// Return to ticket form (legacy path)
 				m.UIState.SetMode(state.TicketFormMode)
 			}
 		},
@@ -843,10 +842,10 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 // handleOpenCommentsView opens the full-screen comments view
 func (m Model) handleOpenCommentsView() (tea.Model, tea.Cmd) {
 	// Set up comments view state
-	m.CommentState.TaskID = m.FormState.EditingTaskID
-	m.CommentState.SetComments(m.FormState.FormComments)
-	m.CommentState.Cursor = 0
-	m.CommentState.ScrollOffset = 0
+	m.Forms.Comment.TaskID = m.Forms.Form.EditingTaskID
+	m.Forms.Comment.SetComments(m.Forms.Form.FormComments)
+	m.Forms.Comment.Cursor = 0
+	m.Forms.Comment.ScrollOffset = 0
 
 	// Switch to comments view mode
 	m.UIState.SetMode(state.CommentsViewMode)

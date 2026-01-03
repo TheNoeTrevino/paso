@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"regexp"
+	"strings"
 
+	"github.com/thenoetrevino/paso/internal/converters"
 	"github.com/thenoetrevino/paso/internal/database/generated"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
@@ -66,7 +67,7 @@ func (s *service) GetLabelsByProject(ctx context.Context, projectID int) ([]*mod
 	if err != nil {
 		return nil, err
 	}
-	return toLabelModels(labels), nil
+	return converters.LabelsToModels(labels), nil
 }
 
 // GetLabelsForTask retrieves all labels for a task
@@ -78,7 +79,7 @@ func (s *service) GetLabelsForTask(ctx context.Context, taskID int) ([]*models.L
 	if err != nil {
 		return nil, err
 	}
-	return toLabelModels(labels), nil
+	return converters.LabelsToModels(labels), nil
 }
 
 // CreateLabel creates a new label with validation
@@ -95,13 +96,17 @@ func (s *service) CreateLabel(ctx context.Context, req CreateLabelRequest) (*mod
 		ProjectID: int64(req.ProjectID),
 	})
 	if err != nil {
+		// Check for unique constraint violation
+		if isUniqueConstraintError(err) {
+			return nil, fmt.Errorf("label creation error: label with name '%s' already exists in this project", req.Name)
+		}
 		return nil, fmt.Errorf("failed to create label: %w", err)
 	}
 
 	// Publish event
-	s.publishLabelEvent(int(label.ID), int(label.ProjectID))
+	s.publishLabelEvent(ctx, int(label.ID), int(label.ProjectID))
 
-	return toLabelModel(label), nil
+	return converters.LabelToModel(label), nil
 }
 
 // UpdateLabel updates an existing label
@@ -152,7 +157,7 @@ func (s *service) UpdateLabel(ctx context.Context, req UpdateLabelRequest) error
 	}
 
 	// Publish event
-	s.publishLabelEvent(req.ID, int(existing.ProjectID))
+	s.publishLabelEvent(ctx, req.ID, int(existing.ProjectID))
 
 	return nil
 }
@@ -181,7 +186,7 @@ func (s *service) DeleteLabel(ctx context.Context, id int) error {
 	}
 
 	// Publish event
-	s.publishLabelEvent(id, projectID)
+	s.publishLabelEvent(ctx, id, projectID)
 
 	return nil
 }
@@ -203,35 +208,26 @@ func (s *service) validateCreateLabel(req CreateLabelRequest) error {
 	return nil
 }
 
-// publishLabelEvent publishes a label event
-func (s *service) publishLabelEvent(labelID, projectID int) {
+// publishLabelEvent publishes a label event with retry logic
+func (s *service) publishLabelEvent(ctx context.Context, labelID, projectID int) {
 	if s.eventClient == nil {
 		return
 	}
 
-	if err := s.eventClient.SendEvent(events.Event{
+	// Publish with retry (3 attempts with exponential backoff)
+	// Non-blocking: errors are logged but don't affect the operation
+	_ = events.PublishWithRetry(s.eventClient, events.Event{
 		Type:      events.EventDatabaseChanged,
 		ProjectID: projectID,
-	}); err != nil {
-		log.Printf("failed to send event for label %d: %v", labelID, err)
-	}
+	}, 3)
 }
 
-// Model conversion helpers
-
-func toLabelModel(l generated.Label) *models.Label {
-	return &models.Label{
-		ID:        int(l.ID),
-		Name:      l.Name,
-		Color:     l.Color,
-		ProjectID: int(l.ProjectID),
+// isUniqueConstraintError checks if an error is a SQLite unique constraint violation
+func isUniqueConstraintError(err error) bool {
+	if err == nil {
+		return false
 	}
-}
-
-func toLabelModels(labels []generated.Label) []*models.Label {
-	result := make([]*models.Label, len(labels))
-	for i, l := range labels {
-		result[i] = toLabelModel(l)
-	}
-	return result
+	// SQLite returns "UNIQUE constraint failed" in the error message
+	errStr := err.Error()
+	return strings.Contains(errStr, "UNIQUE constraint failed") || strings.Contains(errStr, "constraint failed")
 }

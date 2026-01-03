@@ -40,24 +40,24 @@ func TestThemeFileLoading(t *testing.T) {
 	}()
 
 	// Load config
-	config, err := Load()
+	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
 
 	// Verify theme was merged
-	if config.ColorScheme.Accent != "#FF0000" {
-		t.Errorf("Expected accent to be #FF0000, got %s", config.ColorScheme.Accent)
+	if cfg.ColorScheme.Accent != "#FF0000" {
+		t.Errorf("Expected accent to be #FF0000, got %s", cfg.ColorScheme.Accent)
 	}
-	if config.ColorScheme.Create != "#00FF00" {
-		t.Errorf("Expected create to be #00FF00, got %s", config.ColorScheme.Create)
+	if cfg.ColorScheme.Create != "#00FF00" {
+		t.Errorf("Expected create to be #00FF00, got %s", cfg.ColorScheme.Create)
 	}
-	if config.ColorScheme.Edit != "#0000FF" {
-		t.Errorf("Expected edit to be #0000FF, got %s", config.ColorScheme.Edit)
+	if cfg.ColorScheme.Edit != "#0000FF" {
+		t.Errorf("Expected edit to be #0000FF, got %s", cfg.ColorScheme.Edit)
 	}
 
 	// Verify other colors still have defaults
-	if config.ColorScheme.Delete == "" {
+	if cfg.ColorScheme.Delete == "" {
 		t.Error("Expected delete to have default value")
 	}
 }

@@ -7,9 +7,9 @@ import (
 )
 
 func (m Model) handleToggleView() (tea.Model, tea.Cmd) {
-	m.ListViewState.ToggleView()
+	m.UI.ListView.ToggleView()
 
-	if m.ListViewState.IsListView() {
+	if m.UI.ListView.IsListView() {
 		m.syncKanbanToListSelection()
 	} else {
 		m.syncListToKanbanSelection()
@@ -18,22 +18,22 @@ func (m Model) handleToggleView() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleChangeStatus() (tea.Model, tea.Cmd) {
-	if !m.ListViewState.IsListView() {
+	if !m.UI.ListView.IsListView() {
 		return m, nil
 	}
 
 	task := m.getSelectedListTask()
 	if task == nil {
-		m.NotificationState.Add(state.LevelError, "No task selected")
+		m.UI.Notification.Add(state.LevelError, "No task selected")
 		return m, nil
 	}
 
-	m.StatusPickerState.SetTaskID(task.ID)
-	m.StatusPickerState.SetColumns(m.AppState.Columns())
+	m.Pickers.Status.SetTaskID(task.ID)
+	m.Pickers.Status.SetColumns(m.AppState.Columns())
 
 	for i, col := range m.AppState.Columns() {
 		if col.ID == task.ColumnID {
-			m.StatusPickerState.SetCursor(i)
+			m.Pickers.Status.SetCursor(i)
 			break
 		}
 	}
@@ -43,37 +43,37 @@ func (m Model) handleChangeStatus() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleSortList() (tea.Model, tea.Cmd) {
-	if !m.ListViewState.IsListView() {
+	if !m.UI.ListView.IsListView() {
 		return m, nil
 	}
-	m.ListViewState.CycleSort()
+	m.UI.ListView.CycleSort()
 	return m, nil
 }
 
 func (m Model) handleStatusPickerMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
-		m.StatusPickerState.Reset()
+		m.Pickers.Status.Reset()
 		m.UIState.SetMode(state.NormalMode)
 		return m, nil
 	case "enter":
 		return m.confirmStatusChange()
 	case "j", "down":
-		m.StatusPickerState.MoveDown()
+		m.Pickers.Status.MoveDown()
 		return m, nil
 	case "k", "up":
-		m.StatusPickerState.MoveUp()
+		m.Pickers.Status.MoveUp()
 		return m, nil
 	}
 	return m, nil
 }
 
 func (m Model) confirmStatusChange() (tea.Model, tea.Cmd) {
-	selectedCol := m.StatusPickerState.SelectedColumn()
-	taskID := m.StatusPickerState.TaskID()
+	selectedCol := m.Pickers.Status.SelectedColumn()
+	taskID := m.Pickers.Status.TaskID()
 
 	if selectedCol == nil {
-		m.StatusPickerState.Reset()
+		m.Pickers.Status.Reset()
 		m.UIState.SetMode(state.NormalMode)
 		return m, nil
 	}
@@ -94,7 +94,7 @@ func (m Model) confirmStatusChange() (tea.Model, tea.Cmd) {
 	}
 
 	if currentColumnID == selectedCol.ID {
-		m.StatusPickerState.Reset()
+		m.Pickers.Status.Reset()
 		m.UIState.SetMode(state.NormalMode)
 		return m, nil
 	}
@@ -105,7 +105,7 @@ func (m Model) confirmStatusChange() (tea.Model, tea.Cmd) {
 	err := m.App.TaskService.MoveTaskToColumn(ctx, taskID, selectedCol.ID)
 	if err != nil {
 		m.HandleDBError(err, "Moving task to new status")
-		m.StatusPickerState.Reset()
+		m.Pickers.Status.Reset()
 		m.UIState.SetMode(state.NormalMode)
 		return m, nil
 	}
@@ -125,7 +125,7 @@ func (m Model) confirmStatusChange() (tea.Model, tea.Cmd) {
 		m.AppState.Tasks()[selectedCol.ID] = append(m.AppState.Tasks()[selectedCol.ID], taskToMove)
 	}
 
-	m.StatusPickerState.Reset()
+	m.Pickers.Status.Reset()
 	m.UIState.SetMode(state.NormalMode)
 	return m, nil
 }

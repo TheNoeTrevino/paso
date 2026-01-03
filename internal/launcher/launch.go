@@ -98,7 +98,13 @@ func Launch() error {
 		}
 	}()
 
-	application := app.New(db, eventClient)
+	// Build options for app initialization
+	var appOpts []app.Option
+	if eventClient != nil {
+		appOpts = append(appOpts, app.WithEventPublisher(eventClient))
+	}
+
+	application := app.New(db, appOpts...)
 	tuiApp := core.New(ctx, application, cfg, eventClient)
 	p := tea.NewProgram(tuiApp, tea.WithContext(ctx))
 

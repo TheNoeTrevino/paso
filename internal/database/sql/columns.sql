@@ -1,119 +1,177 @@
--- ============================================================================
--- COLUMN CRUD OPERATIONS
--- ============================================================================
-
 -- name: CreateColumn :one
-INSERT INTO columns (
-    name, project_id, prev_id, next_id, holds_ready_tasks, holds_completed_tasks, holds_in_progress_tasks
+-- Creates a new column in a project with optional
+-- linked list positioning and task type flags
+insert into columns (
+    name,
+    project_id,
+    prev_id,
+    next_id,
+    holds_ready_tasks,
+    holds_completed_tasks,
+    holds_in_progress_tasks
 )
-VALUES (?, ?, ?, ?, ?, ?, ?)
-RETURNING *;
+values (?, ?, ?, ?, ?, ?, ?)
+returning *;
 
 -- name: GetColumnByID :one
-SELECT
+-- Retrieves a column by its ID with all metadata
+select
     id,
-name,
-project_id,
-prev_id,
-next_id,
-holds_ready_tasks,
-holds_completed_tasks,
-holds_in_progress_tasks
-FROM columns
-WHERE id = ?;
+    name,
+    project_id,
+    prev_id,
+    next_id,
+    holds_ready_tasks,
+    holds_completed_tasks,
+    holds_in_progress_tasks
+from columns
+where id = ?;
 
 -- name: GetColumnsByProject :many
-SELECT id,
-name,
-project_id,
-prev_id,
-next_id,
-holds_ready_tasks,
-holds_completed_tasks,
-holds_in_progress_tasks
-FROM columns
-WHERE project_id = ?;
+-- Retrieves all columns for a specific project
+select
+    id,
+    name,
+    project_id,
+    prev_id,
+    next_id,
+    holds_ready_tasks,
+    holds_completed_tasks,
+    holds_in_progress_tasks
+from columns
+where project_id = ?;
 
 -- name: GetTailColumnForProject :one
-SELECT id FROM columns
-WHERE next_id IS NULL AND project_id = ?
-LIMIT 1;
+-- Retrieves the last column in a project's linked list (where next_id is NULL)
+select id
+from columns
+where next_id is null
+    and project_id = ?
+limit 1;
 
 -- name: GetColumnNextID :one
-SELECT next_id FROM columns WHERE id = ?;
+-- Retrieves the next column ID in the linked list
+select next_id 
+from columns
+where id = ?;
 
 -- name: UpdateColumnName :exec
-UPDATE columns SET name = ? WHERE id = ?;
+-- Updates a column's display name
+update columns
+set name = ?
+where id = ?;
 
 -- name: UpdateColumnNextID :exec
-UPDATE columns SET next_id = ? WHERE id = ?;
+-- Updates the next column pointer in the linked list
+update columns
+set next_id = ?
+where id = ?;
 
 -- name: UpdateColumnPrevID :exec
-UPDATE columns SET prev_id = ? WHERE id = ?;
+-- Updates the previous column pointer in the linked list
+update columns
+set prev_id = ?
+where id = ?;
 
 -- name: GetColumnLinkedListInfo :one
-SELECT prev_id, next_id, project_id FROM columns WHERE id = ?;
+-- Retrieves the linked list pointers and project ID for a column
+select 
+    prev_id,
+    next_id,
+    project_id
+from columns
+where id = ?;
 
 -- name: DeleteColumn :exec
-DELETE FROM columns WHERE id = ?;
+-- Permanently deletes a column by ID
+delete from columns
+where id = ?;
 
 -- name: DeleteTasksByColumn :exec
-DELETE FROM tasks WHERE column_id = ?;
-
--- ============================================================================
--- COLUMN VERIFICATION
--- ============================================================================
+-- Deletes all tasks within a specific column
+delete from tasks
+where column_id = ?;
 
 -- name: ColumnExists :one
-SELECT COUNT(*) FROM columns WHERE id = ?;
-
--- ============================================================================
--- READY COLUMN OPERATIONS
--- ============================================================================
+-- Checks if a column exists with the given ID
+select count(*)
+from columns
+where id = ?;
 
 -- name: UpdateColumnHoldsReadyTasks :exec
-UPDATE columns SET holds_ready_tasks = ? WHERE id = ?;
+-- Sets whether a column holds ready tasks (tasks without blockers)
+update columns
+set holds_ready_tasks = ?
+where id = ?;
 
 -- name: GetReadyColumnByProject :one
-SELECT id, name, project_id, prev_id, next_id, holds_ready_tasks
-FROM columns
-WHERE project_id = ? AND holds_ready_tasks = 1
-LIMIT 1;
+-- Retrieves the column designated for ready tasks in a project
+select
+    id,
+    name,
+    project_id,
+    prev_id,
+    next_id,
+    holds_ready_tasks
+from columns
+where project_id = ? and holds_ready_tasks = 1
+limit 1;
 
 -- name: ClearReadyColumnByProject :exec
-UPDATE columns SET holds_ready_tasks = 0
-WHERE project_id = ? AND holds_ready_tasks = 1;
-
--- ============================================================================
--- COMPLETED COLUMN OPERATIONS
--- ============================================================================
+-- Clears the ready task flag from all columns in a project
+update columns
+set holds_ready_tasks = 0
+where project_id = ?
+and holds_ready_tasks = 1;
 
 -- name: UpdateColumnHoldsCompletedTasks :exec
-UPDATE columns SET holds_completed_tasks = ? WHERE id = ?;
+-- Sets whether a column holds completed tasks
+update columns
+set holds_completed_tasks = ?
+where id = ?;
 
 -- name: GetCompletedColumnByProject :one
-SELECT id, name, project_id, prev_id, next_id, holds_completed_tasks
-FROM columns
-WHERE project_id = ? AND holds_completed_tasks = 1
-LIMIT 1;
+-- Retrieves the column designated for completed tasks in a project
+select
+    id,
+    name,
+    project_id,
+    prev_id,
+    next_id,
+    holds_completed_tasks
+from columns
+where project_id = ? and holds_completed_tasks = 1
+limit 1;
 
 -- name: ClearCompletedColumnByProject :exec
-UPDATE columns SET holds_completed_tasks = 0
-WHERE project_id = ? AND holds_completed_tasks = 1;
-
--- ============================================================================
--- IN-PROGRESS COLUMN OPERATIONS
--- ============================================================================
+-- Clears the completed task flag from all columns in a project
+update columns
+set holds_completed_tasks = 0
+where project_id = ?
+and holds_completed_tasks = 1;
 
 -- name: UpdateColumnHoldsInProgressTasks :exec
-UPDATE columns SET holds_in_progress_tasks = ? WHERE id = ?;
+-- Sets whether a column holds in-progress tasks
+update columns
+set holds_in_progress_tasks = ?
+where id = ?;
 
 -- name: GetInProgressColumnByProject :one
-SELECT id, name, project_id, prev_id, next_id, holds_in_progress_tasks
-FROM columns
-WHERE project_id = ? AND holds_in_progress_tasks = 1
-LIMIT 1;
+-- Retrieves the column designated for in-progress tasks in a project
+select
+    id,
+    name,
+    project_id,
+    prev_id,
+    next_id,
+    holds_in_progress_tasks
+from columns
+where project_id = ? and holds_in_progress_tasks = 1
+limit 1;
 
 -- name: ClearInProgressColumnByProject :exec
-UPDATE columns SET holds_in_progress_tasks = 0
-WHERE project_id = ? AND holds_in_progress_tasks = 1;
+-- Clears the in-progress task flag from all columns in a project
+update columns
+set holds_in_progress_tasks = 0
+where project_id = ?
+and holds_in_progress_tasks = 1;

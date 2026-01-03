@@ -1,56 +1,54 @@
--- ============================================================================
--- PROJECT CRUD OPERATIONS
--- ============================================================================
-
 -- name: CreateProjectRecord :one
-INSERT INTO projects (name, description)
-VALUES (?, ?)
-RETURNING *;
+-- Creates a new project with name and description
+insert into projects (name, description)
+values (?, ?)
+returning *;
 
 -- name: GetProjectByID :one
-SELECT
+-- Retrieves a project by its ID with all metadata
+select
     id,
     name,
     description,
     created_at,
     updated_at
-FROM projects WHERE id = ?;
+from projects where id = ?;
 
 -- name: GetAllProjects :many
-SELECT id, name, description, created_at, updated_at FROM projects ORDER BY id;
+-- Retrieves all projects ordered by ID
+select id, name, description, created_at, updated_at from projects order by id;
 
 -- name: UpdateProject :exec
-UPDATE projects SET name = ?,
+-- Updates a project's name and description
+update projects set name = ?,
 description = ?,
-updated_at = CURRENT_TIMESTAMP WHERE id = ?;
+updated_at = current_timestamp where id = ?;
 
 -- name: DeleteProject :exec
-DELETE FROM projects WHERE id = ?;
-
--- ============================================================================
--- PROJECT COUNTERS
--- ============================================================================
+-- Permanently deletes a project by ID
+delete from projects where id = ?;
 
 -- name: InitializeProjectCounter :exec
-INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1);
+-- Initializes the ticket number counter for a new project starting at 1
+insert into project_counters (project_id, next_ticket_number) values (?, 1);
 
 -- name: GetProjectTaskCount :one
-SELECT COUNT(*)
-FROM tasks t
-JOIN columns c ON t.column_id = c.id
-WHERE c.project_id = ?;
+-- Returns the total number of tasks in a project
+select count(*)
+from tasks t
+join columns c on t.column_id = c.id
+where c.project_id = ?;
 
 -- name: DeleteProjectCounter :exec
-DELETE FROM project_counters WHERE project_id = ?;
-
--- ============================================================================
--- PROJECT COLUMN MANAGEMENT
--- ============================================================================
+-- Deletes the ticket counter for a project
+delete from project_counters where project_id = ?;
 
 -- name: DeleteTasksByProject :exec
-DELETE FROM tasks
-WHERE column_id IN (SELECT id FROM columns WHERE project_id = ?);
+-- Deletes all tasks belonging to a project
+delete from tasks
+where column_id in (select id from columns where project_id = ?);
 
 -- name: DeleteColumnsByProject :exec
-DELETE FROM columns
-WHERE project_id = ?;
+-- Deletes all columns belonging to a project
+delete from columns
+where project_id = ?;
