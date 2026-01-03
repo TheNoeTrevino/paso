@@ -1,57 +1,8 @@
 package models
 
 import (
-	"errors"
 	"testing"
 )
-
-// ============================================================================
-// Error Tests
-// ============================================================================
-
-func TestErrors_Defined(t *testing.T) {
-	// Test that all error variables are defined and not nil
-	if ErrAlreadyFirstTask == nil {
-		t.Error("ErrAlreadyFirstTask should not be nil")
-	}
-	if ErrAlreadyLastTask == nil {
-		t.Error("ErrAlreadyLastTask should not be nil")
-	}
-	if ErrAlreadyLastColumn == nil {
-		t.Error("ErrAlreadyLastColumn should not be nil")
-	}
-	if ErrAlreadyFirstColumn == nil {
-		t.Error("ErrAlreadyFirstColumn should not be nil")
-	}
-}
-
-func TestErrors_Messages(t *testing.T) {
-	tests := []struct {
-		err             error
-		expectedMessage string
-	}{
-		{ErrAlreadyFirstTask, "task is already at the top of the column"},
-		{ErrAlreadyLastTask, "task is already at the bottom of the column"},
-		{ErrAlreadyLastColumn, "task is already in the last column"},
-		{ErrAlreadyFirstColumn, "task is already in the first column"},
-	}
-
-	for _, tt := range tests {
-		if tt.err.Error() != tt.expectedMessage {
-			t.Errorf("Expected error message '%s', got '%s'", tt.expectedMessage, tt.err.Error())
-		}
-	}
-}
-
-func TestErrors_Unique(t *testing.T) {
-	// Ensure each error is distinct
-	if errors.Is(ErrAlreadyFirstTask, ErrAlreadyLastTask) {
-		t.Error("ErrAlreadyFirstTask should not equal ErrAlreadyLastTask")
-	}
-	if errors.Is(ErrAlreadyFirstColumn, ErrAlreadyLastColumn) {
-		t.Error("ErrAlreadyFirstColumn should not equal ErrAlreadyLastColumn")
-	}
-}
 
 // ============================================================================
 // Struct Tests
