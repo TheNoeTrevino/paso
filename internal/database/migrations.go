@@ -8,39 +8,85 @@ import (
 	"log/slog"
 
 	"github.com/pressly/goose/v3"
-	"github.com/thenoetrevino/paso/internal/database/generated"
+	"github.com/thenoetrevino/paso/internal/database/types"
 )
 
-//go:embed migrations/*.sql
+// Type aliases for convenience in CreateDefaultColumns
+type (
+	CreateColumnParams       = types.CreateColumnParams
+	UpdateColumnNextIDParams = types.UpdateColumnNextIDParams
+	NullInt64                = types.NullInt64
+)
+
+//go:embed migrations_sqlite/*.sql migrations_postgres/*.sql
 var embedMigrations embed.FS
 
-// runMigrations runs goose migrations and seeds default data
-func runMigrations(ctx context.Context, db *sql.DB) error {
+// runMigrations runs goose migrations for the appropriate database type and seeds default data
+func runMigrations(ctx context.Context, db *sql.DB, dbType DatabaseType) error {
+	slog.Debug("setting up goose migration filesystem")
 	goose.SetBaseFS(embedMigrations)
 
-	if err := goose.SetDialect("sqlite3"); err != nil {
-		return fmt.Errorf("failed to set goose dialect: %w", err)
-	}
+	switch dbType {
+	case SQLite:
+		slog.Debug("setting goose dialect to sqlite3")
+		if err := goose.SetDialect("sqlite3"); err != nil {
+			slog.Error("failed to set goose dialect for SQLite", "error", err)
+			return fmt.Errorf("failed to set goose dialect: %w", err)
+		}
 
-	if err := goose.Up(db, "migrations"); err != nil {
-		return fmt.Errorf("failed to run goose migrations: %w", err)
+		slog.Info("running SQLite migrations from migrations_sqlite/ directory")
+		if err := goose.Up(db, "migrations_sqlite"); err != nil {
+			slog.Error("SQLite migrations failed", "error", err)
+			return fmt.Errorf("failed to run goose migrations: %w", err)
+		}
+		slog.Info("SQLite migrations completed successfully")
+
+	case PostgreSQL:
+		slog.Debug("setting goose dialect to postgres")
+		if err := goose.SetDialect("postgres"); err != nil {
+			slog.Error("failed to set goose dialect for PostgreSQL", "error", err)
+			return fmt.Errorf("failed to set goose dialect: %w", err)
+		}
+
+		// Use PostgreSQL-specific migrations directory for proper schema compatibility
+		slog.Info("running PostgreSQL migrations from migrations_postgres/ directory")
+		if err := goose.Up(db, "migrations_postgres"); err != nil {
+			slog.Error("PostgreSQL migrations failed", "error", err)
+			return fmt.Errorf("failed to run goose migrations: %w", err)
+		}
+		slog.Info("PostgreSQL migrations completed successfully")
+
+	default:
+		return fmt.Errorf("unknown database type: %s", dbType)
 	}
 
 	// Seed default data after migrations
-	return seedDefaultData(ctx, db)
+	slog.Info("seeding default data")
+	if err := seedDefaultData(ctx, db, dbType); err != nil {
+		slog.Error("failed to seed default data", "error", err)
+		return err
+	}
+	slog.Info("default data seeded successfully")
+	return nil
 }
 
 // seedDefaultData seeds default project, columns, and labels if needed
-func seedDefaultData(ctx context.Context, db *sql.DB) error {
-	if err := seedDefaultProject(ctx, db); err != nil {
+func seedDefaultData(ctx context.Context, db *sql.DB, dbType DatabaseType) error {
+	slog.Debug("seeding default project")
+	if err := seedDefaultProject(ctx, db, dbType); err != nil {
+		slog.Error("failed to seed default project", "error", err)
 		return err
 	}
 
-	if err := seedDefaultColumns(ctx, db); err != nil {
+	slog.Debug("seeding default columns")
+	if err := seedDefaultColumns(ctx, db, dbType); err != nil {
+		slog.Error("failed to seed default columns", "error", err)
 		return err
 	}
 
-	if err := seedDefaultLabels(ctx, db); err != nil {
+	slog.Debug("seeding default labels")
+	if err := seedDefaultLabels(ctx, db, dbType); err != nil {
+		slog.Error("failed to seed default labels", "error", err)
 		return err
 	}
 
@@ -48,7 +94,7 @@ func seedDefaultData(ctx context.Context, db *sql.DB) error {
 }
 
 // seedDefaultProject creates a default project if no projects exist
-func seedDefaultProject(ctx context.Context, db *sql.DB) error {
+func seedDefaultProject(ctx context.Context, db *sql.DB, dbType DatabaseType) error {
 	// Check if projects table is empty
 	var count int
 	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM projects").Scan(&count)
@@ -61,37 +107,56 @@ func seedDefaultProject(ctx context.Context, db *sql.DB) error {
 		return nil
 	}
 
-	// Insert default project
-	result, err := db.ExecContext(ctx,
-		`INSERT INTO projects (name, description) VALUES (?, ?)`,
-		"Default", "Default project",
-	)
+	// Insert default project with database-specific SQL
+	var insertQuery string
+	if dbType == PostgreSQL {
+		insertQuery = `INSERT INTO projects (name, description) VALUES ($1, $2) RETURNING id`
+	} else {
+		insertQuery = `INSERT INTO projects (name, description) VALUES (?, ?)`
+	}
+
+	var projectID int64
+
+	if dbType == PostgreSQL {
+		// PostgreSQL: use RETURNING to get the ID
+		err = db.QueryRowContext(ctx, insertQuery, "Default", "Default project").Scan(&projectID)
+	} else {
+		// SQLite: use LastInsertId
+		result, err := db.ExecContext(ctx, insertQuery, "Default", "Default project")
+		if err != nil {
+			return err
+		}
+		projectID, err = result.LastInsertId()
+		if err != nil {
+			return err
+		}
+	}
+
 	if err != nil {
 		return err
 	}
 
-	// Initialize the counter for the default project
-	projectID, err := result.LastInsertId()
-	if err != nil {
-		return err
+	// Insert project counter with database-specific SQL
+	var counterQuery string
+	if dbType == PostgreSQL {
+		counterQuery = `INSERT INTO project_counters (project_id, next_ticket_number) VALUES ($1, 1)`
+	} else {
+		counterQuery = `INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)`
 	}
 
-	_, err = db.ExecContext(ctx,
-		`INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)`,
-		projectID,
-	)
+	_, err = db.ExecContext(ctx, counterQuery, projectID)
 	return err
 }
 
 // CreateDefaultColumns creates the standard three columns (Todo, In Progress, Done)
-// for a given project using the provided querier (works with both db and tx)
-func CreateDefaultColumns(ctx context.Context, q generated.Querier, projectID int64) error {
+// for a given project using the provided database-agnostic querier
+func CreateDefaultColumns(ctx context.Context, q Querier, projectID int64) error {
 	// Create "Todo" column (head of list, holds ready tasks)
-	todoCol, err := q.CreateColumn(ctx, generated.CreateColumnParams{
+	todoCol, err := q.CreateColumn(ctx, CreateColumnParams{
 		Name:                "Todo",
 		ProjectID:           projectID,
-		PrevID:              nil,
-		NextID:              nil,
+		PrevID:              NullInt64{Valid: false},
+		NextID:              NullInt64{Valid: false},
 		HoldsReadyTasks:     true,
 		HoldsCompletedTasks: false,
 	})
@@ -100,11 +165,11 @@ func CreateDefaultColumns(ctx context.Context, q generated.Querier, projectID in
 	}
 
 	// Create "In Progress" column (middle of list)
-	inProgressCol, err := q.CreateColumn(ctx, generated.CreateColumnParams{
+	inProgressCol, err := q.CreateColumn(ctx, CreateColumnParams{
 		Name:                "In Progress",
 		ProjectID:           projectID,
-		PrevID:              todoCol.ID,
-		NextID:              nil,
+		PrevID:              NullInt64{Int64: todoCol.ID, Valid: true},
+		NextID:              NullInt64{Valid: false},
 		HoldsReadyTasks:     false,
 		HoldsCompletedTasks: false,
 	})
@@ -113,11 +178,11 @@ func CreateDefaultColumns(ctx context.Context, q generated.Querier, projectID in
 	}
 
 	// Create "Done" column (tail of list, holds completed tasks)
-	doneCol, err := q.CreateColumn(ctx, generated.CreateColumnParams{
+	doneCol, err := q.CreateColumn(ctx, CreateColumnParams{
 		Name:                "Done",
 		ProjectID:           projectID,
-		PrevID:              inProgressCol.ID,
-		NextID:              nil,
+		PrevID:              NullInt64{Int64: inProgressCol.ID, Valid: true},
+		NextID:              NullInt64{Valid: false},
 		HoldsReadyTasks:     false,
 		HoldsCompletedTasks: true,
 	})
@@ -126,16 +191,16 @@ func CreateDefaultColumns(ctx context.Context, q generated.Querier, projectID in
 	}
 
 	// Update next_id pointers to complete the linked list
-	if err := q.UpdateColumnNextID(ctx, generated.UpdateColumnNextIDParams{
+	if err := q.UpdateColumnNextID(ctx, UpdateColumnNextIDParams{
 		ID:     todoCol.ID,
-		NextID: inProgressCol.ID,
+		NextID: NullInt64{Int64: inProgressCol.ID, Valid: true},
 	}); err != nil {
 		return fmt.Errorf("failed to update Todo next_id: %w", err)
 	}
 
-	if err := q.UpdateColumnNextID(ctx, generated.UpdateColumnNextIDParams{
+	if err := q.UpdateColumnNextID(ctx, UpdateColumnNextIDParams{
 		ID:     inProgressCol.ID,
-		NextID: doneCol.ID,
+		NextID: NullInt64{Int64: doneCol.ID, Valid: true},
 	}); err != nil {
 		return fmt.Errorf("failed to update In Progress next_id: %w", err)
 	}
@@ -144,7 +209,7 @@ func CreateDefaultColumns(ctx context.Context, q generated.Querier, projectID in
 }
 
 // seedDefaultColumns inserts default columns if the columns table is empty
-func seedDefaultColumns(ctx context.Context, db *sql.DB) error {
+func seedDefaultColumns(ctx context.Context, db *sql.DB, dbType DatabaseType) error {
 	// Check if columns table is empty
 	var count int
 	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM columns").Scan(&count)
@@ -164,13 +229,16 @@ func seedDefaultColumns(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 
-	// Use the shared helper to create default columns
-	q := generated.New(db)
+	// Use the database-agnostic querier
+	q, err := NewQuerier(db, dbType)
+	if err != nil {
+		return fmt.Errorf("failed to create querier for seeding columns: %w", err)
+	}
 	return CreateDefaultColumns(ctx, q, int64(defaultProjectID))
 }
 
 // seedDefaultLabels seeds default GitHub-style labels for projects that don't have any labels
-func seedDefaultLabels(ctx context.Context, db *sql.DB) error {
+func seedDefaultLabels(ctx context.Context, db *sql.DB, dbType DatabaseType) error {
 	// Default labels (GitHub-style)
 	defaultLabels := []struct {
 		name  string
@@ -211,7 +279,14 @@ func seedDefaultLabels(ctx context.Context, db *sql.DB) error {
 	// For each project, check if it has labels and seed if not
 	for _, projectID := range projectIDs {
 		var labelCount int
-		err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM labels WHERE project_id = ?`, projectID).Scan(&labelCount)
+		// Use database-specific placeholder syntax
+		var countQuery string
+		if dbType == PostgreSQL {
+			countQuery = `SELECT COUNT(*) FROM labels WHERE project_id = $1`
+		} else {
+			countQuery = `SELECT COUNT(*) FROM labels WHERE project_id = ?`
+		}
+		err := db.QueryRowContext(ctx, countQuery, projectID).Scan(&labelCount)
 		if err != nil {
 			return err
 		}
@@ -219,10 +294,17 @@ func seedDefaultLabels(ctx context.Context, db *sql.DB) error {
 		// Only seed if project has no labels
 		if labelCount == 0 {
 			for _, label := range defaultLabels {
-				_, err := db.ExecContext(ctx,
-					`INSERT OR IGNORE INTO labels (name, color, project_id) VALUES (?, ?, ?)`,
-					label.name, label.color, projectID,
-				)
+				// Use database-specific SQL for INSERT
+				var insertQuery string
+				if dbType == PostgreSQL {
+					// PostgreSQL: use ON CONFLICT for upsert
+					insertQuery = `INSERT INTO labels (name, color, project_id) VALUES ($1, $2, $3) ON CONFLICT (name, project_id) DO NOTHING`
+				} else {
+					// SQLite: use INSERT OR IGNORE
+					insertQuery = `INSERT OR IGNORE INTO labels (name, color, project_id) VALUES (?, ?, ?)`
+				}
+
+				_, err := db.ExecContext(ctx, insertQuery, label.name, label.color, projectID)
 				if err != nil {
 					return err
 				}

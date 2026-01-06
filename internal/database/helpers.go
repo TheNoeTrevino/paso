@@ -47,18 +47,6 @@ func sendEvent(eventClient events.EventPublisher, projectID int) {
 	}
 }
 
-// getProjectIDFromTable retrieves the project_id for an entity in a given table.
-// Common pattern used before sending event notifications.
-func getProjectIDFromTable(ctx context.Context, db *sql.DB, table string, entityID int) (int, error) {
-	var projectID int
-	query := fmt.Sprintf("SELECT project_id FROM %s WHERE id = ?", table)
-	err := db.QueryRowContext(ctx, query, entityID).Scan(&projectID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get project_id from %s for entity %d: %w", table, entityID, err)
-	}
-	return projectID, nil
-}
-
 // nullInt64ToPtr converts sql.NullInt64 to *int.
 // Returns nil if the value is not valid.
 func nullInt64ToPtr(nv sql.NullInt64) *int {
