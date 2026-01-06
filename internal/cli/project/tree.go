@@ -39,15 +39,15 @@ are highlighted in red to show the blocking chain.`,
 func runTree(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
-	// Parse project ID from positional arg or flag
 	var projectID int
 	if len(args) > 0 {
 		var err error
 		projectID, err = strconv.Atoi(args[0])
 		if err != nil {
-			projectID = 0 // Invalid input, will be caught by validation below
+			projectID = 0
 		}
 	} else {
+		// TODO: chore and handle the never existent error
 		projectID, _ = cmd.Flags().GetInt("project-id")
 	}
 
@@ -56,7 +56,6 @@ func runTree(cmd *cobra.Command, args []string) error {
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
-	// Validate project ID
 	if projectID <= 0 {
 		if fmtErr := formatter.ErrorWithSuggestion("INVALID_PROJECT_ID",
 			"project ID must be a positive integer",
@@ -66,7 +65,6 @@ func runTree(cmd *cobra.Command, args []string) error {
 		os.Exit(cli.ExitUsage)
 	}
 
-	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
@@ -80,7 +78,6 @@ func runTree(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	// Get task tree
 	tree, err := cliInstance.App.TaskService.GetTaskTreeByProject(ctx, projectID)
 	if err != nil {
 		if fmtErr := formatter.Error("TREE_FETCH_ERROR", err.Error()); fmtErr != nil {
@@ -105,7 +102,6 @@ func runTree(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Mark blocking chains recursively
 	for _, root := range tree {
 		markBlockingChains(root)
 	}
@@ -128,7 +124,6 @@ func runTree(cmd *cobra.Command, args []string) error {
 func markBlockingChains(node *models.TaskTreeNode) bool {
 	hasBlockerInSubtree := false
 
-	// Recursively check children
 	for _, child := range node.Children {
 		if markBlockingChains(child) {
 			hasBlockerInSubtree = true
@@ -138,13 +133,21 @@ func markBlockingChains(node *models.TaskTreeNode) bool {
 		}
 	}
 
-	// Mark this node as being in a blocking path if any descendant is a blocker
-	// or if this node itself is a blocking relationship
 	if hasBlockerInSubtree || node.IsBlocking {
 		node.InBlockingPath = true
 	}
 
 	return hasBlockerInSubtree || node.IsBlocking
+}
+
+// hasIncompleteChild returns true if any direct child is not completed
+func hasIncompleteChild(node *models.TaskTreeNode) bool {
+	for _, child := range node.Children {
+		if !child.IsCompleted {
+			return true
+		}
+	}
+	return false
 }
 
 // outputQuietTree outputs the tree in quiet mode (IDs with relation labels)
@@ -210,7 +213,6 @@ func outputJSONTree(projectID int, tree []*models.TaskTreeNode) error {
 }
 
 func outputStyledTree(tree []*models.TaskTreeNode) error {
-	// Load config for color scheme
 	cfg, err := config.Load()
 	if err != nil {
 		cfg = &config.Config{
@@ -227,21 +229,20 @@ func outputStyledTree(tree []*models.TaskTreeNode) error {
 	return nil
 }
 
-// ancestorState tracks whether an ancestor was last, in blocking path, and completed
+// ancestorState tracks whether an ancestor was last and in blocking path
 type ancestorState struct {
 	isLast         bool
 	inBlockingPath bool
-	isCompleted    bool
 }
 
-// renderPrefix renders the accumulated prefix from ancestor states with proper colors
-func renderPrefix(ancestors []ancestorState, colors colors.ColorScheme) string {
+// renderPrefix renders the accumulated prefix from ancestor states. will dim if shouldDim
+func renderPrefix(ancestors []ancestorState, shouldDim bool, colors colors.ColorScheme) string {
 	var prefix strings.Builder
 	for _, a := range ancestors {
 		if a.isLast {
-			prefix.WriteString(styles.TreeSpace) // "    " - no vertical line needed
+			prefix.WriteString(styles.TreeSpace)
 		} else {
-			prefix.WriteString(styles.RenderTreeVertical(a.inBlockingPath, a.isCompleted, colors))
+			prefix.WriteString(styles.RenderTreeVertical(a.inBlockingPath, shouldDim, colors))
 		}
 	}
 	return prefix.String()
@@ -251,23 +252,23 @@ func renderPrefix(ancestors []ancestorState, colors colors.ColorScheme) string {
 func renderTreeNodes(output *strings.Builder, nodes []*models.TaskTreeNode, ancestors []ancestorState, isRoot bool, colors colors.ColorScheme) {
 	for i, node := range nodes {
 		isLast := i == len(nodes)-1
+		shouldDim := node.IsCompleted && !hasIncompleteChild(node)
 
 		if isRoot {
-			line := styles.RenderTreeRootTask(node.TicketNumber, node.Title, node.ColumnName, colors)
+			line := styles.RenderTreeRootTask(node.TicketNumber, node.Title, node.ColumnName, shouldDim, colors)
 			output.WriteString(line + "\n")
 			renderTreeNodes(output, node.Children, nil, false, colors)
-		} else {
-			prefix := renderPrefix(ancestors, colors)
-
-			line := styles.RenderTreeChildLine(prefix, isLast, node, colors)
-			output.WriteString(line + "\n")
-
-			childAncestors := append(ancestors, ancestorState{
-				isLast:         isLast,
-				inBlockingPath: node.InBlockingPath,
-				isCompleted:    node.IsCompleted,
-			})
-			renderTreeNodes(output, node.Children, childAncestors, false, colors)
+			continue
 		}
+
+		prefix := renderPrefix(ancestors, shouldDim, colors)
+		line := styles.RenderTreeChildLine(prefix, isLast, node, shouldDim, colors)
+		output.WriteString(line + "\n")
+
+		childAncestors := append(ancestors, ancestorState{
+			isLast:         isLast,
+			inBlockingPath: node.InBlockingPath,
+		})
+		renderTreeNodes(output, node.Children, childAncestors, false, colors)
 	}
 }

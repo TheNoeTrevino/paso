@@ -159,10 +159,7 @@ func runMove(cmd *cobra.Command, args []string) error {
 		}
 
 		// Check if already in target column (silent success)
-		if targetColumn.ID == taskDetail.ColumnID {
-			toColumnName = targetColumn.Name
-			// Skip the move, just output success
-		} else {
+		if targetColumn.ID != taskDetail.ColumnID {
 			err = cliInstance.App.TaskService.MoveTaskToColumn(ctx, taskID, targetColumn.ID)
 			if err != nil {
 				if fmtErr := formatter.Error("MOVE_ERROR", err.Error()); fmtErr != nil {
@@ -170,8 +167,8 @@ func runMove(cmd *cobra.Command, args []string) error {
 				}
 				return err
 			}
-			toColumnName = targetColumn.Name
 		}
+		toColumnName = targetColumn.Name
 	}
 
 	// Output success

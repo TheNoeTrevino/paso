@@ -16,6 +16,9 @@ const (
 	TreeSpace      = "    " // continuation for last sibling (4 spaces)
 )
 
+// CompletedDimIntensity controls how much completed tasks are dimmed (0.0-1.0)
+const CompletedDimIntensity = 0.6
+
 // RenderTreeConnector renders the tree connector with appropriate color
 // isLast determines if this is the last child (uses └── vs ├──)
 // inBlockingPath determines color (red if blocking)
@@ -23,40 +26,46 @@ func RenderTreeConnector(isLast bool, inBlockingPath bool, colors colors.ColorSc
 	return RenderTreeConnectorWithCompletion(isLast, inBlockingPath, false, colors)
 }
 
-// RenderTreeConnectorWithCompletion renders the tree connector with completion-aware styling
-func RenderTreeConnectorWithCompletion(isLast bool, inBlockingPath bool, isCompleted bool, colors colors.ColorScheme) string {
+// RenderTreeConnectorWithCompletion renders the tree connector with dim-aware styling
+// shouldDim controls whether the connector is dimmed (for completed paths)
+func RenderTreeConnectorWithCompletion(isLast bool, inBlockingPath bool, shouldDim bool, colors colors.ColorScheme) string {
 	connector := TreeBranch
 	if isLast {
 		connector = TreeLastBranch
 	}
 
+	color := colors.Subtle
 	if inBlockingPath {
-		return lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color(colors.ErrorFg)).
-			Faint(isCompleted).
-			Render(connector)
+		color = colors.ErrorFg
 	}
-	return lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colors.Subtle)).
-		Faint(isCompleted).
-		Render(connector)
+	if shouldDim {
+		color = DimColor(color, CompletedDimIntensity)
+	}
+
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
+	if inBlockingPath {
+		style = style.Bold(true)
+	}
+	return style.Render(connector)
 }
 
 // RenderTreeVertical renders the vertical continuation line with appropriate color
 // inBlockingPath determines color (red if blocking)
-func RenderTreeVertical(inBlockingPath bool, isCompleted bool, colors colors.ColorScheme) string {
+// shouldDim controls whether the line is dimmed (for completed paths)
+func RenderTreeVertical(inBlockingPath bool, shouldDim bool, colors colors.ColorScheme) string {
+	color := colors.Subtle
 	if inBlockingPath {
-		return lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color(colors.ErrorFg)).
-			Faint(isCompleted).
-			Render(TreeVertical)
+		color = colors.ErrorFg
 	}
-	return lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colors.Subtle)).
-		Faint(isCompleted).
-		Render(TreeVertical)
+	if shouldDim {
+		color = DimColor(color, CompletedDimIntensity)
+	}
+
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
+	if inBlockingPath {
+		style = style.Bold(true)
+	}
+	return style.Render(TreeVertical)
 }
 
 // RenderRelationChip renders a relation type label as a chip like "[Blocker]"
@@ -87,10 +96,14 @@ func RenderTreeTaskInfo(ticketNumber int, title string, columnName string, isBlo
 }
 
 // RenderTreeRootTask renders a root task (no connector, no relation)
-func RenderTreeRootTask(ticketNumber int, title string, columnName string, colors colors.ColorScheme) string {
+func RenderTreeRootTask(ticketNumber int, title string, columnName string, isCompleted bool, colors colors.ColorScheme) string {
+	color := colors.Title
+	if isCompleted {
+		color = DimColor(color, CompletedDimIntensity)
+	}
 	return lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color(colors.Title)).
+		Foreground(lipgloss.Color(color)).
 		Render(fmt.Sprintf("%d: %s - %s", ticketNumber, title, columnName))
 }
 
@@ -98,29 +111,28 @@ func RenderTreeRootTask(ticketNumber int, title string, columnName string, color
 // Format: "│   ├── 39: [Blocker] Title - ColumnName"
 // prefix: accumulated continuation characters from ancestors (e.g., "│   │   ")
 // isLast: whether this node is the last child in its parent's children
-func RenderTreeChildLine(prefix string, isLast bool, node *models.TaskTreeNode, colors colors.ColorScheme) string {
+// shouldDim: whether this line should be dimmed (typically when parent has no uncompleted descendants)
+func RenderTreeChildLine(prefix string, isLast bool, node *models.TaskTreeNode, shouldDim bool, colors colors.ColorScheme) string {
 	// The connector (├── or └──) - red if in blocking path
-	connector := RenderTreeConnectorWithCompletion(isLast, node.InBlockingPath, node.IsCompleted, colors)
+	connector := RenderTreeConnectorWithCompletion(isLast, node.InBlockingPath, shouldDim, colors)
 
 	// Determine text color based on blocking status
 	textColor := colors.Normal
 	if node.IsBlocking {
 		textColor = colors.ErrorFg
 	}
+	if shouldDim {
+		textColor = DimColor(textColor, CompletedDimIntensity)
+	}
 
-	// Build the content parts with faint applied if completed
-	ticketStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(textColor)).
-		Faint(node.IsCompleted)
+	// Build the content parts
+	ticketStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(textColor))
 
 	relationStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(textColor)).
-		Bold(node.IsBlocking).
-		Faint(node.IsCompleted)
+		Bold(node.IsBlocking)
 
-	titleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(textColor)).
-		Faint(node.IsCompleted)
+	titleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(textColor))
 
 	ticketNum := ticketStyle.Render(fmt.Sprintf("%d: ", node.TicketNumber))
 	relationChip := relationStyle.Render(node.RelationLabel)
