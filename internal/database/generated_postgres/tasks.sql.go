@@ -1264,7 +1264,8 @@ select
     t.ticket_number,
     t.title,
     c.name as column_name,
-    proj.name as project_name
+    proj.name as project_name,
+    c.holds_completed_tasks as is_completed
 from tasks t
 inner join columns c on t.column_id = c.id
 inner join projects proj on c.project_id = proj.id
@@ -1278,6 +1279,7 @@ type GetTasksForTreeRow struct {
 	Title        string
 	ColumnName   string
 	ProjectName  string
+	IsCompleted  bool
 }
 
 // Retrieves all tasks in a project with column
@@ -1297,6 +1299,7 @@ func (q *Queries) GetTasksForTree(ctx context.Context, id int64) ([]GetTasksForT
 			&i.Title,
 			&i.ColumnName,
 			&i.ProjectName,
+			&i.IsCompleted,
 		); err != nil {
 			return nil, err
 		}

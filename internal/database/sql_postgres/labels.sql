@@ -53,3 +53,12 @@ delete from task_labels where task_id = $1;
 -- name: InsertTaskLabel :exec
 -- Creates a task-label association
 insert into task_labels (task_id, label_id) values ($1, $2);
+
+-- name: GetLabelCountByProject :one
+-- Returns the count of labels for a project
+select count(*) from labels where project_id = $1;
+
+-- name: UpsertLabel :exec
+-- Inserts a label or ignores if it already exists (for seeding)
+insert into labels (name, color, project_id) values ($1, $2, $3)
+on conflict (name, project_id) do nothing;
