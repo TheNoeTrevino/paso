@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/app"
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
@@ -17,7 +18,8 @@ func SetupCLITest(t *testing.T) (*sql.DB, *app.App) {
 
 	// Create app instance with services
 	// Note: EventPublisher is nil - event publishing is tested elsewhere
-	appInstance := app.New(db)
+	appInstance, err := app.New(db)
+	require.NoError(t, err, "failed to create app instance")
 
 	return db, appInstance
 }

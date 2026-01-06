@@ -9,13 +9,21 @@ package main
 import (
 	"context"
 	"log/slog"
+	"os"
+	"path/filepath"
 
 	"github.com/thenoetrevino/paso/internal/database"
 )
 
 func main() {
 	// Initialize database
-	db, err := database.InitDB(context.Background())
+	home, _ := os.UserHomeDir()
+	dbPath := filepath.Join(home, ".paso", "tasks.db")
+	dbConfig := database.Config{
+		Type:       database.SQLite,
+		SQLitePath: dbPath,
+	}
+	db, err := database.InitDB(context.Background(), dbConfig, "Test")
 	if err != nil {
 		slog.Error("failed to initialize database", "error", err)
 		return

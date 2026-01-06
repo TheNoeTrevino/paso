@@ -56,7 +56,7 @@ func runFormatter(ctx context.Context, formatter Formatter, resultCh chan<- Form
 	}
 
 	if len(formatErrors) > 0 {
-		result.Error = fmt.Errorf("formatting errors:\n%s", strings.Join(formatErrors, "\n"))
+		result.Error = fmt.Errorf("failed to format files:\n%s", strings.Join(formatErrors, "\n"))
 	}
 
 	resultCh <- result

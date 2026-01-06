@@ -38,13 +38,13 @@ func (g *GoFmtFormatter) Format(ctx context.Context, file string) error {
 	// Format the file
 	cmd := exec.CommandContext(ctx, "gofmt", "-w", file)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("gofmt failed: %w", err)
+		return fmt.Errorf("failed to format file with gofmt: %w", err)
 	}
 
 	// Re-stage the formatted file
 	cmd = exec.CommandContext(ctx, "git", "add", file)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("git add failed: %w", err)
+		return fmt.Errorf("failed to stage formatted file: %w", err)
 	}
 
 	return nil

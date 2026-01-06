@@ -1,12 +1,12 @@
 version: "2"
 sql:
   - engine: "sqlite"
-    queries: "internal/database/sql"
-    schema: "internal/database/migrations"
+    queries: "internal/database/sql_sqlite"
+    schema: "internal/database/migrations_sqlite"
     gen:
       go:
-        package: "generated"
-        out: "internal/database/generated"
+        package: "generated_sqlite"
+        out: "internal/database/generated_sqlite"
         sql_package: "database/sql"
         emit_interface: true
         emit_json_tags: false
@@ -14,6 +14,29 @@ sql:
         emit_exact_table_names: false
         emit_empty_slices: true
         overrides:
+          - db_type: "integer"
+            go_type: "int64"
+          - db_type: "text"
+            go_type: "string"
+          - db_type: "boolean"
+            go_type: "bool"
+
+  - engine: "postgresql"
+    queries: "internal/database/sql_postgres"
+    schema: "internal/database/migrations_postgres"
+    gen:
+      go:
+        package: "generated_postgres"
+        out: "internal/database/generated_postgres"
+        sql_package: "database/sql"
+        emit_interface: true
+        emit_json_tags: false
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+        overrides:
+          - db_type: "bigint"
+            go_type: "int64"
           - db_type: "integer"
             go_type: "int64"
           - db_type: "text"
