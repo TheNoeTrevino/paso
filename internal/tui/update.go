@@ -52,6 +52,7 @@ type dataReloaded struct {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	select {
 	case <-m.Ctx.Done():
+		close(m.NotifyChan)
 		return m, tea.Quit
 	default:
 	}
