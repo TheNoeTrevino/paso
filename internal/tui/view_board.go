@@ -40,6 +40,7 @@ func (m Model) viewKanbanBoard() string {
 			Width:            m.UIState.Width(),
 			ConnectionStatus: m.ConnectionState.Status(),
 			DatabaseName:     m.CurrentDBName,
+			Tip:              m.UI.CurrentTip,
 		})
 		return lipgloss.JoinVertical(
 			lipgloss.Left,
@@ -111,6 +112,7 @@ func (m Model) viewKanbanBoard() string {
 		SearchQuery:      m.UI.Search.Query,
 		ConnectionStatus: m.ConnectionState.Status(),
 		DatabaseName:     m.CurrentDBName,
+		Tip:              m.UI.CurrentTip,
 	})
 
 	// Build content (everything except footer)
@@ -180,6 +182,7 @@ func (m Model) viewListView() string {
 		SearchQuery:      m.UI.Search.Query,
 		ConnectionStatus: m.ConnectionState.Status(),
 		DatabaseName:     m.CurrentDBName,
+		Tip:              m.UI.CurrentTip,
 	})
 
 	// Build content (everything except footer)
