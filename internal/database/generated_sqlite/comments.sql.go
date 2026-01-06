@@ -3,7 +3,7 @@
 //   sqlc v1.30.0
 // source: comments.sql
 
-package generated
+package generated_sqlite
 
 import (
 	"context"
