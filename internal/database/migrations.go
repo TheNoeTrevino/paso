@@ -108,20 +108,16 @@ func seedDefaultProject(ctx context.Context, db *sql.DB, dbType DatabaseType) er
 	}
 
 	// Insert default project with database-specific SQL
-	var insertQuery string
-	if dbType == PostgreSQL {
-		insertQuery = `INSERT INTO projects (name, description) VALUES ($1, $2) RETURNING id`
-	} else {
-		insertQuery = `INSERT INTO projects (name, description) VALUES (?, ?)`
-	}
-
 	var projectID int64
 
-	if dbType == PostgreSQL {
+	switch dbType {
+	case PostgreSQL:
 		// PostgreSQL: use RETURNING to get the ID
+		insertQuery := `INSERT INTO projects (name, description) VALUES ($1, $2) RETURNING id`
 		err = db.QueryRowContext(ctx, insertQuery, "Default", "Default project").Scan(&projectID)
-	} else {
+	case SQLite:
 		// SQLite: use LastInsertId
+		insertQuery := `INSERT INTO projects (name, description) VALUES (?, ?)`
 		result, err := db.ExecContext(ctx, insertQuery, "Default", "Default project")
 		if err != nil {
 			return err
@@ -136,16 +132,12 @@ func seedDefaultProject(ctx context.Context, db *sql.DB, dbType DatabaseType) er
 		return err
 	}
 
-	// Insert project counter with database-specific SQL
-	var counterQuery string
-	if dbType == PostgreSQL {
-		counterQuery = `INSERT INTO project_counters (project_id, next_ticket_number) VALUES ($1, 1)`
-	} else {
-		counterQuery = `INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)`
+	// Use generated query for project counter
+	queries, err := NewQuerier(db, dbType)
+	if err != nil {
+		return err
 	}
-
-	_, err = db.ExecContext(ctx, counterQuery, projectID)
-	return err
+	return queries.InitializeProjectCounter(ctx, projectID)
 }
 
 // CreateDefaultColumns creates the standard three columns (Todo, In Progress, Done)
@@ -276,17 +268,15 @@ func seedDefaultLabels(ctx context.Context, db *sql.DB, dbType DatabaseType) err
 		return err
 	}
 
+	// Use generated queries for labels
+	queries, err := NewQuerier(db, dbType)
+	if err != nil {
+		return err
+	}
+
 	// For each project, check if it has labels and seed if not
 	for _, projectID := range projectIDs {
-		var labelCount int
-		// Use database-specific placeholder syntax
-		var countQuery string
-		if dbType == PostgreSQL {
-			countQuery = `SELECT COUNT(*) FROM labels WHERE project_id = $1`
-		} else {
-			countQuery = `SELECT COUNT(*) FROM labels WHERE project_id = ?`
-		}
-		err := db.QueryRowContext(ctx, countQuery, projectID).Scan(&labelCount)
+		labelCount, err := queries.GetLabelCountByProject(ctx, int64(projectID))
 		if err != nil {
 			return err
 		}
@@ -294,18 +284,11 @@ func seedDefaultLabels(ctx context.Context, db *sql.DB, dbType DatabaseType) err
 		// Only seed if project has no labels
 		if labelCount == 0 {
 			for _, label := range defaultLabels {
-				// Use database-specific SQL for INSERT
-				var insertQuery string
-				if dbType == PostgreSQL {
-					// PostgreSQL: use ON CONFLICT for upsert
-					insertQuery = `INSERT INTO labels (name, color, project_id) VALUES ($1, $2, $3) ON CONFLICT (name, project_id) DO NOTHING`
-				} else {
-					// SQLite: use INSERT OR IGNORE
-					insertQuery = `INSERT OR IGNORE INTO labels (name, color, project_id) VALUES (?, ?, ?)`
-				}
-
-				_, err := db.ExecContext(ctx, insertQuery, label.name, label.color, projectID)
-				if err != nil {
+				if err := queries.UpsertLabel(ctx, types.UpsertLabelParams{
+					Name:      label.name,
+					Color:     label.color,
+					ProjectID: int64(projectID),
+				}); err != nil {
 					return err
 				}
 			}

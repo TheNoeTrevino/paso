@@ -89,6 +89,18 @@ func (q *Queries) GetLabelByID(ctx context.Context, id int64) (Label, error) {
 	return i, err
 }
 
+const getLabelCountByProject = `-- name: GetLabelCountByProject :one
+select count(*) from labels where project_id = $1
+`
+
+// Returns the count of labels for a project
+func (q *Queries) GetLabelCountByProject(ctx context.Context, projectID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getLabelCountByProject, projectID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getLabelsByProject = `-- name: GetLabelsByProject :many
 select
     id,
@@ -209,5 +221,22 @@ type UpdateLabelParams struct {
 // Updates a label's name and color
 func (q *Queries) UpdateLabel(ctx context.Context, arg UpdateLabelParams) error {
 	_, err := q.db.ExecContext(ctx, updateLabel, arg.Name, arg.Color, arg.ID)
+	return err
+}
+
+const upsertLabel = `-- name: UpsertLabel :exec
+insert into labels (name, color, project_id) values ($1, $2, $3)
+on conflict (name, project_id) do nothing
+`
+
+type UpsertLabelParams struct {
+	Name      string
+	Color     string
+	ProjectID int64
+}
+
+// Inserts a label or ignores if it already exists (for seeding)
+func (q *Queries) UpsertLabel(ctx context.Context, arg UpsertLabelParams) error {
+	_, err := q.db.ExecContext(ctx, upsertLabel, arg.Name, arg.Color, arg.ProjectID)
 	return err
 }

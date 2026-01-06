@@ -28,6 +28,12 @@ type UpdateLabelParams struct {
 	ID    int64
 }
 
+type UpsertLabelParams struct {
+	Name      string
+	Color     string
+	ProjectID int64
+}
+
 // columns.sql.go params
 type CreateColumnParams struct {
 	Name                 string
