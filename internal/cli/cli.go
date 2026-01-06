@@ -61,14 +61,19 @@ func NewCLIWithApp(ctx context.Context, testApp *app.App) (*CLI, error) {
 		_ = err
 	}
 
-	// Initialize database
-	db, err := database.InitDB(ctx)
+	// Initialize database with SQLite (CLI always uses local database for now)
+	home, _ := os.UserHomeDir()
+	dbPath := filepath.Join(home, ".paso", "tasks.db")
+	dbConfig := database.Config{
+		Type:       database.SQLite,
+		SQLitePath: dbPath,
+	}
+	db, err := database.InitDB(ctx, dbConfig, "Local")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize database: %w", err)
 	}
 
 	// Try to connect to daemon (optional - silent fallback)
-	home, _ := os.UserHomeDir()
 	socketPath := filepath.Join(home, ".paso", "paso.sock")
 
 	var eventClient events.EventPublisher
@@ -86,7 +91,10 @@ func NewCLIWithApp(ctx context.Context, testApp *app.App) (*CLI, error) {
 		appOpts = append(appOpts, app.WithEventPublisher(eventClient))
 	}
 
-	application := app.New(db, appOpts...)
+	application, err := app.New(db, appOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize application: %w", err)
+	}
 
 	return &CLI{
 		App:         application,

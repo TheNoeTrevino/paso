@@ -17,7 +17,8 @@
 ## Core Rules
 - Use `paso task ready --project=<id>` to find actionable work (no blockers)
 - Use `paso task blocked --project=<id>` to see what's waiting on dependencies
-- Create blocking relationships with `paso task link --parent=<blocked> --child=<blocker> --blocker`
+- Create blocking relationships: The task being blocked goes in `--parent`, the blocking task goes in `--child`
+  - Example: `paso task link --parent=22 --child=26 --blocker` means "task 22 is blocked by task 26"
 
 ## Essential Commands
 
@@ -41,6 +42,7 @@
 ### Dependencies
 - `paso task link --parent=<id> --child=<id>` - Parent-child relationship
 - `paso task link --parent=<id> --child=<id> --blocker` - Blocking dependency (parent blocked by child)
+  - **IMPORTANT**: `--parent` = the task that is blocked, `--child` = the task doing the blocking
 - `paso task link --parent=<id> --child=<id> --related` - Related tasks
 
 ### Columns
@@ -122,10 +124,36 @@ paso task create --project=1 --title="Implement feature X" --type=feature
 ```
 
 **Creating dependent work:**
+
+⚠️ **CRITICAL: Understanding --parent and --child with --blocker** ⚠️
+
+When using `--blocker`, the parameter names can be confusing:
+- `--parent` = The task that IS BLOCKED (waits for the other)
+- `--child` = The task DOING THE BLOCKING (must be completed first)
+
+**Example 1: EPIC blocked by tasks (most common pattern)**
+```bash
+# Create EPIC and child tasks
+EPIC=$(paso task create --project=1 --title="EPIC: User Authentication" --type=feature --quiet)
+LOGIN=$(paso task create --project=1 --title="Implement login endpoint" --quiet)
+HASH=$(paso task create --project=1 --title="Add password hashing" --quiet)
+
+# EPIC cannot be completed until LOGIN and HASH are done
+# So: EPIC is blocked, LOGIN and HASH are blocking
+paso task link --parent=$EPIC --child=$LOGIN --blocker
+paso task link --parent=$EPIC --child=$HASH --blocker
+
+# Result: EPIC shows "Blocked By: LOGIN, HASH"
+#         LOGIN and HASH show "Blocking: EPIC"
+```
+
+**Example 2: Task blocked by another task**
 ```bash
 FEATURE=$(paso task create --project=1 --title="Implement feature X" --quiet)
 TESTS=$(paso task create --project=1 --title="Write tests for X" --quiet)
-# Tests blocked by feature:
+
+# Tests cannot run until feature is implemented
+# So: TESTS is blocked, FEATURE is blocking
 paso task link --parent=$TESTS --child=$FEATURE --blocker
 ```
 
