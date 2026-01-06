@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
@@ -18,6 +19,16 @@ func setupBenchmarkDB(b *testing.B) *sql.DB {
 	b.Helper()
 	db := testutil.SetupTestDB(&testing.T{})
 	return db
+}
+
+// newBenchmarkService creates a new service for benchmarking (panics on error since tests use valid SQLite)
+func newBenchmarkService(b *testing.B, db *sql.DB) Service {
+	b.Helper()
+	svc, err := NewService(db, database.SQLite, nil)
+	if err != nil {
+		b.Fatalf("failed to create benchmark service: %v", err)
+	}
+	return svc
 }
 
 // createBenchmarkProject creates a project with columns for benchmarking
@@ -175,7 +186,7 @@ func BenchmarkGetTaskDetail(b *testing.B) {
 	addCommentToTask(b, db, taskID, "user1", "Great progress!")
 	addCommentToTask(b, db, taskID, "user2", "Looks good to me")
 
-	service := NewService(db, nil)
+	service := newBenchmarkService(b, db)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -226,7 +237,7 @@ func BenchmarkGetInProgressTasksByProject(b *testing.B) {
 		createBenchmarkTask(b, db, normalColumnID, title, []int{})
 	}
 
-	service := NewService(db, nil)
+	service := newBenchmarkService(b, db)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -279,7 +290,7 @@ func BenchmarkGetTaskSummariesByProject(b *testing.B) {
 		}
 	}
 
-	service := NewService(db, nil)
+	service := newBenchmarkService(b, db)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -308,7 +319,7 @@ func BenchmarkGetTaskSummariesByProjectFiltered(b *testing.B) {
 		createBenchmarkTask(b, db, columnID, title, []int{})
 	}
 
-	service := NewService(db, nil)
+	service := newBenchmarkService(b, db)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -353,7 +364,7 @@ func BenchmarkGetTaskTreeByProject(b *testing.B) {
 		}
 	}
 
-	service := NewService(db, nil)
+	service := newBenchmarkService(b, db)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -377,7 +388,7 @@ func BenchmarkUpdateTask(b *testing.B) {
 	columnID := createBenchmarkColumn(b, db, projectID)
 	taskID := createBenchmarkTask(b, db, columnID, "Original Title", []int{})
 
-	service := NewService(db, nil)
+	service := newBenchmarkService(b, db)
 	ctx := context.Background()
 
 	newTitle := "Updated Title"
@@ -411,7 +422,7 @@ func BenchmarkCreateTask(b *testing.B) {
 	label1 := createBenchmarkLabel(b, db, projectID, "feature", "#FF0000")
 	label2 := createBenchmarkLabel(b, db, projectID, "important", "#00FF00")
 
-	service := NewService(db, nil)
+	service := newBenchmarkService(b, db)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -449,7 +460,7 @@ func BenchmarkAttachLabel(b *testing.B) {
 		labels[i] = createBenchmarkLabel(b, db, projectID, "label_"+string(rune(i)), "#FF00FF")
 	}
 
-	service := NewService(db, nil)
+	service := newBenchmarkService(b, db)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -481,7 +492,7 @@ func BenchmarkDetachLabel(b *testing.B) {
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID)
 	}
 
-	service := NewService(db, nil)
+	service := newBenchmarkService(b, db)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -511,7 +522,7 @@ func BenchmarkMoveTaskToColumn(b *testing.B) {
 		tasks[i] = createBenchmarkTask(b, db, columnID, "Move Task "+string(rune(i)), []int{})
 	}
 
-	service := NewService(db, nil)
+	service := newBenchmarkService(b, db)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -534,7 +545,7 @@ func BenchmarkCreateComment(b *testing.B) {
 	columnID := createBenchmarkColumn(b, db, projectID)
 	taskID := createBenchmarkTask(b, db, columnID, "Test Task", []int{})
 
-	service := NewService(db, nil)
+	service := newBenchmarkService(b, db)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -573,7 +584,7 @@ func BenchmarkGetReadyTaskSummariesByProject(b *testing.B) {
 		createBenchmarkTask(b, db, normalColumnID, title, []int{})
 	}
 
-	service := NewService(db, nil)
+	service := newBenchmarkService(b, db)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -604,7 +615,7 @@ func BenchmarkAddParentRelation(b *testing.B) {
 		childTasks[i] = createBenchmarkTask(b, db, columnID, "Child Task "+string(rune(i)), []int{})
 	}
 
-	service := NewService(db, nil)
+	service := newBenchmarkService(b, db)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -633,7 +644,7 @@ func BenchmarkGetTaskReferencesForProject(b *testing.B) {
 		createBenchmarkTask(b, db, columnID, title, []int{})
 	}
 
-	service := NewService(db, nil)
+	service := newBenchmarkService(b, db)
 	ctx := context.Background()
 
 	b.ResetTimer()
