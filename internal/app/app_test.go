@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	_ "modernc.org/sqlite"
 )
 
@@ -28,7 +29,8 @@ func TestNew(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	// Create app with no options (defaults)
-	app := New(db)
+	app, err := New(db)
+	require.NoError(t, err, "failed to create app")
 
 	if app == nil {
 		t.Fatal("Expected app to be created, got nil")
@@ -55,9 +57,10 @@ func TestClose(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	app := New(db)
+	app, err := New(db)
+	require.NoError(t, err, "failed to create app")
 
-	err := app.Close()
+	err = app.Close()
 	if err != nil {
 		t.Errorf("Expected Close to succeed, got error: %v", err)
 	}
