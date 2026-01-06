@@ -582,6 +582,7 @@ func (s *service) GetTaskTreeByProject(ctx context.Context, projectID int) ([]*m
 			Title:       row.Title,
 			ColumnName:  row.ColumnName,
 			ProjectName: row.ProjectName,
+			IsCompleted: row.IsCompleted,
 			Children:    []*models.TaskTreeNode{},
 		}
 		if row.TicketNumber.Valid {
@@ -642,6 +643,7 @@ func (s *service) GetTaskTreeByProject(ctx context.Context, projectID int) ([]*m
 				RelationLabel: childRel.relationLabel,
 				RelationColor: childRel.relationColor,
 				IsBlocking:    childRel.isBlocking,
+				IsCompleted:   childNode.IsCompleted,
 				Children:      buildChildren(childRel.childID, depth+1),
 			}
 			result = append(result, nodeCopy)
@@ -660,6 +662,7 @@ func (s *service) GetTaskTreeByProject(ctx context.Context, projectID int) ([]*m
 				Title:        node.Title,
 				ColumnName:   node.ColumnName,
 				ProjectName:  node.ProjectName,
+				IsCompleted:  node.IsCompleted,
 				Children:     buildChildren(node.ID, 0),
 			}
 			roots = append(roots, rootCopy)
