@@ -783,26 +783,18 @@ func (m *Model) initPriorityPickerForForm() bool {
 	// Otherwise, default to medium (id=3)
 	currentPriorityID := 3 // Default to medium
 
-	// If editing an existing task, we need to get the current priority from database
+	// If editing an existing task, get the current priority ID directly from database
 	if m.Forms.Form.EditingTaskID != 0 {
 		ctx, cancel := m.DBContext()
 		defer cancel()
 
-		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.Forms.Form.EditingTaskID)
+		_, priorityID, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, m.Forms.Form.EditingTaskID)
 		if err != nil {
-			slog.Error("failed to loading task detail for priority picker", "error", err)
+			slog.Error("failed to get task priority ID for priority picker", "error", err)
 			return false
 		}
 
-		// Find the priority ID from the priority description
-		// We need to match it against our priority options
-		priorities := renderers.GetPriorityOptions()
-		for _, p := range priorities {
-			if p.Description == taskDetail.PriorityDescription {
-				currentPriorityID = p.ID
-				break
-			}
-		}
+		currentPriorityID = priorityID
 	}
 
 	// Initialize PriorityPickerState
@@ -822,28 +814,18 @@ func (m *Model) initTypePickerForForm() bool {
 	// Otherwise, default to task (id=1)
 	currentTypeID := 1 // Default to task
 
-	// If editing an existing task, we need to get the current type from database
+	// If editing an existing task, get the current type ID directly from database
 	if m.Forms.Form.EditingTaskID != 0 {
 		ctx, cancel := m.DBContext()
 		defer cancel()
 
-		// TODO: only get the task.type.id
-		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.Forms.Form.EditingTaskID)
+		typeID, _, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, m.Forms.Form.EditingTaskID)
 		if err != nil {
-			slog.Error("failed to loading task detail for type picker", "error", err)
+			slog.Error("failed to get task type ID for type picker", "error", err)
 			return false
 		}
 
-		// Find the type ID from the type description
-		// We need to match it against our type options
-		types := renderers.GetTypeOptions()
-		for _, t := range types {
-			// TODO: if t.ID == taskTypeID
-			if t.Description == taskDetail.TypeDescription {
-				currentTypeID = t.ID
-				break
-			}
-		}
+		currentTypeID = typeID
 	}
 
 	// init to current type
