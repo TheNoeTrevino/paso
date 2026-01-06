@@ -80,16 +80,6 @@ func createTestProject(t *testing.T, db *sql.DB, name string) int {
 	return int(projectID)
 }
 
-func createTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
-	t.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, name)
-	if err != nil {
-		t.Fatalf("Failed to create test column: %v", err)
-	}
-	columnID, _ := result.LastInsertId()
-	return int(columnID)
-}
-
 // ============================================================================
 // Transaction Helper Tests
 // ============================================================================
