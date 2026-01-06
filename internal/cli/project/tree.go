@@ -112,7 +112,7 @@ func runTree(cmd *cobra.Command, args []string) error {
 
 	// Output in appropriate format
 	if quietMode {
-		outputQuietTree(tree, 0)
+		outputQuietTree(tree, "", true)
 		return nil
 	}
 
@@ -120,7 +120,6 @@ func runTree(cmd *cobra.Command, args []string) error {
 		return outputJSONTree(projectID, tree)
 	}
 
-	// Human-readable output with lipgloss styling
 	return outputStyledTree(tree)
 }
 
@@ -149,17 +148,28 @@ func markBlockingChains(node *models.TaskTreeNode) bool {
 }
 
 // outputQuietTree outputs the tree in quiet mode (IDs with relation labels)
-func outputQuietTree(nodes []*models.TaskTreeNode, depth int) {
-	indent := strings.Repeat("  ", depth)
-	for _, node := range nodes {
-		if depth == 0 {
-			// Root node - just ID
+func outputQuietTree(nodes []*models.TaskTreeNode, prefix string, isRoot bool) {
+	for i, node := range nodes {
+		isLast := i == len(nodes)-1
+
+		if isRoot {
 			fmt.Printf("%d\n", node.ID)
+			outputQuietTree(node.Children, "", false)
 		} else {
-			// Child node - ID with relation label
-			fmt.Printf("%s%d %s\n", indent, node.ID, node.RelationLabel)
+			connector := styles.TreeBranch
+			if isLast {
+				connector = styles.TreeLastBranch
+			}
+			fmt.Printf("%s%s%d %s\n", prefix, connector, node.TicketNumber, node.RelationLabel)
+
+			childPrefix := prefix
+			if isLast {
+				childPrefix += styles.TreeSpace
+			} else {
+				childPrefix += styles.TreeVertical
+			}
+			outputQuietTree(node.Children, childPrefix, false)
 		}
-		outputQuietTree(node.Children, depth+1)
 	}
 }
 
@@ -203,37 +213,61 @@ func outputStyledTree(tree []*models.TaskTreeNode) error {
 	// Load config for color scheme
 	cfg, err := config.Load()
 	if err != nil {
-		// Fallback to default colors if config fails to load
 		cfg = &config.Config{
 			ColorScheme: config.DefaultColorScheme(),
 		}
 	}
 
-	// Initialize styles
 	styles.Init(cfg.ColorScheme)
 
 	var output strings.Builder
-	renderTreeNodes(&output, tree, 0, cfg.ColorScheme)
+	renderTreeNodes(&output, tree, nil, true, cfg.ColorScheme)
 
 	fmt.Print(output.String())
 	return nil
 }
 
-func renderTreeNodes(output *strings.Builder, nodes []*models.TaskTreeNode, depth int, colors colors.ColorScheme) {
-	for _, node := range nodes {
-		indent := strings.Repeat("  ", depth)
+// ancestorState tracks whether an ancestor was last, in blocking path, and completed
+type ancestorState struct {
+	isLast         bool
+	inBlockingPath bool
+	isCompleted    bool
+}
 
-		if depth == 0 {
-			// Root node - render with title style
-			line := styles.RenderTreeRootTask(node.ProjectName, node.TicketNumber, node.Title, node.ColumnName, colors)
-			output.WriteString(line + "\n")
+// renderPrefix renders the accumulated prefix from ancestor states with proper colors
+func renderPrefix(ancestors []ancestorState, colors colors.ColorScheme) string {
+	var prefix strings.Builder
+	for _, a := range ancestors {
+		if a.isLast {
+			prefix.WriteString(styles.TreeSpace) // "    " - no vertical line needed
 		} else {
-			// Child node - render with tree connector and relation chip
-			line := styles.RenderTreeChildLine(indent, node, colors)
-			output.WriteString(line + "\n")
+			prefix.WriteString(styles.RenderTreeVertical(a.inBlockingPath, a.isCompleted, colors))
 		}
+	}
+	return prefix.String()
+}
 
-		// Recursively render children
-		renderTreeNodes(output, node.Children, depth+1, colors)
+// recursive
+func renderTreeNodes(output *strings.Builder, nodes []*models.TaskTreeNode, ancestors []ancestorState, isRoot bool, colors colors.ColorScheme) {
+	for i, node := range nodes {
+		isLast := i == len(nodes)-1
+
+		if isRoot {
+			line := styles.RenderTreeRootTask(node.TicketNumber, node.Title, node.ColumnName, colors)
+			output.WriteString(line + "\n")
+			renderTreeNodes(output, node.Children, nil, false, colors)
+		} else {
+			prefix := renderPrefix(ancestors, colors)
+
+			line := styles.RenderTreeChildLine(prefix, isLast, node, colors)
+			output.WriteString(line + "\n")
+
+			childAncestors := append(ancestors, ancestorState{
+				isLast:         isLast,
+				inBlockingPath: node.InBlockingPath,
+				isCompleted:    node.IsCompleted,
+			})
+			renderTreeNodes(output, node.Children, childAncestors, false, colors)
+		}
 	}
 }
