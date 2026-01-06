@@ -22,6 +22,14 @@ select
 from tasks
 where id = $1;
 
+-- name: GetTaskTypeAndPriorityIDs :one
+-- Retrieves only the type_id and priority_id for a task (lightweight query)
+select
+    type_id,
+    priority_id
+from tasks
+where id = $1;
+
 -- name: GetTasksByColumn :many
 -- Retrieves all tasks in a column, ordered by position
 select
