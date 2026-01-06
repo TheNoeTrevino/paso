@@ -196,6 +196,7 @@ type GetTasksForTreeRow struct {
 	Title        string
 	ColumnName   string
 	ProjectName  string
+	IsCompleted  bool
 }
 
 // GetColumnByIDRow represents the result of GetColumnByID query
