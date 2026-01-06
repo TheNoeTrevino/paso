@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/thenoetrevino/paso/internal/database/generated"
+	"github.com/thenoetrevino/paso/internal/database/types"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -32,15 +32,15 @@ import (
 // Using CHAR(31) as a delimiter since it's a control character unlikely in text
 const labelSeparator = string(rune(31))
 
-// TaskToModel converts a generated.Task (SQLC database model) to models.Task (domain model).
+// TaskToModel converts a types.Task (SQLC database model) to models.Task (domain model).
 //
 // Handles NULL values for optional fields:
-// - description (sql.NullString)
-// - created_at, updated_at (sql.NullTime)
+// - description (types.NullString)
+// - created_at, updated_at (types.NullTime)
 //
 // Type conversions:
 // - All ID fields: int64 → int
-func TaskToModel(t generated.Task) *models.Task {
+func TaskToModel(t types.Task) *models.Task {
 	task := &models.Task{
 		ID:         int(t.ID),
 		Title:      t.Title,
@@ -64,7 +64,7 @@ func TaskToModel(t generated.Task) *models.Task {
 }
 
 // ParentTasksToReferences converts parent task rows to TaskReference slice
-func ParentTasksToReferences(rows []generated.GetParentTasksRow) []*models.TaskReference {
+func ParentTasksToReferences(rows []types.GetParentTasksRow) []*models.TaskReference {
 	result := make([]*models.TaskReference, 0, len(rows))
 	for _, row := range rows {
 		ref := &models.TaskReference{
@@ -85,7 +85,7 @@ func ParentTasksToReferences(rows []generated.GetParentTasksRow) []*models.TaskR
 }
 
 // ChildTasksToReferences converts child task rows to TaskReference slice
-func ChildTasksToReferences(rows []generated.GetChildTasksRow) []*models.TaskReference {
+func ChildTasksToReferences(rows []types.GetChildTasksRow) []*models.TaskReference {
 	result := make([]*models.TaskReference, 0, len(rows))
 	for _, row := range rows {
 		ref := &models.TaskReference{
@@ -105,8 +105,8 @@ func ChildTasksToReferences(rows []generated.GetChildTasksRow) []*models.TaskRef
 	return result
 }
 
-// CommentsToModels converts generated.TaskComment slice to models.Comment slice
-func CommentsToModels(comments []generated.TaskComment) []*models.Comment {
+// CommentsToModels converts types.TaskComment slice to models.Comment slice
+func CommentsToModels(comments []types.TaskComment) []*models.Comment {
 	result := make([]*models.Comment, 0, len(comments))
 	for _, c := range comments {
 		result = append(result, &models.Comment{
@@ -121,13 +121,13 @@ func CommentsToModels(comments []generated.TaskComment) []*models.Comment {
 }
 
 // TaskSummaryFromRowToModel converts a task summary row to models.TaskSummary
-func TaskSummaryFromRowToModel(row generated.GetTaskSummariesByProjectRow) *models.TaskSummary {
+func TaskSummaryFromRowToModel(row types.GetTaskSummariesByProjectRow) *models.TaskSummary {
 	summary := &models.TaskSummary{
 		ID:        int(row.ID),
 		Title:     row.Title,
 		ColumnID:  int(row.ColumnID),
 		Position:  int(row.Position),
-		IsBlocked: row.IsBlocked > 0,
+		IsBlocked: row.IsBlocked,
 		Labels:    ParseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
 	}
 
@@ -145,13 +145,13 @@ func TaskSummaryFromRowToModel(row generated.GetTaskSummariesByProjectRow) *mode
 }
 
 // ReadyTaskSummaryFromRowToModel converts a ready task summary row to models.TaskSummary
-func ReadyTaskSummaryFromRowToModel(row generated.GetReadyTaskSummariesByProjectRow) *models.TaskSummary {
+func ReadyTaskSummaryFromRowToModel(row types.GetReadyTaskSummariesByProjectRow) *models.TaskSummary {
 	summary := &models.TaskSummary{
 		ID:        int(row.ID),
 		Title:     row.Title,
 		ColumnID:  int(row.ColumnID),
 		Position:  int(row.Position),
-		IsBlocked: row.IsBlocked > 0,
+		IsBlocked: row.IsBlocked,
 		Labels:    ParseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
 	}
 
@@ -169,13 +169,13 @@ func ReadyTaskSummaryFromRowToModel(row generated.GetReadyTaskSummariesByProject
 }
 
 // FilteredTaskSummaryFromRowToModel converts a filtered task summary row to models.TaskSummary
-func FilteredTaskSummaryFromRowToModel(row generated.GetTaskSummariesByProjectFilteredRow) *models.TaskSummary {
+func FilteredTaskSummaryFromRowToModel(row types.GetTaskSummariesByProjectFilteredRow) *models.TaskSummary {
 	summary := &models.TaskSummary{
 		ID:        int(row.ID),
 		Title:     row.Title,
 		ColumnID:  int(row.ColumnID),
 		Position:  int(row.Position),
-		IsBlocked: row.IsBlocked > 0,
+		IsBlocked: row.IsBlocked,
 		Labels:    ParseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
 	}
 
