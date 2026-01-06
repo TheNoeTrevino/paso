@@ -83,45 +83,63 @@ type FormState struct {
 	EditingCommentID          int       // ID of comment being edited (0 for new comment)
 	InitialFormCommentMessage string    // Initial comment message for change detection
 	CommentFormReturnMode     Mode      // Mode to return to after comment form (TaskFormMode or CommentsViewMode)
+
+	// Database connection form fields (for creating database connections)
+	DatabaseForm                  *huh.Form // The form instance
+	FormDatabaseName              string    // Form field: connection name
+	FormDatabaseConnString        string    // Form field: connection string
+	FormDatabaseType              string    // Form field: database type ("sqlite" or "postgres")
+	FormDatabaseConfirm           bool      // Form field: confirmation
+	InitialFormDatabaseName       string    // Initial database name for change detection
+	InitialFormDatabaseConnString string    // Initial connection string for change detection
+	InitialFormDatabaseType       string    // Initial database type for change detection
 }
 
 // NewFormState creates a new FormState with default values.
 func NewFormState() *FormState {
 	return &FormState{
-		TaskForm:                  nil,
-		EditingTaskID:             0,
-		FormTitle:                 "",
-		FormDescription:           "",
-		FormLabelIDs:              []int{},
-		FormConfirm:               true,
-		FormParentIDs:             []int{},
-		FormChildIDs:              []int{},
-		FormParentRefs:            []*models.TaskReference{},
-		FormChildRefs:             []*models.TaskReference{},
-		FormComments:              []*models.Comment{},
-		InitialFormComments:       []*models.Comment{},
-		CommentsViewport:          viewport.Model{},
-		ViewportReady:             false,
-		ViewportFocused:           false,
-		ProjectForm:               nil,
-		FormProjectName:           "",
-		FormProjectDescription:    "",
-		FormProjectConfirm:        true,
-		LabelForm:                 nil,
-		EditingLabelID:            0,
-		FormLabelName:             "",
-		FormLabelColor:            "",
-		SelectedLabelIdx:          0,
-		LabelListMode:             "",
-		AssigningLabelIDs:         []int{},
-		ColumnForm:                nil,
-		FormColumnName:            "",
-		EditingColumnID:           0,
-		InitialFormColumnName:     "",
-		CommentForm:               nil,
-		FormCommentMessage:        "",
-		EditingCommentID:          0,
-		InitialFormCommentMessage: "",
+		TaskForm:                      nil,
+		EditingTaskID:                 0,
+		FormTitle:                     "",
+		FormDescription:               "",
+		FormLabelIDs:                  []int{},
+		FormConfirm:                   true,
+		FormParentIDs:                 []int{},
+		FormChildIDs:                  []int{},
+		FormParentRefs:                []*models.TaskReference{},
+		FormChildRefs:                 []*models.TaskReference{},
+		FormComments:                  []*models.Comment{},
+		InitialFormComments:           []*models.Comment{},
+		CommentsViewport:              viewport.Model{},
+		ViewportReady:                 false,
+		ViewportFocused:               false,
+		ProjectForm:                   nil,
+		FormProjectName:               "",
+		FormProjectDescription:        "",
+		FormProjectConfirm:            true,
+		LabelForm:                     nil,
+		EditingLabelID:                0,
+		FormLabelName:                 "",
+		FormLabelColor:                "",
+		SelectedLabelIdx:              0,
+		LabelListMode:                 "",
+		AssigningLabelIDs:             []int{},
+		ColumnForm:                    nil,
+		FormColumnName:                "",
+		EditingColumnID:               0,
+		InitialFormColumnName:         "",
+		CommentForm:                   nil,
+		FormCommentMessage:            "",
+		EditingCommentID:              0,
+		InitialFormCommentMessage:     "",
+		DatabaseForm:                  nil,
+		FormDatabaseName:              "",
+		FormDatabaseConnString:        "",
+		FormDatabaseType:              "postgres",
+		FormDatabaseConfirm:           true,
+		InitialFormDatabaseName:       "",
+		InitialFormDatabaseConnString: "",
+		InitialFormDatabaseType:       "",
 	}
 }
 
@@ -337,4 +355,51 @@ func (s *FormState) HasCommentFormChanges() bool {
 		return false
 	}
 	return strings.TrimSpace(s.FormCommentMessage) != strings.TrimSpace(s.InitialFormCommentMessage)
+}
+
+// --- Database Form Methods ---
+
+// ClearDatabaseForm resets all database form fields to their default values.
+func (s *FormState) ClearDatabaseForm() {
+	s.DatabaseForm = nil
+	s.FormDatabaseName = ""
+	s.FormDatabaseConnString = ""
+	s.FormDatabaseType = "postgres"
+	s.FormDatabaseConfirm = true
+	s.InitialFormDatabaseName = ""
+	s.InitialFormDatabaseConnString = ""
+	s.InitialFormDatabaseType = ""
+}
+
+// IsDatabaseFormActive returns true if a database form is currently active.
+func (s *FormState) IsDatabaseFormActive() bool {
+	return s.DatabaseForm != nil
+}
+
+// SnapshotDatabaseFormInitialValues saves the current database form values for change detection.
+func (s *FormState) SnapshotDatabaseFormInitialValues() {
+	s.InitialFormDatabaseName = s.FormDatabaseName
+	s.InitialFormDatabaseConnString = s.FormDatabaseConnString
+	s.InitialFormDatabaseType = s.FormDatabaseType
+}
+
+// HasDatabaseFormChanges returns true if the database form has unsaved changes.
+func (s *FormState) HasDatabaseFormChanges() bool {
+	if s.DatabaseForm == nil {
+		return false
+	}
+
+	if strings.TrimSpace(s.FormDatabaseName) != strings.TrimSpace(s.InitialFormDatabaseName) {
+		return true
+	}
+
+	if strings.TrimSpace(s.FormDatabaseConnString) != strings.TrimSpace(s.InitialFormDatabaseConnString) {
+		return true
+	}
+
+	if s.FormDatabaseType != s.InitialFormDatabaseType {
+		return true
+	}
+
+	return false
 }

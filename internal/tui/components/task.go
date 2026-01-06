@@ -10,11 +10,11 @@ import (
 
 // RenderTask renders a single task as a card
 //
-//		┌─────────────────────┐
-//		│ {Task Title}        │
-//		│ type | priority     │
-//		│ [label1] [label2]   │
-//		└─────────────────────┘
+//		┌──────────────────────────────┐
+//		│ {Task Title}                 │
+//		│ type | priority | blocked    │
+//		│ [label1] [label2]...         │
+//		└──────────────────────────────┘
 //	 This has a fixed width and length
 func RenderTask(task *models.TaskSummary, selected bool) string {
 	var bg string
@@ -38,35 +38,15 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 }
 
 func renderTaskSummaryTitle(task *models.TaskSummary, bg string) string {
-	var blockedIndicator string
-	if task.IsBlocked {
-		blockedIndicator = BlockedStyle.
-			Background(lipgloss.Color(bg)).
-			Render("! ")
-	}
-
 	title := task.Title
+
 	if len(title) >= taskTitleMaxLength {
-		ellipsisStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(theme.Subtle)).
+		title = title[:taskTitleMaxLength] + EllipsisStyle.
 			Background(lipgloss.Color(bg)).
-			Italic(true)
-		title = title[:taskTitleMaxLength] + ellipsisStyle.Render("...")
+			Render("...")
 	}
 
-	title = padTitleForIndicator(title)
-
-	return lipgloss.NewStyle().
-		Bold(true).
-		Render(" " + title + blockedIndicator)
-}
-
-// padTitleForIndicator pads the title to ensure the blocked indicator aligns on the right
-func padTitleForIndicator(title string) string {
-	if len(title) < taskTitlePaddedLength {
-		return title + strings.Repeat(" ", taskTitlePaddedLength-len(title))
-	}
-	return title
+	return TaskTitleStyle.Render(" " + title)
 }
 
 // renderTaskCardLabels renders the labels as chips, with their color as the background
@@ -85,29 +65,39 @@ func renderTaskCardLabels(labels []*models.Label, bg string) string {
 	return "\n " + labelChips
 }
 
-// renderTaskSummaryMetadata Renders type and priority on the same line, separated by │
+// renderTaskSummaryMetadata Renders type, priority and blocked on the same line, separated by │
 func renderTaskSummaryMetadata(task *models.TaskSummary, bg string) string {
 	var typeDisplay string
 	var priorityDisplay string
 
 	if task.TypeDescription != "" {
-		typeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
-		typeDisplay = typeStyle.Render(task.TypeDescription)
+		typeDisplay = SubtleStyle.Render(task.TypeDescription)
 	} else {
-		typeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Italic(true)
-		typeDisplay = typeStyle.Render("no type")
+		typeDisplay = SubtleStyle.Italic(true).Render("no type")
 	}
 
+	priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(task.PriorityColor)).Background(lipgloss.Color(bg))
 	if task.PriorityDescription != "" && task.PriorityColor != "" {
-		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(task.PriorityColor)).Background(lipgloss.Color(bg))
 		priorityDisplay = priorityStyle.Render(task.PriorityDescription)
 	} else {
-		priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Background(lipgloss.Color(bg)).Italic(true)
+		priorityStyle = priorityStyle.
+			Foreground(lipgloss.Color(theme.Subtle)).
+			Italic(true)
 		priorityDisplay = priorityStyle.Render("no priority")
 	}
 
-	separatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Background(lipgloss.Color(bg))
+	separatorStyle := SubtleStyle.Background(lipgloss.Color(bg))
 	separator := separatorStyle.Render(" │ ")
 
-	return "\n " + typeDisplay + separator + priorityDisplay
+	result := typeDisplay + separator + priorityDisplay
+
+	if task.IsBlocked {
+		blockedDisplay := BlockedStyle.
+			Background(lipgloss.Color(bg)).
+			Render("blocked")
+
+		result += separator + blockedDisplay
+	}
+
+	return "\n " + result
 }

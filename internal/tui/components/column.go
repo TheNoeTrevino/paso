@@ -51,7 +51,7 @@ func RenderColumn(
 // renderColumnHeader formats the column title with task count
 func renderColumnHeader(column *models.Column, taskCount int) string {
 	header := fmt.Sprintf("%s (%d)", column.Name, taskCount)
-	return TitleStyle.Render(header)
+	return ColumnTitleStyle.Render(header)
 }
 
 // renderScrollIndicator renders a centered scroll indicator or empty line for spacing consistently

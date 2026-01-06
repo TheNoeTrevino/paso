@@ -49,8 +49,11 @@ var (
 	// TaskStyle defines the appearance of individual tasks as cards
 	TaskStyle lipgloss.Style
 
-	// TitleStyle defines the appearance of titles (column names, app header)
-	TitleStyle lipgloss.Style
+	// ColumnTitleStyle defines the appearance of titles (column names, app header)
+	ColumnTitleStyle lipgloss.Style
+
+	// TaskTitleStyle defines the appearance of titles (column names, app header)
+	TaskTitleStyle lipgloss.Style
 
 	// FormBoxStyle defines the base style for ticket forms (purple border)
 	FormBoxStyle lipgloss.Style
@@ -63,6 +66,9 @@ var (
 
 	// EditInputBoxStyle defines the base style for edit dialogs (blue border)
 	EditInputBoxStyle lipgloss.Style
+
+	// EllipsisStyle defines the style for ellipses in truncated text
+	EllipsisStyle lipgloss.Style
 
 	// DeleteConfirmBoxStyle defines the base style for deletion confirmations (red border)
 	DeleteConfirmBoxStyle lipgloss.Style
@@ -88,23 +94,23 @@ var (
 	// IndicatorStyle defines the appearance of scroll indicators
 	IndicatorStyle lipgloss.Style
 
+	// IndicatorStyle defines the appearance of scroll indicators
+	BlockedStyle lipgloss.Style
+
 	// StatusBarStyle defines the base style for the status bar
 	StatusBarStyle lipgloss.Style
 
 	// StatusBarSearchStyle defines the style for the search section in the status bar
 	StatusBarSearchStyle lipgloss.Style
 
-	// BlockedStyle defines the style for blocked tasks ! indicator
-	// Note that this needs its background passed in so it isn't transparent
-	BlockedStyle lipgloss.Style
+	// SubtleStyle defines a base style for subtle text
+	SubtleStyle lipgloss.Style
 )
 
 // InitStyles initializes all styles with the given color scheme
 func InitStyles(colors colors.ColorScheme) {
-	// Initialize theme colors
 	theme.Init(colors)
 
-	// Tab styles
 	TabStyle = lipgloss.NewStyle().
 		Border(tabBorder, true).
 		BorderForeground(lipgloss.Color(theme.Highlight)).
@@ -124,7 +130,6 @@ func InitStyles(colors colors.ColorScheme) {
 		PaddingRight(1).
 		Width(40)
 
-	// Task style
 	TaskStyle = lipgloss.NewStyle().
 		BorderStyle(lipgloss.ThickBorder()).
 		BorderForeground(lipgloss.Color(colors.TaskBorder)).
@@ -133,12 +138,13 @@ func InitStyles(colors colors.ColorScheme) {
 		Padding(0).
 		Width(36)
 
-	// Title style
-	TitleStyle = lipgloss.NewStyle().
+	TaskTitleStyle = lipgloss.NewStyle().
+		Bold(true)
+
+	ColumnTitleStyle = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color(colors.Title))
 
-	// Dialog box styles
 	FormBoxStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(colors.Accent)).
@@ -179,7 +185,6 @@ func InitStyles(colors colors.ColorScheme) {
 		BorderForeground(lipgloss.Color(colors.Create)).
 		Padding(1, 2)
 
-	// Banner styles for notifications
 	InfoBannerStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color(colors.InfoFg)).
 		Background(lipgloss.Color(colors.InfoBg)).
@@ -209,8 +214,12 @@ func InitStyles(colors colors.ColorScheme) {
 	StatusBarSearchStyle = lipgloss.NewStyle().
 		Background(lipgloss.Color(colors.Background))
 
+	EllipsisStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle))
+
 	BlockedStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Blocked)).
-		Bold(true).
-		Italic(true)
+		Foreground(lipgloss.Color(theme.ErrorFg))
+
+	SubtleStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle))
 }

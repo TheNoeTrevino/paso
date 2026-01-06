@@ -39,6 +39,7 @@ func (m Model) viewKanbanBoard() string {
 		footer := components.RenderStatusBar(components.StatusBarProps{
 			Width:            m.UIState.Width(),
 			ConnectionStatus: m.ConnectionState.Status(),
+			DatabaseName:     m.CurrentDBName,
 		})
 		return lipgloss.JoinVertical(
 			lipgloss.Left,
@@ -109,6 +110,7 @@ func (m Model) viewKanbanBoard() string {
 		SearchMode:       m.UIState.Mode() == state.SearchMode || m.UI.Search.IsActive,
 		SearchQuery:      m.UI.Search.Query,
 		ConnectionStatus: m.ConnectionState.Status(),
+		DatabaseName:     m.CurrentDBName,
 	})
 
 	// Build content (everything except footer)
@@ -177,6 +179,7 @@ func (m Model) viewListView() string {
 		SearchMode:       m.UIState.Mode() == state.SearchMode || m.UI.Search.IsActive,
 		SearchQuery:      m.UI.Search.Query,
 		ConnectionStatus: m.ConnectionState.Status(),
+		DatabaseName:     m.CurrentDBName,
 	})
 
 	// Build content (everything except footer)
