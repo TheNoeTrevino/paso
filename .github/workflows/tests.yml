@@ -50,22 +50,22 @@ jobs:
         run: |
           echo "🧪 Running tests with coverage..."
           go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
-          echo "✅ Tests passed"
+          echo "✓ Tests passed"
           go tool cover -func=coverage.out > coverage.txt
 
       - name: Check coverage threshold
         run: |
           echo "Checking coverage threshold..."
           COVERAGE=$(tail -1 coverage.txt | grep -oE '[0-9]+\.[0-9]+%' | sed 's/%//')
-          THRESHOLD=15.0
+          THRESHOLD=25.0
           echo "Current coverage: ${COVERAGE}%"
           echo "Required threshold: ${THRESHOLD}%"
 
           # Compare coverage with threshold using awk
           if awk "BEGIN {exit !($COVERAGE >= $THRESHOLD)}"; then
-            echo "✅ Coverage check passed: ${COVERAGE}% >= ${THRESHOLD}%"
+            echo "✓ Coverage check passed: ${COVERAGE}% >= ${THRESHOLD}%"
           else
-            echo "❌ Coverage check failed: ${COVERAGE}% < ${THRESHOLD}%"
+            echo "✗ Coverage check failed: ${COVERAGE}% < ${THRESHOLD}%"
             echo "Please add more tests to improve code coverage."
             exit 1
           fi

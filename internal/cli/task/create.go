@@ -103,13 +103,11 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		}
 	}()
 
-	// Validate project exists
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, taskProject)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find project: project %d not found", taskProject)
 	}
 
-	// Get columns for project
 	columns, err := cliInstance.App.ColumnService.GetColumnsByProject(ctx, taskProject)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch columns: %w", err)
@@ -118,7 +116,6 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		return nil, fmt.Errorf("failed to create task: project has no columns")
 	}
 
-	// Determine target column
 	var targetColumnID int
 	if taskColumn == "" {
 		targetColumnID = columns[0].ID
@@ -130,7 +127,6 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		targetColumnID = col.ID
 	}
 
-	// Handle description from stdin
 	description := taskDescription
 	if description == "-" {
 		data, err := io.ReadAll(os.Stdin)
