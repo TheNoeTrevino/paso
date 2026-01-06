@@ -827,6 +827,7 @@ func (m *Model) initTypePickerForForm() bool {
 		ctx, cancel := m.DBContext()
 		defer cancel()
 
+		// TODO: only get the task.type.id
 		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.Forms.Form.EditingTaskID)
 		if err != nil {
 			slog.Error("failed to loading task detail for type picker", "error", err)
@@ -837,6 +838,7 @@ func (m *Model) initTypePickerForForm() bool {
 		// We need to match it against our type options
 		types := renderers.GetTypeOptions()
 		for _, t := range types {
+			// TODO: if t.ID == taskTypeID
 			if t.Description == taskDetail.TypeDescription {
 				currentTypeID = t.ID
 				break
@@ -844,9 +846,10 @@ func (m *Model) initTypePickerForForm() bool {
 		}
 	}
 
-	// Initialize TypePickerState
+	// init to current type
 	m.Pickers.Type.SetSelectedTypeID(currentTypeID)
-	// Set cursor to match the selected type (adjust for 0-indexing)
+
+	// set cursor to match the selected type, 0-indexed
 	m.Pickers.Type.SetCursor(currentTypeID - 1)
 	m.Pickers.Type.ReturnMode = state.TicketFormMode
 
@@ -868,7 +871,6 @@ func (m Model) buildListViewRows() []renderers.ListViewRow {
 		}
 	}
 
-	// Apply sorting
 	m.sortListViewRows(rows)
 	return rows
 }
@@ -906,7 +908,7 @@ func (m *Model) syncKanbanToListSelection() {
 		return
 	}
 
-	// Find the task that matches the current kanban selection
+	// find task that matches the current kanban selection
 	currentTask := m.getCurrentTask()
 	if currentTask == nil {
 		m.UI.ListView.SetSelectedRow(0)
@@ -940,7 +942,7 @@ func (m *Model) syncListToKanbanSelection() {
 
 	selectedTask := rows[selectedRow].Task
 
-	// Find the column and task position in kanban view
+	// column and task position in kanban view
 	for colIdx, col := range m.AppState.Columns() {
 		tasks := m.AppState.Tasks()[col.ID]
 		for taskIdx, task := range tasks {
@@ -964,8 +966,7 @@ func (m Model) getTaskFromListRow(rowIdx int) *models.TaskSummary {
 	return rows[rowIdx].Task
 }
 
-// getSelectedListTask returns the currently selected task in list view.
-// This is a convenience method that uses getTaskFromListRow with the current selection.
+// getSelectedListTask returns the currently selected task in list view
 func (m Model) getSelectedListTask() *models.TaskSummary {
 	return m.getTaskFromListRow(m.UI.ListView.SelectedRow())
 }
@@ -981,7 +982,6 @@ func (m Model) subscribeToEvents() tea.Cmd {
 		select {
 		case event, ok := <-m.EventChan:
 			if !ok {
-				// Channel closed, connection lost
 				return nil
 			}
 			return RefreshMsg{Event: event}
@@ -1027,10 +1027,8 @@ func (m *Model) reloadCurrentProject() {
 	m.AppState.SetLabels(labels)
 }
 
-// calculateDescriptionLines calculates the optimal number of lines for the
-// description field in the task form based on current screen dimensions.
-// This follows the same layout calculation as renderTaskFormLayer but is
-// called during Update to avoid state mutation in View.
+// calculateDescriptionLines calculates the number of lines for the
+// description field in the task form based on current screen height
 func (m Model) calculateDescriptionLines() int {
 	const ( // WARN: keep in sync with renderTaskFormLayer
 		chromeHeight       = 6  // border (2) + padding (2) + title (1) + blanks (1)
@@ -1040,16 +1038,11 @@ func (m Model) calculateDescriptionLines() int {
 	)
 
 	layerHeight := m.UIState.Height() * 8 / 10
-
 	innerHeight := layerHeight - chromeHeight
-
-	// Top left zone (title/desc) is 70% of inner height
 	topLeftHeight := innerHeight * 7 / 10
 
-	descriptionLines := min(
+	return min(
 		max(topLeftHeight-descChromeOverhead, minDescLines),
 		maxDescLines,
 	)
-
-	return descriptionLines
 }
