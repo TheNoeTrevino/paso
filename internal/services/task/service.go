@@ -514,11 +514,11 @@ func (s *service) GetReadyTaskSummariesByProject(ctx context.Context, projectID 
 
 	result := make([]*models.TaskSummary, 0, len(rows))
 	for _, row := range rows {
-		// Only include unblocked tasks
-		if !row.IsBlocked {
-			summary := converters.ReadyTaskSummaryFromRowToModel(row)
-			result = append(result, summary)
+		if row.IsBlocked {
+			continue
 		}
+		summary := converters.ReadyTaskSummaryFromRowToModel(row)
+		result = append(result, summary)
 	}
 
 	return result, nil

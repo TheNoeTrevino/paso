@@ -100,6 +100,8 @@ type Querier interface {
 	GetLabelsByProject(ctx context.Context, projectID int64) ([]Label, error)
 	// Retrieves all labels attached to a specific task
 	GetLabelsForTask(ctx context.Context, taskID int64) ([]Label, error)
+	// Returns the count of labels for a project
+	GetLabelCountByProject(ctx context.Context, projectID int64) (int64, error)
 	// Retrieves the ID of the next column in the linked list
 	GetNextColumnID(ctx context.Context, id int64) (NullInt64, error)
 	// Retrieves the next available ticket number for a project
@@ -194,4 +196,6 @@ type Querier interface {
 	UpdateTaskPriority(ctx context.Context, arg UpdateTaskPriorityParams) error
 	// Updates a task's type classification
 	UpdateTaskType(ctx context.Context, arg UpdateTaskTypeParams) error
+	// Inserts a label or ignores if it already exists (for seeding)
+	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 }

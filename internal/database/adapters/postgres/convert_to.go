@@ -201,6 +201,14 @@ func toGeneratedUpdateLabelParams(t types.UpdateLabelParams) generated_postgres.
 	}
 }
 
+func toGeneratedUpsertLabelParams(t types.UpsertLabelParams) generated_postgres.UpsertLabelParams {
+	return generated_postgres.UpsertLabelParams{
+		Name:      t.Name,
+		Color:     t.Color,
+		ProjectID: t.ProjectID,
+	}
+}
+
 func toGeneratedCreateCommentParams(t types.CreateCommentParams) generated_postgres.CreateCommentParams {
 	return generated_postgres.CreateCommentParams{
 		TaskID:  t.TaskID,

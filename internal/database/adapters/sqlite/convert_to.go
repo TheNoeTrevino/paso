@@ -203,6 +203,14 @@ func toGeneratedUpdateLabelParams(t types.UpdateLabelParams) generated_sqlite.Up
 	}
 }
 
+func toGeneratedUpsertLabelParams(t types.UpsertLabelParams) generated_sqlite.UpsertLabelParams {
+	return generated_sqlite.UpsertLabelParams{
+		Name:      t.Name,
+		Color:     t.Color,
+		ProjectID: t.ProjectID,
+	}
+}
+
 func toGeneratedCreateCommentParams(t types.CreateCommentParams) generated_sqlite.CreateCommentParams {
 	return generated_sqlite.CreateCommentParams{
 		TaskID:  t.TaskID,
