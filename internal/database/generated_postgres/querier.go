@@ -89,6 +89,8 @@ type Querier interface {
 	GetInProgressTasksByProject(ctx context.Context, id int64) ([]GetInProgressTasksByProjectRow, error)
 	// Retrieves a label by its ID
 	GetLabelByID(ctx context.Context, id int64) (Label, error)
+	// Returns the count of labels for a project
+	GetLabelCountByProject(ctx context.Context, projectID int64) (int64, error)
 	// Retrieves all labels for a project, ordered alphabetically by name
 	GetLabelsByProject(ctx context.Context, projectID int64) ([]Label, error)
 	// Retrieves all labels attached to a specific task
@@ -187,6 +189,8 @@ type Querier interface {
 	UpdateTaskPriority(ctx context.Context, arg UpdateTaskPriorityParams) error
 	// Updates a task's type classification
 	UpdateTaskType(ctx context.Context, arg UpdateTaskTypeParams) error
+	// Inserts a label or ignores if it already exists (for seeding)
+	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 }
 
 var _ Querier = (*Queries)(nil)

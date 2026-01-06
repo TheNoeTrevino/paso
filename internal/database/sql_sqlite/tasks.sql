@@ -447,7 +447,8 @@ select
     t.ticket_number,
     t.title,
     c.name as column_name,
-    proj.name as project_name
+    proj.name as project_name,
+    c.holds_completed_tasks as is_completed
 from tasks t
 inner join columns c on t.column_id = c.id
 inner join projects proj on c.project_id = proj.id
