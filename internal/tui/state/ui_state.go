@@ -5,29 +5,33 @@ package state
 type Mode int
 
 const (
-	NormalMode              Mode = iota // Default navigation mode
-	DeleteConfirmMode                   // Confirming task deletion
-	DiscardConfirmMode                  // Confirming discard of form/input changes
-	AddColumnFormMode                   // Creating a new column (huh form)
-	EditColumnFormMode                  // Renaming an existing column (huh form)
-	DeleteColumnConfirmMode             // Confirming column deletion
-	HelpMode                            // Displaying help screen
-	TicketFormMode                      // Full task form with huh
-	ProjectFormMode                     // Creating a new project with huh
-	LabelManagementMode                 // Managing labels (create/edit/delete)
-	LabelAssignMode                     // Quick label assignment to task
-	LabelPickerMode                     // GitHub-style label picker popup
-	ParentPickerMode                    // Parent issue picker popup
-	ChildPickerMode                     // Child issue picker popup
-	PriorityPickerMode                  // Priority picker popup
-	TypePickerMode                      // Type picker popup
-	RelationTypePickerMode              // Relation type picker popup
-	CommentEditMode                     // Comment editing mode (list navigation)
-	CommentFormMode                     // Comment form (huh form for creating/editing individual comment)
-	CommentsViewMode                    // Dedicated comments list view for a task
-	SearchMode                          // Vim-style search mode (/)
-	StatusPickerMode                    // Status picker popup for list view
-	TaskFormHelpMode                    // Help screen for task form shortcuts
+	NormalMode                 Mode = iota // Default navigation mode
+	DeleteConfirmMode                      // Confirming task deletion
+	DiscardConfirmMode                     // Confirming discard of form/input changes
+	AddColumnFormMode                      // Creating a new column (huh form)
+	EditColumnFormMode                     // Renaming an existing column (huh form)
+	DeleteColumnConfirmMode                // Confirming column deletion
+	HelpMode                               // Displaying help screen
+	TicketFormMode                         // Full task form with huh
+	ProjectFormMode                        // Creating a new project with huh
+	LabelManagementMode                    // Managing labels (create/edit/delete)
+	LabelAssignMode                        // Quick label assignment to task
+	LabelPickerMode                        // GitHub-style label picker popup
+	ParentPickerMode                       // Parent issue picker popup
+	ChildPickerMode                        // Child issue picker popup
+	PriorityPickerMode                     // Priority picker popup
+	TypePickerMode                         // Type picker popup
+	RelationTypePickerMode                 // Relation type picker popup
+	CommentEditMode                        // Comment editing mode (list navigation)
+	CommentFormMode                        // Comment form (huh form for creating/editing individual comment)
+	CommentsViewMode                       // Dedicated comments list view for a task
+	SearchMode                             // Vim-style search mode (/)
+	StatusPickerMode                       // Status picker popup for list view
+	TaskFormHelpMode                       // Help screen for task form shortcuts
+	DatabaseSelectMode                     // Selecting from existing database connections
+	DatabaseCreateMode                     // Creating a new database connection (huh form)
+	DatabaseConnectConfirmMode             // Confirming connection to newly created database
+	DatabaseDeleteConfirmMode              // Confirming deletion of a database connection
 )
 
 // UsesLayers returns true if this mode uses layer-based rendering.
@@ -52,7 +56,11 @@ func (m Mode) UsesLayers() bool {
 		StatusPickerMode,
 		DiscardConfirmMode,
 		NormalMode,
-		SearchMode:
+		SearchMode,
+		DatabaseSelectMode,
+		DatabaseCreateMode,
+		DatabaseConnectConfirmMode,
+		DatabaseDeleteConfirmMode:
 		return true
 	default:
 		return false

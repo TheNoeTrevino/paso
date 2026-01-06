@@ -545,3 +545,24 @@ func (m Model) renderStatusPickerLayer() *lipgloss.Layer {
 		boxStyle: components.LabelPickerBoxStyle,
 	})
 }
+
+// renderConnectingSpinnerLayer renders the connecting spinner as a centered overlay
+func (m Model) renderConnectingSpinnerLayer() *lipgloss.Layer {
+	if !m.DatabasePicker.IsConnecting() {
+		return nil
+	}
+
+	content := components.RenderConnectingSpinner(
+		m.DatabasePicker.ConnectingDBName,
+		m.DatabasePicker.SpinnerFrame,
+	)
+
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Highlight)).
+		Padding(1, 2)
+
+	styledContent := boxStyle.Render(content)
+
+	return layers.CreateCenteredLayer(styledContent, m.UIState.Width(), m.UIState.Height())
+}

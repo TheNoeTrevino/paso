@@ -24,7 +24,7 @@ func TestModelInitialization(t *testing.T) {
 	}
 
 	// Create model with InitialModel which loads data from database
-	model := InitialModel(ctx, app, cfg, nil)
+	model := InitialModel(ctx, app, cfg, nil, db)
 
 	if model.App == nil {
 		t.Fatal("Model should have app initialized")
@@ -44,7 +44,7 @@ func TestModelImplementsTeaModel(t *testing.T) {
 		KeyMappings: config.DefaultKeyMappings(),
 	}
 
-	model := InitialModel(ctx, app, cfg, nil)
+	model := InitialModel(ctx, app, cfg, nil, db)
 
 	// Verify implements tea.Model
 	var _ tea.Model = model
@@ -73,7 +73,7 @@ func TestModelViewGeneratesOutput(t *testing.T) {
 		KeyMappings: config.DefaultKeyMappings(),
 	}
 
-	model := InitialModel(ctx, app, cfg, nil)
+	model := InitialModel(ctx, app, cfg, nil, db)
 
 	// Verify rendering with different window sizes
 	sizes := []struct {

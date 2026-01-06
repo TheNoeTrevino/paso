@@ -7,8 +7,10 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/app"
 	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/services/column"
 	"github.com/thenoetrevino/paso/internal/services/label"
 	"github.com/thenoetrevino/paso/internal/services/project"
@@ -27,11 +29,19 @@ func SetupTestModelWithDB(t *testing.T) (Model, *sql.DB) {
 	})
 
 	// Create app container with all services
+	taskSvc, err := task.NewService(db, database.SQLite, nil)
+	require.NoError(t, err, "failed to create task service")
+	columnSvc, err := column.NewService(db, database.SQLite, nil)
+	require.NoError(t, err, "failed to create column service")
+	labelSvc, err := label.NewService(db, database.SQLite, nil)
+	require.NoError(t, err, "failed to create label service")
+	projectSvc, err := project.NewService(db, database.SQLite, nil)
+	require.NoError(t, err, "failed to create project service")
 	appContainer := &app.App{
-		TaskService:    task.NewService(db, nil),
-		ColumnService:  column.NewService(db, nil),
-		LabelService:   label.NewService(db, nil),
-		ProjectService: project.NewService(db, nil),
+		TaskService:    taskSvc,
+		ColumnService:  columnSvc,
+		LabelService:   labelSvc,
+		ProjectService: projectSvc,
 	}
 
 	// Create test project and columns
@@ -47,7 +57,7 @@ func SetupTestModelWithDB(t *testing.T) (Model, *sql.DB) {
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
-	m := InitialModel(ctx, appContainer, cfg, nil)
+	m := InitialModel(ctx, appContainer, cfg, nil, db)
 
 	// Set up initial state with project data
 	m.AppState.SetColumns(columns)
