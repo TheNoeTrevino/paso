@@ -7,58 +7,34 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"time"
 
 	"github.com/thenoetrevino/paso/internal/converters"
 	"github.com/thenoetrevino/paso/internal/database"
-	"github.com/thenoetrevino/paso/internal/database/generated"
+	"github.com/thenoetrevino/paso/internal/database/types"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// ============================================================================
-// SEGREGATED INTERFACES - Following Interface Segregation Principle (ISP)
-// ============================================================================
-
-// TaskReader defines read-only operations for retrieving task data.
-// This interface segregates read operations, making it easier to mock for testing
-// and understand which operations don't modify state.
-//
-// Use this interface when you only need to retrieve task information without
-// modification capabilities. This reduces coupling and makes testing easier.
+// TaskReader defines task reading operations
 type TaskReader interface {
-	// Get single task details
 	GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error)
-
-	// Get task summaries/lists grouped by column
 	GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error)
 	GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error)
 	GetReadyTaskSummariesByProject(ctx context.Context, projectID int) ([]*models.TaskSummary, error)
 	GetInProgressTasksByProject(ctx context.Context, projectID int) ([]*models.TaskDetail, error)
-
-	// Get task references and hierarchies
 	GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error)
 	GetTaskTreeByProject(ctx context.Context, projectID int) ([]*models.TaskTreeNode, error)
 }
 
-// TaskWriter defines write operations for creating, updating, and deleting tasks.
-// This interface segregates state-modifying operations, allowing clients to specify
-// exactly what write capabilities they need.
-//
-// Use this interface when you need to modify tasks (create, update, delete) but don't
-// need movement or relationship operations. This provides focused control over write access.
+// TaskWriter defines task writing operations
 type TaskWriter interface {
-	// Create and update operations
 	CreateTask(ctx context.Context, req CreateTaskRequest) (*models.Task, error)
 	UpdateTask(ctx context.Context, req UpdateTaskRequest) error
 	DeleteTask(ctx context.Context, taskID int) error
 }
 
-// TaskMover defines task movement operations within the task management system.
-// This interface segregates operations that change task position/column, making
-// it clear which operations affect task workflow state.
-//
-// Use this interface when you need to move tasks between columns or reorder them,
-// but don't need other write operations like creation or deletion.
+// TaskMover defines task movement operations within the task management system
 type TaskMover interface {
 	// Column-based movement (workflow progression)
 	MoveTaskToNextColumn(ctx context.Context, taskID int) error
@@ -73,40 +49,22 @@ type TaskMover interface {
 	MoveTaskDown(ctx context.Context, taskID int) error
 }
 
-// TaskRelationer defines task relationship operations (parent/child/blocking relationships).
-// This interface segregates relationship management operations, allowing fine-grained
-// control over which clients can modify task dependencies.
-//
-// Use this interface when you need to manage task relationships (dependencies, blocking)
-// but don't need other modification operations.
+// TaskRelationer defines task relationship operations (parent/child/blocking relationships)
 type TaskRelationer interface {
-	// Parent/child relationships
 	AddParentRelation(ctx context.Context, taskID, parentID int, relationTypeID int) error
 	AddChildRelation(ctx context.Context, taskID, childID int, relationTypeID int) error
 	RemoveParentRelation(ctx context.Context, taskID, parentID int) error
 	RemoveChildRelation(ctx context.Context, taskID, childID int) error
 }
 
-// TaskLabeler defines label management operations for tasks.
-// This interface segregates label operations, providing focused control over
-// label attachment and detachment.
-//
-// Use this interface when you only need to manage labels for tasks, allowing
-// independent control over label operations.
+// TaskLabeler defines label management operations for tasks
 type TaskLabeler interface {
-	// Label management
 	AttachLabel(ctx context.Context, taskID, labelID int) error
 	DetachLabel(ctx context.Context, taskID, labelID int) error
 }
 
-// TaskCommenter defines comment operations on tasks.
-// This interface segregates comment management, allowing independent control
-// over comment creation, updates, and deletion.
-//
-// Use this interface when you only need to manage comments on tasks,
-// independent from other task operations.
+// TaskCommenter defines comment operations on tasks
 type TaskCommenter interface {
-	// Comment operations
 	CreateComment(ctx context.Context, req CreateCommentRequest) (*models.Comment, error)
 	UpdateComment(ctx context.Context, req UpdateCommentRequest) error
 	DeleteComment(ctx context.Context, commentID int) error
@@ -115,13 +73,6 @@ type TaskCommenter interface {
 
 // Service defines all task-related business operations as a composition of focused interfaces.
 // This composite interface provides better separation of concerns through interface segregation.
-//
-// Components that need only specific operations (e.g., reading, writing, moving) should depend on
-// the corresponding focused interface (TaskReader, TaskWriter, TaskMover, etc.) instead of this
-// composite interface. This makes the system more testable and maintainable by reducing coupling.
-//
-// The service implementation satisfies all segregated interfaces, making it convenient for
-// components that need multiple operation types.
 type Service interface {
 	TaskReader
 	TaskMover
@@ -169,24 +120,33 @@ type UpdateCommentRequest struct {
 	Message   string
 }
 
-// service implements Service interface using SQLC directly
+// service implements Service interface using database.Querier abstraction
 type service struct {
 	db          *sql.DB
-	queries     generated.Querier
+	dbType      database.DatabaseType
+	queries     database.Querier
 	eventClient events.EventPublisher
 }
 
-// NewService creates a new task service with SQLC queries
-func NewService(db *sql.DB, eventClient events.EventPublisher) Service {
+// NewService creates a new task service with database-agnostic queries.
+func NewService(db *sql.DB, dbType database.DatabaseType, eventClient events.EventPublisher) (Service, error) {
+	queries, err := database.NewQuerier(db, dbType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create task service: %w", err)
+	}
 	return &service{
 		db:          db,
-		queries:     generated.New(db),
+		dbType:      dbType,
+		queries:     queries,
 		eventClient: eventClient,
-	}
+	}, nil
 }
 
 // CreateTask handles task creation with validation and business rules
 func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*models.Task, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Validate request
 	if err := s.validateCreateTask(req); err != nil {
 		return nil, err
@@ -198,11 +158,11 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 		return nil, fmt.Errorf("failed to get project ID: %w", err)
 	}
 
-	var createdTask generated.Task
+	var createdTask types.Task
 
 	// Use WithTx helper for transaction management
 	err = database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		qtx := generated.New(tx)
+		qtx := database.MustNewQuerier(tx, s.dbType)
 
 		// Get next ticket number
 		ticketNumber, err := qtx.GetNextTicketNumber(ctx, projectID)
@@ -211,13 +171,13 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 		}
 
 		// Create task
-		var desc sql.NullString
+		var desc types.NullString
 		if req.Description != "" {
-			desc = sql.NullString{String: req.Description, Valid: true}
+			desc = types.NullString{String: req.Description, Valid: true}
 		}
 
 		var taskErr error
-		createdTask, taskErr = qtx.CreateTask(ctx, generated.CreateTaskParams{
+		createdTask, taskErr = qtx.CreateTask(ctx, types.CreateTaskParams{
 			Title:        req.Title,
 			Description:  desc,
 			ColumnID:     int64(req.ColumnID),
@@ -235,7 +195,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 
 		// Set priority if provided (default is handled by database)
 		if req.PriorityID > 0 {
-			if err := qtx.UpdateTaskPriority(ctx, generated.UpdateTaskPriorityParams{
+			if err := qtx.UpdateTaskPriority(ctx, types.UpdateTaskPriorityParams{
 				PriorityID: int64(req.PriorityID),
 				ID:         createdTask.ID,
 			}); err != nil {
@@ -245,7 +205,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 
 		// Set type if provided (default is handled by database)
 		if req.TypeID > 0 {
-			if err := qtx.UpdateTaskType(ctx, generated.UpdateTaskTypeParams{
+			if err := qtx.UpdateTaskType(ctx, types.UpdateTaskTypeParams{
 				TypeID: int64(req.TypeID),
 				ID:     createdTask.ID,
 			}); err != nil {
@@ -255,7 +215,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 
 		// Attach labels
 		for _, labelID := range req.LabelIDs {
-			if err := qtx.AddLabelToTask(ctx, generated.AddLabelToTaskParams{
+			if err := qtx.AddLabelToTask(ctx, types.AddLabelToTaskParams{
 				TaskID:  createdTask.ID,
 				LabelID: int64(labelID),
 			}); err != nil {
@@ -265,7 +225,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 
 		// Add parent relationships (tasks that depend on this task)
 		for _, parentID := range req.ParentIDs {
-			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+			if err := qtx.AddSubtaskWithRelationType(ctx, types.AddSubtaskWithRelationTypeParams{
 				ParentID:       int64(parentID),
 				ChildID:        createdTask.ID,
 				RelationTypeID: models.RelationTypeParentChild,
@@ -276,7 +236,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 
 		// Add child relationships (tasks this task depends on)
 		for _, childID := range req.ChildIDs {
-			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+			if err := qtx.AddSubtaskWithRelationType(ctx, types.AddSubtaskWithRelationTypeParams{
 				ParentID:       createdTask.ID,
 				ChildID:        int64(childID),
 				RelationTypeID: models.RelationTypeParentChild,
@@ -288,7 +248,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 		// Add blocking relationships (tasks that block this task)
 		for _, blockerID := range req.BlockedByIDs {
 			// This task (Parent) is blocked by blockerID (Child)
-			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+			if err := qtx.AddSubtaskWithRelationType(ctx, types.AddSubtaskWithRelationTypeParams{
 				ParentID:       createdTask.ID,
 				ChildID:        int64(blockerID),
 				RelationTypeID: models.RelationTypeBlocking,
@@ -300,7 +260,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 		// Add blocked relationships (tasks that are blocked by this task)
 		for _, blockedID := range req.BlocksIDs {
 			// blockedID (Parent) is blocked by this task (Child)
-			if err := qtx.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+			if err := qtx.AddSubtaskWithRelationType(ctx, types.AddSubtaskWithRelationTypeParams{
 				ParentID:       int64(blockedID),
 				ChildID:        createdTask.ID,
 				RelationTypeID: models.RelationTypeBlocking,
@@ -324,6 +284,9 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 
 // UpdateTask handles task updates with validation
 func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Validate task ID
 	if req.TaskID <= 0 {
 		return ErrInvalidTaskID
@@ -346,7 +309,7 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 	// Update basic fields if provided
 	if req.Title != nil || req.Description != nil {
 		var title string
-		var description sql.NullString
+		var description types.NullString
 
 		// Only query if we need to preserve existing values for fields not being updated
 		if req.Title == nil || req.Description == nil {
@@ -367,10 +330,10 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 			title = *req.Title
 		}
 		if req.Description != nil {
-			description = sql.NullString{String: *req.Description, Valid: true}
+			description = types.NullString{String: *req.Description, Valid: true}
 		}
 
-		if err := s.queries.UpdateTask(ctx, generated.UpdateTaskParams{
+		if err := s.queries.UpdateTask(ctx, types.UpdateTaskParams{
 			Title:       title,
 			Description: description,
 			ID:          int64(req.TaskID),
@@ -381,7 +344,7 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 
 	// Update priority if provided
 	if req.PriorityID != nil {
-		if err := s.queries.UpdateTaskPriority(ctx, generated.UpdateTaskPriorityParams{
+		if err := s.queries.UpdateTaskPriority(ctx, types.UpdateTaskPriorityParams{
 			PriorityID: int64(*req.PriorityID),
 			ID:         int64(req.TaskID),
 		}); err != nil {
@@ -391,7 +354,7 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 
 	// Update type if provided
 	if req.TypeID != nil {
-		if err := s.queries.UpdateTaskType(ctx, generated.UpdateTaskTypeParams{
+		if err := s.queries.UpdateTaskType(ctx, types.UpdateTaskTypeParams{
 			TypeID: int64(*req.TypeID),
 			ID:     int64(req.TaskID),
 		}); err != nil {
@@ -423,6 +386,9 @@ func (s *service) DeleteTask(ctx context.Context, taskID int) error {
 
 // GetTaskDetail retrieves full task details
 func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if taskID <= 0 {
 		return nil, ErrInvalidTaskID
 	}
@@ -470,7 +436,7 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 		ParentTasks: converters.ParentTasksToReferences(parentRows),
 		ChildTasks:  converters.ChildTasksToReferences(childRows),
 		Comments:    converters.CommentsToModels(commentRows),
-		IsBlocked:   taskRow.IsBlocked > 0,
+		IsBlocked:   taskRow.IsBlocked,
 	}
 
 	if taskRow.TicketNumber.Valid {
@@ -497,6 +463,9 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 
 // GetTaskSummariesByProject retrieves task summaries for a project, grouped by column
 func (s *service) GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	rows, err := s.queries.GetTaskSummariesByProject(ctx, int64(projectID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task summaries: %w", err)
@@ -517,7 +486,7 @@ func (s *service) GetTaskSummariesByProjectFiltered(ctx context.Context, project
 	// Add wildcards for LIKE query
 	searchPattern := "%" + searchQuery + "%"
 
-	rows, err := s.queries.GetTaskSummariesByProjectFiltered(ctx, generated.GetTaskSummariesByProjectFilteredParams{
+	rows, err := s.queries.GetTaskSummariesByProjectFiltered(ctx, types.GetTaskSummariesByProjectFilteredParams{
 		ProjectID: int64(projectID),
 		Title:     searchPattern,
 	})
@@ -546,7 +515,7 @@ func (s *service) GetReadyTaskSummariesByProject(ctx context.Context, projectID 
 	result := make([]*models.TaskSummary, 0, len(rows))
 	for _, row := range rows {
 		// Only include unblocked tasks
-		if row.IsBlocked == 0 {
+		if !row.IsBlocked {
 			summary := converters.ReadyTaskSummaryFromRowToModel(row)
 			result = append(result, summary)
 		}
@@ -705,21 +674,13 @@ func (s *service) GetTaskTreeByProject(ctx context.Context, projectID int) ([]*m
 	return roots, nil
 }
 
-// extractColumnID safely converts the interface{} result from GetNextColumnID or GetPrevColumnID
+// extractColumnID safely converts the types.NullInt64 result from GetNextColumnID or GetPrevColumnID
 // to an int64, handling NULL values properly.
-func extractColumnID(columnID interface{}) (int64, error) {
-	if columnID == nil {
-		return 0, fmt.Errorf("column ID is NULL")
+func extractColumnID(columnID types.NullInt64) (int64, error) {
+	if !columnID.Valid {
+		return 0, fmt.Errorf("failed to extract column ID: value is NULL")
 	}
-
-	switch v := columnID.(type) {
-	case int64:
-		return v, nil
-	case float64:
-		return int64(v), nil
-	default:
-		return 0, fmt.Errorf("unexpected column ID type: %T", v)
-	}
+	return columnID.Int64, nil
 }
 
 // MoveTaskToNextColumn moves task to next column
@@ -743,7 +704,7 @@ func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 	// Convert interface{} to int64 with proper error handling
 	nextColID, err := extractColumnID(nextColumnID)
 	if err != nil {
-		return fmt.Errorf("no next column available")
+		return fmt.Errorf("failed to move task: no next column available")
 	}
 
 	// Get task count in target column to append at the end
@@ -753,7 +714,7 @@ func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 	}
 
 	// Move task to next column
-	if err := s.queries.MoveTaskToColumn(ctx, generated.MoveTaskToColumnParams{
+	if err := s.queries.MoveTaskToColumn(ctx, types.MoveTaskToColumnParams{
 		ColumnID: nextColID,
 		Position: taskCount + 1,
 		ID:       int64(taskID),
@@ -786,7 +747,7 @@ func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 	// Convert interface{} to int64 with proper error handling
 	prevColID, err := extractColumnID(prevColumnID)
 	if err != nil {
-		return fmt.Errorf("no previous column available")
+		return fmt.Errorf("failed to move task: no previous column available")
 	}
 
 	// Get task count in target column to append at the end
@@ -796,7 +757,7 @@ func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 	}
 
 	// Move task to previous column
-	if err := s.queries.MoveTaskToColumn(ctx, generated.MoveTaskToColumnParams{
+	if err := s.queries.MoveTaskToColumn(ctx, types.MoveTaskToColumnParams{
 		ColumnID: prevColID,
 		Position: taskCount + 1,
 		ID:       int64(taskID),
@@ -832,7 +793,7 @@ func (s *service) MoveTaskToColumn(ctx context.Context, taskID, columnID int) er
 		return fmt.Errorf("failed to get task count: %w", err)
 	}
 
-	if err := s.queries.MoveTaskToColumn(ctx, generated.MoveTaskToColumnParams{
+	if err := s.queries.MoveTaskToColumn(ctx, types.MoveTaskToColumnParams{
 		ColumnID: int64(columnID),
 		Position: taskCount + 1,
 		ID:       int64(taskID),
@@ -970,6 +931,9 @@ func (s *service) MoveTaskToInProgressColumn(ctx context.Context, taskID int) er
 // Performance improvement: Reduces queries from O(N*5+) to O(1)
 // where N is the number of in-progress tasks.
 func (s *service) GetInProgressTasksByProject(ctx context.Context, projectID int) ([]*models.TaskDetail, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if projectID <= 0 {
 		return nil, ErrInvalidProjectID
 	}
@@ -993,7 +957,7 @@ func (s *service) GetInProgressTasksByProject(ctx context.Context, projectID int
 			Position:     int(row.Position),
 			TicketNumber: int(row.TicketNumber.Int64),
 			Labels:       converters.ParseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
-			IsBlocked:    row.IsBlocked > 0,
+			IsBlocked:    row.IsBlocked,
 			CreatedAt:    row.CreatedAt.Time,
 			UpdatedAt:    row.UpdatedAt.Time,
 		}
@@ -1027,7 +991,7 @@ func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 
 	// Use WithTx helper to avoid UNIQUE constraint violations during swap
 	err := database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		qtx := generated.New(tx)
+		qtx := database.MustNewQuerier(tx, s.dbType)
 
 		// Get task position
 		posRow, err := qtx.GetTaskPosition(ctx, int64(taskID))
@@ -1036,14 +1000,14 @@ func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 		}
 
 		// Get task above
-		aboveRow, err := qtx.GetTaskAbove(ctx, generated.GetTaskAboveParams(posRow))
+		aboveRow, err := qtx.GetTaskAbove(ctx, types.GetTaskAboveParams(posRow))
 		if err != nil {
 			return fmt.Errorf("no task above: %w", err)
 		}
 
 		// Swap positions using temporary negative position to avoid UNIQUE constraint violation
 		// Step 1: Move current task to temporary position
-		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+		if err := qtx.SetTaskPosition(ctx, types.SetTaskPositionParams{
 			Position: -1,
 			ID:       int64(taskID),
 		}); err != nil {
@@ -1051,7 +1015,7 @@ func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 		}
 
 		// Step 2: Move task above to current task's position
-		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+		if err := qtx.SetTaskPosition(ctx, types.SetTaskPositionParams{
 			Position: posRow.Position,
 			ID:       aboveRow.ID,
 		}); err != nil {
@@ -1059,7 +1023,7 @@ func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 		}
 
 		// Step 3: Move current task to above position
-		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+		if err := qtx.SetTaskPosition(ctx, types.SetTaskPositionParams{
 			Position: aboveRow.Position,
 			ID:       int64(taskID),
 		}); err != nil {
@@ -1084,7 +1048,7 @@ func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
 
 	// Use WithTx helper to avoid UNIQUE constraint violations during swap
 	err := database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		qtx := generated.New(tx)
+		qtx := database.MustNewQuerier(tx, s.dbType)
 
 		// Get task position
 		posRow, err := qtx.GetTaskPosition(ctx, int64(taskID))
@@ -1093,14 +1057,14 @@ func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
 		}
 
 		// Get task below
-		belowRow, err := qtx.GetTaskBelow(ctx, generated.GetTaskBelowParams(posRow))
+		belowRow, err := qtx.GetTaskBelow(ctx, types.GetTaskBelowParams(posRow))
 		if err != nil {
 			return fmt.Errorf("no task below: %w", err)
 		}
 
 		// Swap positions using temporary negative position to avoid UNIQUE constraint violation
 		// Step 1: Move current task to temporary position
-		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+		if err := qtx.SetTaskPosition(ctx, types.SetTaskPositionParams{
 			Position: -1,
 			ID:       int64(taskID),
 		}); err != nil {
@@ -1108,7 +1072,7 @@ func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
 		}
 
 		// Step 2: Move task below to current task's position
-		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+		if err := qtx.SetTaskPosition(ctx, types.SetTaskPositionParams{
 			Position: posRow.Position,
 			ID:       belowRow.ID,
 		}); err != nil {
@@ -1116,7 +1080,7 @@ func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
 		}
 
 		// Step 3: Move current task to below position
-		if err := qtx.SetTaskPosition(ctx, generated.SetTaskPositionParams{
+		if err := qtx.SetTaskPosition(ctx, types.SetTaskPositionParams{
 			Position: belowRow.Position,
 			ID:       int64(taskID),
 		}); err != nil {
@@ -1191,7 +1155,7 @@ func (s *service) AddParentRelation(ctx context.Context, taskID, parentID int, r
 	}
 
 	// Add the relationship (this task is the child)
-	if err := s.queries.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+	if err := s.queries.AddSubtaskWithRelationType(ctx, types.AddSubtaskWithRelationTypeParams{
 		ParentID:       int64(parentID),
 		ChildID:        int64(taskID),
 		RelationTypeID: int64(relationTypeID),
@@ -1222,7 +1186,7 @@ func (s *service) AddChildRelation(ctx context.Context, taskID, childID int, rel
 	}
 
 	// Add the relationship (this task is the parent)
-	if err := s.queries.AddSubtaskWithRelationType(ctx, generated.AddSubtaskWithRelationTypeParams{
+	if err := s.queries.AddSubtaskWithRelationType(ctx, types.AddSubtaskWithRelationTypeParams{
 		ParentID:       int64(taskID),
 		ChildID:        int64(childID),
 		RelationTypeID: int64(relationTypeID),
@@ -1240,7 +1204,7 @@ func (s *service) RemoveParentRelation(ctx context.Context, taskID, parentID int
 		return ErrInvalidTaskID
 	}
 
-	if err := s.queries.RemoveSubtask(ctx, generated.RemoveSubtaskParams{
+	if err := s.queries.RemoveSubtask(ctx, types.RemoveSubtaskParams{
 		ParentID: int64(parentID),
 		ChildID:  int64(taskID),
 	}); err != nil {
@@ -1257,7 +1221,7 @@ func (s *service) RemoveChildRelation(ctx context.Context, taskID, childID int) 
 		return ErrInvalidTaskID
 	}
 
-	if err := s.queries.RemoveSubtask(ctx, generated.RemoveSubtaskParams{
+	if err := s.queries.RemoveSubtask(ctx, types.RemoveSubtaskParams{
 		ParentID: int64(taskID),
 		ChildID:  int64(childID),
 	}); err != nil {
@@ -1277,7 +1241,7 @@ func (s *service) AttachLabel(ctx context.Context, taskID, labelID int) error {
 		return ErrInvalidLabelID
 	}
 
-	if err := s.queries.AddLabelToTask(ctx, generated.AddLabelToTaskParams{
+	if err := s.queries.AddLabelToTask(ctx, types.AddLabelToTaskParams{
 		TaskID:  int64(taskID),
 		LabelID: int64(labelID),
 	}); err != nil {
@@ -1297,7 +1261,7 @@ func (s *service) DetachLabel(ctx context.Context, taskID, labelID int) error {
 		return ErrInvalidLabelID
 	}
 
-	if err := s.queries.RemoveLabelFromTask(ctx, generated.RemoveLabelFromTaskParams{
+	if err := s.queries.RemoveLabelFromTask(ctx, types.RemoveLabelFromTaskParams{
 		TaskID:  int64(taskID),
 		LabelID: int64(labelID),
 	}); err != nil {
@@ -1307,10 +1271,6 @@ func (s *service) DetachLabel(ctx context.Context, taskID, labelID int) error {
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
-
-// ============================================================================
-// COMMENT OPERATIONS
-// ============================================================================
 
 // CreateComment creates a new comment on a task
 func (s *service) CreateComment(ctx context.Context, req CreateCommentRequest) (*models.Comment, error) {
@@ -1333,8 +1293,7 @@ func (s *service) CreateComment(ctx context.Context, req CreateCommentRequest) (
 		return nil, fmt.Errorf("failed to verify task exists: %w", err)
 	}
 
-	// Create comment
-	comment, err := s.queries.CreateComment(ctx, generated.CreateCommentParams{
+	comment, err := s.queries.CreateComment(ctx, types.CreateCommentParams{
 		TaskID:  int64(req.TaskID),
 		Content: req.Message,
 		Author:  req.Author,
@@ -1356,17 +1315,14 @@ func (s *service) CreateComment(ctx context.Context, req CreateCommentRequest) (
 
 // UpdateComment updates a comment's message
 func (s *service) UpdateComment(ctx context.Context, req UpdateCommentRequest) error {
-	// Validate comment ID
 	if req.CommentID <= 0 {
 		return ErrInvalidCommentID
 	}
 
-	// Validate message
 	if err := validateCommentMessage(req.Message); err != nil {
 		return err
 	}
 
-	// Verify comment exists and get task ID for event publishing
 	comment, err := s.queries.GetComment(ctx, int64(req.CommentID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1375,8 +1331,7 @@ func (s *service) UpdateComment(ctx context.Context, req UpdateCommentRequest) e
 		return fmt.Errorf("failed to get comment: %w", err)
 	}
 
-	// Update comment
-	if err := s.queries.UpdateComment(ctx, generated.UpdateCommentParams{
+	if err := s.queries.UpdateComment(ctx, types.UpdateCommentParams{
 		Content: req.Message,
 		ID:      int64(req.CommentID),
 	}); err != nil {
@@ -1389,12 +1344,10 @@ func (s *service) UpdateComment(ctx context.Context, req UpdateCommentRequest) e
 
 // DeleteComment deletes a comment
 func (s *service) DeleteComment(ctx context.Context, commentID int) error {
-	// Validate comment ID
 	if commentID <= 0 {
 		return ErrInvalidCommentID
 	}
 
-	// Get task ID before deletion for event publishing
 	comment, err := s.queries.GetComment(ctx, int64(commentID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1403,7 +1356,6 @@ func (s *service) DeleteComment(ctx context.Context, commentID int) error {
 		return fmt.Errorf("failed to get comment: %w", err)
 	}
 
-	// Delete comment
 	if err := s.queries.DeleteComment(ctx, int64(commentID)); err != nil {
 		return fmt.Errorf("failed to delete comment: %w", err)
 	}
