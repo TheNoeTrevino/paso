@@ -74,7 +74,13 @@ func Launch() error {
 	}()
 
 	initCtx := context.Background()
-	db, err := database.InitDB(initCtx)
+	// Initialize database with SQLite (TUI always uses local database for now)
+	dbPath := filepath.Join(home, ".paso", "tasks.db")
+	dbConfig := database.Config{
+		Type:       database.SQLite,
+		SQLitePath: dbPath,
+	}
+	db, err := database.InitDB(initCtx, dbConfig, "Local")
 	if err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
@@ -104,8 +110,11 @@ func Launch() error {
 		appOpts = append(appOpts, app.WithEventPublisher(eventClient))
 	}
 
-	application := app.New(db, appOpts...)
-	tuiApp := core.New(ctx, application, cfg, eventClient)
+	application, err := app.New(db, appOpts...)
+	if err != nil {
+		return fmt.Errorf("failed to initialize application: %w", err)
+	}
+	tuiApp := core.New(ctx, application, cfg, eventClient, db)
 	p := tea.NewProgram(tuiApp, tea.WithContext(ctx))
 
 	// goroutine to monitor cancellation
