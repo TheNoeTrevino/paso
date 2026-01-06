@@ -76,6 +76,7 @@ type TaskTreeNode struct {
 	RelationColor  string // Hex color for the relation
 	IsBlocking     bool   // Whether this node's relationship to parent is blocking
 	InBlockingPath bool   // Whether this node is part of a path that leads to a blocker
+	IsCompleted    bool   // Whether this task is in a completed column
 	Children       []*TaskTreeNode
 }
 
