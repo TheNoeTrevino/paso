@@ -1201,6 +1201,27 @@ func (q *Queries) GetTaskSummariesByProjectFiltered(ctx context.Context, arg Get
 	return items, nil
 }
 
+const getTaskTypeAndPriorityIDs = `-- name: GetTaskTypeAndPriorityIDs :one
+select
+    type_id,
+    priority_id
+from tasks
+where id = ?
+`
+
+type GetTaskTypeAndPriorityIDsRow struct {
+	TypeID     int64
+	PriorityID int64
+}
+
+// Retrieves only the type_id and priority_id for a task (lightweight query)
+func (q *Queries) GetTaskTypeAndPriorityIDs(ctx context.Context, id int64) (GetTaskTypeAndPriorityIDsRow, error) {
+	row := q.db.QueryRowContext(ctx, getTaskTypeAndPriorityIDs, id)
+	var i GetTaskTypeAndPriorityIDsRow
+	err := row.Scan(&i.TypeID, &i.PriorityID)
+	return i, err
+}
+
 const getTasksByColumn = `-- name: GetTasksByColumn :many
 select
     id,
