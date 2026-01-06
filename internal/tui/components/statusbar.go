@@ -15,6 +15,7 @@ type StatusBarProps struct {
 	SearchQuery      string
 	ConnectionStatus state.ConnectionStatus
 	DatabaseName     string // Current database connection name (e.g., "Local", "Production")
+	Tip              string
 }
 
 // RenderStatusBar renders a status bar with left and right aligned text
@@ -25,7 +26,7 @@ type StatusBarProps struct {
 // Layout:
 //
 //	┌─────────────────────────────────────────────────────────┐
-//	│ ● Connected       /search-query             ? for help  │
+//	│ ● Connected       /search-query(or tip)     ? for help  │
 //	└─────────────────────────────────────────────────────────┘
 func RenderStatusBar(props StatusBarProps) string {
 	var leftText string
@@ -59,6 +60,7 @@ func RenderStatusBar(props StatusBarProps) string {
 	leftStyle := StatusBarStyle.Foreground(lipgloss.Color(leftColor))
 	rightStyle := StatusBarStyle
 	searchStyle := StatusBarSearchStyle
+	tipStyle := StatusBarTipStyle
 
 	leftRendered := leftStyle.Render(" " + leftText + " ")
 	rightRendered := rightStyle.Render(" " + rightText + " ")
@@ -68,20 +70,24 @@ func RenderStatusBar(props StatusBarProps) string {
 	rightWidth := lipgloss.Width(rightRendered)
 
 	// If searching, render search query and subtract its width from gap
-	var searchRendered string
-	var searchWidth int
+	// Otherwise, render tip if available
+	var middleRendered string
+	var middleWidth int
 	if props.SearchMode {
 		searchText := "/" + props.SearchQuery
-		searchRendered = searchStyle.Render(searchText)
-		searchWidth = lipgloss.Width(searchRendered)
+		middleRendered = searchStyle.Render(searchText)
+		middleWidth = lipgloss.Width(middleRendered)
+	} else if props.Tip != "" {
+		middleRendered = tipStyle.Render(" Tip: " + props.Tip)
+		middleWidth = lipgloss.Width(middleRendered)
 	}
 
-	gapWidth := max(props.Width-leftWidth-rightWidth-searchWidth, 1)
+	gapWidth := max(props.Width-leftWidth-rightWidth-middleWidth, 1)
 
 	gap := StatusBarSearchStyle.Render(strings.Repeat(" ", gapWidth))
 
-	if props.SearchMode {
-		return lipgloss.JoinHorizontal(lipgloss.Top, leftRendered, searchRendered, gap, rightRendered)
+	if middleRendered != "" {
+		return lipgloss.JoinHorizontal(lipgloss.Top, leftRendered, middleRendered, gap, rightRendered)
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, leftRendered, gap, rightRendered)
 }
