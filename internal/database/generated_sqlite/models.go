@@ -2,7 +2,7 @@
 // versions:
 //   sqlc v1.30.0
 
-package generated
+package generated_sqlite
 
 import (
 	"database/sql"
