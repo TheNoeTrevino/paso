@@ -2,7 +2,7 @@
 // versions:
 //   sqlc v1.30.0
 
-package generated
+package generated_postgres
 
 import (
 	"context"
@@ -70,7 +70,7 @@ type Querier interface {
 	// Retrieves the linked list pointers and project ID for a column
 	GetColumnLinkedListInfo(ctx context.Context, id int64) (GetColumnLinkedListInfoRow, error)
 	// Retrieves the next column ID in the linked list
-	GetColumnNextID(ctx context.Context, id int64) (interface{}, error)
+	GetColumnNextID(ctx context.Context, id int64) (sql.NullInt64, error)
 	// Retrieves all columns for a specific project
 	GetColumnsByProject(ctx context.Context, projectID int64) ([]GetColumnsByProjectRow, error)
 	// Retrieves a single comment by ID
@@ -83,7 +83,7 @@ type Querier interface {
 	GetCompletedColumnByProject(ctx context.Context, projectID int64) (GetCompletedColumnByProjectRow, error)
 	// Retrieves the column designated for in-progress tasks in a project
 	GetInProgressColumnByProject(ctx context.Context, projectID int64) (GetInProgressColumnByProjectRow, error)
-	// Retrieves comprehensive details for all in-progress tasks using GROUP_CONCAT to avoid N+1 queries
+	// Retrieves comprehensive details for all in-progress tasks using string_agg to avoid N+1 queries
 	GetInProgressTaskDetails(ctx context.Context, id int64) ([]GetInProgressTaskDetailsRow, error)
 	// Retrieves basic information for tasks currently in progress for a project
 	GetInProgressTasksByProject(ctx context.Context, id int64) ([]GetInProgressTasksByProjectRow, error)
@@ -94,13 +94,13 @@ type Querier interface {
 	// Retrieves all labels attached to a specific task
 	GetLabelsForTask(ctx context.Context, taskID int64) ([]Label, error)
 	// Retrieves the ID of the next column in the linked list
-	GetNextColumnID(ctx context.Context, id int64) (interface{}, error)
+	GetNextColumnID(ctx context.Context, id int64) (sql.NullInt64, error)
 	// Retrieves the next available ticket number for a project
 	GetNextTicketNumber(ctx context.Context, projectID int64) (sql.NullInt64, error)
 	// Retrieves all parent tasks for a given child task with relationship details
 	GetParentTasks(ctx context.Context, childID int64) ([]GetParentTasksRow, error)
 	// Retrieves the ID of the previous column in the linked list
-	GetPrevColumnID(ctx context.Context, id int64) (interface{}, error)
+	GetPrevColumnID(ctx context.Context, id int64) (sql.NullInt64, error)
 	// Retrieves a project by its ID with all metadata
 	GetProjectByID(ctx context.Context, id int64) (Project, error)
 	// Retrieves the project ID for a given column
@@ -135,7 +135,7 @@ type Querier interface {
 	// Retrieves all parent-child task relationships
 	// in a project for tree visualization
 	GetTaskRelationsForProject(ctx context.Context, projectID int64) ([]GetTaskRelationsForProjectRow, error)
-	// Retrieves task summaries with aggregated labels for a specific column using GROUP_CONCAT to avoid N+1 queries
+	// Retrieves task summaries with aggregated labels for a specific column using string_agg to avoid N+1 queries
 	GetTaskSummariesByColumn(ctx context.Context, columnID int64) ([]GetTaskSummariesByColumnRow, error)
 	// Retrieves task summaries with aggregated labels and blocking status
 	// for all tasks in a project

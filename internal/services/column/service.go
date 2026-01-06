@@ -4,10 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/thenoetrevino/paso/internal/converters"
 	"github.com/thenoetrevino/paso/internal/database"
-	"github.com/thenoetrevino/paso/internal/database/generated"
+	"github.com/thenoetrevino/paso/internal/database/types"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -37,24 +38,32 @@ type CreateColumnRequest struct {
 	HoldsInProgressTasks bool // Whether this column holds in-progress tasks
 }
 
-// service implements Service interface using SQLC directly
+// service implements Service interface using database.Querier abstraction
 type service struct {
 	db          *sql.DB
-	queries     generated.Querier
+	dbType      database.DatabaseType
+	queries     database.Querier
 	eventClient events.EventPublisher
 }
 
-// NewService creates a new column service
-func NewService(db *sql.DB, eventClient events.EventPublisher) Service {
+// NewService creates a new column service with database-agnostic queries.
+func NewService(db *sql.DB, dbType database.DatabaseType, eventClient events.EventPublisher) (Service, error) {
+	queries, err := database.NewQuerier(db, dbType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create column service: %w", err)
+	}
 	return &service{
 		db:          db,
-		queries:     generated.New(db),
+		dbType:      dbType,
+		queries:     queries,
 		eventClient: eventClient,
-	}
+	}, nil
 }
 
-// GetColumnsByProject retrieves all columns for a project
 func (s *service) GetColumnsByProject(ctx context.Context, projectID int) ([]*models.Column, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if projectID <= 0 {
 		return nil, ErrInvalidProjectID
 	}
@@ -77,14 +86,16 @@ func (s *service) GetColumnByID(ctx context.Context, id int) (*models.Column, er
 	return converters.ColumnFromIDRowToModel(column), nil
 }
 
-// CreateColumn creates a new column with validation and linked list management
 func (s *service) CreateColumn(ctx context.Context, req CreateColumnRequest) (*models.Column, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Validate request
 	if err := s.validateCreateColumn(req); err != nil {
 		return nil, err
 	}
 
-	var prevID, nextID interface{}
+	var prevID, nextID types.NullInt64
 
 	if req.AfterID == nil {
 		// Append to end: find tail column
@@ -93,12 +104,12 @@ func (s *service) CreateColumn(ctx context.Context, req CreateColumnRequest) (*m
 			return nil, fmt.Errorf("failed to get tail column: %w", err)
 		}
 		if tailIDVal != 0 {
-			prevID = tailIDVal
+			prevID = types.NullInt64{Int64: tailIDVal, Valid: true}
 		}
-		nextID = nil
+		nextID = types.NullInt64{Valid: false}
 	} else {
 		// Insert after specified column
-		prevID = int64(*req.AfterID)
+		prevID = types.NullInt64{Int64: int64(*req.AfterID), Valid: true}
 		// Get the next_id of the "after" column
 		afterNextID, err := s.queries.GetColumnNextID(ctx, int64(*req.AfterID))
 		if err != nil && err != sql.ErrNoRows {
@@ -107,11 +118,11 @@ func (s *service) CreateColumn(ctx context.Context, req CreateColumnRequest) (*m
 		nextID = afterNextID
 	}
 
-	var column generated.Column
+	var column types.Column
 
 	// Use WithTx helper for linked list updates
 	err := database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		qtx := generated.New(tx)
+		qtx := database.MustNewQuerier(tx, s.dbType)
 
 		// If creating a ready column, clear any existing ready column first
 		if req.HoldsReadyTasks {
@@ -142,7 +153,7 @@ func (s *service) CreateColumn(ctx context.Context, req CreateColumnRequest) (*m
 
 		// Create new column
 		var colErr error
-		column, colErr = qtx.CreateColumn(ctx, generated.CreateColumnParams{
+		column, colErr = qtx.CreateColumn(ctx, types.CreateColumnParams{
 			Name:                 req.Name,
 			ProjectID:            int64(req.ProjectID),
 			PrevID:               prevID,
@@ -156,22 +167,20 @@ func (s *service) CreateColumn(ctx context.Context, req CreateColumnRequest) (*m
 		}
 
 		// Update prev column's next_id to point to new column
-		if prevID != nil {
-			nextIDPtr := column.ID
-			if err := qtx.UpdateColumnNextID(ctx, generated.UpdateColumnNextIDParams{
-				NextID: &nextIDPtr,
-				ID:     prevID.(int64),
+		if prevID.Valid {
+			if err := qtx.UpdateColumnNextID(ctx, types.UpdateColumnNextIDParams{
+				NextID: types.NullInt64{Int64: column.ID, Valid: true},
+				ID:     prevID.Int64,
 			}); err != nil {
 				return fmt.Errorf("failed to update prev column: %w", err)
 			}
 		}
 
 		// Update next column's prev_id to point to new column
-		if nextID != nil {
-			prevIDPtr := column.ID
-			if err := qtx.UpdateColumnPrevID(ctx, generated.UpdateColumnPrevIDParams{
-				PrevID: &prevIDPtr,
-				ID:     nextID.(int64),
+		if nextID.Valid {
+			if err := qtx.UpdateColumnPrevID(ctx, types.UpdateColumnPrevIDParams{
+				PrevID: types.NullInt64{Int64: column.ID, Valid: true},
+				ID:     nextID.Int64,
 			}); err != nil {
 				return fmt.Errorf("failed to update next column: %w", err)
 			}
@@ -179,7 +188,6 @@ func (s *service) CreateColumn(ctx context.Context, req CreateColumnRequest) (*m
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -190,8 +198,10 @@ func (s *service) CreateColumn(ctx context.Context, req CreateColumnRequest) (*m
 	return converters.ColumnToModel(column), nil
 }
 
-// UpdateColumnName updates a column's name
 func (s *service) UpdateColumnName(ctx context.Context, id int, name string) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Validate
 	if id <= 0 {
 		return ErrInvalidColumnID
@@ -210,7 +220,7 @@ func (s *service) UpdateColumnName(ctx context.Context, id int, name string) err
 	}
 
 	// Update column
-	if err := s.queries.UpdateColumnName(ctx, generated.UpdateColumnNameParams{
+	if err := s.queries.UpdateColumnName(ctx, types.UpdateColumnNameParams{
 		Name: name,
 		ID:   int64(id),
 	}); err != nil {
@@ -237,15 +247,10 @@ const (
 
 // setSpecialColumnState is a parametrized helper function that sets a column's special state.
 // It handles the common pattern of:
-// 1. Validating the column ID
-// 2. Getting the column to verify it exists and get the project ID
-// 3. Checking if another column with this state already exists
-// 4. Starting a transaction
-// 5. Optionally clearing the flag from other columns
-// 6. Setting the flag on the target column
-// 7. Committing the transaction
-// 8. Publishing the column event
-// 9. Returning the updated column
+// Validating the column ID, getting the column to verify it exists and get the project ID,
+// checking if another column with this state already exists, starting a transaction,
+// optionally clearing the flag from other columns, setting the flag on the target column,
+// committing the transaction, publishing the column event, returning the updated column
 //
 // Parameters:
 //   - ctx: context
@@ -254,47 +259,38 @@ const (
 //   - allowForce: if true and a column with this state exists, it will be replaced;
 //     if false, an error is returned instead. Only applies to completed state.
 func (s *service) setSpecialColumnState(ctx context.Context, columnID int, stateType specialColumnStateType, allowForce bool) (*models.Column, error) {
-	// Validate
 	if columnID <= 0 {
 		return nil, ErrInvalidColumnID
 	}
 
-	// Get column to verify it exists and get project ID
 	column, err := s.queries.GetColumnByID(ctx, int64(columnID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get column: %w", err)
 	}
 
-	// Check if a column with this state already exists and enforce state-specific rules
 	if err := s.checkExistingState(ctx, stateType, column.ProjectID, allowForce); err != nil {
 		return nil, err
 	}
 
-	// Use WithTx helper for transaction management
 	err = database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		qtx := generated.New(tx)
+		qtx := database.MustNewQuerier(tx, s.dbType)
 
-		// Clear any existing column with this state (if applicable)
 		if err := s.clearExistingState(ctx, qtx, stateType, column.ProjectID); err != nil {
 			return err
 		}
 
-		// Set this column's special state
 		if err := s.setColumnState(ctx, qtx, columnID, stateType); err != nil {
 			return err
 		}
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
 
-	// Publish event
 	s.publishColumnEvent(ctx, columnID, int(column.ProjectID))
 
-	// Return updated column
 	return s.GetColumnByID(ctx, columnID)
 }
 
@@ -337,7 +333,7 @@ func (s *service) checkExistingState(ctx context.Context, stateType specialColum
 // clearExistingState clears the special state flag from other columns (only for completed state).
 // For ready and in-progress states, the unique constraint prevents duplicates naturally.
 // For completed state, we allow force-setting a new column as completed, clearing the old one.
-func (s *service) clearExistingState(ctx context.Context, qtx generated.Querier, stateType specialColumnStateType, projectID int64) error {
+func (s *service) clearExistingState(ctx context.Context, qtx types.Querier, stateType specialColumnStateType, projectID int64) error {
 	switch stateType {
 	case stateCompleted:
 		if err := qtx.ClearCompletedColumnByProject(ctx, projectID); err != nil {
@@ -352,10 +348,10 @@ func (s *service) clearExistingState(ctx context.Context, qtx generated.Querier,
 }
 
 // setColumnState updates a column to have the given special state.
-func (s *service) setColumnState(ctx context.Context, qtx generated.Querier, columnID int, stateType specialColumnStateType) error {
+func (s *service) setColumnState(ctx context.Context, qtx types.Querier, columnID int, stateType specialColumnStateType) error {
 	switch stateType {
 	case stateReady:
-		if err := qtx.UpdateColumnHoldsReadyTasks(ctx, generated.UpdateColumnHoldsReadyTasksParams{
+		if err := qtx.UpdateColumnHoldsReadyTasks(ctx, types.UpdateColumnHoldsReadyTasksParams{
 			HoldsReadyTasks: true,
 			ID:              int64(columnID),
 		}); err != nil {
@@ -363,7 +359,7 @@ func (s *service) setColumnState(ctx context.Context, qtx generated.Querier, col
 		}
 
 	case stateCompleted:
-		if err := qtx.UpdateColumnHoldsCompletedTasks(ctx, generated.UpdateColumnHoldsCompletedTasksParams{
+		if err := qtx.UpdateColumnHoldsCompletedTasks(ctx, types.UpdateColumnHoldsCompletedTasksParams{
 			HoldsCompletedTasks: true,
 			ID:                  int64(columnID),
 		}); err != nil {
@@ -371,7 +367,7 @@ func (s *service) setColumnState(ctx context.Context, qtx generated.Querier, col
 		}
 
 	case stateInProgress:
-		if err := qtx.UpdateColumnHoldsInProgressTasks(ctx, generated.UpdateColumnHoldsInProgressTasksParams{
+		if err := qtx.UpdateColumnHoldsInProgressTasks(ctx, types.UpdateColumnHoldsInProgressTasksParams{
 			HoldsInProgressTasks: true,
 			ID:                   int64(columnID),
 		}); err != nil {
@@ -383,15 +379,11 @@ func (s *service) setColumnState(ctx context.Context, qtx generated.Querier, col
 }
 
 // SetHoldsReadyTasks sets a column as holding ready tasks.
-// Only one column per project can hold ready tasks.
 func (s *service) SetHoldsReadyTasks(ctx context.Context, columnID int) (*models.Column, error) {
 	return s.setSpecialColumnState(ctx, columnID, stateReady, false)
 }
 
 // SetHoldsCompletedTasks sets a column as holding completed tasks.
-// Only one column per project can hold completed tasks.
-// This method will return an error if a completed column already exists,
-// unless the force flag is set to true.
 func (s *service) SetHoldsCompletedTasks(ctx context.Context, columnID int, force bool) (*models.Column, error) {
 	return s.setSpecialColumnState(ctx, columnID, stateCompleted, force)
 }
@@ -423,22 +415,31 @@ func (s *service) DeleteColumn(ctx context.Context, id int) error {
 		return fmt.Errorf("failed to get column info: %w", err)
 	}
 
-	prevID := database.AnyToIntPtr(linkedListInfo.PrevID)
-	nextID := database.AnyToIntPtr(linkedListInfo.NextID)
+	var prevID, nextID *int
+	if linkedListInfo.PrevID.Valid {
+		val := int(linkedListInfo.PrevID.Int64)
+		prevID = &val
+	}
+	if linkedListInfo.NextID.Valid {
+		val := int(linkedListInfo.NextID.Int64)
+		nextID = &val
+	}
 	projectID := int(linkedListInfo.ProjectID)
 
 	// Use WithTx helper for linked list updates
 	err = database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		qtx := generated.New(tx)
+		qtx := database.MustNewQuerier(tx, s.dbType)
 
 		// Update prev column's next_id to skip deleted column
 		if prevID != nil {
-			var nextIDInterface interface{}
+			var nextIDVal types.NullInt64
 			if nextID != nil {
-				nextIDInterface = int64(*nextID)
+				nextIDVal = types.NullInt64{Int64: int64(*nextID), Valid: true}
+			} else {
+				nextIDVal = types.NullInt64{Valid: false}
 			}
-			if err := qtx.UpdateColumnNextID(ctx, generated.UpdateColumnNextIDParams{
-				NextID: nextIDInterface,
+			if err := qtx.UpdateColumnNextID(ctx, types.UpdateColumnNextIDParams{
+				NextID: nextIDVal,
 				ID:     int64(*prevID),
 			}); err != nil {
 				return fmt.Errorf("failed to update prev column: %w", err)
@@ -447,12 +448,14 @@ func (s *service) DeleteColumn(ctx context.Context, id int) error {
 
 		// Update next column's prev_id to skip deleted column
 		if nextID != nil {
-			var prevIDInterface interface{}
+			var prevIDVal types.NullInt64
 			if prevID != nil {
-				prevIDInterface = int64(*prevID)
+				prevIDVal = types.NullInt64{Int64: int64(*prevID), Valid: true}
+			} else {
+				prevIDVal = types.NullInt64{Valid: false}
 			}
-			if err := qtx.UpdateColumnPrevID(ctx, generated.UpdateColumnPrevIDParams{
-				PrevID: prevIDInterface,
+			if err := qtx.UpdateColumnPrevID(ctx, types.UpdateColumnPrevIDParams{
+				PrevID: prevIDVal,
 				ID:     int64(*nextID),
 			}); err != nil {
 				return fmt.Errorf("failed to update next column: %w", err)
@@ -466,7 +469,6 @@ func (s *service) DeleteColumn(ctx context.Context, id int) error {
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}

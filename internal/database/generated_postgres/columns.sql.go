@@ -3,17 +3,18 @@
 //   sqlc v1.30.0
 // source: columns.sql
 
-package generated
+package generated_postgres
 
 import (
 	"context"
+	"database/sql"
 )
 
 const clearCompletedColumnByProject = `-- name: ClearCompletedColumnByProject :exec
 update columns
-set holds_completed_tasks = 0
-where project_id = ?
-and holds_completed_tasks = 1
+set holds_completed_tasks = false
+where project_id = $1
+and holds_completed_tasks = true
 `
 
 // Clears the completed task flag from all columns in a project
@@ -24,9 +25,9 @@ func (q *Queries) ClearCompletedColumnByProject(ctx context.Context, projectID i
 
 const clearInProgressColumnByProject = `-- name: ClearInProgressColumnByProject :exec
 update columns
-set holds_in_progress_tasks = 0
-where project_id = ?
-and holds_in_progress_tasks = 1
+set holds_in_progress_tasks = false
+where project_id = $1
+and holds_in_progress_tasks = true
 `
 
 // Clears the in-progress task flag from all columns in a project
@@ -37,9 +38,9 @@ func (q *Queries) ClearInProgressColumnByProject(ctx context.Context, projectID 
 
 const clearReadyColumnByProject = `-- name: ClearReadyColumnByProject :exec
 update columns
-set holds_ready_tasks = 0
-where project_id = ?
-and holds_ready_tasks = 1
+set holds_ready_tasks = false
+where project_id = $1
+and holds_ready_tasks = true
 `
 
 // Clears the ready task flag from all columns in a project
@@ -51,7 +52,7 @@ func (q *Queries) ClearReadyColumnByProject(ctx context.Context, projectID int64
 const columnExists = `-- name: ColumnExists :one
 select count(*)
 from columns
-where id = ?
+where id = $1
 `
 
 // Checks if a column exists with the given ID
@@ -72,15 +73,15 @@ insert into columns (
     holds_completed_tasks,
     holds_in_progress_tasks
 )
-values (?, ?, ?, ?, ?, ?, ?)
-returning id, name, prev_id, next_id, project_id, holds_ready_tasks, holds_completed_tasks, holds_in_progress_tasks
+values ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, name, prev_id, next_id, project_id, holds_ready_tasks, holds_completed_tasks, holds_in_progress_tasks
 `
 
 type CreateColumnParams struct {
 	Name                 string
 	ProjectID            int64
-	PrevID               interface{}
-	NextID               interface{}
+	PrevID               sql.NullInt64
+	NextID               sql.NullInt64
 	HoldsReadyTasks      bool
 	HoldsCompletedTasks  bool
 	HoldsInProgressTasks bool
@@ -114,7 +115,7 @@ func (q *Queries) CreateColumn(ctx context.Context, arg CreateColumnParams) (Col
 
 const deleteColumn = `-- name: DeleteColumn :exec
 delete from columns
-where id = ?
+where id = $1
 `
 
 // Permanently deletes a column by ID
@@ -125,7 +126,7 @@ func (q *Queries) DeleteColumn(ctx context.Context, id int64) error {
 
 const deleteTasksByColumn = `-- name: DeleteTasksByColumn :exec
 delete from tasks
-where column_id = ?
+where column_id = $1
 `
 
 // Deletes all tasks within a specific column
@@ -145,15 +146,15 @@ select
     holds_completed_tasks,
     holds_in_progress_tasks
 from columns
-where id = ?
+where id = $1
 `
 
 type GetColumnByIDRow struct {
 	ID                   int64
 	Name                 string
 	ProjectID            int64
-	PrevID               interface{}
-	NextID               interface{}
+	PrevID               sql.NullInt64
+	NextID               sql.NullInt64
 	HoldsReadyTasks      bool
 	HoldsCompletedTasks  bool
 	HoldsInProgressTasks bool
@@ -177,17 +178,17 @@ func (q *Queries) GetColumnByID(ctx context.Context, id int64) (GetColumnByIDRow
 }
 
 const getColumnLinkedListInfo = `-- name: GetColumnLinkedListInfo :one
-select 
+select
     prev_id,
     next_id,
     project_id
 from columns
-where id = ?
+where id = $1
 `
 
 type GetColumnLinkedListInfoRow struct {
-	PrevID    interface{}
-	NextID    interface{}
+	PrevID    sql.NullInt64
+	NextID    sql.NullInt64
 	ProjectID int64
 }
 
@@ -200,15 +201,15 @@ func (q *Queries) GetColumnLinkedListInfo(ctx context.Context, id int64) (GetCol
 }
 
 const getColumnNextID = `-- name: GetColumnNextID :one
-select next_id 
+select next_id
 from columns
-where id = ?
+where id = $1
 `
 
 // Retrieves the next column ID in the linked list
-func (q *Queries) GetColumnNextID(ctx context.Context, id int64) (interface{}, error) {
+func (q *Queries) GetColumnNextID(ctx context.Context, id int64) (sql.NullInt64, error) {
 	row := q.db.QueryRowContext(ctx, getColumnNextID, id)
-	var next_id interface{}
+	var next_id sql.NullInt64
 	err := row.Scan(&next_id)
 	return next_id, err
 }
@@ -224,15 +225,15 @@ select
     holds_completed_tasks,
     holds_in_progress_tasks
 from columns
-where project_id = ?
+where project_id = $1
 `
 
 type GetColumnsByProjectRow struct {
 	ID                   int64
 	Name                 string
 	ProjectID            int64
-	PrevID               interface{}
-	NextID               interface{}
+	PrevID               sql.NullInt64
+	NextID               sql.NullInt64
 	HoldsReadyTasks      bool
 	HoldsCompletedTasks  bool
 	HoldsInProgressTasks bool
@@ -280,7 +281,7 @@ select
     next_id,
     holds_completed_tasks
 from columns
-where project_id = ? and holds_completed_tasks = 1
+where project_id = $1 and holds_completed_tasks = true
 limit 1
 `
 
@@ -288,8 +289,8 @@ type GetCompletedColumnByProjectRow struct {
 	ID                  int64
 	Name                string
 	ProjectID           int64
-	PrevID              interface{}
-	NextID              interface{}
+	PrevID              sql.NullInt64
+	NextID              sql.NullInt64
 	HoldsCompletedTasks bool
 }
 
@@ -317,7 +318,7 @@ select
     next_id,
     holds_in_progress_tasks
 from columns
-where project_id = ? and holds_in_progress_tasks = 1
+where project_id = $1 and holds_in_progress_tasks = true
 limit 1
 `
 
@@ -325,8 +326,8 @@ type GetInProgressColumnByProjectRow struct {
 	ID                   int64
 	Name                 string
 	ProjectID            int64
-	PrevID               interface{}
-	NextID               interface{}
+	PrevID               sql.NullInt64
+	NextID               sql.NullInt64
 	HoldsInProgressTasks bool
 }
 
@@ -354,7 +355,7 @@ select
     next_id,
     holds_ready_tasks
 from columns
-where project_id = ? and holds_ready_tasks = 1
+where project_id = $1 and holds_ready_tasks = true
 limit 1
 `
 
@@ -362,8 +363,8 @@ type GetReadyColumnByProjectRow struct {
 	ID              int64
 	Name            string
 	ProjectID       int64
-	PrevID          interface{}
-	NextID          interface{}
+	PrevID          sql.NullInt64
+	NextID          sql.NullInt64
 	HoldsReadyTasks bool
 }
 
@@ -386,7 +387,7 @@ const getTailColumnForProject = `-- name: GetTailColumnForProject :one
 select id
 from columns
 where next_id is null
-    and project_id = ?
+    and project_id = $1
 limit 1
 `
 
@@ -400,8 +401,8 @@ func (q *Queries) GetTailColumnForProject(ctx context.Context, projectID int64) 
 
 const updateColumnHoldsCompletedTasks = `-- name: UpdateColumnHoldsCompletedTasks :exec
 update columns
-set holds_completed_tasks = ?
-where id = ?
+set holds_completed_tasks = $1
+where id = $2
 `
 
 type UpdateColumnHoldsCompletedTasksParams struct {
@@ -417,8 +418,8 @@ func (q *Queries) UpdateColumnHoldsCompletedTasks(ctx context.Context, arg Updat
 
 const updateColumnHoldsInProgressTasks = `-- name: UpdateColumnHoldsInProgressTasks :exec
 update columns
-set holds_in_progress_tasks = ?
-where id = ?
+set holds_in_progress_tasks = $1
+where id = $2
 `
 
 type UpdateColumnHoldsInProgressTasksParams struct {
@@ -434,8 +435,8 @@ func (q *Queries) UpdateColumnHoldsInProgressTasks(ctx context.Context, arg Upda
 
 const updateColumnHoldsReadyTasks = `-- name: UpdateColumnHoldsReadyTasks :exec
 update columns
-set holds_ready_tasks = ?
-where id = ?
+set holds_ready_tasks = $1
+where id = $2
 `
 
 type UpdateColumnHoldsReadyTasksParams struct {
@@ -451,8 +452,8 @@ func (q *Queries) UpdateColumnHoldsReadyTasks(ctx context.Context, arg UpdateCol
 
 const updateColumnName = `-- name: UpdateColumnName :exec
 update columns
-set name = ?
-where id = ?
+set name = $1
+where id = $2
 `
 
 type UpdateColumnNameParams struct {
@@ -468,12 +469,12 @@ func (q *Queries) UpdateColumnName(ctx context.Context, arg UpdateColumnNamePara
 
 const updateColumnNextID = `-- name: UpdateColumnNextID :exec
 update columns
-set next_id = ?
-where id = ?
+set next_id = $1
+where id = $2
 `
 
 type UpdateColumnNextIDParams struct {
-	NextID interface{}
+	NextID sql.NullInt64
 	ID     int64
 }
 
@@ -485,12 +486,12 @@ func (q *Queries) UpdateColumnNextID(ctx context.Context, arg UpdateColumnNextID
 
 const updateColumnPrevID = `-- name: UpdateColumnPrevID :exec
 update columns
-set prev_id = ?
-where id = ?
+set prev_id = $1
+where id = $2
 `
 
 type UpdateColumnPrevIDParams struct {
-	PrevID interface{}
+	PrevID sql.NullInt64
 	ID     int64
 }
 

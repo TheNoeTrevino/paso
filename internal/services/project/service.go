@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/thenoetrevino/paso/internal/database"
-	"github.com/thenoetrevino/paso/internal/database/generated"
+	"github.com/thenoetrevino/paso/internal/database/types"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -37,24 +38,33 @@ type UpdateProjectRequest struct {
 	Description *string
 }
 
-// service implements Service interface using SQLC directly
+// service implements Service interface using database.Querier abstraction
 type service struct {
 	db          *sql.DB
-	queries     generated.Querier
+	dbType      database.DatabaseType
+	queries     database.Querier
 	eventClient events.EventPublisher
 }
 
-// NewService creates a new project service
-func NewService(db *sql.DB, eventClient events.EventPublisher) Service {
+// NewService creates a new project service with database-agnostic queries.
+func NewService(db *sql.DB, dbType database.DatabaseType, eventClient events.EventPublisher) (Service, error) {
+	queries, err := database.NewQuerier(db, dbType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create project service: %w", err)
+	}
 	return &service{
 		db:          db,
-		queries:     generated.New(db),
+		dbType:      dbType,
+		queries:     queries,
 		eventClient: eventClient,
-	}
+	}, nil
 }
 
 // GetAllProjects retrieves all projects
 func (s *service) GetAllProjects(ctx context.Context) ([]*models.Project, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	projects, err := s.queries.GetAllProjects(ctx)
 	if err != nil {
 		return nil, err
@@ -88,22 +98,25 @@ func (s *service) GetTaskCount(ctx context.Context, projectID int) (int, error) 
 
 // CreateProject creates a new project with validation
 func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest) (*models.Project, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Validate request
 	if err := s.validateCreateProject(req); err != nil {
 		return nil, err
 	}
 
-	var project generated.Project
+	var project types.Project
 
 	// Use WithTx helper for transaction management
 	err := database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		qtx := generated.New(tx)
+		qtx := database.MustNewQuerier(tx, s.dbType)
 
 		// Create project record
 		var projErr error
-		project, projErr = qtx.CreateProjectRecord(ctx, generated.CreateProjectRecordParams{
+		project, projErr = qtx.CreateProjectRecord(ctx, types.CreateProjectRecordParams{
 			Name:        req.Name,
-			Description: sql.NullString{String: req.Description, Valid: req.Description != ""},
+			Description: types.NullString{String: req.Description, Valid: req.Description != ""},
 		})
 		if projErr != nil {
 			return fmt.Errorf("failed to create project: %w", projErr)
@@ -121,7 +134,6 @@ func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest) (
 
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -134,6 +146,9 @@ func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest) (
 
 // UpdateProject updates an existing project
 func (s *service) UpdateProject(ctx context.Context, req UpdateProjectRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Validate project ID
 	if req.ID <= 0 {
 		return ErrInvalidProjectID
@@ -161,11 +176,11 @@ func (s *service) UpdateProject(ctx context.Context, req UpdateProjectRequest) e
 
 	description := existing.Description
 	if req.Description != nil {
-		description = sql.NullString{String: *req.Description, Valid: *req.Description != ""}
+		description = types.NullString{String: *req.Description, Valid: *req.Description != ""}
 	}
 
 	// Update project
-	if err := s.queries.UpdateProject(ctx, generated.UpdateProjectParams{
+	if err := s.queries.UpdateProject(ctx, types.UpdateProjectParams{
 		ID:          int64(req.ID),
 		Name:        name,
 		Description: description,
@@ -198,7 +213,7 @@ func (s *service) DeleteProject(ctx context.Context, id int, force bool) error {
 
 	// Use WithTx helper for transaction management
 	err := database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
-		qtx := generated.New(tx)
+		qtx := database.MustNewQuerier(tx, s.dbType)
 
 		// Delete tasks first
 		if err := qtx.DeleteTasksByProject(ctx, int64(id)); err != nil {
@@ -222,7 +237,6 @@ func (s *service) DeleteProject(ctx context.Context, id int, force bool) error {
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
@@ -260,17 +274,17 @@ func (s *service) publishProjectEvent(ctx context.Context, projectID int) {
 
 // Model conversion helpers
 
-func toProjectModel(p generated.Project) *models.Project {
+func toProjectModel(p types.Project) *models.Project {
 	return &models.Project{
 		ID:          int(p.ID),
 		Name:        p.Name,
-		Description: database.NullStringToString(p.Description),
-		CreatedAt:   database.NullTimeToTime(p.CreatedAt),
-		UpdatedAt:   database.NullTimeToTime(p.UpdatedAt),
+		Description: database.NullStringToString(p.Description.ToSQLNullString()),
+		CreatedAt:   database.NullTimeToTime(p.CreatedAt.ToSQLNullTime()),
+		UpdatedAt:   database.NullTimeToTime(p.UpdatedAt.ToSQLNullTime()),
 	}
 }
 
-func toProjectModels(projects []generated.Project) []*models.Project {
+func toProjectModels(projects []types.Project) []*models.Project {
 	result := make([]*models.Project, len(projects))
 	for i, p := range projects {
 		result[i] = toProjectModel(p)

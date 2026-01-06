@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
@@ -24,7 +25,7 @@ func TestCreateTask(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	req := CreateTaskRequest{
 		Title:       "Fix bug in login",
@@ -153,7 +154,7 @@ func TestCreateTask_Validation(t *testing.T) {
 				}
 			}
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			_, err := svc.CreateTask(context.Background(), req)
 
 			if (err != nil) != tt.wantErr {
@@ -178,7 +179,7 @@ func TestCreateTask_WithLabels(t *testing.T) {
 	columnID := createTestColumn(t, db, projectID, "To Do")
 	label1ID := createTestLabel(t, db, projectID, "Bug")
 	label2ID := createTestLabel(t, db, projectID, "Critical")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	req := CreateTaskRequest{
 		Title:    "Test Task",
@@ -214,7 +215,7 @@ func TestGetTaskDetail(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a task
 	created, err := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -252,7 +253,7 @@ func TestGetTaskDetail_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetTaskDetail(context.Background(), 999)
 
@@ -271,7 +272,7 @@ func TestGetTaskDetail_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetTaskDetail(context.Background(), 0)
 
@@ -293,7 +294,7 @@ func TestGetTaskSummariesByProject(t *testing.T) {
 	projectID := createTestProject(t, db)
 	col1ID := createTestColumn(t, db, projectID, "To Do")
 	col2ID := createTestColumn(t, db, projectID, "Done")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create tasks in different columns
 	_, err := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -343,7 +344,7 @@ func TestUpdateTask(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a task
 	created, err := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -400,7 +401,7 @@ func TestUpdateTask_Validation(t *testing.T) {
 			setupFn: func(db *sql.DB) int {
 				projectID := createTestProject(t, db)
 				columnID := createTestColumn(t, db, projectID, "To Do")
-				task, _ := NewService(db, nil).CreateTask(context.Background(), CreateTaskRequest{
+				task, _ := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Old Title",
 					ColumnID: columnID,
 					Position: 0,
@@ -429,7 +430,7 @@ func TestUpdateTask_Validation(t *testing.T) {
 				taskID = tt.setupFn(db)
 			}
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			req := UpdateTaskRequest{
 				TaskID: taskID,
 				Title:  tt.title,
@@ -466,7 +467,7 @@ func TestDeleteTask(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a task
 	created, err := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -495,7 +496,7 @@ func TestDeleteTask_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	err := svc.DeleteTask(context.Background(), 0)
 
@@ -521,7 +522,7 @@ func TestAttachLabel(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
 	labelID := createTestLabel(t, db, projectID, "Bug")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a task
 	created, err := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -558,7 +559,7 @@ func TestDetachLabel(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
 	labelID := createTestLabel(t, db, projectID, "Bug")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a task with label
 	created, err := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -599,7 +600,7 @@ func TestAddParentRelation(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two tasks
 	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -638,7 +639,7 @@ func TestAddChildRelation(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two tasks
 	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -677,7 +678,7 @@ func TestRemoveParentRelation(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two tasks with relationship
 	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -717,7 +718,7 @@ func TestRemoveChildRelation(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two tasks with child relationship
 	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -774,7 +775,7 @@ func TestMoveTaskToNextColumn(t *testing.T) {
 		t.Fatalf("Failed to link columns: %v", err)
 	}
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task in first column
 	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -807,7 +808,7 @@ func TestMoveTaskToNextColumn_LastColumn(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "Done")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task in last column (no next_id)
 	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -830,7 +831,7 @@ func TestMoveTaskToNextColumn_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	err := svc.MoveTaskToNextColumn(context.Background(), 999)
 
@@ -859,7 +860,7 @@ func TestMoveTaskToPrevColumn(t *testing.T) {
 		t.Fatalf("Failed to link columns: %v", err)
 	}
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task in second column
 	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -892,7 +893,7 @@ func TestMoveTaskToPrevColumn_FirstColumn(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task in first column (no prev_id)
 	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -915,7 +916,7 @@ func TestMoveTaskToPrevColumn_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	err := svc.MoveTaskToPrevColumn(context.Background(), 999)
 
@@ -933,7 +934,7 @@ func TestMoveTaskToColumn(t *testing.T) {
 	projectID := createTestProject(t, db)
 	col1ID := createTestColumn(t, db, projectID, "To Do")
 	col2ID := createTestColumn(t, db, projectID, "Done")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task in first column
 	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -966,7 +967,7 @@ func TestMoveTaskToColumn_InvalidColumnID(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task
 	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -991,7 +992,7 @@ func TestMoveTaskToColumn_InvalidTaskID(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Try to move invalid task
 	err := svc.MoveTaskToColumn(context.Background(), 999, columnID)
@@ -1009,7 +1010,7 @@ func TestMoveTaskUp(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two tasks
 	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -1053,7 +1054,7 @@ func TestMoveTaskUp_FirstPosition(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task at first position
 	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -1076,7 +1077,7 @@ func TestMoveTaskUp_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	err := svc.MoveTaskUp(context.Background(), 999)
 
@@ -1093,7 +1094,7 @@ func TestMoveTaskDown(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two tasks
 	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -1137,7 +1138,7 @@ func TestMoveTaskDown_LastPosition(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task at last position
 	task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -1160,7 +1161,7 @@ func TestMoveTaskDown_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	err := svc.MoveTaskDown(context.Background(), 999)
 
@@ -1181,7 +1182,7 @@ func TestGetTaskSummariesByProjectFiltered(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create tasks with different titles
 	_, _ = svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -1225,7 +1226,7 @@ func TestGetTaskSummariesByProjectFiltered_NoResults(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task
 	_, _ = svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -1257,7 +1258,7 @@ func TestGetTaskSummariesByProjectFiltered_EmptyQuery(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create tasks
 	_, _ = svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -1295,7 +1296,7 @@ func TestGetTaskReferencesForProject(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create tasks
 	_, _ = svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -1326,7 +1327,7 @@ func TestGetTaskReferencesForProject_EmptyProject(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Get task references for empty project
 	refs, err := svc.GetTaskReferencesForProject(context.Background(), projectID)
@@ -1348,7 +1349,7 @@ func TestGetReadyTaskSummariesByProject_OnlyReadyColumn(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create three columns: Todo (ready), In Progress, Done
 	todoCol := createTestReadyColumn(t, db, projectID, "Todo")
@@ -1388,7 +1389,7 @@ func TestGetReadyTaskSummariesByProject_ExcludesBlockedTasks(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create ready column
 	readyCol := createTestReadyColumn(t, db, projectID, "Todo")
@@ -1427,7 +1428,7 @@ func TestGetReadyTaskSummariesByProject_EmptyWhenNoReadyColumn(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create columns but none are ready
 	col1 := createTestColumn(t, db, projectID, "Todo")
@@ -1452,7 +1453,7 @@ func TestGetReadyTaskSummariesByProject_EmptyReadyColumn(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create ready column with no tasks
 	createTestReadyColumn(t, db, projectID, "Todo")
@@ -1473,7 +1474,7 @@ func TestGetReadyTaskSummariesByProject_IncludesTaskDetails(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create ready column
 	readyCol := createTestReadyColumn(t, db, projectID, "Todo")
@@ -1535,7 +1536,7 @@ func TestGetTaskTreeByProject_EmptyProject(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Get tree for empty project
 	tree, err := svc.GetTaskTreeByProject(context.Background(), projectID)
@@ -1554,7 +1555,7 @@ func TestGetTaskTreeByProject_SimpleHierarchy(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create parent and child tasks
 	parentID := createTestTask(t, db, columnID, "Parent Task")
@@ -1599,7 +1600,7 @@ func TestGetTaskTreeByProject_CircularDependency(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create three tasks: A -> B -> C -> A (circular)
 	taskA := createTestTask(t, db, columnID, "Task A")
@@ -1636,7 +1637,7 @@ func TestGetTaskTreeByProject_DeepNesting(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a deep hierarchy: Task1 -> Task2 -> Task3 -> Task4 -> Task5
 	tasks := make([]int, 5)
@@ -1689,7 +1690,7 @@ func TestGetTaskTreeByProject_BlockingRelationship(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create parent and child tasks
 	parentID := createTestTask(t, db, columnID, "Parent Task")
@@ -1730,7 +1731,7 @@ func TestGetTaskTreeByProject_SortedByTicketNumber(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create multiple root tasks (no parent relations)
 	task1 := createTestTask(t, db, columnID, "Task 1")
@@ -1770,7 +1771,7 @@ func TestGetTaskTreeByProject_MultipleRootsWithChildren(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two separate trees
 	root1 := createTestTask(t, db, columnID, "Root 1")
@@ -1815,7 +1816,7 @@ func TestMoveTaskToReadyColumn(t *testing.T) {
 	projectID := createTestProject(t, db)
 	todoColID := createTestColumn(t, db, projectID, "To Do")
 	readyColID := createTestReadyColumn(t, db, projectID, "Ready")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task in To Do column
 	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -1849,7 +1850,7 @@ func TestMoveTaskToReadyColumn_InvalidTaskID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Try to move non-existent task
 	err := svc.MoveTaskToReadyColumn(context.Background(), 999)
@@ -1871,7 +1872,7 @@ func TestMoveTaskToReadyColumn_NoReadyColumn(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task
 	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -1903,7 +1904,7 @@ func TestMoveTaskToReadyColumn_AlreadyInReadyColumn(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	readyColID := createTestReadyColumn(t, db, projectID, "Ready")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task already in ready column
 	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -1929,7 +1930,7 @@ func TestMoveTaskToReadyColumn_ZeroTaskID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Try to move task with ID 0
 	err := svc.MoveTaskToReadyColumn(context.Background(), 0)
@@ -1945,7 +1946,7 @@ func TestMoveTaskToReadyColumn_NegativeTaskID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Try to move task with negative ID
 	err := svc.MoveTaskToReadyColumn(context.Background(), -1)
@@ -1968,7 +1969,7 @@ func TestMoveTaskToCompletedColumn(t *testing.T) {
 	projectID := createTestProject(t, db)
 	todoColID := createTestColumn(t, db, projectID, "To Do")
 	completedColID := createTestCompletedColumn(t, db, projectID, "Done")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task in To Do column
 	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -2002,7 +2003,7 @@ func TestMoveTaskToCompletedColumn_InvalidTaskID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Try to move non-existent task
 	err := svc.MoveTaskToCompletedColumn(context.Background(), 999)
@@ -2024,7 +2025,7 @@ func TestMoveTaskToCompletedColumn_NoCompletedColumn(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task
 	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -2056,7 +2057,7 @@ func TestMoveTaskToCompletedColumn_AlreadyInCompletedColumn(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	completedColID := createTestCompletedColumn(t, db, projectID, "Done")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task already in completed column
 	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -2082,7 +2083,7 @@ func TestMoveTaskToCompletedColumn_ZeroTaskID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Try to move task with ID 0
 	err := svc.MoveTaskToCompletedColumn(context.Background(), 0)
@@ -2098,7 +2099,7 @@ func TestMoveTaskToCompletedColumn_NegativeTaskID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Try to move task with negative ID
 	err := svc.MoveTaskToCompletedColumn(context.Background(), -1)
@@ -2118,7 +2119,7 @@ func TestMoveTaskToCompletedColumn_MultipleTasksInProject(t *testing.T) {
 	todoColID := createTestColumn(t, db, projectID, "To Do")
 	inProgressColID := createTestColumn(t, db, projectID, "In Progress")
 	completedColID := createTestCompletedColumn(t, db, projectID, "Done")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create multiple tasks in different columns
 	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -2179,7 +2180,7 @@ func TestMoveTaskToReadyColumn_MultipleTasksInProject(t *testing.T) {
 	todoColID := createTestColumn(t, db, projectID, "To Do")
 	inProgressColID := createTestColumn(t, db, projectID, "In Progress")
 	readyColID := createTestReadyColumn(t, db, projectID, "Ready")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create multiple tasks in different columns
 	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -2243,7 +2244,7 @@ func TestCreateComment(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
 	taskID := createTestTask(t, db, columnID, "Test Task")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	req := CreateCommentRequest{
 		TaskID:  taskID,
@@ -2348,7 +2349,7 @@ func TestCreateComment_Validation(t *testing.T) {
 				taskID = tt.setupFn(db)
 			}
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			req := CreateCommentRequest{
 				TaskID:  taskID,
 				Message: tt.message,
@@ -2379,7 +2380,7 @@ func TestUpdateComment(t *testing.T) {
 	columnID := createTestColumn(t, db, projectID, "To Do")
 	taskID := createTestTask(t, db, columnID, "Test Task")
 	commentID := createTestComment(t, db, taskID, "Original message", "testuser")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	req := UpdateCommentRequest{
 		CommentID: commentID,
@@ -2470,7 +2471,7 @@ func TestUpdateComment_Validation(t *testing.T) {
 				commentID = tt.setupFn(db)
 			}
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			req := UpdateCommentRequest{
 				CommentID: commentID,
 				Message:   tt.message,
@@ -2500,7 +2501,7 @@ func TestDeleteComment(t *testing.T) {
 	columnID := createTestColumn(t, db, projectID, "To Do")
 	taskID := createTestTask(t, db, columnID, "Test Task")
 	commentID := createTestComment(t, db, taskID, "Test comment", "testuser")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	err := svc.DeleteComment(context.Background(), commentID)
 	require.NoError(t, err, "Operation failed")
@@ -2524,7 +2525,7 @@ func TestDeleteComment_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	err := svc.DeleteComment(context.Background(), 0) // Invalid ID
 
@@ -2543,7 +2544,7 @@ func TestDeleteComment_NonExistentComment(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	err := svc.DeleteComment(context.Background(), 999) // Non-existent comment
 
@@ -2571,7 +2572,7 @@ func TestGetCommentsByTask(t *testing.T) {
 	comment2ID := createTestComment(t, db, taskID, "Second comment", "user2")
 	comment3ID := createTestComment(t, db, taskID, "Third comment", "user3")
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
 	require.NoError(t, err, "Operation failed")
@@ -2601,7 +2602,7 @@ func TestGetCommentsByTask_NoComments(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
 	taskID := createTestTask(t, db, columnID, "Test Task")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
 	require.NoError(t, err, "Operation failed")
@@ -2617,7 +2618,7 @@ func TestGetCommentsByTask_InvalidTaskID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetCommentsByTask(context.Background(), 0) // Invalid ID
 
@@ -2651,7 +2652,7 @@ func TestGetCommentsByTask_OrderedByCreatedAt(t *testing.T) {
 		t.Fatalf("Failed to create test comments: %v", err)
 	}
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	comments, err := svc.GetCommentsByTask(context.Background(), taskID)
 	require.NoError(t, err, "Operation failed")
@@ -2686,7 +2687,7 @@ func TestGetTaskDetail_IncludesComments(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create task
 	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -2742,7 +2743,7 @@ func TestDeleteTask_CascadesComments(t *testing.T) {
 	comment1ID := createTestComment(t, db, taskID, "First comment", "user1")
 	comment2ID := createTestComment(t, db, taskID, "Second comment", "user2")
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Delete the task
 	err := svc.DeleteTask(context.Background(), taskID)
@@ -2775,7 +2776,7 @@ func TestGetInProgressTasksByProject(t *testing.T) {
 	projectID := createTestProject(t, db)
 	inProgressCol := createTestColumnWithFlag(t, db, projectID, "In Progress", true, false, false)
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create multiple in-progress tasks with labels
 	label1ID := createTestLabel(t, db, projectID, "urgent")
@@ -2847,7 +2848,7 @@ func TestGetInProgressTasksByProject_InvalidProjectID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Test with invalid project ID
 	_, err := svc.GetInProgressTasksByProject(context.Background(), -1)
@@ -2868,7 +2869,7 @@ func TestGetInProgressTasksByProject_EmptyProject(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Project has no in-progress column
 	tasks, err := svc.GetInProgressTasksByProject(context.Background(), projectID)
@@ -2923,7 +2924,7 @@ func TestGetTaskTreeByProject_SingleTask(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a single task
 	task1ID := createTestTask(t, db, columnID, "Task 1")
@@ -2960,7 +2961,7 @@ func TestGetTaskTreeByProject_SimpleLinearTree(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create three tasks in a linear chain: A -> B -> C
 	// A is parent (root), B is child of A, C is child of B
@@ -3031,12 +3032,17 @@ func TestGetTaskTreeByProject_MultipleRoots(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create 3 independent root tasks
 	task1 := createTestTask(t, db, columnID, "Root 1")
 	task2 := createTestTask(t, db, columnID, "Root 2")
 	task3 := createTestTask(t, db, columnID, "Root 3")
+
+	// Set ticket numbers to establish deterministic order
+	_, _ = db.ExecContext(context.Background(), "UPDATE tasks SET ticket_number = 1 WHERE id = ?", task1)
+	_, _ = db.ExecContext(context.Background(), "UPDATE tasks SET ticket_number = 2 WHERE id = ?", task2)
+	_, _ = db.ExecContext(context.Background(), "UPDATE tasks SET ticket_number = 3 WHERE id = ?", task3)
 
 	// Get tree
 	nodes, err := svc.GetTaskTreeByProject(context.Background(), projectID)
@@ -3050,8 +3056,13 @@ func TestGetTaskTreeByProject_MultipleRoots(t *testing.T) {
 	}
 
 	// Verify roots are sorted by ticket number (ascending)
+	if nodes[0].TicketNumber != 1 || nodes[1].TicketNumber != 2 || nodes[2].TicketNumber != 3 {
+		t.Errorf("Roots not sorted by ticket number. Got: %d, %d, %d", nodes[0].TicketNumber, nodes[1].TicketNumber, nodes[2].TicketNumber)
+	}
+
+	// Verify the task IDs match what we created
 	if nodes[0].ID != task1 || nodes[1].ID != task2 || nodes[2].ID != task3 {
-		t.Errorf("Roots not in expected order")
+		t.Errorf("Task IDs not in expected order after ticket number sort")
 	}
 
 	for _, node := range nodes {
@@ -3070,7 +3081,7 @@ func TestGetTaskTreeByProject_DiamondDependencies(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create diamond pattern:
 	//       A
@@ -3136,7 +3147,7 @@ func TestGetTaskTreeByProject_SelfDependency(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	taskA := createTestTask(t, db, columnID, "Task A")
 
@@ -3184,7 +3195,7 @@ func TestGetTaskTreeByProject_BlockingRelationships(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create tasks with blocking relationships
 	taskA := createTestTask(t, db, columnID, "Task A (Blocker)")
@@ -3236,7 +3247,7 @@ func TestGetTaskTreeByProject_MixedRelationships(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create 4 tasks
 	taskA := createTestTask(t, db, columnID, "Task A")
@@ -3302,7 +3313,7 @@ func TestAddParentRelation_CircularDependencyCheck(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two tasks
 	task1, err := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -3348,7 +3359,7 @@ func TestAddParentRelation_SelfRelationPrevention(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
 		Title:    "Task 1",
@@ -3378,7 +3389,7 @@ func TestRemoveParentRelation_RestructuresTree(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create three tasks
 	task1, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
@@ -3637,7 +3648,7 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			req := tt.setupFn(db)
 
 			_, err := svc.CreateTask(context.Background(), req)
@@ -3691,7 +3702,7 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 			setupFn: func(db *sql.DB) UpdateTaskRequest {
 				projectID := createTestProject(t, db)
 				columnID := createTestColumn(t, db, projectID, "To Do")
-				task, _ := NewService(db, nil).CreateTask(context.Background(), CreateTaskRequest{
+				task, _ := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Old Title",
 					ColumnID: columnID,
 					Position: 0,
@@ -3713,7 +3724,7 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 			setupFn: func(db *sql.DB) UpdateTaskRequest {
 				projectID := createTestProject(t, db)
 				columnID := createTestColumn(t, db, projectID, "To Do")
-				task, _ := NewService(db, nil).CreateTask(context.Background(), CreateTaskRequest{
+				task, _ := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
 					Position: 0,
@@ -3731,7 +3742,7 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 			setupFn: func(db *sql.DB) UpdateTaskRequest {
 				projectID := createTestProject(t, db)
 				columnID := createTestColumn(t, db, projectID, "To Do")
-				task, _ := NewService(db, nil).CreateTask(context.Background(), CreateTaskRequest{
+				task, _ := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
 					Position: 0,
@@ -3749,7 +3760,7 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 			setupFn: func(db *sql.DB) UpdateTaskRequest {
 				projectID := createTestProject(t, db)
 				columnID := createTestColumn(t, db, projectID, "To Do")
-				task, _ := NewService(db, nil).CreateTask(context.Background(), CreateTaskRequest{
+				task, _ := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
 					Position: 0,
@@ -3771,7 +3782,7 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			req := tt.setupFn(db)
 
 			err := svc.UpdateTask(context.Background(), req)
@@ -3822,7 +3833,7 @@ func TestDeleteTask_ErrorPaths(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 
 			err := svc.DeleteTask(context.Background(), tt.taskID)
 
@@ -3914,7 +3925,7 @@ func TestAttachLabel_ErrorPaths(t *testing.T) {
 				projectID := createTestProject(t, db)
 				columnID := createTestColumn(t, db, projectID, "To Do")
 				labelID := createTestLabel(t, db, projectID, "Bug")
-				svc := NewService(db, nil)
+				svc := newTestService(t, db)
 				task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
@@ -3934,7 +3945,7 @@ func TestAttachLabel_ErrorPaths(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			taskID, labelID := tt.setupFn(db)
 
 			err := svc.AttachLabel(context.Background(), taskID, labelID)
@@ -4041,7 +4052,7 @@ func TestDetachLabel_ErrorPaths(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			taskID, labelID := tt.setupFn(db)
 
 			err := svc.DetachLabel(context.Background(), taskID, labelID)
@@ -4136,7 +4147,7 @@ func TestAddParentRelation_ErrorPaths(t *testing.T) {
 			setupFn: func(db *sql.DB) (int, int) {
 				projectID := createTestProject(t, db)
 				columnID := createTestColumn(t, db, projectID, "To Do")
-				svc := NewService(db, nil)
+				svc := newTestService(t, db)
 				parent, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Parent",
 					ColumnID: columnID,
@@ -4161,7 +4172,7 @@ func TestAddParentRelation_ErrorPaths(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			childID, parentID := tt.setupFn(db)
 
 			err := svc.AddParentRelation(context.Background(), childID, parentID, 1)
@@ -4260,7 +4271,7 @@ func TestAddChildRelation_ErrorPaths(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			parentID, childID := tt.setupFn(db)
 
 			err := svc.AddChildRelation(context.Background(), parentID, childID, 1)
@@ -4370,7 +4381,7 @@ func TestRemoveParentRelation_ErrorPaths(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			childID, parentID := tt.setupFn(db)
 
 			err := svc.RemoveParentRelation(context.Background(), childID, parentID)
@@ -4460,7 +4471,7 @@ func TestRemoveChildRelation_ErrorPaths(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			parentID, childID := tt.setupFn(db)
 
 			err := svc.RemoveChildRelation(context.Background(), parentID, childID)
@@ -4544,7 +4555,7 @@ func TestMoveTaskToColumn_ErrorPaths(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			taskID, columnID := tt.setupFn(db)
 
 			err := svc.MoveTaskToColumn(context.Background(), taskID, columnID)
@@ -4594,7 +4605,7 @@ func TestGetTaskSummariesByProject_ErrorPaths(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 
 			result, err := svc.GetTaskSummariesByProject(context.Background(), tt.projectID)
 
@@ -4624,7 +4635,7 @@ func TestGetTaskDetail_NegativeID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetTaskDetail(context.Background(), -1)
 
@@ -4665,7 +4676,7 @@ func TestGetTaskReferencesForProject_ErrorPaths(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 
 			_, err := svc.GetTaskReferencesForProject(context.Background(), tt.projectID)
 
@@ -4691,7 +4702,7 @@ func TestComment_BoundaryConditions(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
 	taskID := createTestTask(t, db, columnID, "Test Task")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Test exactly at max length (1000 chars)
 	maxMessage := ""
@@ -4726,7 +4737,7 @@ func TestCreateTask_MaxLengthTitle(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "To Do")
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Test exactly at max length (255 chars)
 	maxTitle := ""
@@ -4758,6 +4769,14 @@ func TestCreateTask_MaxLengthTitle(t *testing.T) {
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	return testutil.SetupTestDB(t)
+}
+
+// newTestService creates a new service for testing (panics on error since tests use valid SQLite)
+func newTestService(t *testing.T, db *sql.DB) Service {
+	t.Helper()
+	svc, err := NewService(db, database.SQLite, nil)
+	require.NoError(t, err, "failed to create test service")
+	return svc
 }
 
 // createTestProject creates a test project and returns its ID

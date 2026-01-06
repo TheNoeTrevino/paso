@@ -14,6 +14,7 @@ type StatusBarProps struct {
 	SearchMode       bool
 	SearchQuery      string
 	ConnectionStatus state.ConnectionStatus
+	DatabaseName     string // Current database connection name (e.g., "Local", "Production")
 }
 
 // RenderStatusBar renders a status bar with left and right aligned text
@@ -46,6 +47,11 @@ func RenderStatusBar(props StatusBarProps) string {
 	default:
 		leftText = "Paso - Task Management"
 		leftColor = theme.Subtle
+	}
+
+	// Append database name if not using local SQLite (Local is the default, so we skip it)
+	if props.DatabaseName != "" && props.DatabaseName != "Local" {
+		leftText = "[" + props.DatabaseName + "] " + leftText
 	}
 
 	rightText := "? for help"

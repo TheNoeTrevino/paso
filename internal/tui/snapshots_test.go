@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/app"
 	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/services/column"
 	"github.com/thenoetrevino/paso/internal/services/label"
@@ -18,7 +19,8 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
-// If you are here bc you changed the ui layout,
+// NOTE:
+// If you are here bc you changed the ui layout and tests are failing,
 // run the following command to update snapshots:
 // UPDATE_SNAPSHOTS=1 go test ./internal/tui -run TestSnapshots
 
@@ -121,7 +123,7 @@ func setupEmptyProject(t *testing.T, db *sql.DB) Model {
 
 	// Create project and services
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
-	appContainer := createAppContainer(db)
+	appContainer := createAppContainer(t, db)
 
 	// Load project data
 	_, err := appContainer.ProjectService.GetProjectByID(ctx, projectID)
@@ -139,7 +141,7 @@ func setupEmptyProject(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil)
+	m := InitialModel(ctx, appContainer, cfg, nil, db)
 
 	// Override with loaded data
 	m.AppState.SetColumns(columns)
@@ -155,7 +157,7 @@ func setupBoardWithTasks(t *testing.T, db *sql.DB) Model {
 	defer cancel()
 
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
-	appContainer := createAppContainer(db)
+	appContainer := createAppContainer(t, db)
 
 	// Get columns
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
@@ -176,7 +178,7 @@ func setupBoardWithTasks(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil)
+	m := InitialModel(ctx, appContainer, cfg, nil, db)
 
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
@@ -191,7 +193,7 @@ func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) Model {
 	defer cancel()
 
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
-	appContainer := createAppContainer(db)
+	appContainer := createAppContainer(t, db)
 
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err)
@@ -214,7 +216,7 @@ func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil)
+	m := InitialModel(ctx, appContainer, cfg, nil, db)
 
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
@@ -229,7 +231,7 @@ func setupBoardWithLabels(t *testing.T, db *sql.DB) Model {
 	defer cancel()
 
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
-	appContainer := createAppContainer(db)
+	appContainer := createAppContainer(t, db)
 
 	// Create labels
 	labelBug := testutil.CreateTestLabel(t, db, projectID, "bug", "#FF0000")
@@ -260,7 +262,7 @@ func setupBoardWithLabels(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil)
+	m := InitialModel(ctx, appContainer, cfg, nil, db)
 
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
@@ -275,14 +277,14 @@ func setupNoProjects(t *testing.T, db *sql.DB) Model {
 	defer cancel()
 
 	// Create app container but don't create any projects
-	appContainer := createAppContainer(db)
+	appContainer := createAppContainer(t, db)
 
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
 
-	m := InitialModel(ctx, appContainer, cfg, nil)
+	m := InitialModel(ctx, appContainer, cfg, nil, db)
 
 	// Explicitly set empty state
 	m.AppState.SetColumns([]*models.Column{})
@@ -299,7 +301,7 @@ func setupProjectNoColumns(t *testing.T, db *sql.DB) Model {
 
 	// Create project but don't create any columns
 	projectID := testutil.CreateTestProject(t, db, "Empty Project")
-	appContainer := createAppContainer(db)
+	appContainer := createAppContainer(t, db)
 
 	// Delete default columns that were auto-created
 	_, err := db.ExecContext(ctx, "DELETE FROM columns WHERE project_id = ?", projectID)
@@ -307,7 +309,7 @@ func setupProjectNoColumns(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil)
+	m := InitialModel(ctx, appContainer, cfg, nil, db)
 
 	// Set empty columns
 	m.AppState.SetColumns([]*models.Column{})
@@ -323,7 +325,7 @@ func setupConnectionDisconnected(t *testing.T, db *sql.DB) Model {
 	defer cancel()
 
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
-	appContainer := createAppContainer(db)
+	appContainer := createAppContainer(t, db)
 
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err)
@@ -335,7 +337,7 @@ func setupConnectionDisconnected(t *testing.T, db *sql.DB) Model {
 	cfg, err := config.Load()
 	require.NoError(t, err)
 	// Pass nil for eventClient to simulate disconnected state
-	m := InitialModel(ctx, appContainer, cfg, nil)
+	m := InitialModel(ctx, appContainer, cfg, nil, db)
 
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
@@ -353,7 +355,7 @@ func setupConnectionReconnecting(t *testing.T, db *sql.DB) Model {
 	defer cancel()
 
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
-	appContainer := createAppContainer(db)
+	appContainer := createAppContainer(t, db)
 
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err)
@@ -364,7 +366,7 @@ func setupConnectionReconnecting(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil)
+	m := InitialModel(ctx, appContainer, cfg, nil, db)
 
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
@@ -382,7 +384,7 @@ func setupNotificationError(t *testing.T, db *sql.DB) Model {
 	defer cancel()
 
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
-	appContainer := createAppContainer(db)
+	appContainer := createAppContainer(t, db)
 
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err)
@@ -393,7 +395,7 @@ func setupNotificationError(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil)
+	m := InitialModel(ctx, appContainer, cfg, nil, db)
 
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
@@ -412,7 +414,7 @@ func setupNotificationWarning(t *testing.T, db *sql.DB) Model {
 	defer cancel()
 
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
-	appContainer := createAppContainer(db)
+	appContainer := createAppContainer(t, db)
 
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err)
@@ -423,7 +425,7 @@ func setupNotificationWarning(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil)
+	m := InitialModel(ctx, appContainer, cfg, nil, db)
 
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
@@ -437,12 +439,22 @@ func setupNotificationWarning(t *testing.T, db *sql.DB) Model {
 }
 
 // createAppContainer creates an app container with all services
-func createAppContainer(db *sql.DB) *app.App {
+func createAppContainer(t *testing.T, db *sql.DB) *app.App {
+	t.Helper()
+	dbType := database.SQLite
+	taskSvc, err := task.NewService(db, dbType, nil)
+	require.NoError(t, err, "failed to create task service")
+	columnSvc, err := column.NewService(db, dbType, nil)
+	require.NoError(t, err, "failed to create column service")
+	labelSvc, err := label.NewService(db, dbType, nil)
+	require.NoError(t, err, "failed to create label service")
+	projectSvc, err := project.NewService(db, dbType, nil)
+	require.NoError(t, err, "failed to create project service")
 	return &app.App{
-		TaskService:    task.NewService(db, nil),
-		ColumnService:  column.NewService(db, nil),
-		LabelService:   label.NewService(db, nil),
-		ProjectService: project.NewService(db, nil),
+		TaskService:    taskSvc,
+		ColumnService:  columnSvc,
+		LabelService:   labelSvc,
+		ProjectService: projectSvc,
 	}
 }
 
