@@ -57,60 +57,52 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	loadCtx, cancel := context.WithTimeout(ctx, timeoutInitialLoad)
 	defer cancel()
 
-	// Load all projects
 	projects, err := application.ProjectService.GetAllProjects(loadCtx)
 	if err != nil {
 		slog.Error("failed to loading projects", "error", err)
 		projects = []*models.Project{}
 	}
 
-	// Get the first project's ID (or 0 if no projects)
+	// TODO: be able to pass this in with a flag, via cli
+	// paso tui --project 1
 	var currentProjectID int
 	if len(projects) > 0 {
 		currentProjectID = projects[0].ID
 	}
 
-	// Load columns for the current project
 	columns, err := application.ColumnService.GetColumnsByProject(loadCtx, currentProjectID)
 	if err != nil {
 		slog.Error("failed to loading columns", "error", err)
 		columns = []*models.Column{}
 	}
 
-	// Load task summaries for the entire project (includes labels)
-	// Uses batch query to avoid N+1 pattern
 	tasks, err := application.TaskService.GetTaskSummariesByProject(loadCtx, currentProjectID)
 	if err != nil {
 		slog.Error("failed to loading tasks for project", "project_id", currentProjectID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
 
-	// Load labels for the current project
 	labels, err := application.LabelService.GetLabelsByProject(loadCtx, currentProjectID)
 	if err != nil {
 		slog.Error("failed to loading labels", "error", err)
 		labels = []*models.Label{}
 	}
 
-	// Initialize new state objects
 	appState := state.NewAppState(projects, 0, columns, tasks, labels)
 	uiState := state.NewUIState()
 	pickerStates := state.NewPickerStates()
 	formStates := state.NewFormStates()
 	uiElements := state.NewUIElements()
 
-	// Generate random tip on startup with user's keybindings
 	tipGenerator := helpers.NewTipGenerator(&cfg.KeyMappings)
 	uiElements.CurrentTip = tipGenerator.SelectRandom()
 
-	// Determine initial connection status based on event client availability
 	initialStatus := state.Disconnected
 	if eventClient != nil {
 		initialStatus = state.Connected
 	}
 	connectionState := state.NewConnectionState(initialStatus)
 
-	// Initialize styles with color scheme from config
 	components.InitStyles(cfg.ColorScheme)
 
 	// Create notification channel for events client messages
