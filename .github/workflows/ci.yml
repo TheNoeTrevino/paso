@@ -69,9 +69,9 @@ jobs:
           echo "Installed version: $INSTALLED_VERSION"
 
           if [[ "$INSTALLED_VERSION" == *"$EXPECTED_VER"* ]]; then
-            echo "✅ SQLC version check passed: $INSTALLED_VERSION"
+            echo "✓ SQLC version check passed: $INSTALLED_VERSION"
           else
-            echo "❌ SQLC version mismatch detected"
+            echo "✗ SQLC version mismatch detected"
             echo "Expected: $EXPECTED_VER"
             echo "Got: $INSTALLED_VERSION"
             exit 1
@@ -79,13 +79,13 @@ jobs:
 
       - name: Check gofmt
         run: |
-          echo "🧹 Checking Go code formatting..."
+          echo "Checking Go code formatting..."
           if [ "$(gofmt -s -l . | grep -v '^crush/' | wc -l)" -gt 0 ]; then
             echo "The following files are not formatted:"
             gofmt -s -l . | grep -v '^crush/'
             exit 1
           fi
-          echo "✅ All files are properly formatted"
+          echo "✓ All files are properly formatted"
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
@@ -99,7 +99,7 @@ jobs:
       - name: Check for uncommitted changes
         run: |
           if ! git diff --exit-code internal/database/adapters/; then
-            echo "Generated code is out of date. Run: go generate ./internal/database/adapters/..."
+            echo "✗ Generated code is out of date. Run: go generate ./internal/database/adapters/..."
             exit 1
           fi
 
@@ -120,16 +120,16 @@ jobs:
 
       - name: Build
         run: |
-          echo "🔨 Building project..."
+          echo "✓ Building project..."
           go build -v -o bin/paso .
-          echo "✅ Build successful"
+          echo "✓ Build successful"
 
       - name: Verify binary
         run: |
           if [ ! -f bin/paso ]; then
-            echo "❌ Binary not created"
+            echo "✗ Binary not created"
             exit 1
           fi
-          echo "📦 Binary information:"
+          echo "OK: Binary information:"
           file bin/paso
           ls -lh bin/paso
