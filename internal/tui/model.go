@@ -18,6 +18,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 	tasksvc "github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/helpers"
 	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -97,6 +98,10 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	pickerStates := state.NewPickerStates()
 	formStates := state.NewFormStates()
 	uiElements := state.NewUIElements()
+
+	// Generate random tip on startup with user's keybindings
+	tipGenerator := helpers.NewTipGenerator(&cfg.KeyMappings)
+	uiElements.CurrentTip = tipGenerator.SelectRandom()
 
 	// Determine initial connection status based on event client availability
 	initialStatus := state.Disconnected
@@ -550,40 +555,33 @@ func (m Model) switchToProject(projectIndex int) {
 		return
 	}
 
-	// Update state
 	m.AppState.SetSelectedProject(projectIndex)
 
 	project := m.AppState.Projects()[projectIndex]
 
-	// Create context for database operations
 	ctx, cancel := m.DBContext()
 	defer cancel()
 
-	// Reload columns for this project
 	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("failed to loading columns for project", "project_id", project.ID, "error", err)
 		columns = []*models.Column{}
 	}
-	m.AppState.SetColumns(columns)
 
-	// Reload task summaries for the entire project
 	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("failed to loading tasks for project", "project_id", project.ID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
-	m.AppState.SetTasks(tasks)
 
-	// Reload labels for this project
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("failed to loading labels for project", "project_id", project.ID, "error", err)
 		labels = []*models.Label{}
 	}
-	m.AppState.SetLabels(labels)
 
 	// Update daemon subscription to the new project
+	// TODO: hmm idk about this
 	if m.EventClient != nil && project.ID > 0 {
 		slog.Info("subscribing to project events", "project_id", project.ID, "project_name", project.Name)
 		if err := m.EventClient.Subscribe(project.ID); err != nil {
@@ -593,7 +591,10 @@ func (m Model) switchToProject(projectIndex int) {
 		}
 	}
 
-	// Reset selection state
+	m.AppState.SetColumns(columns)
+	m.AppState.SetTasks(tasks)
+	m.AppState.SetLabels(labels)
+
 	m.UIState.ResetSelection()
 }
 
@@ -1008,7 +1009,6 @@ func (m *Model) reloadCurrentProject() {
 	ctx, cancel := m.DBContext()
 	defer cancel()
 
-	// Reload columns
 	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("failed to reloading columns", "error", err)
@@ -1016,7 +1016,6 @@ func (m *Model) reloadCurrentProject() {
 		return
 	}
 
-	// Reload tasks
 	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("failed to reloading tasks", "error", err)
@@ -1024,7 +1023,6 @@ func (m *Model) reloadCurrentProject() {
 		return
 	}
 
-	// Reload labels
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("failed to reloading labels", "error", err)
@@ -1032,7 +1030,6 @@ func (m *Model) reloadCurrentProject() {
 		return
 	}
 
-	// Update state with new data (preserves cursor position)
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
