@@ -2,7 +2,7 @@
 -- Creates a new comment for a task
 insert into task_comments (task_id, content, author)
 values ($1, $2, $3)
-RETURNING *;
+returning *;
 
 -- name: GetComment :one
 -- Retrieves a single comment by ID

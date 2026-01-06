@@ -42,7 +42,7 @@ from columns
 where project_id = ?;
 
 -- name: GetTailColumnForProject :one
--- Retrieves the last column in a project's linked list (where next_id is NULL)
+-- Retrieves the last column in a project's linked list (where next_id is null)
 select id
 from columns
 where next_id is null

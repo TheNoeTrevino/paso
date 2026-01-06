@@ -2,7 +2,7 @@
 -- Creates a new project with name and description
 insert into projects (name, description)
 values ($1, $2)
-RETURNING *;
+returning *;
 
 -- name: GetProjectByID :one
 -- Retrieves a project by its ID with all metadata

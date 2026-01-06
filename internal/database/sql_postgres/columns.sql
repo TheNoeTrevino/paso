@@ -11,7 +11,7 @@ insert into columns (
     holds_in_progress_tasks
 )
 values ($1, $2, $3, $4, $5, $6, $7)
-RETURNING *;
+returning *;
 
 -- name: GetColumnByID :one
 -- Retrieves a column by its ID with all metadata
@@ -42,7 +42,7 @@ from columns
 where project_id = $1;
 
 -- name: GetTailColumnForProject :one
--- Retrieves the last column in a project's linked list (where next_id is NULL)
+-- Retrieves the last column in a project's linked list (where next_id is null)
 select id
 from columns
 where next_id is null

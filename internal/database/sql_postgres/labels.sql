@@ -2,7 +2,7 @@
 -- Creates a new label with name, color, and project association
 insert into labels (name, color, project_id)
 values ($1, $2, $3)
-RETURNING *;
+returning *;
 
 -- name: GetLabelsByProject :many
 -- Retrieves all labels for a project, ordered alphabetically by name
@@ -40,7 +40,7 @@ delete from labels where id = $1;
 -- name: AddLabelToTask :exec
 -- Attaches a label to a task (ignores if already attached)
 insert into task_labels (task_id, label_id) values ($1, $2)
-ON CONFLICT (task_id, label_id) DO NOTHING;
+on CONFLICT (task_id, label_id) DO NOTHING;
 
 -- name: RemoveLabelFromTask :exec
 -- Removes a specific label from a task
