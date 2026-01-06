@@ -148,6 +148,9 @@ func setupEmptyProject(t *testing.T, db *sql.DB) Model {
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
 
+	// Set fixed tip for deterministic snapshot tests
+	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
+
 	return m
 }
 
@@ -183,6 +186,9 @@ func setupBoardWithTasks(t *testing.T, db *sql.DB) Model {
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
+
+	// Set fixed tip for deterministic snapshot tests
+	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
@@ -221,6 +227,9 @@ func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) Model {
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
+
+	// Set fixed tip for deterministic snapshot tests
+	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
@@ -268,6 +277,9 @@ func setupBoardWithLabels(t *testing.T, db *sql.DB) Model {
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
 
+	// Set fixed tip for deterministic snapshot tests
+	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
+
 	return m
 }
 
@@ -290,6 +302,9 @@ func setupNoProjects(t *testing.T, db *sql.DB) Model {
 	m.AppState.SetColumns([]*models.Column{})
 	m.AppState.SetTasks(make(map[int][]*models.TaskSummary))
 	m.AppState.SetLabels([]*models.Label{})
+
+	// Set fixed tip for deterministic snapshot tests
+	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
@@ -315,6 +330,9 @@ func setupProjectNoColumns(t *testing.T, db *sql.DB) Model {
 	m.AppState.SetColumns([]*models.Column{})
 	m.AppState.SetTasks(make(map[int][]*models.TaskSummary))
 	m.AppState.SetLabels([]*models.Label{})
+
+	// Set fixed tip for deterministic snapshot tests
+	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
@@ -346,6 +364,9 @@ func setupConnectionDisconnected(t *testing.T, db *sql.DB) Model {
 	// Explicitly set disconnected status
 	m.ConnectionState.SetStatus(state.Disconnected)
 
+	// Set fixed tip for deterministic snapshot tests
+	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
+
 	return m
 }
 
@@ -374,6 +395,9 @@ func setupConnectionReconnecting(t *testing.T, db *sql.DB) Model {
 
 	// Explicitly set reconnecting status
 	m.ConnectionState.SetStatus(state.Reconnecting)
+
+	// Set fixed tip for deterministic snapshot tests
+	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
@@ -405,6 +429,9 @@ func setupNotificationError(t *testing.T, db *sql.DB) Model {
 	m.UI.Notification.SetWindowSize(80, 24)
 	m.UI.Notification.Add(state.LevelError, "Failed to save task: database connection lost")
 
+	// Set fixed tip for deterministic snapshot tests
+	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
+
 	return m
 }
 
@@ -434,6 +461,9 @@ func setupNotificationWarning(t *testing.T, db *sql.DB) Model {
 	// Add warning notification
 	m.UI.Notification.SetWindowSize(80, 24)
 	m.UI.Notification.Add(state.LevelWarning, "Daemon connection unstable - some features may be limited")
+
+	// Set fixed tip for deterministic snapshot tests
+	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
