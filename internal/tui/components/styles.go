@@ -105,6 +105,9 @@ var (
 
 	// SubtleStyle defines a base style for subtle text
 	SubtleStyle lipgloss.Style
+
+	// StatusBarTipStyle defines the style for the tips in the status bar
+	StatusBarTipStyle lipgloss.Style
 )
 
 // InitStyles initializes all styles with the given color scheme
@@ -215,6 +218,10 @@ func InitStyles(colors colors.ColorScheme) {
 		Background(lipgloss.Color(colors.Background))
 
 	EllipsisStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle))
+
+	StatusBarTipStyle = lipgloss.NewStyle().
+		Background(lipgloss.Color(colors.Background)).
 		Foreground(lipgloss.Color(theme.Subtle))
 
 	BlockedStyle = lipgloss.NewStyle().
