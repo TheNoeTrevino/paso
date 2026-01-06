@@ -106,6 +106,17 @@ func (a *Adapter) GetTask(ctx context.Context, id int64) (types.GetTaskRow, erro
 	return fromGeneratedGetTaskRow(result), nil
 }
 
+func (a *Adapter) GetTaskTypeAndPriorityIDs(ctx context.Context, id int64) (types.GetTaskTypeAndPriorityIDsRow, error) {
+	result, err := a.queries.GetTaskTypeAndPriorityIDs(ctx, id)
+	if err != nil {
+		return types.GetTaskTypeAndPriorityIDsRow{}, err
+	}
+	return types.GetTaskTypeAndPriorityIDsRow{
+		TypeID:     result.TypeID,
+		PriorityID: result.PriorityID,
+	}, nil
+}
+
 func (a *Adapter) GetTaskAbove(ctx context.Context, arg types.GetTaskAboveParams) (types.GetTaskAboveRow, error) {
 	result, err := a.queries.GetTaskAbove(ctx, toGeneratedGetTaskAboveParams(arg))
 	if err != nil {

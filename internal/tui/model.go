@@ -18,6 +18,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 	tasksvc "github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/helpers"
 	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -56,56 +57,52 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	loadCtx, cancel := context.WithTimeout(ctx, timeoutInitialLoad)
 	defer cancel()
 
-	// Load all projects
 	projects, err := application.ProjectService.GetAllProjects(loadCtx)
 	if err != nil {
 		slog.Error("failed to loading projects", "error", err)
 		projects = []*models.Project{}
 	}
 
-	// Get the first project's ID (or 0 if no projects)
+	// TODO: be able to pass this in with a flag, via cli
+	// paso tui --project 1
 	var currentProjectID int
 	if len(projects) > 0 {
 		currentProjectID = projects[0].ID
 	}
 
-	// Load columns for the current project
 	columns, err := application.ColumnService.GetColumnsByProject(loadCtx, currentProjectID)
 	if err != nil {
 		slog.Error("failed to loading columns", "error", err)
 		columns = []*models.Column{}
 	}
 
-	// Load task summaries for the entire project (includes labels)
-	// Uses batch query to avoid N+1 pattern
 	tasks, err := application.TaskService.GetTaskSummariesByProject(loadCtx, currentProjectID)
 	if err != nil {
 		slog.Error("failed to loading tasks for project", "project_id", currentProjectID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
 
-	// Load labels for the current project
 	labels, err := application.LabelService.GetLabelsByProject(loadCtx, currentProjectID)
 	if err != nil {
 		slog.Error("failed to loading labels", "error", err)
 		labels = []*models.Label{}
 	}
 
-	// Initialize new state objects
 	appState := state.NewAppState(projects, 0, columns, tasks, labels)
 	uiState := state.NewUIState()
 	pickerStates := state.NewPickerStates()
 	formStates := state.NewFormStates()
 	uiElements := state.NewUIElements()
 
-	// Determine initial connection status based on event client availability
+	tipGenerator := helpers.NewTipGenerator(&cfg.KeyMappings)
+	uiElements.CurrentTip = tipGenerator.SelectRandom()
+
 	initialStatus := state.Disconnected
 	if eventClient != nil {
 		initialStatus = state.Connected
 	}
 	connectionState := state.NewConnectionState(initialStatus)
 
-	// Initialize styles with color scheme from config
 	components.InitStyles(cfg.ColorScheme)
 
 	// Create notification channel for events client messages
@@ -550,40 +547,33 @@ func (m Model) switchToProject(projectIndex int) {
 		return
 	}
 
-	// Update state
 	m.AppState.SetSelectedProject(projectIndex)
 
 	project := m.AppState.Projects()[projectIndex]
 
-	// Create context for database operations
 	ctx, cancel := m.DBContext()
 	defer cancel()
 
-	// Reload columns for this project
 	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("failed to loading columns for project", "project_id", project.ID, "error", err)
 		columns = []*models.Column{}
 	}
-	m.AppState.SetColumns(columns)
 
-	// Reload task summaries for the entire project
 	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("failed to loading tasks for project", "project_id", project.ID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
 	}
-	m.AppState.SetTasks(tasks)
 
-	// Reload labels for this project
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("failed to loading labels for project", "project_id", project.ID, "error", err)
 		labels = []*models.Label{}
 	}
-	m.AppState.SetLabels(labels)
 
 	// Update daemon subscription to the new project
+	// TODO: hmm idk about this
 	if m.EventClient != nil && project.ID > 0 {
 		slog.Info("subscribing to project events", "project_id", project.ID, "project_name", project.Name)
 		if err := m.EventClient.Subscribe(project.ID); err != nil {
@@ -593,7 +583,10 @@ func (m Model) switchToProject(projectIndex int) {
 		}
 	}
 
-	// Reset selection state
+	m.AppState.SetColumns(columns)
+	m.AppState.SetTasks(tasks)
+	m.AppState.SetLabels(labels)
+
 	m.UIState.ResetSelection()
 }
 
@@ -790,26 +783,18 @@ func (m *Model) initPriorityPickerForForm() bool {
 	// Otherwise, default to medium (id=3)
 	currentPriorityID := 3 // Default to medium
 
-	// If editing an existing task, we need to get the current priority from database
+	// If editing an existing task, get the current priority ID directly from database
 	if m.Forms.Form.EditingTaskID != 0 {
 		ctx, cancel := m.DBContext()
 		defer cancel()
 
-		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.Forms.Form.EditingTaskID)
+		_, priorityID, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, m.Forms.Form.EditingTaskID)
 		if err != nil {
-			slog.Error("failed to loading task detail for priority picker", "error", err)
+			slog.Error("failed to get task priority ID for priority picker", "error", err)
 			return false
 		}
 
-		// Find the priority ID from the priority description
-		// We need to match it against our priority options
-		priorities := renderers.GetPriorityOptions()
-		for _, p := range priorities {
-			if p.Description == taskDetail.PriorityDescription {
-				currentPriorityID = p.ID
-				break
-			}
-		}
+		currentPriorityID = priorityID
 	}
 
 	// Initialize PriorityPickerState
@@ -829,31 +814,24 @@ func (m *Model) initTypePickerForForm() bool {
 	// Otherwise, default to task (id=1)
 	currentTypeID := 1 // Default to task
 
-	// If editing an existing task, we need to get the current type from database
+	// If editing an existing task, get the current type ID directly from database
 	if m.Forms.Form.EditingTaskID != 0 {
 		ctx, cancel := m.DBContext()
 		defer cancel()
 
-		taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, m.Forms.Form.EditingTaskID)
+		typeID, _, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, m.Forms.Form.EditingTaskID)
 		if err != nil {
-			slog.Error("failed to loading task detail for type picker", "error", err)
+			slog.Error("failed to get task type ID for type picker", "error", err)
 			return false
 		}
 
-		// Find the type ID from the type description
-		// We need to match it against our type options
-		types := renderers.GetTypeOptions()
-		for _, t := range types {
-			if t.Description == taskDetail.TypeDescription {
-				currentTypeID = t.ID
-				break
-			}
-		}
+		currentTypeID = typeID
 	}
 
-	// Initialize TypePickerState
+	// init to current type
 	m.Pickers.Type.SetSelectedTypeID(currentTypeID)
-	// Set cursor to match the selected type (adjust for 0-indexing)
+
+	// set cursor to match the selected type, 0-indexed
 	m.Pickers.Type.SetCursor(currentTypeID - 1)
 	m.Pickers.Type.ReturnMode = state.TicketFormMode
 
@@ -875,7 +853,6 @@ func (m Model) buildListViewRows() []renderers.ListViewRow {
 		}
 	}
 
-	// Apply sorting
 	m.sortListViewRows(rows)
 	return rows
 }
@@ -913,7 +890,7 @@ func (m *Model) syncKanbanToListSelection() {
 		return
 	}
 
-	// Find the task that matches the current kanban selection
+	// find task that matches the current kanban selection
 	currentTask := m.getCurrentTask()
 	if currentTask == nil {
 		m.UI.ListView.SetSelectedRow(0)
@@ -947,7 +924,7 @@ func (m *Model) syncListToKanbanSelection() {
 
 	selectedTask := rows[selectedRow].Task
 
-	// Find the column and task position in kanban view
+	// column and task position in kanban view
 	for colIdx, col := range m.AppState.Columns() {
 		tasks := m.AppState.Tasks()[col.ID]
 		for taskIdx, task := range tasks {
@@ -971,8 +948,7 @@ func (m Model) getTaskFromListRow(rowIdx int) *models.TaskSummary {
 	return rows[rowIdx].Task
 }
 
-// getSelectedListTask returns the currently selected task in list view.
-// This is a convenience method that uses getTaskFromListRow with the current selection.
+// getSelectedListTask returns the currently selected task in list view
 func (m Model) getSelectedListTask() *models.TaskSummary {
 	return m.getTaskFromListRow(m.UI.ListView.SelectedRow())
 }
@@ -988,7 +964,6 @@ func (m Model) subscribeToEvents() tea.Cmd {
 		select {
 		case event, ok := <-m.EventChan:
 			if !ok {
-				// Channel closed, connection lost
 				return nil
 			}
 			return RefreshMsg{Event: event}
@@ -1008,7 +983,6 @@ func (m *Model) reloadCurrentProject() {
 	ctx, cancel := m.DBContext()
 	defer cancel()
 
-	// Reload columns
 	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("failed to reloading columns", "error", err)
@@ -1016,7 +990,6 @@ func (m *Model) reloadCurrentProject() {
 		return
 	}
 
-	// Reload tasks
 	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("failed to reloading tasks", "error", err)
@@ -1024,7 +997,6 @@ func (m *Model) reloadCurrentProject() {
 		return
 	}
 
-	// Reload labels
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("failed to reloading labels", "error", err)
@@ -1032,16 +1004,13 @@ func (m *Model) reloadCurrentProject() {
 		return
 	}
 
-	// Update state with new data (preserves cursor position)
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
 }
 
-// calculateDescriptionLines calculates the optimal number of lines for the
-// description field in the task form based on current screen dimensions.
-// This follows the same layout calculation as renderTaskFormLayer but is
-// called during Update to avoid state mutation in View.
+// calculateDescriptionLines calculates the number of lines for the
+// description field in the task form based on current screen height
 func (m Model) calculateDescriptionLines() int {
 	const ( // WARN: keep in sync with renderTaskFormLayer
 		chromeHeight       = 6  // border (2) + padding (2) + title (1) + blanks (1)
@@ -1051,16 +1020,11 @@ func (m Model) calculateDescriptionLines() int {
 	)
 
 	layerHeight := m.UIState.Height() * 8 / 10
-
 	innerHeight := layerHeight - chromeHeight
-
-	// Top left zone (title/desc) is 70% of inner height
 	topLeftHeight := innerHeight * 7 / 10
 
-	descriptionLines := min(
+	return min(
 		max(topLeftHeight-descChromeOverhead, minDescLines),
 		maxDescLines,
 	)
-
-	return descriptionLines
 }

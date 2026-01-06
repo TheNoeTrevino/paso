@@ -2,24 +2,24 @@
 -- Initial schema for paso task management system
 
 -- Lookup table for task types
-CREATE TABLE types (
-    id INTEGER PRIMARY KEY,
-    description TEXT NOT NULL UNIQUE
+create table types (
+    id integer primary key,
+    description text not null unique
 );
 
-INSERT INTO types (id, description) VALUES
+insert into types (id, description) values
     (1, 'task'),
     (2, 'feature'),
     (3, 'bug');
 
 -- Lookup table for task priorities
-CREATE TABLE priorities (
-    id INTEGER PRIMARY KEY,
-    description TEXT NOT NULL UNIQUE,
-    color TEXT NOT NULL
+create table priorities (
+    id integer primary key,
+    description text not null unique,
+    color text not null
 );
 
-INSERT INTO priorities (id, description, color) VALUES
+insert into priorities (id, description, color) values
     (1, 'trivial', '#3B82F6'),
     (2, 'low', '#22C55E'),
     (3, 'medium', '#EAB308'),
@@ -27,142 +27,144 @@ INSERT INTO priorities (id, description, color) VALUES
     (5, 'critical', '#EF4444');
 
 -- Lookup table for task relationship types
-CREATE TABLE relation_types (
-    id INTEGER PRIMARY KEY,
-    p_to_c_label TEXT NOT NULL,
-    c_to_p_label TEXT NOT NULL,
-    color TEXT NOT NULL,
-    is_blocking BOOLEAN NOT NULL DEFAULT 0
+create table relation_types (
+    id integer primary key,
+    p_to_c_label text not null,
+    c_to_p_label text not null,
+    color text not null,
+    is_blocking boolean not null default 0
 );
 
-INSERT INTO relation_types (id, p_to_c_label, c_to_p_label, color, is_blocking) VALUES
+insert into relation_types (
+    id, p_to_c_label, c_to_p_label, color, is_blocking
+) values
     (1, 'Parent', 'Child', '#6B7280', 0),
     (2, 'Blocked By', 'Blocker', '#EF4444', 1),
     (3, 'Related To', 'Related To', '#3B82F6', 0);
 
 -- Projects table
-CREATE TABLE projects (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    description TEXT DEFAULT '',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+create table projects (
+    id integer primary key autoincrement,
+    name text not null,
+    description text default '',
+    created_at DATETIME default current_timestamp,
+    updated_at DATETIME default current_timestamp
 );
 
 -- Project ticket number counters
-CREATE TABLE project_counters (
-    project_id INTEGER PRIMARY KEY,
-    next_ticket_number INTEGER DEFAULT 1,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+create table project_counters (
+    project_id integer primary key,
+    next_ticket_number integer default 1,
+    foreign key (project_id) references projects(id) on delete cascade
 );
 
 -- Columns table (linked list structure for board columns)
-CREATE TABLE columns (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    prev_id INTEGER NULL,
-    next_id INTEGER NULL,
-    project_id INTEGER NOT NULL,
-    holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
-    holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
-    holds_in_progress_tasks BOOLEAN NOT NULL DEFAULT 0,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+create table columns (
+    id integer primary key autoincrement,
+    name text not null,
+    prev_id integer null,
+    next_id integer null,
+    project_id integer not null,
+    holds_ready_tasks boolean not null default 0,
+    holds_completed_tasks boolean not null default 0,
+    holds_in_progress_tasks boolean not null default 0,
+    foreign key (project_id) references projects(id) on delete cascade
 );
 
 -- Labels table
-CREATE TABLE labels (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    color TEXT NOT NULL DEFAULT '#7D56F4',
-    project_id INTEGER NOT NULL,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    UNIQUE(name, project_id)
+create table labels (
+    id integer primary key autoincrement,
+    name text not null,
+    color text not null default '#7D56F4',
+    project_id integer not null,
+    foreign key (project_id) references projects(id) on delete cascade,
+    unique(name, project_id)
 );
 
 -- Tasks table
-CREATE TABLE tasks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    description TEXT,
-    column_id INTEGER NOT NULL,
-    position INTEGER NOT NULL,
-    ticket_number INTEGER,
-    type_id INTEGER NOT NULL DEFAULT 1,
-    priority_id INTEGER NOT NULL DEFAULT 3,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
-    FOREIGN KEY (type_id) REFERENCES types(id),
-    FOREIGN KEY (priority_id) REFERENCES priorities(id)
+create table tasks (
+    id integer primary key autoincrement,
+    title text not null,
+    description text,
+    column_id integer not null,
+    position integer not null,
+    ticket_number integer,
+    type_id integer not null default 1,
+    priority_id integer not null default 3,
+    created_at DATETIME default current_timestamp,
+    updated_at DATETIME default current_timestamp,
+    foreign key (column_id) references columns(id) on delete cascade,
+    foreign key (type_id) references types(id),
+    foreign key (priority_id) references priorities(id)
 );
 
 -- Task-labels many-to-many relationship
-CREATE TABLE task_labels (
-    task_id INTEGER NOT NULL,
-    label_id INTEGER NOT NULL,
-    PRIMARY KEY (task_id, label_id),
-    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-    FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE
+create table task_labels (
+    task_id integer not null,
+    label_id integer not null,
+    primary key (task_id, label_id),
+    foreign key (task_id) references tasks(id) on delete cascade,
+    foreign key (label_id) references labels(id) on delete cascade
 );
 
 -- Task relationships (parent-child, blocking, etc.)
-CREATE TABLE task_subtasks (
-    parent_id INTEGER NOT NULL,
-    child_id INTEGER NOT NULL,
-    relation_type_id INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (parent_id, child_id),
-    FOREIGN KEY (parent_id) REFERENCES tasks(id) ON DELETE CASCADE,
-    FOREIGN KEY (child_id) REFERENCES tasks(id) ON DELETE CASCADE,
-    FOREIGN KEY (relation_type_id) REFERENCES relation_types(id)
+create table task_subtasks (
+    parent_id integer not null,
+    child_id integer not null,
+    relation_type_id integer not null default 1,
+    primary key (parent_id, child_id),
+    foreign key (parent_id) references tasks(id) on delete cascade,
+    foreign key (child_id) references tasks(id) on delete cascade,
+    foreign key (relation_type_id) references relation_types(id)
 );
 
 -- Task comments/notes
-CREATE TABLE task_comments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    task_id INTEGER NOT NULL,
-    content TEXT NOT NULL CHECK(length(content) <= 1000),
-    author TEXT NOT NULL DEFAULT '',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+create table task_comments (
+    id integer primary key autoincrement,
+    task_id integer not null,
+    content text not null check(length(content) <= 1000),
+    author text not null default '',
+    created_at DATETIME default current_timestamp,
+    updated_at DATETIME default current_timestamp,
+    foreign key (task_id) references tasks(id) on delete cascade
 );
 
 -- Indexes for performance
-CREATE INDEX idx_tasks_column ON tasks(column_id, position);
-CREATE INDEX idx_columns_project ON columns(project_id);
-CREATE INDEX idx_labels_project ON labels(project_id);
-CREATE INDEX idx_task_labels_label ON task_labels(label_id);
-CREATE INDEX idx_task_subtasks_parent ON task_subtasks(parent_id);
-CREATE INDEX idx_task_subtasks_child ON task_subtasks(child_id);
-CREATE INDEX idx_task_comments_task ON task_comments(task_id);
+create index idx_tasks_column on tasks(column_id, position);
+create index idx_columns_project on columns(project_id);
+create index idx_labels_project on labels(project_id);
+create index idx_task_labels_label on task_labels(label_id);
+create index idx_task_subtasks_parent on task_subtasks(parent_id);
+create index idx_task_subtasks_child on task_subtasks(child_id);
+create index idx_task_comments_task on task_comments(task_id);
 
 -- Unique partial indexes for column constraints
-CREATE UNIQUE INDEX idx_columns_ready_per_project ON columns(project_id) WHERE holds_ready_tasks = 1;
-CREATE UNIQUE INDEX idx_columns_completed_per_project ON columns(project_id) WHERE holds_completed_tasks = 1;
-CREATE UNIQUE INDEX idx_columns_in_progress_per_project ON columns(project_id) WHERE holds_in_progress_tasks = 1;
+create unique index idx_columns_ready_per_project on columns(project_id) where holds_ready_tasks = 1;
+create unique index idx_columns_completed_per_project on columns(project_id) where holds_completed_tasks = 1;
+create unique index idx_columns_in_progress_per_project on columns(project_id) where holds_in_progress_tasks = 1;
 
 -- +goose Down
 -- Drop all tables and indexes in reverse order
 
-DROP INDEX IF EXISTS idx_columns_in_progress_per_project;
-DROP INDEX IF EXISTS idx_columns_completed_per_project;
-DROP INDEX IF EXISTS idx_columns_ready_per_project;
-DROP INDEX IF EXISTS idx_task_comments_task;
-DROP INDEX IF EXISTS idx_task_subtasks_child;
-DROP INDEX IF EXISTS idx_task_subtasks_parent;
-DROP INDEX IF EXISTS idx_task_labels_label;
-DROP INDEX IF EXISTS idx_labels_project;
-DROP INDEX IF EXISTS idx_columns_project;
-DROP INDEX IF EXISTS idx_tasks_column;
+drop index if exists idx_columns_in_progress_per_project;
+drop index if exists idx_columns_completed_per_project;
+drop index if exists idx_columns_ready_per_project;
+drop index if exists idx_task_comments_task;
+drop index if exists idx_task_subtasks_child;
+drop index if exists idx_task_subtasks_parent;
+drop index if exists idx_task_labels_label;
+drop index if exists idx_labels_project;
+drop index if exists idx_columns_project;
+drop index if exists idx_tasks_column;
 
-DROP TABLE IF EXISTS task_comments;
-DROP TABLE IF EXISTS task_subtasks;
-DROP TABLE IF EXISTS task_labels;
-DROP TABLE IF EXISTS tasks;
-DROP TABLE IF EXISTS labels;
-DROP TABLE IF EXISTS columns;
-DROP TABLE IF EXISTS project_counters;
-DROP TABLE IF EXISTS projects;
-DROP TABLE IF EXISTS relation_types;
-DROP TABLE IF EXISTS priorities;
-DROP TABLE IF EXISTS types;
+drop table if exists task_comments;
+drop table if exists task_subtasks;
+drop table if exists task_labels;
+drop table if exists tasks;
+drop table if exists labels;
+drop table if exists columns;
+drop table if exists project_counters;
+drop table if exists projects;
+drop table if exists relation_types;
+drop table if exists priorities;
+drop table if exists types;

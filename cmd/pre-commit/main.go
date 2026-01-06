@@ -66,7 +66,6 @@ func main() {
 	ctx := context.Background()
 	formatters := []Formatter{
 		&GoFmtFormatter{},
-		&SqruffFormatter{},
 	}
 
 	// Channel to collect results

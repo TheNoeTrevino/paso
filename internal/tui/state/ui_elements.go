@@ -7,6 +7,7 @@ type UIElements struct {
 	Notification *NotificationState // Notification state (for displaying user messages)
 	Search       *SearchState       // Search state (for filtering/searching tasks)
 	ListView     *ListViewState     // List view state (for rendering tasks in list format)
+	CurrentTip   string             // Current tip to display in statusbar
 }
 
 // NewUIElements creates a new UIElements instance with all UI element states initialized.

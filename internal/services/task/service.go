@@ -25,6 +25,7 @@ type TaskReader interface {
 	GetInProgressTasksByProject(ctx context.Context, projectID int) ([]*models.TaskDetail, error)
 	GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error)
 	GetTaskTreeByProject(ctx context.Context, projectID int) ([]*models.TaskTreeNode, error)
+	GetTaskTypeAndPriorityIDs(ctx context.Context, taskID int) (typeID, priorityID int, err error)
 }
 
 // TaskWriter defines task writing operations
@@ -459,6 +460,24 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 	}
 
 	return detail, nil
+}
+
+// GetTaskTypeAndPriorityIDs retrieves only the type and priority IDs for a task
+// This is a lightweight alternative to GetTaskDetail when only these IDs are needed
+func (s *service) GetTaskTypeAndPriorityIDs(ctx context.Context, taskID int) (typeID, priorityID int, err error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if taskID <= 0 {
+		return 0, 0, ErrInvalidTaskID
+	}
+
+	row, err := s.queries.GetTaskTypeAndPriorityIDs(ctx, int64(taskID))
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get task type and priority IDs: %w", err)
+	}
+
+	return int(row.TypeID), int(row.PriorityID), nil
 }
 
 // GetTaskSummariesByProject retrieves task summaries for a project, grouped by column

@@ -33,7 +33,7 @@ env:
 
 jobs:
   test:
-    name: Run Tests
+    name: Run Tests with Coverage
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -46,45 +46,26 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
-      - name: Run tests
+      - name: Run tests with coverage and race detection
         run: |
-          echo "🧪 Running tests..."
-          go test -v -race ./...
-          echo "✅ Tests passed"
-
-  coverage:
-    name: Test Coverage
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-          cache-dependency-path: go.sum
-
-      - name: Run tests with coverage
-        run: |
-          echo "📊 Running tests with coverage..."
-          go test ./... -coverprofile=coverage.out -covermode=atomic
+          echo "🧪 Running tests with coverage..."
+          go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          echo "✓ Tests passed"
           go tool cover -func=coverage.out > coverage.txt
 
       - name: Check coverage threshold
         run: |
           echo "Checking coverage threshold..."
           COVERAGE=$(tail -1 coverage.txt | grep -oE '[0-9]+\.[0-9]+%' | sed 's/%//')
-          THRESHOLD=15.0
+          THRESHOLD=25.0
           echo "Current coverage: ${COVERAGE}%"
           echo "Required threshold: ${THRESHOLD}%"
-          
+
           # Compare coverage with threshold using awk
           if awk "BEGIN {exit !($COVERAGE >= $THRESHOLD)}"; then
-            echo "✅ Coverage check passed: ${COVERAGE}% >= ${THRESHOLD}%"
+            echo "✓ Coverage check passed: ${COVERAGE}% >= ${THRESHOLD}%"
           else
-            echo "❌ Coverage check failed: ${COVERAGE}% < ${THRESHOLD}%"
+            echo "✗ Coverage check failed: ${COVERAGE}% < ${THRESHOLD}%"
             echo "Please add more tests to improve code coverage."
             exit 1
           fi

@@ -1,5 +1,4 @@
 [sqruff]
-dialect = sqlite
 exclude_rules = LT01,LT02
 rules = all
 
@@ -7,3 +6,9 @@ rules = all
 indent_unit = space
 tab_space_size = 4
 indented_joins = True
+
+[sqruff:internal/database/sql_postgres]
+dialect = postgres
+
+[sqruff:internal/database/sql_sqlite]
+dialect = sqlite

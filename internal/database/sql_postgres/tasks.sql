@@ -7,7 +7,7 @@ insert into tasks (
     position,
     ticket_number)
 values ($1, $2, $3, $4, $5)
-RETURNING *;
+returning *;
 
 -- name: GetTask :one
 -- Retrieves basic task information by ID
@@ -19,6 +19,14 @@ select
     position,
     created_at,
     updated_at
+from tasks
+where id = $1;
+
+-- name: GetTaskTypeAndPriorityIDs :one
+-- Retrieves only the type_id and priority_id for a task (lightweight query)
+select
+    type_id,
+    priority_id
 from tasks
 where id = $1;
 
@@ -414,13 +422,13 @@ order by p.name, t.ticket_number;
 -- Creates a parent-child relationship between two tasks (ignores duplicates)
 insert into task_subtasks (parent_id, child_id)
 values ($1, $2)
-ON CONFLICT (parent_id, child_id) DO NOTHING;
+on CONFLICT (parent_id, child_id) DO NOTHING;
 
 -- name: AddSubtaskWithRelationType :exec
 -- Creates or updates a parent-child relationship with a specific relation type
 insert into task_subtasks (parent_id, child_id, relation_type_id)
 values ($1, $2, $3)
-ON CONFLICT (parent_id, child_id) DO UPDATE SET relation_type_id = $3;
+on CONFLICT (parent_id, child_id) DO update set relation_type_id = $3;
 
 -- name: RemoveSubtask :exec
 -- Removes a parent-child relationship between two tasks

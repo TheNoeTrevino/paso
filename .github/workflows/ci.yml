@@ -10,6 +10,7 @@ on:
       - "go.mod"
       - "go.sum"
       - ".golangci.yml"
+      - ".sqlc"
       - ".github/workflows/ci.yml"
   pull_request:
     branches:
@@ -20,6 +21,7 @@ on:
       - "go.mod"
       - "go.sum"
       - ".golangci.yml"
+      - ".sqlc"
       - ".github/workflows/ci.yml"
 
 permissions:
@@ -36,8 +38,8 @@ env:
   SQLC_VERSION: "v1.30.0"
 
 jobs:
-  sqlc-version:
-    name: SQLC Version Check
+  validate:
+    name: Validate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -47,6 +49,8 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Install SQLC
         env:
@@ -65,49 +69,23 @@ jobs:
           echo "Installed version: $INSTALLED_VERSION"
 
           if [[ "$INSTALLED_VERSION" == *"$EXPECTED_VER"* ]]; then
-            echo "✅ SQLC version check passed: $INSTALLED_VERSION"
+            echo "✓ SQLC version check passed: $INSTALLED_VERSION"
           else
-            echo "❌ SQLC version mismatch detected"
+            echo "✗ SQLC version mismatch detected"
             echo "Expected: $EXPECTED_VER"
             echo "Got: $INSTALLED_VERSION"
             exit 1
           fi
 
-  format:
-    name: Format Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: ${{ env.GO_VERSION }}
-
       - name: Check gofmt
         run: |
-          echo "🧹 Checking Go code formatting..."
+          echo "Checking Go code formatting..."
           if [ "$(gofmt -s -l . | grep -v '^crush/' | wc -l)" -gt 0 ]; then
             echo "The following files are not formatted:"
             gofmt -s -l . | grep -v '^crush/'
             exit 1
           fi
-          echo "✅ All files are properly formatted"
-
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-          cache-dependency-path: go.sum
+          echo "✓ All files are properly formatted"
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
@@ -115,34 +93,20 @@ jobs:
           version: v2.7.2
           args: --timeout=5m
 
-  generate:
-    name: Verify Generated Code
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-          cache-dependency-path: go.sum
-
       - name: Regenerate adapters
         run: go generate ./internal/database/adapters/...
 
       - name: Check for uncommitted changes
         run: |
           if ! git diff --exit-code internal/database/adapters/; then
-            echo "Generated code is out of date. Run: go generate ./internal/database/adapters/..."
+            echo "✗ Generated code is out of date. Run: go generate ./internal/database/adapters/..."
             exit 1
           fi
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [format, lint, sqlc-version, generate]
+    needs: [validate]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -156,16 +120,16 @@ jobs:
 
       - name: Build
         run: |
-          echo "🔨 Building project..."
+          echo "✓ Building project..."
           go build -v -o bin/paso .
-          echo "✅ Build successful"
+          echo "✓ Build successful"
 
       - name: Verify binary
         run: |
           if [ ! -f bin/paso ]; then
-            echo "❌ Binary not created"
+            echo "✗ Binary not created"
             exit 1
           fi
-          echo "📦 Binary information:"
+          echo "OK: Binary information:"
           file bin/paso
           ls -lh bin/paso
