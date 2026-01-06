@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
@@ -17,6 +19,14 @@ import (
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	return testutil.SetupTestDB(t)
+}
+
+// newTestService creates a new service for testing (panics on error since tests use valid SQLite)
+func newTestService(t *testing.T, db *sql.DB) Service {
+	t.Helper()
+	svc, err := NewService(db, database.SQLite, nil)
+	require.NoError(t, err, "failed to create test service")
+	return svc
 }
 
 // createTestProject creates a test project and returns its ID
@@ -59,7 +69,7 @@ func TestCreateColumn(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	req := CreateColumnRequest{
 		Name:      "To Do",
@@ -150,7 +160,7 @@ func TestCreateColumn_Validation(t *testing.T) {
 				projectID = tt.setupFn(db)
 			}
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			req := CreateColumnRequest{
 				Name:      tt.colName,
 				ProjectID: projectID,
@@ -177,7 +187,7 @@ func TestCreateColumn_LinkedList(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create first column
 	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -250,7 +260,7 @@ func TestCreateColumn_InsertAfter(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two columns
 	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -310,7 +320,7 @@ func TestGetColumnsByProject(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two columns
 	_, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -354,7 +364,7 @@ func TestGetColumnsByProject_Empty(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	results, err := svc.GetColumnsByProject(context.Background(), projectID)
 	if err != nil {
@@ -372,7 +382,7 @@ func TestGetColumnsByProject_InvalidProjectID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetColumnsByProject(context.Background(), 0)
 
@@ -392,7 +402,7 @@ func TestGetColumnByID(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
 		Name:      "To Do",
@@ -422,7 +432,7 @@ func TestGetColumnByID_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetColumnByID(context.Background(), 999)
 
@@ -441,7 +451,7 @@ func TestGetColumnByID_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetColumnByID(context.Background(), 0)
 
@@ -461,7 +471,7 @@ func TestUpdateColumnName(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
 		Name:      "To Do",
@@ -504,7 +514,7 @@ func TestUpdateColumnName_Validation(t *testing.T) {
 			errType: ErrEmptyName,
 			setupFn: func(db *sql.DB) int {
 				projectID := createTestProject(t, db)
-				col, _ := NewService(db, nil).CreateColumn(context.Background(), CreateColumnRequest{
+				col, _ := newTestService(t, db).CreateColumn(context.Background(), CreateColumnRequest{
 					Name:      "To Do",
 					ProjectID: projectID,
 				})
@@ -532,7 +542,7 @@ func TestUpdateColumnName_Validation(t *testing.T) {
 				columnID = tt.setupFn(db)
 			}
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			err := svc.UpdateColumnName(context.Background(), columnID, tt.newName)
 
 			if (err != nil) != tt.wantErr {
@@ -554,7 +564,7 @@ func TestDeleteColumn(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
 		Name:      "To Do",
@@ -597,7 +607,7 @@ func TestDeleteColumn_Validation(t *testing.T) {
 			errType: ErrColumnHasTasks,
 			setupFn: func(db *sql.DB) int {
 				projectID := createTestProject(t, db)
-				col, _ := NewService(db, nil).CreateColumn(context.Background(), CreateColumnRequest{
+				col, _ := newTestService(t, db).CreateColumn(context.Background(), CreateColumnRequest{
 					Name:      "To Do",
 					ProjectID: projectID,
 				})
@@ -619,7 +629,7 @@ func TestDeleteColumn_Validation(t *testing.T) {
 				columnID = tt.setupFn(db)
 			}
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			err := svc.DeleteColumn(context.Background(), columnID)
 
 			if (err != nil) != tt.wantErr {
@@ -641,7 +651,7 @@ func TestDeleteColumn_LinkedListIntegrity(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create three columns: col1 <-> col2 <-> col3
 	col1, _ := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -690,7 +700,7 @@ func TestCreateColumn_WithHoldsReadyTasks(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	req := CreateColumnRequest{
 		Name:            "To Do",
@@ -715,7 +725,7 @@ func TestCreateColumn_HoldsReadyTasks_ClearsPrevious(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create first column with HoldsReadyTasks = true
 	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -763,7 +773,7 @@ func TestSetHoldsReadyTasks_Success(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two columns (neither ready)
 	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -802,7 +812,7 @@ func TestSetHoldsReadyTasks_TransfersFromPrevious(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create col1 as ready
 	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -864,7 +874,7 @@ func TestGetColumnByID_IncludesHoldsReadyTasks(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create column with HoldsReadyTasks = true
 	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -894,7 +904,7 @@ func TestGetColumnsByProject_IncludesHoldsReadyTasks(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create one ready column and one not ready
 	_, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -942,7 +952,7 @@ func TestSetHoldsReadyTasks_InvalidColumnID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.SetHoldsReadyTasks(context.Background(), 0)
 
@@ -961,7 +971,7 @@ func TestSetHoldsReadyTasks_ColumnNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.SetHoldsReadyTasks(context.Background(), 999)
 
@@ -1031,7 +1041,7 @@ func TestGetColumnByID_NegativeID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetColumnByID(context.Background(), -1)
 
@@ -1050,7 +1060,7 @@ func TestGetColumnsByProject_NegativeProjectID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetColumnsByProject(context.Background(), -1)
 
@@ -1069,7 +1079,7 @@ func TestGetColumnsByProject_NonExistentProject(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Non-existent project should return empty list, not error
 	results, err := svc.GetColumnsByProject(context.Background(), 999999)
@@ -1088,7 +1098,7 @@ func TestUpdateColumnName_NegativeID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	err := svc.UpdateColumnName(context.Background(), -1, "New Name")
 
@@ -1107,7 +1117,7 @@ func TestUpdateColumnName_NonExistentColumn(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	err := svc.UpdateColumnName(context.Background(), 999999, "New Name")
 
@@ -1127,7 +1137,7 @@ func TestUpdateColumnName_NameTooLong(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
 		Name:      "To Do",
@@ -1157,7 +1167,7 @@ func TestDeleteColumn_NegativeID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	err := svc.DeleteColumn(context.Background(), -1)
 
@@ -1176,7 +1186,7 @@ func TestDeleteColumn_NonExistentColumn(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	err := svc.DeleteColumn(context.Background(), 999999)
 
@@ -1238,7 +1248,7 @@ func TestCreateColumn_InvalidAfterID(t *testing.T) {
 			defer func() { _ = db.Close() }()
 
 			projectID := tt.setupFn(db)
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 
 			_, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
 				Name:      "Test Column",
@@ -1264,7 +1274,7 @@ func TestCreateColumn_AfterColumnFromDifferentProject(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two projects
 	projectID1 := createTestProject(t, db)
@@ -1309,7 +1319,7 @@ func TestDeleteColumn_FirstColumn(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create three columns: col1 <-> col2 <-> col3
 	col1, _ := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -1358,7 +1368,7 @@ func TestDeleteColumn_LastColumn(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create three columns: col1 <-> col2 <-> col3
 	col1, _ := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -1407,7 +1417,7 @@ func TestDeleteColumn_OnlyColumn(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create single column
 	col, _ := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -1442,7 +1452,7 @@ func TestSetHoldsReadyTasks_NegativeColumnID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.SetHoldsReadyTasks(context.Background(), -1)
 
@@ -1461,7 +1471,7 @@ func TestCreateColumn_MultipleReadyColumns_DifferentProjects(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two projects
 	projectID1 := createTestProject(t, db)
@@ -1518,7 +1528,7 @@ func TestSetHoldsCompletedTasks_NegativeColumnID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.SetHoldsCompletedTasks(context.Background(), -1, false)
 
@@ -1537,7 +1547,7 @@ func TestCreateColumn_MultipleCompletedColumns_DifferentProjects(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two projects
 	projectID1 := createTestProject(t, db)
@@ -1595,7 +1605,7 @@ func TestCreateColumn_WithHoldsInProgressTasks(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	req := CreateColumnRequest{
 		Name:                 "In Progress",
@@ -1620,7 +1630,7 @@ func TestCreateColumn_HoldsInProgressTasks_ClearsPrevious(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create first column with HoldsInProgressTasks = true
 	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -1668,7 +1678,7 @@ func TestSetHoldsInProgressTasks_Success(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two columns (neither in-progress)
 	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -1707,7 +1717,7 @@ func TestSetHoldsInProgressTasks_FailsWhenExists(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create col1 as in-progress
 	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -1768,7 +1778,7 @@ func TestSetHoldsInProgressTasks_InvalidColumnID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.SetHoldsInProgressTasks(context.Background(), 0)
 
@@ -1787,7 +1797,7 @@ func TestSetHoldsInProgressTasks_NegativeColumnID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.SetHoldsInProgressTasks(context.Background(), -1)
 
@@ -1806,7 +1816,7 @@ func TestSetHoldsInProgressTasks_ColumnNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.SetHoldsInProgressTasks(context.Background(), 999)
 
@@ -1827,7 +1837,7 @@ func TestGetColumnByID_IncludesHoldsInProgressTasks(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create column with HoldsInProgressTasks = true
 	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -1857,7 +1867,7 @@ func TestGetColumnsByProject_IncludesHoldsInProgressTasks(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create one in-progress column and one not in-progress
 	_, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -1905,7 +1915,7 @@ func TestCreateColumn_MultipleInProgressColumns_DifferentProjects(t *testing.T) 
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two projects
 	projectID1 := createTestProject(t, db)
@@ -1963,7 +1973,7 @@ func TestCreateColumn_NameExactly50Characters(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a name that's exactly 50 characters
 	name50 := strings.Repeat("a", 50)
@@ -1989,7 +1999,7 @@ func TestCreateColumn_NonExistentProject(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Try to create column in non-existent project
 	_, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -2014,7 +2024,7 @@ func TestUpdateColumnName_Exact50Characters(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
 		Name:      "To Do",
@@ -2050,7 +2060,7 @@ func TestCreateColumn_AllSpecialFlagsTrue(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Try to create column with all special flags set to true
 	req := CreateColumnRequest{
@@ -2086,7 +2096,7 @@ func TestCreateColumn_ProjectIDMaxInt(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Try to create column with max int project ID (won't exist)
 	_, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -2115,7 +2125,7 @@ func TestCreateColumn_WithHoldsCompletedTasks(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	req := CreateColumnRequest{
 		Name:                "Done",
@@ -2140,7 +2150,7 @@ func TestCreateColumn_HoldsCompletedTasks_FailsWhenExists(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create first column with HoldsCompletedTasks = true
 	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -2179,7 +2189,7 @@ func TestSetHoldsCompletedTasks_Success(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two columns (neither completed)
 	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -2218,7 +2228,7 @@ func TestSetHoldsCompletedTasks_FailsWhenExistsWithoutForce(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create col1 as completed
 	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -2269,7 +2279,7 @@ func TestSetHoldsCompletedTasks_SucceedsWithForce(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create col1 as completed
 	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -2319,7 +2329,7 @@ func TestGetColumnByID_IncludesHoldsCompletedTasks(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create column with HoldsCompletedTasks = true
 	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -2349,7 +2359,7 @@ func TestGetColumnsByProject_IncludesHoldsCompletedTasks(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create one completed column and one not completed
 	_, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
@@ -2397,7 +2407,7 @@ func TestSetHoldsCompletedTasks_InvalidColumnID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.SetHoldsCompletedTasks(context.Background(), 0, false)
 
@@ -2416,7 +2426,7 @@ func TestSetHoldsCompletedTasks_ColumnNotFound(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.SetHoldsCompletedTasks(context.Background(), 999, false)
 

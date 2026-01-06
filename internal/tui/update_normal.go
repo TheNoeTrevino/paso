@@ -67,6 +67,8 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleChangeStatus()
 	case km.SortList:
 		return m.handleSortList()
+	case km.ConnectRemote:
+		return m.handleConnectRemote()
 	case "/":
 		return m.handleEnterSearch()
 	}

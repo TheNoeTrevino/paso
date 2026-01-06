@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/app"
 	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 	tasksvc "github.com/thenoetrevino/paso/internal/services/task"
@@ -31,6 +33,7 @@ const (
 type Model struct {
 	Ctx                 context.Context // Application context for cancellation and timeouts
 	App                 *app.App        // Application container with services
+	DB                  *sql.DB         // Database connection for switching
 	Config              *config.Config
 	AppState            *state.AppState
 	UIState             *state.UIState
@@ -42,10 +45,13 @@ type Model struct {
 	EventChan           <-chan events.Event         // Channel for receiving events
 	NotifyChan          chan events.NotificationMsg // Channel for user-facing notifications from events
 	SubscriptionStarted bool                        // Track if we've started listening
+	DatabasePicker      *state.DatabasePickerState  // Database picker state (for Ctrl+H)
+	CurrentDBType       database.DatabaseType       // Current database type (SQLite or PostgreSQL)
+	CurrentDBName       string                      // Friendly name of current database (e.g., "Local", "Production")
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
-func InitialModel(ctx context.Context, application *app.App, cfg *config.Config, eventClient events.EventPublisher) Model {
+func InitialModel(ctx context.Context, application *app.App, cfg *config.Config, eventClient events.EventPublisher, db *sql.DB) Model {
 	// Create child context with timeout for initial loading
 	loadCtx, cancel := context.WithTimeout(ctx, timeoutInitialLoad)
 	defer cancel()
@@ -139,8 +145,9 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	}
 
 	return Model{
-		Ctx:                 ctx, // Store root context
+		Ctx:                 ctx,
 		App:                 application,
+		DB:                  db,
 		Config:              cfg,
 		AppState:            appState,
 		UIState:             uiState,
@@ -152,6 +159,9 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 		EventChan:           eventChan,
 		NotifyChan:          notifyChan,
 		SubscriptionStarted: false,
+		DatabasePicker:      state.NewDatabasePickerState(),
+		CurrentDBType:       database.SQLite,
+		CurrentDBName:       "Local",
 	}
 }
 

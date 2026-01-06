@@ -1,11 +1,10 @@
 package converters
 
 import (
-	"database/sql"
 	"testing"
 	"time"
 
-	"github.com/thenoetrevino/paso/internal/database/generated"
+	"github.com/thenoetrevino/paso/internal/database/types"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -18,21 +17,21 @@ func TestTaskToModel(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    generated.Task
+		input    types.Task
 		expected *models.Task
 	}{
 		{
 			name: "complete task with all fields",
-			input: generated.Task{
+			input: types.Task{
 				ID:          123,
 				Title:       "Fix login bug",
-				Description: sql.NullString{String: "Users cannot log in", Valid: true},
+				Description: types.NullString{String: "Users cannot log in", Valid: true},
 				ColumnID:    5,
 				Position:    10,
 				TypeID:      3,
 				PriorityID:  4,
-				CreatedAt:   sql.NullTime{Time: now, Valid: true},
-				UpdatedAt:   sql.NullTime{Time: now, Valid: true},
+				CreatedAt:   types.NullTime{Time: now, Valid: true},
+				UpdatedAt:   types.NullTime{Time: now, Valid: true},
 			},
 			expected: &models.Task{
 				ID:          123,
@@ -48,16 +47,16 @@ func TestTaskToModel(t *testing.T) {
 		},
 		{
 			name: "task with null description",
-			input: generated.Task{
+			input: types.Task{
 				ID:          456,
 				Title:       "Task without description",
-				Description: sql.NullString{Valid: false},
+				Description: types.NullString{Valid: false},
 				ColumnID:    2,
 				Position:    0,
 				TypeID:      1,
 				PriorityID:  3,
-				CreatedAt:   sql.NullTime{Time: now, Valid: true},
-				UpdatedAt:   sql.NullTime{Time: now, Valid: true},
+				CreatedAt:   types.NullTime{Time: now, Valid: true},
+				UpdatedAt:   types.NullTime{Time: now, Valid: true},
 			},
 			expected: &models.Task{
 				ID:          456,
@@ -73,16 +72,16 @@ func TestTaskToModel(t *testing.T) {
 		},
 		{
 			name: "task with null timestamps",
-			input: generated.Task{
+			input: types.Task{
 				ID:          789,
 				Title:       "Task with null timestamps",
-				Description: sql.NullString{String: "Description", Valid: true},
+				Description: types.NullString{String: "Description", Valid: true},
 				ColumnID:    1,
 				Position:    5,
 				TypeID:      2,
 				PriorityID:  1,
-				CreatedAt:   sql.NullTime{Valid: false},
-				UpdatedAt:   sql.NullTime{Valid: false},
+				CreatedAt:   types.NullTime{Valid: false},
+				UpdatedAt:   types.NullTime{Valid: false},
 			},
 			expected: &models.Task{
 				ID:          789,
@@ -98,16 +97,16 @@ func TestTaskToModel(t *testing.T) {
 		},
 		{
 			name: "task with all null optional fields",
-			input: generated.Task{
+			input: types.Task{
 				ID:          999,
 				Title:       "Minimal task",
-				Description: sql.NullString{Valid: false},
+				Description: types.NullString{Valid: false},
 				ColumnID:    3,
 				Position:    1,
 				TypeID:      1,
 				PriorityID:  2,
-				CreatedAt:   sql.NullTime{Valid: false},
-				UpdatedAt:   sql.NullTime{Valid: false},
+				CreatedAt:   types.NullTime{Valid: false},
+				UpdatedAt:   types.NullTime{Valid: false},
 			},
 			expected: &models.Task{
 				ID:          999,
@@ -123,16 +122,16 @@ func TestTaskToModel(t *testing.T) {
 		},
 		{
 			name: "task with max int64 values",
-			input: generated.Task{
+			input: types.Task{
 				ID:          9223372036854775807, // Max int64
 				Title:       "Max value task",
-				Description: sql.NullString{String: "Testing max values", Valid: true},
+				Description: types.NullString{String: "Testing max values", Valid: true},
 				ColumnID:    9223372036854775807,
 				Position:    9223372036854775807,
 				TypeID:      9223372036854775807,
 				PriorityID:  9223372036854775807,
-				CreatedAt:   sql.NullTime{Time: now, Valid: true},
-				UpdatedAt:   sql.NullTime{Time: now, Valid: true},
+				CreatedAt:   types.NullTime{Time: now, Valid: true},
+				UpdatedAt:   types.NullTime{Time: now, Valid: true},
 			},
 			expected: &models.Task{
 				ID:          9223372036854775807,
@@ -148,16 +147,16 @@ func TestTaskToModel(t *testing.T) {
 		},
 		{
 			name: "task with zero values",
-			input: generated.Task{
+			input: types.Task{
 				ID:          0,
 				Title:       "",
-				Description: sql.NullString{String: "", Valid: true},
+				Description: types.NullString{String: "", Valid: true},
 				ColumnID:    0,
 				Position:    0,
 				TypeID:      0,
 				PriorityID:  0,
-				CreatedAt:   sql.NullTime{Time: time.Time{}, Valid: true},
-				UpdatedAt:   sql.NullTime{Time: time.Time{}, Valid: true},
+				CreatedAt:   types.NullTime{Time: time.Time{}, Valid: true},
+				UpdatedAt:   types.NullTime{Time: time.Time{}, Valid: true},
 			},
 			expected: &models.Task{
 				ID:          0,
@@ -173,16 +172,16 @@ func TestTaskToModel(t *testing.T) {
 		},
 		{
 			name: "task with empty string description (valid but empty)",
-			input: generated.Task{
+			input: types.Task{
 				ID:          111,
 				Title:       "Task with empty description",
-				Description: sql.NullString{String: "", Valid: true},
+				Description: types.NullString{String: "", Valid: true},
 				ColumnID:    1,
 				Position:    0,
 				TypeID:      1,
 				PriorityID:  1,
-				CreatedAt:   sql.NullTime{Time: now, Valid: true},
-				UpdatedAt:   sql.NullTime{Time: now, Valid: true},
+				CreatedAt:   types.NullTime{Time: now, Valid: true},
+				UpdatedAt:   types.NullTime{Time: now, Valid: true},
 			},
 			expected: &models.Task{
 				ID:          111,
@@ -240,17 +239,17 @@ func TestTaskToModel(t *testing.T) {
 func TestParentTasksToReferences(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    []generated.GetParentTasksRow
+		input    []types.GetParentTasksRow
 		expected []*models.TaskReference
 	}{
 		{
 			name:     "empty slice",
-			input:    []generated.GetParentTasksRow{},
+			input:    []types.GetParentTasksRow{},
 			expected: []*models.TaskReference{},
 		},
 		{
 			name: "single parent with ticket number",
-			input: []generated.GetParentTasksRow{
+			input: []types.GetParentTasksRow{
 				{
 					ID:           100,
 					Title:        "Parent Task",
@@ -259,7 +258,7 @@ func TestParentTasksToReferences(t *testing.T) {
 					PToCLabel:    "Parent of",
 					Color:        "#FF0000",
 					IsBlocking:   true,
-					TicketNumber: sql.NullInt64{Int64: 42, Valid: true},
+					TicketNumber: types.NullInt64{Int64: 42, Valid: true},
 				},
 			},
 			expected: []*models.TaskReference{
@@ -277,7 +276,7 @@ func TestParentTasksToReferences(t *testing.T) {
 		},
 		{
 			name: "parent without ticket number",
-			input: []generated.GetParentTasksRow{
+			input: []types.GetParentTasksRow{
 				{
 					ID:           200,
 					Title:        "Parent Without Ticket",
@@ -286,7 +285,7 @@ func TestParentTasksToReferences(t *testing.T) {
 					PToCLabel:    "Blocks",
 					Color:        "#00FF00",
 					IsBlocking:   false,
-					TicketNumber: sql.NullInt64{Valid: false},
+					TicketNumber: types.NullInt64{Valid: false},
 				},
 			},
 			expected: []*models.TaskReference{
@@ -304,7 +303,7 @@ func TestParentTasksToReferences(t *testing.T) {
 		},
 		{
 			name: "multiple parents",
-			input: []generated.GetParentTasksRow{
+			input: []types.GetParentTasksRow{
 				{
 					ID:           1,
 					Title:        "First Parent",
@@ -313,7 +312,7 @@ func TestParentTasksToReferences(t *testing.T) {
 					PToCLabel:    "Parent",
 					Color:        "#FF0000",
 					IsBlocking:   true,
-					TicketNumber: sql.NullInt64{Int64: 10, Valid: true},
+					TicketNumber: types.NullInt64{Int64: 10, Valid: true},
 				},
 				{
 					ID:           2,
@@ -323,7 +322,7 @@ func TestParentTasksToReferences(t *testing.T) {
 					PToCLabel:    "Blocker",
 					Color:        "#00FF00",
 					IsBlocking:   false,
-					TicketNumber: sql.NullInt64{Int64: 20, Valid: true},
+					TicketNumber: types.NullInt64{Int64: 20, Valid: true},
 				},
 				{
 					ID:           3,
@@ -333,7 +332,7 @@ func TestParentTasksToReferences(t *testing.T) {
 					PToCLabel:    "Related",
 					Color:        "#0000FF",
 					IsBlocking:   true,
-					TicketNumber: sql.NullInt64{Valid: false},
+					TicketNumber: types.NullInt64{Valid: false},
 				},
 			},
 			expected: []*models.TaskReference{
@@ -416,17 +415,17 @@ func TestParentTasksToReferences(t *testing.T) {
 func TestChildTasksToReferences(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    []generated.GetChildTasksRow
+		input    []types.GetChildTasksRow
 		expected []*models.TaskReference
 	}{
 		{
 			name:     "empty slice",
-			input:    []generated.GetChildTasksRow{},
+			input:    []types.GetChildTasksRow{},
 			expected: []*models.TaskReference{},
 		},
 		{
 			name: "single child with ticket number",
-			input: []generated.GetChildTasksRow{
+			input: []types.GetChildTasksRow{
 				{
 					ID:           300,
 					Title:        "Child Task",
@@ -435,7 +434,7 @@ func TestChildTasksToReferences(t *testing.T) {
 					CToPLabel:    "Child of",
 					Color:        "#FFAA00",
 					IsBlocking:   false,
-					TicketNumber: sql.NullInt64{Int64: 99, Valid: true},
+					TicketNumber: types.NullInt64{Int64: 99, Valid: true},
 				},
 			},
 			expected: []*models.TaskReference{
@@ -453,7 +452,7 @@ func TestChildTasksToReferences(t *testing.T) {
 		},
 		{
 			name: "child without ticket number",
-			input: []generated.GetChildTasksRow{
+			input: []types.GetChildTasksRow{
 				{
 					ID:           400,
 					Title:        "Child Without Ticket",
@@ -462,7 +461,7 @@ func TestChildTasksToReferences(t *testing.T) {
 					CToPLabel:    "Blocked by",
 					Color:        "#AA00FF",
 					IsBlocking:   true,
-					TicketNumber: sql.NullInt64{Valid: false},
+					TicketNumber: types.NullInt64{Valid: false},
 				},
 			},
 			expected: []*models.TaskReference{
@@ -480,7 +479,7 @@ func TestChildTasksToReferences(t *testing.T) {
 		},
 		{
 			name: "multiple children",
-			input: []generated.GetChildTasksRow{
+			input: []types.GetChildTasksRow{
 				{
 					ID:           10,
 					Title:        "First Child",
@@ -489,7 +488,7 @@ func TestChildTasksToReferences(t *testing.T) {
 					CToPLabel:    "Child",
 					Color:        "#111111",
 					IsBlocking:   false,
-					TicketNumber: sql.NullInt64{Int64: 5, Valid: true},
+					TicketNumber: types.NullInt64{Int64: 5, Valid: true},
 				},
 				{
 					ID:           20,
@@ -499,7 +498,7 @@ func TestChildTasksToReferences(t *testing.T) {
 					CToPLabel:    "Depends on",
 					Color:        "#222222",
 					IsBlocking:   true,
-					TicketNumber: sql.NullInt64{Int64: 15, Valid: true},
+					TicketNumber: types.NullInt64{Int64: 15, Valid: true},
 				},
 			},
 			expected: []*models.TaskReference{
@@ -574,23 +573,23 @@ func TestCommentsToModels(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    []generated.TaskComment
+		input    []types.TaskComment
 		expected []*models.Comment
 	}{
 		{
 			name:     "empty slice",
-			input:    []generated.TaskComment{},
+			input:    []types.TaskComment{},
 			expected: []*models.Comment{},
 		},
 		{
 			name: "single comment",
-			input: []generated.TaskComment{
+			input: []types.TaskComment{
 				{
 					ID:        1,
 					TaskID:    100,
 					Content:   "This is a comment",
 					Author:    "john@example.com",
-					CreatedAt: sql.NullTime{Time: now, Valid: true},
+					CreatedAt: types.NullTime{Time: now, Valid: true},
 				},
 			},
 			expected: []*models.Comment{
@@ -605,20 +604,20 @@ func TestCommentsToModels(t *testing.T) {
 		},
 		{
 			name: "multiple comments",
-			input: []generated.TaskComment{
+			input: []types.TaskComment{
 				{
 					ID:        1,
 					TaskID:    100,
 					Content:   "First comment",
 					Author:    "alice@example.com",
-					CreatedAt: sql.NullTime{Time: now, Valid: true},
+					CreatedAt: types.NullTime{Time: now, Valid: true},
 				},
 				{
 					ID:        2,
 					TaskID:    100,
 					Content:   "Second comment",
 					Author:    "bob@example.com",
-					CreatedAt: sql.NullTime{Time: now.Add(1 * time.Hour), Valid: true},
+					CreatedAt: types.NullTime{Time: now.Add(1 * time.Hour), Valid: true},
 				},
 			},
 			expected: []*models.Comment{
@@ -640,13 +639,13 @@ func TestCommentsToModels(t *testing.T) {
 		},
 		{
 			name: "comment with empty content",
-			input: []generated.TaskComment{
+			input: []types.TaskComment{
 				{
 					ID:        99,
 					TaskID:    200,
 					Content:   "",
 					Author:    "test@example.com",
-					CreatedAt: sql.NullTime{Time: now, Valid: true},
+					CreatedAt: types.NullTime{Time: now, Valid: true},
 				},
 			},
 			expected: []*models.Comment{
@@ -836,20 +835,20 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    generated.GetTaskSummariesByProjectRow
+		input    types.GetTaskSummariesByProjectRow
 		expected *models.TaskSummary
 	}{
 		{
 			name: "complete summary with all fields",
-			input: generated.GetTaskSummariesByProjectRow{
+			input: types.GetTaskSummariesByProjectRow{
 				ID:                  100,
 				Title:               "Test Task",
 				ColumnID:            5,
 				Position:            10,
-				IsBlocked:           1,
-				TypeDescription:     sql.NullString{String: "bug", Valid: true},
-				PriorityDescription: sql.NullString{String: "high", Valid: true},
-				PriorityColor:       sql.NullString{String: "#FF0000", Valid: true},
+				IsBlocked:           true,
+				TypeDescription:     types.NullString{String: "bug", Valid: true},
+				PriorityDescription: types.NullString{String: "high", Valid: true},
+				PriorityColor:       types.NullString{String: "#FF0000", Valid: true},
 				LabelIds:            "1" + sep + "2",
 				LabelNames:          "urgent" + sep + "backend",
 				LabelColors:         "#FF0000" + sep + "#00FF00",
@@ -871,15 +870,15 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 		},
 		{
 			name: "summary with null optional fields",
-			input: generated.GetTaskSummariesByProjectRow{
+			input: types.GetTaskSummariesByProjectRow{
 				ID:                  200,
 				Title:               "Minimal Task",
 				ColumnID:            1,
 				Position:            0,
-				IsBlocked:           0,
-				TypeDescription:     sql.NullString{Valid: false},
-				PriorityDescription: sql.NullString{Valid: false},
-				PriorityColor:       sql.NullString{Valid: false},
+				IsBlocked:           false,
+				TypeDescription:     types.NullString{Valid: false},
+				PriorityDescription: types.NullString{Valid: false},
+				PriorityColor:       types.NullString{Valid: false},
 				LabelIds:            "",
 				LabelNames:          "",
 				LabelColors:         "",
@@ -898,15 +897,15 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 		},
 		{
 			name: "summary with blocked task",
-			input: generated.GetTaskSummariesByProjectRow{
+			input: types.GetTaskSummariesByProjectRow{
 				ID:                  300,
 				Title:               "Blocked Task",
 				ColumnID:            2,
 				Position:            5,
-				IsBlocked:           999, // Any positive value means blocked
-				TypeDescription:     sql.NullString{String: "feature", Valid: true},
-				PriorityDescription: sql.NullString{String: "low", Valid: true},
-				PriorityColor:       sql.NullString{String: "#0000FF", Valid: true},
+				IsBlocked:           true, // Any positive value means blocked
+				TypeDescription:     types.NullString{String: "feature", Valid: true},
+				PriorityDescription: types.NullString{String: "low", Valid: true},
+				PriorityColor:       types.NullString{String: "#0000FF", Valid: true},
 				LabelIds:            "10",
 				LabelNames:          "blocked",
 				LabelColors:         "#AAAAAA",
@@ -927,15 +926,15 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 		},
 		{
 			name: "summary with no labels",
-			input: generated.GetTaskSummariesByProjectRow{
+			input: types.GetTaskSummariesByProjectRow{
 				ID:                  400,
 				Title:               "No Labels",
 				ColumnID:            3,
 				Position:            1,
-				IsBlocked:           0,
-				TypeDescription:     sql.NullString{String: "task", Valid: true},
-				PriorityDescription: sql.NullString{String: "medium", Valid: true},
-				PriorityColor:       sql.NullString{String: "#FFAA00", Valid: true},
+				IsBlocked:           false,
+				TypeDescription:     types.NullString{String: "task", Valid: true},
+				PriorityDescription: types.NullString{String: "medium", Valid: true},
+				PriorityColor:       types.NullString{String: "#FFAA00", Valid: true},
 				LabelIds:            "",
 				LabelNames:          "",
 				LabelColors:         "",
@@ -1007,20 +1006,20 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 func TestReadyTaskSummaryFromRowToModel(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    generated.GetReadyTaskSummariesByProjectRow
+		input    types.GetReadyTaskSummariesByProjectRow
 		expected *models.TaskSummary
 	}{
 		{
 			name: "ready task with all fields",
-			input: generated.GetReadyTaskSummariesByProjectRow{
+			input: types.GetReadyTaskSummariesByProjectRow{
 				ID:                  500,
 				Title:               "Ready Task",
 				ColumnID:            7,
 				Position:            3,
-				IsBlocked:           0,
-				TypeDescription:     sql.NullString{String: "story", Valid: true},
-				PriorityDescription: sql.NullString{String: "critical", Valid: true},
-				PriorityColor:       sql.NullString{String: "#AA0000", Valid: true},
+				IsBlocked:           false,
+				TypeDescription:     types.NullString{String: "story", Valid: true},
+				PriorityDescription: types.NullString{String: "critical", Valid: true},
+				PriorityColor:       types.NullString{String: "#AA0000", Valid: true},
 				LabelIds:            "5",
 				LabelNames:          "ready",
 				LabelColors:         "#00AA00",
@@ -1041,15 +1040,15 @@ func TestReadyTaskSummaryFromRowToModel(t *testing.T) {
 		},
 		{
 			name: "ready task with null fields",
-			input: generated.GetReadyTaskSummariesByProjectRow{
+			input: types.GetReadyTaskSummariesByProjectRow{
 				ID:                  600,
 				Title:               "Simple Ready",
 				ColumnID:            1,
 				Position:            0,
-				IsBlocked:           0,
-				TypeDescription:     sql.NullString{Valid: false},
-				PriorityDescription: sql.NullString{Valid: false},
-				PriorityColor:       sql.NullString{Valid: false},
+				IsBlocked:           false,
+				TypeDescription:     types.NullString{Valid: false},
+				PriorityDescription: types.NullString{Valid: false},
+				PriorityColor:       types.NullString{Valid: false},
 				LabelIds:            "",
 				LabelNames:          "",
 				LabelColors:         "",
@@ -1112,20 +1111,20 @@ func TestFilteredTaskSummaryFromRowToModel(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    generated.GetTaskSummariesByProjectFilteredRow
+		input    types.GetTaskSummariesByProjectFilteredRow
 		expected *models.TaskSummary
 	}{
 		{
 			name: "filtered task with all fields",
-			input: generated.GetTaskSummariesByProjectFilteredRow{
+			input: types.GetTaskSummariesByProjectFilteredRow{
 				ID:                  700,
 				Title:               "Filtered Task",
 				ColumnID:            8,
 				Position:            2,
-				IsBlocked:           1,
-				TypeDescription:     sql.NullString{String: "enhancement", Valid: true},
-				PriorityDescription: sql.NullString{String: "medium", Valid: true},
-				PriorityColor:       sql.NullString{String: "#AAAA00", Valid: true},
+				IsBlocked:           true,
+				TypeDescription:     types.NullString{String: "enhancement", Valid: true},
+				PriorityDescription: types.NullString{String: "medium", Valid: true},
+				PriorityColor:       types.NullString{String: "#AAAA00", Valid: true},
 				LabelIds:            "7" + sep + "8",
 				LabelNames:          "filtered" + sep + "test",
 				LabelColors:         "#123456" + sep + "#654321",
@@ -1147,15 +1146,15 @@ func TestFilteredTaskSummaryFromRowToModel(t *testing.T) {
 		},
 		{
 			name: "filtered task with null fields",
-			input: generated.GetTaskSummariesByProjectFilteredRow{
+			input: types.GetTaskSummariesByProjectFilteredRow{
 				ID:                  800,
 				Title:               "Simple Filtered",
 				ColumnID:            4,
 				Position:            1,
-				IsBlocked:           0,
-				TypeDescription:     sql.NullString{Valid: false},
-				PriorityDescription: sql.NullString{Valid: false},
-				PriorityColor:       sql.NullString{Valid: false},
+				IsBlocked:           false,
+				TypeDescription:     types.NullString{Valid: false},
+				PriorityDescription: types.NullString{Valid: false},
+				PriorityColor:       types.NullString{Valid: false},
 				LabelIds:            "",
 				LabelNames:          "",
 				LabelColors:         "",

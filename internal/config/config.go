@@ -1,17 +1,28 @@
 package config
 
 import (
+	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/thenoetrevino/paso/internal/config/colors"
 	"gopkg.in/yaml.v3"
 )
 
+// DatabaseConfig represents a saved database connection
+type DatabaseConfig struct {
+	Name             string `yaml:"name"`
+	ConnectionString string `yaml:"connection_string"`
+	Type             string `yaml:"type"` // "sqlite" or "postgres"
+}
+
 // Config represents the application configuration
 type Config struct {
 	KeyMappings KeyMappings        `yaml:"key_mappings"`
 	ColorScheme colors.ColorScheme `yaml:"theme"`
+	Databases   []DatabaseConfig   `yaml:"databases"`
 }
 
 // loadThemeFile loads and merges theme from PASO_THEME_FILE environment variable
@@ -76,8 +87,33 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	// After config is loaded, check file permissions
+	if info, err := os.Stat(configPath); err == nil {
+		mode := info.Mode()
+		// Check if group or other have any permissions (should be 0600)
+		if mode.Perm()&0o077 != 0 {
+			slog.Warn("config file has permissive permissions",
+				"path", configPath,
+				"current", fmt.Sprintf("%o", mode.Perm()),
+				"recommended", "0600",
+				"fix", fmt.Sprintf("chmod 600 %s", configPath))
+		}
+	}
+
 	// Load theme from PASO_THEME_FILE if set
 	loadThemeFile(&config)
+
+	// Migration: auto-detect type for existing connections that don't have it set
+	for i := range config.Databases {
+		if config.Databases[i].Type == "" {
+			if strings.HasPrefix(config.Databases[i].ConnectionString, "postgres") ||
+				strings.HasPrefix(config.Databases[i].ConnectionString, "postgresql") {
+				config.Databases[i].Type = "postgres"
+			} else {
+				config.Databases[i].Type = "sqlite"
+			}
+		}
+	}
 
 	// Fill in any missing values with defaults
 	config.applyDefaults()
@@ -105,7 +141,40 @@ func (c *Config) Save() error {
 	}
 
 	// Write to file
-	return os.WriteFile(configPath, data, 0o644)
+	return os.WriteFile(configPath, data, 0o600)
+}
+
+// AddDatabase adds a new database connection to the config and saves it
+func (c *Config) AddDatabase(name string, connectionString string, dbType string) error {
+	// Check if database with this name already exists
+	for i, db := range c.Databases {
+		if db.Name == name {
+			// Update existing
+			c.Databases[i].ConnectionString = connectionString
+			c.Databases[i].Type = dbType
+			return c.Save()
+		}
+	}
+
+	// Add new database
+	c.Databases = append(c.Databases, DatabaseConfig{
+		Name:             name,
+		ConnectionString: connectionString,
+		Type:             dbType,
+	})
+
+	return c.Save()
+}
+
+// RemoveDatabase removes a database connection from the config and saves it
+func (c *Config) RemoveDatabase(name string) error {
+	for i, db := range c.Databases {
+		if db.Name == name {
+			c.Databases = append(c.Databases[:i], c.Databases[i+1:]...)
+			return c.Save()
+		}
+	}
+	return nil // Silently succeed if database not found
 }
 
 // getConfigPath returns the path to the config file

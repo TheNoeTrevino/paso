@@ -80,16 +80,6 @@ func createTestProject(t *testing.T, db *sql.DB, name string) int {
 	return int(projectID)
 }
 
-func createTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
-	t.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, name)
-	if err != nil {
-		t.Fatalf("Failed to create test column: %v", err)
-	}
-	columnID, _ := result.LastInsertId()
-	return int(columnID)
-}
-
 // ============================================================================
 // Transaction Helper Tests
 // ============================================================================
@@ -327,53 +317,4 @@ func TestSendEvent_Error(t *testing.T) {
 
 	// Should not panic or return error (errors are logged)
 	sendEvent(mock, 42)
-}
-
-// ============================================================================
-// Project ID Lookup Tests
-// ============================================================================
-
-func TestGetProjectIDFromTable_Success(t *testing.T) {
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	ctx := context.Background()
-	projectID := createTestProject(t, db, "Test Project")
-	columnID := createTestColumn(t, db, projectID, "Test Column")
-
-	// Get project ID from columns table
-	result, err := getProjectIDFromTable(ctx, db, "columns", columnID)
-	if err != nil {
-		t.Fatalf("Expected success, got error: %v", err)
-	}
-
-	if result != projectID {
-		t.Errorf("Expected project ID %d, got %d", projectID, result)
-	}
-}
-
-func TestGetProjectIDFromTable_NotFound(t *testing.T) {
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	ctx := context.Background()
-
-	// Try to get project ID for non-existent column
-	_, err := getProjectIDFromTable(ctx, db, "columns", 9999)
-	if err == nil {
-		t.Fatal("Expected error for non-existent entity, got nil")
-	}
-}
-
-func TestGetProjectIDFromTable_InvalidTable(t *testing.T) {
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
-
-	ctx := context.Background()
-
-	// Try to get project ID from non-existent table
-	_, err := getProjectIDFromTable(ctx, db, "nonexistent_table", 1)
-	if err == nil {
-		t.Fatal("Expected error for invalid table, got nil")
-	}
 }

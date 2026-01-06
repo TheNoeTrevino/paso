@@ -49,7 +49,7 @@ Examples:
 	// Required flags
 	cmd.Flags().String("title", "", "Task title (required)")
 	if err := cmd.MarkFlagRequired("title"); err != nil {
-		slog.Error("failed to marking flag as required", "error", err)
+		slog.Error("failed to mark flag as required", "error", err)
 	}
 
 	cmd.Flags().Int("project", 0, "Project ID (uses PASO_PROJECT env var if not specified)")
@@ -89,24 +89,24 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 	cmd := args.GetCmd()
 	taskProject, err := cli.GetProjectID(cmd)
 	if err != nil {
-		return nil, fmt.Errorf("no project specified: use --project flag or set with 'eval $(paso use project <project-id>)'")
+		return nil, fmt.Errorf("failed to get project: no project specified, use --project flag or set with 'eval $(paso use project <project-id>)'")
 	}
 
 	// Initialize CLI (uses injected instance from context if in test mode)
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("initialization error: %w", err)
+		return nil, fmt.Errorf("failed to initialize CLI: %w", err)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
 	// Validate project exists
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, taskProject)
 	if err != nil {
-		return nil, fmt.Errorf("project %d not found", taskProject)
+		return nil, fmt.Errorf("failed to find project: project %d not found", taskProject)
 	}
 
 	// Get columns for project
@@ -115,7 +115,7 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		return nil, fmt.Errorf("failed to fetch columns: %w", err)
 	}
 	if len(columns) == 0 {
-		return nil, fmt.Errorf("project has no columns")
+		return nil, fmt.Errorf("failed to create task: project has no columns")
 	}
 
 	// Determine target column
@@ -125,7 +125,7 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 	} else {
 		col, err := cli.FindColumnByName(columns, taskColumn)
 		if err != nil {
-			return nil, fmt.Errorf("column '%s' not found", taskColumn)
+			return nil, fmt.Errorf("failed to find column: column '%s' not found", taskColumn)
 		}
 		targetColumnID = col.ID
 	}
@@ -135,7 +135,7 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 	if description == "-" {
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
-			return nil, fmt.Errorf("stdin read error: %w", err)
+			return nil, fmt.Errorf("failed to read stdin: %w", err)
 		}
 		description = string(data)
 	}
@@ -178,7 +178,7 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 
 	task, err := cliInstance.App.TaskService.CreateTask(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("task creation error: %w", err)
+		return nil, fmt.Errorf("failed to create task: %w", err)
 	}
 
 	return &taskCreateResult{
@@ -212,7 +212,7 @@ func parseCreateFlags(cmd *cobra.Command) error {
 	// Validate required flags
 	title, _ := cmd.Flags().GetString("title")
 	if strings.TrimSpace(title) == "" {
-		return fmt.Errorf("title is required")
+		return fmt.Errorf("failed to validate input: title is required")
 	}
 	return nil
 }

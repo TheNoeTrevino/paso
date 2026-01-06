@@ -37,8 +37,9 @@ type KeyMappings struct {
 	PrevProject         string `yaml:"prev_project"`
 
 	// Other
-	ShowHelp string `yaml:"show_help"`
-	Quit     string `yaml:"quit"`
+	ShowHelp      string `yaml:"show_help"`
+	ConnectRemote string `yaml:"connect_remote"`
+	Quit          string `yaml:"quit"`
 
 	// Views
 	ToggleView   string `yaml:"toggle_view"`
@@ -82,8 +83,9 @@ func DefaultKeyMappings() KeyMappings {
 		PrevProject:         "{",
 
 		// Other
-		ShowHelp: "?",
-		Quit:     "q",
+		ShowHelp:      "?",
+		ConnectRemote: "ctrl+h",
+		Quit:          "q",
 
 		// Views
 		ToggleView:   "v",
@@ -170,6 +172,9 @@ func (k *KeyMappings) applyDefaults() {
 	}
 	if k.ShowHelp == "" {
 		k.ShowHelp = defaults.ShowHelp
+	}
+	if k.ConnectRemote == "" {
+		k.ConnectRemote = defaults.ConnectRemote
 	}
 	if k.Quit == "" {
 		k.Quit = defaults.Quit

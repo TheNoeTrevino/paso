@@ -78,10 +78,23 @@ func (m Model) View() tea.View {
 			layers = m.buildPickerLayers(layers, returnMode, m.renderRelationTypePickerLayer(), intermediateLayer)
 		case state.StatusPickerMode:
 			modalLayer = m.renderStatusPickerLayer()
+		case state.DatabaseSelectMode:
+			modalLayer = m.renderDatabaseSelectLayer()
+		case state.DatabaseCreateMode:
+			modalLayer = m.renderDatabaseCreateLayer()
+		case state.DatabaseConnectConfirmMode:
+			modalLayer = m.renderDatabaseConnectConfirmLayer()
+		case state.DatabaseDeleteConfirmMode:
+			modalLayer = m.renderDatabaseDeleteConfirmLayer()
 		}
 
 		if modalLayer != nil {
 			layers = append(layers, modalLayer)
+		}
+
+		// Add connecting spinner layer (renders on top of everything, including modals)
+		if spinnerLayer := m.renderConnectingSpinnerLayer(); spinnerLayer != nil {
+			layers = append(layers, spinnerLayer)
 		}
 
 		canvas := lipgloss.NewCanvas(layers...)

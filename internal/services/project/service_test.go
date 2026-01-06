@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
@@ -20,6 +21,14 @@ func setupTestDB(t *testing.T) *sql.DB {
 	return testutil.SetupTestDB(t)
 }
 
+// newTestService creates a new service for testing (panics on error since tests use valid SQLite)
+func newTestService(t *testing.T, db *sql.DB) Service {
+	t.Helper()
+	svc, err := NewService(db, database.SQLite, nil)
+	require.NoError(t, err, "failed to create test service")
+	return svc
+}
+
 // ============================================================================
 // TEST CASES
 // ============================================================================
@@ -30,7 +39,7 @@ func TestCreateProject(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil) // nil event publisher is OK
+	svc := newTestService(t, db) // nil event publisher is OK
 
 	req := CreateProjectRequest{
 		Name:        "Test Project",
@@ -61,7 +70,7 @@ func TestCreateProject_EmptyName(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	req := CreateProjectRequest{
 		Name:        "", // Empty name
@@ -85,7 +94,7 @@ func TestCreateProject_NameTooLong(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	longName := ""
 	for i := 0; i < 101; i++ {
@@ -114,7 +123,7 @@ func TestGetAllProjects(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two projects
 	_, err := svc.CreateProject(context.Background(), CreateProjectRequest{
@@ -151,7 +160,7 @@ func TestGetAllProjects_Empty(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	results, err := svc.GetAllProjects(context.Background())
 
@@ -168,7 +177,7 @@ func TestGetProjectByID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a project
 	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
@@ -199,7 +208,7 @@ func TestGetProjectByID_NotFound(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetProjectByID(context.Background(), 999)
 
@@ -218,7 +227,7 @@ func TestGetProjectByID_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetProjectByID(context.Background(), 0)
 
@@ -237,7 +246,7 @@ func TestUpdateProject(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a project
 	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
@@ -274,7 +283,7 @@ func TestUpdateProject_EmptyName(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a project
 	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
@@ -306,7 +315,7 @@ func TestUpdateProject_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	newName := "Updated Project"
 	req := UpdateProjectRequest{
@@ -331,7 +340,7 @@ func TestDeleteProject(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a project (which will have default columns)
 	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
@@ -357,7 +366,7 @@ func TestDeleteProject_WithTasks(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a project
 	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
@@ -394,7 +403,7 @@ func TestDeleteProject_WithTasksForce(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a project
 	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
@@ -430,7 +439,7 @@ func TestDeleteProject_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	err := svc.DeleteProject(context.Background(), 0, false)
 
@@ -449,7 +458,7 @@ func TestGetTaskCount(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a project
 	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
@@ -473,7 +482,7 @@ func TestGetTaskCount_InvalidID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetTaskCount(context.Background(), 0)
 
@@ -551,7 +560,7 @@ func TestCreateProject_ErrorCases(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 
 			result, err := svc.CreateProject(context.Background(), tt.req)
 
@@ -593,7 +602,7 @@ func TestGetProjectByID_NegativeID(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 
 			_, err := svc.GetProjectByID(context.Background(), tt.id)
 
@@ -615,7 +624,7 @@ func TestGetProjectByID_VeryLargeID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetProjectByID(context.Background(), 999999999)
 
@@ -633,7 +642,7 @@ func TestUpdateProject_ErrorCases(t *testing.T) {
 	db := setupTestDB(t)
 	t.Cleanup(func() { _ = db.Close() })
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a project for update tests
 	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
@@ -716,7 +725,7 @@ func TestUpdateProject_NonExistentProject(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	newName := "Updated Name"
 	req := UpdateProjectRequest{
@@ -781,7 +790,7 @@ func TestDeleteProject_ErrorCases(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 
 			var projectID int
 			if tt.setupFunc != nil {
@@ -813,7 +822,7 @@ func TestDeleteProject_NonExistentProject(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Deleting a non-existent project should succeed (idempotent operation)
 	err := svc.DeleteProject(context.Background(), 999999, false)
@@ -858,7 +867,7 @@ func TestGetTaskCount_ErrorCases(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 
 			_, err := svc.GetTaskCount(context.Background(), tt.projectID)
 
@@ -880,7 +889,7 @@ func TestGetTaskCount_NonExistentProject(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Getting task count for non-existent project should return 0
 	count, err := svc.GetTaskCount(context.Background(), 999999)
@@ -899,7 +908,7 @@ func TestGetAllProjects_AfterDelete(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two projects
 	proj1, err := svc.CreateProject(context.Background(), CreateProjectRequest{

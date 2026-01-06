@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
@@ -17,6 +19,14 @@ import (
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	return testutil.SetupTestDB(t)
+}
+
+// newTestService creates a new service for testing (panics on error since tests use valid SQLite)
+func newTestService(t *testing.T, db *sql.DB) Service {
+	t.Helper()
+	svc, err := NewService(db, database.SQLite, nil)
+	require.NoError(t, err, "failed to create test service")
+	return svc
 }
 
 // createTestProject creates a test project and returns its ID
@@ -75,7 +85,7 @@ func TestCreateLabel(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	req := CreateLabelRequest{
 		ProjectID: projectID,
@@ -166,7 +176,7 @@ func TestCreateLabel_Validation(t *testing.T) {
 				projectID = tt.setupFn(db)
 			}
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			req := CreateLabelRequest{
 				ProjectID: projectID,
 				Name:      tt.labelName,
@@ -194,7 +204,7 @@ func TestCreateLabel_InvalidColor(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	testCases := []struct {
 		name  string
@@ -236,7 +246,7 @@ func TestCreateLabel_InvalidProjectID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	req := CreateLabelRequest{
 		ProjectID: 0, // Invalid
@@ -262,7 +272,7 @@ func TestGetLabelsByProject(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two labels
 	_, err := svc.CreateLabel(context.Background(), CreateLabelRequest{
@@ -308,7 +318,7 @@ func TestGetLabelsByProject_Empty(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	results, err := svc.GetLabelsByProject(context.Background(), projectID)
 	if err != nil {
@@ -326,7 +336,7 @@ func TestGetLabelsByProject_InvalidProjectID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetLabelsByProject(context.Background(), 0)
 
@@ -347,7 +357,7 @@ func TestGetLabelsForTask(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	taskID := createTestTask(t, db, projectID)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two labels and attach them to the task
 	label1, err := svc.CreateLabel(context.Background(), CreateLabelRequest{
@@ -403,7 +413,7 @@ func TestGetLabelsForTask_Empty(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	taskID := createTestTask(t, db, projectID)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	results, err := svc.GetLabelsForTask(context.Background(), taskID)
 	if err != nil {
@@ -421,7 +431,7 @@ func TestGetLabelsForTask_InvalidTaskID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetLabelsForTask(context.Background(), 0)
 
@@ -441,7 +451,7 @@ func TestUpdateLabel(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a label
 	created, err := svc.CreateLabel(context.Background(), CreateLabelRequest{
@@ -492,7 +502,7 @@ func TestUpdateLabel_OnlyName(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a label
 	created, err := svc.CreateLabel(context.Background(), CreateLabelRequest{
@@ -548,7 +558,7 @@ func TestUpdateLabel_Validation(t *testing.T) {
 			errType: ErrEmptyName,
 			setupFn: func(db *sql.DB) int {
 				projectID := createTestProject(t, db)
-				label, _ := NewService(db, nil).CreateLabel(context.Background(), CreateLabelRequest{
+				label, _ := newTestService(t, db).CreateLabel(context.Background(), CreateLabelRequest{
 					ProjectID: projectID,
 					Name:      "Bug",
 					Color:     "#FF5733",
@@ -563,7 +573,7 @@ func TestUpdateLabel_Validation(t *testing.T) {
 			errType:  ErrInvalidColor,
 			setupFn: func(db *sql.DB) int {
 				projectID := createTestProject(t, db)
-				label, _ := NewService(db, nil).CreateLabel(context.Background(), CreateLabelRequest{
+				label, _ := newTestService(t, db).CreateLabel(context.Background(), CreateLabelRequest{
 					ProjectID: projectID,
 					Name:      "Bug",
 					Color:     "#FF5733",
@@ -592,7 +602,7 @@ func TestUpdateLabel_Validation(t *testing.T) {
 				labelID = tt.setupFn(db)
 			}
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			req := UpdateLabelRequest{
 				ID:    labelID,
 				Name:  tt.newName,
@@ -625,7 +635,7 @@ func TestDeleteLabel(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a label
 	created, err := svc.CreateLabel(context.Background(), CreateLabelRequest{
@@ -676,7 +686,7 @@ func TestDeleteLabel_Validation(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			err := svc.DeleteLabel(context.Background(), tt.labelID)
 
 			if (err != nil) != tt.wantErr {
@@ -699,7 +709,7 @@ func TestDeleteLabel_CascadeToTaskLabels(t *testing.T) {
 
 	projectID := createTestProject(t, db)
 	taskID := createTestTask(t, db, projectID)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a label and attach it to a task
 	created, err := svc.CreateLabel(context.Background(), CreateLabelRequest{
@@ -782,7 +792,7 @@ func TestCreateLabel_InvalidLabelID_Errors(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			req := CreateLabelRequest{
 				ProjectID: tt.projectID,
 				Name:      tt.labelName,
@@ -812,7 +822,7 @@ func TestCreateLabel_DuplicateNames(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create first label
 	_, err := svc.CreateLabel(context.Background(), CreateLabelRequest{
@@ -851,7 +861,7 @@ func TestCreateLabel_DuplicateNames_DifferentProjects(t *testing.T) {
 
 	projectID1 := createTestProject(t, db)
 	projectID2 := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create label in first project
 	_, err := svc.CreateLabel(context.Background(), CreateLabelRequest{
@@ -922,7 +932,7 @@ func TestCreateLabel_SpecialCharacters(t *testing.T) {
 			defer func() { _ = db.Close() }()
 
 			projectID := createTestProject(t, db)
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 
 			req := CreateLabelRequest{
 				ProjectID: projectID,
@@ -951,7 +961,7 @@ func TestGetLabelsByProject_NegativeProjectID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetLabelsByProject(context.Background(), -1)
 
@@ -970,7 +980,7 @@ func TestGetLabelsByProject_NonExistentProject(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Query non-existent project (should return empty list, not error)
 	labels, err := svc.GetLabelsByProject(context.Background(), 999999)
@@ -989,7 +999,7 @@ func TestGetLabelsForTask_NegativeTaskID(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	_, err := svc.GetLabelsForTask(context.Background(), -1)
 
@@ -1008,7 +1018,7 @@ func TestGetLabelsForTask_NonExistentTask(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Query non-existent task (should return empty list, not error)
 	labels, err := svc.GetLabelsForTask(context.Background(), 999999)
@@ -1052,7 +1062,7 @@ func TestUpdateLabel_InvalidLabelID_Errors(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 			req := UpdateLabelRequest{
 				ID:    tt.labelID,
 				Name:  tt.newName,
@@ -1074,7 +1084,7 @@ func TestUpdateLabel_NonExistentLabel(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	req := UpdateLabelRequest{
 		ID:   999999,
@@ -1099,7 +1109,7 @@ func TestUpdateLabel_NameTooLong(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a label
 	created, err := svc.CreateLabel(context.Background(), CreateLabelRequest{
@@ -1139,7 +1149,7 @@ func TestUpdateLabel_InvalidColorFormats(t *testing.T) {
 	db := setupTestDB(t)
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a label
 	created, err := svc.CreateLabel(context.Background(), CreateLabelRequest{
@@ -1193,7 +1203,7 @@ func TestUpdateLabel_NoFieldsToUpdate(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a label
 	created, err := svc.CreateLabel(context.Background(), CreateLabelRequest{
@@ -1261,7 +1271,7 @@ func TestDeleteLabel_InvalidLabelID_Errors(t *testing.T) {
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 
 			err := svc.DeleteLabel(context.Background(), tt.labelID)
 
@@ -1278,7 +1288,7 @@ func TestDeleteLabel_NonExistentLabel(t *testing.T) {
 	db := setupTestDB(t)
 	defer func() { _ = db.Close() }()
 
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Try to delete non-existent label (should succeed as per service implementation)
 	err := svc.DeleteLabel(context.Background(), 999999)
@@ -1294,7 +1304,7 @@ func TestDeleteLabel_AlreadyDeleted(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create a label
 	created, err := svc.CreateLabel(context.Background(), CreateLabelRequest{
@@ -1352,7 +1362,7 @@ func TestCreateLabel_BoundaryValues(t *testing.T) {
 			defer func() { _ = db.Close() }()
 
 			projectID := createTestProject(t, db)
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 
 			req := CreateLabelRequest{
 				ProjectID: projectID,
@@ -1401,7 +1411,7 @@ func TestCreateLabel_ValidColorFormats(t *testing.T) {
 			defer func() { _ = db.Close() }()
 
 			projectID := createTestProject(t, db)
-			svc := NewService(db, nil)
+			svc := newTestService(t, db)
 
 			req := CreateLabelRequest{
 				ProjectID: projectID,
@@ -1436,7 +1446,7 @@ func TestUpdateLabel_DuplicateNameInProject(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	projectID := createTestProject(t, db)
-	svc := NewService(db, nil)
+	svc := newTestService(t, db)
 
 	// Create two labels
 	label1, err := svc.CreateLabel(context.Background(), CreateLabelRequest{

@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"database/sql"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/app"
@@ -19,8 +20,8 @@ type App struct {
 
 // New creates a new App with an initialized Model.
 // This is the constructor that should be used instead of tui.InitialModel.
-func New(ctx context.Context, application *app.App, cfg *config.Config, eventClient events.EventPublisher) *App {
-	model := tui.InitialModel(ctx, application, cfg, eventClient)
+func New(ctx context.Context, application *app.App, cfg *config.Config, eventClient events.EventPublisher, db *sql.DB) *App {
+	model := tui.InitialModel(ctx, application, cfg, eventClient, db)
 	return &App{model: &model}
 }
 

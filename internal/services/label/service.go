@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/thenoetrevino/paso/internal/converters"
-	"github.com/thenoetrevino/paso/internal/database/generated"
+	"github.com/thenoetrevino/paso/internal/database"
+	"github.com/thenoetrevino/paso/internal/database/types"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -42,24 +44,33 @@ type UpdateLabelRequest struct {
 	Color *string
 }
 
-// service implements Service interface using SQLC directly
+// service implements Service interface using database.Querier abstraction
 type service struct {
 	db          *sql.DB
-	queries     generated.Querier
+	dbType      database.DatabaseType
+	queries     database.Querier
 	eventClient events.EventPublisher
 }
 
-// NewService creates a new label service
-func NewService(db *sql.DB, eventClient events.EventPublisher) Service {
+// NewService creates a new label service with database-agnostic queries.
+func NewService(db *sql.DB, dbType database.DatabaseType, eventClient events.EventPublisher) (Service, error) {
+	queries, err := database.NewQuerier(db, dbType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create label service: %w", err)
+	}
 	return &service{
 		db:          db,
-		queries:     generated.New(db),
+		dbType:      dbType,
+		queries:     queries,
 		eventClient: eventClient,
-	}
+	}, nil
 }
 
 // GetLabelsByProject retrieves all labels for a project
 func (s *service) GetLabelsByProject(ctx context.Context, projectID int) ([]*models.Label, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if projectID <= 0 {
 		return nil, ErrInvalidProjectID
 	}
@@ -84,13 +95,16 @@ func (s *service) GetLabelsForTask(ctx context.Context, taskID int) ([]*models.L
 
 // CreateLabel creates a new label with validation
 func (s *service) CreateLabel(ctx context.Context, req CreateLabelRequest) (*models.Label, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Validate request
 	if err := s.validateCreateLabel(req); err != nil {
 		return nil, err
 	}
 
 	// Create label
-	label, err := s.queries.CreateLabel(ctx, generated.CreateLabelParams{
+	label, err := s.queries.CreateLabel(ctx, types.CreateLabelParams{
 		Name:      req.Name,
 		Color:     req.Color,
 		ProjectID: int64(req.ProjectID),
@@ -98,7 +112,7 @@ func (s *service) CreateLabel(ctx context.Context, req CreateLabelRequest) (*mod
 	if err != nil {
 		// Check for unique constraint violation
 		if isUniqueConstraintError(err) {
-			return nil, fmt.Errorf("label creation error: label with name '%s' already exists in this project", req.Name)
+			return nil, fmt.Errorf("failed to create label: label with name '%s' already exists in this project", req.Name)
 		}
 		return nil, fmt.Errorf("failed to create label: %w", err)
 	}
@@ -111,6 +125,9 @@ func (s *service) CreateLabel(ctx context.Context, req CreateLabelRequest) (*mod
 
 // UpdateLabel updates an existing label
 func (s *service) UpdateLabel(ctx context.Context, req UpdateLabelRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Validate label ID
 	if req.ID <= 0 {
 		return ErrInvalidLabelID
@@ -148,7 +165,7 @@ func (s *service) UpdateLabel(ctx context.Context, req UpdateLabelRequest) error
 	}
 
 	// Update label
-	if err := s.queries.UpdateLabel(ctx, generated.UpdateLabelParams{
+	if err := s.queries.UpdateLabel(ctx, types.UpdateLabelParams{
 		ID:    int64(req.ID),
 		Name:  name,
 		Color: color,

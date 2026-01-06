@@ -3,6 +3,7 @@ package app
 import (
 	"log/slog"
 
+	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
 )
 
@@ -13,6 +14,7 @@ type Option func(*appConfig)
 type appConfig struct {
 	eventClient events.EventPublisher
 	logger      *slog.Logger
+	dbType      database.DatabaseType
 }
 
 // WithEventPublisher sets the event publisher for the application
@@ -26,5 +28,12 @@ func WithEventPublisher(ec events.EventPublisher) Option {
 func WithLogger(logger *slog.Logger) Option {
 	return func(cfg *appConfig) {
 		cfg.logger = logger
+	}
+}
+
+// WithDatabaseType sets the database type for the application
+func WithDatabaseType(dbType database.DatabaseType) Option {
+	return func(cfg *appConfig) {
+		cfg.dbType = dbType
 	}
 }
