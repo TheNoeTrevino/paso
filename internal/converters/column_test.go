@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/thenoetrevino/paso/internal/database/generated"
+	"github.com/thenoetrevino/paso/internal/database/types"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -17,17 +17,17 @@ func TestColumnToModel(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    generated.Column
+		input    types.Column
 		expected *models.Column
 	}{
 		{
 			name: "basic column with all flags false",
-			input: generated.Column{
+			input: types.Column{
 				ID:                   1,
 				Name:                 "Todo",
 				ProjectID:            100,
-				PrevID:               nil,
-				NextID:               nil,
+				PrevID:               types.NullInt64{Valid: false},
+				NextID:               types.NullInt64{Valid: false},
 				HoldsReadyTasks:      false,
 				HoldsCompletedTasks:  false,
 				HoldsInProgressTasks: false,
@@ -45,12 +45,12 @@ func TestColumnToModel(t *testing.T) {
 		},
 		{
 			name: "column with prev_id only",
-			input: generated.Column{
+			input: types.Column{
 				ID:                   2,
 				Name:                 "In Progress",
 				ProjectID:            100,
-				PrevID:               int64(1),
-				NextID:               nil,
+				PrevID:               types.NullInt64{Int64: 1, Valid: true},
+				NextID:               types.NullInt64{Valid: false},
 				HoldsReadyTasks:      false,
 				HoldsCompletedTasks:  false,
 				HoldsInProgressTasks: true,
@@ -68,12 +68,12 @@ func TestColumnToModel(t *testing.T) {
 		},
 		{
 			name: "column with next_id only",
-			input: generated.Column{
+			input: types.Column{
 				ID:                   3,
 				Name:                 "Todo",
 				ProjectID:            100,
-				PrevID:               nil,
-				NextID:               int64(4),
+				PrevID:               types.NullInt64{Valid: false},
+				NextID:               types.NullInt64{Int64: 4, Valid: true},
 				HoldsReadyTasks:      true,
 				HoldsCompletedTasks:  false,
 				HoldsInProgressTasks: false,
@@ -91,12 +91,12 @@ func TestColumnToModel(t *testing.T) {
 		},
 		{
 			name: "column with both prev_id and next_id",
-			input: generated.Column{
+			input: types.Column{
 				ID:                   4,
 				Name:                 "In Progress",
 				ProjectID:            100,
-				PrevID:               int64(3),
-				NextID:               int64(5),
+				PrevID:               types.NullInt64{Int64: 3, Valid: true},
+				NextID:               types.NullInt64{Int64: 5, Valid: true},
 				HoldsReadyTasks:      false,
 				HoldsCompletedTasks:  false,
 				HoldsInProgressTasks: true,
@@ -114,12 +114,12 @@ func TestColumnToModel(t *testing.T) {
 		},
 		{
 			name: "completed column with holds_completed_tasks flag",
-			input: generated.Column{
+			input: types.Column{
 				ID:                   5,
 				Name:                 "Done",
 				ProjectID:            100,
-				PrevID:               int64(4),
-				NextID:               nil,
+				PrevID:               types.NullInt64{Int64: 4, Valid: true},
+				NextID:               types.NullInt64{Valid: false},
 				HoldsReadyTasks:      false,
 				HoldsCompletedTasks:  true,
 				HoldsInProgressTasks: false,
@@ -137,12 +137,12 @@ func TestColumnToModel(t *testing.T) {
 		},
 		{
 			name: "column with all flags true",
-			input: generated.Column{
+			input: types.Column{
 				ID:                   6,
 				Name:                 "Multi-Flag Column",
 				ProjectID:            100,
-				PrevID:               int64(5),
-				NextID:               int64(7),
+				PrevID:               types.NullInt64{Int64: 5, Valid: true},
+				NextID:               types.NullInt64{Int64: 7, Valid: true},
 				HoldsReadyTasks:      true,
 				HoldsCompletedTasks:  true,
 				HoldsInProgressTasks: true,
@@ -160,12 +160,12 @@ func TestColumnToModel(t *testing.T) {
 		},
 		{
 			name: "empty name column",
-			input: generated.Column{
+			input: types.Column{
 				ID:                   7,
 				Name:                 "",
 				ProjectID:            100,
-				PrevID:               nil,
-				NextID:               nil,
+				PrevID:               types.NullInt64{Valid: false},
+				NextID:               types.NullInt64{Valid: false},
 				HoldsReadyTasks:      false,
 				HoldsCompletedTasks:  false,
 				HoldsInProgressTasks: false,
@@ -183,12 +183,12 @@ func TestColumnToModel(t *testing.T) {
 		},
 		{
 			name: "column with max int64 values",
-			input: generated.Column{
+			input: types.Column{
 				ID:                   math.MaxInt64,
 				Name:                 "Max Value Column",
 				ProjectID:            math.MaxInt64,
-				PrevID:               int64(math.MaxInt64 - 1),
-				NextID:               nil,
+				PrevID:               types.NullInt64{Int64: math.MaxInt64 - 1, Valid: true},
+				NextID:               types.NullInt64{Valid: false},
 				HoldsReadyTasks:      false,
 				HoldsCompletedTasks:  false,
 				HoldsInProgressTasks: false,
@@ -206,12 +206,12 @@ func TestColumnToModel(t *testing.T) {
 		},
 		{
 			name: "column with zero IDs",
-			input: generated.Column{
+			input: types.Column{
 				ID:                   0,
 				Name:                 "Zero ID Column",
 				ProjectID:            0,
-				PrevID:               int64(0),
-				NextID:               int64(0),
+				PrevID:               types.NullInt64{Int64: 0, Valid: true},
+				NextID:               types.NullInt64{Int64: 0, Valid: true},
 				HoldsReadyTasks:      false,
 				HoldsCompletedTasks:  false,
 				HoldsInProgressTasks: false,
@@ -273,17 +273,17 @@ func TestColumnFromIDRowToModel(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    generated.GetColumnByIDRow
+		input    types.GetColumnByIDRow
 		expected *models.Column
 	}{
 		{
 			name: "basic column from ID row",
-			input: generated.GetColumnByIDRow{
+			input: types.GetColumnByIDRow{
 				ID:                   10,
 				Name:                 "Backlog",
 				ProjectID:            200,
-				PrevID:               nil,
-				NextID:               nil,
+				PrevID:               types.NullInt64{Valid: false},
+				NextID:               types.NullInt64{Valid: false},
 				HoldsReadyTasks:      false,
 				HoldsCompletedTasks:  false,
 				HoldsInProgressTasks: false,
@@ -301,12 +301,12 @@ func TestColumnFromIDRowToModel(t *testing.T) {
 		},
 		{
 			name: "column with linked list pointers",
-			input: generated.GetColumnByIDRow{
+			input: types.GetColumnByIDRow{
 				ID:                   20,
 				Name:                 "Review",
 				ProjectID:            200,
-				PrevID:               int64(19),
-				NextID:               int64(21),
+				PrevID:               types.NullInt64{Int64: 19, Valid: true},
+				NextID:               types.NullInt64{Int64: 21, Valid: true},
 				HoldsReadyTasks:      false,
 				HoldsCompletedTasks:  false,
 				HoldsInProgressTasks: false,
@@ -324,12 +324,12 @@ func TestColumnFromIDRowToModel(t *testing.T) {
 		},
 		{
 			name: "ready tasks column",
-			input: generated.GetColumnByIDRow{
+			input: types.GetColumnByIDRow{
 				ID:                   30,
 				Name:                 "Ready for Work",
 				ProjectID:            200,
-				PrevID:               int64(29),
-				NextID:               int64(31),
+				PrevID:               types.NullInt64{Int64: 29, Valid: true},
+				NextID:               types.NullInt64{Int64: 31, Valid: true},
 				HoldsReadyTasks:      true,
 				HoldsCompletedTasks:  false,
 				HoldsInProgressTasks: false,
@@ -391,23 +391,23 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    []generated.GetColumnsByProjectRow
+		input    []types.GetColumnsByProjectRow
 		expected []*models.Column
 	}{
 		{
 			name:     "empty slice",
-			input:    []generated.GetColumnsByProjectRow{},
+			input:    []types.GetColumnsByProjectRow{},
 			expected: []*models.Column{},
 		},
 		{
 			name: "single column",
-			input: []generated.GetColumnsByProjectRow{
+			input: []types.GetColumnsByProjectRow{
 				{
 					ID:                   1,
 					Name:                 "Todo",
 					ProjectID:            100,
-					PrevID:               nil,
-					NextID:               nil,
+					PrevID:               types.NullInt64{Valid: false},
+					NextID:               types.NullInt64{Valid: false},
 					HoldsReadyTasks:      true,
 					HoldsCompletedTasks:  false,
 					HoldsInProgressTasks: false,
@@ -428,13 +428,13 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 		},
 		{
 			name: "multiple columns forming linked list",
-			input: []generated.GetColumnsByProjectRow{
+			input: []types.GetColumnsByProjectRow{
 				{
 					ID:                   1,
 					Name:                 "Todo",
 					ProjectID:            100,
-					PrevID:               nil,
-					NextID:               int64(2),
+					PrevID:               types.NullInt64{Valid: false},
+					NextID:               types.NullInt64{Int64: 2, Valid: true},
 					HoldsReadyTasks:      true,
 					HoldsCompletedTasks:  false,
 					HoldsInProgressTasks: false,
@@ -443,8 +443,8 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 					ID:                   2,
 					Name:                 "In Progress",
 					ProjectID:            100,
-					PrevID:               int64(1),
-					NextID:               int64(3),
+					PrevID:               types.NullInt64{Int64: 1, Valid: true},
+					NextID:               types.NullInt64{Int64: 3, Valid: true},
 					HoldsReadyTasks:      false,
 					HoldsCompletedTasks:  false,
 					HoldsInProgressTasks: true,
@@ -453,8 +453,8 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 					ID:                   3,
 					Name:                 "Done",
 					ProjectID:            100,
-					PrevID:               int64(2),
-					NextID:               nil,
+					PrevID:               types.NullInt64{Int64: 2, Valid: true},
+					NextID:               types.NullInt64{Valid: false},
 					HoldsReadyTasks:      false,
 					HoldsCompletedTasks:  true,
 					HoldsInProgressTasks: false,
@@ -495,13 +495,13 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 		},
 		{
 			name: "unlinked columns (no prev/next IDs)",
-			input: []generated.GetColumnsByProjectRow{
+			input: []types.GetColumnsByProjectRow{
 				{
 					ID:                   10,
 					Name:                 "Column A",
 					ProjectID:            200,
-					PrevID:               nil,
-					NextID:               nil,
+					PrevID:               types.NullInt64{Valid: false},
+					NextID:               types.NullInt64{Valid: false},
 					HoldsReadyTasks:      false,
 					HoldsCompletedTasks:  false,
 					HoldsInProgressTasks: false,
@@ -510,8 +510,8 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 					ID:                   11,
 					Name:                 "Column B",
 					ProjectID:            200,
-					PrevID:               nil,
-					NextID:               nil,
+					PrevID:               types.NullInt64{Valid: false},
+					NextID:               types.NullInt64{Valid: false},
 					HoldsReadyTasks:      false,
 					HoldsCompletedTasks:  false,
 					HoldsInProgressTasks: false,
@@ -542,13 +542,13 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 		},
 		{
 			name: "columns with various flag combinations",
-			input: []generated.GetColumnsByProjectRow{
+			input: []types.GetColumnsByProjectRow{
 				{
 					ID:                   20,
 					Name:                 "Backlog",
 					ProjectID:            300,
-					PrevID:               nil,
-					NextID:               int64(21),
+					PrevID:               types.NullInt64{Valid: false},
+					NextID:               types.NullInt64{Int64: 21, Valid: true},
 					HoldsReadyTasks:      false,
 					HoldsCompletedTasks:  false,
 					HoldsInProgressTasks: false,
@@ -557,8 +557,8 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 					ID:                   21,
 					Name:                 "Ready",
 					ProjectID:            300,
-					PrevID:               int64(20),
-					NextID:               int64(22),
+					PrevID:               types.NullInt64{Int64: 20, Valid: true},
+					NextID:               types.NullInt64{Int64: 22, Valid: true},
 					HoldsReadyTasks:      true,
 					HoldsCompletedTasks:  false,
 					HoldsInProgressTasks: false,
@@ -567,8 +567,8 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 					ID:                   22,
 					Name:                 "Working",
 					ProjectID:            300,
-					PrevID:               int64(21),
-					NextID:               int64(23),
+					PrevID:               types.NullInt64{Int64: 21, Valid: true},
+					NextID:               types.NullInt64{Int64: 23, Valid: true},
 					HoldsReadyTasks:      false,
 					HoldsCompletedTasks:  false,
 					HoldsInProgressTasks: true,
@@ -577,8 +577,8 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 					ID:                   23,
 					Name:                 "Completed",
 					ProjectID:            300,
-					PrevID:               int64(22),
-					NextID:               nil,
+					PrevID:               types.NullInt64{Int64: 22, Valid: true},
+					NextID:               types.NullInt64{Valid: false},
 					HoldsReadyTasks:      false,
 					HoldsCompletedTasks:  true,
 					HoldsInProgressTasks: false,

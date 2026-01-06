@@ -3,7 +3,7 @@ package converters
 import (
 	"testing"
 
-	"github.com/thenoetrevino/paso/internal/database/generated"
+	"github.com/thenoetrevino/paso/internal/database/types"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -16,12 +16,12 @@ func TestLabelToModel(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		input    generated.Label
+		input    types.Label
 		expected *models.Label
 	}{
 		{
 			name: "standard label",
-			input: generated.Label{
+			input: types.Label{
 				ID:        1,
 				Name:      "bug",
 				Color:     "#FF5733",
@@ -36,7 +36,7 @@ func TestLabelToModel(t *testing.T) {
 		},
 		{
 			name: "label with spaces in name",
-			input: generated.Label{
+			input: types.Label{
 				ID:        2,
 				Name:      "needs review",
 				Color:     "#00FF00",
@@ -51,7 +51,7 @@ func TestLabelToModel(t *testing.T) {
 		},
 		{
 			name: "label with special characters",
-			input: generated.Label{
+			input: types.Label{
 				ID:        3,
 				Name:      "p1-urgent!",
 				Color:     "#FF0000",
@@ -66,7 +66,7 @@ func TestLabelToModel(t *testing.T) {
 		},
 		{
 			name: "label with unicode characters",
-			input: generated.Label{
+			input: types.Label{
 				ID:        4,
 				Name:      "优先级高",
 				Color:     "#FFFF00",
@@ -81,7 +81,7 @@ func TestLabelToModel(t *testing.T) {
 		},
 		{
 			name: "label with emojis",
-			input: generated.Label{
+			input: types.Label{
 				ID:        5,
 				Name:      "🐛 bug",
 				Color:     "#FF5733",
@@ -96,7 +96,7 @@ func TestLabelToModel(t *testing.T) {
 		},
 		{
 			name: "label with very long name",
-			input: generated.Label{
+			input: types.Label{
 				ID:        6,
 				Name:      "this-is-a-very-long-label-name-that-exceeds-typical-length-but-should-still-be-handled-correctly",
 				Color:     "#00FF00",
@@ -111,7 +111,7 @@ func TestLabelToModel(t *testing.T) {
 		},
 		{
 			name: "label with empty name",
-			input: generated.Label{
+			input: types.Label{
 				ID:        7,
 				Name:      "",
 				Color:     "#000000",
@@ -126,7 +126,7 @@ func TestLabelToModel(t *testing.T) {
 		},
 		{
 			name: "label with uppercase color",
-			input: generated.Label{
+			input: types.Label{
 				ID:        8,
 				Name:      "feature",
 				Color:     "#ABCDEF",
@@ -141,7 +141,7 @@ func TestLabelToModel(t *testing.T) {
 		},
 		{
 			name: "label with lowercase color",
-			input: generated.Label{
+			input: types.Label{
 				ID:        9,
 				Name:      "enhancement",
 				Color:     "#abcdef",
@@ -156,7 +156,7 @@ func TestLabelToModel(t *testing.T) {
 		},
 		{
 			name: "label with large IDs",
-			input: generated.Label{
+			input: types.Label{
 				ID:        999999,
 				Name:      "test",
 				Color:     "#123456",
@@ -209,12 +209,12 @@ func TestLabelsToModels(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		input         []generated.Label
+		input         []types.Label
 		expectedCount int
 	}{
 		{
 			name: "multiple labels",
-			input: []generated.Label{
+			input: []types.Label{
 				{ID: 1, Name: "bug", Color: "#FF5733", ProjectID: 10},
 				{ID: 2, Name: "feature", Color: "#00FF00", ProjectID: 10},
 				{ID: 3, Name: "enhancement", Color: "#0000FF", ProjectID: 10},
@@ -223,19 +223,19 @@ func TestLabelsToModels(t *testing.T) {
 		},
 		{
 			name:          "empty slice",
-			input:         []generated.Label{},
+			input:         []types.Label{},
 			expectedCount: 0,
 		},
 		{
 			name: "single label",
-			input: []generated.Label{
+			input: []types.Label{
 				{ID: 1, Name: "bug", Color: "#FF5733", ProjectID: 10},
 			},
 			expectedCount: 1,
 		},
 		{
 			name: "labels with mixed names",
-			input: []generated.Label{
+			input: []types.Label{
 				{ID: 1, Name: "simple", Color: "#111111", ProjectID: 10},
 				{ID: 2, Name: "with spaces", Color: "#222222", ProjectID: 10},
 				{ID: 3, Name: "with-dashes", Color: "#333333", ProjectID: 10},
@@ -245,7 +245,7 @@ func TestLabelsToModels(t *testing.T) {
 		},
 		{
 			name: "labels from different projects",
-			input: []generated.Label{
+			input: []types.Label{
 				{ID: 1, Name: "bug", Color: "#FF5733", ProjectID: 10},
 				{ID: 2, Name: "bug", Color: "#FF5733", ProjectID: 20},
 				{ID: 3, Name: "feature", Color: "#00FF00", ProjectID: 30},
@@ -309,7 +309,7 @@ func TestLabelsToModels_NilSlice(t *testing.T) {
 func TestLabelsToModels_PreservesOrder(t *testing.T) {
 	t.Parallel()
 
-	input := []generated.Label{
+	input := []types.Label{
 		{ID: 5, Name: "fifth", Color: "#555555", ProjectID: 10},
 		{ID: 3, Name: "third", Color: "#333333", ProjectID: 10},
 		{ID: 1, Name: "first", Color: "#111111", ProjectID: 10},
@@ -340,7 +340,7 @@ func TestLabelToModel_TypeConversion(t *testing.T) {
 	t.Parallel()
 
 	// Test that int64 from database is correctly converted to int for models
-	input := generated.Label{
+	input := types.Label{
 		ID:        int64(9223372036854775807), // Max int64
 		Name:      "test",
 		Color:     "#FFFFFF",
@@ -365,7 +365,7 @@ func TestLabelToModel_TypeConversion(t *testing.T) {
 // ============================================================================
 
 func BenchmarkLabelToModel(b *testing.B) {
-	label := generated.Label{
+	label := types.Label{
 		ID:        1,
 		Name:      "bug",
 		Color:     "#FF5733",
@@ -379,7 +379,7 @@ func BenchmarkLabelToModel(b *testing.B) {
 }
 
 func BenchmarkLabelsToModels(b *testing.B) {
-	labels := []generated.Label{
+	labels := []types.Label{
 		{ID: 1, Name: "bug", Color: "#FF5733", ProjectID: 10},
 		{ID: 2, Name: "feature", Color: "#00FF00", ProjectID: 10},
 		{ID: 3, Name: "enhancement", Color: "#0000FF", ProjectID: 10},
@@ -395,9 +395,9 @@ func BenchmarkLabelsToModels(b *testing.B) {
 
 func BenchmarkLabelsToModels_Large(b *testing.B) {
 	// Create a large slice of labels
-	labels := make([]generated.Label, 100)
+	labels := make([]types.Label, 100)
 	for i := 0; i < 100; i++ {
-		labels[i] = generated.Label{
+		labels[i] = types.Label{
 			ID:        int64(i + 1),
 			Name:      "label-" + string(rune('0'+i%10)),
 			Color:     "#FFFFFF",
