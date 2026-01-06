@@ -126,6 +126,8 @@ type Querier interface {
 	GetTailColumnForProject(ctx context.Context, projectID int64) (int64, error)
 	// Retrieves basic task information by ID
 	GetTask(ctx context.Context, id int64) (GetTaskRow, error)
+	// Retrieves only the type_id and priority_id for a task (lightweight query)
+	GetTaskTypeAndPriorityIDs(ctx context.Context, id int64) (GetTaskTypeAndPriorityIDsRow, error)
 	// Retrieves the task immediately above the given position in a column
 	GetTaskAbove(ctx context.Context, arg GetTaskAboveParams) (GetTaskAboveRow, error)
 	// Retrieves the task immediately below the given position in a column
