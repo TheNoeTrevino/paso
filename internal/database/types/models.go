@@ -93,3 +93,9 @@ type Type struct {
 	ID          int64
 	Description string
 }
+
+// GetTaskTypeAndPriorityIDsRow represents the result of fetching type and priority IDs.
+type GetTaskTypeAndPriorityIDsRow struct {
+	TypeID     int64
+	PriorityID int64
+}
