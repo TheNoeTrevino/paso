@@ -58,7 +58,7 @@ type Querier interface {
 	// Retrieves all available priority levels
 	GetAllPriorities(ctx context.Context) ([]Priority, error)
 	// Retrieves all projects ordered by ID
-	GetAllProjects(ctx context.Context) ([]Project, error)
+	GetAllProjects(ctx context.Context) ([]GetAllProjectsRow, error)
 	// Retrieves all available relationship types for task links
 	GetAllRelationTypes(ctx context.Context) ([]RelationType, error)
 	// Retrieves all available task types
@@ -103,8 +103,10 @@ type Querier interface {
 	GetParentTasks(ctx context.Context, childID int64) ([]GetParentTasksRow, error)
 	// Retrieves the ID of the previous column in the linked list
 	GetPrevColumnID(ctx context.Context, id int64) (sql.NullInt64, error)
+	// Retrieves a project by its git branch
+	GetProjectByGitBranch(ctx context.Context, gitBranch sql.NullString) (GetProjectByGitBranchRow, error)
 	// Retrieves a project by its ID with all metadata
-	GetProjectByID(ctx context.Context, id int64) (Project, error)
+	GetProjectByID(ctx context.Context, id int64) (GetProjectByIDRow, error)
 	// Retrieves the project ID for a given column
 	GetProjectIDFromColumn(ctx context.Context, id int64) (int64, error)
 	// Retrieves the project ID for a given task by joining through its column
@@ -115,7 +117,7 @@ type Querier interface {
 	GetReadyColumnByProject(ctx context.Context, projectID int64) (GetReadyColumnByProjectRow, error)
 	// Retrieves task summaries for ready tasks (tasks in columns marked as holds_ready_tasks)
 	GetReadyTaskSummariesByProject(ctx context.Context, projectID int64) ([]GetReadyTaskSummariesByProjectRow, error)
-	// Retrieves the last column in a project's linked list (where next_id is NULL)
+	// Retrieves the last column in a project's linked list (where next_id is null)
 	GetTailColumnForProject(ctx context.Context, projectID int64) (int64, error)
 	// Retrieves basic task information by ID
 	GetTask(ctx context.Context, id int64) (GetTaskRow, error)

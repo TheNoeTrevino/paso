@@ -11,7 +11,7 @@ import (
 
 const addLabelToTask = `-- name: AddLabelToTask :exec
 insert into task_labels (task_id, label_id) values ($1, $2)
-ON CONFLICT (task_id, label_id) DO NOTHING
+on CONFLICT (task_id, label_id) DO NOTHING
 `
 
 type AddLabelToTaskParams struct {
@@ -28,7 +28,7 @@ func (q *Queries) AddLabelToTask(ctx context.Context, arg AddLabelToTaskParams) 
 const createLabel = `-- name: CreateLabel :one
 insert into labels (name, color, project_id)
 values ($1, $2, $3)
-RETURNING id, name, color, project_id
+returning id, name, color, project_id
 `
 
 type CreateLabelParams struct {
