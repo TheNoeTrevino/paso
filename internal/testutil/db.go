@@ -81,6 +81,7 @@ func createTestSchema(db *sql.DB) error {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		name TEXT NOT NULL,
 		description TEXT,
+		git_branch TEXT,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
@@ -212,6 +213,10 @@ func createTestSchema(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_task_subtasks_parent ON task_subtasks(parent_id);
 	CREATE INDEX IF NOT EXISTS idx_task_subtasks_child ON task_subtasks(child_id);
 	CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);
+
+	-- Git branch indexes (from 00003_add_git_branch_to_projects)
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_git_branch_unique ON projects(git_branch) WHERE git_branch IS NOT NULL;
+	CREATE INDEX IF NOT EXISTS idx_projects_git_branch ON projects(git_branch);
 
 	-- Unique partial indexes for column constraints
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_ready_per_project ON columns(project_id) WHERE holds_ready_tasks = 1;

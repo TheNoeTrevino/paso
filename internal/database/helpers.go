@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/thenoetrevino/paso/internal/events"
@@ -90,4 +91,21 @@ func AnyToIntPtr(v any) *int {
 	default:
 		return nil
 	}
+}
+
+// IsUniqueViolation checks if an error is a unique constraint violation
+// Works for both PostgreSQL and SQLite databases by checking error messages
+func IsUniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check error message for common unique constraint violation patterns
+	// This works for both PostgreSQL and SQLite
+	errMsg := strings.ToLower(err.Error())
+	return strings.Contains(errMsg, "unique constraint") ||
+		strings.Contains(errMsg, "unique violation") ||
+		strings.Contains(errMsg, "duplicate key") ||
+		strings.Contains(errMsg, "violates unique") ||
+		strings.Contains(errMsg, "already exists")
 }
