@@ -394,31 +394,6 @@ func TestGitInfo_Validation(t *testing.T) {
 }
 
 // ============================================================================
-// DetectGitInfo Error Cases (these will fail until implementation exists)
-// ============================================================================
-
-func TestDetectGitInfo_NotImplementedYet(t *testing.T) {
-	// This test verifies that DetectGitInfo exists but is not yet implemented
-	// This should fail in the TDD "red" phase
-
-	t.Skip("Skipping until DetectGitInfo is implemented")
-
-	// Uncomment when ready to test implementation:
-	// ctx := context.Background()
-	// info := DetectGitInfo(ctx)
-	// assert.NotNil(t, info, "DetectGitInfo should return a GitInfo struct")
-}
-
-func TestSanitizeBranchName_NotImplementedYet(t *testing.T) {
-	// This test verifies that SanitizeBranchName exists but is not yet implemented
-	// This should fail in the TDD "red" phase
-
-	// The function will not exist yet, so these tests will fail to compile
-	// which is expected in TDD red phase
-	t.Skip("This test will fail until SanitizeBranchName is implemented")
-}
-
-// ============================================================================
 // Table-Driven Tests for Comprehensive Coverage
 // ============================================================================
 

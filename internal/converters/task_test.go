@@ -8,9 +8,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// ============================================================================
 // TEST CASES - TaskToModel
-// ============================================================================
 
 func TestTaskToModel(t *testing.T) {
 	now := time.Now()
@@ -232,9 +230,7 @@ func TestTaskToModel(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // TEST CASES - ParentTasksToReferences
-// ============================================================================
 
 func TestParentTasksToReferences(t *testing.T) {
 	tests := []struct {
@@ -408,9 +404,7 @@ func TestParentTasksToReferences(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // TEST CASES - ChildTasksToReferences
-// ============================================================================
 
 func TestChildTasksToReferences(t *testing.T) {
 	tests := []struct {
@@ -564,9 +558,7 @@ func TestChildTasksToReferences(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // TEST CASES - CommentsToModels
-// ============================================================================
 
 func TestCommentsToModels(t *testing.T) {
 	now := time.Now()
@@ -689,9 +681,7 @@ func TestCommentsToModels(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // TEST CASES - ParseLabelsFromConcatenated
-// ============================================================================
 
 func TestParseLabelsFromConcatenated(t *testing.T) {
 	sep := string(rune(31)) // labelSeparator
@@ -826,9 +816,7 @@ func TestParseLabelsFromConcatenated(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // TEST CASES - TaskSummaryFromRowToModel
-// ============================================================================
 
 func TestTaskSummaryFromRowToModel(t *testing.T) {
 	sep := string(rune(31))
@@ -999,9 +987,7 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // TEST CASES - ReadyTaskSummaryFromRowToModel
-// ============================================================================
 
 func TestReadyTaskSummaryFromRowToModel(t *testing.T) {
 	tests := []struct {
@@ -1102,9 +1088,7 @@ func TestReadyTaskSummaryFromRowToModel(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // TEST CASES - FilteredTaskSummaryFromRowToModel
-// ============================================================================
 
 func TestFilteredTaskSummaryFromRowToModel(t *testing.T) {
 	sep := string(rune(31))

@@ -1235,6 +1235,8 @@ func TestCreateProject_GitBranchWithSpecialChars(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			db := setupTestDB(t)
 			defer func() { _ = db.Close() }()
 

@@ -21,9 +21,10 @@ func setupGitRepo(t *testing.T) string {
 	t.Helper()
 
 	tmpDir := t.TempDir()
+	ctx := context.Background()
 
 	// Initialize git repo
-	cmd := exec.Command("git", "init")
+	cmd := exec.CommandContext(ctx, "git", "init")
 	cmd.Dir = tmpDir
 	err := cmd.Run()
 	require.NoError(t, err, "Failed to initialize git repository")
@@ -35,9 +36,9 @@ func setupGitRepo(t *testing.T) string {
 	}
 
 	for _, cmdArgs := range configCmds {
-		cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-		cmd.Dir = tmpDir
-		err := cmd.Run()
+		cfgCmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
+		cfgCmd.Dir = tmpDir
+		err := cfgCmd.Run()
 		require.NoError(t, err, "Failed to configure git")
 	}
 
@@ -48,21 +49,23 @@ func setupGitRepo(t *testing.T) string {
 func createCommit(t *testing.T, repoDir, message string) {
 	t.Helper()
 
+	ctx := context.Background()
+
 	// Create a file
 	filePath := filepath.Join(repoDir, "test.txt")
 	err := os.WriteFile(filePath, []byte("test content\n"), 0644)
 	require.NoError(t, err, "Failed to create test file")
 
 	// Add file
-	cmd := exec.Command("git", "add", ".")
+	cmd := exec.CommandContext(ctx, "git", "add", ".")
 	cmd.Dir = repoDir
 	err = cmd.Run()
 	require.NoError(t, err, "Failed to git add")
 
 	// Commit
-	cmd = exec.Command("git", "commit", "-m", message)
-	cmd.Dir = repoDir
-	err = cmd.Run()
+	commitCmd := exec.CommandContext(ctx, "git", "commit", "-m", message)
+	commitCmd.Dir = repoDir
+	err = commitCmd.Run()
 	require.NoError(t, err, "Failed to git commit")
 }
 
@@ -70,7 +73,8 @@ func createCommit(t *testing.T, repoDir, message string) {
 func createBranch(t *testing.T, repoDir, branchName string) {
 	t.Helper()
 
-	cmd := exec.Command("git", "checkout", "-b", branchName)
+	ctx := context.Background()
+	cmd := exec.CommandContext(ctx, "git", "checkout", "-b", branchName)
 	cmd.Dir = repoDir
 	err := cmd.Run()
 	require.NoError(t, err, "Failed to create branch")
@@ -80,7 +84,8 @@ func createBranch(t *testing.T, repoDir, branchName string) {
 func checkoutBranch(t *testing.T, repoDir, branchName string) {
 	t.Helper()
 
-	cmd := exec.Command("git", "checkout", branchName)
+	ctx := context.Background()
+	cmd := exec.CommandContext(ctx, "git", "checkout", branchName)
 	cmd.Dir = repoDir
 	err := cmd.Run()
 	require.NoError(t, err, "Failed to checkout branch")
@@ -90,8 +95,10 @@ func checkoutBranch(t *testing.T, repoDir, branchName string) {
 func detachHead(t *testing.T, repoDir string) {
 	t.Helper()
 
+	ctx := context.Background()
+
 	// Get the current commit hash
-	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", "HEAD")
 	cmd.Dir = repoDir
 	output, err := cmd.Output()
 	require.NoError(t, err, "Failed to get HEAD commit")
@@ -99,9 +106,9 @@ func detachHead(t *testing.T, repoDir string) {
 	commitHash := string(output[:len(output)-1]) // Remove newline
 
 	// Checkout the commit directly (detached HEAD)
-	cmd = exec.Command("git", "checkout", commitHash)
-	cmd.Dir = repoDir
-	err = cmd.Run()
+	checkoutCmd := exec.CommandContext(ctx, "git", "checkout", commitHash)
+	checkoutCmd.Dir = repoDir
+	err = checkoutCmd.Run()
 	require.NoError(t, err, "Failed to detach HEAD")
 }
 
@@ -257,9 +264,10 @@ func TestDetectGitInfo_BareRepository(t *testing.T) {
 	}
 
 	tmpDir := t.TempDir()
+	ctx := context.Background()
 
 	// Initialize bare repository
-	cmd := exec.Command("git", "init", "--bare")
+	cmd := exec.CommandContext(ctx, "git", "init", "--bare")
 	cmd.Dir = tmpDir
 	err := cmd.Run()
 	require.NoError(t, err, "Failed to initialize bare repository")
@@ -274,7 +282,6 @@ func TestDetectGitInfo_BareRepository(t *testing.T) {
 	err = os.Chdir(tmpDir)
 	require.NoError(t, err)
 
-	ctx := context.Background()
 	info := DetectGitInfo(ctx)
 
 	// Bare repositories should be handled gracefully
@@ -405,7 +412,8 @@ func TestDetectGitInfo_MultipleWorktrees(t *testing.T) {
 
 	// Create a worktree (requires git 2.5+)
 	worktreeDir := filepath.Join(t.TempDir(), "worktree")
-	cmd := exec.Command("git", "worktree", "add", worktreeDir, "feature/branch1")
+	ctx := context.Background()
+	cmd := exec.CommandContext(ctx, "git", "worktree", "add", worktreeDir, "feature/branch1")
 	cmd.Dir = repoDir
 	err := cmd.Run()
 	if err != nil {
@@ -424,7 +432,6 @@ func TestDetectGitInfo_MultipleWorktrees(t *testing.T) {
 	err = os.Chdir(repoDir)
 	require.NoError(t, err)
 
-	ctx := context.Background()
 	infoMain := DetectGitInfo(ctx)
 	assert.Contains(t, []string{"master", "main"}, infoMain.CurrentBranch, "Should detect main branch in main repo")
 

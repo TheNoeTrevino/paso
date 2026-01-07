@@ -7,9 +7,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/cli"
 )
 
-// ============================================================================
 // Test Helpers
-// ============================================================================
 
 // createTestCommand creates a mock cobra.Command with specified flags
 func createTestCommand() *cobra.Command {
@@ -26,9 +24,7 @@ func createTestParser(cmd *cobra.Command) *FlagParser {
 	return NewFlagParser(cmd, formatter)
 }
 
-// ============================================================================
 // ParseTaskID Tests
-// ============================================================================
 
 func TestParseTaskID(t *testing.T) {
 	t.Parallel()
@@ -97,9 +93,7 @@ func TestParseTaskID(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // ParseColumnID Tests
-// ============================================================================
 
 func TestParseColumnID(t *testing.T) {
 	t.Parallel()
@@ -163,9 +157,7 @@ func TestParseColumnID(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // ParseLabelID Tests
-// ============================================================================
 
 func TestParseLabelID(t *testing.T) {
 	t.Parallel()
@@ -229,9 +221,7 @@ func TestParseLabelID(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // ParseString Tests
-// ============================================================================
 
 func TestParseString(t *testing.T) {
 	t.Parallel()
@@ -311,9 +301,7 @@ func TestParseString(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // ParseStringOptional Tests
-// ============================================================================
 
 func TestParseStringOptional(t *testing.T) {
 	t.Parallel()
@@ -372,9 +360,7 @@ func TestParseStringOptional(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // ParseInt Tests
-// ============================================================================
 
 func TestParseInt(t *testing.T) {
 	t.Parallel()
@@ -443,9 +429,7 @@ func TestParseInt(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // ParseIntOptional Tests
-// ============================================================================
 
 func TestParseIntOptional(t *testing.T) {
 	t.Parallel()
@@ -503,9 +487,7 @@ func TestParseIntOptional(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // ParseBool Tests
-// ============================================================================
 
 func TestParseBool(t *testing.T) {
 	t.Parallel()
@@ -557,9 +539,7 @@ func TestParseBool(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // ParseColor Tests
-// ============================================================================
 
 func TestParseColor(t *testing.T) {
 	t.Parallel()
@@ -669,9 +649,7 @@ func TestParseColor(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // OutputFormats Tests
-// ============================================================================
 
 func TestOutputFormats(t *testing.T) {
 	t.Parallel()
@@ -749,9 +727,7 @@ func TestOutputFormats(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // OutputFormats Error Tests
-// ============================================================================
 
 func TestOutputFormats_MissingFlags(t *testing.T) {
 	t.Parallel()
@@ -814,9 +790,7 @@ func TestOutputFormats_MissingFlags(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // NewFlagParser Tests
-// ============================================================================
 
 func TestNewFlagParser(t *testing.T) {
 	t.Parallel()
@@ -839,9 +813,7 @@ func TestNewFlagParser(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // Edge Case Tests
-// ============================================================================
 
 func TestParseString_NonExistentFlag(t *testing.T) {
 	t.Parallel()
@@ -882,9 +854,7 @@ func TestParseBool_NonExistentFlag(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // Utility Functions
-// ============================================================================
 
 // contains checks if a string contains a substring
 func contains(s, substr string) bool {

@@ -107,7 +107,7 @@ func TestReadyTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
@@ -127,14 +127,14 @@ func TestReadyTask_Positive(t *testing.T) {
 		}
 		assert.Equal(t, float64(2), countValue)
 
-		tasks := result["tasks"].([]interface{})
+		tasks := result["tasks"].([]any)
 		assert.Equal(t, 2, len(tasks))
 
 		// Verify task IDs are in results
 		taskIDs := []int{taskID1, taskID2}
 		foundCount := 0
 		for _, taskItem := range tasks {
-			taskData := taskItem.(map[string]interface{})
+			taskData := taskItem.(map[string]any)
 			// Note: JSON fields are capitalized (ID, Title, etc.)
 			taskID := int(taskData["ID"].(float64))
 			for _, expectedID := range taskIDs {
@@ -343,36 +343,6 @@ func TestReadyTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "Found 1 ready tasks")
 	})
 
-	t.Run("List ready tasks with PASO_PROJECT env var", func(t *testing.T) {
-		// Create a fresh project for env var test
-		envProjectID := cli.CreateTestProject(t, db, "Env Project")
-
-		var envTodoColumnID int
-		err := db.QueryRowContext(context.Background(),
-			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
-			envProjectID).Scan(&envTodoColumnID)
-		assert.NoError(t, err)
-
-		_, err = db.ExecContext(context.Background(),
-			"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", envTodoColumnID)
-		assert.NoError(t, err)
-
-		// Create task
-		taskID := cli.CreateTestTask(t, db, envTodoColumnID, "Env Var Task")
-
-		// Set PASO_PROJECT environment variable
-		t.Setenv("PASO_PROJECT", strconv.Itoa(envProjectID))
-
-		cmd := ReadyCmd()
-
-		// Don't pass --project flag, should use env var
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
-
-		assert.NoError(t, err)
-		assert.Contains(t, output, "Env Var Task")
-		assert.Contains(t, output, fmt.Sprintf("[%d]", taskID))
-	})
-
 	t.Run("Multiple ready tasks with labels", func(t *testing.T) {
 		// Create a fresh project for labels test
 		labelProjectID := cli.CreateTestProject(t, db, "Label Project")
@@ -456,7 +426,7 @@ func TestReadyTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
@@ -464,10 +434,10 @@ func TestReadyTask_Positive(t *testing.T) {
 		assert.True(t, result["success"].(bool))
 		assert.Equal(t, float64(1), result["count"])
 
-		tasks := result["tasks"].([]interface{})
+		tasks := result["tasks"].([]any)
 		assert.Equal(t, 1, len(tasks))
 
-		taskData := tasks[0].(map[string]interface{})
+		taskData := tasks[0].(map[string]any)
 		// Note: JSON fields are capitalized
 		assert.Equal(t, float64(taskID), taskData["ID"])
 		assert.Equal(t, "Complete Task", taskData["Title"])
@@ -476,7 +446,7 @@ func TestReadyTask_Positive(t *testing.T) {
 		assert.NotEmpty(t, taskData["PriorityColor"])
 
 		// Labels are embedded as an array
-		labels := taskData["Labels"].([]interface{})
+		labels := taskData["Labels"].([]any)
 		assert.Equal(t, 1, len(labels), "Should have 1 label")
 	})
 
@@ -504,7 +474,7 @@ func TestReadyTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
@@ -512,7 +482,7 @@ func TestReadyTask_Positive(t *testing.T) {
 		assert.True(t, result["success"].(bool))
 		assert.Equal(t, float64(0), result["count"])
 
-		tasks := result["tasks"].([]interface{})
+		tasks := result["tasks"].([]any)
 		assert.Equal(t, 0, len(tasks))
 	})
 

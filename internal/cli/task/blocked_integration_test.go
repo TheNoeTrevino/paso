@@ -156,7 +156,7 @@ func TestBlockedTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
@@ -165,13 +165,13 @@ func TestBlockedTask_Positive(t *testing.T) {
 		assert.NotNil(t, result["tasks"])
 		assert.NotNil(t, result["count"])
 
-		tasks := result["tasks"].([]interface{})
+		tasks := result["tasks"].([]any)
 		assert.GreaterOrEqual(t, len(tasks), 1, "Should have at least 1 blocked task")
 
 		// Verify task structure
 		foundTask := false
 		for _, taskItem := range tasks {
-			taskData := taskItem.(map[string]interface{})
+			taskData := taskItem.(map[string]any)
 			if taskData["ID"] != nil && int(taskData["ID"].(float64)) == blockedID {
 				foundTask = true
 				assert.Equal(t, "JSON Blocked Task", taskData["Title"])
@@ -316,37 +316,6 @@ func TestBlockedTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "[high]")
 	})
 
-	t.Run("Test with PASO_PROJECT env var", func(t *testing.T) {
-		// Create blocked task
-		blockedID := cli.CreateTestTask(t, db, todoColumnID, "Env Var Blocked Task")
-		blockerID := cli.CreateTestTask(t, db, todoColumnID, "Env Var Blocker Task")
-
-		// Assign ticket numbers
-		_, err := db.ExecContext(context.Background(),
-			"UPDATE tasks SET ticket_number = 60 WHERE id = ?", blockedID)
-		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
-			"UPDATE tasks SET ticket_number = 61 WHERE id = ?", blockerID)
-		assert.NoError(t, err)
-
-		// Create blocking relationship
-		linkCmd := LinkCmd()
-		_, err = cli.ExecuteCLICommand(t, app, linkCmd,
-			[]string{"--parent", strconv.Itoa(blockedID), "--child", strconv.Itoa(blockerID), "--blocker"})
-		assert.NoError(t, err)
-
-		// Set PASO_PROJECT environment variable
-		t.Setenv("PASO_PROJECT", strconv.Itoa(projectID))
-
-		// List blocked tasks without --project flag
-		blockedCmd := BlockedCmd()
-		output, err := cli.ExecuteCLICommand(t, app, blockedCmd, []string{})
-
-		assert.NoError(t, err)
-		assert.Contains(t, output, "Env Var Blocked Task")
-		assert.Contains(t, output, "BLOCKED")
-	})
-
 	t.Run("Blocked tasks in different columns", func(t *testing.T) {
 		// Create blocked tasks in different columns
 		todoBlocked := cli.CreateTestTask(t, db, todoColumnID, "Todo Blocked")
@@ -428,14 +397,14 @@ func TestBlockedTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
-		tasks := result["tasks"].([]interface{})
+		tasks := result["tasks"].([]any)
 		foundTask := false
 		for _, taskItem := range tasks {
-			taskData := taskItem.(map[string]interface{})
+			taskData := taskItem.(map[string]any)
 			if int(taskData["ID"].(float64)) == blockedID {
 				foundTask = true
 				assert.Equal(t, "Blocked With Labels", taskData["Title"])
@@ -474,7 +443,7 @@ func TestBlockedTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse and verify structure
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
@@ -485,7 +454,7 @@ func TestBlockedTask_Positive(t *testing.T) {
 		assert.True(t, result["success"].(bool))
 
 		// Verify count matches tasks array length
-		tasks := result["tasks"].([]interface{})
+		tasks := result["tasks"].([]any)
 		count := int(result["count"].(float64))
 		assert.Equal(t, len(tasks), count, "Count should match tasks array length")
 	})

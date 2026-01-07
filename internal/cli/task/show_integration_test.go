@@ -105,13 +105,13 @@ func TestShowTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
 		// Verify JSON structure
 		assert.True(t, result["success"].(bool))
-		taskData := result["task"].(map[string]interface{})
+		taskData := result["task"].(map[string]any)
 		assert.Equal(t, "JSON Task", taskData["title"])
 		assert.Equal(t, "JSON Description", taskData["description"])
 		assert.Equal(t, "Test Project", taskData["project_name"])
@@ -278,13 +278,13 @@ func TestShowTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
 		// Verify complete JSON structure
 		assert.True(t, result["success"].(bool))
-		taskData := result["task"].(map[string]interface{})
+		taskData := result["task"].(map[string]any)
 
 		// Verify all fields
 		assert.Equal(t, float64(taskID), taskData["id"])
@@ -295,16 +295,16 @@ func TestShowTask_Positive(t *testing.T) {
 		assert.Equal(t, "Test Project", taskData["project_name"])
 
 		// Verify priority structure
-		priority := taskData["priority"].(map[string]interface{})
+		priority := taskData["priority"].(map[string]any)
 		assert.Equal(t, "critical", priority["name"])
 		assert.Equal(t, "#EF4444", priority["color"])
 
 		// Verify column structure
-		column := taskData["column"].(map[string]interface{})
+		column := taskData["column"].(map[string]any)
 		assert.Equal(t, "Todo", column["name"])
 
 		// Verify labels array
-		labels := taskData["labels"].([]interface{})
+		labels := taskData["labels"].([]any)
 		assert.Len(t, labels, 1)
 
 		// Verify timestamps exist
@@ -360,11 +360,11 @@ Each line should be properly displayed.`
 
 		assert.NoError(t, err)
 
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
-		taskData := result["task"].(map[string]interface{})
+		taskData := result["task"].(map[string]any)
 		// Position should be greater than 0 (second task in column)
 		assert.NotNil(t, taskData["position"])
 	})

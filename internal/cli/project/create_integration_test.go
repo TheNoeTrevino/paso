@@ -90,6 +90,7 @@ func TestCreateProject_Positive(t *testing.T) {
 			assert.NoError(t, err)
 			columns = append(columns, name)
 		}
+		assert.NoError(t, rows.Err())
 
 		// Check for default columns (standard columns created by service)
 		// Note: The service implementation creates Todo, In Progress, Done
@@ -282,7 +283,7 @@ func TestCreateProject_MultipleProjectsNoBranch(t *testing.T) {
 		rows, err := db.QueryContext(context.Background(),
 			"SELECT id, name, git_branch FROM projects ORDER BY id")
 		assert.NoError(t, err)
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 
 		count := 0
 		for rows.Next() {
@@ -293,6 +294,7 @@ func TestCreateProject_MultipleProjectsNoBranch(t *testing.T) {
 			assert.NoError(t, err)
 			count++
 		}
+		assert.NoError(t, rows.Err())
 
 		assert.GreaterOrEqual(t, count, 3, "Should have at least 3 projects")
 	})
@@ -337,7 +339,7 @@ func TestCreateProject_DifferentBranches(t *testing.T) {
 		rows, err := db.QueryContext(context.Background(),
 			"SELECT git_branch FROM projects WHERE git_branch IS NOT NULL ORDER BY id")
 		assert.NoError(t, err)
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 
 		seenBranches := make(map[string]bool)
 		for rows.Next() {
@@ -347,6 +349,7 @@ func TestCreateProject_DifferentBranches(t *testing.T) {
 			assert.False(t, seenBranches[gitBranch], "Branches should be unique")
 			seenBranches[gitBranch] = true
 		}
+		assert.NoError(t, rows.Err())
 
 		assert.Len(t, seenBranches, 3, "Should have 3 unique branches")
 	})

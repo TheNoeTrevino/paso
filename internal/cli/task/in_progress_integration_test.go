@@ -111,7 +111,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
@@ -226,7 +226,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
@@ -235,13 +235,13 @@ func TestInProgressTask_Positive(t *testing.T) {
 		assert.NotNil(t, result["tasks"])
 		assert.NotNil(t, result["count"])
 
-		tasks := result["tasks"].([]interface{})
+		tasks := result["tasks"].([]any)
 		assert.GreaterOrEqual(t, len(tasks), 1, "Should have at least 1 task")
 
 		// Verify task structure
 		foundTask := false
 		for _, taskItem := range tasks {
-			taskData := taskItem.(map[string]interface{})
+			taskData := taskItem.(map[string]any)
 			if int(taskData["id"].(float64)) == taskID {
 				foundTask = true
 				assert.Equal(t, "JSON List Task", taskData["title"])
@@ -532,18 +532,18 @@ func TestInProgressTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
 		// Verify structure
 		assert.True(t, result["success"].(bool))
-		tasks := result["tasks"].([]interface{})
+		tasks := result["tasks"].([]any)
 
 		// Find our task
 		foundTask := false
 		for _, taskItem := range tasks {
-			taskData := taskItem.(map[string]interface{})
+			taskData := taskItem.(map[string]any)
 			if int(taskData["id"].(float64)) == taskID {
 				foundTask = true
 				assert.Equal(t, "Complete Metadata Task", taskData["title"])

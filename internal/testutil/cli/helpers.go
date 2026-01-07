@@ -24,10 +24,10 @@ func ExecuteCommand(t *testing.T, cmd *cobra.Command) (string, error) {
 }
 
 // ParseJSON parses JSON output from CLI commands
-func ParseJSON(t *testing.T, output string) map[string]interface{} {
+func ParseJSON(t *testing.T, output string) map[string]any {
 	t.Helper()
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal([]byte(output), &result); err != nil {
 		t.Fatalf("Failed to parse JSON output: %v\nOutput: %s", err, output)
 	}

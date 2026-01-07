@@ -11,9 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ============================================================================
 // Mock Types for Testing
-// ============================================================================
 
 type mockDataWithID struct {
 	ID   int
@@ -38,24 +36,22 @@ func (m *mockDataWithPointerID) GetID() int {
 	return m.ID
 }
 
-// ============================================================================
 // Success Method Tests - JSON Mode
-// ============================================================================
 
 func TestOutputFormatter_Success_JSON(t *testing.T) {
 	tests := []struct {
 		name     string
-		data     interface{}
-		validate func(t *testing.T, result map[string]interface{})
+		data     any
+		validate func(t *testing.T, result map[string]any)
 	}{
 		{
 			name: "map data",
-			data: map[string]interface{}{"test": "value", "number": float64(42)},
-			validate: func(t *testing.T, result map[string]interface{}) {
+			data: map[string]any{"test": "value", "number": float64(42)},
+			validate: func(t *testing.T, result map[string]any) {
 				if !result["success"].(bool) {
 					t.Error("Expected success to be true")
 				}
-				dataMap := result["data"].(map[string]interface{})
+				dataMap := result["data"].(map[string]any)
 				if dataMap["test"] != "value" {
 					t.Errorf("Expected data.test to be 'value', got %v", dataMap["test"])
 				}
@@ -64,11 +60,11 @@ func TestOutputFormatter_Success_JSON(t *testing.T) {
 		{
 			name: "struct with ID",
 			data: mockDataWithID{ID: 123, Name: "Test"},
-			validate: func(t *testing.T, result map[string]interface{}) {
+			validate: func(t *testing.T, result map[string]any) {
 				if !result["success"].(bool) {
 					t.Error("Expected success to be true")
 				}
-				dataMap := result["data"].(map[string]interface{})
+				dataMap := result["data"].(map[string]any)
 				if dataMap["Name"] != "Test" {
 					t.Errorf("Expected data.Name to be 'Test', got %v", dataMap["Name"])
 				}
@@ -77,7 +73,7 @@ func TestOutputFormatter_Success_JSON(t *testing.T) {
 		{
 			name: "string data",
 			data: "simple string",
-			validate: func(t *testing.T, result map[string]interface{}) {
+			validate: func(t *testing.T, result map[string]any) {
 				if !result["success"].(bool) {
 					t.Error("Expected success to be true")
 				}
@@ -89,7 +85,7 @@ func TestOutputFormatter_Success_JSON(t *testing.T) {
 		{
 			name: "integer data",
 			data: 42,
-			validate: func(t *testing.T, result map[string]interface{}) {
+			validate: func(t *testing.T, result map[string]any) {
 				if !result["success"].(bool) {
 					t.Error("Expected success to be true")
 				}
@@ -102,7 +98,7 @@ func TestOutputFormatter_Success_JSON(t *testing.T) {
 		{
 			name: "nil data",
 			data: nil,
-			validate: func(t *testing.T, result map[string]interface{}) {
+			validate: func(t *testing.T, result map[string]any) {
 				if !result["success"].(bool) {
 					t.Error("Expected success to be true")
 				}
@@ -133,7 +129,7 @@ func TestOutputFormatter_Success_JSON(t *testing.T) {
 			output := buf.String()
 
 			// Verify JSON output
-			var result map[string]interface{}
+			var result map[string]any
 			require.NoError(t, json.Unmarshal([]byte(output), &result), "Failed to parse JSON output")
 
 			tt.validate(t, result)
@@ -141,14 +137,12 @@ func TestOutputFormatter_Success_JSON(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // Success Method Tests - Quiet Mode with GetID
-// ============================================================================
 
 func TestOutputFormatter_Success_Quiet_WithID(t *testing.T) {
 	tests := []struct {
 		name       string
-		data       interface{}
+		data       any
 		wantOutput string
 	}{
 		{
@@ -211,14 +205,12 @@ func TestOutputFormatter_Success_Quiet_WithID(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // Success Method Tests - Quiet Mode without GetID (falls through to prettyPrint)
-// ============================================================================
 
 func TestOutputFormatter_Success_Quiet_WithoutID(t *testing.T) {
 	tests := []struct {
 		name          string
-		data          interface{}
+		data          any
 		shouldContain string
 	}{
 		{
@@ -270,14 +262,12 @@ func TestOutputFormatter_Success_Quiet_WithoutID(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // Success Method Tests - Human-Readable Mode
-// ============================================================================
 
 func TestOutputFormatter_Success_HumanReadable(t *testing.T) {
 	tests := []struct {
 		name          string
-		data          interface{}
+		data          any
 		shouldContain string
 	}{
 		{
@@ -287,7 +277,7 @@ func TestOutputFormatter_Success_HumanReadable(t *testing.T) {
 		},
 		{
 			name:          "map",
-			data:          map[string]interface{}{"key": "value", "num": 123},
+			data:          map[string]any{"key": "value", "num": 123},
 			shouldContain: "key",
 		},
 		{
@@ -329,9 +319,7 @@ func TestOutputFormatter_Success_HumanReadable(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // Error Method Tests - JSON Mode
-// ============================================================================
 
 func TestOutputFormatter_Error_JSON(t *testing.T) {
 	tests := []struct {
@@ -382,14 +370,14 @@ func TestOutputFormatter_Error_JSON(t *testing.T) {
 			output := buf.String()
 
 			// Verify JSON output
-			var result map[string]interface{}
+			var result map[string]any
 			require.NoError(t, json.Unmarshal([]byte(output), &result), "Failed to parse JSON output")
 
 			if result["success"].(bool) {
 				t.Error("Expected success to be false")
 			}
 
-			errorData := result["error"].(map[string]interface{})
+			errorData := result["error"].(map[string]any)
 			if errorData["code"] != tt.code {
 				t.Errorf("Expected error code '%s', got '%s'", tt.code, errorData["code"])
 			}
@@ -405,9 +393,7 @@ func TestOutputFormatter_Error_JSON(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // Error Method Tests - Quiet Mode
-// ============================================================================
 
 func TestOutputFormatter_Error_Quiet(t *testing.T) {
 	// Capture stderr (should be empty in quiet mode)
@@ -433,9 +419,7 @@ func TestOutputFormatter_Error_Quiet(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // Error Method Tests - Human-Readable Mode
-// ============================================================================
 
 func TestOutputFormatter_Error_HumanReadable(t *testing.T) {
 	tests := []struct {
@@ -494,9 +478,7 @@ func TestOutputFormatter_Error_HumanReadable(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // ErrorWithSuggestion Method Tests - JSON Mode
-// ============================================================================
 
 func TestOutputFormatter_ErrorWithSuggestion_JSON(t *testing.T) {
 	tests := []struct {
@@ -550,14 +532,14 @@ func TestOutputFormatter_ErrorWithSuggestion_JSON(t *testing.T) {
 			output := buf.String()
 
 			// Verify JSON output
-			var result map[string]interface{}
+			var result map[string]any
 			require.NoError(t, json.Unmarshal([]byte(output), &result), "Failed to parse JSON output")
 
 			if result["success"].(bool) {
 				t.Error("Expected success to be false")
 			}
 
-			errorData := result["error"].(map[string]interface{})
+			errorData := result["error"].(map[string]any)
 			if errorData["code"] != tt.code {
 				t.Errorf("Expected error code '%s', got '%s'", tt.code, errorData["code"])
 			}
@@ -578,9 +560,7 @@ func TestOutputFormatter_ErrorWithSuggestion_JSON(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // ErrorWithSuggestion Method Tests - Quiet Mode
-// ============================================================================
 
 func TestOutputFormatter_ErrorWithSuggestion_Quiet(t *testing.T) {
 	tests := []struct {
@@ -625,9 +605,7 @@ func TestOutputFormatter_ErrorWithSuggestion_Quiet(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // ErrorWithSuggestion Method Tests - Human-Readable Mode
-// ============================================================================
 
 func TestOutputFormatter_ErrorWithSuggestion_HumanReadable(t *testing.T) {
 	tests := []struct {
@@ -703,9 +681,7 @@ func TestOutputFormatter_ErrorWithSuggestion_HumanReadable(t *testing.T) {
 	}
 }
 
-// ============================================================================
 // Edge Cases and Integration Tests
-// ============================================================================
 
 func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 	// When Quiet is true and data has GetID(), it should output ID only
@@ -754,7 +730,7 @@ func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 		output := buf.String()
 
 		// Should output JSON
-		var result map[string]interface{}
+		var result map[string]any
 		require.NoError(t, json.Unmarshal([]byte(output), &result), "Expected JSON output when Quiet=true without GetID()")
 	})
 
@@ -777,7 +753,7 @@ func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 		output := buf.String()
 
 		// Should output JSON
-		var result map[string]interface{}
+		var result map[string]any
 		require.NoError(t, json.Unmarshal([]byte(output), &result), "Expected JSON output when JSON=true")
 	})
 }
@@ -814,7 +790,7 @@ func TestOutputFormatter_NilData(t *testing.T) {
 
 			// Should handle nil gracefully - just verify no panic occurred
 			if tt.json {
-				var result map[string]interface{}
+				var result map[string]any
 				require.NoError(t, json.Unmarshal([]byte(output), &result), "Failed to parse JSON with nil data")
 			}
 		})
@@ -839,10 +815,10 @@ func TestOutputFormatter_ErrorCallsErrorWithSuggestion(t *testing.T) {
 	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
-	var result map[string]interface{}
+	var result map[string]any
 	require.NoError(t, json.Unmarshal([]byte(output), &result), "Failed to parse JSON output")
 
-	errorData := result["error"].(map[string]interface{})
+	errorData := result["error"].(map[string]any)
 	// Verify no suggestion field is present
 	if _, exists := errorData["suggestion"]; exists {
 		t.Error("Expected no suggestion field when calling Error()")
