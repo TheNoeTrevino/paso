@@ -25,6 +25,40 @@ func fromGeneratedProject(g generated_sqlite.Project) types.Project {
 		ID:          g.ID,
 		Name:        g.Name,
 		Description: types.FromSQLNullString(g.Description),
+		GitBranch:   types.NullStringFromInterface(g.GitBranch),
+		CreatedAt:   types.FromSQLNullTime(g.CreatedAt),
+		UpdatedAt:   types.FromSQLNullTime(g.UpdatedAt),
+	}
+}
+
+func fromGeneratedGetAllProjectsRow(g generated_sqlite.GetAllProjectsRow) types.Project {
+	return types.Project{
+		ID:          g.ID,
+		Name:        g.Name,
+		Description: types.FromSQLNullString(g.Description),
+		GitBranch:   types.NullStringFromInterface(g.GitBranch),
+		CreatedAt:   types.FromSQLNullTime(g.CreatedAt),
+		UpdatedAt:   types.FromSQLNullTime(g.UpdatedAt),
+	}
+}
+
+func fromGeneratedGetProjectByIDRow(g generated_sqlite.GetProjectByIDRow) types.Project {
+	return types.Project{
+		ID:          g.ID,
+		Name:        g.Name,
+		Description: types.FromSQLNullString(g.Description),
+		GitBranch:   types.NullStringFromInterface(g.GitBranch),
+		CreatedAt:   types.FromSQLNullTime(g.CreatedAt),
+		UpdatedAt:   types.FromSQLNullTime(g.UpdatedAt),
+	}
+}
+
+func fromGeneratedGetProjectByGitBranchRow(g generated_sqlite.GetProjectByGitBranchRow) types.Project {
+	return types.Project{
+		ID:          g.ID,
+		Name:        g.Name,
+		Description: types.FromSQLNullString(g.Description),
+		GitBranch:   types.NullStringFromInterface(g.GitBranch),
 		CreatedAt:   types.FromSQLNullTime(g.CreatedAt),
 		UpdatedAt:   types.FromSQLNullTime(g.UpdatedAt),
 	}

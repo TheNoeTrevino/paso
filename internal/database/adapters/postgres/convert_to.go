@@ -99,6 +99,7 @@ func toGeneratedCreateProjectRecordParams(t types.CreateProjectRecordParams) gen
 	return generated_postgres.CreateProjectRecordParams{
 		Name:        t.Name,
 		Description: t.Description.ToSQLNullString(),
+		GitBranch:   t.GitBranch.ToSQLNullString(),
 	}
 }
 
@@ -106,6 +107,7 @@ func toGeneratedUpdateProjectParams(t types.UpdateProjectParams) generated_postg
 	return generated_postgres.UpdateProjectParams{
 		Name:        t.Name,
 		Description: t.Description.ToSQLNullString(),
+		GitBranch:   t.GitBranch.ToSQLNullString(),
 		ID:          t.ID,
 	}
 }

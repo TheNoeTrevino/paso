@@ -101,6 +101,7 @@ func toGeneratedCreateProjectRecordParams(t types.CreateProjectRecordParams) gen
 	return generated_sqlite.CreateProjectRecordParams{
 		Name:        t.Name,
 		Description: t.Description.ToSQLNullString(),
+		GitBranch:   t.GitBranch.ToSQLNullString(),
 	}
 }
 
@@ -108,6 +109,7 @@ func toGeneratedUpdateProjectParams(t types.UpdateProjectParams) generated_sqlit
 	return generated_sqlite.UpdateProjectParams{
 		Name:        t.Name,
 		Description: t.Description.ToSQLNullString(),
+		GitBranch:   t.GitBranch.ToSQLNullString(),
 		ID:          t.ID,
 	}
 }
