@@ -8,9 +8,11 @@ var (
 	ErrEmptyName        = errors.New("name cannot be empty")
 	ErrNameTooLong      = errors.New("name cannot exceed 50 characters")
 	ErrInvalidProjectID = errors.New("invalid project ID")
+	ErrEmptyGitBranch   = errors.New("git branch cannot be empty")
 
 	// Business logic errors
-	ErrProjectNotFound   = errors.New("project not found")
-	ErrProjectHasColumns = errors.New("cannot delete project with columns")
-	ErrProjectHasTasks   = errors.New("cannot delete project with tasks")
+	ErrProjectNotFound            = errors.New("project not found")
+	ErrProjectHasColumns          = errors.New("cannot delete project with columns")
+	ErrProjectHasTasks            = errors.New("cannot delete project with tasks")
+	ErrGitBranchAlreadyAssociated = errors.New("git branch is already associated with another project")
 )

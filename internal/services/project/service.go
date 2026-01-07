@@ -9,6 +9,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/database/types"
 	"github.com/thenoetrevino/paso/internal/events"
+	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -17,6 +18,7 @@ type Service interface {
 	// Read operations
 	GetAllProjects(ctx context.Context) ([]*models.Project, error)
 	GetProjectByID(ctx context.Context, id int) (*models.Project, error)
+	GetProjectByGitBranch(ctx context.Context, gitBranch string) (*models.Project, error)
 	GetTaskCount(ctx context.Context, projectID int) (int, error)
 
 	// Write operations
@@ -29,6 +31,7 @@ type Service interface {
 type CreateProjectRequest struct {
 	Name        string
 	Description string
+	GitBranch   string
 }
 
 // UpdateProjectRequest encapsulates data for updating a project
@@ -36,6 +39,7 @@ type UpdateProjectRequest struct {
 	ID          int
 	Name        *string
 	Description *string
+	GitBranch   *string
 }
 
 // service implements Service interface using database.Querier abstraction
@@ -84,6 +88,22 @@ func (s *service) GetProjectByID(ctx context.Context, id int) (*models.Project, 
 	return toProjectModel(project), nil
 }
 
+// GetProjectByGitBranch retrieves a project by its git branch
+// Returns (nil, nil) if not found or if gitBranch is empty
+func (s *service) GetProjectByGitBranch(ctx context.Context, gitBranch string) (*models.Project, error) {
+	if gitBranch == "" {
+		return nil, nil
+	}
+	project, err := s.queries.GetProjectByGitBranch(ctx, gitBranch)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // Not found is not an error
+		}
+		return nil, err
+	}
+	return toProjectModel(project), nil
+}
+
 // GetTaskCount returns the number of tasks in a project
 func (s *service) GetTaskCount(ctx context.Context, projectID int) (int, error) {
 	if projectID <= 0 {
@@ -108,6 +128,9 @@ func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest) (
 
 	var project types.Project
 
+	// Sanitize git branch name (truncate to 255 chars, trim whitespace)
+	sanitizedBranch := git.SanitizeBranchName(req.GitBranch)
+
 	// Use WithTx helper for transaction management
 	err := database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
 		qtx := database.MustNewQuerier(tx, s.dbType)
@@ -117,8 +140,13 @@ func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest) (
 		project, projErr = qtx.CreateProjectRecord(ctx, types.CreateProjectRecordParams{
 			Name:        req.Name,
 			Description: types.NullString{String: req.Description, Valid: req.Description != ""},
+			GitBranch:   types.NullString{String: sanitizedBranch, Valid: sanitizedBranch != ""},
 		})
 		if projErr != nil {
+			// Check for unique constraint violation on git_branch
+			if database.IsUniqueViolation(projErr) {
+				return ErrGitBranchAlreadyAssociated
+			}
 			return fmt.Errorf("failed to create project: %w", projErr)
 		}
 
@@ -179,12 +207,23 @@ func (s *service) UpdateProject(ctx context.Context, req UpdateProjectRequest) e
 		description = types.NullString{String: *req.Description, Valid: *req.Description != ""}
 	}
 
+	gitBranch := existing.GitBranch
+	if req.GitBranch != nil {
+		sanitized := git.SanitizeBranchName(*req.GitBranch)
+		gitBranch = types.NullString{String: sanitized, Valid: sanitized != ""}
+	}
+
 	// Update project
 	if err := s.queries.UpdateProject(ctx, types.UpdateProjectParams{
 		ID:          int64(req.ID),
 		Name:        name,
 		Description: description,
+		GitBranch:   gitBranch,
 	}); err != nil {
+		// Check for unique constraint violation on git_branch
+		if database.IsUniqueViolation(err) {
+			return ErrGitBranchAlreadyAssociated
+		}
 		return fmt.Errorf("failed to update project: %w", err)
 	}
 
@@ -279,6 +318,7 @@ func toProjectModel(p types.Project) *models.Project {
 		ID:          int(p.ID),
 		Name:        p.Name,
 		Description: database.NullStringToString(p.Description.ToSQLNullString()),
+		GitBranch:   database.NullStringToString(p.GitBranch.ToSQLNullString()),
 		CreatedAt:   database.NullTimeToTime(p.CreatedAt.ToSQLNullTime()),
 		UpdatedAt:   database.NullTimeToTime(p.UpdatedAt.ToSQLNullTime()),
 	}
