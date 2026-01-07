@@ -15,8 +15,15 @@ type GitInfo struct {
 	HasCommits    bool   // True if repository has at least one commit
 }
 
+// IsValidForAssociation checks if the git repository state is valid for project association
+// Returns true if in a git repo, on a named branch (not detached), and branch name is not empty
+func (g GitInfo) IsValidForAssociation() bool {
+	return g.IsRepo && g.CurrentBranch != "" && !g.IsDetached
+}
+
 // DetectGitInfo detects git repository information from the current working directory
-// All git commands are executed with a 2-second timeout for reliability
+// All git commands are executed with a 2-second timeout for reliability.
+// The passed context is respected for cancellation, with per-operation timeouts added.
 func DetectGitInfo(ctx context.Context) GitInfo {
 	info := GitInfo{
 		IsRepo:        false,
@@ -26,16 +33,16 @@ func DetectGitInfo(ctx context.Context) GitInfo {
 	}
 
 	// Check if we're in a git repository
-	if !isGitRepo() {
+	if !isGitRepo(ctx) {
 		return info
 	}
 	info.IsRepo = true
 
 	// Check if repository has commits
-	info.HasCommits = hasCommits()
+	info.HasCommits = hasCommits(ctx)
 
 	// Get current branch name and detect detached HEAD
-	branchName, isDetached := getCurrentBranch()
+	branchName, isDetached := getCurrentBranch(ctx)
 	info.CurrentBranch = SanitizeBranchName(branchName)
 	info.IsDetached = isDetached
 
@@ -43,8 +50,9 @@ func DetectGitInfo(ctx context.Context) GitInfo {
 }
 
 // isGitRepo checks if the current directory is inside a git repository
-func isGitRepo() bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+// Respects the passed context while adding a 2-second timeout for the git operation
+func isGitRepo(ctx context.Context) bool {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--git-dir")
@@ -53,8 +61,9 @@ func isGitRepo() bool {
 }
 
 // hasCommits checks if the repository has at least one commit
-func hasCommits() bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+// Respects the passed context while adding a 2-second timeout for the git operation
+func hasCommits(ctx context.Context) bool {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "git", "rev-parse", "HEAD")
@@ -64,8 +73,9 @@ func hasCommits() bool {
 
 // getCurrentBranch gets the current branch name and detects detached HEAD state
 // Returns (branchName, isDetached)
-func getCurrentBranch() (string, bool) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+// Respects the passed context while adding a 2-second timeout for the git operation
+func getCurrentBranch(ctx context.Context) (string, bool) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
 	// Try to get symbolic ref (branch name)
