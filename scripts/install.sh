@@ -96,6 +96,22 @@ fi
 echo ""
 
 # ============================================================================
+# Step 2.5: Stop Running Service (if exists)
+# ============================================================================
+
+SERVICE_WAS_RUNNING=false
+if [ "$SYSTEMD_AVAILABLE" = true ]; then
+  if systemctl --user is-active paso.service &>/dev/null; then
+    echo -e "${BLUE}[2.5/7] Stopping running paso service for update...${NC}"
+    echo ""
+    systemctl --user stop paso.service
+    echo -e "${GREEN}✓ Stopped paso.service${NC}"
+    SERVICE_WAS_RUNNING=true
+    echo ""
+  fi
+fi
+
+# ============================================================================
 # Step 3: Install Binaries
 # ============================================================================
 
@@ -283,9 +299,14 @@ EOF
     systemctl --user enable paso.service
     echo -e "${GREEN}✓ Enabled paso.service (will start on login)${NC}"
 
-    # Start the service
-    systemctl --user start paso.service
-    echo -e "${GREEN}✓ Started paso.service${NC}"
+    # Start or restart the service
+    if [ "$SERVICE_WAS_RUNNING" = true ]; then
+      systemctl --user start paso.service
+      echo -e "${GREEN}✓ Restarted paso.service${NC}"
+    else
+      systemctl --user start paso.service
+      echo -e "${GREEN}✓ Started paso.service${NC}"
+    fi
 
     echo ""
     echo -e "${GREEN}Systemd service installed successfully!${NC}"
@@ -298,6 +319,15 @@ EOF
     echo "  systemctl --user disable paso     # Disable autostart"
   else
     echo "Skipping systemd service"
+
+    # If service was running before, restart it since we stopped it for the update
+    if [ "$SERVICE_WAS_RUNNING" = true ]; then
+      echo ""
+      echo -e "${YELLOW}Restarting previously running service...${NC}"
+      systemctl --user start paso.service
+      echo -e "${GREEN}✓ Restarted paso.service${NC}"
+    fi
+
     echo ""
     echo "To start the daemon manually, run:"
     echo "  paso-daemon &"
