@@ -70,7 +70,7 @@ type Querier interface {
 	// Retrieves the linked list pointers and project ID for a column
 	GetColumnLinkedListInfo(ctx context.Context, id int64) (GetColumnLinkedListInfoRow, error)
 	// Retrieves the next column ID in the linked list
-	GetColumnNextID(ctx context.Context, id int64) (interface{}, error)
+	GetColumnNextID(ctx context.Context, id int64) (any, error)
 	// Retrieves all columns for a specific project
 	GetColumnsByProject(ctx context.Context, projectID int64) ([]GetColumnsByProjectRow, error)
 	// Retrieves a single comment by ID
@@ -96,15 +96,15 @@ type Querier interface {
 	// Retrieves all labels attached to a specific task
 	GetLabelsForTask(ctx context.Context, taskID int64) ([]Label, error)
 	// Retrieves the ID of the next column in the linked list
-	GetNextColumnID(ctx context.Context, id int64) (interface{}, error)
+	GetNextColumnID(ctx context.Context, id int64) (any, error)
 	// Retrieves the next available ticket number for a project
 	GetNextTicketNumber(ctx context.Context, projectID int64) (sql.NullInt64, error)
 	// Retrieves all parent tasks for a given child task with relationship details
 	GetParentTasks(ctx context.Context, childID int64) ([]GetParentTasksRow, error)
 	// Retrieves the ID of the previous column in the linked list
-	GetPrevColumnID(ctx context.Context, id int64) (interface{}, error)
+	GetPrevColumnID(ctx context.Context, id int64) (any, error)
 	// Retrieves a project by its git branch
-	GetProjectByGitBranch(ctx context.Context, gitBranch interface{}) (GetProjectByGitBranchRow, error)
+	GetProjectByGitBranch(ctx context.Context, gitBranch any) (GetProjectByGitBranchRow, error)
 	// Retrieves a project by its ID with all metadata
 	GetProjectByID(ctx context.Context, id int64) (GetProjectByIDRow, error)
 	// Retrieves the project ID for a given column

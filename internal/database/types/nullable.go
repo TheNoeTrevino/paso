@@ -6,7 +6,7 @@ import (
 )
 
 // NullInt64 is a database-agnostic nullable integer type.
-// It unifies SQLite's interface{} and PostgreSQL's sql.NullInt64 representations.
+// It unifies SQLite's any and PostgreSQL's sql.NullInt64 representations.
 type NullInt64 struct {
 	Int64 int64
 	Valid bool // Valid is true if Int64 is not NULL
@@ -17,9 +17,9 @@ func FromSQLNullInt64(n sql.NullInt64) NullInt64 {
 	return NullInt64{Int64: n.Int64, Valid: n.Valid}
 }
 
-// NullInt64FromInterface converts interface{} (SQLite representation) to types.NullInt64.
+// NullInt64FromInterface converts any (SQLite representation) to types.NullInt64.
 // Handles int64, int32, and int types that databases may return for nullable integer columns.
-func NullInt64FromInterface(v interface{}) NullInt64 {
+func NullInt64FromInterface(v any) NullInt64 {
 	if v == nil {
 		return NullInt64{Valid: false}
 	}
@@ -40,8 +40,8 @@ func (n NullInt64) ToSQLNullInt64() sql.NullInt64 {
 	return sql.NullInt64{Int64: n.Int64, Valid: n.Valid}
 }
 
-// ToInterface converts types.NullInt64 to interface{} (for SQLite)
-func (n NullInt64) ToInterface() interface{} {
+// ToInterface converts types.NullInt64 to any (for SQLite)
+func (n NullInt64) ToInterface() any {
 	if !n.Valid {
 		return nil
 	}
@@ -59,9 +59,9 @@ func FromSQLNullString(n sql.NullString) NullString {
 	return NullString{String: n.String, Valid: n.Valid}
 }
 
-// NullStringFromInterface converts interface{} (SQLite representation) to types.NullString.
+// NullStringFromInterface converts any (SQLite representation) to types.NullString.
 // Handles string types that databases may return for nullable string columns.
-func NullStringFromInterface(v interface{}) NullString {
+func NullStringFromInterface(v any) NullString {
 	if v == nil {
 		return NullString{Valid: false}
 	}

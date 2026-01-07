@@ -79,8 +79,8 @@ returning id, name, prev_id, next_id, project_id, holds_ready_tasks, holds_compl
 type CreateColumnParams struct {
 	Name                 string
 	ProjectID            int64
-	PrevID               interface{}
-	NextID               interface{}
+	PrevID               any
+	NextID               any
 	HoldsReadyTasks      bool
 	HoldsCompletedTasks  bool
 	HoldsInProgressTasks bool
@@ -152,8 +152,8 @@ type GetColumnByIDRow struct {
 	ID                   int64
 	Name                 string
 	ProjectID            int64
-	PrevID               interface{}
-	NextID               interface{}
+	PrevID               any
+	NextID               any
 	HoldsReadyTasks      bool
 	HoldsCompletedTasks  bool
 	HoldsInProgressTasks bool
@@ -186,8 +186,8 @@ where id = ?
 `
 
 type GetColumnLinkedListInfoRow struct {
-	PrevID    interface{}
-	NextID    interface{}
+	PrevID    any
+	NextID    any
 	ProjectID int64
 }
 
@@ -206,9 +206,9 @@ where id = ?
 `
 
 // Retrieves the next column ID in the linked list
-func (q *Queries) GetColumnNextID(ctx context.Context, id int64) (interface{}, error) {
+func (q *Queries) GetColumnNextID(ctx context.Context, id int64) (any, error) {
 	row := q.db.QueryRowContext(ctx, getColumnNextID, id)
-	var next_id interface{}
+	var next_id any
 	err := row.Scan(&next_id)
 	return next_id, err
 }
@@ -231,8 +231,8 @@ type GetColumnsByProjectRow struct {
 	ID                   int64
 	Name                 string
 	ProjectID            int64
-	PrevID               interface{}
-	NextID               interface{}
+	PrevID               any
+	NextID               any
 	HoldsReadyTasks      bool
 	HoldsCompletedTasks  bool
 	HoldsInProgressTasks bool
@@ -288,8 +288,8 @@ type GetCompletedColumnByProjectRow struct {
 	ID                  int64
 	Name                string
 	ProjectID           int64
-	PrevID              interface{}
-	NextID              interface{}
+	PrevID              any
+	NextID              any
 	HoldsCompletedTasks bool
 }
 
@@ -325,8 +325,8 @@ type GetInProgressColumnByProjectRow struct {
 	ID                   int64
 	Name                 string
 	ProjectID            int64
-	PrevID               interface{}
-	NextID               interface{}
+	PrevID               any
+	NextID               any
 	HoldsInProgressTasks bool
 }
 
@@ -362,8 +362,8 @@ type GetReadyColumnByProjectRow struct {
 	ID              int64
 	Name            string
 	ProjectID       int64
-	PrevID          interface{}
-	NextID          interface{}
+	PrevID          any
+	NextID          any
 	HoldsReadyTasks bool
 }
 
@@ -473,7 +473,7 @@ where id = ?
 `
 
 type UpdateColumnNextIDParams struct {
-	NextID interface{}
+	NextID any
 	ID     int64
 }
 
@@ -490,7 +490,7 @@ where id = ?
 `
 
 type UpdateColumnPrevIDParams struct {
-	PrevID interface{}
+	PrevID any
 	ID     int64
 }
 

@@ -19,7 +19,7 @@ returning id, name, description, created_at, updated_at, git_branch
 type CreateProjectRecordParams struct {
 	Name        string
 	Description sql.NullString
-	GitBranch   interface{}
+	GitBranch   any
 }
 
 // Creates a new project with name and description
@@ -87,7 +87,7 @@ type GetAllProjectsRow struct {
 	ID          int64
 	Name        string
 	Description sql.NullString
-	GitBranch   interface{}
+	GitBranch   any
 	CreatedAt   sql.NullTime
 	UpdatedAt   sql.NullTime
 }
@@ -138,13 +138,13 @@ type GetProjectByGitBranchRow struct {
 	ID          int64
 	Name        string
 	Description sql.NullString
-	GitBranch   interface{}
+	GitBranch   any
 	CreatedAt   sql.NullTime
 	UpdatedAt   sql.NullTime
 }
 
 // Retrieves a project by its git branch
-func (q *Queries) GetProjectByGitBranch(ctx context.Context, gitBranch interface{}) (GetProjectByGitBranchRow, error) {
+func (q *Queries) GetProjectByGitBranch(ctx context.Context, gitBranch any) (GetProjectByGitBranchRow, error) {
 	row := q.db.QueryRowContext(ctx, getProjectByGitBranch, gitBranch)
 	var i GetProjectByGitBranchRow
 	err := row.Scan(
@@ -173,7 +173,7 @@ type GetProjectByIDRow struct {
 	ID          int64
 	Name        string
 	Description sql.NullString
-	GitBranch   interface{}
+	GitBranch   any
 	CreatedAt   sql.NullTime
 	UpdatedAt   sql.NullTime
 }
@@ -228,7 +228,7 @@ updated_at = current_timestamp where id = ?
 type UpdateProjectParams struct {
 	Name        string
 	Description sql.NullString
-	GitBranch   interface{}
+	GitBranch   any
 	ID          int64
 }
 
