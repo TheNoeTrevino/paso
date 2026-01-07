@@ -8,6 +8,7 @@ type Project struct {
 	ID          int
 	Name        string
 	Description string
+	GitBranch   string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
