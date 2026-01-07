@@ -112,6 +112,8 @@ type Querier interface {
 	GetPrevColumnID(ctx context.Context, id int64) (NullInt64, error)
 	// Retrieves a project by its ID with all metadata
 	GetProjectByID(ctx context.Context, id int64) (Project, error)
+	// Retrieves a project by its git branch
+	GetProjectByGitBranch(ctx context.Context, gitBranch string) (Project, error)
 	// Retrieves the project ID for a given column
 	GetProjectIDFromColumn(ctx context.Context, id int64) (int64, error)
 	// Retrieves the project ID for a given task by joining through its column

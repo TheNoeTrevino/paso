@@ -32,6 +32,7 @@ type Project struct {
 	ID          int64
 	Name        string
 	Description NullString
+	GitBranch   NullString
 	CreatedAt   NullTime
 	UpdatedAt   NullTime
 }

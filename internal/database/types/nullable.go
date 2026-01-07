@@ -59,6 +59,22 @@ func FromSQLNullString(n sql.NullString) NullString {
 	return NullString{String: n.String, Valid: n.Valid}
 }
 
+// NullStringFromInterface converts interface{} (SQLite representation) to types.NullString.
+// Handles string types that databases may return for nullable string columns.
+func NullStringFromInterface(v interface{}) NullString {
+	if v == nil {
+		return NullString{Valid: false}
+	}
+	switch s := v.(type) {
+	case string:
+		return NullString{String: s, Valid: true}
+	case []byte:
+		return NullString{String: string(s), Valid: true}
+	default:
+		return NullString{Valid: false}
+	}
+}
+
 // ToSQLNullString converts types.NullString to sql.NullString
 func (n NullString) ToSQLNullString() sql.NullString {
 	return sql.NullString{String: n.String, Valid: n.Valid}

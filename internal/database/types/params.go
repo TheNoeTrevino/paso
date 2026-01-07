@@ -79,11 +79,13 @@ type UpdateColumnPrevIDParams struct {
 type CreateProjectRecordParams struct {
 	Name        string
 	Description NullString
+	GitBranch   NullString
 }
 
 type UpdateProjectParams struct {
 	Name        string
 	Description NullString
+	GitBranch   NullString
 	ID          int64
 }
 
