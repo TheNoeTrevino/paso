@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -126,22 +127,44 @@ func GetLabelByID(ctx context.Context, cliInstance *CLI, labelID int) (*struct {
 	return nil, fmt.Errorf("label %d not found", labelID)
 }
 
-// GetProjectID returns the project ID from flag or environment variable
-// Precedence: --project flag > PASO_PROJECT env var > error
+// GetProjectID returns the project ID using precedence:
+// 1. --project flag (if explicitly set)
+// 2. Git branch association (if in git repo with associated project)
+// 3. Error (no project found)
 func GetProjectID(cmd *cobra.Command) (int, error) {
+	ctx := cmd.Context()
+
 	// Check if --project flag was explicitly set
 	projectFlag := cmd.Flags().Lookup("project")
 	if projectFlag != nil && projectFlag.Changed {
 		return cmd.Flags().GetInt("project")
 	}
 
-	// Fall back to PASO_PROJECT environment variable
-	if envProject := os.Getenv("PASO_PROJECT"); envProject != "" {
-		var projectID int
-		if _, err := fmt.Sscanf(envProject, "%d", &projectID); err == nil {
-			return projectID, nil
+	// Try git branch detection (only if we have a valid context with CLI instance)
+	if ctx != nil {
+		cliInstance, err := GetCLIFromContext(ctx)
+		if err == nil {
+			defer func() {
+				if closeErr := cliInstance.Close(); closeErr != nil {
+					// Log but don't fail - this is cleanup
+					fmt.Fprintf(os.Stderr, "Warning: failed to close CLI in GetProjectID: %v\n", closeErr)
+				}
+			}()
+
+			// Detect git repository information
+			gitInfo := git.DetectGitInfo(ctx)
+
+			// If we're in a git repo with a valid branch, try to find associated project
+			if gitInfo.IsRepo && gitInfo.CurrentBranch != "" && !gitInfo.IsDetached {
+				project, err := cliInstance.App.ProjectService.GetProjectByGitBranch(ctx, gitInfo.CurrentBranch)
+				if err == nil && project != nil {
+					return project.ID, nil
+				}
+				// If error is not "not found", log it but continue
+				// (we don't want to fail hard on DB errors, just fall through to error)
+			}
 		}
 	}
 
-	return 0, fmt.Errorf("no project specified: use --project flag or set with 'eval $(paso use project <project-id>)'")
+	return 0, fmt.Errorf("no project specified: use --project flag or create a project associated with this branch")
 }
