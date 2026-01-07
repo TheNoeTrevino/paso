@@ -44,7 +44,7 @@ Examples:
 		slog.Error("failed to marking flag as required", "error", err)
 	}
 
-	cmd.Flags().Int("project", 0, "Project ID (uses PASO_PROJECT env var if not specified)")
+	cmd.Flags().Int("project", 0, "Project ID (uses git branch association if not specified)")
 
 	// Agent-friendly flags
 	cmd.Flags().Bool("json", false, "Output in JSON format")
@@ -66,7 +66,7 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (i
 	cmd := args.GetCmd()
 	labelProject, err := cli.GetProjectID(cmd)
 	if err != nil {
-		return nil, fmt.Errorf("no project specified: use --project flag or set with 'eval $(paso use project <project-id>)'")
+		return nil, fmt.Errorf("no project specified: use --project flag or create a project associated with this branch")
 	}
 
 	// Initialize CLI

@@ -31,7 +31,7 @@ func (p *FlagParser) ParseProjectID() (int, error) {
 	if err != nil {
 		if fmtErr := p.formatter.ErrorWithSuggestion("NO_PROJECT",
 			err.Error(),
-			"Set project with: eval $(paso use project <project-id>)"); fmtErr != nil {
+			"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
 			fmt.Fprintf(os.Stderr, "Error formatting error message: %v\n", fmtErr)
 		}
 		os.Exit(cli.ExitUsage)

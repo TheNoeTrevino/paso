@@ -21,7 +21,7 @@ func ListCmd() *cobra.Command {
 	}
 
 	// Flags
-	cmd.Flags().Int("project", 0, "Project ID (uses PASO_PROJECT env var if not specified)")
+	cmd.Flags().Int("project", 0, "Project ID (uses git branch association if not specified)")
 
 	// Agent-friendly flags
 	cmd.Flags().Bool("json", false, "Output in JSON format")
@@ -43,7 +43,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
 			err.Error(),
-			"Set project with: eval $(paso use project <project-id>)"); fmtErr != nil {
+			"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
 			slog.Error("failed to formatting error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitUsage)

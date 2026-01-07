@@ -52,7 +52,7 @@ Examples:
 		slog.Error("failed to mark flag as required", "error", err)
 	}
 
-	cmd.Flags().Int("project", 0, "Project ID (uses PASO_PROJECT env var if not specified)")
+	cmd.Flags().Int("project", 0, "Project ID (uses git branch association if not specified)")
 
 	// Optional flags
 	cmd.Flags().String("description", "", "Task description (use - for stdin)")
@@ -89,7 +89,7 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 	cmd := args.GetCmd()
 	taskProject, err := cli.GetProjectID(cmd)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get project: no project specified, use --project flag or set with 'eval $(paso use project <project-id>)'")
+		return nil, fmt.Errorf("failed to get project: no project specified: use --project flag or create a project associated with this branch")
 	}
 
 	// Initialize CLI (uses injected instance from context if in test mode)
