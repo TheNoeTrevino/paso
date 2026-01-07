@@ -78,8 +78,8 @@ func (s *service) GetAllProjects(ctx context.Context) ([]*models.Project, error)
 
 // GetProjectByID retrieves a specific project
 func (s *service) GetProjectByID(ctx context.Context, id int) (*models.Project, error) {
-	if id <= 0 {
-		return nil, ErrInvalidProjectID
+	if err := validateProjectID(id); err != nil {
+		return nil, err
 	}
 	project, err := s.queries.GetProjectByID(ctx, int64(id))
 	if err != nil {
@@ -106,8 +106,8 @@ func (s *service) GetProjectByGitBranch(ctx context.Context, gitBranch string) (
 
 // GetTaskCount returns the number of tasks in a project
 func (s *service) GetTaskCount(ctx context.Context, projectID int) (int, error) {
-	if projectID <= 0 {
-		return 0, ErrInvalidProjectID
+	if err := validateProjectID(projectID); err != nil {
+		return 0, err
 	}
 	count, err := s.queries.GetProjectTaskCount(ctx, int64(projectID))
 	if err != nil {
@@ -122,7 +122,7 @@ func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest) (
 	defer cancel()
 
 	// Validate request
-	if err := s.validateCreateProject(req); err != nil {
+	if err := validateCreateProjectRequest(req); err != nil {
 		return nil, err
 	}
 
@@ -177,17 +177,8 @@ func (s *service) UpdateProject(ctx context.Context, req UpdateProjectRequest) e
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Validate project ID
-	if req.ID <= 0 {
-		return ErrInvalidProjectID
-	}
-
-	// Validate fields if provided
-	if req.Name != nil && *req.Name == "" {
-		return ErrEmptyName
-	}
-	if req.Name != nil && len(*req.Name) > 100 {
-		return ErrNameTooLong
+	if err := validateUpdateProjectRequest(req); err != nil {
+		return err
 	}
 
 	// Get existing project to fill in missing fields
@@ -196,7 +187,7 @@ func (s *service) UpdateProject(ctx context.Context, req UpdateProjectRequest) e
 		return fmt.Errorf("failed to get project: %w", err)
 	}
 
-	// Determine final values
+	// merge the two values
 	name := existing.Name
 	if req.Name != nil {
 		name = *req.Name
@@ -235,8 +226,8 @@ func (s *service) UpdateProject(ctx context.Context, req UpdateProjectRequest) e
 
 // DeleteProject deletes a project (business rule: must not have tasks unless force=true)
 func (s *service) DeleteProject(ctx context.Context, id int, force bool) error {
-	if id <= 0 {
-		return ErrInvalidProjectID
+	if err := validateProjectID(id); err != nil {
+		return err
 	}
 
 	// Business rule: Check if project has tasks (unless force is enabled)
@@ -286,17 +277,6 @@ func (s *service) DeleteProject(ctx context.Context, id int, force bool) error {
 	return nil
 }
 
-// validateCreateProject validates a CreateProjectRequest
-func (s *service) validateCreateProject(req CreateProjectRequest) error {
-	if req.Name == "" {
-		return ErrEmptyName
-	}
-	if len(req.Name) > 100 {
-		return ErrNameTooLong
-	}
-	return nil
-}
-
 // publishProjectEvent publishes a project event with retry logic
 func (s *service) publishProjectEvent(ctx context.Context, projectID int) {
 	if s.eventClient == nil {
@@ -310,8 +290,6 @@ func (s *service) publishProjectEvent(ctx context.Context, projectID int) {
 		ProjectID: projectID,
 	}, 3)
 }
-
-// Model conversion helpers
 
 func toProjectModel(p types.Project) *models.Project {
 	return &models.Project{

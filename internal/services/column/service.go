@@ -64,8 +64,8 @@ func (s *service) GetColumnsByProject(ctx context.Context, projectID int) ([]*mo
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	if projectID <= 0 {
-		return nil, ErrInvalidProjectID
+	if err := validateProjectID(projectID); err != nil {
+		return nil, err
 	}
 	columns, err := s.queries.GetColumnsByProject(ctx, int64(projectID))
 	if err != nil {
@@ -76,8 +76,8 @@ func (s *service) GetColumnsByProject(ctx context.Context, projectID int) ([]*mo
 
 // GetColumnByID retrieves a specific column
 func (s *service) GetColumnByID(ctx context.Context, id int) (*models.Column, error) {
-	if id <= 0 {
-		return nil, ErrInvalidColumnID
+	if err := validateColumnID(id); err != nil {
+		return nil, err
 	}
 	column, err := s.queries.GetColumnByID(ctx, int64(id))
 	if err != nil {
@@ -91,7 +91,7 @@ func (s *service) CreateColumn(ctx context.Context, req CreateColumnRequest) (*m
 	defer cancel()
 
 	// Validate request
-	if err := s.validateCreateColumn(req); err != nil {
+	if err := validateCreateColumnRequest(req); err != nil {
 		return nil, err
 	}
 
@@ -203,14 +203,11 @@ func (s *service) UpdateColumnName(ctx context.Context, id int, name string) err
 	defer cancel()
 
 	// Validate
-	if id <= 0 {
-		return ErrInvalidColumnID
+	if err := validateColumnID(id); err != nil {
+		return err
 	}
-	if name == "" {
-		return ErrEmptyName
-	}
-	if len(name) > 50 {
-		return ErrNameTooLong
+	if err := validateColumnName(name); err != nil {
+		return err
 	}
 
 	// Get column to find project ID for event
@@ -396,8 +393,8 @@ func (s *service) SetHoldsInProgressTasks(ctx context.Context, columnID int) (*m
 
 // DeleteColumn deletes a column (business rule: must not have tasks)
 func (s *service) DeleteColumn(ctx context.Context, id int) error {
-	if id <= 0 {
-		return ErrInvalidColumnID
+	if err := validateColumnID(id); err != nil {
+		return err
 	}
 
 	// Business rule: Check if column has tasks
@@ -476,23 +473,6 @@ func (s *service) DeleteColumn(ctx context.Context, id int) error {
 	// Publish event after successful deletion
 	s.publishColumnEvent(ctx, id, projectID)
 
-	return nil
-}
-
-// validateCreateColumn validates a CreateColumnRequest
-func (s *service) validateCreateColumn(req CreateColumnRequest) error {
-	if req.Name == "" {
-		return ErrEmptyName
-	}
-	if len(req.Name) > 50 {
-		return ErrNameTooLong
-	}
-	if req.ProjectID <= 0 {
-		return ErrInvalidProjectID
-	}
-	if req.AfterID != nil && *req.AfterID <= 0 {
-		return ErrInvalidColumnID
-	}
 	return nil
 }
 

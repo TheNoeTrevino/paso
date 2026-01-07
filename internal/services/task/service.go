@@ -149,7 +149,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 	defer cancel()
 
 	// Validate request
-	if err := s.validateCreateTask(req); err != nil {
+	if err := validateCreateTaskRequest(req); err != nil {
 		return nil, err
 	}
 
@@ -288,23 +288,9 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Validate task ID
-	if req.TaskID <= 0 {
-		return ErrInvalidTaskID
-	}
-
-	// Validate fields if provided
-	if req.Title != nil && *req.Title == "" {
-		return ErrEmptyTitle
-	}
-	if req.Title != nil && len(*req.Title) > 255 {
-		return ErrTitleTooLong
-	}
-	if req.PriorityID != nil && *req.PriorityID <= 0 {
-		return ErrInvalidPriority
-	}
-	if req.TypeID != nil && *req.TypeID <= 0 {
-		return ErrInvalidType
+	// Validate request
+	if err := validateUpdateTaskRequest(req); err != nil {
+		return err
 	}
 
 	// Update basic fields if provided
@@ -371,8 +357,8 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 
 // DeleteTask handles task deletion
 func (s *service) DeleteTask(ctx context.Context, taskID int) error {
-	if taskID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
 	}
 
 	if err := s.queries.DeleteTask(ctx, int64(taskID)); err != nil {
@@ -390,7 +376,7 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	if taskID <= 0 {
+	if err := validateTaskID(taskID); err != nil {
 		return nil, ErrInvalidTaskID
 	}
 
@@ -468,7 +454,7 @@ func (s *service) GetTaskTypeAndPriorityIDs(ctx context.Context, taskID int) (ty
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	if taskID <= 0 {
+	if err := validateTaskID(taskID); err != nil {
 		return 0, 0, ErrInvalidTaskID
 	}
 
@@ -707,8 +693,8 @@ func extractColumnID(columnID types.NullInt64) (int64, error) {
 
 // MoveTaskToNextColumn moves task to next column
 func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
-	if taskID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
 	}
 
 	// Get current column
@@ -723,7 +709,7 @@ func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to get next column: %w", err)
 	}
 
-	// Convert interface{} to int64 with proper error handling
+	// Convert any to int64 with proper error handling
 	nextColID, err := extractColumnID(nextColumnID)
 	if err != nil {
 		return fmt.Errorf("failed to move task: no next column available")
@@ -750,8 +736,8 @@ func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 
 // MoveTaskToPrevColumn moves task to previous column
 func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
-	if taskID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
 	}
 
 	// Get current column
@@ -766,7 +752,7 @@ func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to get previous column: %w", err)
 	}
 
-	// Convert interface{} to int64 with proper error handling
+	// Convert any to int64 with proper error handling
 	prevColID, err := extractColumnID(prevColumnID)
 	if err != nil {
 		return fmt.Errorf("failed to move task: no previous column available")
@@ -793,18 +779,18 @@ func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 
 // MoveTaskToColumn moves task to specific column
 func (s *service) MoveTaskToColumn(ctx context.Context, taskID, columnID int) error {
-	if taskID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
 	}
-	if columnID <= 0 {
-		return ErrInvalidColumnID
+	if err := validateColumnID(columnID); err != nil {
+		return err
 	}
 
 	// Verify task exists before moving
 	_, err := s.queries.GetTaskPosition(ctx, int64(taskID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return ErrInvalidTaskID
+			return err
 		}
 		return fmt.Errorf("failed to verify task exists: %w", err)
 	}
@@ -829,15 +815,15 @@ func (s *service) MoveTaskToColumn(ctx context.Context, taskID, columnID int) er
 
 // MoveTaskToReadyColumn moves task to the column marked as holding ready tasks
 func (s *service) MoveTaskToReadyColumn(ctx context.Context, taskID int) error {
-	if taskID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
 	}
 
 	// Get task detail to find project
 	taskDetail, err := s.queries.GetTaskDetail(ctx, int64(taskID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return ErrInvalidTaskID
+			return err
 		}
 		return fmt.Errorf("failed to get task: %w", err)
 	}
@@ -868,15 +854,15 @@ func (s *service) MoveTaskToReadyColumn(ctx context.Context, taskID int) error {
 
 // MoveTaskToCompletedColumn moves task to the column marked as holding completed tasks
 func (s *service) MoveTaskToCompletedColumn(ctx context.Context, taskID int) error {
-	if taskID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
 	}
 
 	// Get task detail to find project
 	taskDetail, err := s.queries.GetTaskDetail(ctx, int64(taskID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return ErrInvalidTaskID
+			return err
 		}
 		return fmt.Errorf("failed to get task: %w", err)
 	}
@@ -907,15 +893,15 @@ func (s *service) MoveTaskToCompletedColumn(ctx context.Context, taskID int) err
 
 // MoveTaskToInProgressColumn moves a task to the column marked as holding in-progress tasks
 func (s *service) MoveTaskToInProgressColumn(ctx context.Context, taskID int) error {
-	if taskID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
 	}
 
 	// Get task detail to find project
 	taskDetail, err := s.queries.GetTaskDetail(ctx, int64(taskID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return ErrInvalidTaskID
+			return err
 		}
 		return fmt.Errorf("failed to get task: %w", err)
 	}
@@ -956,7 +942,7 @@ func (s *service) GetInProgressTasksByProject(ctx context.Context, projectID int
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	if projectID <= 0 {
+	if err := validateProjectID(projectID); err != nil {
 		return nil, ErrInvalidProjectID
 	}
 
@@ -1007,8 +993,8 @@ func (s *service) GetInProgressTasksByProject(ctx context.Context, projectID int
 
 // MoveTaskUp moves task up in its column
 func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
-	if taskID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
 	}
 
 	// Use WithTx helper to avoid UNIQUE constraint violations during swap
@@ -1064,8 +1050,8 @@ func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 
 // MoveTaskDown moves task down in its column
 func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
-	if taskID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
 	}
 
 	// Use WithTx helper to avoid UNIQUE constraint violations during swap
@@ -1160,8 +1146,11 @@ func (s *service) wouldCreateCycle(ctx context.Context, parentID, childID int) (
 
 // AddParentRelation adds a parent relationship (parent depends on this task)
 func (s *service) AddParentRelation(ctx context.Context, taskID, parentID int, relationTypeID int) error {
-	if taskID <= 0 || parentID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
+	}
+	if err := validateTaskID(parentID); err != nil {
+		return err
 	}
 	if taskID == parentID {
 		return ErrSelfRelation
@@ -1191,8 +1180,11 @@ func (s *service) AddParentRelation(ctx context.Context, taskID, parentID int, r
 
 // AddChildRelation adds a child relationship (this task depends on child)
 func (s *service) AddChildRelation(ctx context.Context, taskID, childID int, relationTypeID int) error {
-	if taskID <= 0 || childID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
+	}
+	if err := validateTaskID(childID); err != nil {
+		return err
 	}
 	if taskID == childID {
 		return ErrSelfRelation
@@ -1222,8 +1214,11 @@ func (s *service) AddChildRelation(ctx context.Context, taskID, childID int, rel
 
 // RemoveParentRelation removes a parent relationship
 func (s *service) RemoveParentRelation(ctx context.Context, taskID, parentID int) error {
-	if taskID <= 0 || parentID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
+	}
+	if err := validateTaskID(parentID); err != nil {
+		return err
 	}
 
 	if err := s.queries.RemoveSubtask(ctx, types.RemoveSubtaskParams{
@@ -1239,8 +1234,11 @@ func (s *service) RemoveParentRelation(ctx context.Context, taskID, parentID int
 
 // RemoveChildRelation removes a child relationship
 func (s *service) RemoveChildRelation(ctx context.Context, taskID, childID int) error {
-	if taskID <= 0 || childID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
+	}
+	if err := validateTaskID(childID); err != nil {
+		return err
 	}
 
 	if err := s.queries.RemoveSubtask(ctx, types.RemoveSubtaskParams{
@@ -1256,11 +1254,11 @@ func (s *service) RemoveChildRelation(ctx context.Context, taskID, childID int) 
 
 // AttachLabel attaches a label to a task
 func (s *service) AttachLabel(ctx context.Context, taskID, labelID int) error {
-	if taskID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
 	}
-	if labelID <= 0 {
-		return ErrInvalidLabelID
+	if err := validateLabelID(labelID); err != nil {
+		return err
 	}
 
 	if err := s.queries.AddLabelToTask(ctx, types.AddLabelToTaskParams{
@@ -1276,11 +1274,11 @@ func (s *service) AttachLabel(ctx context.Context, taskID, labelID int) error {
 
 // DetachLabel detaches a label from a task
 func (s *service) DetachLabel(ctx context.Context, taskID, labelID int) error {
-	if taskID <= 0 {
-		return ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return err
 	}
-	if labelID <= 0 {
-		return ErrInvalidLabelID
+	if err := validateLabelID(labelID); err != nil {
+		return err
 	}
 
 	if err := s.queries.RemoveLabelFromTask(ctx, types.RemoveLabelFromTaskParams{
@@ -1296,13 +1294,8 @@ func (s *service) DetachLabel(ctx context.Context, taskID, labelID int) error {
 
 // CreateComment creates a new comment on a task
 func (s *service) CreateComment(ctx context.Context, req CreateCommentRequest) (*models.Comment, error) {
-	// Validate task ID
-	if req.TaskID <= 0 {
-		return nil, ErrInvalidTaskID
-	}
-
-	// Validate message
-	if err := validateCommentMessage(req.Message); err != nil {
+	// Validate request
+	if err := validateCreateCommentRequest(req); err != nil {
 		return nil, err
 	}
 
@@ -1337,11 +1330,8 @@ func (s *service) CreateComment(ctx context.Context, req CreateCommentRequest) (
 
 // UpdateComment updates a comment's message
 func (s *service) UpdateComment(ctx context.Context, req UpdateCommentRequest) error {
-	if req.CommentID <= 0 {
-		return ErrInvalidCommentID
-	}
-
-	if err := validateCommentMessage(req.Message); err != nil {
+	// Validate request
+	if err := validateUpdateCommentRequest(req); err != nil {
 		return err
 	}
 
@@ -1366,8 +1356,8 @@ func (s *service) UpdateComment(ctx context.Context, req UpdateCommentRequest) e
 
 // DeleteComment deletes a comment
 func (s *service) DeleteComment(ctx context.Context, commentID int) error {
-	if commentID <= 0 {
-		return ErrInvalidCommentID
+	if err := validateCommentID(commentID); err != nil {
+		return err
 	}
 
 	comment, err := s.queries.GetComment(ctx, int64(commentID))
@@ -1388,7 +1378,7 @@ func (s *service) DeleteComment(ctx context.Context, commentID int) error {
 
 // GetCommentsByTask retrieves all comments for a task
 func (s *service) GetCommentsByTask(ctx context.Context, taskID int) ([]*models.Comment, error) {
-	if taskID <= 0 {
+	if err := validateTaskID(taskID); err != nil {
 		return nil, ErrInvalidTaskID
 	}
 
@@ -1398,40 +1388,6 @@ func (s *service) GetCommentsByTask(ctx context.Context, taskID int) ([]*models.
 	}
 
 	return converters.CommentsToModels(rows), nil
-}
-
-// validateCreateTask validates a CreateTaskRequest
-func (s *service) validateCreateTask(req CreateTaskRequest) error {
-	if req.Title == "" {
-		return ErrEmptyTitle
-	}
-	if len(req.Title) > 255 {
-		return ErrTitleTooLong
-	}
-	if req.ColumnID <= 0 {
-		return ErrInvalidColumnID
-	}
-	if req.Position < 0 {
-		return ErrInvalidPosition
-	}
-	if req.PriorityID < 0 {
-		return ErrInvalidPriority
-	}
-	if req.TypeID < 0 {
-		return ErrInvalidType
-	}
-	return nil
-}
-
-// validateCommentMessage validates a comment message
-func validateCommentMessage(message string) error {
-	if message == "" {
-		return ErrEmptyCommentMessage
-	}
-	if len(message) > 1000 {
-		return ErrCommentMessageTooLong
-	}
-	return nil
 }
 
 // publishTaskEvent publishes a task event with retry logic

@@ -71,8 +71,8 @@ func (s *service) GetLabelsByProject(ctx context.Context, projectID int) ([]*mod
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	if projectID <= 0 {
-		return nil, ErrInvalidProjectID
+	if err := validateProjectID(projectID); err != nil {
+		return nil, err
 	}
 	labels, err := s.queries.GetLabelsByProject(ctx, int64(projectID))
 	if err != nil {
@@ -83,8 +83,8 @@ func (s *service) GetLabelsByProject(ctx context.Context, projectID int) ([]*mod
 
 // GetLabelsForTask retrieves all labels for a task
 func (s *service) GetLabelsForTask(ctx context.Context, taskID int) ([]*models.Label, error) {
-	if taskID <= 0 {
-		return nil, ErrInvalidTaskID
+	if err := validateTaskID(taskID); err != nil {
+		return nil, err
 	}
 	labels, err := s.queries.GetLabelsForTask(ctx, int64(taskID))
 	if err != nil {
@@ -99,7 +99,7 @@ func (s *service) CreateLabel(ctx context.Context, req CreateLabelRequest) (*mod
 	defer cancel()
 
 	// Validate request
-	if err := s.validateCreateLabel(req); err != nil {
+	if err := validateCreateLabelRequest(req); err != nil {
 		return nil, err
 	}
 
@@ -128,20 +128,9 @@ func (s *service) UpdateLabel(ctx context.Context, req UpdateLabelRequest) error
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Validate label ID
-	if req.ID <= 0 {
-		return ErrInvalidLabelID
-	}
-
-	// Validate fields if provided
-	if req.Name != nil && *req.Name == "" {
-		return ErrEmptyName
-	}
-	if req.Name != nil && len(*req.Name) > 50 {
-		return ErrNameTooLong
-	}
-	if req.Color != nil && !hexColorRegex.MatchString(*req.Color) {
-		return ErrInvalidColor
+	// Validate request
+	if err := validateUpdateLabelRequest(req); err != nil {
+		return err
 	}
 
 	// Get existing label to fill in missing fields
@@ -181,8 +170,8 @@ func (s *service) UpdateLabel(ctx context.Context, req UpdateLabelRequest) error
 
 // DeleteLabel deletes a label
 func (s *service) DeleteLabel(ctx context.Context, id int) error {
-	if id <= 0 {
-		return ErrInvalidLabelID
+	if err := validateLabelID(id); err != nil {
+		return err
 	}
 
 	// Get label to find project ID for event
@@ -205,23 +194,6 @@ func (s *service) DeleteLabel(ctx context.Context, id int) error {
 	// Publish event
 	s.publishLabelEvent(ctx, id, projectID)
 
-	return nil
-}
-
-// validateCreateLabel validates a CreateLabelRequest
-func (s *service) validateCreateLabel(req CreateLabelRequest) error {
-	if req.ProjectID <= 0 {
-		return ErrInvalidProjectID
-	}
-	if req.Name == "" {
-		return ErrEmptyName
-	}
-	if len(req.Name) > 50 {
-		return ErrNameTooLong
-	}
-	if !hexColorRegex.MatchString(req.Color) {
-		return ErrInvalidColor
-	}
 	return nil
 }
 
