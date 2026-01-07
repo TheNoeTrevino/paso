@@ -78,9 +78,13 @@ func NewCLIWithApp(ctx context.Context, testApp *app.App) (*CLI, error) {
 
 	var eventClient events.EventPublisher
 	client, err := events.NewClient(socketPath)
-	if err == nil {
-		// Try to connect - if it fails, daemon isn't running (graceful degradation)
-		if err := client.Connect(ctx); err == nil {
+	if err != nil {
+		// Daemon socket not available - graceful degradation (eventClient remains nil)
+	} else {
+		err = client.Connect(ctx)
+		if err != nil {
+			// Connection failed - graceful degradation (eventClient remains nil)
+		} else {
 			eventClient = client
 		}
 	}

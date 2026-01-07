@@ -134,9 +134,9 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success": true,
-			"label": map[string]interface{}{
+			"label": map[string]any{
 				"id":        labelID,
 				"name":      newName,
 				"color":     newColor,

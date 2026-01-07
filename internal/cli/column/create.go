@@ -72,18 +72,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
-	// Get project ID from flag or git branch
-	columnProject, err := cli.GetProjectID(cmd)
-	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
-			err.Error(),
-			"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
-	}
-
-	// Initialize CLI
+	// Initialize CLI first
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
@@ -96,6 +85,17 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
+
+	// Get project ID from flag or git branch
+	columnProject, err := cli.GetProjectIDWithCLI(cmd, cliInstance)
+	if err != nil {
+		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
+			err.Error(),
+			"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
+			slog.Error("failed to format error message", "error", fmtErr)
+		}
+		return err
+	}
 
 	// Validate project exists
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, columnProject)

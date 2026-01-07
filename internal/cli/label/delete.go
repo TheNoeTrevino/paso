@@ -84,8 +84,11 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	if !force && !quietMode {
 		fmt.Printf("Delete label #%d: '%s'? (y/N): ", labelID, label.Name)
 		var response string
-		if _, err := fmt.Scanln(&response); err != nil {
+		_, err := fmt.Scanln(&response)
+		if err != nil {
 			slog.Error("failed to reading user input", "error", err)
+			fmt.Println("Cancelled (failed to read input)")
+			return nil
 		}
 		if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 			fmt.Println("Cancelled")
@@ -107,7 +110,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success":  true,
 			"label_id": labelID,
 		})

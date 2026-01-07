@@ -5,7 +5,7 @@ package project
 
 import (
 	"context"
-	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -81,40 +81,42 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		}
 	}()
 
-	// Detect git repository information
+	// Detect git repository information and try to associate with branch
 	gitInfo := git.DetectGitInfo(ctx)
 	var gitBranch string
-
-	// If we're in a git repo with a valid branch, try to associate
-	if gitInfo.IsRepo && gitInfo.CurrentBranch != "" && !gitInfo.IsDetached {
-		// Check if this branch is already associated with another project
-		existingProject, err := cliInstance.App.ProjectService.GetProjectByGitBranch(ctx, gitInfo.CurrentBranch)
-		if err != nil && err != sql.ErrNoRows {
-			// Log but don't fail - just skip the git association
-			slog.Debug("failed to check existing git branch association", "error", err)
-		} else if existingProject != nil {
-			// Branch already associated - warn and skip association
-			if !quietMode {
-				fmt.Printf("⚠️  Warning: Branch '%s' is already associated with project '%s' (ID: %d)\n",
-					gitInfo.CurrentBranch, existingProject.Name, existingProject.ID)
-				fmt.Println("Creating new project without branch association...")
-			}
-			gitBranch = "" // Don't associate with branch
-		} else {
-			// No existing project - associate with this branch
-			gitBranch = gitInfo.CurrentBranch
-			if !quietMode {
-				fmt.Printf("ℹ️  Associating project with git branch: %s\n", gitBranch)
-			}
+	if gitInfo.IsValidForAssociation() {
+		gitBranch = gitInfo.CurrentBranch
+		if !quietMode {
+			fmt.Printf("ℹ️  Associating project with git branch: %s\n", gitBranch)
 		}
 	}
 
-	// Create project
+	// Create project - service layer will handle duplicate branch validation
 	project, err := cliInstance.App.ProjectService.CreateProject(ctx, projectservice.CreateProjectRequest{
 		Name:        projectTitle,
 		Description: projectDescription,
 		GitBranch:   gitBranch,
 	})
+
+	// Handle git branch conflict by retrying without branch association
+	if err != nil && errors.Is(err, projectservice.ErrGitBranchAlreadyAssociated) {
+		if !quietMode {
+			existingProject, _ := cliInstance.App.ProjectService.GetProjectByGitBranch(ctx, gitBranch)
+			if existingProject != nil {
+				fmt.Printf("⚠️  Warning: Branch '%s' is already associated with project '%s' (ID: %d)\n",
+					gitBranch, existingProject.Name, existingProject.ID)
+			}
+			fmt.Println("Creating new project without branch association...")
+		}
+
+		// Retry without branch association
+		project, err = cliInstance.App.ProjectService.CreateProject(ctx, projectservice.CreateProjectRequest{
+			Name:        projectTitle,
+			Description: projectDescription,
+			GitBranch:   "", // Don't associate with branch
+		})
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("project creation error: %w", err)
 	}

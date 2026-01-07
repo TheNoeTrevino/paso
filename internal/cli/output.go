@@ -16,7 +16,7 @@ type OutputFormatter struct {
 // Success outputs successful operation result.
 // In quiet mode, it attempts to extract the ID from data using the GetID() method.
 // If that fails (type assertion), it falls back to JSON or human-readable format.
-func (f *OutputFormatter) Success(data interface{}) error {
+func (f *OutputFormatter) Success(data any) error {
 	if f.Quiet {
 		// Try to extract ID from data object - this is a type assertion
 		// that checks if data implements the GetID() method interface
@@ -29,7 +29,7 @@ func (f *OutputFormatter) Success(data interface{}) error {
 	}
 
 	if f.JSON {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success": true,
 			"data":    data,
 		})
@@ -47,14 +47,14 @@ func (f *OutputFormatter) Error(code string, message string) error {
 // ErrorWithSuggestion outputs error information with an optional suggestion
 func (f *OutputFormatter) ErrorWithSuggestion(code string, message string, suggestion string) error {
 	if f.JSON {
-		errData := map[string]interface{}{
+		errData := map[string]any{
 			"code":    code,
 			"message": message,
 		}
 		if suggestion != "" {
 			errData["suggestion"] = suggestion
 		}
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success": false,
 			"error":   errData,
 		})
@@ -74,7 +74,7 @@ func (f *OutputFormatter) ErrorWithSuggestion(code string, message string, sugge
 }
 
 // prettyPrint formats data for human-readable output
-func (f *OutputFormatter) prettyPrint(data interface{}) error {
+func (f *OutputFormatter) prettyPrint(data any) error {
 	// Default implementation - can be enhanced per data type
 	fmt.Printf("%+v\n", data)
 	return nil
