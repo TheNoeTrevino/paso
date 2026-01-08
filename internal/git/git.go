@@ -16,6 +16,12 @@ type GitInfo struct {
 	HasCommits    bool   // True if repository has at least one commit
 }
 
+// BranchInfo contains information about a git branch
+type BranchInfo struct {
+	Name   string // Branch name (sanitized)
+	Marker string // Visual marker: "* " (current), "+ " (worktree), "  " (normal)
+}
+
 // IsValidForAssociation checks if the git repository state is valid for project association
 // Returns true if in a git repo, on a named branch (not detached), and branch name is not empty
 func (g GitInfo) IsValidForAssociation() bool {
@@ -93,10 +99,11 @@ func getCurrentBranch(ctx context.Context) (string, bool) {
 	return branchName, false
 }
 
-// ListBranches returns a list of all local git branches, sorted alphabetically.
+// ListBranches returns a list of all local git branches with their status markers.
 // Branch names are sanitized for safe storage.
+// Markers: "* " (current branch), "+ " (worktree branch), "  " (normal branch)
 // Respects the passed context while adding a 2-second timeout for the git operation.
-func ListBranches(ctx context.Context) ([]string, error) {
+func ListBranches(ctx context.Context) ([]BranchInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -107,25 +114,36 @@ func ListBranches(ctx context.Context) ([]string, error) {
 	}
 
 	lines := strings.Split(string(output), "\n")
-	branches := make([]string, 0, len(lines))
+	branches := make([]BranchInfo, 0, len(lines))
 
 	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" {
+		if len(line) < 2 {
 			continue
 		}
 
-		// Remove "* " (current) or "+ " (worktree) prefix
-		branch := strings.TrimPrefix(trimmed, "* ")
-		branch = strings.TrimPrefix(branch, "+ ")
+		// Extract marker (first 2 characters: "* ", "+ ", or "  ")
+		marker := line[:2]
+		branchName := strings.TrimSpace(line[2:])
 
-		branch = SanitizeBranchName(branch)
-		if branch != "" {
-			branches = append(branches, branch)
+		if branchName == "" {
+			continue
+		}
+
+		// Sanitize branch name
+		branchName = SanitizeBranchName(branchName)
+		if branchName != "" {
+			branches = append(branches, BranchInfo{
+				Name:   branchName,
+				Marker: marker,
+			})
 		}
 	}
 
-	sort.Strings(branches)
+	// Sort by branch name
+	sort.Slice(branches, func(i, j int) bool {
+		return branches[i].Name < branches[j].Name
+	})
+
 	return branches, nil
 }
 

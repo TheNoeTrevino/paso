@@ -395,12 +395,12 @@ func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
 
 	gitInfo := git.DetectGitInfo(m.Ctx)
 
-	var gitBranches []string
+	var gitBranches []git.BranchInfo
 	if gitInfo.IsRepo {
 		branches, err := git.ListBranches(m.Ctx)
 		if err != nil {
 			slog.Warn("failed to list git branches", "error", err)
-			gitBranches = []string{}
+			gitBranches = []git.BranchInfo{}
 		} else {
 			gitBranches = branches
 		}
@@ -439,12 +439,12 @@ func (m Model) handleEditProject() (tea.Model, tea.Cmd) {
 
 	gitInfo := git.DetectGitInfo(m.Ctx)
 
-	var gitBranches []string
+	var gitBranches []git.BranchInfo
 	if gitInfo.IsRepo {
 		branches, err := git.ListBranches(m.Ctx)
 		if err != nil {
 			slog.Warn("failed to list git branches", "error", err)
-			gitBranches = []string{}
+			gitBranches = []git.BranchInfo{}
 		} else {
 			gitBranches = branches
 		}

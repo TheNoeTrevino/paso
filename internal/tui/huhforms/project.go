@@ -1,10 +1,14 @@
 package huhforms
 
-import "charm.land/huh/v2"
+import (
+	"charm.land/huh/v2"
+	"github.com/thenoetrevino/paso/internal/git"
+)
 
 // buildGitBranchOptions builds select options for git branches.
 // When editing, ensures the saved branch appears even if deleted from git.
-func buildGitBranchOptions(gitBranches []string, currentBranch *string, isEditing bool) []huh.Option[string] {
+// Displays branches with markers: "* " (current), "+ " (worktree), "  " (normal)
+func buildGitBranchOptions(gitBranches []git.BranchInfo, currentBranch *string, isEditing bool) []huh.Option[string] {
 	options := []huh.Option[string]{
 		huh.NewOption("(none)", ""),
 	}
@@ -16,22 +20,23 @@ func buildGitBranchOptions(gitBranches []string, currentBranch *string, isEditin
 	if isEditing && currentBranch != nil && *currentBranch != "" {
 		found := false
 		for _, branch := range gitBranches {
-			if branch == *currentBranch {
+			if branch.Name == *currentBranch {
 				found = true
 				break
 			}
 		}
 		if !found {
-			options = append(options, huh.NewOption(*currentBranch+" (deleted)", *currentBranch))
+			options = append(options, huh.NewOption("  "+*currentBranch+" (deleted)", *currentBranch))
 			seen[*currentBranch] = true
 		}
 	}
 
-	// Add all git branches
+	// Add all git branches with their markers
 	for _, branch := range gitBranches {
-		if !seen[branch] {
-			options = append(options, huh.NewOption(branch, branch))
-			seen[branch] = true
+		if !seen[branch.Name] {
+			displayText := branch.Marker + branch.Name
+			options = append(options, huh.NewOption(displayText, branch.Name))
+			seen[branch.Name] = true
 		}
 	}
 
@@ -44,7 +49,7 @@ type ProjectFormProps struct {
 	GitBranch   *string
 	Confirm     *bool
 	IsEditing   bool
-	GitBranches []string
+	GitBranches []git.BranchInfo
 	IsGitRepo   bool
 }
 
