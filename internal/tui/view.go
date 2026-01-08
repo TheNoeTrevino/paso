@@ -50,7 +50,12 @@ func (m Model) View() tea.View {
 		case state.HelpMode:
 			modalLayer = m.renderHelpLayer()
 		case state.DiscardConfirmMode:
-			layers = append(layers, m.renderTaskFormLayer())
+			ctx := m.UIState.DiscardContext()
+			if ctx != nil && ctx.SourceMode == state.ProjectFormMode {
+				layers = append(layers, m.renderProjectFormLayer())
+			} else {
+				layers = append(layers, m.renderTaskFormLayer())
+			}
 			modalLayer = m.renderDiscardConfirmLayer()
 		case state.ProjectBranchConfirmMode:
 			formLayer := m.renderProjectFormLayer()
