@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"log/slog"
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/tui/components"
@@ -75,6 +76,7 @@ func (m Model) renderTaskFormLayer() *lipgloss.Layer {
 // renderProjectFormLayer renders the project creation form modal as a layer
 func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 	if m.Forms.Form.ProjectForm == nil {
+		slog.Debug("renderProjectFormLayer called with nil form", "mode", m.UIState.Mode())
 		return nil
 	}
 
@@ -129,6 +131,31 @@ func (m Model) renderDiscardConfirmLayer() *lipgloss.Layer {
 	confirmBox := components.DeleteConfirmBoxStyle.
 		Width(50).
 		Render(fmt.Sprintf("%s\n\n[y]es  [n]o", ctx.Message))
+
+	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height())
+}
+
+func (m Model) renderProjectBranchConfirmLayer() *lipgloss.Layer {
+	ctx := m.UIState.ProjectBranchContext
+	if ctx == nil {
+		return nil
+	}
+
+	message := fmt.Sprintf("Associate branch '%s' with project '%s'?", ctx.GitBranch, ctx.ProjectName)
+
+	warning := ""
+	if ctx.ExistingProject != nil {
+		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA500"))
+		warning = "\n\n" + warningStyle.Render(fmt.Sprintf(
+			"⚠️  Warning: branch '%s' is already associated with project '%s'\nThis project will not be the associated branch",
+			ctx.GitBranch,
+			ctx.ExistingProject.Name,
+		))
+	}
+
+	confirmBox := components.DeleteConfirmBoxStyle.
+		Width(60).
+		Render(fmt.Sprintf("%s\n\n[y]es  [n]o  [esc] cancel%s", message, warning))
 
 	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height())
 }

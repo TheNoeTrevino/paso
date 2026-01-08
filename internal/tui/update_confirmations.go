@@ -176,3 +176,36 @@ func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 	m.UIState.SetMode(state.NormalMode)
 	return m, nil
 }
+
+func (m Model) handleProjectBranchConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	ctx := m.UIState.ProjectBranchContext
+	if ctx == nil {
+		m.UIState.SetMode(state.NormalMode)
+		m.Forms.Form.ClearProjectForm()
+		return m, tea.ClearScreen
+	}
+
+	switch msg.String() {
+	case "y", "Y":
+		m.createProjectWithoutDialog(ctx.ProjectName, ctx.ProjectDescription, ctx.GitBranch)
+		m.UIState.ProjectBranchContext = nil
+		m.UIState.SetMode(state.NormalMode)
+		m.Forms.Form.ClearProjectForm()
+		return m, tea.ClearScreen
+
+	case "n", "N":
+		m.createProjectWithoutDialog(ctx.ProjectName, ctx.ProjectDescription, "")
+		m.UIState.ProjectBranchContext = nil
+		m.UIState.SetMode(state.NormalMode)
+		m.Forms.Form.ClearProjectForm()
+		return m, tea.ClearScreen
+
+	case "esc":
+		m.UIState.ProjectBranchContext = nil
+		m.UIState.SetMode(state.NormalMode)
+		m.Forms.Form.ClearProjectForm()
+		return m, tea.ClearScreen
+	}
+
+	return m, nil
+}
