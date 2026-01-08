@@ -75,7 +75,10 @@ func (f *OutputFormatter) ErrorWithSuggestion(code string, message string, sugge
 
 // prettyPrint formats data for human-readable output
 func (f *OutputFormatter) prettyPrint(data any) error {
-	// Default implementation - can be enhanced per data type
+	if stringer, ok := data.(fmt.Stringer); ok {
+		fmt.Print(stringer.String())
+		return nil
+	}
 	fmt.Printf("%+v\n", data)
 	return nil
 }

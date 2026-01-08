@@ -142,6 +142,16 @@ func (r *projectCreateResult) GetID() int {
 	return r.ID
 }
 
+// String provides human-readable output for the project creation result
+func (r *projectCreateResult) String() string {
+	if r.Description != "" {
+		return fmt.Sprintf("✓ Project created: %s (ID: %d)\n  Description: %s\n  Created: %s",
+			r.Name, r.ID, r.Description, r.CreatedAt)
+	}
+	return fmt.Sprintf("✓ Project created: %s (ID: %d)\n  Created: %s",
+		r.Name, r.ID, r.CreatedAt)
+}
+
 func parseCreateFlags(cmd *cobra.Command) error {
 	// Validate required flags
 	title, _ := cmd.Flags().GetString("title")
