@@ -63,29 +63,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.subscribeToEvents()
 	}
 
-	if m.UIState.Mode() == state.TicketFormMode {
+	if m.UIState.Mode == state.TicketFormMode {
 		return m.updateTaskForm(msg)
 	}
-	if m.UIState.Mode() == state.ProjectFormMode {
+	if m.UIState.Mode == state.ProjectFormMode || m.UIState.Mode == state.EditProjectFormMode {
 		return m.updateProjectForm(msg)
 	}
 	// Handle column forms early to prevent key binding conflicts (e.g., space key)
-	if m.UIState.Mode() == state.AddColumnFormMode || m.UIState.Mode() == state.EditColumnFormMode {
+	if m.UIState.Mode == state.AddColumnFormMode || m.UIState.Mode == state.EditColumnFormMode {
 		return m.updateColumnForm(msg)
 	}
 	// Handle comment form early to prevent key binding conflicts (e.g., space key)
-	if m.UIState.Mode() == state.CommentFormMode {
+	if m.UIState.Mode == state.CommentFormMode {
 		return m.updateCommentForm(msg)
 	}
 	// Handle CommentEditMode early to prevent key binding conflicts (e.g., space key mapped to ViewTask)
-	if m.UIState.Mode() == state.CommentEditMode {
+	if m.UIState.Mode == state.CommentEditMode {
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
 			return m.updateCommentEdit(keyMsg)
 		}
 		return m, nil
 	}
 	// Handle database create form early to prevent key binding conflicts
-	if m.UIState.Mode() == state.DatabaseCreateMode {
+	if m.UIState.Mode == state.DatabaseCreateMode {
 		return m.updateDatabaseCreate(msg)
 	}
 
@@ -134,7 +134,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		slog.Info("after swap", "m.App", m.App, "m.App.ColumnService", m.App.ColumnService)
 		m.CurrentDBType = msg.dbType
 		m.CurrentDBName = msg.dbName
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		m.DatabasePicker.Reset()
 
 		// Stop spinner animation and show success
@@ -147,7 +147,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.reloadAllData()
 
 	case databaseConnectionError:
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		m.DatabasePicker.Reset()
 		// Stop spinner animation and show error
 		m.DatabasePicker.StopConnecting()
@@ -176,12 +176,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.connect {
 			// User wants to connect to the new connection
 			m.DatabasePicker.StartConnecting(msg.config.Name)
-			m.UIState.SetMode(state.NormalMode)
+			m.UIState.Mode = state.NormalMode
 			return m, m.switchToDatabaseConfig(msg.config)
 		} else {
 			// User wants to stay in selection view
 			m.DatabasePicker.PendingConnection = nil
-			m.UIState.SetMode(state.DatabaseSelectMode)
+			m.UIState.Mode = state.DatabaseSelectMode
 			return m, nil
 		}
 
@@ -196,7 +196,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch m.UIState.Mode() {
+	switch m.UIState.Mode {
 	case state.NormalMode:
 		return m.handleNormalMode(msg)
 	case state.DiscardConfirmMode:
@@ -205,19 +205,21 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDeleteConfirm(msg)
 	case state.DeleteColumnConfirmMode:
 		return m.handleDeleteColumnConfirm(msg)
+	case state.ProjectBranchConfirmMode:
+		return m.handleProjectBranchConfirm(msg)
 	case state.CommentsViewMode:
 		return m.handleCommentsViewInput(msg)
 	case state.HelpMode:
 		switch msg.String() {
 		case m.Config.KeyMappings.ShowHelp, m.Config.KeyMappings.Quit, "esc", "enter", " ":
-			m.UIState.SetMode(state.NormalMode)
+			m.UIState.Mode = state.NormalMode
 			return m, nil
 		}
 		return m, nil
 	case state.TaskFormHelpMode:
 		switch msg.String() {
 		case "ctrl+h", "esc":
-			m.UIState.SetMode(state.TicketFormMode)
+			m.UIState.Mode = state.TicketFormMode
 			return m, nil
 		}
 		return m, nil
@@ -249,12 +251,12 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.UIState.SetWidth(msg.Width)
-	m.UIState.SetHeight(msg.Height)
+	m.UIState.Height = msg.Height
 
 	m.UI.Notification.SetWindowSize(msg.Width, msg.Height)
 
-	if m.UIState.ViewportOffset()+m.UIState.ViewportSize() > len(m.AppState.Columns()) {
-		m.UIState.SetViewportOffset(max(0, len(m.AppState.Columns())-m.UIState.ViewportSize()))
+	if m.UIState.ViewportOffset+m.UIState.ViewportSize() > len(m.AppState.Columns()) {
+		m.UIState.ViewportOffset = max(0, len(m.AppState.Columns())-m.UIState.ViewportSize())
 	}
 	return m, nil
 }

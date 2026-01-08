@@ -23,7 +23,7 @@ func (m Model) View() tea.View {
 	}
 
 	// Check if current mode uses layer-based rendering
-	if m.UIState.Mode().UsesLayers() {
+	if m.UIState.Mode.UsesLayers() {
 		// Layer-based rendering: always show base board with modal overlays
 		baseView := m.viewKanbanBoard()
 
@@ -34,10 +34,10 @@ func (m Model) View() tea.View {
 
 		// Add modal overlay based on mode
 		var modalLayer *lipgloss.Layer
-		switch m.UIState.Mode() {
+		switch m.UIState.Mode {
 		case state.TicketFormMode:
 			modalLayer = m.renderTaskFormLayer()
-		case state.ProjectFormMode:
+		case state.ProjectFormMode, state.EditProjectFormMode:
 			modalLayer = m.renderProjectFormLayer()
 		case state.AddColumnFormMode, state.EditColumnFormMode:
 			modalLayer = m.renderColumnFormLayer()
@@ -50,8 +50,8 @@ func (m Model) View() tea.View {
 		case state.HelpMode:
 			modalLayer = m.renderHelpLayer()
 		case state.DiscardConfirmMode:
-			ctx := m.UIState.DiscardContext()
-			if ctx != nil && ctx.SourceMode == state.ProjectFormMode {
+			ctx := m.UIState.DiscardContext
+			if ctx != nil && (ctx.SourceMode == state.ProjectFormMode || ctx.SourceMode == state.EditProjectFormMode) {
 				layers = append(layers, m.renderProjectFormLayer())
 			} else {
 				layers = append(layers, m.renderTaskFormLayer())
@@ -115,7 +115,7 @@ func (m Model) View() tea.View {
 
 		for i, layer := range layers {
 			if layer == nil {
-				slog.Error("nil layer detected", "index", i, "mode", m.UIState.Mode(),
+				slog.Error("nil layer detected", "index", i, "mode", m.UIState.Mode,
 					"total_layers", len(layers))
 				view.Content = "Error: Invalid UI state. Press 'q' to quit."
 				return view
@@ -126,7 +126,7 @@ func (m Model) View() tea.View {
 		view.Content = canvas.Render()
 	} else {
 		var content string
-		switch m.UIState.Mode() {
+		switch m.UIState.Mode {
 		case state.DeleteConfirmMode:
 			content = m.viewDeleteTaskConfirm()
 		case state.DeleteColumnConfirmMode:

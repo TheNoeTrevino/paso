@@ -89,7 +89,7 @@ func (m Model) renderDatabaseCreateLayer() *lipgloss.Layer {
 	if m.Forms.Form.DatabaseForm == nil {
 		errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.ErrorFg))
 		errorMsg := errorStyle.Render("Error: Form not initialized")
-		return layers.CreateCenteredLayer(errorMsg, m.UIState.Width(), m.UIState.Height())
+		return layers.CreateCenteredLayer(errorMsg, m.UIState.Width(), m.UIState.Height)
 	}
 
 	return m.createPickerLayer(pickerLayerConfig{

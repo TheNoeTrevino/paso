@@ -15,6 +15,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
+	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/models"
 	tasksvc "github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/tui/components"
@@ -63,10 +64,20 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 		projects = []*models.Project{}
 	}
 
-	// TODO: be able to pass this in with a flag, via cli
-	// paso tui --project 1
 	var currentProjectID int
-	if len(projects) > 0 {
+	gitInfo := git.DetectGitInfo(loadCtx)
+	if gitInfo.IsValidForAssociation() {
+		branchProject, err := application.ProjectService.GetProjectByGitBranch(loadCtx, gitInfo.CurrentBranch)
+		if err != nil {
+			slog.Error("failed to get project by git branch", "branch", gitInfo.CurrentBranch, "error", err)
+		}
+		if branchProject != nil {
+			currentProjectID = branchProject.ID
+			slog.Info("auto-selected project based on git branch", "project_id", currentProjectID, "branch", gitInfo.CurrentBranch)
+		}
+	}
+
+	if currentProjectID == 0 && len(projects) > 0 {
 		currentProjectID = projects[0].ID
 	}
 
@@ -228,10 +239,10 @@ func (m Model) getCurrentTasks() []*models.TaskSummary {
 	if len(m.AppState.Columns()) == 0 {
 		return []*models.TaskSummary{}
 	}
-	if m.UIState.SelectedColumn() >= len(m.AppState.Columns()) {
+	if m.UIState.SelectedColumn >= len(m.AppState.Columns()) {
 		return []*models.TaskSummary{}
 	}
-	currentCol := m.AppState.Columns()[m.UIState.SelectedColumn()]
+	currentCol := m.AppState.Columns()[m.UIState.SelectedColumn]
 	tasks := m.AppState.Tasks()[currentCol.ID]
 	if tasks == nil {
 		return []*models.TaskSummary{}
@@ -246,10 +257,10 @@ func (m Model) getCurrentTask() *models.TaskSummary {
 	if len(tasks) == 0 {
 		return nil
 	}
-	if m.UIState.SelectedTask() >= len(tasks) {
+	if m.UIState.SelectedTask >= len(tasks) {
 		return nil
 	}
-	return tasks[m.UIState.SelectedTask()]
+	return tasks[m.UIState.SelectedTask]
 }
 
 // removeCurrentTask removes the currently selected task from the model's local state
@@ -263,16 +274,16 @@ func (m Model) removeCurrentTask() {
 
 	tasks := m.getTasksForColumn(currentCol.ID)
 
-	if len(tasks) == 0 || m.UIState.SelectedTask() >= len(tasks) {
+	if len(tasks) == 0 || m.UIState.SelectedTask >= len(tasks) {
 		return
 	}
 
 	// Remove the task at selectedTask index
-	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UIState.SelectedTask()], tasks[m.UIState.SelectedTask()+1:]...)
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UIState.SelectedTask], tasks[m.UIState.SelectedTask+1:]...)
 
 	// Adjust selectedTask if we removed the last task
-	if m.UIState.SelectedTask() >= len(m.AppState.Tasks()[currentCol.ID]) && m.UIState.SelectedTask() > 0 {
-		m.UIState.SetSelectedTask(m.UIState.SelectedTask() - 1)
+	if m.UIState.SelectedTask >= len(m.AppState.Tasks()[currentCol.ID]) && m.UIState.SelectedTask > 0 {
+		m.UIState.SelectedTask = m.UIState.SelectedTask - 1
 	}
 }
 
@@ -282,7 +293,7 @@ func (m Model) getCurrentColumn() *models.Column {
 	if len(m.AppState.Columns()) == 0 {
 		return nil
 	}
-	selectedIdx := m.UIState.SelectedColumn()
+	selectedIdx := m.UIState.SelectedColumn
 	if selectedIdx < 0 || selectedIdx >= len(m.AppState.Columns()) {
 		return nil
 	}
@@ -305,7 +316,7 @@ func (m Model) getTasksForColumn(columnID int) []*models.TaskSummary {
 // It also adjusts the viewportOffset if needed
 func (m Model) removeCurrentColumn() {
 	columns := m.AppState.Columns()
-	selectedCol := m.UIState.SelectedColumn()
+	selectedCol := m.UIState.SelectedColumn
 
 	if len(columns) == 0 || selectedCol >= len(columns) {
 		return
@@ -316,14 +327,14 @@ func (m Model) removeCurrentColumn() {
 
 	// Adjust selectedColumn if we removed the last column
 	if selectedCol >= len(m.AppState.Columns()) && selectedCol > 0 {
-		m.UIState.SetSelectedColumn(selectedCol - 1)
+		m.UIState.SelectedColumn = selectedCol - 1
 	}
 
 	// Reset task selection
-	m.UIState.SetSelectedTask(0)
+	m.UIState.SelectedTask = 0
 
 	// Adjust viewportOffset using UIState helper
-	m.UIState.AdjustViewportAfterColumnRemoval(m.UIState.SelectedColumn(), len(m.AppState.Columns()))
+	m.UIState.AdjustViewportAfterColumnRemoval(m.UIState.SelectedColumn, len(m.AppState.Columns()))
 }
 
 // moveTaskRight moves the currently selected task to the next column (right)
@@ -361,7 +372,7 @@ func (m Model) moveTaskRight() {
 
 	// Update local state: remove from current column
 	tasks := m.AppState.Tasks()[currentCol.ID]
-	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UIState.SelectedTask()], tasks[m.UIState.SelectedTask()+1:]...)
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UIState.SelectedTask], tasks[m.UIState.SelectedTask+1:]...)
 
 	// Find the next column and add task there
 	nextColID := *currentCol.NextID
@@ -371,12 +382,12 @@ func (m Model) moveTaskRight() {
 	m.AppState.Tasks()[nextColID] = append(m.AppState.Tasks()[nextColID], task)
 
 	// Move selection to follow the task
-	m.UIState.SetSelectedColumn(m.UIState.SelectedColumn() + 1)
-	m.UIState.SetSelectedTask(newPosition)
+	m.UIState.SelectedColumn = m.UIState.SelectedColumn + 1
+	m.UIState.SelectedTask = newPosition
 
 	// Ensure the moved task is visible (auto-scroll viewport if needed)
-	if m.UIState.SelectedColumn() >= m.UIState.ViewportOffset()+m.UIState.ViewportSize() {
-		m.UIState.SetViewportOffset(m.UIState.ViewportOffset() + 1)
+	if m.UIState.SelectedColumn >= m.UIState.ViewportOffset+m.UIState.ViewportSize() {
+		m.UIState.ViewportOffset = m.UIState.ViewportOffset + 1
 	}
 }
 
@@ -415,7 +426,7 @@ func (m Model) moveTaskLeft() {
 
 	// Update local state: remove from current column
 	tasks := m.AppState.Tasks()[currentCol.ID]
-	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UIState.SelectedTask()], tasks[m.UIState.SelectedTask()+1:]...)
+	m.AppState.Tasks()[currentCol.ID] = append(tasks[:m.UIState.SelectedTask], tasks[m.UIState.SelectedTask+1:]...)
 
 	// Find the previous column and add task there
 	prevColID := *currentCol.PrevID
@@ -425,12 +436,12 @@ func (m Model) moveTaskLeft() {
 	m.AppState.Tasks()[prevColID] = append(m.AppState.Tasks()[prevColID], task)
 
 	// Move selection to follow the task
-	m.UIState.SetSelectedColumn(m.UIState.SelectedColumn() - 1)
-	m.UIState.SetSelectedTask(newPosition)
+	m.UIState.SelectedColumn = m.UIState.SelectedColumn - 1
+	m.UIState.SelectedTask = newPosition
 
 	// Ensure the moved task is visible (auto-scroll viewport if needed)
-	if m.UIState.SelectedColumn() < m.UIState.ViewportOffset() {
-		m.UIState.SetViewportOffset(m.UIState.ViewportOffset() - 1)
+	if m.UIState.SelectedColumn < m.UIState.ViewportOffset {
+		m.UIState.ViewportOffset = m.UIState.ViewportOffset - 1
 	}
 }
 
@@ -444,7 +455,7 @@ func (m Model) moveTaskUp() {
 	}
 
 	// Check if already at top (edge case handled here for quick feedback)
-	if m.UIState.SelectedTask() == 0 {
+	if m.UIState.SelectedTask == 0 {
 		m.UI.Notification.Add(state.LevelInfo, "Task is already at the top")
 		return
 	}
@@ -472,7 +483,7 @@ func (m Model) moveTaskUp() {
 		return
 	}
 
-	selectedIdx := m.UIState.SelectedTask()
+	selectedIdx := m.UIState.SelectedTask
 	if selectedIdx == 0 || selectedIdx >= len(tasks) {
 		return
 	}
@@ -485,7 +496,7 @@ func (m Model) moveTaskUp() {
 	tasks[selectedIdx-1].Position = selectedIdx - 1
 
 	// Move selection to follow the task
-	m.UIState.SetSelectedTask(selectedIdx - 1)
+	m.UIState.SelectedTask = selectedIdx - 1
 }
 
 // moveTaskDown moves the currently selected task down within its column
@@ -504,7 +515,7 @@ func (m Model) moveTaskDown() {
 	}
 
 	tasks := m.getTasksForColumn(currentCol.ID)
-	selectedIdx := m.UIState.SelectedTask()
+	selectedIdx := m.UIState.SelectedTask
 
 	// Check if already at bottom
 	if selectedIdx >= len(tasks)-1 {
@@ -532,7 +543,7 @@ func (m Model) moveTaskDown() {
 	tasks[selectedIdx+1].Position = selectedIdx + 1
 
 	// Move selection to follow the task
-	m.UIState.SetSelectedTask(selectedIdx + 1)
+	m.UIState.SelectedTask = selectedIdx + 1
 }
 
 // getCurrentProject returns the currently selected project
@@ -929,8 +940,8 @@ func (m *Model) syncListToKanbanSelection() {
 		tasks := m.AppState.Tasks()[col.ID]
 		for taskIdx, task := range tasks {
 			if task.ID == selectedTask.ID {
-				m.UIState.SetSelectedColumn(colIdx)
-				m.UIState.SetSelectedTask(taskIdx)
+				m.UIState.SelectedColumn = colIdx
+				m.UIState.SelectedTask = taskIdx
 				m.UIState.EnsureSelectionVisible(colIdx)
 				return
 			}
@@ -1019,7 +1030,7 @@ func (m Model) calculateDescriptionLines() int {
 		maxDescLines       = 15 // max description lines
 	)
 
-	layerHeight := m.UIState.Height() * 8 / 10
+	layerHeight := m.UIState.Height * 8 / 10
 	innerHeight := layerHeight - chromeHeight
 	topLeftHeight := innerHeight * 7 / 10
 

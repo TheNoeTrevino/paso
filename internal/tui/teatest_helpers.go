@@ -105,7 +105,7 @@ func WaitForModeChange(t *testing.T, m *Model, expectedMode state.Mode, timeout 
 	t.Helper()
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		if m.UIState.Mode() == expectedMode {
+		if m.UIState.Mode == expectedMode {
 			return
 		}
 		time.Sleep(10 * time.Millisecond)

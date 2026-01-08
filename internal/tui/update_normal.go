@@ -61,6 +61,8 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleNextProject()
 	case km.CreateProject:
 		return m.handleCreateProject()
+	case km.EditProject:
+		return m.handleEditProject()
 	case km.ToggleView:
 		return m.handleToggleView()
 	case km.ChangeStatus:
@@ -81,15 +83,15 @@ func (m Model) handleQuit() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleShowHelp() (tea.Model, tea.Cmd) {
-	m.UIState.SetMode(state.HelpMode)
+	m.UIState.Mode = state.HelpMode
 	return m, nil
 }
 
 func (m Model) handleNavigateLeft() (tea.Model, tea.Cmd) {
-	if m.UIState.SelectedColumn() > 0 {
-		m.UIState.SetSelectedColumn(m.UIState.SelectedColumn() - 1)
-		m.UIState.SetSelectedTask(0)
-		m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn())
+	if m.UIState.SelectedColumn > 0 {
+		m.UIState.SelectedColumn = m.UIState.SelectedColumn - 1
+		m.UIState.SelectedTask = 0
+		m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn)
 	} else {
 		m.UI.Notification.Add(state.LevelInfo, "Already at the first column")
 	}
@@ -97,10 +99,10 @@ func (m Model) handleNavigateLeft() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleNavigateRight() (tea.Model, tea.Cmd) {
-	if m.UIState.SelectedColumn() < len(m.AppState.Columns())-1 {
-		m.UIState.SetSelectedColumn(m.UIState.SelectedColumn() + 1)
-		m.UIState.SetSelectedTask(0)
-		m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn())
+	if m.UIState.SelectedColumn < len(m.AppState.Columns())-1 {
+		m.UIState.SelectedColumn = m.UIState.SelectedColumn + 1
+		m.UIState.SelectedTask = 0
+		m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn)
 	} else {
 		m.UI.Notification.Add(state.LevelInfo, "Already at the last column")
 	}
@@ -122,15 +124,15 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.UIState.SelectedTask() > 0 {
-		m.UIState.SetSelectedTask(m.UIState.SelectedTask() - 1)
+	if m.UIState.SelectedTask > 0 {
+		m.UIState.SelectedTask = m.UIState.SelectedTask - 1
 
-		if m.UIState.SelectedColumn() < len(m.AppState.Columns()) {
-			currentCol := m.AppState.Columns()[m.UIState.SelectedColumn()]
+		if m.UIState.SelectedColumn < len(m.AppState.Columns()) {
+			currentCol := m.AppState.Columns()[m.UIState.SelectedColumn]
 			columnHeight := m.UIState.ContentHeight()
 			const columnOverhead = 5
 			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
-			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask(), maxTasksVisible)
+			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
 		}
 	} else {
 		m.UI.Notification.Add(state.LevelInfo, "Already at the first task")
@@ -155,15 +157,15 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 	}
 
 	currentTasks := m.getCurrentTasks()
-	if len(currentTasks) > 0 && m.UIState.SelectedTask() < len(currentTasks)-1 {
-		m.UIState.SetSelectedTask(m.UIState.SelectedTask() + 1)
+	if len(currentTasks) > 0 && m.UIState.SelectedTask < len(currentTasks)-1 {
+		m.UIState.SelectedTask = m.UIState.SelectedTask + 1
 
-		if m.UIState.SelectedColumn() < len(m.AppState.Columns()) {
-			currentCol := m.AppState.Columns()[m.UIState.SelectedColumn()]
+		if m.UIState.SelectedColumn < len(m.AppState.Columns()) {
+			currentCol := m.AppState.Columns()[m.UIState.SelectedColumn]
 			columnHeight := m.UIState.ContentHeight()
 			const columnOverhead = 5
 			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
-			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask(), maxTasksVisible)
+			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
 		}
 	} else if len(currentTasks) > 0 {
 		m.UI.Notification.Add(state.LevelInfo, "Already at the last task")
@@ -172,11 +174,11 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleScrollRight() (tea.Model, tea.Cmd) {
-	if m.UIState.ViewportOffset()+m.UIState.ViewportSize() < len(m.AppState.Columns()) {
-		m.UIState.SetViewportOffset(m.UIState.ViewportOffset() + 1)
-		if m.UIState.SelectedColumn() < m.UIState.ViewportOffset() {
-			m.UIState.SetSelectedColumn(m.UIState.ViewportOffset())
-			m.UIState.SetSelectedTask(0)
+	if m.UIState.ViewportOffset+m.UIState.ViewportSize() < len(m.AppState.Columns()) {
+		m.UIState.ViewportOffset = m.UIState.ViewportOffset + 1
+		if m.UIState.SelectedColumn < m.UIState.ViewportOffset {
+			m.UIState.SelectedColumn = m.UIState.ViewportOffset
+			m.UIState.SelectedTask = 0
 		}
 	} else {
 		m.UI.Notification.Add(state.LevelInfo, "Already at the rightmost view")
@@ -185,11 +187,11 @@ func (m Model) handleScrollRight() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleScrollLeft() (tea.Model, tea.Cmd) {
-	if m.UIState.ViewportOffset() > 0 {
-		m.UIState.SetViewportOffset(m.UIState.ViewportOffset() - 1)
-		if m.UIState.SelectedColumn() >= m.UIState.ViewportOffset()+m.UIState.ViewportSize() {
-			m.UIState.SetSelectedColumn(m.UIState.ViewportOffset() + m.UIState.ViewportSize() - 1)
-			m.UIState.SetSelectedTask(0)
+	if m.UIState.ViewportOffset > 0 {
+		m.UIState.ViewportOffset = m.UIState.ViewportOffset - 1
+		if m.UIState.SelectedColumn >= m.UIState.ViewportOffset+m.UIState.ViewportSize() {
+			m.UIState.SelectedColumn = m.UIState.ViewportOffset + m.UIState.ViewportSize() - 1
+			m.UIState.SelectedTask = 0
 		}
 	} else {
 		m.UI.Notification.Add(state.LevelInfo, "Already at the leftmost view")
@@ -222,7 +224,7 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.Forms.Form.SnapshotTaskFormInitialValues()
-	m.UIState.SetMode(state.TicketFormMode)
+	m.UIState.Mode = state.TicketFormMode
 	return m, m.Forms.Form.TaskForm.Init()
 }
 
@@ -284,7 +286,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.Forms.Form.SnapshotTaskFormInitialValues()
-	m.UIState.SetMode(state.TicketFormMode)
+	m.UIState.Mode = state.TicketFormMode
 	return m, m.Forms.Form.TaskForm.Init()
 }
 
@@ -293,7 +295,7 @@ func (m Model) handleDeleteTask() (tea.Model, tea.Cmd) {
 		m.UI.Notification.Add(state.LevelError, "No task selected to delete")
 		return m, nil
 	}
-	m.UIState.SetMode(state.DeleteConfirmMode)
+	m.UIState.Mode = state.DeleteConfirmMode
 	return m, nil
 }
 
@@ -330,7 +332,7 @@ func (m Model) handleCreateColumn() (tea.Model, tea.Cmd) {
 	m.Forms.Form.EditingColumnID = 0
 	m.Forms.Form.ColumnForm = huhforms.CreateColumnForm(&m.Forms.Form.FormColumnName, false).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.Forms.Form.SnapshotColumnFormInitialValues()
-	m.UIState.SetMode(state.AddColumnFormMode)
+	m.UIState.Mode = state.AddColumnFormMode
 	return m, m.Forms.Form.ColumnForm.Init()
 }
 
@@ -344,7 +346,7 @@ func (m Model) handleRenameColumn() (tea.Model, tea.Cmd) {
 	m.Forms.Form.EditingColumnID = column.ID
 	m.Forms.Form.ColumnForm = huhforms.CreateColumnForm(&m.Forms.Form.FormColumnName, true).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.Forms.Form.SnapshotColumnFormInitialValues()
-	m.UIState.SetMode(state.EditColumnFormMode)
+	m.UIState.Mode = state.EditColumnFormMode
 	return m, m.Forms.Form.ColumnForm.Init()
 }
 
@@ -357,7 +359,7 @@ func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 	// Count tasks in the column from current state
 	taskCount := len(m.AppState.Tasks()[column.ID])
 	m.Forms.Input.DeleteColumnTaskCount = taskCount
-	m.UIState.SetMode(state.DeleteColumnConfirmMode)
+	m.UIState.Mode = state.DeleteColumnConfirmMode
 	return m, nil
 }
 
@@ -384,15 +386,39 @@ func (m Model) handleNextProject() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
+	m.Forms.Form.EditingProjectID = 0
 	m.Forms.Form.FormProjectName = ""
 	m.Forms.Form.FormProjectDescription = ""
 	m.Forms.Form.FormProjectConfirm = true
-	m.Forms.Form.ProjectForm = huhforms.CreateProjectForm(
-		&m.Forms.Form.FormProjectName,
-		&m.Forms.Form.FormProjectDescription,
-		&m.Forms.Form.FormProjectConfirm,
-	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+	m.Forms.Form.ProjectForm = huhforms.CreateProjectForm(huhforms.ProjectFormProps{
+		Name:        &m.Forms.Form.FormProjectName,
+		Description: &m.Forms.Form.FormProjectDescription,
+		Confirm:     &m.Forms.Form.FormProjectConfirm,
+		IsEditing:   false,
+	}).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.Forms.Form.SnapshotProjectFormInitialValues()
-	m.UIState.SetMode(state.ProjectFormMode)
+	m.UIState.Mode = state.ProjectFormMode
+	return m, m.Forms.Form.ProjectForm.Init()
+}
+
+func (m Model) handleEditProject() (tea.Model, tea.Cmd) {
+	currentProject := m.AppState.GetCurrentProject()
+	if currentProject == nil {
+		m.UI.Notification.Add(state.LevelWarning, "No project selected")
+		return m, nil
+	}
+
+	m.Forms.Form.EditingProjectID = currentProject.ID
+	m.Forms.Form.FormProjectName = currentProject.Name
+	m.Forms.Form.FormProjectDescription = currentProject.Description
+	m.Forms.Form.FormProjectConfirm = true
+	m.Forms.Form.ProjectForm = huhforms.CreateProjectForm(huhforms.ProjectFormProps{
+		Name:        &m.Forms.Form.FormProjectName,
+		Description: &m.Forms.Form.FormProjectDescription,
+		Confirm:     &m.Forms.Form.FormProjectConfirm,
+		IsEditing:   true,
+	}).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+	m.Forms.Form.SnapshotProjectFormInitialValues()
+	m.UIState.Mode = state.EditProjectFormMode
 	return m, m.Forms.Form.ProjectForm.Init()
 }
