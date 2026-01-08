@@ -37,15 +37,15 @@ func TestCalculateViewportSize_NarrowTerminal(t *testing.T) {
 // Security value: Prevents negative offset (array underflow).
 func TestScrollViewportLeft_AtBoundary(t *testing.T) {
 	state := NewUIState()
-	state.SetViewportOffset(0)
+	state.ViewportOffset = 0
 
 	scrolled := state.ScrollViewportLeft()
 
 	if scrolled {
 		t.Error("ScrollViewportLeft() at offset=0 returned true, want false")
 	}
-	if state.ViewportOffset() != 0 {
-		t.Errorf("ViewportOffset after scroll = %d, want 0", state.ViewportOffset())
+	if state.ViewportOffset != 0 {
+		t.Errorf("ViewportOffset after scroll = %d, want 0", state.ViewportOffset)
 	}
 }
 
@@ -54,8 +54,8 @@ func TestScrollViewportLeft_AtBoundary(t *testing.T) {
 // Security value: Prevents offset beyond column count.
 func TestScrollViewportRight_AtBoundary(t *testing.T) {
 	state := NewUIState()
-	state.SetWidth(300)        // Large enough for 6 columns
-	state.SetViewportOffset(2) // Offset at position 2
+	state.SetWidth(300)      // Large enough for 6 columns
+	state.ViewportOffset = 2 // Offset at position 2
 
 	// Total columns = 5, viewport size = 6, so offset=0 already shows all columns
 	// With offset=2, trying to scroll right when (2 + 6) >= 5 should fail
@@ -67,8 +67,8 @@ func TestScrollViewportRight_AtBoundary(t *testing.T) {
 	if scrolled {
 		t.Error("ScrollViewportRight() at boundary returned true, want false")
 	}
-	if state.ViewportOffset() != 2 {
-		t.Errorf("ViewportOffset after scroll = %d, want 2 (unchanged)", state.ViewportOffset())
+	if state.ViewportOffset != 2 {
+		t.Errorf("ViewportOffset after scroll = %d, want 2 (unchanged)", state.ViewportOffset)
 	}
 }
 
@@ -77,13 +77,13 @@ func TestScrollViewportRight_AtBoundary(t *testing.T) {
 // Security value: Prevents panic on empty state.
 func TestAdjustViewportAfterColumnRemoval_EmptyColumns(t *testing.T) {
 	state := NewUIState()
-	state.SetViewportOffset(3) // Offset at position 3
+	state.ViewportOffset = 3 // Offset at position 3
 
 	// Adjust after all columns are deleted
 	state.AdjustViewportAfterColumnRemoval(0, 0)
 
-	if state.ViewportOffset() != 0 {
-		t.Errorf("ViewportOffset after removing all columns = %d, want 0", state.ViewportOffset())
+	if state.ViewportOffset != 0 {
+		t.Errorf("ViewportOffset after removing all columns = %d, want 0", state.ViewportOffset)
 	}
 }
 
@@ -95,7 +95,7 @@ func TestEnsureSelectionVisible_SelectionBeyondViewport(t *testing.T) {
 	state.SetWidth(100) // Enough for 2 columns (46 chars per column + 4 reserved)
 	// ViewportSize should be 2: (100 - 4) / 46 = 2
 
-	state.SetViewportOffset(0) // Show columns 0-1
+	state.ViewportOffset = 0 // Show columns 0-1
 
 	// Select column 3 (beyond viewport)
 	state.EnsureSelectionVisible(3)
@@ -103,13 +103,13 @@ func TestEnsureSelectionVisible_SelectionBeyondViewport(t *testing.T) {
 	// Viewport should adjust so column 3 is visible
 	// New offset should be: 3 - viewportSize + 1 = 3 - 2 + 1 = 2
 	expectedOffset := 2
-	if state.ViewportOffset() != expectedOffset {
-		t.Errorf("ViewportOffset after EnsureSelectionVisible(3) = %d, want %d", state.ViewportOffset(), expectedOffset)
+	if state.ViewportOffset != expectedOffset {
+		t.Errorf("ViewportOffset after EnsureSelectionVisible(3) = %d, want %d", state.ViewportOffset, expectedOffset)
 	}
 
 	// Test left side: select column 0 when viewport is at offset 2
 	state.EnsureSelectionVisible(0)
-	if state.ViewportOffset() != 0 {
-		t.Errorf("ViewportOffset after EnsureSelectionVisible(0) from offset=2 = %d, want 0", state.ViewportOffset())
+	if state.ViewportOffset != 0 {
+		t.Errorf("ViewportOffset after EnsureSelectionVisible(0) from offset=2 = %d, want 0", state.ViewportOffset)
 	}
 }
