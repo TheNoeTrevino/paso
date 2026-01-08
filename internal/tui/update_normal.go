@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/huhforms"
@@ -389,10 +390,18 @@ func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
 	m.Forms.Form.EditingProjectID = 0
 	m.Forms.Form.FormProjectName = ""
 	m.Forms.Form.FormProjectDescription = ""
+	m.Forms.Form.FormProjectGitBranch = ""
 	m.Forms.Form.FormProjectConfirm = true
+
+	gitInfo := git.DetectGitInfo(m.Ctx)
+	if gitInfo.IsValidForAssociation() {
+		m.Forms.Form.FormProjectGitBranch = gitInfo.CurrentBranch
+	}
+
 	m.Forms.Form.ProjectForm = huhforms.CreateProjectForm(huhforms.ProjectFormProps{
 		Name:        &m.Forms.Form.FormProjectName,
 		Description: &m.Forms.Form.FormProjectDescription,
+		GitBranch:   &m.Forms.Form.FormProjectGitBranch,
 		Confirm:     &m.Forms.Form.FormProjectConfirm,
 		IsEditing:   false,
 	}).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
@@ -411,10 +420,12 @@ func (m Model) handleEditProject() (tea.Model, tea.Cmd) {
 	m.Forms.Form.EditingProjectID = currentProject.ID
 	m.Forms.Form.FormProjectName = currentProject.Name
 	m.Forms.Form.FormProjectDescription = currentProject.Description
+	m.Forms.Form.FormProjectGitBranch = currentProject.GitBranch
 	m.Forms.Form.FormProjectConfirm = true
 	m.Forms.Form.ProjectForm = huhforms.CreateProjectForm(huhforms.ProjectFormProps{
 		Name:        &m.Forms.Form.FormProjectName,
 		Description: &m.Forms.Form.FormProjectDescription,
+		GitBranch:   &m.Forms.Form.FormProjectGitBranch,
 		Confirm:     &m.Forms.Form.FormProjectConfirm,
 		IsEditing:   true,
 	}).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
