@@ -55,11 +55,13 @@ type FormState struct {
 	EditingProjectID       int       // ID of project being edited (0 for new project)
 	FormProjectName        string    // Form field: project name
 	FormProjectDescription string    // Form field: project description
+	FormProjectGitBranch   string    // Form field: git branch (optional)
 	FormProjectConfirm     bool      // Form field: confirmation (submit vs cancel)
 
 	// Project form initial values (for change detection)
 	InitialFormProjectName        string // Initial project name when form was created
 	InitialFormProjectDescription string // Initial project description when form was created
+	InitialFormProjectGitBranch   string // Initial git branch when form was created
 
 	// Label form fields (for creating/editing labels)
 	LabelForm        *huh.Form // The form instance
@@ -118,6 +120,7 @@ func NewFormState() *FormState {
 		EditingProjectID:              0,
 		FormProjectName:               "",
 		FormProjectDescription:        "",
+		FormProjectGitBranch:          "",
 		FormProjectConfirm:            true,
 		LabelForm:                     nil,
 		EditingLabelID:                0,
@@ -185,9 +188,11 @@ func (s *FormState) ClearProjectForm() {
 	s.EditingProjectID = 0
 	s.FormProjectName = ""
 	s.FormProjectDescription = ""
+	s.FormProjectGitBranch = ""
 	s.FormProjectConfirm = true
 	s.InitialFormProjectName = ""
 	s.InitialFormProjectDescription = ""
+	s.InitialFormProjectGitBranch = ""
 }
 
 // IsProjectFormActive returns true if a project form is currently active.
@@ -265,6 +270,10 @@ func (s *FormState) HasProjectFormChanges() bool {
 		return true
 	}
 
+	if strings.TrimSpace(s.FormProjectGitBranch) != strings.TrimSpace(s.InitialFormProjectGitBranch) {
+		return true
+	}
+
 	return false
 }
 
@@ -282,6 +291,7 @@ func (s *FormState) SnapshotTaskFormInitialValues() {
 func (s *FormState) SnapshotProjectFormInitialValues() {
 	s.InitialFormProjectName = s.FormProjectName
 	s.InitialFormProjectDescription = s.FormProjectDescription
+	s.InitialFormProjectGitBranch = s.FormProjectGitBranch
 }
 
 // --- Helper Functions ---
