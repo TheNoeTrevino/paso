@@ -394,8 +394,20 @@ func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
 	m.Forms.Form.FormProjectConfirm = true
 
 	gitInfo := git.DetectGitInfo(m.Ctx)
-	if gitInfo.IsValidForAssociation() {
-		m.Forms.Form.FormProjectGitBranch = gitInfo.CurrentBranch
+
+	var gitBranches []string
+	if gitInfo.IsRepo {
+		branches, err := git.ListBranches(m.Ctx)
+		if err != nil {
+			slog.Warn("failed to list git branches", "error", err)
+			gitBranches = []string{}
+		} else {
+			gitBranches = branches
+		}
+
+		if gitInfo.IsValidForAssociation() {
+			m.Forms.Form.FormProjectGitBranch = gitInfo.CurrentBranch
+		}
 	}
 
 	m.Forms.Form.ProjectForm = huhforms.CreateProjectForm(huhforms.ProjectFormProps{
@@ -404,6 +416,8 @@ func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
 		GitBranch:   &m.Forms.Form.FormProjectGitBranch,
 		Confirm:     &m.Forms.Form.FormProjectConfirm,
 		IsEditing:   false,
+		GitBranches: gitBranches,
+		IsGitRepo:   gitInfo.IsRepo,
 	}).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.Forms.Form.SnapshotProjectFormInitialValues()
 	m.UIState.Mode = state.ProjectFormMode
@@ -422,12 +436,28 @@ func (m Model) handleEditProject() (tea.Model, tea.Cmd) {
 	m.Forms.Form.FormProjectDescription = currentProject.Description
 	m.Forms.Form.FormProjectGitBranch = currentProject.GitBranch
 	m.Forms.Form.FormProjectConfirm = true
+
+	gitInfo := git.DetectGitInfo(m.Ctx)
+
+	var gitBranches []string
+	if gitInfo.IsRepo {
+		branches, err := git.ListBranches(m.Ctx)
+		if err != nil {
+			slog.Warn("failed to list git branches", "error", err)
+			gitBranches = []string{}
+		} else {
+			gitBranches = branches
+		}
+	}
+
 	m.Forms.Form.ProjectForm = huhforms.CreateProjectForm(huhforms.ProjectFormProps{
 		Name:        &m.Forms.Form.FormProjectName,
 		Description: &m.Forms.Form.FormProjectDescription,
 		GitBranch:   &m.Forms.Form.FormProjectGitBranch,
 		Confirm:     &m.Forms.Form.FormProjectConfirm,
 		IsEditing:   true,
+		GitBranches: gitBranches,
+		IsGitRepo:   gitInfo.IsRepo,
 	}).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.Forms.Form.SnapshotProjectFormInitialValues()
 	m.UIState.Mode = state.EditProjectFormMode
