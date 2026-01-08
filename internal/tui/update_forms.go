@@ -7,7 +7,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
-	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/models"
 	columnService "github.com/thenoetrevino/paso/internal/services/column"
 	projectService "github.com/thenoetrevino/paso/internal/services/project"
@@ -602,6 +601,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) submitProjectForm() {
 	name := strings.TrimSpace(m.Forms.Form.FormProjectName)
 	description := strings.TrimSpace(m.Forms.Form.FormProjectDescription)
+	gitBranch := strings.TrimSpace(m.Forms.Form.FormProjectGitBranch)
 	confirm := m.Forms.Form.FormProjectConfirm
 
 	if !confirm || name == "" {
@@ -609,39 +609,49 @@ func (m *Model) submitProjectForm() {
 	}
 
 	if m.Forms.Form.EditingProjectID != 0 {
-		m.updateProject(name, description)
+		m.updateProject(name, description, gitBranch)
 	} else {
-		gitInfo := git.DetectGitInfo(m.Ctx)
-		if gitInfo.IsValidForAssociation() {
+		if gitBranch != "" {
 			ctx, cancel := m.DBContext()
 			defer cancel()
-			existingProject, err := m.App.ProjectService.GetProjectByGitBranch(ctx, gitInfo.CurrentBranch)
+			existingProject, err := m.App.ProjectService.GetProjectByGitBranch(ctx, gitBranch)
 			if err != nil {
-				slog.Error("failed to check branch association", "branch", gitInfo.CurrentBranch, "error", err)
+				slog.Error("failed to check branch association", "branch", gitBranch, "error", err)
 			}
 
-			m.UIState.ProjectBranchContext = &state.ProjectBranchContext{
-				ProjectName:        name,
-				ProjectDescription: description,
-				GitBranch:          gitInfo.CurrentBranch,
-				ExistingProject:    existingProject,
+			if existingProject != nil {
+				m.UIState.ProjectBranchContext = &state.ProjectBranchContext{
+					ProjectName:        name,
+					ProjectDescription: description,
+					GitBranch:          gitBranch,
+					ExistingProject:    existingProject,
+				}
+				m.UIState.Mode = state.ProjectBranchConfirmMode
+				return
 			}
-			m.UIState.Mode = state.ProjectBranchConfirmMode
-			return
 		}
 
-		m.createProjectWithoutDialog(name, description, "")
+		m.createProjectWithoutDialog(name, description, gitBranch)
 	}
 }
 
-func (m *Model) updateProject(name, description string) {
+func (m *Model) updateProject(name, description, gitBranch string) {
 	ctx, cancel := m.DBContext()
 	defer cancel()
+
+	var branchPtr *string
+	if gitBranch != "" {
+		branchPtr = &gitBranch
+	} else {
+		emptyBranch := ""
+		branchPtr = &emptyBranch
+	}
 
 	err := m.App.ProjectService.UpdateProject(ctx, projectService.UpdateProjectRequest{
 		ID:          m.Forms.Form.EditingProjectID,
 		Name:        &name,
 		Description: &description,
+		GitBranch:   branchPtr,
 	})
 
 	if err != nil {
