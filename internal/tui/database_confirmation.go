@@ -13,7 +13,7 @@ import (
 func (m Model) updateDatabaseConnectConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.DatabasePicker.PendingConnection == nil {
 		// Safety: if no pending connection, return to select mode
-		m.UIState.SetMode(state.DatabaseSelectMode)
+		m.UIState.Mode = state.DatabaseSelectMode
 		return m, nil
 	}
 
@@ -22,7 +22,7 @@ func (m Model) updateDatabaseConnectConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 		// User confirmed - connect to the database
 		cfg := *m.DatabasePicker.PendingConnection
 		m.DatabasePicker.PendingConnection = nil
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		m.DatabasePicker.StartConnecting(cfg.Name)
 		return m, m.switchToDatabaseConfig(cfg)
 
@@ -30,7 +30,7 @@ func (m Model) updateDatabaseConnectConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 		// User cancelled - return to database select mode without connecting
 		// Connection is already saved, just don't connect to it
 		m.DatabasePicker.PendingConnection = nil
-		m.UIState.SetMode(state.DatabaseSelectMode)
+		m.UIState.Mode = state.DatabaseSelectMode
 		return m, nil
 	}
 
@@ -41,7 +41,7 @@ func (m Model) updateDatabaseConnectConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 func (m Model) updateDatabaseDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.DatabasePicker.PendingDeleteName == "" {
 		// Safety: if no pending delete, return to select mode
-		m.UIState.SetMode(state.DatabaseSelectMode)
+		m.UIState.Mode = state.DatabaseSelectMode
 		return m, nil
 	}
 
@@ -69,13 +69,13 @@ func (m Model) updateDatabaseDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 
 		// Clear pending delete and return to select mode
 		m.DatabasePicker.PendingDeleteName = ""
-		m.UIState.SetMode(state.DatabaseSelectMode)
+		m.UIState.Mode = state.DatabaseSelectMode
 		return m, nil
 
 	case "n", "N", "esc":
 		// User cancelled - return to select mode without deleting
 		m.DatabasePicker.PendingDeleteName = ""
-		m.UIState.SetMode(state.DatabaseSelectMode)
+		m.UIState.Mode = state.DatabaseSelectMode
 		return m, nil
 	}
 
