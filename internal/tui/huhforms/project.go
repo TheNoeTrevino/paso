@@ -5,6 +5,7 @@ import "charm.land/huh/v2"
 type ProjectFormProps struct {
 	Name        *string
 	Description *string
+	GitBranch   *string
 	Confirm     *bool
 	IsEditing   bool
 }
@@ -29,6 +30,13 @@ func CreateProjectForm(props ProjectFormProps) *huh.Form {
 			CharLimit(500).
 			Lines(3).
 			Value(props.Description),
+
+		huh.NewInput().
+			Key("gitbranch").
+			Title("Git Branch (optional)").
+			Placeholder("Enter git branch name...").
+			CharLimit(255).
+			Value(props.GitBranch),
 
 		huh.NewConfirm().
 			Key("confirm").
