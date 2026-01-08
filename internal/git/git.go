@@ -3,6 +3,7 @@ package git
 import (
 	"context"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
@@ -90,6 +91,42 @@ func getCurrentBranch(ctx context.Context) (string, bool) {
 	// Parse branch name (remove trailing newline)
 	branchName := strings.TrimSpace(string(output))
 	return branchName, false
+}
+
+// ListBranches returns a list of all local git branches, sorted alphabetically.
+// Branch names are sanitized for safe storage.
+// Respects the passed context while adding a 2-second timeout for the git operation.
+func ListBranches(ctx context.Context) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", "branch", "--list")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(output), "\n")
+	branches := make([]string, 0, len(lines))
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+
+		// Remove "* " (current) or "+ " (worktree) prefix
+		branch := strings.TrimPrefix(trimmed, "* ")
+		branch = strings.TrimPrefix(branch, "+ ")
+
+		branch = SanitizeBranchName(branch)
+		if branch != "" {
+			branches = append(branches, branch)
+		}
+	}
+
+	sort.Strings(branches)
+	return branches, nil
 }
 
 // SanitizeBranchName sanitizes a git branch name for safe storage
