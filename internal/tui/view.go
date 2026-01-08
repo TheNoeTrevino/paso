@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"log/slog"
+
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -50,6 +52,15 @@ func (m Model) View() tea.View {
 		case state.DiscardConfirmMode:
 			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderDiscardConfirmLayer()
+		case state.ProjectBranchConfirmMode:
+			formLayer := m.renderProjectFormLayer()
+			if formLayer != nil {
+				layers = append(layers, formLayer)
+			} else {
+				slog.Error("ProjectBranchConfirmMode: renderProjectFormLayer returned nil",
+					"ProjectForm_is_nil", m.Forms.Form.ProjectForm == nil)
+			}
+			modalLayer = m.renderProjectBranchConfirmLayer()
 		case state.TaskFormHelpMode:
 			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderTaskFormHelpLayer()
@@ -95,6 +106,15 @@ func (m Model) View() tea.View {
 		// Add connecting spinner layer (renders on top of everything, including modals)
 		if spinnerLayer := m.renderConnectingSpinnerLayer(); spinnerLayer != nil {
 			layers = append(layers, spinnerLayer)
+		}
+
+		for i, layer := range layers {
+			if layer == nil {
+				slog.Error("nil layer detected", "index", i, "mode", m.UIState.Mode(),
+					"total_layers", len(layers))
+				view.Content = "Error: Invalid UI state. Press 'q' to quit."
+				return view
+			}
 		}
 
 		canvas := lipgloss.NewCanvas(layers...)
