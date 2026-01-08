@@ -158,15 +158,15 @@ func TestConnection_TaskOpsWhileDisconnected(t *testing.T) {
 	}
 
 	// Try to navigate while disconnected
-	m.UIState.SetMode(state.NormalMode)
+	m.UIState.Mode = state.NormalMode
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyRight})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify mode is still normal (no interruption)
-	if m.UIState.Mode() != state.NormalMode {
-		t.Errorf("Expected NormalMode while disconnected, got %v", m.UIState.Mode())
+	if m.UIState.Mode != state.NormalMode {
+		t.Errorf("Expected NormalMode while disconnected, got %v", m.UIState.Mode)
 	}
 
 	// Try another navigation operation

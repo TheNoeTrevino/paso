@@ -16,8 +16,8 @@ func TestNavigation_MoveRightWithArrow(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Set normal mode
-	m.UIState.SetMode(state.NormalMode)
-	m.UIState.SetSelectedColumn(0)
+	m.UIState.Mode = state.NormalMode
+	m.UIState.SelectedColumn = 0
 
 	// Move right with arrow key
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyRight})
@@ -27,7 +27,7 @@ func TestNavigation_MoveRightWithArrow(t *testing.T) {
 
 	// Verify model was updated
 	// Moved to next column
-	_ = m.UIState.SelectedColumn() > 0
+	_ = m.UIState.SelectedColumn > 0
 }
 
 // TestNavigation_MoveLeftWithArrow tests left arrow key to navigate between columns
@@ -35,8 +35,8 @@ func TestNavigation_MoveLeftWithArrow(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Set normal mode and start at column 1
-	m.UIState.SetMode(state.NormalMode)
-	m.UIState.SetSelectedColumn(1)
+	m.UIState.Mode = state.NormalMode
+	m.UIState.SelectedColumn = 1
 
 	// Move left with arrow key
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyLeft})
@@ -69,9 +69,9 @@ func TestNavigation_MoveDownBetweenTasks(t *testing.T) {
 	m.AppState.SetTasks(tasks)
 
 	// Set normal mode
-	m.UIState.SetMode(state.NormalMode)
-	m.UIState.SetSelectedColumn(0)
-	m.UIState.SetSelectedTask(0)
+	m.UIState.Mode = state.NormalMode
+	m.UIState.SelectedColumn = 0
+	m.UIState.SelectedTask = 0
 
 	// Move down with arrow key
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
@@ -105,9 +105,9 @@ func TestNavigation_MoveUpBetweenTasks(t *testing.T) {
 	m.AppState.SetTasks(tasks)
 
 	// Set normal mode at second task
-	m.UIState.SetMode(state.NormalMode)
-	m.UIState.SetSelectedColumn(0)
-	m.UIState.SetSelectedTask(1)
+	m.UIState.Mode = state.NormalMode
+	m.UIState.SelectedColumn = 0
+	m.UIState.SelectedTask = 1
 
 	// Move up with arrow key
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyUp})
@@ -124,7 +124,7 @@ func TestNavigation_CreateNewTaskWithN(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Set normal mode
-	m.UIState.SetMode(state.NormalMode)
+	m.UIState.Mode = state.NormalMode
 
 	// Press 'n' to create new task
 	msg := tea.KeyPressMsg(tea.Key{Text: "n", Code: 'n'})
@@ -134,7 +134,7 @@ func TestNavigation_CreateNewTaskWithN(t *testing.T) {
 
 	// Verify mode may have changed to form or task creation
 	// Mode is valid
-	_ = m.UIState.Mode() == state.TicketFormMode || m.UIState.Mode() == state.NormalMode
+	_ = m.UIState.Mode == state.TicketFormMode || m.UIState.Mode == state.NormalMode
 }
 
 // TestNavigation_DeleteTaskWithD tests pressing 'd' to delete a task
@@ -155,9 +155,9 @@ func TestNavigation_DeleteTaskWithD(t *testing.T) {
 		m.AppState.SetTasks(tasks)
 
 		// Set normal mode
-		m.UIState.SetMode(state.NormalMode)
-		m.UIState.SetSelectedColumn(0)
-		m.UIState.SetSelectedTask(0)
+		m.UIState.Mode = state.NormalMode
+		m.UIState.SelectedColumn = 0
+		m.UIState.SelectedTask = 0
 
 		// Press 'd' to delete
 		msg := tea.KeyPressMsg(tea.Key{Text: "d", Code: 'd'})
@@ -188,9 +188,9 @@ func TestNavigation_MoveTaskRight(t *testing.T) {
 		m.AppState.SetTasks(tasks)
 
 		// Set normal mode
-		m.UIState.SetMode(state.NormalMode)
-		m.UIState.SetSelectedColumn(0)
-		m.UIState.SetSelectedTask(0)
+		m.UIState.Mode = state.NormalMode
+		m.UIState.SelectedColumn = 0
+		m.UIState.SelectedTask = 0
 
 		// Press '>' to move right
 		msg := tea.KeyPressMsg(tea.Key{Text: ">", Code: '>'})
@@ -221,9 +221,9 @@ func TestNavigation_MoveTaskLeft(t *testing.T) {
 		m.AppState.SetTasks(tasks)
 
 		// Set normal mode at column 1
-		m.UIState.SetMode(state.NormalMode)
-		m.UIState.SetSelectedColumn(1)
-		m.UIState.SetSelectedTask(0)
+		m.UIState.Mode = state.NormalMode
+		m.UIState.SelectedColumn = 1
+		m.UIState.SelectedTask = 0
 
 		// Press '<' to move left
 		msg := tea.KeyPressMsg(tea.Key{Text: "<", Code: '<'})
@@ -241,7 +241,7 @@ func TestNavigation_EscapeExitsMode(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Set normal mode
-	m.UIState.SetMode(state.NormalMode)
+	m.UIState.Mode = state.NormalMode
 
 	// Press Escape
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape})
@@ -251,7 +251,7 @@ func TestNavigation_EscapeExitsMode(t *testing.T) {
 
 	// Verify escape was handled
 	// Still in normal mode, which is expected
-	_ = m.UIState.Mode() == state.NormalMode
+	_ = m.UIState.Mode == state.NormalMode
 }
 
 // TestNavigation_MultipleNavigationSequence tests a sequence of navigation commands
@@ -273,7 +273,7 @@ func TestNavigation_MultipleNavigationSequence(t *testing.T) {
 		m.AppState.SetTasks(tasks)
 
 		// Set normal mode
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 
 		// Perform a sequence of navigation commands
 		commands := []rune{'j', 'j', 'k', 'l', 'h'}
@@ -285,8 +285,8 @@ func TestNavigation_MultipleNavigationSequence(t *testing.T) {
 		}
 
 		// Verify all commands were processed
-		if m.UIState.Mode() != state.NormalMode {
-			t.Errorf("Expected NormalMode after navigation sequence, got %v", m.UIState.Mode())
+		if m.UIState.Mode != state.NormalMode {
+			t.Errorf("Expected NormalMode after navigation sequence, got %v", m.UIState.Mode)
 		}
 	}
 }
@@ -296,7 +296,7 @@ func TestNavigation_SearchModeEntry(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Set normal mode
-	m.UIState.SetMode(state.NormalMode)
+	m.UIState.Mode = state.NormalMode
 
 	// Press '/' to enter search mode
 	msg := tea.KeyPressMsg(tea.Key{Text: "/", Code: '/'})

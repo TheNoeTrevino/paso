@@ -103,7 +103,7 @@ func TestSnapshots(t *testing.T) {
 
 			// Set fixed terminal size for consistent snapshots (80x24 is standard)
 			m.UIState.SetWidth(80)
-			m.UIState.SetHeight(24)
+			m.UIState.Height = 24
 
 			// Render the view
 			view := m.View()

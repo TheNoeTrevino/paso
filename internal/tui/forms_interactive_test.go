@@ -15,7 +15,7 @@ func TestTaskForm_FieldProgression(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter task form mode
-	m.UIState.SetMode(state.TicketFormMode)
+	m.UIState.Mode = state.TicketFormMode
 
 	// Press Tab to move to next field
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyTab})
@@ -44,7 +44,7 @@ func TestTaskForm_ShortcutToPriorityPicker(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter task form mode
-	m.UIState.SetMode(state.TicketFormMode)
+	m.UIState.Mode = state.TicketFormMode
 
 	// Press Ctrl+P to open priority picker
 	msg := tea.KeyPressMsg(tea.Key{Code: 'p', Mod: tea.ModCtrl})
@@ -61,7 +61,7 @@ func TestTaskForm_ShortcutToLabelPicker(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter task form mode
-	m.UIState.SetMode(state.TicketFormMode)
+	m.UIState.Mode = state.TicketFormMode
 
 	// Press Ctrl+L to open label picker
 	msg := tea.KeyPressMsg(tea.Key{Code: 'l', Mod: tea.ModCtrl})
@@ -78,7 +78,7 @@ func TestTaskForm_ShortcutToParentPicker(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter task form mode
-	m.UIState.SetMode(state.TicketFormMode)
+	m.UIState.Mode = state.TicketFormMode
 
 	// Press Ctrl+Shift+P to open parent picker
 	msg := tea.KeyPressMsg(tea.Key{Code: 'P', Mod: tea.ModCtrl | tea.ModShift})
@@ -95,7 +95,7 @@ func TestTaskForm_SaveWithCtrlS(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter task form mode
-	m.UIState.SetMode(state.TicketFormMode)
+	m.UIState.Mode = state.TicketFormMode
 
 	// Type some input (simulating user filling the form)
 	TypeStringToModel(&m, "Test Task")
@@ -116,7 +116,7 @@ func TestTaskForm_DiscardConfirmation(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter task form mode
-	m.UIState.SetMode(state.TicketFormMode)
+	m.UIState.Mode = state.TicketFormMode
 
 	// Type some input to make form "dirty"
 	TypeStringToModel(&m, "Unsaved Task")
@@ -137,7 +137,7 @@ func TestProjectForm_Creation(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter project form mode
-	m.UIState.SetMode(state.ProjectFormMode)
+	m.UIState.Mode = state.ProjectFormMode
 
 	// Type project name
 	TypeStringToModel(&m, "New Project")
@@ -161,7 +161,7 @@ func TestProjectForm_Creation(t *testing.T) {
 
 	// Verify form was processed
 	// Still in form mode, form may not support quick save
-	_ = m.UIState.Mode() == state.ProjectFormMode
+	_ = m.UIState.Mode == state.ProjectFormMode
 }
 
 // TestColumnForm_Creation tests creating a new column
@@ -169,7 +169,7 @@ func TestColumnForm_Creation(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter column form mode
-	m.UIState.SetMode(state.AddColumnFormMode)
+	m.UIState.Mode = state.AddColumnFormMode
 
 	// Type column name
 	TypeStringToModel(&m, "New Column")
@@ -203,7 +203,7 @@ func TestCommentForm_Creation(t *testing.T) {
 		taskID := testutil.CreateTestTask(t, db, columns[0].ID, "Task to comment on")
 
 		// Enter comment form mode
-		m.UIState.SetMode(state.CommentFormMode)
+		m.UIState.Mode = state.CommentFormMode
 		m.Forms.Comment.TaskID = taskID
 
 		// Type comment text
@@ -226,7 +226,7 @@ func TestEditColumnForm_RenameColumn(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter edit column form mode
-	m.UIState.SetMode(state.EditColumnFormMode)
+	m.UIState.Mode = state.EditColumnFormMode
 
 	// Type new column name
 	TypeStringToModel(&m, "Renamed Column")
@@ -253,13 +253,13 @@ func TestProjectForm_DiscardChanges(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter project form mode
-	m.UIState.SetMode(state.ProjectFormMode)
+	m.UIState.Mode = state.ProjectFormMode
 
 	// Type some text
 	TypeStringToModel(&m, "Project name")
 	time.Sleep(50 * time.Millisecond)
 
-	initialMode := m.UIState.Mode()
+	initialMode := m.UIState.Mode
 
 	// Press Escape to discard
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape})
@@ -269,7 +269,7 @@ func TestProjectForm_DiscardChanges(t *testing.T) {
 
 	// Verify escape was processed
 	// Mode changed, which is expected
-	_ = m.UIState.Mode() != initialMode
+	_ = m.UIState.Mode != initialMode
 }
 
 // TestTaskForm_CharacterInput tests typing characters into task form
@@ -277,7 +277,7 @@ func TestTaskForm_CharacterInput(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter task form mode
-	m.UIState.SetMode(state.TicketFormMode)
+	m.UIState.Mode = state.TicketFormMode
 
 	// Type a series of characters
 	testChars := "This is a task title with spaces 123!@#"
@@ -285,7 +285,7 @@ func TestTaskForm_CharacterInput(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify form is still in task form mode
-	if m.UIState.Mode() != state.TicketFormMode {
-		t.Errorf("Expected TicketFormMode after input, got %v", m.UIState.Mode())
+	if m.UIState.Mode != state.TicketFormMode {
+		t.Errorf("Expected TicketFormMode after input, got %v", m.UIState.Mode)
 	}
 }

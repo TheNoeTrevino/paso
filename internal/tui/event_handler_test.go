@@ -22,8 +22,8 @@ func TestEventHandler_TaskUpdateEvent(t *testing.T) {
 			},
 		},
 	)
-	m.UIState.SetSelectedColumn(0)
-	m.UIState.SetSelectedTask(0)
+	m.UIState.SelectedColumn = 0
+	m.UIState.SelectedTask = 0
 
 	// Simulate a task update event
 	event := events.Event{
@@ -37,15 +37,15 @@ func TestEventHandler_TaskUpdateEvent(t *testing.T) {
 	m.NotifyChan = make(chan events.NotificationMsg, 1)
 
 	// Verify mode is in normal state to receive events
-	if m.UIState.Mode() != state.NormalMode {
-		t.Errorf("Mode = %v, want NormalMode for event processing", m.UIState.Mode())
+	if m.UIState.Mode != state.NormalMode {
+		t.Errorf("Mode = %v, want NormalMode for event processing", m.UIState.Mode)
 	}
 
 	// Verify selected task indices exist
-	if m.UIState.SelectedColumn() != 0 {
+	if m.UIState.SelectedColumn != 0 {
 		t.Error("Selected column should be 0 for task with ID 1")
 	}
-	if m.UIState.SelectedTask() != 0 {
+	if m.UIState.SelectedTask != 0 {
 		t.Error("Selected task should be 0 for first task in column")
 	}
 
@@ -61,7 +61,7 @@ func TestEventHandler_ColumnUpdateEvent(t *testing.T) {
 		{ID: 2, Name: "InProgress"},
 	}
 	m := setupTestModel(originalColumns, nil)
-	m.UIState.SetSelectedColumn(1)
+	m.UIState.SelectedColumn = 1
 
 	// Verify initial state
 	columns := m.AppState.Columns()
@@ -69,8 +69,8 @@ func TestEventHandler_ColumnUpdateEvent(t *testing.T) {
 		t.Errorf("Initial column count = %d, want 2", len(columns))
 	}
 
-	if m.UIState.SelectedColumn() != 1 {
-		t.Errorf("Selected column = %d, want 1", m.UIState.SelectedColumn())
+	if m.UIState.SelectedColumn != 1 {
+		t.Errorf("Selected column = %d, want 1", m.UIState.SelectedColumn)
 	}
 
 	// Simulate column update event (in real system, would trigger data reload)
@@ -109,8 +109,8 @@ func TestEventHandler_LabelUpdateEvent(t *testing.T) {
 	}
 
 	// Verify UI state can handle label picker mode
-	m.UIState.SetMode(state.LabelPickerMode)
-	if m.UIState.Mode() != state.LabelPickerMode {
+	m.UIState.Mode = state.LabelPickerMode
+	if m.UIState.Mode != state.LabelPickerMode {
 		t.Error("Should transition to LabelPickerMode on label update")
 	}
 
@@ -148,7 +148,7 @@ func TestEventHandler_EventBatching(t *testing.T) {
 	}
 
 	// Verify model can process events in order
-	currentMode := m.UIState.Mode()
+	currentMode := m.UIState.Mode
 	if currentMode != state.NormalMode {
 		t.Errorf("Mode = %v, want NormalMode for batched events", currentMode)
 	}
@@ -187,9 +187,9 @@ func TestEventHandler_OutOfOrderEvents(t *testing.T) {
 	}
 
 	// Model state should remain consistent despite out-of-order events
-	initialMode := m.UIState.Mode()
-	initialColumn := m.UIState.SelectedColumn()
-	initialTask := m.UIState.SelectedTask()
+	initialMode := m.UIState.Mode
+	initialColumn := m.UIState.SelectedColumn
+	initialTask := m.UIState.SelectedTask
 
 	// Process events (in real system, would sort by SequenceID)
 	for range outOfOrderEvents {
@@ -197,13 +197,13 @@ func TestEventHandler_OutOfOrderEvents(t *testing.T) {
 	}
 
 	// Verify state is still consistent
-	if m.UIState.Mode() != initialMode {
+	if m.UIState.Mode != initialMode {
 		t.Error("Mode should not change from out-of-order events")
 	}
-	if m.UIState.SelectedColumn() != initialColumn {
+	if m.UIState.SelectedColumn != initialColumn {
 		t.Error("Selected column should not change from out-of-order events")
 	}
-	if m.UIState.SelectedTask() != initialTask {
+	if m.UIState.SelectedTask != initialTask {
 		t.Error("Selected task should not change from out-of-order events")
 	}
 }
@@ -226,9 +226,9 @@ func TestEventHandler_ConcurrentEventProcessing(t *testing.T) {
 	defer cancel()
 
 	// Verify initial state can be read
-	initialColumn := m.UIState.SelectedColumn()
-	initialTask := m.UIState.SelectedTask()
-	initialMode := m.UIState.Mode()
+	initialColumn := m.UIState.SelectedColumn
+	initialTask := m.UIState.SelectedTask
+	initialMode := m.UIState.Mode
 
 	if initialColumn != 0 {
 		t.Errorf("Initial selected column = %d, want 0", initialColumn)
@@ -241,19 +241,19 @@ func TestEventHandler_ConcurrentEventProcessing(t *testing.T) {
 	}
 
 	// Simulate sequential state updates (as happens in bubbletea event loop)
-	m.UIState.SetSelectedColumn(1)
-	m.UIState.SetSelectedTask(2)
-	m.UIState.SetMode(state.TicketFormMode)
+	m.UIState.SelectedColumn = 1
+	m.UIState.SelectedTask = 2
+	m.UIState.Mode = state.TicketFormMode
 
 	// Verify state updates are consistent
-	if m.UIState.SelectedColumn() != 1 {
-		t.Errorf("Selected column = %d, want 1", m.UIState.SelectedColumn())
+	if m.UIState.SelectedColumn != 1 {
+		t.Errorf("Selected column = %d, want 1", m.UIState.SelectedColumn)
 	}
-	if m.UIState.SelectedTask() != 2 {
-		t.Errorf("Selected task = %d, want 2", m.UIState.SelectedTask())
+	if m.UIState.SelectedTask != 2 {
+		t.Errorf("Selected task = %d, want 2", m.UIState.SelectedTask)
 	}
-	if m.UIState.Mode() != state.TicketFormMode {
-		t.Errorf("Mode = %v, want TicketFormMode", m.UIState.Mode())
+	if m.UIState.Mode != state.TicketFormMode {
+		t.Errorf("Mode = %v, want TicketFormMode", m.UIState.Mode)
 	}
 
 	// Verify context is not timing out (test completes quickly)
