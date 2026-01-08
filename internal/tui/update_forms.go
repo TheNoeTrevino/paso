@@ -2,6 +2,8 @@ package tui
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -655,8 +657,18 @@ func (m *Model) updateProject(name, description, gitBranch string) {
 	})
 
 	if err != nil {
-		slog.Error("failed updating project", "error", err)
-		m.UI.Notification.Add(state.LevelError, "Error updating project")
+		if errors.Is(err, projectService.ErrGitBranchAlreadyAssociated) && gitBranch != "" {
+			existingProject, lookupErr := m.App.ProjectService.GetProjectByGitBranch(ctx, gitBranch)
+			if lookupErr == nil && existingProject != nil {
+				m.UI.Notification.Add(state.LevelError,
+					fmt.Sprintf("Error: Branch already in use by project: %s", existingProject.Name))
+			} else {
+				m.UI.Notification.Add(state.LevelError, "Error: Branch already in use by another project")
+			}
+		} else {
+			slog.Error("failed updating project", "error", err)
+			m.UI.Notification.Add(state.LevelError, "Error updating project")
+		}
 	} else {
 		m.reloadProjects()
 		m.UI.Notification.Add(state.LevelInfo, "Project updated successfully")
@@ -672,8 +684,18 @@ func (m *Model) createProjectWithoutDialog(name, description, gitBranch string) 
 		GitBranch:   gitBranch,
 	})
 	if err != nil {
-		slog.Error("failed to creating project", "error", err)
-		m.UI.Notification.Add(state.LevelError, "Error creating project")
+		if errors.Is(err, projectService.ErrGitBranchAlreadyAssociated) && gitBranch != "" {
+			existingProject, lookupErr := m.App.ProjectService.GetProjectByGitBranch(ctx, gitBranch)
+			if lookupErr == nil && existingProject != nil {
+				m.UI.Notification.Add(state.LevelError,
+					fmt.Sprintf("Error: Branch already in use by project: %s", existingProject.Name))
+			} else {
+				m.UI.Notification.Add(state.LevelError, "Error: Branch already in use by another project")
+			}
+		} else {
+			slog.Error("failed to creating project", "error", err)
+			m.UI.Notification.Add(state.LevelError, "Error creating project")
+		}
 	} else {
 		m.reloadProjects()
 		for i, p := range m.AppState.Projects() {
