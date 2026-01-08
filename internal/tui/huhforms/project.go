@@ -2,12 +2,50 @@ package huhforms
 
 import "charm.land/huh/v2"
 
+// buildGitBranchOptions builds select options for git branches.
+// When editing, ensures the saved branch appears even if deleted from git.
+func buildGitBranchOptions(gitBranches []string, currentBranch *string, isEditing bool) []huh.Option[string] {
+	options := []huh.Option[string]{
+		huh.NewOption("(none)", ""),
+	}
+
+	seen := make(map[string]bool)
+	seen[""] = true
+
+	// If editing and saved branch no longer exists, add it with indicator
+	if isEditing && currentBranch != nil && *currentBranch != "" {
+		found := false
+		for _, branch := range gitBranches {
+			if branch == *currentBranch {
+				found = true
+				break
+			}
+		}
+		if !found {
+			options = append(options, huh.NewOption(*currentBranch+" (deleted)", *currentBranch))
+			seen[*currentBranch] = true
+		}
+	}
+
+	// Add all git branches
+	for _, branch := range gitBranches {
+		if !seen[branch] {
+			options = append(options, huh.NewOption(branch, branch))
+			seen[branch] = true
+		}
+	}
+
+	return options
+}
+
 type ProjectFormProps struct {
 	Name        *string
 	Description *string
 	GitBranch   *string
 	Confirm     *bool
 	IsEditing   bool
+	GitBranches []string
+	IsGitRepo   bool
 }
 
 func CreateProjectForm(props ProjectFormProps) *huh.Form {
@@ -30,21 +68,24 @@ func CreateProjectForm(props ProjectFormProps) *huh.Form {
 			CharLimit(500).
 			Lines(3).
 			Value(props.Description),
+	}
 
-		huh.NewInput().
+	// Only add git branch field if in a git repository
+	if props.IsGitRepo {
+		options := buildGitBranchOptions(props.GitBranches, props.GitBranch, props.IsEditing)
+		fields = append(fields, huh.NewSelect[string]().
 			Key("gitbranch").
 			Title("Git Branch (optional)").
-			Placeholder("Enter git branch name...").
-			CharLimit(255).
-			Value(props.GitBranch),
-
-		huh.NewConfirm().
-			Key("confirm").
-			Title(confirmTitle).
-			Affirmative("Yes").
-			Negative("No").
-			Value(props.Confirm),
+			Options(options...).
+			Value(props.GitBranch))
 	}
+
+	fields = append(fields, huh.NewConfirm().
+		Key("confirm").
+		Title(confirmTitle).
+		Affirmative("Yes").
+		Negative("No").
+		Value(props.Confirm))
 
 	form := huh.NewForm(huh.NewGroup(fields...))
 	return form.WithKeyMap(CreateKeyMapWithShiftEnter())
