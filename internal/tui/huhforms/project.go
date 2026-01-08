@@ -2,18 +2,25 @@ package huhforms
 
 import "charm.land/huh/v2"
 
-// CreateProjectForm creates a huh form for adding a new project
-func CreateProjectForm(
-	name *string,
-	description *string,
-	confirm *bool,
-) *huh.Form {
+type ProjectFormProps struct {
+	Name        *string
+	Description *string
+	Confirm     *bool
+	IsEditing   bool
+}
+
+func CreateProjectForm(props ProjectFormProps) *huh.Form {
+	confirmTitle := "Create this project?"
+	if props.IsEditing {
+		confirmTitle = "Save changes?"
+	}
+
 	fields := []huh.Field{
 		huh.NewInput().
 			Key("name").
 			Title("Project Name").
 			Placeholder("Enter project name...").
-			Value(name),
+			Value(props.Name),
 
 		huh.NewText().
 			Key("description").
@@ -21,14 +28,14 @@ func CreateProjectForm(
 			Placeholder("Enter project description...").
 			CharLimit(500).
 			Lines(3).
-			Value(description),
+			Value(props.Description),
 
 		huh.NewConfirm().
 			Key("confirm").
-			Title("Create this project?").
+			Title(confirmTitle).
 			Affirmative("Yes").
 			Negative("No").
-			Value(confirm),
+			Value(props.Confirm),
 	}
 
 	form := huh.NewForm(huh.NewGroup(fields...))

@@ -25,9 +25,9 @@ func (m Model) handleDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Return to appropriate mode
 		if m.Forms.Form.EditingCommentID != 0 {
 			m.Forms.Form.EditingCommentID = 0
-			m.UIState.SetMode(state.CommentsViewMode)
+			m.UIState.Mode = state.CommentsViewMode
 		} else {
-			m.UIState.SetMode(state.NormalMode)
+			m.UIState.Mode = state.NormalMode
 		}
 		return m, nil
 	}
@@ -49,7 +49,7 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 			m.removeCurrentTask()
 		}
 	}
-	m.UIState.SetMode(state.NormalMode)
+	m.UIState.Mode = state.NormalMode
 	return m, nil
 }
 
@@ -80,17 +80,17 @@ func (m Model) confirmDeleteComment() (tea.Model, tea.Cmd) {
 	}
 
 	m.Forms.Form.EditingCommentID = 0
-	m.UIState.SetMode(state.CommentsViewMode)
+	m.UIState.Mode = state.CommentsViewMode
 	return m, nil
 }
 
 // handleDiscardConfirm handles discard confirmation for forms and inputs.
 // Inlined from confirmation.go (deleted to reduce duplication)
 func (m Model) handleDiscardConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	ctx := m.UIState.DiscardContext()
+	ctx := m.UIState.DiscardContext
 	if ctx == nil {
 		// Safety: if context is missing, return to normal mode
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		return m, nil
 	}
 
@@ -101,8 +101,8 @@ func (m Model) handleDiscardConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "n", "N", "esc":
 		// User cancelled - return to source mode without clearing
-		m.UIState.SetMode(ctx.SourceMode)
-		m.UIState.ClearDiscardContext()
+		m.UIState.Mode = ctx.SourceMode
+		m.UIState.DiscardContext = nil
 		return m, nil
 	}
 
@@ -112,9 +112,9 @@ func (m Model) handleDiscardConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // confirmDiscard performs the actual discard operation based on context.
 // Inlined from confirmation.go (deleted to reduce duplication)
 func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
-	ctx := m.UIState.DiscardContext()
+	ctx := m.UIState.DiscardContext
 	if ctx == nil {
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		return m, nil
 	}
 
@@ -123,7 +123,7 @@ func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
 	case state.TicketFormMode:
 		m.Forms.Form.ClearTaskForm()
 
-	case state.ProjectFormMode:
+	case state.ProjectFormMode, state.EditProjectFormMode:
 		m.Forms.Form.ClearProjectForm()
 
 	case state.AddColumnFormMode, state.EditColumnFormMode:
@@ -132,14 +132,14 @@ func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
 	case state.CommentFormMode:
 		m.Forms.Form.ClearCommentForm()
 		// Return to comment list instead of normal mode
-		m.UIState.SetMode(state.CommentEditMode)
-		m.UIState.ClearDiscardContext()
+		m.UIState.Mode = state.CommentEditMode
+		m.UIState.DiscardContext = nil
 		return m, tea.ClearScreen
 	}
 
 	// Always return to normal mode after discard
-	m.UIState.SetMode(state.NormalMode)
-	m.UIState.ClearDiscardContext()
+	m.UIState.Mode = state.NormalMode
+	m.UIState.DiscardContext = nil
 
 	return m, tea.ClearScreen
 }
@@ -151,7 +151,7 @@ func (m Model) handleDeleteColumnConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "y", "Y":
 		return m.confirmDeleteColumn()
 	case "n", "N", "esc":
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		return m, nil
 	}
 	return m, nil
@@ -173,14 +173,14 @@ func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 			m.removeCurrentColumn()
 		}
 	}
-	m.UIState.SetMode(state.NormalMode)
+	m.UIState.Mode = state.NormalMode
 	return m, nil
 }
 
 func (m Model) handleProjectBranchConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	ctx := m.UIState.ProjectBranchContext
 	if ctx == nil {
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		m.Forms.Form.ClearProjectForm()
 		return m, tea.ClearScreen
 	}
@@ -189,20 +189,20 @@ func (m Model) handleProjectBranchConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "y", "Y":
 		m.createProjectWithoutDialog(ctx.ProjectName, ctx.ProjectDescription, ctx.GitBranch)
 		m.UIState.ProjectBranchContext = nil
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		m.Forms.Form.ClearProjectForm()
 		return m, tea.ClearScreen
 
 	case "n", "N":
 		m.createProjectWithoutDialog(ctx.ProjectName, ctx.ProjectDescription, "")
 		m.UIState.ProjectBranchContext = nil
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		m.Forms.Form.ClearProjectForm()
 		return m, tea.ClearScreen
 
 	case "esc":
 		m.UIState.ProjectBranchContext = nil
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		m.Forms.Form.ClearProjectForm()
 		return m, tea.ClearScreen
 	}

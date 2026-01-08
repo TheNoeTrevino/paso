@@ -50,8 +50,9 @@ type FormState struct {
 	InitialFormParentIDs   []int  // Initial parent IDs when form was created
 	InitialFormChildIDs    []int  // Initial child IDs when form was created
 
-	// Project form fields (for creating projects)
+	// Project form fields (for creating/editing projects)
 	ProjectForm            *huh.Form // The form instance
+	EditingProjectID       int       // ID of project being edited (0 for new project)
 	FormProjectName        string    // Form field: project name
 	FormProjectDescription string    // Form field: project description
 	FormProjectConfirm     bool      // Form field: confirmation (submit vs cancel)
@@ -114,6 +115,7 @@ func NewFormState() *FormState {
 		ViewportReady:                 false,
 		ViewportFocused:               false,
 		ProjectForm:                   nil,
+		EditingProjectID:              0,
 		FormProjectName:               "",
 		FormProjectDescription:        "",
 		FormProjectConfirm:            true,
@@ -180,10 +182,10 @@ func (s *FormState) IsTaskFormActive() bool {
 // ClearProjectForm resets all project form fields to their default values.
 func (s *FormState) ClearProjectForm() {
 	s.ProjectForm = nil
+	s.EditingProjectID = 0
 	s.FormProjectName = ""
 	s.FormProjectDescription = ""
 	s.FormProjectConfirm = true
-	// Clear initial values
 	s.InitialFormProjectName = ""
 	s.InitialFormProjectDescription = ""
 }
