@@ -39,6 +39,8 @@ func (m Model) View() tea.View {
 			modalLayer = m.renderTaskFormLayer()
 		case state.ProjectFormMode, state.EditProjectFormMode:
 			modalLayer = m.renderProjectFormLayer()
+		case state.ProjectFormLoadingMode:
+			modalLayer = m.renderProjectFormLoadingLayer()
 		case state.AddColumnFormMode, state.EditColumnFormMode:
 			modalLayer = m.renderColumnFormLayer()
 		case state.CommentFormMode:

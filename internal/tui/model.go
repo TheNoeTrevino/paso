@@ -50,6 +50,10 @@ type Model struct {
 	DatabasePicker      *state.DatabasePickerState  // Database picker state (for Ctrl+H)
 	CurrentDBType       database.DatabaseType       // Current database type (SQLite or PostgreSQL)
 	CurrentDBName       string                      // Friendly name of current database (e.g., "Local", "Production")
+	LoadingGitInfo      bool                        // True when fetching git info asynchronously
+	LoadingBranches     bool                        // True when fetching git branches asynchronously
+	SpinnerFrame        int                         // Current frame for git loading spinner
+	GitCache            *git.Cache                  // Git information cache
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
@@ -74,11 +78,24 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 		}
 
 		if branchProject != nil {
-			currentProjectID = branchProject.ID
-			slog.Info("auto-selected project based on git branch",
-				"project_id", currentProjectID,
-				"branch", gitInfo.CurrentBranch,
-				"project_name", branchProject.Name)
+			branchExists, err := git.BranchExists(loadCtx, gitInfo.CurrentBranch)
+			if err != nil {
+				slog.Error("failed to verify branch existence",
+					"branch", gitInfo.CurrentBranch,
+					"error", err)
+			}
+
+			if branchExists {
+				currentProjectID = branchProject.ID
+				slog.Info("auto-selected project based on git branch",
+					"project_id", currentProjectID,
+					"branch", gitInfo.CurrentBranch,
+					"project_name", branchProject.Name)
+			} else {
+				slog.Warn("project associated with deleted branch, skipping auto-selection",
+					"project_name", branchProject.Name,
+					"deleted_branch", gitInfo.CurrentBranch)
+			}
 		} else {
 			slog.Info("current git branch has no associated project, falling back to default",
 				"branch", gitInfo.CurrentBranch)
@@ -151,6 +168,9 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	// Create notification channel for events client messages
 	notifyChan := make(chan events.NotificationMsg, 10)
 
+	// Initialize git cache with default TTL
+	gitCache := git.NewCache(git.DefaultCacheTTL)
+
 	// Start listening for events from daemon (optional - daemon may not be running)
 	var eventChan <-chan events.Event
 	if eventClient != nil {
@@ -202,6 +222,7 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 		DatabasePicker:      state.NewDatabasePickerState(),
 		CurrentDBType:       database.SQLite,
 		CurrentDBName:       "Local",
+		GitCache:            gitCache,
 	}
 }
 

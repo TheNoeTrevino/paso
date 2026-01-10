@@ -4,7 +4,6 @@ import (
 	"log/slog"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/huhforms"
@@ -393,35 +392,14 @@ func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
 	m.Forms.Form.FormProjectGitBranch = ""
 	m.Forms.Form.FormProjectConfirm = true
 
-	gitInfo := git.DetectGitInfo(m.Ctx)
-
-	var gitBranches []git.BranchInfo
-	if gitInfo.IsRepo {
-		branches, err := git.ListBranches(m.Ctx)
-		if err != nil {
-			slog.Warn("failed to list git branches", "error", err)
-			gitBranches = []git.BranchInfo{}
-		} else {
-			gitBranches = branches
-		}
-
-		if gitInfo.IsValidForAssociation() {
-			m.Forms.Form.FormProjectGitBranch = gitInfo.CurrentBranch
-		}
-	}
-
-	m.Forms.Form.ProjectForm = huhforms.CreateProjectForm(huhforms.ProjectFormProps{
-		Name:        &m.Forms.Form.FormProjectName,
-		Description: &m.Forms.Form.FormProjectDescription,
-		GitBranch:   &m.Forms.Form.FormProjectGitBranch,
-		Confirm:     &m.Forms.Form.FormProjectConfirm,
-		IsEditing:   false,
-		GitBranches: gitBranches,
-		IsGitRepo:   gitInfo.IsRepo,
-	}).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.Forms.Form.SnapshotProjectFormInitialValues()
-	m.UIState.Mode = state.ProjectFormMode
-	return m, m.Forms.Form.ProjectForm.Init()
+	m.UIState.Mode = state.ProjectFormLoadingMode
+	m.LoadingGitInfo = true
+	m.LoadingBranches = true
+	m.SpinnerFrame = 0
+	return m, tea.Batch(
+		loadGitDataForProjectFormCmd(m.Ctx, m.GitCache, false),
+		tickGitSpinner(),
+	)
 }
 
 func (m Model) handleEditProject() (tea.Model, tea.Cmd) {
@@ -437,29 +415,12 @@ func (m Model) handleEditProject() (tea.Model, tea.Cmd) {
 	m.Forms.Form.FormProjectGitBranch = currentProject.GitBranch
 	m.Forms.Form.FormProjectConfirm = true
 
-	gitInfo := git.DetectGitInfo(m.Ctx)
-
-	var gitBranches []git.BranchInfo
-	if gitInfo.IsRepo {
-		branches, err := git.ListBranches(m.Ctx)
-		if err != nil {
-			slog.Warn("failed to list git branches", "error", err)
-			gitBranches = []git.BranchInfo{}
-		} else {
-			gitBranches = branches
-		}
-	}
-
-	m.Forms.Form.ProjectForm = huhforms.CreateProjectForm(huhforms.ProjectFormProps{
-		Name:        &m.Forms.Form.FormProjectName,
-		Description: &m.Forms.Form.FormProjectDescription,
-		GitBranch:   &m.Forms.Form.FormProjectGitBranch,
-		Confirm:     &m.Forms.Form.FormProjectConfirm,
-		IsEditing:   true,
-		GitBranches: gitBranches,
-		IsGitRepo:   gitInfo.IsRepo,
-	}).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.Forms.Form.SnapshotProjectFormInitialValues()
-	m.UIState.Mode = state.EditProjectFormMode
-	return m, m.Forms.Form.ProjectForm.Init()
+	m.UIState.Mode = state.ProjectFormLoadingMode
+	m.LoadingGitInfo = true
+	m.LoadingBranches = true
+	m.SpinnerFrame = 0
+	return m, tea.Batch(
+		loadGitDataForProjectFormCmd(m.Ctx, m.GitCache, true),
+		tickGitSpinner(),
+	)
 }

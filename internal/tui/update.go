@@ -1,7 +1,9 @@
 package tui
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -11,7 +13,10 @@ import (
 	"github.com/thenoetrevino/paso/internal/app"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
+	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -46,6 +51,21 @@ type dataReloaded struct {
 	tasks    map[int][]*models.TaskSummary
 	labels   []*models.Label
 }
+
+// Git operation messages
+type gitInfoFetched struct {
+	gitInfo     git.GitInfo
+	gitBranches []git.BranchInfo
+	forEdit     bool
+}
+
+type gitInfoError struct {
+	err     error
+	forEdit bool
+}
+
+// GitSpinnerTickMsg is sent periodically to advance the git loading spinner animation
+type GitSpinnerTickMsg time.Time
 
 // databaseSaved and connectionConfirmation message types are defined in update_database.go
 
@@ -172,6 +192,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// If not connecting anymore, stop animation
 		return m, nil
 
+	case GitSpinnerTickMsg:
+		if m.LoadingGitInfo || m.LoadingBranches {
+			m.SpinnerFrame = (m.SpinnerFrame + 1) % components.GetSpinnerFrameCount()
+			return m, tickGitSpinner()
+		}
+		return m, nil
+
+	case gitInfoFetched:
+		m.LoadingGitInfo = false
+		m.LoadingBranches = false
+		return m.handleGitInfoFetched(msg)
+
+	case gitInfoError:
+		m.LoadingGitInfo = false
+		m.LoadingBranches = false
+
+		if errors.Is(msg.err, context.Canceled) {
+			slog.Info("git info fetch cancelled", "forEdit", msg.forEdit)
+		} else if errors.Is(msg.err, context.DeadlineExceeded) {
+			slog.Warn("git info fetch timed out", "forEdit", msg.forEdit)
+			m.UI.Notification.Add(state.LevelWarning, "Git operation timed out. Creating form without branch list.")
+		} else {
+			slog.Warn("failed to fetch git info", "error", msg.err, "forEdit", msg.forEdit)
+			m.UI.Notification.Add(state.LevelWarning, "Could not load git branches. Creating form without branch list.")
+		}
+
+		return m.createProjectFormWithoutGit(msg.forEdit)
+
 	case connectionConfirmation:
 		if msg.connect {
 			// User wants to connect to the new connection
@@ -207,6 +255,16 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDeleteColumnConfirm(msg)
 	case state.ProjectBranchConfirmMode:
 		return m.handleProjectBranchConfirm(msg)
+	case state.ProjectFormLoadingMode:
+		switch msg.String() {
+		case "esc", m.Config.KeyMappings.Quit:
+			m.LoadingGitInfo = false
+			m.LoadingBranches = false
+			m.Forms.Form.ClearProjectForm()
+			m.UIState.Mode = state.NormalMode
+			return m, tea.ClearScreen
+		}
+		return m, nil
 	case state.CommentsViewMode:
 		return m.handleCommentsViewInput(msg)
 	case state.HelpMode:
@@ -284,4 +342,112 @@ func (m *Model) updateConnectionStateFromMessage(message string) {
 	} else if strings.Contains(message, "Failed to reconnect") {
 		m.ConnectionState.SetStatus(state.Disconnected)
 	}
+}
+
+// fetchGitInfoAsync returns a command that fetches git info and branches asynchronously
+func fetchGitInfoAsync(ctx context.Context, forEdit bool) tea.Cmd {
+	return func() tea.Msg {
+		gitInfo := git.DetectGitInfo(ctx)
+
+		var gitBranches []git.BranchInfo
+		if gitInfo.IsRepo {
+			branches, err := git.ListBranches(ctx)
+			if err != nil {
+				slog.Warn("failed to list git branches", "error", err)
+				return gitInfoError{err: err, forEdit: forEdit}
+			}
+			gitBranches = branches
+		}
+
+		return gitInfoFetched{
+			gitInfo:     gitInfo,
+			gitBranches: gitBranches,
+			forEdit:     forEdit,
+		}
+	}
+}
+
+// tickGitSpinner returns a command that sends a GitSpinnerTickMsg after a short delay
+func tickGitSpinner() tea.Cmd {
+	return tea.Tick(100*time.Millisecond, func(t time.Time) tea.Msg {
+		return GitSpinnerTickMsg(t)
+	})
+}
+
+// handleGitInfoFetched handles the gitInfoFetched message and creates the project form
+func (m Model) handleGitInfoFetched(msg gitInfoFetched) (tea.Model, tea.Cmd) {
+	if msg.forEdit {
+		return m.createEditProjectFormWithGit(msg.gitInfo, msg.gitBranches)
+	}
+
+	// For create mode, set the default branch if in a valid git state
+	if msg.gitInfo.IsRepo && msg.gitInfo.IsValidForAssociation() {
+		m.Forms.Form.FormProjectGitBranch = msg.gitInfo.CurrentBranch
+	}
+
+	return m.createNewProjectFormWithGit(msg.gitInfo, msg.gitBranches)
+}
+
+// createProjectFormWithoutGit creates a project form without git branch selection
+func (m Model) createProjectFormWithoutGit(forEdit bool) (tea.Model, tea.Cmd) {
+	if forEdit {
+		return m.createEditProjectFormWithGit(git.GitInfo{IsRepo: false}, nil)
+	}
+	return m.createNewProjectFormWithGit(git.GitInfo{IsRepo: false}, nil)
+}
+
+// createNewProjectFormWithGit creates a new project form with git info
+func (m Model) createNewProjectFormWithGit(gitInfo git.GitInfo, gitBranches []git.BranchInfo) (tea.Model, tea.Cmd) {
+	m.Forms.Form.EditingProjectID = 0
+	m.Forms.Form.FormProjectName = ""
+	m.Forms.Form.FormProjectDescription = ""
+	m.Forms.Form.FormProjectGitBranch = ""
+	m.Forms.Form.FormProjectConfirm = true
+
+	if gitInfo.IsRepo && gitInfo.IsValidForAssociation() {
+		m.Forms.Form.FormProjectGitBranch = gitInfo.CurrentBranch
+	}
+
+	m.Forms.Form.ProjectForm = huhforms.CreateProjectForm(huhforms.ProjectFormProps{
+		Name:        &m.Forms.Form.FormProjectName,
+		Description: &m.Forms.Form.FormProjectDescription,
+		GitBranch:   &m.Forms.Form.FormProjectGitBranch,
+		Confirm:     &m.Forms.Form.FormProjectConfirm,
+		IsEditing:   false,
+		GitBranches: gitBranches,
+		IsGitRepo:   gitInfo.IsRepo,
+	}).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+	m.Forms.Form.SnapshotProjectFormInitialValues()
+	m.UIState.Mode = state.ProjectFormMode
+	return m, m.Forms.Form.ProjectForm.Init()
+}
+
+// createEditProjectFormWithGit creates an edit project form with git info
+func (m Model) createEditProjectFormWithGit(gitInfo git.GitInfo, gitBranches []git.BranchInfo) (tea.Model, tea.Cmd) {
+	currentProject := m.AppState.GetCurrentProject()
+	if currentProject == nil {
+		m.UI.Notification.Add(state.LevelWarning, "No project selected")
+		m.LoadingGitInfo = false
+		m.LoadingBranches = false
+		return m, nil
+	}
+
+	m.Forms.Form.EditingProjectID = currentProject.ID
+	m.Forms.Form.FormProjectName = currentProject.Name
+	m.Forms.Form.FormProjectDescription = currentProject.Description
+	m.Forms.Form.FormProjectGitBranch = currentProject.GitBranch
+	m.Forms.Form.FormProjectConfirm = true
+
+	m.Forms.Form.ProjectForm = huhforms.CreateProjectForm(huhforms.ProjectFormProps{
+		Name:        &m.Forms.Form.FormProjectName,
+		Description: &m.Forms.Form.FormProjectDescription,
+		GitBranch:   &m.Forms.Form.FormProjectGitBranch,
+		Confirm:     &m.Forms.Form.FormProjectConfirm,
+		IsEditing:   true,
+		GitBranches: gitBranches,
+		IsGitRepo:   gitInfo.IsRepo,
+	}).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+	m.Forms.Form.SnapshotProjectFormInitialValues()
+	m.UIState.Mode = state.EditProjectFormMode
+	return m, m.Forms.Form.ProjectForm.Init()
 }
