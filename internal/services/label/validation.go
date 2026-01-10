@@ -31,10 +31,6 @@ func validateUpdateLabelRequest(req UpdateLabelRequest) error {
 	return nil
 }
 
-// ============================================================================
-// FIELD-LEVEL VALIDATORS
-// ============================================================================
-
 // validateLabelID validates a label ID.
 func validateLabelID(id int) error {
 	if id <= 0 {

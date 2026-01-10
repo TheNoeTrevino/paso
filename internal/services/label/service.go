@@ -98,7 +98,6 @@ func (s *service) CreateLabel(ctx context.Context, req CreateLabelRequest) (*mod
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Validate request
 	if err := validateCreateLabelRequest(req); err != nil {
 		return nil, err
 	}
@@ -128,7 +127,6 @@ func (s *service) UpdateLabel(ctx context.Context, req UpdateLabelRequest) error
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Validate request
 	if err := validateUpdateLabelRequest(req); err != nil {
 		return err
 	}

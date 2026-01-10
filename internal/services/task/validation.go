@@ -1,9 +1,5 @@
 package task
 
-// ============================================================================
-// REQUEST-LEVEL VALIDATORS
-// ============================================================================
-
 // validateCreateTaskRequest validates all fields for creating a task.
 // All required fields must pass validation.
 func validateCreateTaskRequest(req CreateTaskRequest) error {
@@ -60,10 +56,6 @@ func validateUpdateCommentRequest(req UpdateCommentRequest) error {
 	}
 	return validateCommentMessage(req.Message)
 }
-
-// ============================================================================
-// FIELD-LEVEL VALIDATORS
-// ============================================================================
 
 // validateTaskID validates a task ID.
 func validateTaskID(id int) error {

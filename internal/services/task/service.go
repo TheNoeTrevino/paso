@@ -148,7 +148,6 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Validate request
 	if err := validateCreateTaskRequest(req); err != nil {
 		return nil, err
 	}
@@ -288,7 +287,6 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Validate request
 	if err := validateUpdateTaskRequest(req); err != nil {
 		return err
 	}

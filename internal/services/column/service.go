@@ -90,7 +90,6 @@ func (s *service) CreateColumn(ctx context.Context, req CreateColumnRequest) (*m
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Validate request
 	if err := validateCreateColumnRequest(req); err != nil {
 		return nil, err
 	}
