@@ -58,13 +58,6 @@ func (m Model) View() tea.View {
 			}
 			modalLayer = m.renderDiscardConfirmLayer()
 		case state.ProjectBranchConfirmMode:
-			formLayer := m.renderProjectFormLayer()
-			if formLayer != nil {
-				layers = append(layers, formLayer)
-			} else {
-				slog.Error("ProjectBranchConfirmMode: renderProjectFormLayer returned nil",
-					"ProjectForm_is_nil", m.Forms.Form.ProjectForm == nil)
-			}
 			modalLayer = m.renderProjectBranchConfirmLayer()
 		case state.TaskFormHelpMode:
 			layers = append(layers, m.renderTaskFormLayer())
