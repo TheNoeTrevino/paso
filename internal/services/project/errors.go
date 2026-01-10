@@ -6,7 +6,7 @@ import "errors"
 var (
 	// Validation errors
 	ErrEmptyName        = errors.New("name cannot be empty")
-	ErrNameTooLong      = errors.New("name cannot exceed 50 characters")
+	ErrNameTooLong      = errors.New("name cannot exceed 100 characters")
 	ErrInvalidProjectID = errors.New("invalid project ID")
 	ErrEmptyGitBranch   = errors.New("git branch cannot be empty")
 
