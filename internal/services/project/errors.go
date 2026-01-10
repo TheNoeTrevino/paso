@@ -15,4 +15,5 @@ var (
 	ErrProjectHasColumns          = errors.New("cannot delete project with columns")
 	ErrProjectHasTasks            = errors.New("cannot delete project with tasks")
 	ErrGitBranchAlreadyAssociated = errors.New("git branch is already associated with another project")
+	ErrBranchDoesNotExist         = errors.New("git branch does not exist in repository")
 )

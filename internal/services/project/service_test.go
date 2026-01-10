@@ -13,6 +13,33 @@ import (
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
+// mockGitChecker is a mock implementation of GitChecker for testing
+type mockGitChecker struct {
+	branches map[string]bool
+}
+
+func newMockGitChecker() *mockGitChecker {
+	return &mockGitChecker{
+		branches: make(map[string]bool),
+	}
+}
+
+func (m *mockGitChecker) BranchExists(ctx context.Context, branchName string) (bool, error) {
+	exists, ok := m.branches[branchName]
+	if !ok {
+		return true, nil
+	}
+	return exists, nil
+}
+
+func (m *mockGitChecker) addBranch(branchName string) {
+	m.branches[branchName] = true
+}
+
+func (m *mockGitChecker) removeBranch(branchName string) {
+	m.branches[branchName] = false
+}
+
 // ============================================================================
 // TEST HELPERS
 // ============================================================================
@@ -26,7 +53,8 @@ func setupTestDB(t *testing.T) *sql.DB {
 // newTestService creates a new service for testing (panics on error since tests use valid SQLite)
 func newTestService(t *testing.T, db *sql.DB) Service {
 	t.Helper()
-	svc, err := NewService(db, database.SQLite, nil)
+	mockGit := newMockGitChecker()
+	svc, err := NewService(db, database.SQLite, nil, mockGit)
 	require.NoError(t, err, "failed to create test service")
 	return svc
 }

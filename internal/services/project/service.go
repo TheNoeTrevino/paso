@@ -13,6 +13,18 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
+// GitChecker defines the interface for checking git branch existence
+type GitChecker interface {
+	BranchExists(ctx context.Context, branchName string) (bool, error)
+}
+
+// realGitChecker implements GitChecker using the actual git package
+type realGitChecker struct{}
+
+func (r *realGitChecker) BranchExists(ctx context.Context, branchName string) (bool, error) {
+	return git.BranchExists(ctx, branchName)
+}
+
 // Service defines all project-related business operations
 type Service interface {
 	// Read operations
@@ -48,19 +60,27 @@ type service struct {
 	dbType      database.DatabaseType
 	queries     database.Querier
 	eventClient events.EventPublisher
+	gitChecker  GitChecker
 }
 
 // NewService creates a new project service with database-agnostic queries.
-func NewService(db *sql.DB, dbType database.DatabaseType, eventClient events.EventPublisher) (Service, error) {
+// If gitChecker is nil, a real git checker will be used.
+func NewService(db *sql.DB, dbType database.DatabaseType, eventClient events.EventPublisher, gitChecker GitChecker) (Service, error) {
 	queries, err := database.NewQuerier(db, dbType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create project service: %w", err)
 	}
+
+	if gitChecker == nil {
+		gitChecker = &realGitChecker{}
+	}
+
 	return &service{
 		db:          db,
 		dbType:      dbType,
 		queries:     queries,
 		eventClient: eventClient,
+		gitChecker:  gitChecker,
 	}, nil
 }
 
@@ -121,15 +141,35 @@ func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest) (
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Validate request
 	if err := validateCreateProjectRequest(req); err != nil {
 		return nil, err
 	}
 
 	var project types.Project
 
-	// Sanitize git branch name (truncate to 255 chars, trim whitespace)
-	sanitizedBranch := git.SanitizeBranchName(req.GitBranch)
+	sanitizedBranch := ""
+	if req.GitBranch != "" {
+		if err := git.ValidateBranchName(ctx, req.GitBranch); err != nil {
+			return nil, fmt.Errorf("invalid git branch name: %w", err)
+		}
+
+		var sanitizeErr error
+		sanitizedBranch, sanitizeErr = git.SanitizeBranchName(req.GitBranch)
+		if sanitizeErr != nil {
+			return nil, fmt.Errorf("invalid branch name: %w", sanitizeErr)
+		}
+
+		gitInfo := git.DetectGitInfo(ctx)
+		if gitInfo.IsRepo {
+			exists, err := s.gitChecker.BranchExists(ctx, sanitizedBranch)
+			if err != nil {
+				return nil, fmt.Errorf("failed to check branch existence: %w", err)
+			}
+			if !exists {
+				return nil, ErrBranchDoesNotExist
+			}
+		}
+	}
 
 	// Use WithTx helper for transaction management
 	err := database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
@@ -200,8 +240,31 @@ func (s *service) UpdateProject(ctx context.Context, req UpdateProjectRequest) e
 
 	gitBranch := existing.GitBranch
 	if req.GitBranch != nil {
-		sanitized := git.SanitizeBranchName(*req.GitBranch)
-		gitBranch = types.NullString{String: sanitized, Valid: sanitized != ""}
+		if *req.GitBranch != "" {
+			if err := git.ValidateBranchName(ctx, *req.GitBranch); err != nil {
+				return fmt.Errorf("invalid git branch name: %w", err)
+			}
+
+			sanitized, err := git.SanitizeBranchName(*req.GitBranch)
+			if err != nil {
+				return fmt.Errorf("invalid branch name: %w", err)
+			}
+
+			gitInfo := git.DetectGitInfo(ctx)
+			if gitInfo.IsRepo {
+				exists, err := s.gitChecker.BranchExists(ctx, sanitized)
+				if err != nil {
+					return fmt.Errorf("failed to check branch existence: %w", err)
+				}
+				if !exists {
+					return ErrBranchDoesNotExist
+				}
+			}
+
+			gitBranch = types.NullString{String: sanitized, Valid: true}
+		} else {
+			gitBranch = types.NullString{String: "", Valid: false}
+		}
 	}
 
 	// Update project
