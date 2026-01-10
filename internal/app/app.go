@@ -52,7 +52,7 @@ func New(db *sql.DB, opts ...Option) (*App, error) {
 		return nil, err
 	}
 
-	projectSvc, err := projectservice.NewService(db, cfg.dbType, cfg.eventClient)
+	projectSvc, err := projectservice.NewService(db, cfg.dbType, cfg.eventClient, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -35,7 +35,7 @@ func SetupTestModelWithDB(t *testing.T) (Model, *sql.DB) {
 	require.NoError(t, err, "failed to create column service")
 	labelSvc, err := label.NewService(db, database.SQLite, nil)
 	require.NoError(t, err, "failed to create label service")
-	projectSvc, err := project.NewService(db, database.SQLite, nil)
+	projectSvc, err := project.NewService(db, database.SQLite, nil, nil)
 	require.NoError(t, err, "failed to create project service")
 	appContainer := &app.App{
 		TaskService:    taskSvc,

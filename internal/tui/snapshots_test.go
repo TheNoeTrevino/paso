@@ -478,7 +478,7 @@ func createAppContainer(t *testing.T, db *sql.DB) *app.App {
 	require.NoError(t, err, "failed to create column service")
 	labelSvc, err := label.NewService(db, dbType, nil)
 	require.NoError(t, err, "failed to create label service")
-	projectSvc, err := project.NewService(db, dbType, nil)
+	projectSvc, err := project.NewService(db, dbType, nil, nil)
 	require.NoError(t, err, "failed to create project service")
 	return &app.App{
 		TaskService:    taskSvc,
