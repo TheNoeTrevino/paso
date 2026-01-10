@@ -153,16 +153,16 @@ func (m Model) renderProjectBranchConfirmLayer() *lipgloss.Layer {
 	warning := ""
 	if ctx.ExistingProject != nil {
 		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA500"))
-		warning = "\n\n" + warningStyle.Render(fmt.Sprintf(
-			"⚠️  Warning: branch '%s' is already associated with project '%s'\nThis project will not be the associated branch",
+		warning = warningStyle.Render(fmt.Sprintf(
+			"⚠️  Branch '%s' is already associated with project '%s'.\nTransfer branch association to this project instead?",
 			ctx.GitBranch,
 			ctx.ExistingProject.Name,
-		))
+		)) + "\n\n"
 	}
 
 	confirmBox := components.DeleteConfirmBoxStyle.
 		Width(60).
-		Render(fmt.Sprintf("%s\n\n[y]es  [n]o  [esc] cancel%s", message, warning))
+		Render(fmt.Sprintf("%s%s\n\n[y]es  [n]o  [esc] cancel", warning, message))
 
 	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
 }
