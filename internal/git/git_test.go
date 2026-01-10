@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // ============================================================================
@@ -65,7 +64,8 @@ func TestSanitizeBranchName_ValidBranches(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := SanitizeBranchName(tt.input)
+			result, err := SanitizeBranchName(tt.input)
+			assert.NoError(t, err)
 			assert.Equal(t, tt.expected, result, "Branch name should be sanitized correctly")
 		})
 	}
@@ -75,52 +75,65 @@ func TestSanitizeBranchName_EdgeCases(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		input    string
-		expected string
+		name        string
+		input       string
+		expected    string
+		expectError bool
 	}{
 		{
-			name:     "empty_string",
-			input:    "",
-			expected: "",
+			name:        "empty_string",
+			input:       "",
+			expected:    "",
+			expectError: false,
 		},
 		{
-			name:     "whitespace_only",
-			input:    "   ",
-			expected: "",
+			name:        "whitespace_only",
+			input:       "   ",
+			expected:    "",
+			expectError: false,
 		},
 		{
-			name:     "leading_whitespace",
-			input:    "  main",
-			expected: "main",
+			name:        "leading_whitespace",
+			input:       "  main",
+			expected:    "main",
+			expectError: false,
 		},
 		{
-			name:     "trailing_whitespace",
-			input:    "main  ",
-			expected: "main",
+			name:        "trailing_whitespace",
+			input:       "main  ",
+			expected:    "main",
+			expectError: false,
 		},
 		{
-			name:     "both_whitespace",
-			input:    "  feature/branch  ",
-			expected: "feature/branch",
+			name:        "both_whitespace",
+			input:       "  feature/branch  ",
+			expected:    "feature/branch",
+			expectError: false,
 		},
 		{
-			name:     "newline_characters",
-			input:    "feature\nbranch",
-			expected: "feature\nbranch", // Sanitize should handle or preserve this
+			name:        "newline_characters",
+			input:       "feature\nbranch",
+			expected:    "",
+			expectError: true,
 		},
 		{
-			name:     "tab_characters",
-			input:    "feature\tbranch",
-			expected: "feature\tbranch",
+			name:        "tab_characters",
+			input:       "feature\tbranch",
+			expected:    "",
+			expectError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := SanitizeBranchName(tt.input)
-			assert.Equal(t, tt.expected, result, "Edge case should be handled correctly")
+			result, err := SanitizeBranchName(tt.input)
+			if tt.expectError {
+				assert.Error(t, err, "Should return error for control characters")
+			} else {
+				assert.NoError(t, err, "Should not return error")
+				assert.Equal(t, tt.expected, result, "Edge case should be handled correctly")
+			}
 		})
 	}
 }
@@ -131,63 +144,200 @@ func TestSanitizeBranchName_SpecialCharacters(t *testing.T) {
 	tests := []struct {
 		name        string
 		input       string
+		expectError bool
 		description string
 	}{
 		{
 			name:        "asterisk",
 			input:       "feature*branch",
+			expectError: true,
 			description: "Branch with asterisk",
 		},
 		{
 			name:        "question_mark",
 			input:       "feature?branch",
+			expectError: true,
 			description: "Branch with question mark",
 		},
 		{
 			name:        "brackets",
 			input:       "feature[branch]",
+			expectError: true,
 			description: "Branch with brackets",
 		},
 		{
 			name:        "at_symbol",
 			input:       "user@feature",
+			expectError: false,
 			description: "Branch with @ symbol",
 		},
 		{
 			name:        "hash_symbol",
 			input:       "issue#123",
+			expectError: false,
 			description: "Branch with hash symbol",
 		},
 		{
 			name:        "backslash",
 			input:       "feature\\branch",
+			expectError: true,
 			description: "Branch with backslash",
 		},
 		{
 			name:        "caret",
 			input:       "feature^branch",
+			expectError: true,
 			description: "Branch with caret",
 		},
 		{
 			name:        "tilde",
 			input:       "feature~branch",
+			expectError: true,
 			description: "Branch with tilde",
 		},
 		{
 			name:        "colon",
 			input:       "feature:branch",
+			expectError: true,
 			description: "Branch with colon",
+		},
+		{
+			name:        "space_in_middle",
+			input:       "feature branch",
+			expectError: true,
+			description: "Branch with space character",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			// SanitizeBranchName should handle special characters
-			// The actual behavior depends on implementation
-			result := SanitizeBranchName(tt.input)
-			// Just verify it returns something (implementation will define behavior)
-			assert.NotNil(t, result, tt.description)
+			_, err := SanitizeBranchName(tt.input)
+			if tt.expectError {
+				assert.Error(t, err, tt.description+" should return error for invalid characters")
+			} else {
+				assert.NoError(t, err, tt.description+" should not return error")
+			}
+		})
+	}
+}
+
+func TestSanitizeBranchName_SecurityVulnerabilities(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		input       string
+		expectError bool
+		description string
+	}{
+		{
+			name:        "sql_injection_single_quote",
+			input:       "'; DROP TABLE projects; --",
+			expectError: true,
+			description: "SQL injection with single quote",
+		},
+		{
+			name:        "sql_injection_comment",
+			input:       "feature'--",
+			expectError: false,
+			description: "SQL injection with comment (single quote and dash are valid git chars)",
+		},
+		{
+			name:        "sql_injection_union",
+			input:       "' UNION SELECT * FROM users--",
+			expectError: true,
+			description: "SQL injection with UNION (contains space)",
+		},
+		{
+			name:        "xss_script_tag",
+			input:       "<script>alert('xss')</script>",
+			expectError: false,
+			description: "XSS with script tag (angle brackets are valid git branch chars)",
+		},
+		{
+			name:        "xss_img_tag",
+			input:       "<img src=x onerror=alert('xss')>",
+			expectError: true,
+			description: "XSS with img tag (contains space)",
+		},
+		{
+			name:        "xss_event_handler",
+			input:       "\" onload=\"alert('xss')\"",
+			expectError: true,
+			description: "XSS with event handler (contains spaces)",
+		},
+		{
+			name:        "null_byte",
+			input:       "feature\x00branch",
+			expectError: true,
+			description: "Null byte injection",
+		},
+		{
+			name:        "carriage_return",
+			input:       "feature\rbranch",
+			expectError: true,
+			description: "Carriage return character",
+		},
+		{
+			name:        "vertical_tab",
+			input:       "feature\vbranch",
+			expectError: true,
+			description: "Vertical tab character",
+		},
+		{
+			name:        "form_feed",
+			input:       "feature\fbranch",
+			expectError: true,
+			description: "Form feed character",
+		},
+		{
+			name:        "bell_character",
+			input:       "feature\abranch",
+			expectError: true,
+			description: "Bell character",
+		},
+		{
+			name:        "backspace",
+			input:       "feature\bbranch",
+			expectError: true,
+			description: "Backspace character",
+		},
+		{
+			name:        "escape_sequence",
+			input:       "feature\x1bbranch",
+			expectError: true,
+			description: "ANSI escape sequence",
+		},
+		{
+			name:        "path_traversal_dotdot",
+			input:       "feature/../../../etc/passwd",
+			expectError: true,
+			description: "Path traversal with ..",
+		},
+		{
+			name:        "git_reflog_sequence",
+			input:       "feature@{0}",
+			expectError: true,
+			description: "Git reflog sequence @{",
+		},
+		{
+			name:        "double_slash",
+			input:       "feature//branch",
+			expectError: true,
+			description: "Double slash sequence",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := SanitizeBranchName(tt.input)
+			if tt.expectError {
+				assert.Error(t, err, tt.description+" should return error")
+			} else {
+				assert.NoError(t, err, tt.description+" should not return error")
+			}
 		})
 	}
 }
@@ -236,7 +386,8 @@ func TestSanitizeBranchName_LongBranches(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := SanitizeBranchName(tt.input)
+			result, err := SanitizeBranchName(tt.input)
+			assert.NoError(t, err)
 			assert.LessOrEqual(t, len(result), tt.maxLength, tt.description)
 		})
 	}
@@ -278,9 +429,9 @@ func TestSanitizeBranchName_Unicode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := SanitizeBranchName(tt.input)
-			// Just verify it handles unicode without panicking
-			assert.NotNil(t, result, "Should handle unicode characters")
+			result, err := SanitizeBranchName(tt.input)
+			assert.NoError(t, err, "Should handle unicode characters without error")
+			assert.NotEmpty(t, result, "Should handle unicode characters")
 		})
 	}
 }
@@ -462,10 +613,12 @@ func TestSanitizeBranchName_TableDriven(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result := SanitizeBranchName(tt.input)
+			result, err := SanitizeBranchName(tt.input)
 
-			if !tt.expectError {
-				require.NotNil(t, result, tt.description)
+			if tt.expectError {
+				assert.Error(t, err, tt.description)
+			} else {
+				assert.NoError(t, err, tt.description)
 				assert.GreaterOrEqual(t, len(result), tt.minLength, "Result should meet minimum length")
 				assert.LessOrEqual(t, len(result), tt.maxLength, "Result should not exceed maximum length")
 			}

@@ -2,11 +2,50 @@ package git
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 )
+
+// CACHE DESIGN (Task #27)
+//
+// This package will implement caching for git operations to improve TUI performance.
+//
+// Cache Structure:
+//   - Location: internal/git/cache.go (separate file in this package)
+//   - Key: Absolute working directory path (supports multi-repo workflows)
+//   - Data: CacheEntry{GitInfo, []BranchInfo, Timestamp}
+//   - TTL: 45 seconds (configurable via DefaultCacheTTL constant)
+//   - Thread Safety: sync.RWMutex for concurrent read/exclusive write access
+//
+// Cache Operations:
+//   - Get(ctx, workDir) -> (GitInfo, []BranchInfo, hit bool)
+//   - Set(workDir, GitInfo, []BranchInfo)
+//   - Invalidate(workDir) - per-directory invalidation
+//   - InvalidateAll() - global cache clear
+//
+// Integration with TUI:
+//   - Cache instance stored in Model.GitCache
+//   - Async commands (detectGitInfoCmd, listBranchesCmd) check cache first
+//   - Cache hit: return cached data immediately (fast path)
+//   - Cache miss/expired: execute git commands, update cache, return data (slow path)
+//
+// Invalidation Strategy:
+//   - Automatic: TTL expiry checked on Get() - if time.Since(timestamp) > TTL, treat as miss
+//   - Manual: Ctrl+R triggers cache.Invalidate(currentWorkDir) and re-fetches git data
+//   - No background timers: check expiry on access only (simpler, less overhead)
+//
+// Why This Design:
+//   - Separate package: testable, follows single responsibility, loosely coupled
+//   - Working directory key: natural multi-repo support, aligns with git semantics
+//   - 45s TTL: balances freshness vs performance (most UI interactions happen in bursts)
+//   - RWMutex: standard Go pattern for read-heavy concurrent access
+//   - Async integration: seamless with existing Bubble Tea tea.Cmd pattern
+//
+// See cache_design.md for full design document.
 
 // GitInfo contains information about the current git repository state
 type GitInfo struct {
@@ -29,7 +68,7 @@ func (g GitInfo) IsValidForAssociation() bool {
 }
 
 // DetectGitInfo detects git repository information from the current working directory
-// All git commands are executed with a 2-second timeout for reliability.
+// All git commands are executed with a 5-second timeout for reliability.
 // The passed context is respected for cancellation, with per-operation timeouts added.
 func DetectGitInfo(ctx context.Context) GitInfo {
 	info := GitInfo{
@@ -50,16 +89,20 @@ func DetectGitInfo(ctx context.Context) GitInfo {
 
 	// Get current branch name and detect detached HEAD
 	branchName, isDetached := getCurrentBranch(ctx)
-	info.CurrentBranch = SanitizeBranchName(branchName)
+	sanitized, err := SanitizeBranchName(branchName)
+	if err != nil {
+		sanitized = ""
+	}
+	info.CurrentBranch = sanitized
 	info.IsDetached = isDetached
 
 	return info
 }
 
 // isGitRepo checks if the current directory is inside a git repository
-// Respects the passed context while adding a 2-second timeout for the git operation
+// Respects the passed context while adding a 5-second timeout for the git operation
 func isGitRepo(ctx context.Context) bool {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--git-dir")
@@ -68,9 +111,9 @@ func isGitRepo(ctx context.Context) bool {
 }
 
 // hasCommits checks if the repository has at least one commit
-// Respects the passed context while adding a 2-second timeout for the git operation
+// Respects the passed context while adding a 5-second timeout for the git operation
 func hasCommits(ctx context.Context) bool {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "git", "rev-parse", "HEAD")
@@ -78,11 +121,28 @@ func hasCommits(ctx context.Context) bool {
 	return err == nil
 }
 
+// BranchExists checks if a branch with the given name exists in the repository
+// Respects the passed context while adding a 5-second timeout for the git operation
+func BranchExists(ctx context.Context, branchName string) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--verify", "refs/heads/"+branchName)
+	err := cmd.Run()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 // getCurrentBranch gets the current branch name and detects detached HEAD state
 // Returns (branchName, isDetached)
-// Respects the passed context while adding a 2-second timeout for the git operation
+// Respects the passed context while adding a 5-second timeout for the git operation
 func getCurrentBranch(ctx context.Context) (string, bool) {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	// Try to get symbolic ref (branch name)
@@ -102,9 +162,9 @@ func getCurrentBranch(ctx context.Context) (string, bool) {
 // ListBranches returns a list of all local git branches with their status markers.
 // Branch names are sanitized for safe storage.
 // Markers: "* " (current branch), "+ " (worktree branch), "  " (normal branch)
-// Respects the passed context while adding a 2-second timeout for the git operation.
+// Respects the passed context while adding a 5-second timeout for the git operation.
 func ListBranches(ctx context.Context) ([]BranchInfo, error) {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "git", "branch", "--list")
@@ -129,14 +189,15 @@ func ListBranches(ctx context.Context) ([]BranchInfo, error) {
 			continue
 		}
 
-		// Sanitize branch name
-		branchName = SanitizeBranchName(branchName)
-		if branchName != "" {
-			branches = append(branches, BranchInfo{
-				Name:   branchName,
-				Marker: marker,
-			})
+		sanitized, err := SanitizeBranchName(branchName)
+		if err != nil || sanitized == "" {
+			continue
 		}
+
+		branches = append(branches, BranchInfo{
+			Name:   sanitized,
+			Marker: marker,
+		})
 	}
 
 	// Sort by branch name
@@ -149,16 +210,72 @@ func ListBranches(ctx context.Context) ([]BranchInfo, error) {
 
 // SanitizeBranchName sanitizes a git branch name for safe storage
 // - Trims leading/trailing whitespace
+// - Rejects control characters (newlines, tabs, null bytes, carriage returns)
+// - Rejects git-invalid characters: * ? [ ] \ ^ ~ : space
+// - Rejects git-invalid sequences: .. @{ //
 // - Truncates to maximum 255 characters (database column limit)
 // - Preserves valid git branch characters (slashes, hyphens, underscores, dots, etc.)
-func SanitizeBranchName(name string) string {
-	// Trim whitespace
+func SanitizeBranchName(name string) (string, error) {
 	sanitized := strings.TrimSpace(name)
 
-	// Truncate to 255 characters (database TEXT column limit)
+	for _, r := range sanitized {
+		if unicode.IsControl(r) {
+			return "", fmt.Errorf("branch name contains control character: %q", r)
+		}
+
+		switch r {
+		case '*':
+			return "", fmt.Errorf("branch name contains invalid character: *")
+		case '?':
+			return "", fmt.Errorf("branch name contains invalid character: ?")
+		case '[':
+			return "", fmt.Errorf("branch name contains invalid character: [")
+		case ']':
+			return "", fmt.Errorf("branch name contains invalid character: ]")
+		case '\\':
+			return "", fmt.Errorf("branch name contains invalid character: \\")
+		case '^':
+			return "", fmt.Errorf("branch name contains invalid character: ^")
+		case '~':
+			return "", fmt.Errorf("branch name contains invalid character: ~")
+		case ':':
+			return "", fmt.Errorf("branch name contains invalid character: :")
+		case ' ':
+			return "", fmt.Errorf("branch name contains invalid character: space")
+		}
+	}
+
+	if strings.Contains(sanitized, "..") {
+		return "", fmt.Errorf("branch name contains invalid sequence: ..")
+	}
+
+	if strings.Contains(sanitized, "@{") {
+		return "", fmt.Errorf("branch name contains invalid sequence: @{")
+	}
+
+	if strings.Contains(sanitized, "//") {
+		return "", fmt.Errorf("branch name contains invalid sequence: //")
+	}
+
 	if len(sanitized) > 255 {
 		sanitized = sanitized[:255]
 	}
 
-	return sanitized
+	return sanitized, nil
+}
+
+// ValidateBranchName validates a branch name using git's own validation rules.
+// Uses `git check-ref-format --branch` to ensure the name conforms to git's branch naming conventions.
+// Returns an error if the branch name is invalid, git is not installed, or the operation times out.
+// Respects the passed context while adding a 5-second timeout for the git operation.
+func ValidateBranchName(ctx context.Context, branchName string) error {
+	if strings.TrimSpace(branchName) == "" {
+		return exec.Command("").Run()
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", "check-ref-format", "--branch", branchName)
+	return cmd.Run()
 }

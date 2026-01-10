@@ -477,8 +477,8 @@ func TestDetectGitInfo_VeryLongBranchName(t *testing.T) {
 
 	assert.True(t, info.IsRepo, "Should detect as git repository")
 	assert.NotEmpty(t, info.CurrentBranch, "Should detect long branch name")
-	// The sanitized version should be <= 255 chars
-	sanitized := SanitizeBranchName(info.CurrentBranch)
+	sanitized, err := SanitizeBranchName(info.CurrentBranch)
+	assert.NoError(t, err, "Should not error on sanitizing branch name")
 	assert.LessOrEqual(t, len(sanitized), 255, "Sanitized branch name should be <= 255 characters")
 }
 
