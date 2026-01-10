@@ -89,10 +89,43 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 		title = "New Project"
 	}
 
+	refreshHint := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle)).
+		Render("Press F5 to refresh git branches")
+
+	content := title + "\n\n" + formView + "\n\n" + refreshHint
+
 	formBox := components.ProjectFormBoxStyle.
 		Width(m.UIState.Width() * 3 / 4).
 		Height(m.UIState.Height / 3).
-		Render(title + "\n\n" + formView)
+		Render(content)
+
+	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height)
+}
+
+// renderProjectFormLoadingLayer renders a loading indicator while git data is being fetched
+func (m Model) renderProjectFormLoadingLayer() *lipgloss.Layer {
+	var title string
+	if m.Forms.Form.EditingProjectID != 0 {
+		title = "Edit Project"
+	} else {
+		title = "New Project"
+	}
+
+	spinnerFrames := []string{
+		"󰋙", "󰫃", "󰫄", "󰫅", "󰫆", "󰫇", "󰫈", "󰫇", "󰫆", "󰫅", "󰫄", "󰫃",
+	}
+	spinnerIcon := spinnerFrames[m.SpinnerFrame%len(spinnerFrames)]
+
+	loadingText := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Highlight)).
+		Bold(true).
+		Render("Loading git branches " + spinnerIcon)
+
+	formBox := components.ProjectFormBoxStyle.
+		Width(m.UIState.Width() * 3 / 4).
+		Height(m.UIState.Height / 3).
+		Render(title + "\n\n" + loadingText)
 
 	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height)
 }
@@ -148,21 +181,22 @@ func (m Model) renderProjectBranchConfirmLayer() *lipgloss.Layer {
 		return nil
 	}
 
-	message := fmt.Sprintf("Associate branch '%s' with project '%s'?", ctx.GitBranch, ctx.ProjectName)
-
-	warning := ""
+	var message string
 	if ctx.ExistingProject != nil {
 		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA500"))
-		warning = warningStyle.Render(fmt.Sprintf(
-			"⚠️  Branch '%s' is already associated with project '%s'.\nTransfer branch association to this project instead?",
+		message = warningStyle.Render(fmt.Sprintf(
+			"⚠️  Branch '%s' is currently linked to project '%s'.\nTransfer it to '%s'?",
 			ctx.GitBranch,
 			ctx.ExistingProject.Name,
-		)) + "\n\n"
+			ctx.ProjectName,
+		))
+	} else {
+		message = fmt.Sprintf("Associate branch '%s' with project '%s'?", ctx.GitBranch, ctx.ProjectName)
 	}
 
 	confirmBox := components.DeleteConfirmBoxStyle.
 		Width(60).
-		Render(fmt.Sprintf("%s%s\n\n[y]es  [n]o  [esc] cancel", warning, message))
+		Render(fmt.Sprintf("%s\n\n[y]es transfer  [n]o skip branch  [esc] cancel", message))
 
 	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
 }
