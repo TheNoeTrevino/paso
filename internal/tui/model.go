@@ -66,19 +66,43 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 
 	var currentProjectID int
 	gitInfo := git.DetectGitInfo(loadCtx)
-	if gitInfo.IsValidForAssociation() {
+
+	if gitInfo.IsRepo && gitInfo.IsValidForAssociation() {
 		branchProject, err := application.ProjectService.GetProjectByGitBranch(loadCtx, gitInfo.CurrentBranch)
 		if err != nil {
 			slog.Error("failed to get project by git branch", "branch", gitInfo.CurrentBranch, "error", err)
 		}
+
 		if branchProject != nil {
 			currentProjectID = branchProject.ID
-			slog.Info("auto-selected project based on git branch", "project_id", currentProjectID, "branch", gitInfo.CurrentBranch)
+			slog.Info("auto-selected project based on git branch",
+				"project_id", currentProjectID,
+				"branch", gitInfo.CurrentBranch,
+				"project_name", branchProject.Name)
+		} else {
+			slog.Info("current git branch has no associated project, falling back to default",
+				"branch", gitInfo.CurrentBranch)
 		}
+	}
+
+	if !gitInfo.IsRepo && currentProjectID == 0 {
+		slog.Info("not in a git repository, using default project")
+	} else if gitInfo.IsRepo && !gitInfo.IsValidForAssociation() && currentProjectID == 0 {
+		slog.Info("git repository state invalid for project association, using default project",
+			"is_detached", gitInfo.IsDetached,
+			"current_branch", gitInfo.CurrentBranch,
+			"has_commits", gitInfo.HasCommits)
 	}
 
 	if currentProjectID == 0 && len(projects) > 0 {
 		currentProjectID = projects[0].ID
+		slog.Info("selected default project",
+			"project_id", currentProjectID,
+			"project_name", projects[0].Name)
+	}
+
+	if currentProjectID == 0 && len(projects) == 0 {
+		slog.Warn("no projects available, TUI may not function correctly")
 	}
 
 	columns, err := application.ColumnService.GetColumnsByProject(loadCtx, currentProjectID)
@@ -99,7 +123,15 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 		labels = []*models.Label{}
 	}
 
-	appState := state.NewAppState(projects, 0, columns, tasks, labels)
+	selectedProjectIndex := 0
+	for i, p := range projects {
+		if p.ID == currentProjectID {
+			selectedProjectIndex = i
+			break
+		}
+	}
+
+	appState := state.NewAppState(projects, selectedProjectIndex, columns, tasks, labels)
 	uiState := state.NewUIState()
 	pickerStates := state.NewPickerStates()
 	formStates := state.NewFormStates()
