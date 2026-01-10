@@ -6,6 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/viewport"
 	"charm.land/huh/v2"
+	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -62,6 +63,13 @@ type FormState struct {
 	InitialFormProjectName        string // Initial project name when form was created
 	InitialFormProjectDescription string // Initial project description when form was created
 	InitialFormProjectGitBranch   string // Initial git branch when form was created
+
+	// Git operation state
+	GitBranchesLoading bool             // True when git branch list is being fetched
+	GitInfoLoading     bool             // True when git info is being detected
+	GitError           string           // Error message from git operations
+	GitBranches        []git.BranchInfo // Cached git branches for project form
+	GitInfo            *git.GitInfo     // Cached git info for project form
 
 	// Label form fields (for creating/editing labels)
 	LabelForm        *huh.Form // The form instance
@@ -193,6 +201,11 @@ func (s *FormState) ClearProjectForm() {
 	s.InitialFormProjectName = ""
 	s.InitialFormProjectDescription = ""
 	s.InitialFormProjectGitBranch = ""
+	s.GitBranchesLoading = false
+	s.GitInfoLoading = false
+	s.GitError = ""
+	s.GitBranches = nil
+	s.GitInfo = nil
 }
 
 // IsProjectFormActive returns true if a project form is currently active.

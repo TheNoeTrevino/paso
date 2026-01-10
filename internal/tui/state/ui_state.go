@@ -17,6 +17,7 @@ const (
 	TicketFormMode                         // Full task form with huh
 	ProjectFormMode                        // Creating a new project with huh
 	EditProjectFormMode                    // Editing an existing project (huh form)
+	ProjectFormLoadingMode                 // Loading git data for project form
 	LabelManagementMode                    // Managing labels (create/edit/delete)
 	LabelAssignMode                        // Quick label assignment to task
 	LabelPickerMode                        // GitHub-style label picker popup
@@ -46,6 +47,7 @@ func (m Mode) UsesLayers() bool {
 	case TicketFormMode,
 		ProjectFormMode,
 		EditProjectFormMode,
+		ProjectFormLoadingMode,
 		AddColumnFormMode,
 		EditColumnFormMode,
 		CommentFormMode,
