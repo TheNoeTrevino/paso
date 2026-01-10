@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"log/slog"
 
 	tea "charm.land/bubbletea/v2"
@@ -208,6 +209,9 @@ func (m Model) handleProjectBranchConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 		m.createProjectWithoutDialog(ctx.ProjectName, ctx.ProjectDescription, ctx.GitBranch)
+		m.UI.Notification.Add(state.LevelInfo,
+			fmt.Sprintf("Branch '%s' transferred from '%s' to '%s'",
+				ctx.GitBranch, ctx.ExistingProject.Name, ctx.ProjectName))
 		m.UIState.ProjectBranchContext = nil
 		m.UIState.Mode = state.NormalMode
 		m.Forms.Form.ClearProjectForm()

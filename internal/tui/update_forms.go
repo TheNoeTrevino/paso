@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -583,6 +584,9 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				},
 				confirmPtr: &m.Forms.Form.FormProjectConfirm,
 			})
+
+		case "f5":
+			return m.handleRefreshGitData()
 		}
 	}
 
@@ -705,6 +709,30 @@ func (m *Model) createProjectWithoutDialog(name, description, gitBranch string) 
 			}
 		}
 	}
+}
+
+func (m Model) handleRefreshGitData() (tea.Model, tea.Cmd) {
+	workDir, err := os.Getwd()
+	if err != nil {
+		slog.Warn("failed to get working directory for cache invalidation", "error", err)
+		m.UI.Notification.Add(state.LevelWarning, "Could not refresh git data")
+		return m, nil
+	}
+
+	m.GitCache.Invalidate(workDir)
+	slog.Info("git cache invalidated, reloading git data", "workDir", workDir)
+
+	forEdit := m.UIState.Mode == state.EditProjectFormMode
+
+	m.UIState.Mode = state.ProjectFormLoadingMode
+	m.LoadingGitInfo = true
+	m.LoadingBranches = true
+	m.SpinnerFrame = 0
+
+	return m, tea.Batch(
+		loadGitDataForProjectFormCmd(m.Ctx, m.GitCache, forEdit),
+		tickGitSpinner(),
+	)
 }
 
 // updateColumnForm handles all messages when in AddColumnFormMode or EditColumnFormMode
