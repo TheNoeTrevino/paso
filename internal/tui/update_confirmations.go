@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/thenoetrevino/paso/internal/services/project"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -187,6 +188,25 @@ func (m Model) handleProjectBranchConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "y", "Y":
+		dbCtx, cancel := m.DBContext()
+		defer cancel()
+
+		emptyBranch := ""
+		updateReq := project.UpdateProjectRequest{
+			ID:        ctx.ExistingProject.ID,
+			GitBranch: &emptyBranch,
+		}
+
+		if err := m.App.ProjectService.UpdateProject(dbCtx, updateReq); err != nil {
+			slog.Error("failed to remove branch from existing project",
+				"project_id", ctx.ExistingProject.ID, "error", err)
+			m.UI.Notification.Add(state.LevelError, "Failed to transfer branch association")
+			m.UIState.ProjectBranchContext = nil
+			m.UIState.Mode = state.NormalMode
+			m.Forms.Form.ClearProjectForm()
+			return m, tea.ClearScreen
+		}
+
 		m.createProjectWithoutDialog(ctx.ProjectName, ctx.ProjectDescription, ctx.GitBranch)
 		m.UIState.ProjectBranchContext = nil
 		m.UIState.Mode = state.NormalMode
