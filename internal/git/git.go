@@ -112,7 +112,9 @@ func checkRepoAndCommits(ctx context.Context) (isRepo bool, hasCommits bool) {
 	output, err := cmd.Output()
 	if err != nil {
 		// Could be "not a repo" or "no commits" - need to distinguish
-		repoCheck := exec.CommandContext(ctx, "git", "rev-parse", "--git-dir")
+		fallbackCtx, fallbackCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer fallbackCancel()
+		repoCheck := exec.CommandContext(fallbackCtx, "git", "rev-parse", "--git-dir")
 		if repoCheck.Run() != nil {
 			return false, false
 		}
