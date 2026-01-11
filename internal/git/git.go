@@ -257,7 +257,7 @@ func SanitizeBranchName(name string) (string, error) {
 	}
 
 	if len(sanitized) > 255 {
-		sanitized = sanitized[:255]
+		return "", fmt.Errorf("branch name too long: %d characters (max 255)", len(sanitized))
 	}
 
 	return sanitized, nil
