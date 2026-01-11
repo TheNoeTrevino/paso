@@ -133,17 +133,16 @@ func TestCreateProject_InGitRepo(t *testing.T) {
 		assert.Regexp(t, `^\d+$`, projectIDStr)
 
 		// Verify project has git_branch set in DB
-		// This will fail initially because git_branch column doesn't exist yet
-		var name, gitBranch string
+		var name string
+		var gitBranch sql.NullString
 		err = db.QueryRowContext(context.Background(),
 			"SELECT name, git_branch FROM projects WHERE id = ?", projectIDStr).Scan(&name, &gitBranch)
 		assert.NoError(t, err)
 		assert.Equal(t, "Git Project", name)
 
 		// The git branch should be set (if we're in a git repo)
-		// If not in a git repo, it should be empty/NULL
-		// This test will be refined based on actual implementation
-		t.Logf("Git branch: '%s'", gitBranch)
+		// If not in a git repo, it should be NULL
+		t.Logf("Git branch: valid=%v, value='%s'", gitBranch.Valid, gitBranch.String)
 	})
 }
 
