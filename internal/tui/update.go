@@ -344,29 +344,6 @@ func (m *Model) updateConnectionStateFromMessage(message string) {
 	}
 }
 
-// fetchGitInfoAsync returns a command that fetches git info and branches asynchronously
-func fetchGitInfoAsync(ctx context.Context, forEdit bool) tea.Cmd {
-	return func() tea.Msg {
-		gitInfo := git.DetectGitInfo(ctx)
-
-		var gitBranches []git.BranchInfo
-		if gitInfo.IsRepo {
-			branches, err := git.ListBranches(ctx)
-			if err != nil {
-				slog.Warn("failed to list git branches", "error", err)
-				return gitInfoError{err: err, forEdit: forEdit}
-			}
-			gitBranches = branches
-		}
-
-		return gitInfoFetched{
-			gitInfo:     gitInfo,
-			gitBranches: gitBranches,
-			forEdit:     forEdit,
-		}
-	}
-}
-
 // tickGitSpinner returns a command that sends a GitSpinnerTickMsg after a short delay
 func tickGitSpinner() tea.Cmd {
 	return tea.Tick(100*time.Millisecond, func(t time.Time) tea.Msg {

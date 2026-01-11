@@ -238,14 +238,14 @@ func SanitizeBranchName(name string) (string, error) {
 		case '~':
 			return "", fmt.Errorf("branch name contains invalid character: ~")
 		case ':':
-			return "", fmt.Errorf("branch name contains invalid character: :")
+			return "", fmt.Errorf("branch name contains invalid character")
 		case ' ':
 			return "", fmt.Errorf("branch name contains invalid character: space")
 		}
 	}
 
 	if strings.Contains(sanitized, "..") {
-		return "", fmt.Errorf("branch name contains invalid sequence: ..")
+		return "", fmt.Errorf("branch name contains invalid sequence")
 	}
 
 	if strings.Contains(sanitized, "@{") {

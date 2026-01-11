@@ -32,18 +32,6 @@ func (m *mockGitChecker) BranchExists(ctx context.Context, branchName string) (b
 	return exists, nil
 }
 
-func (m *mockGitChecker) addBranch(branchName string) {
-	m.branches[branchName] = true
-}
-
-func (m *mockGitChecker) removeBranch(branchName string) {
-	m.branches[branchName] = false
-}
-
-// ============================================================================
-// TEST HELPERS
-// ============================================================================
-
 // setupTestDB creates an in-memory database with full schema using testutil
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
@@ -58,10 +46,6 @@ func newTestService(t *testing.T, db *sql.DB) Service {
 	require.NoError(t, err, "failed to create test service")
 	return svc
 }
-
-// ============================================================================
-// TEST CASES
-// ============================================================================
 
 func TestCreateProject(t *testing.T) {
 	t.Parallel()
