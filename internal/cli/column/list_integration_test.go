@@ -72,27 +72,27 @@ func TestListColumns_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
 		// Verify JSON structure
 		assert.True(t, result["success"].(bool))
-		columns := result["columns"].([]interface{})
+		columns := result["columns"].([]any)
 		assert.Len(t, columns, 3)
 
 		// Verify first column (Todo)
-		firstCol := columns[0].(map[string]interface{})
+		firstCol := columns[0].(map[string]any)
 		assert.Equal(t, "Todo", firstCol["name"])
 		assert.True(t, firstCol["holds_ready_tasks"].(bool))
 
 		// Verify second column (In Progress)
-		secondCol := columns[1].(map[string]interface{})
+		secondCol := columns[1].(map[string]any)
 		assert.Equal(t, "In Progress", secondCol["name"])
 		assert.True(t, secondCol["holds_in_progress_tasks"].(bool))
 
 		// Verify third column (Done)
-		thirdCol := columns[2].(map[string]interface{})
+		thirdCol := columns[2].(map[string]any)
 		assert.Equal(t, "Done", thirdCol["name"])
 		assert.True(t, thirdCol["holds_completed_tasks"].(bool))
 	})
@@ -240,17 +240,17 @@ func TestListColumns_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
 		// Verify structure
 		assert.True(t, result["success"].(bool))
-		columns := result["columns"].([]interface{})
+		columns := result["columns"].([]any)
 		assert.Len(t, columns, 2)
 
 		// Verify first column structure
-		col1 := columns[0].(map[string]interface{})
+		col1 := columns[0].(map[string]any)
 		assert.Equal(t, float64(column1ID), col1["id"])
 		assert.Equal(t, "Backlog", col1["name"])
 		assert.Equal(t, float64(jsonProjectID), col1["project_id"])
@@ -258,7 +258,7 @@ func TestListColumns_Positive(t *testing.T) {
 		assert.False(t, col1["holds_completed_tasks"].(bool))
 
 		// Verify second column structure
-		col2 := columns[1].(map[string]interface{})
+		col2 := columns[1].(map[string]any)
 		assert.Equal(t, float64(column2ID), col2["id"])
 		assert.Equal(t, "Active", col2["name"])
 		assert.Equal(t, float64(jsonProjectID), col2["project_id"])
@@ -433,16 +433,16 @@ func TestListColumns_EdgeCases(t *testing.T) {
 
 		assert.NoError(t, err)
 
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
-		columns := result["columns"].([]interface{})
+		columns := result["columns"].([]any)
 		assert.Len(t, columns, 5)
 
 		// Verify order matches insertion order
 		for i, colInterface := range columns {
-			col := colInterface.(map[string]interface{})
+			col := colInterface.(map[string]any)
 			assert.Equal(t, names[i], col["name"])
 		}
 	})
@@ -511,13 +511,13 @@ func TestListColumns_EdgeCases(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Should still return valid JSON with empty columns array
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
 		// Note: empty project returns "No columns found..." in human-readable
 		// but still processes successfully
-		columns := result["columns"].([]interface{})
+		columns := result["columns"].([]any)
 		assert.Len(t, columns, 0)
 	})
 }

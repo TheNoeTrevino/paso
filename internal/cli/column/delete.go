@@ -87,8 +87,11 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		fmt.Println("⚠ Warning: Deleting column will move all tasks to the project's first column")
 		fmt.Printf("Delete column #%d: '%s'? (y/N): ", columnID, column.Name)
 		var response string
-		if _, err := fmt.Scanln(&response); err != nil {
+		_, err := fmt.Scanln(&response)
+		if err != nil {
 			slog.Error("failed to read user input", "error", err)
+			fmt.Println("Cancelled (failed to read input)")
+			return fmt.Errorf("failed to read user confirmation: %w", err)
 		}
 		if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 			fmt.Println("Cancelled")

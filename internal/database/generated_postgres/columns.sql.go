@@ -74,7 +74,7 @@ insert into columns (
     holds_in_progress_tasks
 )
 values ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, name, prev_id, next_id, project_id, holds_ready_tasks, holds_completed_tasks, holds_in_progress_tasks
+returning id, name, prev_id, next_id, project_id, holds_ready_tasks, holds_completed_tasks, holds_in_progress_tasks
 `
 
 type CreateColumnParams struct {
@@ -391,7 +391,7 @@ where next_id is null
 limit 1
 `
 
-// Retrieves the last column in a project's linked list (where next_id is NULL)
+// Retrieves the last column in a project's linked list (where next_id is null)
 func (q *Queries) GetTailColumnForProject(ctx context.Context, projectID int64) (int64, error) {
 	row := q.db.QueryRowContext(ctx, getTailColumnForProject, projectID)
 	var id int64

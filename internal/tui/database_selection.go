@@ -12,7 +12,7 @@ func (m Model) handleConnectRemote() (tea.Model, tea.Cmd) {
 	// Always show the database picker - user can select local to "disconnect" from remote
 	m.DatabasePicker.Reset()
 	m.DatabasePicker.SavedDatabases = m.Config.Databases
-	m.UIState.SetMode(state.DatabaseSelectMode)
+	m.UIState.Mode = state.DatabaseSelectMode
 
 	return m, nil
 }
@@ -33,7 +33,7 @@ func (m Model) updateDatabaseSelect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.DatabasePicker.IsSelectedSavedDatabase() {
 			selectedDB := m.DatabasePicker.SavedDatabases[m.DatabasePicker.Cursor]
 			m.DatabasePicker.PendingDeleteName = selectedDB.Name
-			m.UIState.SetMode(state.DatabaseDeleteConfirmMode)
+			m.UIState.Mode = state.DatabaseDeleteConfirmMode
 			return m, nil
 		}
 		return m, nil
@@ -47,7 +47,7 @@ func (m Model) updateDatabaseSelect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		if m.DatabasePicker.IsSelectedCreateNew() {
 			// User selected create new - transition to DatabaseCreateMode
-			m.UIState.SetMode(state.DatabaseCreateMode)
+			m.UIState.Mode = state.DatabaseCreateMode
 
 			// Initialize the form with empty fields
 			m.Forms.Form.FormDatabaseName = ""
@@ -87,7 +87,7 @@ func (m Model) updateDatabaseSelect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "esc":
 		// Cancel and return to normal mode
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		m.DatabasePicker.Reset()
 		return m, nil
 	}

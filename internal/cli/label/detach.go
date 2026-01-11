@@ -86,7 +86,7 @@ func runDetach(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success":  true,
 			"task_id":  taskID,
 			"label_id": labelID,

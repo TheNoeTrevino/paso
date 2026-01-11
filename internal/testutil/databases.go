@@ -120,15 +120,15 @@ func RunDatabaseTests(t *testing.T, testFunc func(t *testing.T, db *sql.DB, dbTy
 //	            projectID := testutil.CreateTestProject(t, db, "Test Project")
 //	            return projectID
 //	        },
-//	        func(t *testing.T, db *sql.DB, dbType string, setupData interface{}) {
+//	        func(t *testing.T, db *sql.DB, dbType string, setupData any) {
 //	            // Test function using setupData
 //	        },
 //	    )
 //	}
 func RunDatabaseTestsWithSetup(
 	t *testing.T,
-	setupFunc func(t *testing.T, db *sql.DB, dbType DatabaseType) interface{},
-	testFunc func(t *testing.T, db *sql.DB, dbType DatabaseType, setupData interface{}),
+	setupFunc func(t *testing.T, db *sql.DB, dbType DatabaseType) any,
+	testFunc func(t *testing.T, db *sql.DB, dbType DatabaseType, setupData any),
 ) {
 	for _, tc := range AllDatabases() {
 		t.Run(tc.Name, func(t *testing.T) {

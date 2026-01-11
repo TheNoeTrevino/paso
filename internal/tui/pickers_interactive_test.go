@@ -28,7 +28,7 @@ func TestLabelPicker_NavigationAndSelection(t *testing.T) {
 	m.AppState.SetLabels(labels)
 
 	// Enter label picker mode and set labels
-	m.UIState.SetMode(state.LabelPickerMode)
+	m.UIState.Mode = state.LabelPickerMode
 	for _, label := range labels {
 		m.Pickers.Label.AddItem(state.LabelPickerItem{Label: label, Selected: false})
 	}
@@ -52,7 +52,7 @@ func TestLabelPicker_NavigationAndSelection(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify model was updated successfully
-	if m.UIState.Mode() == state.LabelPickerMode {
+	if m.UIState.Mode == state.LabelPickerMode {
 		// If we're still in picker mode, that's valid for multiple selection
 		if len(m.Pickers.Label.Items) == 0 {
 			t.Error("Expected labels in picker state")
@@ -74,7 +74,7 @@ func TestLabelPicker_FilteringAndBackspace(t *testing.T) {
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to load labels for test setup")
 	m.AppState.SetLabels(labels)
-	m.UIState.SetMode(state.LabelPickerMode)
+	m.UIState.Mode = state.LabelPickerMode
 	for _, label := range labels {
 		m.Pickers.Label.AddItem(state.LabelPickerItem{Label: label, Selected: false})
 	}
@@ -92,8 +92,8 @@ func TestLabelPicker_FilteringAndBackspace(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify we're back to showing labels in the picker
-	if m.UIState.Mode() != state.LabelPickerMode {
-		t.Errorf("Expected mode LabelPickerMode, got %v", m.UIState.Mode())
+	if m.UIState.Mode != state.LabelPickerMode {
+		t.Errorf("Expected mode LabelPickerMode, got %v", m.UIState.Mode)
 	}
 }
 
@@ -110,7 +110,7 @@ func TestLabelPicker_MultiSelectToggle(t *testing.T) {
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to load labels for test setup")
 	m.AppState.SetLabels(labels)
-	m.UIState.SetMode(state.LabelPickerMode)
+	m.UIState.Mode = state.LabelPickerMode
 	for _, label := range labels {
 		m.Pickers.Label.AddItem(state.LabelPickerItem{Label: label, Selected: false})
 	}
@@ -148,7 +148,7 @@ func TestPriorityPicker_Selection(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter priority picker mode
-	m.UIState.SetMode(state.PriorityPickerMode)
+	m.UIState.Mode = state.PriorityPickerMode
 
 	// Navigate down arrow
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
@@ -171,7 +171,7 @@ func TestTypePicker_Selection(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter type picker mode
-	m.UIState.SetMode(state.TypePickerMode)
+	m.UIState.Mode = state.TypePickerMode
 
 	// Navigate down arrow
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
@@ -210,7 +210,7 @@ func TestParentPicker_SearchAndSelect(t *testing.T) {
 	m.AppState.SetTasks(tasks)
 
 	// Enter parent picker mode
-	m.UIState.SetMode(state.ParentPickerMode)
+	m.UIState.Mode = state.ParentPickerMode
 
 	// Type 'p' to filter
 	msg := tea.KeyPressMsg(tea.Key{Text: "p", Code: 'p'})
@@ -249,7 +249,7 @@ func TestChildPicker_SearchAndSelect(t *testing.T) {
 	m.AppState.SetTasks(tasks)
 
 	// Enter child picker mode
-	m.UIState.SetMode(state.ChildPickerMode)
+	m.UIState.Mode = state.ChildPickerMode
 
 	// Type 'c' to filter
 	msg := tea.KeyPressMsg(tea.Key{Text: "c", Code: 'c'})
@@ -272,7 +272,7 @@ func TestRelationTypePicker_Selection(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter relation type picker mode
-	m.UIState.SetMode(state.RelationTypePickerMode)
+	m.UIState.Mode = state.RelationTypePickerMode
 
 	// Navigate down arrow
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
@@ -295,7 +295,7 @@ func TestStatusPicker_ColumnSelection(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter status picker mode
-	m.UIState.SetMode(state.StatusPickerMode)
+	m.UIState.Mode = state.StatusPickerMode
 
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
@@ -331,12 +331,12 @@ func TestLabelPicker_EscapeExitsMode(t *testing.T) {
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to load labels for test setup")
 	m.AppState.SetLabels(labels)
-	m.UIState.SetMode(state.LabelPickerMode)
+	m.UIState.Mode = state.LabelPickerMode
 	for _, label := range labels {
 		m.Pickers.Label.AddItem(state.LabelPickerItem{Label: label, Selected: false})
 	}
 
-	initialMode := m.UIState.Mode()
+	initialMode := m.UIState.Mode
 
 	// Press Escape
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape})
@@ -346,7 +346,7 @@ func TestLabelPicker_EscapeExitsMode(t *testing.T) {
 
 	// Verify something happened (mode change or escape handled)
 	// Escape was processed but mode didn't change (acceptable)
-	_ = m.UIState.Mode() == initialMode
+	_ = m.UIState.Mode == initialMode
 }
 
 // TestPriorityPicker_UpDownNavigation tests up and down navigation in priority picker
@@ -354,7 +354,7 @@ func TestPriorityPicker_UpDownNavigation(t *testing.T) {
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter priority picker mode
-	m.UIState.SetMode(state.PriorityPickerMode)
+	m.UIState.Mode = state.PriorityPickerMode
 
 	// Navigate down
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
@@ -369,7 +369,7 @@ func TestPriorityPicker_UpDownNavigation(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify navigation works
-	if m.UIState.Mode() != state.PriorityPickerMode {
-		t.Errorf("Expected to still be in PriorityPickerMode, got %v", m.UIState.Mode())
+	if m.UIState.Mode != state.PriorityPickerMode {
+		t.Errorf("Expected to still be in PriorityPickerMode, got %v", m.UIState.Mode)
 	}
 }

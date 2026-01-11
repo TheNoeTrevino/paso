@@ -84,21 +84,21 @@ func TestCommentTask_Positive(t *testing.T) {
 		require.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		require.NoError(t, err)
 
 		// Verify JSON structure
 		assert.True(t, result["success"].(bool))
 
-		comment := result["comment"].(map[string]interface{})
+		comment := result["comment"].(map[string]any)
 		assert.NotNil(t, comment["id"])
 		assert.Equal(t, float64(taskID), comment["task_id"])
 		assert.Equal(t, "JSON comment test", comment["message"])
 		assert.NotEmpty(t, comment["author"])
 		assert.NotEmpty(t, comment["created_at"])
 
-		task := result["task"].(map[string]interface{})
+		task := result["task"].(map[string]any)
 		assert.Equal(t, float64(taskID), task["id"])
 		assert.Equal(t, "JSON Test Task", task["title"])
 		assert.NotNil(t, task["ticket_number"])

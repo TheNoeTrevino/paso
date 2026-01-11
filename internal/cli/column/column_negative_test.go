@@ -2,7 +2,6 @@ package column
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -36,15 +35,6 @@ func TestCreateColumn_MissingFlags(t *testing.T) {
 
 	// Test missing --project flag
 	t.Run("missing --project flag", func(t *testing.T) {
-		// Clear env var to test missing flag
-		originalEnv := os.Getenv("PASO_PROJECT")
-		_ = os.Unsetenv("PASO_PROJECT")
-		defer func() {
-			if originalEnv != "" {
-				_ = os.Setenv("PASO_PROJECT", originalEnv)
-			}
-		}()
-
 		cmd := CreateCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--name", "Test Column",
@@ -185,17 +175,8 @@ func TestListColumn_MissingFlags(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	// Test missing --project flag with no env var
-	t.Run("missing --project flag with no env var", func(t *testing.T) {
-		// Clear any PASO_PROJECT env var to ensure test isolation
-		originalEnv := os.Getenv("PASO_PROJECT")
-		_ = os.Unsetenv("PASO_PROJECT")
-		defer func() {
-			if originalEnv != "" {
-				_ = os.Setenv("PASO_PROJECT", originalEnv)
-			}
-		}()
-
+	// Test missing --project flag
+	t.Run("missing --project flag", func(t *testing.T) {
 		cmd := ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--quiet"})
 		if err == nil {

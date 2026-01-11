@@ -87,7 +87,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(strings.TrimSpace(output)), &result)
 		assert.NoError(t, err, "Output should be valid JSON")
 

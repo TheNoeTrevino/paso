@@ -12,7 +12,7 @@ import (
 const createComment = `-- name: CreateComment :one
 insert into task_comments (task_id, content, author)
 values ($1, $2, $3)
-RETURNING id, task_id, content, author, created_at, updated_at
+returning id, task_id, content, author, created_at, updated_at
 `
 
 type CreateCommentParams struct {

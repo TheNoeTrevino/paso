@@ -44,7 +44,7 @@ Examples:
 		slog.Error("failed to marking flag as required", "error", err)
 	}
 
-	cmd.Flags().Int("project", 0, "Project ID (uses PASO_PROJECT env var if not specified)")
+	cmd.Flags().Int("project", 0, "Project ID (uses git branch association if not specified)")
 
 	// Agent-friendly flags
 	cmd.Flags().Bool("json", false, "Output in JSON format")
@@ -57,19 +57,13 @@ Examples:
 type createHandler struct{}
 
 // Execute implements the Handler interface
-func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (interface{}, error) {
-	// Get flag values from arguments
+func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (any, error) {
 	labelName := args.MustGetString("name")
 	labelColor := args.MustGetString("color")
-
-	// Get project ID from flag or environment variable
-	cmd := args.GetCmd()
-	labelProject, err := cli.GetProjectID(cmd)
-	if err != nil {
-		return nil, fmt.Errorf("no project specified: use --project flag or set with 'eval $(paso use project <project-id>)'")
+	if err := cli.ValidateColorHex(labelColor); err != nil {
+		return nil, fmt.Errorf("invalid color: %w", err)
 	}
 
-	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("initialization error: %w", err)
@@ -80,18 +74,18 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (i
 		}
 	}()
 
-	// Validate color format
-	if err := cli.ValidateColorHex(labelColor); err != nil {
-		return nil, fmt.Errorf("invalid color: %w", err)
+	// Get project ID from flag or git branch
+	cmd := args.GetCmd()
+	labelProject, err := cli.GetProjectIDWithCLI(cmd, cliInstance)
+	if err != nil {
+		return nil, fmt.Errorf("no project specified: use --project flag or create a project associated with this branch")
 	}
 
-	// Validate project exists
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, labelProject)
 	if err != nil {
 		return nil, fmt.Errorf("project %d not found", labelProject)
 	}
 
-	// Create label
 	label, err := cliInstance.App.LabelService.CreateLabel(ctx, labelservice.CreateLabelRequest{
 		ProjectID: labelProject,
 		Name:      labelName,

@@ -1,7 +1,9 @@
 package tui
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -11,7 +13,10 @@ import (
 	"github.com/thenoetrevino/paso/internal/app"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
+	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -47,6 +52,21 @@ type dataReloaded struct {
 	labels   []*models.Label
 }
 
+// Git operation messages
+type gitInfoFetched struct {
+	gitInfo     git.GitInfo
+	gitBranches []git.BranchInfo
+	forEdit     bool
+}
+
+type gitInfoError struct {
+	err     error
+	forEdit bool
+}
+
+// GitSpinnerTickMsg is sent periodically to advance the git loading spinner animation
+type GitSpinnerTickMsg time.Time
+
 // databaseSaved and connectionConfirmation message types are defined in update_database.go
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -63,29 +83,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.subscribeToEvents()
 	}
 
-	if m.UIState.Mode() == state.TicketFormMode {
+	if m.UIState.Mode == state.TicketFormMode {
 		return m.updateTaskForm(msg)
 	}
-	if m.UIState.Mode() == state.ProjectFormMode {
+	if m.UIState.Mode == state.ProjectFormMode || m.UIState.Mode == state.EditProjectFormMode {
 		return m.updateProjectForm(msg)
 	}
 	// Handle column forms early to prevent key binding conflicts (e.g., space key)
-	if m.UIState.Mode() == state.AddColumnFormMode || m.UIState.Mode() == state.EditColumnFormMode {
+	if m.UIState.Mode == state.AddColumnFormMode || m.UIState.Mode == state.EditColumnFormMode {
 		return m.updateColumnForm(msg)
 	}
 	// Handle comment form early to prevent key binding conflicts (e.g., space key)
-	if m.UIState.Mode() == state.CommentFormMode {
+	if m.UIState.Mode == state.CommentFormMode {
 		return m.updateCommentForm(msg)
 	}
 	// Handle CommentEditMode early to prevent key binding conflicts (e.g., space key mapped to ViewTask)
-	if m.UIState.Mode() == state.CommentEditMode {
+	if m.UIState.Mode == state.CommentEditMode {
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
 			return m.updateCommentEdit(keyMsg)
 		}
 		return m, nil
 	}
 	// Handle database create form early to prevent key binding conflicts
-	if m.UIState.Mode() == state.DatabaseCreateMode {
+	if m.UIState.Mode == state.DatabaseCreateMode {
 		return m.updateDatabaseCreate(msg)
 	}
 
@@ -134,7 +154,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		slog.Info("after swap", "m.App", m.App, "m.App.ColumnService", m.App.ColumnService)
 		m.CurrentDBType = msg.dbType
 		m.CurrentDBName = msg.dbName
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		m.DatabasePicker.Reset()
 
 		// Stop spinner animation and show success
@@ -147,7 +167,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.reloadAllData()
 
 	case databaseConnectionError:
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		m.DatabasePicker.Reset()
 		// Stop spinner animation and show error
 		m.DatabasePicker.StopConnecting()
@@ -172,16 +192,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// If not connecting anymore, stop animation
 		return m, nil
 
+	case GitSpinnerTickMsg:
+		if m.LoadingGitInfo || m.LoadingBranches {
+			m.SpinnerFrame = (m.SpinnerFrame + 1) % components.GetSpinnerFrameCount()
+			return m, tickGitSpinner()
+		}
+		return m, nil
+
+	case gitInfoFetched:
+		m.LoadingGitInfo = false
+		m.LoadingBranches = false
+		return m.handleGitInfoFetched(msg)
+
+	case gitInfoError:
+		m.LoadingGitInfo = false
+		m.LoadingBranches = false
+
+		if errors.Is(msg.err, context.Canceled) {
+			slog.Info("git info fetch cancelled", "forEdit", msg.forEdit)
+		} else if errors.Is(msg.err, context.DeadlineExceeded) {
+			slog.Warn("git info fetch timed out", "forEdit", msg.forEdit)
+			m.UI.Notification.Add(state.LevelWarning, "Git operation timed out. Creating form without branch list.")
+		} else {
+			slog.Warn("failed to fetch git info", "error", msg.err, "forEdit", msg.forEdit)
+			m.UI.Notification.Add(state.LevelWarning, "Could not load git branches. Creating form without branch list.")
+		}
+
+		return m.createProjectFormWithoutGit(msg.forEdit)
+
 	case connectionConfirmation:
 		if msg.connect {
 			// User wants to connect to the new connection
 			m.DatabasePicker.StartConnecting(msg.config.Name)
-			m.UIState.SetMode(state.NormalMode)
+			m.UIState.Mode = state.NormalMode
 			return m, m.switchToDatabaseConfig(msg.config)
 		} else {
 			// User wants to stay in selection view
 			m.DatabasePicker.PendingConnection = nil
-			m.UIState.SetMode(state.DatabaseSelectMode)
+			m.UIState.Mode = state.DatabaseSelectMode
 			return m, nil
 		}
 
@@ -196,7 +244,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch m.UIState.Mode() {
+	switch m.UIState.Mode {
 	case state.NormalMode:
 		return m.handleNormalMode(msg)
 	case state.DiscardConfirmMode:
@@ -205,19 +253,31 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDeleteConfirm(msg)
 	case state.DeleteColumnConfirmMode:
 		return m.handleDeleteColumnConfirm(msg)
+	case state.ProjectBranchConfirmMode:
+		return m.handleProjectBranchConfirm(msg)
+	case state.ProjectFormLoadingMode:
+		switch msg.String() {
+		case "esc", m.Config.KeyMappings.Quit:
+			m.LoadingGitInfo = false
+			m.LoadingBranches = false
+			m.Forms.Form.ClearProjectForm()
+			m.UIState.Mode = state.NormalMode
+			return m, tea.ClearScreen
+		}
+		return m, nil
 	case state.CommentsViewMode:
 		return m.handleCommentsViewInput(msg)
 	case state.HelpMode:
 		switch msg.String() {
 		case m.Config.KeyMappings.ShowHelp, m.Config.KeyMappings.Quit, "esc", "enter", " ":
-			m.UIState.SetMode(state.NormalMode)
+			m.UIState.Mode = state.NormalMode
 			return m, nil
 		}
 		return m, nil
 	case state.TaskFormHelpMode:
 		switch msg.String() {
 		case "ctrl+h", "esc":
-			m.UIState.SetMode(state.TicketFormMode)
+			m.UIState.Mode = state.TicketFormMode
 			return m, nil
 		}
 		return m, nil
@@ -249,12 +309,12 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.UIState.SetWidth(msg.Width)
-	m.UIState.SetHeight(msg.Height)
+	m.UIState.Height = msg.Height
 
 	m.UI.Notification.SetWindowSize(msg.Width, msg.Height)
 
-	if m.UIState.ViewportOffset()+m.UIState.ViewportSize() > len(m.AppState.Columns()) {
-		m.UIState.SetViewportOffset(max(0, len(m.AppState.Columns())-m.UIState.ViewportSize()))
+	if m.UIState.ViewportOffset+m.UIState.ViewportSize() > len(m.AppState.Columns()) {
+		m.UIState.ViewportOffset = max(0, len(m.AppState.Columns())-m.UIState.ViewportSize())
 	}
 	return m, nil
 }
@@ -282,4 +342,89 @@ func (m *Model) updateConnectionStateFromMessage(message string) {
 	} else if strings.Contains(message, "Failed to reconnect") {
 		m.ConnectionState.SetStatus(state.Disconnected)
 	}
+}
+
+// tickGitSpinner returns a command that sends a GitSpinnerTickMsg after a short delay
+func tickGitSpinner() tea.Cmd {
+	return tea.Tick(100*time.Millisecond, func(t time.Time) tea.Msg {
+		return GitSpinnerTickMsg(t)
+	})
+}
+
+// handleGitInfoFetched handles the gitInfoFetched message and creates the project form
+func (m Model) handleGitInfoFetched(msg gitInfoFetched) (tea.Model, tea.Cmd) {
+	if msg.forEdit {
+		return m.createEditProjectFormWithGit(msg.gitInfo, msg.gitBranches)
+	}
+
+	// For create mode, set the default branch if in a valid git state
+	if msg.gitInfo.IsRepo && msg.gitInfo.IsValidForAssociation() {
+		m.Forms.Form.FormProjectGitBranch = msg.gitInfo.CurrentBranch
+	}
+
+	return m.createNewProjectFormWithGit(msg.gitInfo, msg.gitBranches)
+}
+
+// createProjectFormWithoutGit creates a project form without git branch selection
+func (m Model) createProjectFormWithoutGit(forEdit bool) (tea.Model, tea.Cmd) {
+	if forEdit {
+		return m.createEditProjectFormWithGit(git.GitInfo{IsRepo: false}, nil)
+	}
+	return m.createNewProjectFormWithGit(git.GitInfo{IsRepo: false}, nil)
+}
+
+// createNewProjectFormWithGit creates a new project form with git info
+func (m Model) createNewProjectFormWithGit(gitInfo git.GitInfo, gitBranches []git.BranchInfo) (tea.Model, tea.Cmd) {
+	m.Forms.Form.Git.EditingProjectID = 0
+	m.Forms.Form.FormProjectName = ""
+	m.Forms.Form.FormProjectDescription = ""
+	m.Forms.Form.FormProjectGitBranch = ""
+	m.Forms.Form.FormProjectConfirm = true
+
+	if gitInfo.IsRepo && gitInfo.IsValidForAssociation() {
+		m.Forms.Form.FormProjectGitBranch = gitInfo.CurrentBranch
+	}
+
+	m.Forms.Form.ProjectForm = huhforms.CreateProjectForm(huhforms.ProjectFormProps{
+		Name:        &m.Forms.Form.FormProjectName,
+		Description: &m.Forms.Form.FormProjectDescription,
+		GitBranch:   &m.Forms.Form.FormProjectGitBranch,
+		Confirm:     &m.Forms.Form.FormProjectConfirm,
+		IsEditing:   false,
+		GitBranches: gitBranches,
+		IsGitRepo:   gitInfo.IsRepo,
+	}).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+	m.Forms.Form.SnapshotProjectFormInitialValues()
+	m.UIState.Mode = state.ProjectFormMode
+	return m, m.Forms.Form.ProjectForm.Init()
+}
+
+// createEditProjectFormWithGit creates an edit project form with git info
+func (m Model) createEditProjectFormWithGit(gitInfo git.GitInfo, gitBranches []git.BranchInfo) (tea.Model, tea.Cmd) {
+	currentProject := m.AppState.GetCurrentProject()
+	if currentProject == nil {
+		m.UI.Notification.Add(state.LevelWarning, "No project selected")
+		m.LoadingGitInfo = false
+		m.LoadingBranches = false
+		return m, nil
+	}
+
+	m.Forms.Form.Git.EditingProjectID = currentProject.ID
+	m.Forms.Form.FormProjectName = currentProject.Name
+	m.Forms.Form.FormProjectDescription = currentProject.Description
+	m.Forms.Form.FormProjectGitBranch = currentProject.GitBranch
+	m.Forms.Form.FormProjectConfirm = true
+
+	m.Forms.Form.ProjectForm = huhforms.CreateProjectForm(huhforms.ProjectFormProps{
+		Name:        &m.Forms.Form.FormProjectName,
+		Description: &m.Forms.Form.FormProjectDescription,
+		GitBranch:   &m.Forms.Form.FormProjectGitBranch,
+		Confirm:     &m.Forms.Form.FormProjectConfirm,
+		IsEditing:   true,
+		GitBranches: gitBranches,
+		IsGitRepo:   gitInfo.IsRepo,
+	}).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+	m.Forms.Form.SnapshotProjectFormInitialValues()
+	m.UIState.Mode = state.EditProjectFormMode
+	return m, m.Forms.Form.ProjectForm.Init()
 }

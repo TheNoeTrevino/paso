@@ -85,7 +85,7 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 		assert.NoError(t, err, "Command should succeed")
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		jsonErr := json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, jsonErr, "Output should be valid JSON")
 

@@ -12,17 +12,17 @@ import (
 // Security value: Form state is properly initialized and previous mode is tracked.
 func TestModeTransition_NormalToForm(t *testing.T) {
 	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
-	m.UIState.SetMode(state.NormalMode)
+	m.UIState.Mode = state.NormalMode
 
 	// Simulate mode transition to TicketFormMode
-	m.UIState.SetMode(state.TicketFormMode)
+	m.UIState.Mode = state.TicketFormMode
 
-	if m.UIState.Mode() != state.TicketFormMode {
-		t.Errorf("Mode after transition = %v, want TicketFormMode", m.UIState.Mode())
+	if m.UIState.Mode != state.TicketFormMode {
+		t.Errorf("Mode after transition = %v, want TicketFormMode", m.UIState.Mode)
 	}
 
 	// Verify mode can be tracked back
-	if m.UIState.Mode() == state.NormalMode {
+	if m.UIState.Mode == state.NormalMode {
 		t.Error("Mode should have changed from NormalMode")
 	}
 }
@@ -34,16 +34,16 @@ func TestModeTransition_FormToNormal(t *testing.T) {
 	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
 
 	// Start in form mode
-	m.UIState.SetMode(state.TicketFormMode)
-	if m.UIState.Mode() != state.TicketFormMode {
+	m.UIState.Mode = state.TicketFormMode
+	if m.UIState.Mode != state.TicketFormMode {
 		t.Fatal("Failed to set mode to TicketFormMode")
 	}
 
 	// Transition back to normal
-	m.UIState.SetMode(state.NormalMode)
+	m.UIState.Mode = state.NormalMode
 
-	if m.UIState.Mode() != state.NormalMode {
-		t.Errorf("Mode after transition = %v, want NormalMode", m.UIState.Mode())
+	if m.UIState.Mode != state.NormalMode {
+		t.Errorf("Mode after transition = %v, want NormalMode", m.UIState.Mode)
 	}
 }
 
@@ -52,7 +52,7 @@ func TestModeTransition_FormToNormal(t *testing.T) {
 // Security value: Each transition is independent and mode state is always consistent.
 func TestModeTransition_MultipleTransitions(t *testing.T) {
 	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
-	m.UIState.SetMode(state.NormalMode)
+	m.UIState.Mode = state.NormalMode
 
 	// Series of transitions
 	modes := []state.Mode{
@@ -65,9 +65,9 @@ func TestModeTransition_MultipleTransitions(t *testing.T) {
 	}
 
 	for _, mode := range modes {
-		m.UIState.SetMode(mode)
-		if m.UIState.Mode() != mode {
-			t.Errorf("Mode after transition = %v, want %v", m.UIState.Mode(), mode)
+		m.UIState.Mode = mode
+		if m.UIState.Mode != mode {
+			t.Errorf("Mode after transition = %v, want %v", m.UIState.Mode, mode)
 		}
 	}
 }
@@ -95,9 +95,9 @@ func TestSelectedColumn_BoundaryConditions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m.UIState.SetSelectedColumn(tt.selection)
-			if m.UIState.SelectedColumn() != tt.want {
-				t.Errorf("SelectedColumn = %d, want %d", m.UIState.SelectedColumn(), tt.want)
+			m.UIState.SelectedColumn = tt.selection
+			if m.UIState.SelectedColumn != tt.want {
+				t.Errorf("SelectedColumn = %d, want %d", m.UIState.SelectedColumn, tt.want)
 			}
 		})
 	}
@@ -118,7 +118,7 @@ func TestSelectedTask_UpdatesCorrectly(t *testing.T) {
 		},
 	}
 	m := setupTestModel(columns, tasks)
-	m.UIState.SetSelectedColumn(0)
+	m.UIState.SelectedColumn = 0
 
 	tests := []struct {
 		name      string
@@ -132,9 +132,9 @@ func TestSelectedTask_UpdatesCorrectly(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m.UIState.SetSelectedTask(tt.selection)
-			if m.UIState.SelectedTask() != tt.want {
-				t.Errorf("SelectedTask = %d, want %d", m.UIState.SelectedTask(), tt.want)
+			m.UIState.SelectedTask = tt.selection
+			if m.UIState.SelectedTask != tt.want {
+				t.Errorf("SelectedTask = %d, want %d", m.UIState.SelectedTask, tt.want)
 			}
 		})
 	}
@@ -160,15 +160,15 @@ func TestCursorPosition_AtEnd(t *testing.T) {
 	m := setupTestModel(columns, tasks)
 
 	// Position at last column
-	m.UIState.SetSelectedColumn(len(columns) - 1)
-	if m.UIState.SelectedColumn() != 1 {
-		t.Errorf("SelectedColumn at end = %d, want 1", m.UIState.SelectedColumn())
+	m.UIState.SelectedColumn = len(columns) - 1
+	if m.UIState.SelectedColumn != 1 {
+		t.Errorf("SelectedColumn at end = %d, want 1", m.UIState.SelectedColumn)
 	}
 
 	// Position at last task in last column
-	m.UIState.SetSelectedTask(len(tasks[2]) - 1)
-	if m.UIState.SelectedTask() != 0 {
-		t.Errorf("SelectedTask at end = %d, want 0", m.UIState.SelectedTask())
+	m.UIState.SelectedTask = len(tasks[2]) - 1
+	if m.UIState.SelectedTask != 0 {
+		t.Errorf("SelectedTask at end = %d, want 0", m.UIState.SelectedTask)
 	}
 }
 
@@ -179,13 +179,13 @@ func TestEmptyState_HandlesEmptyColumns(t *testing.T) {
 	m := setupTestModel([]*models.Column{}, nil)
 
 	// Should default to valid state even with no columns
-	if m.UIState.SelectedColumn() != 0 {
-		t.Errorf("SelectedColumn with no columns = %d, want 0", m.UIState.SelectedColumn())
+	if m.UIState.SelectedColumn != 0 {
+		t.Errorf("SelectedColumn with no columns = %d, want 0", m.UIState.SelectedColumn)
 	}
 
 	// Should handle mode transitions in empty state
-	m.UIState.SetMode(state.AddColumnFormMode)
-	if m.UIState.Mode() != state.AddColumnFormMode {
+	m.UIState.Mode = state.AddColumnFormMode
+	if m.UIState.Mode != state.AddColumnFormMode {
 		t.Error("Should transition to AddColumnFormMode in empty state")
 	}
 }
@@ -205,17 +205,17 @@ func TestEmptyState_HandlesEmptyTasks(t *testing.T) {
 		},
 	}
 	m := setupTestModel(columns, tasks)
-	m.UIState.SetSelectedColumn(0)
+	m.UIState.SelectedColumn = 0
 
 	// Select task in empty column
-	m.UIState.SetSelectedTask(0)
-	if m.UIState.SelectedTask() != 0 {
-		t.Errorf("SelectedTask in empty column = %d, want 0", m.UIState.SelectedTask())
+	m.UIState.SelectedTask = 0
+	if m.UIState.SelectedTask != 0 {
+		t.Errorf("SelectedTask in empty column = %d, want 0", m.UIState.SelectedTask)
 	}
 
 	// Mode should still work in empty column
-	m.UIState.SetMode(state.TicketFormMode)
-	if m.UIState.Mode() != state.TicketFormMode {
+	m.UIState.Mode = state.TicketFormMode
+	if m.UIState.Mode != state.TicketFormMode {
 		t.Error("Should allow mode transitions in empty column")
 	}
 }
@@ -230,20 +230,20 @@ func TestStateIndependence_ColumnAndTaskSelection(t *testing.T) {
 	}
 	m := setupTestModel(columns, nil)
 
-	m.UIState.SetSelectedColumn(0)
-	m.UIState.SetSelectedTask(5)
+	m.UIState.SelectedColumn = 0
+	m.UIState.SelectedTask = 5
 
 	// Change column
-	m.UIState.SetSelectedColumn(1)
+	m.UIState.SelectedColumn = 1
 
 	// Task selection should remain unchanged (value stays 5, even if out of bounds)
-	if m.UIState.SelectedTask() != 5 {
-		t.Errorf("SelectedTask after column change = %d, want 5 (unchanged value)", m.UIState.SelectedTask())
+	if m.UIState.SelectedTask != 5 {
+		t.Errorf("SelectedTask after column change = %d, want 5 (unchanged value)", m.UIState.SelectedTask)
 	}
 
 	// Column should have changed
-	if m.UIState.SelectedColumn() != 1 {
-		t.Errorf("SelectedColumn = %d, want 1", m.UIState.SelectedColumn())
+	if m.UIState.SelectedColumn != 1 {
+		t.Errorf("SelectedColumn = %d, want 1", m.UIState.SelectedColumn)
 	}
 }
 

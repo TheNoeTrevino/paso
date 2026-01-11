@@ -103,7 +103,7 @@ func TestSnapshots(t *testing.T) {
 
 			// Set fixed terminal size for consistent snapshots (80x24 is standard)
 			m.UIState.SetWidth(80)
-			m.UIState.SetHeight(24)
+			m.UIState.Height = 24
 
 			// Render the view
 			view := m.View()
@@ -478,7 +478,7 @@ func createAppContainer(t *testing.T, db *sql.DB) *app.App {
 	require.NoError(t, err, "failed to create column service")
 	labelSvc, err := label.NewService(db, dbType, nil)
 	require.NoError(t, err, "failed to create label service")
-	projectSvc, err := project.NewService(db, dbType, nil)
+	projectSvc, err := project.NewService(db, dbType, nil, nil)
 	require.NoError(t, err, "failed to create project service")
 	return &app.App{
 		TaskService:    taskSvc,

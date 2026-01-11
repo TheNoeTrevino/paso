@@ -2,7 +2,10 @@ package tui
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -319,7 +322,7 @@ type formConfig struct {
 // handleFormUpdate processes form messages generically
 func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd) {
 	if cfg.form == nil {
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		return m, nil
 	}
 
@@ -329,8 +332,14 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 
 	// Check completion
 	if cfg.form.State == huh.StateCompleted {
+		modeBeforeComplete := m.UIState.Mode
 		cfg.onComplete()
-		m.UIState.SetMode(state.NormalMode)
+
+		if m.UIState.Mode != modeBeforeComplete {
+			return m, nil
+		}
+
+		m.UIState.Mode = state.NormalMode
 		cfg.setForm(nil)
 		cfg.clearForm()
 		return m, tea.ClearScreen
@@ -346,7 +355,7 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 // Sets confirmation to true and completes the form, triggering the save flow.
 func (m Model) handleFormSave(cfg formConfig) (tea.Model, tea.Cmd) {
 	if cfg.form == nil {
-		m.UIState.SetMode(state.NormalMode)
+		m.UIState.Mode = state.NormalMode
 		return m, nil
 	}
 
@@ -362,7 +371,7 @@ func (m Model) handleFormSave(cfg formConfig) (tea.Model, tea.Cmd) {
 	cfg.onComplete()
 
 	// Clean up and return to normal mode
-	m.UIState.SetMode(state.NormalMode)
+	m.UIState.Mode = state.NormalMode
 	cfg.setForm(nil)
 	cfg.clearForm()
 
@@ -399,56 +408,56 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Check for changes before allowing abort
 			if m.Forms.Form.HasTaskFormChanges() {
 				// Show discard confirmation
-				m.UIState.SetDiscardContext(&state.DiscardContext{
+				m.UIState.DiscardContext = &state.DiscardContext{
 					SourceMode: state.TicketFormMode,
 					Message:    "This task has unsaved changes. Discard?",
-				})
-				m.UIState.SetMode(state.DiscardConfirmMode)
+				}
+				m.UIState.Mode = state.DiscardConfirmMode
 				return m, nil
 			}
 			// No changes - allow immediate close
-			m.UIState.SetMode(state.NormalMode)
+			m.UIState.Mode = state.NormalMode
 			m.Forms.Form.ClearTaskForm()
 			return m, tea.ClearScreen
 
 		case "ctrl+p":
 			// Open parent picker
 			if m.initParentPickerForForm() {
-				m.UIState.SetMode(state.ParentPickerMode)
+				m.UIState.Mode = state.ParentPickerMode
 			}
 			return m, nil
 
 		case "ctrl+c":
 			// Open child picker
 			if m.initChildPickerForForm() {
-				m.UIState.SetMode(state.ChildPickerMode)
+				m.UIState.Mode = state.ChildPickerMode
 			}
 			return m, nil
 
 		case "ctrl+l":
 			// Open label picker
 			if m.initLabelPickerForForm() {
-				m.UIState.SetMode(state.LabelPickerMode)
+				m.UIState.Mode = state.LabelPickerMode
 			}
 			return m, nil
 
 		case "ctrl+r":
 			// Open priority picker
 			if m.initPriorityPickerForForm() {
-				m.UIState.SetMode(state.PriorityPickerMode)
+				m.UIState.Mode = state.PriorityPickerMode
 			}
 			return m, nil
 
 		case "ctrl+t":
 			// Open type picker
 			if m.initTypePickerForForm() {
-				m.UIState.SetMode(state.TypePickerMode)
+				m.UIState.Mode = state.TypePickerMode
 			}
 			return m, nil
 
 		case "ctrl+h":
 			// Open task form help menu
-			m.UIState.SetMode(state.TaskFormHelpMode)
+			m.UIState.Mode = state.TaskFormHelpMode
 			return m, nil
 
 		case "ctrl+down":
@@ -536,7 +545,7 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	})
 }
 
-// updateProjectForm handles all messages when in ProjectFormMode
+// updateProjectForm handles all messages when in ProjectFormMode or EditProjectFormMode
 // This is separated out because forms need to receive ALL messages, not just KeyMsg
 func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check for keyboard shortcuts before passing to form
@@ -545,16 +554,19 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			// Check for changes before allowing abort
 			if m.Forms.Form.HasProjectFormChanges() {
-				// Show discard confirmation
-				m.UIState.SetDiscardContext(&state.DiscardContext{
-					SourceMode: state.ProjectFormMode,
-					Message:    "Discard project?",
-				})
-				m.UIState.SetMode(state.DiscardConfirmMode)
+				sourceMode := state.ProjectFormMode
+				if m.UIState.Mode == state.EditProjectFormMode {
+					sourceMode = state.EditProjectFormMode
+				}
+				m.UIState.DiscardContext = &state.DiscardContext{
+					SourceMode: sourceMode,
+					Message:    "Discard project changes?",
+				}
+				m.UIState.Mode = state.DiscardConfirmMode
 				return m, nil
 			}
 			// No changes - allow immediate close
-			m.UIState.SetMode(state.NormalMode)
+			m.UIState.Mode = state.NormalMode
 			m.Forms.Form.ClearProjectForm()
 			return m, tea.ClearScreen
 
@@ -568,37 +580,13 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.Forms.Form.ClearProjectForm()
 				},
 				onComplete: func() {
-					name := strings.TrimSpace(m.Forms.Form.FormProjectName)
-					description := strings.TrimSpace(m.Forms.Form.FormProjectDescription)
-					confirm := m.Forms.Form.FormProjectConfirm
-
-					if !confirm {
-						return
-					}
-
-					if name != "" {
-						ctx, cancel := m.DBContext()
-						defer cancel()
-						project, err := m.App.ProjectService.CreateProject(ctx, projectService.CreateProjectRequest{
-							Name:        name,
-							Description: description,
-						})
-						if err != nil {
-							slog.Error("failed to creating project", "error", err)
-							m.UI.Notification.Add(state.LevelError, "Error creating project")
-						} else {
-							m.reloadProjects()
-							for i, p := range m.AppState.Projects() {
-								if p.ID == project.ID {
-									m.switchToProject(i)
-									break
-								}
-							}
-						}
-					}
+					m.submitProjectForm()
 				},
 				confirmPtr: &m.Forms.Form.FormProjectConfirm,
 			})
+
+		case "f5":
+			return m.handleRefreshGitData()
 		}
 	}
 
@@ -611,42 +599,140 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Forms.Form.ClearProjectForm()
 		},
 		onComplete: func() {
-			// Read values from form state (forms update pointers in place)
-			name := strings.TrimSpace(m.Forms.Form.FormProjectName)
-			description := strings.TrimSpace(m.Forms.Form.FormProjectDescription)
-			confirm := m.Forms.Form.FormProjectConfirm
-
-			// Form submitted - check confirmation and create the project
-			if !confirm {
-				// User selected "No" on confirmation
-				return
-			}
-
-			if name != "" {
-				ctx, cancel := m.DBContext()
-				defer cancel()
-				project, err := m.App.ProjectService.CreateProject(ctx, projectService.CreateProjectRequest{
-					Name:        name,
-					Description: description,
-				})
-				if err != nil {
-					slog.Error("failed to creating project", "error", err)
-					m.UI.Notification.Add(state.LevelError, "Error creating project")
-				} else {
-					// Reload projects list
-					m.reloadProjects()
-
-					// Switch to the new project
-					for i, p := range m.AppState.Projects() {
-						if p.ID == project.ID {
-							m.switchToProject(i)
-							break
-						}
-					}
-				}
-			}
+			m.submitProjectForm()
 		},
 	})
+}
+
+func (m *Model) submitProjectForm() {
+	name := strings.TrimSpace(m.Forms.Form.FormProjectName)
+	description := strings.TrimSpace(m.Forms.Form.FormProjectDescription)
+	gitBranch := strings.TrimSpace(m.Forms.Form.FormProjectGitBranch)
+	confirm := m.Forms.Form.FormProjectConfirm
+
+	if !confirm || name == "" {
+		return
+	}
+
+	if m.Forms.Form.Git.EditingProjectID != 0 {
+		m.updateProject(name, description, gitBranch)
+	} else {
+		if gitBranch != "" {
+			ctx, cancel := m.DBContext()
+			defer cancel()
+			existingProject, err := m.App.ProjectService.GetProjectByGitBranch(ctx, gitBranch)
+			if err != nil {
+				slog.Error("failed to check branch association", "branch", gitBranch, "error", err)
+			}
+
+			if existingProject != nil {
+				m.UIState.ProjectBranchContext = &state.ProjectBranchContext{
+					ProjectName:        name,
+					ProjectDescription: description,
+					GitBranch:          gitBranch,
+					ExistingProject:    existingProject,
+				}
+				m.UIState.Mode = state.ProjectBranchConfirmMode
+				return
+			}
+		}
+
+		m.createProjectWithoutDialog(name, description, gitBranch)
+	}
+}
+
+func (m *Model) updateProject(name, description, gitBranch string) {
+	ctx, cancel := m.DBContext()
+	defer cancel()
+
+	var branchPtr *string
+	if gitBranch != "" {
+		branchPtr = &gitBranch
+	} else {
+		emptyBranch := ""
+		branchPtr = &emptyBranch
+	}
+
+	err := m.App.ProjectService.UpdateProject(ctx, projectService.UpdateProjectRequest{
+		ID:          m.Forms.Form.Git.EditingProjectID,
+		Name:        &name,
+		Description: &description,
+		GitBranch:   branchPtr,
+	})
+
+	if err != nil {
+		if errors.Is(err, projectService.ErrGitBranchAlreadyAssociated) && gitBranch != "" {
+			existingProject, lookupErr := m.App.ProjectService.GetProjectByGitBranch(ctx, gitBranch)
+			if lookupErr == nil && existingProject != nil {
+				m.UI.Notification.Add(state.LevelError,
+					fmt.Sprintf("Error: Branch already in use by project: %s", existingProject.Name))
+			} else {
+				m.UI.Notification.Add(state.LevelError, "Error: Branch already in use by another project")
+			}
+		} else {
+			slog.Error("failed updating project", "error", err)
+			m.UI.Notification.Add(state.LevelError, "Error updating project")
+		}
+	} else {
+		m.reloadProjects()
+		m.UI.Notification.Add(state.LevelInfo, "Project updated successfully")
+	}
+}
+
+func (m *Model) createProjectWithoutDialog(name, description, gitBranch string) {
+	ctx, cancel := m.DBContext()
+	defer cancel()
+	project, err := m.App.ProjectService.CreateProject(ctx, projectService.CreateProjectRequest{
+		Name:        name,
+		Description: description,
+		GitBranch:   gitBranch,
+	})
+	if err != nil {
+		if errors.Is(err, projectService.ErrGitBranchAlreadyAssociated) && gitBranch != "" {
+			existingProject, lookupErr := m.App.ProjectService.GetProjectByGitBranch(ctx, gitBranch)
+			if lookupErr == nil && existingProject != nil {
+				m.UI.Notification.Add(state.LevelError,
+					fmt.Sprintf("Error: Branch already in use by project: %s", existingProject.Name))
+			} else {
+				m.UI.Notification.Add(state.LevelError, "Error: Branch already in use by another project")
+			}
+		} else {
+			slog.Error("failed to creating project", "error", err)
+			m.UI.Notification.Add(state.LevelError, "Error creating project")
+		}
+	} else {
+		m.reloadProjects()
+		for i, p := range m.AppState.Projects() {
+			if p.ID == project.ID {
+				m.switchToProject(i)
+				break
+			}
+		}
+	}
+}
+
+func (m Model) handleRefreshGitData() (tea.Model, tea.Cmd) {
+	workDir, err := os.Getwd()
+	if err != nil {
+		slog.Warn("failed to get working directory for cache invalidation", "error", err)
+		m.UI.Notification.Add(state.LevelWarning, "Could not refresh git data")
+		return m, nil
+	}
+
+	m.GitCache.Invalidate(workDir)
+	slog.Info("git cache invalidated, reloading git data", "workDir", workDir)
+
+	forEdit := m.UIState.Mode == state.EditProjectFormMode
+
+	m.UIState.Mode = state.ProjectFormLoadingMode
+	m.LoadingGitInfo = true
+	m.LoadingBranches = true
+	m.SpinnerFrame = 0
+
+	return m, tea.Batch(
+		loadGitDataForProjectFormCmd(m.Ctx, m.GitCache, forEdit),
+		tickGitSpinner(),
+	)
 }
 
 // updateColumnForm handles all messages when in AddColumnFormMode or EditColumnFormMode
@@ -657,17 +743,17 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch keyMsg.String() {
 		case "esc":
 			// For edit mode, check for changes before allowing abort
-			if m.UIState.Mode() == state.EditColumnFormMode && m.Forms.Form.HasColumnFormChanges() {
+			if m.UIState.Mode == state.EditColumnFormMode && m.Forms.Form.HasColumnFormChanges() {
 				// Show discard confirmation
-				m.UIState.SetDiscardContext(&state.DiscardContext{
+				m.UIState.DiscardContext = &state.DiscardContext{
 					SourceMode: state.EditColumnFormMode,
 					Message:    "Discard changes to column?",
-				})
-				m.UIState.SetMode(state.DiscardConfirmMode)
+				}
+				m.UIState.Mode = state.DiscardConfirmMode
 				return m, nil
 			}
 			// No changes or in create mode - allow immediate close
-			m.UIState.SetMode(state.NormalMode)
+			m.UIState.Mode = state.NormalMode
 			m.Forms.Form.ClearColumnForm()
 			return m, tea.ClearScreen
 		}
@@ -740,20 +826,20 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// For edit mode, check for changes before allowing abort
 			if m.Forms.Form.EditingCommentID != 0 && m.Forms.Form.HasCommentFormChanges() {
 				// Show discard confirmation
-				m.UIState.SetDiscardContext(&state.DiscardContext{
+				m.UIState.DiscardContext = &state.DiscardContext{
 					SourceMode: state.CommentFormMode,
 					Message:    "Discard changes to comment?",
-				})
-				m.UIState.SetMode(state.DiscardConfirmMode)
+				}
+				m.UIState.Mode = state.DiscardConfirmMode
 				return m, nil
 			}
 			// No changes or in create mode - return to appropriate mode
 			returnMode := m.Forms.Form.CommentFormReturnMode
 			if returnMode == state.CommentsViewMode {
 				m.Forms.Comment.SetComments(m.Forms.Form.FormComments)
-				m.UIState.SetMode(state.CommentsViewMode)
+				m.UIState.Mode = state.CommentsViewMode
 			} else {
-				m.UIState.SetMode(state.TicketFormMode)
+				m.UIState.Mode = state.TicketFormMode
 			}
 			m.Forms.Form.ClearCommentForm()
 			return m, tea.ClearScreen
@@ -830,9 +916,9 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if returnMode == state.CommentsViewMode {
 				// Refresh comments view and return to it
 				m.Forms.Comment.SetComments(m.Forms.Form.FormComments)
-				m.UIState.SetMode(state.CommentsViewMode)
+				m.UIState.Mode = state.CommentsViewMode
 			} else {
-				m.UIState.SetMode(state.TicketFormMode)
+				m.UIState.Mode = state.TicketFormMode
 			}
 		},
 		confirmPtr: nil, // Comment forms don't have confirmation field
@@ -848,7 +934,7 @@ func (m Model) handleOpenCommentsView() (tea.Model, tea.Cmd) {
 	m.Forms.Comment.ScrollOffset = 0
 
 	// Switch to comments view mode
-	m.UIState.SetMode(state.CommentsViewMode)
+	m.UIState.Mode = state.CommentsViewMode
 
 	return m, nil
 }

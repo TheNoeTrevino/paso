@@ -34,10 +34,10 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.Pickers.Label.ReturnMode == state.TicketFormMode {
 			// In form mode: sync selections and return to form
 			m.syncLabelPickerToFormState()
-			m.UIState.SetMode(state.TicketFormMode)
+			m.UIState.Mode = state.TicketFormMode
 		} else {
 			// In view mode: return to NormalMode
-			m.UIState.SetMode(state.NormalMode)
+			m.UIState.Mode = state.NormalMode
 		}
 		m.Pickers.Label.Filter = ""
 		m.Pickers.Label.Cursor = 0
@@ -243,7 +243,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.syncParentPickerToFormState()
 		}
 
-		m.UIState.SetMode(returnMode)
+		m.UIState.Mode = returnMode
 		m.Pickers.Parent.Filter = ""
 		m.Pickers.Parent.Cursor = 0
 		return m, nil
@@ -337,7 +337,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-			m.UIState.SetMode(state.RelationTypePickerMode)
+			m.UIState.Mode = state.RelationTypePickerMode
 		}
 		return m, nil
 
@@ -398,7 +398,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.syncChildPickerToFormState()
 		}
 
-		m.UIState.SetMode(returnMode)
+		m.UIState.Mode = returnMode
 		m.Pickers.Child.Filter = ""
 		m.Pickers.Child.Cursor = 0
 		return m, nil
@@ -492,7 +492,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-			m.UIState.SetMode(state.RelationTypePickerMode)
+			m.UIState.Mode = state.RelationTypePickerMode
 		}
 		return m, nil
 
@@ -531,7 +531,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		// Return to ticket form mode without changing priority
-		m.UIState.SetMode(m.Pickers.Priority.ReturnMode)
+		m.UIState.Mode = m.Pickers.Priority.ReturnMode
 		m.Pickers.Priority.Reset()
 		return m, nil
 
@@ -589,7 +589,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Return to ticket form mode
-		m.UIState.SetMode(m.Pickers.Priority.ReturnMode)
+		m.UIState.Mode = m.Pickers.Priority.ReturnMode
 		return m, nil
 	}
 
@@ -607,7 +607,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		// Return to ticket form mode without changing type
-		m.UIState.SetMode(m.Pickers.Type.ReturnMode)
+		m.UIState.Mode = m.Pickers.Type.ReturnMode
 		m.Pickers.Type.Reset()
 		return m, nil
 
@@ -663,7 +663,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Return to ticket form mode
-		m.UIState.SetMode(m.Pickers.Type.ReturnMode)
+		m.UIState.Mode = m.Pickers.Type.ReturnMode
 		return m, nil
 	}
 
@@ -680,7 +680,7 @@ func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		// Return to previous picker (parent or child) without changing relation type
-		m.UIState.SetMode(m.Pickers.RelationType.ReturnMode)
+		m.UIState.Mode = m.Pickers.RelationType.ReturnMode
 		m.Pickers.RelationType.Reset()
 		return m, nil
 
@@ -739,7 +739,7 @@ func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Return to previous picker mode
-		m.UIState.SetMode(m.Pickers.RelationType.ReturnMode)
+		m.UIState.Mode = m.Pickers.RelationType.ReturnMode
 		return m, nil
 	}
 

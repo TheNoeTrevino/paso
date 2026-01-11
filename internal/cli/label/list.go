@@ -32,7 +32,7 @@ Examples:
 	}
 
 	// Flags
-	cmd.Flags().Int("project", 0, "Project ID (uses PASO_PROJECT env var if not specified)")
+	cmd.Flags().Int("project", 0, "Project ID (uses git branch association if not specified)")
 
 	// Agent-friendly flags
 	cmd.Flags().Bool("json", false, "Output in JSON format")
@@ -48,18 +48,7 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
-	// Get project ID from flag or environment variable
-	labelProject, err := cli.GetProjectID(cmd)
-	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
-			err.Error(),
-			"Set project with: eval $(paso use project <project-id>)"); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
-	}
-
-	// Initialize CLI
+	// Initialize CLI first
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
@@ -72,6 +61,17 @@ func runList(cmd *cobra.Command, args []string) error {
 			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
+
+	// Get project ID from flag or git branch
+	labelProject, err := cli.GetProjectIDWithCLI(cmd, cliInstance)
+	if err != nil {
+		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
+			err.Error(),
+			"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
+			slog.Error("failed to formatting error message", "error", fmtErr)
+		}
+		os.Exit(cli.ExitUsage)
+	}
 
 	// Validate project exists
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, labelProject)
@@ -100,16 +100,16 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonOutput {
-		labelList := make([]map[string]interface{}, len(labels))
+		labelList := make([]map[string]any, len(labels))
 		for i, lbl := range labels {
-			labelList[i] = map[string]interface{}{
+			labelList[i] = map[string]any{
 				"id":         lbl.ID,
 				"name":       lbl.Name,
 				"color":      lbl.Color,
 				"project_id": lbl.ProjectID,
 			}
 		}
-		return json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success": true,
 			"labels":  labelList,
 		})

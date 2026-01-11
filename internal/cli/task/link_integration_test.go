@@ -125,7 +125,7 @@ func TestLinkTask_Positive(t *testing.T) {
 		require.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		require.NoError(t, err)
 
@@ -153,7 +153,7 @@ func TestLinkTask_Positive(t *testing.T) {
 		require.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		require.NoError(t, err)
 
@@ -181,7 +181,7 @@ func TestLinkTask_Positive(t *testing.T) {
 		require.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		require.NoError(t, err)
 

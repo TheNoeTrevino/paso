@@ -38,7 +38,7 @@ func (m Model) updateDatabaseCreate(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if keyMsg.String() == "esc" {
 			// Clear form and return to database select mode
 			m.Forms.Form.ClearDatabaseForm()
-			m.UIState.SetMode(state.DatabaseSelectMode)
+			m.UIState.Mode = state.DatabaseSelectMode
 			return m, nil
 		}
 	}
@@ -56,7 +56,7 @@ func (m Model) updateDatabaseCreate(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err := validateConnectionString(m.Forms.Form.FormDatabaseConnString, m.Forms.Form.FormDatabaseType); err != nil {
 			m.DatabasePicker.SetError(err)
 			m.Forms.Form.ClearDatabaseForm()
-			m.UIState.SetMode(state.DatabaseSelectMode)
+			m.UIState.Mode = state.DatabaseSelectMode
 			return m, nil
 		}
 
@@ -71,7 +71,7 @@ func (m Model) updateDatabaseCreate(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err := m.Config.AddDatabase(cfg.Name, cfg.ConnectionString, cfg.Type); err != nil {
 			m.DatabasePicker.SetError(fmt.Errorf("failed to save connection: %w", err))
 			m.Forms.Form.ClearDatabaseForm()
-			m.UIState.SetMode(state.DatabaseSelectMode)
+			m.UIState.Mode = state.DatabaseSelectMode
 			return m, nil
 		}
 
@@ -81,7 +81,7 @@ func (m Model) updateDatabaseCreate(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Store pending connection and show confirmation dialog
 		m.DatabasePicker.PendingConnection = &cfg
 		m.Forms.Form.ClearDatabaseForm()
-		m.UIState.SetMode(state.DatabaseConnectConfirmMode)
+		m.UIState.Mode = state.DatabaseConnectConfirmMode
 
 		return m, nil
 	}
@@ -89,7 +89,7 @@ func (m Model) updateDatabaseCreate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check for form abort (user pressed No on confirmation)
 	if m.Forms.Form.DatabaseForm.State == huh.StateAborted {
 		m.Forms.Form.ClearDatabaseForm()
-		m.UIState.SetMode(state.DatabaseSelectMode)
+		m.UIState.Mode = state.DatabaseSelectMode
 		return m, nil
 	}
 

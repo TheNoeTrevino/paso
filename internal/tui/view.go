@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"log/slog"
+
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -21,7 +23,7 @@ func (m Model) View() tea.View {
 	}
 
 	// Check if current mode uses layer-based rendering
-	if m.UIState.Mode().UsesLayers() {
+	if m.UIState.Mode.UsesLayers() {
 		// Layer-based rendering: always show base board with modal overlays
 		baseView := m.viewKanbanBoard()
 
@@ -32,11 +34,13 @@ func (m Model) View() tea.View {
 
 		// Add modal overlay based on mode
 		var modalLayer *lipgloss.Layer
-		switch m.UIState.Mode() {
+		switch m.UIState.Mode {
 		case state.TicketFormMode:
 			modalLayer = m.renderTaskFormLayer()
-		case state.ProjectFormMode:
+		case state.ProjectFormMode, state.EditProjectFormMode:
 			modalLayer = m.renderProjectFormLayer()
+		case state.ProjectFormLoadingMode:
+			modalLayer = m.renderProjectFormLoadingLayer()
 		case state.AddColumnFormMode, state.EditColumnFormMode:
 			modalLayer = m.renderColumnFormLayer()
 		case state.CommentFormMode:
@@ -48,8 +52,15 @@ func (m Model) View() tea.View {
 		case state.HelpMode:
 			modalLayer = m.renderHelpLayer()
 		case state.DiscardConfirmMode:
-			layers = append(layers, m.renderTaskFormLayer())
+			ctx := m.UIState.DiscardContext
+			if ctx != nil && (ctx.SourceMode == state.ProjectFormMode || ctx.SourceMode == state.EditProjectFormMode) {
+				layers = append(layers, m.renderProjectFormLayer())
+			} else {
+				layers = append(layers, m.renderTaskFormLayer())
+			}
 			modalLayer = m.renderDiscardConfirmLayer()
+		case state.ProjectBranchConfirmMode:
+			modalLayer = m.renderProjectBranchConfirmLayer()
 		case state.TaskFormHelpMode:
 			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderTaskFormHelpLayer()
@@ -97,11 +108,20 @@ func (m Model) View() tea.View {
 			layers = append(layers, spinnerLayer)
 		}
 
+		for i, layer := range layers {
+			if layer == nil {
+				slog.Error("nil layer detected", "index", i, "mode", m.UIState.Mode,
+					"total_layers", len(layers))
+				view.Content = "Error: Invalid UI state. Press 'q' to quit."
+				return view
+			}
+		}
+
 		canvas := lipgloss.NewCanvas(layers...)
 		view.Content = canvas.Render()
 	} else {
 		var content string
-		switch m.UIState.Mode() {
+		switch m.UIState.Mode {
 		case state.DeleteConfirmMode:
 			content = m.viewDeleteTaskConfirm()
 		case state.DeleteColumnConfirmMode:

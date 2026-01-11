@@ -6,8 +6,20 @@ import (
 
 	"charm.land/bubbles/v2/viewport"
 	"charm.land/huh/v2"
+	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/models"
 )
+
+// GitFormState holds git-related state for project forms
+type GitFormState struct {
+	EditingProjectID            int
+	InitialFormProjectGitBranch string
+	BranchesLoading             bool
+	InfoLoading                 bool
+	Error                       string
+	Branches                    []git.BranchInfo
+	Info                        *git.GitInfo
+}
 
 // FormState manages all form-related state for the application.
 // This includes the custom forms for tasks, projects, and labels,
@@ -50,15 +62,19 @@ type FormState struct {
 	InitialFormParentIDs   []int  // Initial parent IDs when form was created
 	InitialFormChildIDs    []int  // Initial child IDs when form was created
 
-	// Project form fields (for creating projects)
+	// Project form fields (for creating/editing projects)
 	ProjectForm            *huh.Form // The form instance
 	FormProjectName        string    // Form field: project name
 	FormProjectDescription string    // Form field: project description
+	FormProjectGitBranch   string    // Form field: git branch (optional)
 	FormProjectConfirm     bool      // Form field: confirmation (submit vs cancel)
 
 	// Project form initial values (for change detection)
 	InitialFormProjectName        string // Initial project name when form was created
 	InitialFormProjectDescription string // Initial project description when form was created
+
+	// Git-related state for project forms
+	Git GitFormState
 
 	// Label form fields (for creating/editing labels)
 	LabelForm        *huh.Form // The form instance
@@ -116,7 +132,9 @@ func NewFormState() *FormState {
 		ProjectForm:                   nil,
 		FormProjectName:               "",
 		FormProjectDescription:        "",
+		FormProjectGitBranch:          "",
 		FormProjectConfirm:            true,
+		Git:                           GitFormState{},
 		LabelForm:                     nil,
 		EditingLabelID:                0,
 		FormLabelName:                 "",
@@ -182,10 +200,11 @@ func (s *FormState) ClearProjectForm() {
 	s.ProjectForm = nil
 	s.FormProjectName = ""
 	s.FormProjectDescription = ""
+	s.FormProjectGitBranch = ""
 	s.FormProjectConfirm = true
-	// Clear initial values
 	s.InitialFormProjectName = ""
 	s.InitialFormProjectDescription = ""
+	s.Git = GitFormState{}
 }
 
 // IsProjectFormActive returns true if a project form is currently active.
@@ -263,6 +282,10 @@ func (s *FormState) HasProjectFormChanges() bool {
 		return true
 	}
 
+	if strings.TrimSpace(s.FormProjectGitBranch) != strings.TrimSpace(s.Git.InitialFormProjectGitBranch) {
+		return true
+	}
+
 	return false
 }
 
@@ -280,6 +303,7 @@ func (s *FormState) SnapshotTaskFormInitialValues() {
 func (s *FormState) SnapshotProjectFormInitialValues() {
 	s.InitialFormProjectName = s.FormProjectName
 	s.InitialFormProjectDescription = s.FormProjectDescription
+	s.Git.InitialFormProjectGitBranch = s.FormProjectGitBranch
 }
 
 // --- Helper Functions ---

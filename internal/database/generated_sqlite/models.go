@@ -11,8 +11,8 @@ import (
 type Column struct {
 	ID                   int64
 	Name                 string
-	PrevID               interface{}
-	NextID               interface{}
+	PrevID               any
+	NextID               any
 	ProjectID            int64
 	HoldsReadyTasks      bool
 	HoldsCompletedTasks  bool
@@ -38,6 +38,7 @@ type Project struct {
 	Description sql.NullString
 	CreatedAt   sql.NullTime
 	UpdatedAt   sql.NullTime
+	GitBranch   any
 }
 
 type ProjectCounter struct {

@@ -38,6 +38,7 @@ type Project struct {
 	Description sql.NullString
 	CreatedAt   sql.NullTime
 	UpdatedAt   sql.NullTime
+	GitBranch   sql.NullString
 }
 
 type ProjectCounter struct {

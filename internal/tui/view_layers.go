@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"log/slog"
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/tui/components"
@@ -20,7 +21,7 @@ func (m Model) renderTaskFormLayer() *lipgloss.Layer {
 	const chromeHeight = 6 // border (2) + padding (2) + title (1) + blanks (1) = 6 lines
 
 	layerWidth := m.UIState.Width() * 8 / 10
-	layerHeight := m.UIState.Height() * 8 / 10
+	layerHeight := m.UIState.Height * 8 / 10
 
 	innerHeight := layerHeight - chromeHeight
 
@@ -69,23 +70,64 @@ func (m Model) renderTaskFormLayer() *lipgloss.Layer {
 		Height(layerHeight).
 		Render(fullContent)
 
-	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height())
+	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height)
 }
 
-// renderProjectFormLayer renders the project creation form modal as a layer
+// renderProjectFormLayer renders the project creation/edit form modal as a layer
 func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 	if m.Forms.Form.ProjectForm == nil {
+		slog.Debug("renderProjectFormLayer called with nil form", "mode", m.UIState.Mode)
 		return nil
 	}
 
 	formView := m.Forms.Form.ProjectForm.View()
 
+	var title string
+	if m.UIState.Mode == state.EditProjectFormMode {
+		title = "Edit Project"
+	} else {
+		title = "New Project"
+	}
+
+	refreshHint := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle)).
+		Render("Press F5 to refresh git branches")
+
+	content := title + "\n\n" + formView + "\n\n" + refreshHint
+
 	formBox := components.ProjectFormBoxStyle.
 		Width(m.UIState.Width() * 3 / 4).
-		Height(m.UIState.Height() / 3).
-		Render("New Project\n\n" + formView)
+		Height(m.UIState.Height / 3).
+		Render(content)
 
-	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height())
+	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height)
+}
+
+// renderProjectFormLoadingLayer renders a loading indicator while git data is being fetched
+func (m Model) renderProjectFormLoadingLayer() *lipgloss.Layer {
+	var title string
+	if m.Forms.Form.Git.EditingProjectID != 0 {
+		title = "Edit Project"
+	} else {
+		title = "New Project"
+	}
+
+	spinnerFrames := []string{
+		"󰋙", "󰫃", "󰫄", "󰫅", "󰫆", "󰫇", "󰫈", "󰫇", "󰫆", "󰫅", "󰫄", "󰫃",
+	}
+	spinnerIcon := spinnerFrames[m.SpinnerFrame%len(spinnerFrames)]
+
+	loadingText := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Highlight)).
+		Bold(true).
+		Render("Loading git branches " + spinnerIcon)
+
+	formBox := components.ProjectFormBoxStyle.
+		Width(m.UIState.Width() * 3 / 4).
+		Height(m.UIState.Height / 3).
+		Render(title + "\n\n" + loadingText)
+
+	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height)
 }
 
 // renderColumnFormLayer renders the column creation/rename form modal as a layer
@@ -97,7 +139,7 @@ func (m Model) renderColumnFormLayer() *lipgloss.Layer {
 	formView := m.Forms.Form.ColumnForm.View()
 
 	var title string
-	if m.UIState.Mode() == state.AddColumnFormMode {
+	if m.UIState.Mode == state.AddColumnFormMode {
 		title = "New Column"
 	} else {
 		title = "Rename Column"
@@ -107,7 +149,7 @@ func (m Model) renderColumnFormLayer() *lipgloss.Layer {
 		Width(50).
 		Render(title + "\n\n" + formView)
 
-	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height())
+	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height)
 }
 
 // renderHelpLayer renders the keyboard shortcuts help screen as a layer
@@ -116,12 +158,12 @@ func (m Model) renderHelpLayer() *lipgloss.Layer {
 		Width(50).
 		Render(m.generateHelpText())
 
-	return layers.CreateCenteredLayer(helpBox, m.UIState.Width(), m.UIState.Height())
+	return layers.CreateCenteredLayer(helpBox, m.UIState.Width(), m.UIState.Height)
 }
 
 // renderDiscardConfirmLayer renders the discard confirmation dialog as a layer
 func (m Model) renderDiscardConfirmLayer() *lipgloss.Layer {
-	ctx := m.UIState.DiscardContext()
+	ctx := m.UIState.DiscardContext
 	if ctx == nil {
 		return nil
 	}
@@ -130,7 +172,33 @@ func (m Model) renderDiscardConfirmLayer() *lipgloss.Layer {
 		Width(50).
 		Render(fmt.Sprintf("%s\n\n[y]es  [n]o", ctx.Message))
 
-	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height())
+	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
+}
+
+func (m Model) renderProjectBranchConfirmLayer() *lipgloss.Layer {
+	ctx := m.UIState.ProjectBranchContext
+	if ctx == nil {
+		return nil
+	}
+
+	var message string
+	if ctx.ExistingProject != nil {
+		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA500"))
+		message = warningStyle.Render(fmt.Sprintf(
+			"⚠️  Branch '%s' is currently linked to project '%s'.\nTransfer it to '%s'?",
+			ctx.GitBranch,
+			ctx.ExistingProject.Name,
+			ctx.ProjectName,
+		))
+	} else {
+		message = fmt.Sprintf("Associate branch '%s' with project '%s'?", ctx.GitBranch, ctx.ProjectName)
+	}
+
+	confirmBox := components.DeleteConfirmBoxStyle.
+		Width(60).
+		Render(fmt.Sprintf("%s\n\n[y]es transfer  [n]o skip branch  [esc] cancel", message))
+
+	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
 }
 
 // generateHelpText creates help text based on current key mappings
@@ -208,7 +276,7 @@ Press any key to close`,
 // renderCommentsViewLayer renders the comments view modal as a full-screen layer
 func (m Model) renderCommentsViewLayer() *lipgloss.Layer {
 	layerWidth := m.UIState.Width() * 8 / 10
-	layerHeight := m.UIState.Height() * 8 / 10
+	layerHeight := m.UIState.Height * 8 / 10
 
 	content := m.renderCommentsViewContent(layerWidth, layerHeight)
 
@@ -217,7 +285,7 @@ func (m Model) renderCommentsViewLayer() *lipgloss.Layer {
 		Height(layerHeight).
 		Render(content)
 
-	return layers.CreateCenteredLayer(commentsBox, m.UIState.Width(), m.UIState.Height())
+	return layers.CreateCenteredLayer(commentsBox, m.UIState.Width(), m.UIState.Height)
 }
 
 // renderCommentFormLayer renders the comment creation/edit form modal as a layer
@@ -237,10 +305,10 @@ func (m Model) renderCommentFormLayer() *lipgloss.Layer {
 
 	formBox := components.CreateInputBoxStyle.
 		Width(m.UIState.Width() * 3 / 4).
-		Height(m.UIState.Height() * 2 / 3).
+		Height(m.UIState.Height * 2 / 3).
 		Render(title + "\n\n" + formView)
 
-	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height())
+	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height)
 }
 
 // renderTaskFormHelpLayer renders the task form keyboard shortcuts help screen as a layer
@@ -285,7 +353,7 @@ Press Ctrl+/ or Esc to close`
 		Width(m.UIState.Width() * 3 / 8).
 		Render(helpContent)
 
-	return layers.CreateCenteredLayer(helpBox, m.UIState.Width(), m.UIState.Height())
+	return layers.CreateCenteredLayer(helpBox, m.UIState.Width(), m.UIState.Height)
 }
 
 type pickerDimensionStrategy interface {
@@ -344,7 +412,7 @@ type pickerLayerConfig struct {
 func (m Model) createPickerLayer(config pickerLayerConfig) *lipgloss.Layer {
 	pickerWidth, pickerHeight := config.dimensionStrategy.Calculate(
 		m.UIState.Width(),
-		m.UIState.Height(),
+		m.UIState.Height,
 	)
 
 	pickerContent := config.contentRenderer(pickerWidth, pickerHeight)
@@ -354,7 +422,7 @@ func (m Model) createPickerLayer(config pickerLayerConfig) *lipgloss.Layer {
 		Height(pickerHeight).
 		Render(pickerContent)
 
-	return layers.CreateCenteredLayer(pickerBox, m.UIState.Width(), m.UIState.Height())
+	return layers.CreateCenteredLayer(pickerBox, m.UIState.Width(), m.UIState.Height)
 }
 
 // renderLabelPickerLayer renders the label picker modal as a layer
@@ -564,5 +632,5 @@ func (m Model) renderConnectingSpinnerLayer() *lipgloss.Layer {
 
 	styledContent := boxStyle.Render(content)
 
-	return layers.CreateCenteredLayer(styledContent, m.UIState.Width(), m.UIState.Height())
+	return layers.CreateCenteredLayer(styledContent, m.UIState.Width(), m.UIState.Height)
 }

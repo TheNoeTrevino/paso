@@ -15,7 +15,7 @@ import (
 func (m Model) handleEnterSearch() (tea.Model, tea.Cmd) {
 	m.UI.Search.Clear()
 	m.UI.Search.Deactivate()
-	m.UIState.SetMode(state.SearchMode)
+	m.UIState.Mode = state.SearchMode
 	return m, nil
 }
 
@@ -47,7 +47,7 @@ func (m Model) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // Inlined from search.go (deleted to reduce duplication)
 func (m Model) handleSearchConfirm() (tea.Model, tea.Cmd) {
 	m.UI.Search.Activate()
-	m.UIState.SetMode(state.NormalMode)
+	m.UIState.Mode = state.NormalMode
 	return m, nil
 }
 
@@ -56,7 +56,7 @@ func (m Model) handleSearchConfirm() (tea.Model, tea.Cmd) {
 func (m Model) handleSearchCancel() (tea.Model, tea.Cmd) {
 	m.UI.Search.Clear()
 	m.UI.Search.Deactivate()
-	m.UIState.SetMode(state.NormalMode)
+	m.UIState.Mode = state.NormalMode
 	return m.executeSearch()
 }
 
@@ -86,7 +86,7 @@ func (m Model) executeSearch() (tea.Model, tea.Cmd) {
 
 	m.AppState.SetTasks(tasksByColumn)
 	// Reset task selection to 0 to avoid out-of-bounds
-	m.UIState.SetSelectedTask(0)
+	m.UIState.SelectedTask = 0
 
 	return m, nil
 }

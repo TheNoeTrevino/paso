@@ -3,11 +3,12 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
+	"log/slog"
 	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -126,8 +127,13 @@ func GetLabelByID(ctx context.Context, cliInstance *CLI, labelID int) (*struct {
 	return nil, fmt.Errorf("label %d not found", labelID)
 }
 
-// GetProjectID returns the project ID from flag or environment variable
-// Precedence: --project flag > PASO_PROJECT env var > error
+// GetProjectID returns the project ID using precedence:
+// 1. --project flag (if explicitly set)
+// 2. Git branch association (if in git repo with associated project)
+// 3. Error (no project found)
+//
+// DEPRECATED: Use GetProjectIDWithCLI instead.
+// This function creates its own CLI instance which wastes resources.
 func GetProjectID(cmd *cobra.Command) (int, error) {
 	// Check if --project flag was explicitly set
 	projectFlag := cmd.Flags().Lookup("project")
@@ -135,13 +141,108 @@ func GetProjectID(cmd *cobra.Command) (int, error) {
 		return cmd.Flags().GetInt("project")
 	}
 
-	// Fall back to PASO_PROJECT environment variable
-	if envProject := os.Getenv("PASO_PROJECT"); envProject != "" {
-		var projectID int
-		if _, err := fmt.Sscanf(envProject, "%d", &projectID); err == nil {
-			return projectID, nil
-		}
+	// Try git branch detection
+	ctx := cmd.Context()
+	if ctx == nil {
+		return 0, fmt.Errorf("no project specified: use --project flag or create a project associated with this branch")
 	}
 
-	return 0, fmt.Errorf("no project specified: use --project flag or set with 'eval $(paso use project <project-id>)'")
+	projectID, err := tryGitBranchDetection(ctx)
+	if err == nil {
+		return projectID, nil
+	}
+
+	return 0, fmt.Errorf("no project specified: use --project flag or create a project associated with this branch")
+}
+
+// GetProjectIDWithCLI returns the project ID using precedence:
+// 1. --project flag (if explicitly set)
+// 2. Git branch association (if in git repo with associated project)
+// 3. Error (no project found)
+//
+// The caller must provide a CLI instance (does not create its own).
+// This is more efficient than GetProjectID as it reuses the existing CLI instance.
+func GetProjectIDWithCLI(cmd *cobra.Command, cliInstance *CLI) (int, error) {
+	// Check if --project flag was explicitly set
+	projectFlag := cmd.Flags().Lookup("project")
+	if projectFlag != nil && projectFlag.Changed {
+		return cmd.Flags().GetInt("project")
+	}
+
+	// Try git branch detection
+	ctx := cmd.Context()
+	if ctx == nil {
+		return 0, fmt.Errorf("no project specified: use --project flag or create a project associated with this branch")
+	}
+
+	projectID, err := tryGitBranchDetectionWithCLI(ctx, cliInstance)
+	if err == nil {
+		return projectID, nil
+	}
+
+	return 0, fmt.Errorf("no project specified: use --project flag or create a project associated with this branch")
+}
+
+// tryGitBranchDetection attempts to find a project by git branch association
+// Returns (0, error) if detection fails or no project found
+//
+// DEPRECATED: Use tryGitBranchDetectionWithCLI instead.
+// This function creates its own CLI instance which wastes resources.
+func tryGitBranchDetection(ctx context.Context) (int, error) {
+	cliInstance, err := GetCLIFromContext(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		if closeErr := cliInstance.Close(); closeErr != nil {
+			slog.Warn("failed to close CLI instance during git branch detection",
+				"error", closeErr,
+				"function", "tryGitBranchDetection")
+		}
+	}()
+
+	gitInfo := git.DetectGitInfo(ctx)
+
+	if !gitInfo.IsValidForAssociation() {
+		return 0, fmt.Errorf("not in valid git repository state")
+	}
+
+	project, err := cliInstance.App.ProjectService.GetProjectByGitBranch(ctx, gitInfo.CurrentBranch)
+	if err != nil {
+		slog.Debug("failed to lookup project by git branch",
+			"branch", gitInfo.CurrentBranch,
+			"error", err)
+		return 0, err
+	}
+
+	if project == nil {
+		return 0, fmt.Errorf("no project associated with branch: %s", gitInfo.CurrentBranch)
+	}
+
+	return project.ID, nil
+}
+
+// tryGitBranchDetectionWithCLI attempts to find a project by git branch association.
+// Accepts an existing CLI instance instead of creating a new one.
+// Returns (0, error) if detection fails or no project found.
+func tryGitBranchDetectionWithCLI(ctx context.Context, cliInstance *CLI) (int, error) {
+	gitInfo := git.DetectGitInfo(ctx)
+
+	if !gitInfo.IsValidForAssociation() {
+		return 0, fmt.Errorf("not in valid git repository state")
+	}
+
+	project, err := cliInstance.App.ProjectService.GetProjectByGitBranch(ctx, gitInfo.CurrentBranch)
+	if err != nil {
+		slog.Debug("failed to lookup project by git branch",
+			"branch", gitInfo.CurrentBranch,
+			"error", err)
+		return 0, err
+	}
+
+	if project == nil {
+		return 0, fmt.Errorf("no project associated with branch: %s", gitInfo.CurrentBranch)
+	}
+
+	return project.ID, nil
 }

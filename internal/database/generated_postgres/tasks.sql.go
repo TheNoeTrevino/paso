@@ -13,7 +13,7 @@ import (
 const addSubtask = `-- name: AddSubtask :exec
 insert into task_subtasks (parent_id, child_id)
 values ($1, $2)
-ON CONFLICT (parent_id, child_id) DO NOTHING
+on CONFLICT (parent_id, child_id) DO NOTHING
 `
 
 type AddSubtaskParams struct {
@@ -30,7 +30,7 @@ func (q *Queries) AddSubtask(ctx context.Context, arg AddSubtaskParams) error {
 const addSubtaskWithRelationType = `-- name: AddSubtaskWithRelationType :exec
 insert into task_subtasks (parent_id, child_id, relation_type_id)
 values ($1, $2, $3)
-ON CONFLICT (parent_id, child_id) DO UPDATE SET relation_type_id = $3
+on CONFLICT (parent_id, child_id) DO update set relation_type_id = $3
 `
 
 type AddSubtaskWithRelationTypeParams struct {
@@ -53,7 +53,7 @@ insert into tasks (
     position,
     ticket_number)
 values ($1, $2, $3, $4, $5)
-RETURNING id, title, description, column_id, position, ticket_number, type_id, priority_id, created_at, updated_at
+returning id, title, description, column_id, position, ticket_number, type_id, priority_id, created_at, updated_at
 `
 
 type CreateTaskParams struct {

@@ -1,7 +1,7 @@
 -- name: CreateProjectRecord :one
 -- Creates a new project with name and description
-insert into projects (name, description)
-values ($1, $2)
+insert into projects (name, description, git_branch)
+values ($1, $2, $3)
 returning *;
 
 -- name: GetProjectByID :one
@@ -10,19 +10,32 @@ select
     id,
     name,
     description,
+    git_branch,
     created_at,
     updated_at
 from projects where id = $1;
 
+-- name: GetProjectByGitBranch :one
+-- Retrieves a project by its git branch
+select
+    id,
+    name,
+    description,
+    git_branch,
+    created_at,
+    updated_at
+from projects where git_branch = $1;
+
 -- name: GetAllProjects :many
 -- Retrieves all projects ordered by ID
-select id, name, description, created_at, updated_at from projects order by id;
+select id, name, description, git_branch, created_at, updated_at from projects order by id;
 
 -- name: UpdateProject :exec
 -- Updates a project's name and description
 update projects set name = $1,
 description = $2,
-updated_at = current_timestamp where id = $3;
+git_branch = $3,
+updated_at = current_timestamp where id = $4;
 
 -- name: DeleteProject :exec
 -- Permanently deletes a project by ID

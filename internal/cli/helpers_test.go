@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -456,89 +455,7 @@ func TestGetProjectID_FlagSet(t *testing.T) {
 	}
 }
 
-func TestGetProjectID_EnvVarSet(t *testing.T) {
-	// Save and restore original env var
-	originalEnv := os.Getenv("PASO_PROJECT")
-	defer func() {
-		if originalEnv != "" {
-			err := os.Setenv("PASO_PROJECT", originalEnv)
-			assert.NoError(t, err)
-		} else {
-			err := os.Unsetenv("PASO_PROJECT")
-			assert.NoError(t, err)
-		}
-	}()
-
-	// Set environment variable
-	err := os.Setenv("PASO_PROJECT", "123")
-	assert.NoError(t, err)
-
-	// Create a command without setting the flag
-	cmd := &cobra.Command{
-		Use: "test",
-		Run: func(cmd *cobra.Command, args []string) {},
-	}
-	cmd.Flags().Int("project", 0, "Project ID")
-
-	// Test getting the project ID from env var
-	projectID, err := GetProjectID(cmd)
-	assert.NoError(t, err, "GetProjectID should not return error")
-	if projectID != 123 {
-		t.Errorf("Expected project ID 123, got %d", projectID)
-	}
-}
-
-func TestGetProjectID_FlagTakesPrecedence(t *testing.T) {
-	// Save and restore original env var
-	originalEnv := os.Getenv("PASO_PROJECT")
-	defer func() {
-		if originalEnv != "" {
-			err := os.Setenv("PASO_PROJECT", originalEnv)
-			assert.NoError(t, err)
-		} else {
-			err := os.Unsetenv("PASO_PROJECT")
-			assert.NoError(t, err)
-		}
-	}()
-
-	// Set environment variable
-	err := os.Setenv("PASO_PROJECT", "100")
-	assert.NoError(t, err)
-
-	// Create a command and set the flag
-	cmd := &cobra.Command{
-		Use: "test",
-		Run: func(cmd *cobra.Command, args []string) {},
-	}
-	cmd.Flags().Int("project", 0, "Project ID")
-	err = cmd.Flags().Set("project", "200")
-	assert.NoError(t, err)
-
-	// Test that flag takes precedence over env var
-	projectID, err := GetProjectID(cmd)
-	assert.NoError(t, err, "GetProjectID should not return error")
-	if projectID != 200 {
-		t.Errorf("Expected project ID 200 (from flag), got %d", projectID)
-	}
-}
-
 func TestGetProjectID_NeitherSet(t *testing.T) {
-	// Save and restore original env var
-	originalEnv := os.Getenv("PASO_PROJECT")
-	defer func() {
-		if originalEnv != "" {
-			err := os.Setenv("PASO_PROJECT", originalEnv)
-			assert.NoError(t, err)
-		} else {
-			err := os.Unsetenv("PASO_PROJECT")
-			assert.NoError(t, err)
-		}
-	}()
-
-	// Ensure env var is not set
-	err := os.Unsetenv("PASO_PROJECT")
-	assert.NoError(t, err)
-
 	// Create a command without setting the flag
 	cmd := &cobra.Command{
 		Use: "test",
@@ -547,106 +464,14 @@ func TestGetProjectID_NeitherSet(t *testing.T) {
 	cmd.Flags().Int("project", 0, "Project ID")
 
 	// Test that we get an error
-	_, err = GetProjectID(cmd)
+	_, err := GetProjectID(cmd)
 	if err == nil {
-		t.Error("Expected error when neither flag nor env var is set, got nil")
+		t.Error("Expected error when flag not set and not in git repo, got nil")
 	}
 
 	// Check error message
-	expectedMsg := "no project specified: use --project flag or set with 'eval $(paso use project <project-id>)'"
+	expectedMsg := "no project specified: use --project flag or create a project associated with this branch"
 	if err.Error() != expectedMsg {
 		t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
-	}
-}
-
-func TestGetProjectID_InvalidEnvVar(t *testing.T) {
-	// Save and restore original env var
-	originalEnv := os.Getenv("PASO_PROJECT")
-	defer func() {
-		if originalEnv != "" {
-			err := os.Setenv("PASO_PROJECT", originalEnv)
-			assert.NoError(t, err)
-		} else {
-			err := os.Unsetenv("PASO_PROJECT")
-			assert.NoError(t, err)
-		}
-	}()
-
-	// Set invalid environment variable (non-numeric)
-	err := os.Setenv("PASO_PROJECT", "invalid")
-	assert.NoError(t, err)
-
-	// Create a command without setting the flag
-	cmd := &cobra.Command{
-		Use: "test",
-		Run: func(cmd *cobra.Command, args []string) {},
-	}
-	cmd.Flags().Int("project", 0, "Project ID")
-
-	// Test that we get an error for invalid env var
-	_, err = GetProjectID(cmd)
-	assert.Error(t, err)
-}
-
-func TestGetProjectID_NoProjectFlag(t *testing.T) {
-	// Save and restore original env var
-	originalEnv := os.Getenv("PASO_PROJECT")
-	defer func() {
-		if originalEnv != "" {
-			err := os.Setenv("PASO_PROJECT", originalEnv)
-			assert.NoError(t, err)
-		} else {
-			err := os.Unsetenv("PASO_PROJECT")
-			assert.NoError(t, err)
-		}
-	}()
-
-	// Set environment variable
-	err := os.Setenv("PASO_PROJECT", "456")
-	assert.NoError(t, err)
-
-	// Create a command WITHOUT the --project flag
-	cmd := &cobra.Command{
-		Use: "test",
-		Run: func(cmd *cobra.Command, args []string) {},
-	}
-
-	// Test that env var still works when flag doesn't exist
-	projectID, err := GetProjectID(cmd)
-	assert.NoError(t, err, "GetProjectID should not return error")
-	if projectID != 456 {
-		t.Errorf("Expected project ID 456, got %d", projectID)
-	}
-}
-
-func TestGetProjectID_ZeroValueFlag(t *testing.T) {
-	// Save and restore original env var
-	originalEnv := os.Getenv("PASO_PROJECT")
-	defer func() {
-		if originalEnv != "" {
-			err := os.Setenv("PASO_PROJECT", originalEnv)
-			assert.NoError(t, err)
-		} else {
-			err := os.Unsetenv("PASO_PROJECT")
-			assert.NoError(t, err)
-		}
-	}()
-
-	// Set environment variable
-	err := os.Setenv("PASO_PROJECT", "789")
-	assert.NoError(t, err)
-
-	// Create a command with the --project flag but don't set it
-	cmd := &cobra.Command{
-		Use: "test",
-		Run: func(cmd *cobra.Command, args []string) {},
-	}
-	cmd.Flags().Int("project", 0, "Project ID")
-
-	// Test that env var is used when flag is not changed (even if it's 0)
-	projectID, err := GetProjectID(cmd)
-	assert.NoError(t, err, "GetProjectID should not return error")
-	if projectID != 789 {
-		t.Errorf("Expected project ID 789 (from env var), got %d", projectID)
 	}
 }

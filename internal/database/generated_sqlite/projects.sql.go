@@ -11,19 +11,20 @@ import (
 )
 
 const createProjectRecord = `-- name: CreateProjectRecord :one
-insert into projects (name, description)
-values (?, ?)
-returning id, name, description, created_at, updated_at
+insert into projects (name, description, git_branch)
+values (?, ?, ?)
+returning id, name, description, created_at, updated_at, git_branch
 `
 
 type CreateProjectRecordParams struct {
 	Name        string
 	Description sql.NullString
+	GitBranch   any
 }
 
 // Creates a new project with name and description
 func (q *Queries) CreateProjectRecord(ctx context.Context, arg CreateProjectRecordParams) (Project, error) {
-	row := q.db.QueryRowContext(ctx, createProjectRecord, arg.Name, arg.Description)
+	row := q.db.QueryRowContext(ctx, createProjectRecord, arg.Name, arg.Description, arg.GitBranch)
 	var i Project
 	err := row.Scan(
 		&i.ID,
@@ -31,6 +32,7 @@ func (q *Queries) CreateProjectRecord(ctx context.Context, arg CreateProjectReco
 		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.GitBranch,
 	)
 	return i, err
 }
@@ -78,23 +80,33 @@ func (q *Queries) DeleteTasksByProject(ctx context.Context, projectID int64) err
 }
 
 const getAllProjects = `-- name: GetAllProjects :many
-select id, name, description, created_at, updated_at from projects order by id
+select id, name, description, git_branch, created_at, updated_at from projects order by id
 `
 
+type GetAllProjectsRow struct {
+	ID          int64
+	Name        string
+	Description sql.NullString
+	GitBranch   any
+	CreatedAt   sql.NullTime
+	UpdatedAt   sql.NullTime
+}
+
 // Retrieves all projects ordered by ID
-func (q *Queries) GetAllProjects(ctx context.Context) ([]Project, error) {
+func (q *Queries) GetAllProjects(ctx context.Context) ([]GetAllProjectsRow, error) {
 	rows, err := q.db.QueryContext(ctx, getAllProjects)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Project{}
+	items := []GetAllProjectsRow{}
 	for rows.Next() {
-		var i Project
+		var i GetAllProjectsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.Description,
+			&i.GitBranch,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -111,24 +123,70 @@ func (q *Queries) GetAllProjects(ctx context.Context) ([]Project, error) {
 	return items, nil
 }
 
+const getProjectByGitBranch = `-- name: GetProjectByGitBranch :one
+select
+    id,
+    name,
+    description,
+    git_branch,
+    created_at,
+    updated_at
+from projects where git_branch = ?
+`
+
+type GetProjectByGitBranchRow struct {
+	ID          int64
+	Name        string
+	Description sql.NullString
+	GitBranch   any
+	CreatedAt   sql.NullTime
+	UpdatedAt   sql.NullTime
+}
+
+// Retrieves a project by its git branch
+func (q *Queries) GetProjectByGitBranch(ctx context.Context, gitBranch any) (GetProjectByGitBranchRow, error) {
+	row := q.db.QueryRowContext(ctx, getProjectByGitBranch, gitBranch)
+	var i GetProjectByGitBranchRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.GitBranch,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getProjectByID = `-- name: GetProjectByID :one
 select
     id,
     name,
     description,
+    git_branch,
     created_at,
     updated_at
 from projects where id = ?
 `
 
+type GetProjectByIDRow struct {
+	ID          int64
+	Name        string
+	Description sql.NullString
+	GitBranch   any
+	CreatedAt   sql.NullTime
+	UpdatedAt   sql.NullTime
+}
+
 // Retrieves a project by its ID with all metadata
-func (q *Queries) GetProjectByID(ctx context.Context, id int64) (Project, error) {
+func (q *Queries) GetProjectByID(ctx context.Context, id int64) (GetProjectByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getProjectByID, id)
-	var i Project
+	var i GetProjectByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Description,
+		&i.GitBranch,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -163,17 +221,24 @@ func (q *Queries) InitializeProjectCounter(ctx context.Context, projectID int64)
 const updateProject = `-- name: UpdateProject :exec
 update projects set name = ?,
 description = ?,
+git_branch = ?,
 updated_at = current_timestamp where id = ?
 `
 
 type UpdateProjectParams struct {
 	Name        string
 	Description sql.NullString
+	GitBranch   any
 	ID          int64
 }
 
 // Updates a project's name and description
 func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) error {
-	_, err := q.db.ExecContext(ctx, updateProject, arg.Name, arg.Description, arg.ID)
+	_, err := q.db.ExecContext(ctx, updateProject,
+		arg.Name,
+		arg.Description,
+		arg.GitBranch,
+		arg.ID,
+	)
 	return err
 }

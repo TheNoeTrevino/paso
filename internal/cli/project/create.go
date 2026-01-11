@@ -5,6 +5,7 @@ package project
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/handler"
+	"github.com/thenoetrevino/paso/internal/git"
 	projectservice "github.com/thenoetrevino/paso/internal/services/project"
 )
 
@@ -65,6 +67,9 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 	projectTitle := args.MustGetString("title")
 	projectDescription := args.GetString("description", "")
 
+	// Check if quiet mode is enabled
+	quietMode, _ := args.GetCmd().Flags().GetBool("quiet")
+
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
@@ -76,11 +81,42 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		}
 	}()
 
-	// Create project
+	// Detect git repository information and try to associate with branch
+	gitInfo := git.DetectGitInfo(ctx)
+	var gitBranch string
+	if gitInfo.IsValidForAssociation() {
+		gitBranch = gitInfo.CurrentBranch
+		if !quietMode {
+			fmt.Printf("ℹ️  Associating project with git branch: %s\n", gitBranch)
+		}
+	}
+
+	// Create project - service layer will handle duplicate branch validation
 	project, err := cliInstance.App.ProjectService.CreateProject(ctx, projectservice.CreateProjectRequest{
 		Name:        projectTitle,
 		Description: projectDescription,
+		GitBranch:   gitBranch,
 	})
+
+	// Handle git branch conflict by retrying without branch association
+	if err != nil && errors.Is(err, projectservice.ErrGitBranchAlreadyAssociated) {
+		if !quietMode {
+			existingProject, _ := cliInstance.App.ProjectService.GetProjectByGitBranch(ctx, gitBranch)
+			if existingProject != nil {
+				fmt.Printf("⚠️  Warning: Branch '%s' is already associated with project '%s' (ID: %d)\n",
+					gitBranch, existingProject.Name, existingProject.ID)
+			}
+			fmt.Println("Creating new project without branch association...")
+		}
+
+		// Retry without branch association
+		project, err = cliInstance.App.ProjectService.CreateProject(ctx, projectservice.CreateProjectRequest{
+			Name:        projectTitle,
+			Description: projectDescription,
+			GitBranch:   "", // Don't associate with branch
+		})
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("project creation error: %w", err)
 	}
@@ -104,6 +140,16 @@ type projectCreateResult struct {
 // GetID implements the GetID interface for quiet mode output
 func (r *projectCreateResult) GetID() int {
 	return r.ID
+}
+
+// String provides human-readable output for the project creation result
+func (r *projectCreateResult) String() string {
+	if r.Description != "" {
+		return fmt.Sprintf("✓ Project created: %s (ID: %d)\n  Description: %s\n  Created: %s",
+			r.Name, r.ID, r.Description, r.CreatedAt)
+	}
+	return fmt.Sprintf("✓ Project created: %s (ID: %d)\n  Created: %s",
+		r.Name, r.ID, r.CreatedAt)
 }
 
 func parseCreateFlags(cmd *cobra.Command) error {

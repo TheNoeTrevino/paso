@@ -97,14 +97,14 @@ func TestCreateColumn_Integration(t *testing.T) {
 			expectedDone:  false,
 			verifyOutput: func(t *testing.T, output string) {
 				// Parse JSON output
-				var result map[string]interface{}
+				var result map[string]any
 				err := json.Unmarshal([]byte(output), &result)
 				assert.NoError(t, err, "Output should be valid JSON")
 
 				// Verify JSON structure
 				assert.True(t, result["success"].(bool), "success should be true")
 
-				column := result["column"].(map[string]interface{})
+				column := result["column"].(map[string]any)
 				assert.Equal(t, "JSON Column", column["name"])
 				assert.Equal(t, float64(projectID), column["project_id"])
 
@@ -287,7 +287,7 @@ func TestCreateColumn_FlagCombinations(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 

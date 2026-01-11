@@ -193,7 +193,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		assert.NotEmpty(t, output)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
@@ -268,12 +268,12 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Parse JSON output
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
 		// Verify column data is in response
-		if columnData, ok := result["column"].(map[string]interface{}); ok {
+		if columnData, ok := result["column"].(map[string]any); ok {
 			assert.NotNil(t, columnData["old_name"])
 			assert.NotNil(t, columnData["id"])
 		}

@@ -52,8 +52,8 @@ func (m Model) viewKanbanBoard() string {
 	}
 
 	// Calculate visible columns based on viewport
-	endIdx := min(m.UIState.ViewportOffset()+m.UIState.ViewportSize(), len(m.AppState.Columns()))
-	visibleColumns := m.AppState.Columns()[m.UIState.ViewportOffset():endIdx]
+	endIdx := min(m.UIState.ViewportOffset+m.UIState.ViewportSize(), len(m.AppState.Columns()))
+	visibleColumns := m.AppState.Columns()[m.UIState.ViewportOffset:endIdx]
 
 	// Calculate fixed content height using shared method
 	columnHeight := m.UIState.ContentHeight()
@@ -62,7 +62,7 @@ func (m Model) viewKanbanBoard() string {
 	var columns []string
 	for i, col := range visibleColumns {
 		// Calculate global index for selection check
-		globalIndex := m.UIState.ViewportOffset() + i
+		globalIndex := m.UIState.ViewportOffset + i
 
 		// Safe map access with defensive check
 		tasks, ok := m.AppState.Tasks()[col.ID]
@@ -71,12 +71,12 @@ func (m Model) viewKanbanBoard() string {
 		}
 
 		// Determine selection state for this column
-		isSelected := (globalIndex == m.UIState.SelectedColumn())
+		isSelected := (globalIndex == m.UIState.SelectedColumn)
 
 		// Determine which task is selected (only for the selected column)
 		selectedTaskIdx := -1
 		if isSelected {
-			selectedTaskIdx = m.UIState.SelectedTask()
+			selectedTaskIdx = m.UIState.SelectedTask
 		}
 
 		scrollOffset := m.UIState.TaskScrollOffset(col.ID)
@@ -85,7 +85,7 @@ func (m Model) viewKanbanBoard() string {
 	}
 
 	scrollIndicators := helpers.GetScrollIndicators(
-		m.UIState.ViewportOffset(),
+		m.UIState.ViewportOffset,
 		m.UIState.ViewportSize(),
 		len(m.AppState.Columns()),
 	)
@@ -108,7 +108,7 @@ func (m Model) viewKanbanBoard() string {
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
 		Width:            m.UIState.Width(),
-		SearchMode:       m.UIState.Mode() == state.SearchMode || m.UI.Search.IsActive,
+		SearchMode:       m.UIState.Mode == state.SearchMode || m.UI.Search.IsActive,
 		SearchQuery:      m.UI.Search.Query,
 		ConnectionStatus: m.ConnectionState.Status(),
 		DatabaseName:     m.CurrentDBName,
@@ -121,7 +121,7 @@ func (m Model) viewKanbanBoard() string {
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
 
-	maxContentLines := max(m.UIState.Height()-1, 1)
+	maxContentLines := max(m.UIState.Height-1, 1)
 
 	if len(contentLines) > maxContentLines {
 		contentLines = contentLines[:maxContentLines]
@@ -178,7 +178,7 @@ func (m Model) viewListView() string {
 
 	statusBar := components.RenderStatusBar(components.StatusBarProps{
 		Width:            m.UIState.Width(),
-		SearchMode:       m.UIState.Mode() == state.SearchMode || m.UI.Search.IsActive,
+		SearchMode:       m.UIState.Mode == state.SearchMode || m.UI.Search.IsActive,
 		SearchQuery:      m.UI.Search.Query,
 		ConnectionStatus: m.ConnectionState.Status(),
 		DatabaseName:     m.CurrentDBName,
@@ -190,7 +190,7 @@ func (m Model) viewListView() string {
 
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
-	maxContentLines := max(m.UIState.Height()-1, 1)
+	maxContentLines := max(m.UIState.Height-1, 1)
 
 	if len(contentLines) > maxContentLines {
 		contentLines = contentLines[:maxContentLines]

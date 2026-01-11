@@ -27,7 +27,7 @@ func (a *Adapter) GetAllProjects(ctx context.Context) ([]types.Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	return types.ConvertSlice(results, fromGeneratedProject), nil
+	return types.ConvertSlice(results, fromGeneratedGetAllProjectsRow), nil
 }
 
 func (a *Adapter) GetNextTicketNumber(ctx context.Context, projectID int64) (types.NullInt64, error) {
@@ -43,7 +43,15 @@ func (a *Adapter) GetProjectByID(ctx context.Context, id int64) (types.Project, 
 	if err != nil {
 		return types.Project{}, err
 	}
-	return fromGeneratedProject(result), nil
+	return fromGeneratedGetProjectByIDRow(result), nil
+}
+
+func (a *Adapter) GetProjectByGitBranch(ctx context.Context, gitBranch string) (types.Project, error) {
+	result, err := a.queries.GetProjectByGitBranch(ctx, gitBranch)
+	if err != nil {
+		return types.Project{}, err
+	}
+	return fromGeneratedGetProjectByGitBranchRow(result), nil
 }
 
 func (a *Adapter) GetProjectIDFromColumn(ctx context.Context, id int64) (int64, error) {

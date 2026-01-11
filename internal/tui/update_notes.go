@@ -15,7 +15,7 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		// Return to ticket form mode
-		m.UIState.SetMode(state.TicketFormMode)
+		m.UIState.Mode = state.TicketFormMode
 		return m, nil
 
 	case "j", "down":
@@ -39,7 +39,7 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.Forms.Form.CommentForm = huhforms.CreateCommentForm(&m.Forms.Form.FormCommentMessage, true).
 				WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 			m.Forms.Form.SnapshotCommentFormInitialValues()
-			m.UIState.SetMode(state.CommentFormMode)
+			m.UIState.Mode = state.CommentFormMode
 			return m, m.Forms.Form.CommentForm.Init()
 		}
 		return m, nil
@@ -51,7 +51,7 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Forms.Form.CommentForm = huhforms.CreateCommentForm(&m.Forms.Form.FormCommentMessage, false).
 			WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 		m.Forms.Form.SnapshotCommentFormInitialValues()
-		m.UIState.SetMode(state.CommentFormMode)
+		m.UIState.Mode = state.CommentFormMode
 		return m, m.Forms.Form.CommentForm.Init()
 
 	case "delete", "d":

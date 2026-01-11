@@ -2146,6 +2146,7 @@ func TestMoveTaskToCompletedColumn_MultipleTasksInProject(t *testing.T) {
 
 	// Verify task2 is in completed column
 	var col2 int
+	// TODO: this should be a function (if there is not already one). we repeat this code a lot
 	if err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", task2.ID).Scan(&col2); err != nil {
 		t.Fatalf("Failed to query task2 column: %v", err)
 	}

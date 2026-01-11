@@ -35,7 +35,7 @@ func SetupTestModelWithDB(t *testing.T) (Model, *sql.DB) {
 	require.NoError(t, err, "failed to create column service")
 	labelSvc, err := label.NewService(db, database.SQLite, nil)
 	require.NoError(t, err, "failed to create label service")
-	projectSvc, err := project.NewService(db, database.SQLite, nil)
+	projectSvc, err := project.NewService(db, database.SQLite, nil, nil)
 	require.NoError(t, err, "failed to create project service")
 	appContainer := &app.App{
 		TaskService:    taskSvc,
@@ -105,7 +105,7 @@ func WaitForModeChange(t *testing.T, m *Model, expectedMode state.Mode, timeout 
 	t.Helper()
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		if m.UIState.Mode() == expectedMode {
+		if m.UIState.Mode == expectedMode {
 			return
 		}
 		time.Sleep(10 * time.Millisecond)

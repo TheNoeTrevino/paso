@@ -19,7 +19,7 @@ func (m Model) viewDeleteTaskConfirm() string {
 		Render(fmt.Sprintf("Delete '%s'?\n\n[y]es  [n]o", task.Title))
 
 	return lipgloss.Place(
-		m.UIState.Width(), m.UIState.Height(),
+		m.UIState.Width(), m.UIState.Height,
 		lipgloss.Center, lipgloss.Center,
 		confirmBox,
 	)
@@ -49,7 +49,7 @@ func (m Model) viewDeleteColumnConfirm() string {
 		Render(content)
 
 	return lipgloss.Place(
-		m.UIState.Width(), m.UIState.Height(),
+		m.UIState.Width(), m.UIState.Height,
 		lipgloss.Center, lipgloss.Center,
 		confirmBox,
 	)

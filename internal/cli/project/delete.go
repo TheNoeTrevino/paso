@@ -73,8 +73,11 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	if !force && !quietMode {
 		fmt.Printf("Delete project #%d: '%s'? (y/N): ", projectID, project.Name)
 		var response string
-		if _, err := fmt.Scanln(&response); err != nil {
+		_, err := fmt.Scanln(&response)
+		if err != nil {
 			slog.Error("failed to reading user input", "error", err)
+			fmt.Println("Cancelled (failed to read input)")
+			return nil
 		}
 		if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 			fmt.Println("Cancelled")

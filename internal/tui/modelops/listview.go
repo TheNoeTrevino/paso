@@ -103,8 +103,8 @@ func SyncListToKanbanSelection(m *tui.Model) {
 		tasks := m.AppState.Tasks()[col.ID]
 		for taskIdx, task := range tasks {
 			if task.ID == selectedTask.ID {
-				m.UIState.SetSelectedColumn(colIdx)
-				m.UIState.SetSelectedTask(taskIdx)
+				m.UIState.SelectedColumn = colIdx
+				m.UIState.SelectedTask = taskIdx
 				m.UIState.EnsureSelectionVisible(colIdx)
 				return
 			}
