@@ -91,7 +91,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			slog.Error("failed to read user input", "error", err)
 			fmt.Println("Cancelled (failed to read input)")
-			return nil
+			return fmt.Errorf("failed to read user confirmation: %w", err)
 		}
 		if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 			fmt.Println("Cancelled")
