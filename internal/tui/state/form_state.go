@@ -10,6 +10,17 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
+// GitFormState holds git-related state for project forms
+type GitFormState struct {
+	EditingProjectID            int
+	InitialFormProjectGitBranch string
+	BranchesLoading             bool
+	InfoLoading                 bool
+	Error                       string
+	Branches                    []git.BranchInfo
+	Info                        *git.GitInfo
+}
+
 // FormState manages all form-related state for the application.
 // This includes the custom forms for tasks, projects, and labels,
 // as well as their associated field values and editing state.
@@ -53,7 +64,6 @@ type FormState struct {
 
 	// Project form fields (for creating/editing projects)
 	ProjectForm            *huh.Form // The form instance
-	EditingProjectID       int       // ID of project being edited (0 for new project)
 	FormProjectName        string    // Form field: project name
 	FormProjectDescription string    // Form field: project description
 	FormProjectGitBranch   string    // Form field: git branch (optional)
@@ -62,14 +72,9 @@ type FormState struct {
 	// Project form initial values (for change detection)
 	InitialFormProjectName        string // Initial project name when form was created
 	InitialFormProjectDescription string // Initial project description when form was created
-	InitialFormProjectGitBranch   string // Initial git branch when form was created
 
-	// Git operation state
-	GitBranchesLoading bool             // True when git branch list is being fetched
-	GitInfoLoading     bool             // True when git info is being detected
-	GitError           string           // Error message from git operations
-	GitBranches        []git.BranchInfo // Cached git branches for project form
-	GitInfo            *git.GitInfo     // Cached git info for project form
+	// Git-related state for project forms
+	Git GitFormState
 
 	// Label form fields (for creating/editing labels)
 	LabelForm        *huh.Form // The form instance
@@ -125,11 +130,11 @@ func NewFormState() *FormState {
 		ViewportReady:                 false,
 		ViewportFocused:               false,
 		ProjectForm:                   nil,
-		EditingProjectID:              0,
 		FormProjectName:               "",
 		FormProjectDescription:        "",
 		FormProjectGitBranch:          "",
 		FormProjectConfirm:            true,
+		Git:                           GitFormState{},
 		LabelForm:                     nil,
 		EditingLabelID:                0,
 		FormLabelName:                 "",
@@ -193,19 +198,13 @@ func (s *FormState) IsTaskFormActive() bool {
 // ClearProjectForm resets all project form fields to their default values.
 func (s *FormState) ClearProjectForm() {
 	s.ProjectForm = nil
-	s.EditingProjectID = 0
 	s.FormProjectName = ""
 	s.FormProjectDescription = ""
 	s.FormProjectGitBranch = ""
 	s.FormProjectConfirm = true
 	s.InitialFormProjectName = ""
 	s.InitialFormProjectDescription = ""
-	s.InitialFormProjectGitBranch = ""
-	s.GitBranchesLoading = false
-	s.GitInfoLoading = false
-	s.GitError = ""
-	s.GitBranches = nil
-	s.GitInfo = nil
+	s.Git = GitFormState{}
 }
 
 // IsProjectFormActive returns true if a project form is currently active.
@@ -283,7 +282,7 @@ func (s *FormState) HasProjectFormChanges() bool {
 		return true
 	}
 
-	if strings.TrimSpace(s.FormProjectGitBranch) != strings.TrimSpace(s.InitialFormProjectGitBranch) {
+	if strings.TrimSpace(s.FormProjectGitBranch) != strings.TrimSpace(s.Git.InitialFormProjectGitBranch) {
 		return true
 	}
 
@@ -304,7 +303,7 @@ func (s *FormState) SnapshotTaskFormInitialValues() {
 func (s *FormState) SnapshotProjectFormInitialValues() {
 	s.InitialFormProjectName = s.FormProjectName
 	s.InitialFormProjectDescription = s.FormProjectDescription
-	s.InitialFormProjectGitBranch = s.FormProjectGitBranch
+	s.Git.InitialFormProjectGitBranch = s.FormProjectGitBranch
 }
 
 // --- Helper Functions ---

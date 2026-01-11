@@ -386,7 +386,7 @@ func (m Model) handleNextProject() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
-	m.Forms.Form.EditingProjectID = 0
+	m.Forms.Form.Git.EditingProjectID = 0
 	m.Forms.Form.FormProjectName = ""
 	m.Forms.Form.FormProjectDescription = ""
 	m.Forms.Form.FormProjectGitBranch = ""
@@ -409,7 +409,7 @@ func (m Model) handleEditProject() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	m.Forms.Form.EditingProjectID = currentProject.ID
+	m.Forms.Form.Git.EditingProjectID = currentProject.ID
 	m.Forms.Form.FormProjectName = currentProject.Name
 	m.Forms.Form.FormProjectDescription = currentProject.Description
 	m.Forms.Form.FormProjectGitBranch = currentProject.GitBranch

@@ -106,7 +106,7 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 // renderProjectFormLoadingLayer renders a loading indicator while git data is being fetched
 func (m Model) renderProjectFormLoadingLayer() *lipgloss.Layer {
 	var title string
-	if m.Forms.Form.EditingProjectID != 0 {
+	if m.Forms.Form.Git.EditingProjectID != 0 {
 		title = "Edit Project"
 	} else {
 		title = "New Project"

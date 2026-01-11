@@ -614,7 +614,7 @@ func (m *Model) submitProjectForm() {
 		return
 	}
 
-	if m.Forms.Form.EditingProjectID != 0 {
+	if m.Forms.Form.Git.EditingProjectID != 0 {
 		m.updateProject(name, description, gitBranch)
 	} else {
 		if gitBranch != "" {
@@ -654,7 +654,7 @@ func (m *Model) updateProject(name, description, gitBranch string) {
 	}
 
 	err := m.App.ProjectService.UpdateProject(ctx, projectService.UpdateProjectRequest{
-		ID:          m.Forms.Form.EditingProjectID,
+		ID:          m.Forms.Form.Git.EditingProjectID,
 		Name:        &name,
 		Description: &description,
 		GitBranch:   branchPtr,

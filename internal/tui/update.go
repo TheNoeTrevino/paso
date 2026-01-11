@@ -398,7 +398,7 @@ func (m Model) createProjectFormWithoutGit(forEdit bool) (tea.Model, tea.Cmd) {
 
 // createNewProjectFormWithGit creates a new project form with git info
 func (m Model) createNewProjectFormWithGit(gitInfo git.GitInfo, gitBranches []git.BranchInfo) (tea.Model, tea.Cmd) {
-	m.Forms.Form.EditingProjectID = 0
+	m.Forms.Form.Git.EditingProjectID = 0
 	m.Forms.Form.FormProjectName = ""
 	m.Forms.Form.FormProjectDescription = ""
 	m.Forms.Form.FormProjectGitBranch = ""
@@ -432,7 +432,7 @@ func (m Model) createEditProjectFormWithGit(gitInfo git.GitInfo, gitBranches []g
 		return m, nil
 	}
 
-	m.Forms.Form.EditingProjectID = currentProject.ID
+	m.Forms.Form.Git.EditingProjectID = currentProject.ID
 	m.Forms.Form.FormProjectName = currentProject.Name
 	m.Forms.Form.FormProjectDescription = currentProject.Description
 	m.Forms.Form.FormProjectGitBranch = currentProject.GitBranch
