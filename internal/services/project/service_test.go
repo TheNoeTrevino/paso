@@ -24,7 +24,7 @@ func newMockGitChecker() *mockGitChecker {
 	}
 }
 
-func (m *mockGitChecker) BranchExists(ctx context.Context, branchName string) (bool, error) {
+func (m *mockGitChecker) BranchExists(_ context.Context, branchName string) (bool, error) {
 	exists, ok := m.branches[branchName]
 	if !ok {
 		return true, nil
