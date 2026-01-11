@@ -32,10 +32,10 @@ func NewCache(ttl time.Duration) *Cache {
 
 func (c *Cache) Get(ctx context.Context, workDir string) (GitInfo, []BranchInfo, bool) {
 	c.mu.RLock()
-	defer c.mu.RUnlock()
 
 	entry, exists := c.entries[workDir]
 	if !exists {
+		c.mu.RUnlock()
 		slog.Debug("cache miss: entry not found", "workDir", workDir)
 		return GitInfo{}, nil, false
 	}
@@ -45,6 +45,17 @@ func (c *Cache) Get(ctx context.Context, workDir string) (GitInfo, []BranchInfo,
 			"workDir", workDir,
 			"age", time.Since(entry.Timestamp),
 			"ttl", c.ttl)
+
+		// Remove expired entry
+		c.mu.RUnlock()
+		c.mu.Lock()
+		// Double-check entry still exists and is still expired
+		if entry, exists := c.entries[workDir]; exists && c.isExpired(entry) {
+			delete(c.entries, workDir)
+			slog.Debug("removed expired cache entry", "workDir", workDir)
+		}
+		c.mu.Unlock()
+
 		return GitInfo{}, nil, false
 	}
 
@@ -54,6 +65,7 @@ func (c *Cache) Get(ctx context.Context, workDir string) (GitInfo, []BranchInfo,
 		"branch", entry.GitInfo.CurrentBranch,
 		"branchCount", len(entry.Branches))
 
+	c.mu.RUnlock()
 	return entry.GitInfo, entry.Branches, true
 }
 
