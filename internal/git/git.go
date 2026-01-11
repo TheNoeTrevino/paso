@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os/exec"
 	"strings"
 	"time"
@@ -197,6 +198,9 @@ func ListBranches(ctx context.Context) ([]BranchInfo, error) {
 
 		sanitized, err := SanitizeBranchName(branchName)
 		if err != nil || sanitized == "" {
+			slog.Debug("skipping invalid branch name",
+				"raw_name", branchName,
+				"error", err)
 			continue
 		}
 
