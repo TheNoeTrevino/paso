@@ -149,25 +149,10 @@ func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest) (
 
 	sanitizedBranch := ""
 	if req.GitBranch != "" {
-		if err := git.ValidateBranchName(ctx, req.GitBranch); err != nil {
-			return nil, fmt.Errorf("invalid git branch name: %w", err)
-		}
-
-		var sanitizeErr error
-		sanitizedBranch, sanitizeErr = git.SanitizeBranchName(req.GitBranch)
-		if sanitizeErr != nil {
-			return nil, fmt.Errorf("invalid branch name: %w", sanitizeErr)
-		}
-
-		gitInfo := git.DetectGitInfo(ctx)
-		if gitInfo.IsRepo {
-			exists, err := s.gitChecker.BranchExists(ctx, sanitizedBranch)
-			if err != nil {
-				return nil, fmt.Errorf("failed to check branch existence: %w", err)
-			}
-			if !exists {
-				return nil, ErrBranchDoesNotExist
-			}
+		var err error
+		sanitizedBranch, err = s.validateAndSanitizeBranch(ctx, req.GitBranch)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -241,26 +226,10 @@ func (s *service) UpdateProject(ctx context.Context, req UpdateProjectRequest) e
 	gitBranch := existing.GitBranch
 	if req.GitBranch != nil {
 		if *req.GitBranch != "" {
-			if err := git.ValidateBranchName(ctx, *req.GitBranch); err != nil {
-				return fmt.Errorf("invalid git branch name: %w", err)
-			}
-
-			sanitized, err := git.SanitizeBranchName(*req.GitBranch)
+			sanitized, err := s.validateAndSanitizeBranch(ctx, *req.GitBranch)
 			if err != nil {
-				return fmt.Errorf("invalid branch name: %w", err)
+				return err
 			}
-
-			gitInfo := git.DetectGitInfo(ctx)
-			if gitInfo.IsRepo {
-				exists, err := s.gitChecker.BranchExists(ctx, sanitized)
-				if err != nil {
-					return fmt.Errorf("failed to check branch existence: %w", err)
-				}
-				if !exists {
-					return ErrBranchDoesNotExist
-				}
-			}
-
 			gitBranch = types.NullString{String: sanitized, Valid: true}
 		} else {
 			gitBranch = types.NullString{String: "", Valid: false}
@@ -338,6 +307,30 @@ func (s *service) DeleteProject(ctx context.Context, id int, force bool) error {
 	s.publishProjectEvent(ctx, id)
 
 	return nil
+}
+
+func (s *service) validateAndSanitizeBranch(ctx context.Context, branch string) (string, error) {
+	if err := git.ValidateBranchName(ctx, branch); err != nil {
+		return "", fmt.Errorf("invalid git branch name: %w", err)
+	}
+
+	sanitized, err := git.SanitizeBranchName(branch)
+	if err != nil {
+		return "", fmt.Errorf("invalid branch name: %w", err)
+	}
+
+	gitInfo := git.DetectGitInfo(ctx)
+	if gitInfo.IsRepo {
+		exists, err := s.gitChecker.BranchExists(ctx, sanitized)
+		if err != nil {
+			return "", fmt.Errorf("failed to check branch existence: %w", err)
+		}
+		if !exists {
+			return "", ErrBranchDoesNotExist
+		}
+	}
+
+	return sanitized, nil
 }
 
 // publishProjectEvent publishes a project event with retry logic
