@@ -345,37 +345,43 @@ func TestSanitizeBranchName_LongBranches(t *testing.T) {
 		name        string
 		input       string
 		maxLength   int
+		shouldError bool
 		description string
 	}{
 		{
 			name:        "exactly_255_chars",
 			input:       strings.Repeat("a", 255),
 			maxLength:   255,
+			shouldError: false,
 			description: "Branch name with exactly 255 characters should be allowed",
 		},
 		{
 			name:        "256_chars",
 			input:       strings.Repeat("a", 256),
 			maxLength:   255,
-			description: "Branch name with 256 characters should be truncated to 255",
+			shouldError: true,
+			description: "Branch name with 256 characters should return error",
 		},
 		{
 			name:        "500_chars",
 			input:       strings.Repeat("a", 500),
 			maxLength:   255,
-			description: "Very long branch name should be truncated to 255",
+			shouldError: true,
+			description: "Very long branch name should return error",
 		},
 		{
 			name:        "1000_chars",
 			input:       strings.Repeat("a", 1000),
 			maxLength:   255,
-			description: "Extremely long branch name should be truncated to 255",
+			shouldError: true,
+			description: "Extremely long branch name should return error",
 		},
 		{
 			name:        "long_with_slashes",
 			input:       "feature/" + strings.Repeat("a", 250),
 			maxLength:   255,
-			description: "Long branch name with slashes should be handled",
+			shouldError: true,
+			description: "Long branch name with slashes should return error",
 		},
 	}
 
@@ -383,8 +389,13 @@ func TestSanitizeBranchName_LongBranches(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result, err := SanitizeBranchName(tt.input)
-			assert.NoError(t, err)
-			assert.LessOrEqual(t, len(result), tt.maxLength, tt.description)
+			if tt.shouldError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "too long")
+			} else {
+				assert.NoError(t, err)
+				assert.LessOrEqual(t, len(result), tt.maxLength, tt.description)
+			}
 		})
 	}
 }
