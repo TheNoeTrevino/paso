@@ -7,10 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ============================================================================
-// SanitizeBranchName Tests
-// ============================================================================
-
 func TestSanitizeBranchName_ValidBranches(t *testing.T) {
 	t.Parallel()
 
@@ -436,10 +432,6 @@ func TestSanitizeBranchName_Unicode(t *testing.T) {
 	}
 }
 
-// ============================================================================
-// GitInfo Struct Tests
-// ============================================================================
-
 func TestGitInfo_Validation(t *testing.T) {
 	t.Parallel()
 
@@ -543,10 +535,6 @@ func TestGitInfo_Validation(t *testing.T) {
 		})
 	}
 }
-
-// ============================================================================
-// Table-Driven Tests for Comprehensive Coverage
-// ============================================================================
 
 func TestSanitizeBranchName_TableDriven(t *testing.T) {
 	t.Parallel()

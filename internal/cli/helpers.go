@@ -201,15 +201,12 @@ func tryGitBranchDetection(ctx context.Context) (int, error) {
 		}
 	}()
 
-	// Detect git repository information
 	gitInfo := git.DetectGitInfo(ctx)
 
-	// Check if we have a valid git branch for association
 	if !gitInfo.IsValidForAssociation() {
 		return 0, fmt.Errorf("not in valid git repository state")
 	}
 
-	// Try to find associated project
 	project, err := cliInstance.App.ProjectService.GetProjectByGitBranch(ctx, gitInfo.CurrentBranch)
 	if err != nil {
 		slog.Debug("failed to lookup project by git branch",
@@ -229,15 +226,12 @@ func tryGitBranchDetection(ctx context.Context) (int, error) {
 // Accepts an existing CLI instance instead of creating a new one.
 // Returns (0, error) if detection fails or no project found.
 func tryGitBranchDetectionWithCLI(ctx context.Context, cliInstance *CLI) (int, error) {
-	// Detect git repository information
 	gitInfo := git.DetectGitInfo(ctx)
 
-	// Check if we have a valid git branch for association
 	if !gitInfo.IsValidForAssociation() {
 		return 0, fmt.Errorf("not in valid git repository state")
 	}
 
-	// Try to find associated project
 	project, err := cliInstance.App.ProjectService.GetProjectByGitBranch(ctx, gitInfo.CurrentBranch)
 	if err != nil {
 		slog.Debug("failed to lookup project by git branch",
