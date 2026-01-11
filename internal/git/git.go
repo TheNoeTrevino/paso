@@ -2,13 +2,15 @@ package git
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
-	"sort"
 	"strings"
 	"time"
 	"unicode"
 )
+
+var ErrEmptyBranchName = errors.New("branch name cannot be empty")
 
 // CACHE DESIGN (Task #27)
 //
@@ -78,14 +80,13 @@ func DetectGitInfo(ctx context.Context) GitInfo {
 		HasCommits:    false,
 	}
 
-	// Check if we're in a git repository
-	if !isGitRepo(ctx) {
+	// Batch check: is repo + has commits in single command (reduces exec overhead from 2 calls to 1)
+	isRepo, hasCommits := checkRepoAndCommits(ctx)
+	if !isRepo {
 		return info
 	}
 	info.IsRepo = true
-
-	// Check if repository has commits
-	info.HasCommits = hasCommits(ctx)
+	info.HasCommits = hasCommits
 
 	// Get current branch name and detect detached HEAD
 	branchName, isDetached := getCurrentBranch(ctx)
@@ -99,26 +100,28 @@ func DetectGitInfo(ctx context.Context) GitInfo {
 	return info
 }
 
-// isGitRepo checks if the current directory is inside a git repository
-// Respects the passed context while adding a 5-second timeout for the git operation
-func isGitRepo(ctx context.Context) bool {
+// checkRepoAndCommits checks if we're in a git repo and if it has commits in a single exec call.
+// Returns (isRepo, hasCommits). If isRepo is false, hasCommits is meaningless.
+// Uses "git rev-parse --git-dir HEAD" which succeeds fully only if both conditions are met.
+func checkRepoAndCommits(ctx context.Context) (isRepo bool, hasCommits bool) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--git-dir")
-	err := cmd.Run()
-	return err == nil
-}
+	// --git-dir succeeds if in a repo, HEAD succeeds if commits exist
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--git-dir", "HEAD")
+	output, err := cmd.Output()
+	if err != nil {
+		// Could be "not a repo" or "no commits" - need to distinguish
+		repoCheck := exec.CommandContext(ctx, "git", "rev-parse", "--git-dir")
+		if repoCheck.Run() != nil {
+			return false, false
+		}
+		return true, false
+	}
 
-// hasCommits checks if the repository has at least one commit
-// Respects the passed context while adding a 5-second timeout for the git operation
-func hasCommits(ctx context.Context) bool {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "git", "rev-parse", "HEAD")
-	err := cmd.Run()
-	return err == nil
+	// Both succeeded if we got output containing both paths
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	return true, len(lines) >= 2
 }
 
 // BranchExists checks if a branch with the given name exists in the repository
@@ -141,21 +144,21 @@ func BranchExists(ctx context.Context, branchName string) (bool, error) {
 // getCurrentBranch gets the current branch name and detects detached HEAD state
 // Returns (branchName, isDetached)
 // Respects the passed context while adding a 5-second timeout for the git operation
+// TODO: should we add typesafety to this boolean?
 func getCurrentBranch(ctx context.Context) (string, bool) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	// Try to get symbolic ref (branch name)
 	cmd := exec.CommandContext(ctx, "git", "symbolic-ref", "--short", "HEAD")
-	output, err := cmd.Output()
-
+	rawBranchname, err := cmd.Output()
 	if err != nil {
 		// If symbolic-ref fails, we're in detached HEAD state
 		return "", true
 	}
 
 	// Parse branch name (remove trailing newline)
-	branchName := strings.TrimSpace(string(output))
+	branchName := strings.TrimSpace(string(rawBranchname))
 	return branchName, false
 }
 
@@ -167,13 +170,14 @@ func ListBranches(ctx context.Context) ([]BranchInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "git", "branch", "--list")
-	output, err := cmd.Output()
+	// let git handle sorting
+	cmd := exec.CommandContext(ctx, "git", "branch", "--list", "--sort=refname")
+	rawBranches, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
 
-	lines := strings.Split(string(output), "\n")
+	lines := strings.Split(string(rawBranches), "\n")
 	branches := make([]BranchInfo, 0, len(lines))
 
 	for _, line := range lines {
@@ -181,7 +185,7 @@ func ListBranches(ctx context.Context) ([]BranchInfo, error) {
 			continue
 		}
 
-		// Extract marker (first 2 characters: "* ", "+ ", or "  ")
+		// Extract branch marker (first 2 characters: "* ", "+ ", or "  ")
 		marker := line[:2]
 		branchName := strings.TrimSpace(line[2:])
 
@@ -199,11 +203,6 @@ func ListBranches(ctx context.Context) ([]BranchInfo, error) {
 			Marker: marker,
 		})
 	}
-
-	// Sort by branch name
-	sort.Slice(branches, func(i, j int) bool {
-		return branches[i].Name < branches[j].Name
-	})
 
 	return branches, nil
 }
@@ -270,7 +269,7 @@ func SanitizeBranchName(name string) (string, error) {
 // Respects the passed context while adding a 5-second timeout for the git operation.
 func ValidateBranchName(ctx context.Context, branchName string) error {
 	if strings.TrimSpace(branchName) == "" {
-		return exec.Command("").Run()
+		return ErrEmptyBranchName
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
