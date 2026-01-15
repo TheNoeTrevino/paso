@@ -254,20 +254,12 @@ func makeEnumeratorStyleFunc(nodeMap *nodeDataMap, clrs colors.ColorScheme) tree
 			return lipgloss.NewStyle().Foreground(lipgloss.Color(clrs.Subtle))
 		}
 
-		shouldDim := node.IsCompleted && !hasIncompleteChild(node)
-		color := clrs.Subtle
 		if node.InBlockingPath {
-			color = clrs.ErrorFg
+			return lipgloss.NewStyle().
+				Foreground(lipgloss.Color(clrs.ErrorFg)).
+				Bold(true)
 		}
-		if shouldDim {
-			color = styles.DimColor(color, styles.CompletedDimIntensity)
-		}
-
-		style := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
-		if node.InBlockingPath {
-			style = style.Bold(true)
-		}
-		return style
+		return lipgloss.NewStyle().Foreground(lipgloss.Color(clrs.Subtle))
 	}
 }
 
