@@ -235,59 +235,6 @@ func addChildren(parent *tree.Tree, children []*models.TaskTreeNode, clrs colors
 	}
 }
 
-// nodeDataMap stores task tree node data for style function lookups
-type nodeDataMap struct {
-	data map[int]*models.TaskTreeNode
-}
-
-func buildNodeDataMap(nodes []*models.TaskTreeNode) *nodeDataMap {
-	m := &nodeDataMap{data: make(map[int]*models.TaskTreeNode)}
-	var walk func([]*models.TaskTreeNode)
-	walk = func(nodes []*models.TaskTreeNode) {
-		for _, n := range nodes {
-			m.data[n.TicketNumber] = n
-			walk(n.Children)
-		}
-	}
-	walk(nodes)
-	return m
-}
-
-func makeEnumeratorStyleFunc(nodeMap *nodeDataMap, clrs colors.ColorScheme) tree.StyleFunc {
-	return func(children tree.Children, i int) lipgloss.Style {
-		child := children.At(i)
-		if child == nil {
-			return lipgloss.NewStyle().Foreground(lipgloss.Color(clrs.Subtle))
-		}
-
-		value := child.Value()
-		ticketNum := parseTicketNumber(value)
-		node, ok := nodeMap.data[ticketNum]
-		if !ok {
-			return lipgloss.NewStyle().Foreground(lipgloss.Color(clrs.Subtle))
-		}
-
-		if node.InBlockingPath {
-			return lipgloss.NewStyle().
-				Foreground(lipgloss.Color(clrs.ErrorFg)).
-				Bold(true)
-		}
-		return lipgloss.NewStyle().Foreground(lipgloss.Color(clrs.Subtle))
-	}
-}
-
-func parseTicketNumber(value string) int {
-	var num int
-	for _, c := range value {
-		if c >= '0' && c <= '9' {
-			num = num*10 + int(c-'0')
-		} else if num > 0 {
-			break
-		}
-	}
-	return num
-}
-
 // outputQuietTree outputs the tree in quiet mode (IDs with relation labels)
 func outputQuietTree(nodes []*models.TaskTreeNode, prefix string, isRoot bool) {
 	for i, node := range nodes {
@@ -360,13 +307,28 @@ func outputStyledTree(taskTree []*models.TaskTreeNode) error {
 
 	styles.Init(cfg.ColorScheme)
 
-	nodeMap := buildNodeDataMap(taskTree)
+	enumeratorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(cfg.ColorScheme.Subtle))
+	styledIndenter := makeStyledIndenter(cfg.ColorScheme.Subtle)
 	trees := buildTaskTrees(taskTree, cfg.ColorScheme)
 
 	for _, t := range trees {
 		t.Enumerator(tree.RoundedEnumerator).
-			EnumeratorStyleFunc(makeEnumeratorStyleFunc(nodeMap, cfg.ColorScheme))
+			EnumeratorStyle(enumeratorStyle).
+			Indenter(styledIndenter)
 		fmt.Println(t)
 	}
 	return nil
+}
+
+func makeStyledIndenter(color string) tree.Indenter {
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
+	styledVertical := style.Render("│") + "  "
+	spaces := "   "
+
+	return func(children tree.Children, index int) string {
+		if children.Length()-1 == index {
+			return spaces
+		}
+		return styledVertical
+	}
 }
