@@ -20,9 +20,10 @@ type DatabaseConfig struct {
 
 // Config represents the application configuration
 type Config struct {
-	KeyMappings KeyMappings        `yaml:"key_mappings"`
-	ColorScheme colors.ColorScheme `yaml:"theme"`
-	Databases   []DatabaseConfig   `yaml:"databases"`
+	KeyMappings    KeyMappings        `yaml:"key_mappings"`
+	ColorScheme    colors.ColorScheme `yaml:"theme"`
+	Databases      []DatabaseConfig   `yaml:"databases"`
+	ActiveDatabase string             `yaml:"active_database,omitempty"`
 }
 
 // loadThemeFile loads and merges theme from PASO_THEME_FILE environment variable
@@ -171,10 +172,47 @@ func (c *Config) RemoveDatabase(name string) error {
 	for i, db := range c.Databases {
 		if db.Name == name {
 			c.Databases = append(c.Databases[:i], c.Databases[i+1:]...)
+			if c.ActiveDatabase == name {
+				c.ActiveDatabase = ""
+			}
 			return c.Save()
 		}
 	}
 	return nil // Silently succeed if database not found
+}
+
+// SetActiveDatabase sets the active database by name and saves config
+func (c *Config) SetActiveDatabase(name string) error {
+	for _, db := range c.Databases {
+		if db.Name == name {
+			c.ActiveDatabase = name
+			return c.Save()
+		}
+	}
+	return fmt.Errorf("database '%s' not found", name)
+}
+
+// GetActiveDatabase returns the active database config, or nil if none set
+func (c *Config) GetActiveDatabase() *DatabaseConfig {
+	if c.ActiveDatabase == "" {
+		return nil
+	}
+	for i := range c.Databases {
+		if c.Databases[i].Name == c.ActiveDatabase {
+			return &c.Databases[i]
+		}
+	}
+	return nil
+}
+
+// GetDatabase returns a database config by name, or nil if not found
+func (c *Config) GetDatabase(name string) *DatabaseConfig {
+	for i := range c.Databases {
+		if c.Databases[i].Name == name {
+			return &c.Databases[i]
+		}
+	}
+	return nil
 }
 
 // getConfigPath returns the path to the config file
