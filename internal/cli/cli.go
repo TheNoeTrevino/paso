@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/thenoetrevino/paso/internal/app"
+	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/logging"
@@ -61,19 +63,48 @@ func NewCLIWithApp(ctx context.Context, testApp *app.App) (*CLI, error) {
 		_ = err
 	}
 
-	// Initialize database with SQLite (CLI always uses local database for now)
-	home, _ := os.UserHomeDir()
-	dbPath := filepath.Join(home, ".paso", "tasks.db")
-	dbConfig := database.Config{
-		Type:       database.SQLite,
-		SQLitePath: dbPath,
+	// Load config to get active database
+	cfg, _ := config.Load()
+
+	// Determine database configuration
+	var dbConfig database.Config
+	var dbName string
+
+	if activeDB := cfg.GetActiveDatabase(); activeDB != nil {
+		dbName = activeDB.Name
+		if activeDB.Type == "postgres" {
+			dbConfig = database.Config{
+				Type:            database.PostgreSQL,
+				PostgresConnStr: activeDB.ConnectionString,
+			}
+		} else {
+			connStr := activeDB.ConnectionString
+			if strings.HasPrefix(connStr, "~/") {
+				home, _ := os.UserHomeDir()
+				connStr = filepath.Join(home, connStr[2:])
+			}
+			dbConfig = database.Config{
+				Type:       database.SQLite,
+				SQLitePath: connStr,
+			}
+		}
+	} else {
+		home, _ := os.UserHomeDir()
+		dbPath := filepath.Join(home, ".paso", "tasks.db")
+		dbConfig = database.Config{
+			Type:       database.SQLite,
+			SQLitePath: dbPath,
+		}
+		dbName = "Local"
 	}
-	db, err := database.InitDB(ctx, dbConfig, "Local")
+
+	db, err := database.InitDB(ctx, dbConfig, dbName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize database: %w", err)
 	}
 
 	// Try to connect to daemon (optional - silent fallback)
+	home, _ := os.UserHomeDir()
 	socketPath := filepath.Join(home, ".paso", "paso.sock")
 
 	var eventClient events.EventPublisher
