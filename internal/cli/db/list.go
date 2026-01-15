@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/table"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/config"
 )
@@ -52,15 +54,65 @@ func ListCmd() *cobra.Command {
 				})
 			}
 
-			fmt.Printf("%-15s %-12s %s\n", "NAME", "TYPE", "ACTIVE")
+			baseStyle := lipgloss.NewStyle().Padding(0, 1)
+			headerStyle := baseStyle.Bold(true).Foreground(lipgloss.Color("252"))
+			activeStyle := baseStyle.Foreground(lipgloss.Color("#01BE85")).Background(lipgloss.Color("#00432F"))
 
+			var rows [][]string
 			for _, db := range cfg.Databases {
 				active := ""
 				if db.Name == cfg.ActiveDatabase {
-					active = "*"
+					active = "✓"
 				}
-				fmt.Printf("%-15s %-12s %s\n", db.Name, db.Type, active)
+				rows = append(rows, []string{db.Name, db.Type, active})
 			}
+
+			t := table.New().
+				Border(lipgloss.RoundedBorder()).
+				BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("238"))).
+				Headers("NAME", "TYPE", "ACTIVE").
+				Rows(rows...).
+				StyleFunc(func(row, col int) lipgloss.Style {
+					if row == table.HeaderRow {
+						return headerStyle
+					}
+
+					isActive := rows[row][2] == "✓"
+					if isActive {
+						return activeStyle
+					}
+
+					even := row%2 == 0
+
+					if col == 1 {
+						dbType := rows[row][col]
+						var typeColor string
+						switch dbType {
+						case "postgres":
+							if even {
+								typeColor = "#439F8E"
+							} else {
+								typeColor = "#00E2C7"
+							}
+						case "sqlite":
+							if even {
+								typeColor = "#59B980"
+							} else {
+								typeColor = "#75FBAB"
+							}
+						}
+						if typeColor != "" {
+							return baseStyle.Foreground(lipgloss.Color(typeColor))
+						}
+					}
+
+					if even {
+						return baseStyle.Foreground(lipgloss.Color("245"))
+					}
+					return baseStyle.Foreground(lipgloss.Color("252"))
+				})
+
+			fmt.Println(t)
 
 			return nil
 		},
