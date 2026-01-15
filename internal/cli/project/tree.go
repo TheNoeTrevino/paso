@@ -36,13 +36,13 @@ Examples:
   paso project tree 1 -j
 
   # Long-form flags also supported
-  paso project tree --project-id=1 --json`,
+  paso project tree --project=1 --json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: runTree,
 	}
 
 	// Flags
-	cmd.Flags().IntP("project-id", "p", 0, "Project ID (can also be provided as positional argument)")
+	cmd.Flags().IntP("project", "p", 0, "Project ID (uses git branch association if not specified)")
 	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
 	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (IDs with relation labels in tree order)")
 
@@ -52,31 +52,10 @@ Examples:
 func runTree(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
-	var projectID int
-	if len(args) > 0 {
-		var err error
-		projectID, err = strconv.Atoi(args[0])
-		if err != nil {
-			projectID = 0
-		}
-	} else {
-		// TODO: chore and handle the never existent error
-		projectID, _ = cmd.Flags().GetInt("project-id")
-	}
-
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
-
-	if projectID <= 0 {
-		if fmtErr := formatter.ErrorWithSuggestion("INVALID_PROJECT_ID",
-			"project ID must be a positive integer",
-			"Usage: paso project tree <project-id> or paso project tree --project-id=<id>"); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
-	}
 
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
@@ -90,6 +69,29 @@ func runTree(cmd *cobra.Command, args []string) error {
 			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
+
+	var projectID int
+	if len(args) > 0 {
+		projectID, err = strconv.Atoi(args[0])
+		if err != nil || projectID <= 0 {
+			if fmtErr := formatter.ErrorWithSuggestion("INVALID_PROJECT_ID",
+				"project ID must be a positive integer",
+				"Usage: paso project tree <project-id> or paso project tree -p <id>"); fmtErr != nil {
+				slog.Error("failed to formatting error message", "error", fmtErr)
+			}
+			os.Exit(cli.ExitUsage)
+		}
+	} else {
+		projectID, err = cli.GetProjectIDWithCLI(cmd, cliInstance)
+		if err != nil {
+			if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
+				err.Error(),
+				"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
+				slog.Error("failed to formatting error message", "error", fmtErr)
+			}
+			os.Exit(cli.ExitUsage)
+		}
+	}
 
 	tree, err := cliInstance.App.TaskService.GetTaskTreeByProject(ctx, projectID)
 	if err != nil {
