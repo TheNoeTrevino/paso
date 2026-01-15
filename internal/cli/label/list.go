@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
+	"strconv"
 
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/table"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/models"
 )
 
 // ListCmd returns the label list subcommand
@@ -115,17 +118,51 @@ func runList(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	// Human-readable output
 	if len(labels) == 0 {
 		fmt.Printf("No labels found in project '%s'\n", project.Name)
 		return nil
 	}
 
 	fmt.Printf("Labels in project '%s':\n", project.Name)
-	fmt.Printf("  %-4s %-20s %s\n", "ID", "Name", "Color")
-	fmt.Println("  " + strings.Repeat("-", 50))
-	for _, lbl := range labels {
-		fmt.Printf("  %-4d %-20s %s\n", lbl.ID, lbl.Name, lbl.Color)
-	}
+	fmt.Println(renderLabelTable(labels))
 	return nil
+}
+
+func renderLabelTable(labels []*models.Label) string {
+	baseStyle := lipgloss.NewStyle().Padding(0, 1)
+	headerStyle := baseStyle.Bold(true).Foreground(lipgloss.Color("252"))
+
+	var rows [][]string
+	for _, lbl := range labels {
+		rows = append(rows, []string{
+			strconv.Itoa(lbl.ID),
+			lbl.Name,
+			lbl.Color,
+		})
+	}
+
+	tbl := table.New().
+		Border(lipgloss.RoundedBorder()).
+		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("238"))).
+		Headers("ID", "NAME", "COLOR").
+		Rows(rows...).
+		StyleFunc(func(row, col int) lipgloss.Style {
+			if row == table.HeaderRow {
+				return headerStyle
+			}
+
+			label := labels[row]
+			even := row%2 == 0
+
+			if col == 2 && label.Color != "" {
+				return baseStyle.Foreground(lipgloss.Color(label.Color))
+			}
+
+			if even {
+				return baseStyle.Foreground(lipgloss.Color("245"))
+			}
+			return baseStyle.Foreground(lipgloss.Color("252"))
+		})
+
+	return tbl.String()
 }
