@@ -6,8 +6,9 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
-	"strings"
 
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/tree"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/styles"
@@ -152,6 +153,136 @@ func hasIncompleteChild(node *models.TaskTreeNode) bool {
 	return false
 }
 
+// taskNode wraps a TaskTreeNode for lipgloss tree rendering
+type taskNode struct {
+	node   *models.TaskTreeNode
+	colors colors.ColorScheme
+	isRoot bool
+}
+
+func (t taskNode) String() string {
+	shouldDim := t.node.IsCompleted && !hasIncompleteChild(t.node)
+
+	if t.isRoot {
+		color := t.colors.Title
+		if shouldDim {
+			color = styles.DimColor(color, styles.CompletedDimIntensity)
+		}
+		return lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(color)).
+			Render(fmt.Sprintf("%d: %s - %s", t.node.TicketNumber, t.node.Title, t.node.ColumnName))
+	}
+
+	textColor := t.colors.Normal
+	if t.node.IsBlocking {
+		textColor = t.colors.ErrorFg
+	}
+	if shouldDim {
+		textColor = styles.DimColor(textColor, styles.CompletedDimIntensity)
+	}
+
+	ticketStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(textColor))
+	relationStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(textColor)).
+		Bold(t.node.IsBlocking)
+	titleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(textColor))
+
+	ticketNum := ticketStyle.Render(fmt.Sprintf("%d: ", t.node.TicketNumber))
+	relationChip := relationStyle.Render(t.node.RelationLabel)
+	titleInfo := titleStyle.Render(fmt.Sprintf(" %s - %s", t.node.Title, t.node.ColumnName))
+
+	return fmt.Sprintf("%s%s%s", ticketNum, relationChip, titleInfo)
+}
+
+// buildTaskTrees converts a slice of TaskTreeNodes to lipgloss trees (one per root)
+func buildTaskTrees(nodes []*models.TaskTreeNode, clrs colors.ColorScheme) []*tree.Tree {
+	trees := make([]*tree.Tree, 0, len(nodes))
+
+	for _, node := range nodes {
+		rootNode := taskNode{node: node, colors: clrs, isRoot: true}
+		t := tree.Root(rootNode)
+		addChildren(t, node.Children, clrs)
+		trees = append(trees, t)
+	}
+
+	return trees
+}
+
+func addChildren(parent *tree.Tree, children []*models.TaskTreeNode, clrs colors.ColorScheme) {
+	for _, child := range children {
+		childNode := taskNode{node: child, colors: clrs, isRoot: false}
+		if len(child.Children) > 0 {
+			subtree := tree.Root(childNode)
+			addChildren(subtree, child.Children, clrs)
+			parent.Child(subtree)
+		} else {
+			parent.Child(childNode)
+		}
+	}
+}
+
+// nodeDataMap stores task tree node data for style function lookups
+type nodeDataMap struct {
+	data map[int]*models.TaskTreeNode
+}
+
+func buildNodeDataMap(nodes []*models.TaskTreeNode) *nodeDataMap {
+	m := &nodeDataMap{data: make(map[int]*models.TaskTreeNode)}
+	var walk func([]*models.TaskTreeNode)
+	walk = func(nodes []*models.TaskTreeNode) {
+		for _, n := range nodes {
+			m.data[n.TicketNumber] = n
+			walk(n.Children)
+		}
+	}
+	walk(nodes)
+	return m
+}
+
+func makeEnumeratorStyleFunc(nodeMap *nodeDataMap, clrs colors.ColorScheme) tree.StyleFunc {
+	return func(children tree.Children, i int) lipgloss.Style {
+		child := children.At(i)
+		if child == nil {
+			return lipgloss.NewStyle().Foreground(lipgloss.Color(clrs.Subtle))
+		}
+
+		value := child.Value()
+		ticketNum := parseTicketNumber(value)
+		node, ok := nodeMap.data[ticketNum]
+		if !ok {
+			return lipgloss.NewStyle().Foreground(lipgloss.Color(clrs.Subtle))
+		}
+
+		shouldDim := node.IsCompleted && !hasIncompleteChild(node)
+		color := clrs.Subtle
+		if node.InBlockingPath {
+			color = clrs.ErrorFg
+		}
+		if shouldDim {
+			color = styles.DimColor(color, styles.CompletedDimIntensity)
+		}
+
+		style := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
+		if node.InBlockingPath {
+			style = style.Bold(true)
+		}
+		return style
+	}
+}
+
+func parseTicketNumber(value string) int {
+	var num int
+	for _, c := range value {
+		if c >= '0' && c <= '9' {
+			num = num*10 + int(c-'0')
+		} else if num > 0 {
+			break
+		}
+	}
+	return num
+}
+
 // outputQuietTree outputs the tree in quiet mode (IDs with relation labels)
 func outputQuietTree(nodes []*models.TaskTreeNode, prefix string, isRoot bool) {
 	for i, node := range nodes {
@@ -214,7 +345,7 @@ func outputJSONTree(projectID int, tree []*models.TaskTreeNode) error {
 	})
 }
 
-func outputStyledTree(tree []*models.TaskTreeNode) error {
+func outputStyledTree(taskTree []*models.TaskTreeNode) error {
 	cfg, err := config.Load()
 	if err != nil {
 		cfg = &config.Config{
@@ -224,53 +355,13 @@ func outputStyledTree(tree []*models.TaskTreeNode) error {
 
 	styles.Init(cfg.ColorScheme)
 
-	var output strings.Builder
-	renderTreeNodes(&output, tree, nil, true, cfg.ColorScheme)
+	nodeMap := buildNodeDataMap(taskTree)
+	trees := buildTaskTrees(taskTree, cfg.ColorScheme)
 
-	fmt.Print(output.String())
+	for _, t := range trees {
+		t.Enumerator(tree.RoundedEnumerator).
+			EnumeratorStyleFunc(makeEnumeratorStyleFunc(nodeMap, cfg.ColorScheme))
+		fmt.Println(t)
+	}
 	return nil
-}
-
-// ancestorState tracks whether an ancestor was last and in blocking path
-type ancestorState struct {
-	isLast         bool
-	inBlockingPath bool
-}
-
-// renderPrefix renders the accumulated prefix from ancestor states. will dim if shouldDim
-func renderPrefix(ancestors []ancestorState, shouldDim bool, colors colors.ColorScheme) string {
-	var prefix strings.Builder
-	for _, a := range ancestors {
-		if a.isLast {
-			prefix.WriteString(styles.TreeSpace)
-		} else {
-			prefix.WriteString(styles.RenderTreeVertical(a.inBlockingPath, shouldDim, colors))
-		}
-	}
-	return prefix.String()
-}
-
-// recursive
-func renderTreeNodes(output *strings.Builder, nodes []*models.TaskTreeNode, ancestors []ancestorState, isRoot bool, colors colors.ColorScheme) {
-	for i, node := range nodes {
-		isLast := i == len(nodes)-1
-		shouldDim := node.IsCompleted && !hasIncompleteChild(node)
-
-		if isRoot {
-			line := styles.RenderTreeRootTask(node.TicketNumber, node.Title, node.ColumnName, shouldDim, colors)
-			output.WriteString(line + "\n")
-			renderTreeNodes(output, node.Children, nil, false, colors)
-			continue
-		}
-
-		prefix := renderPrefix(ancestors, shouldDim, colors)
-		line := styles.RenderTreeChildLine(prefix, isLast, node, shouldDim, colors)
-		output.WriteString(line + "\n")
-
-		childAncestors := append(ancestors, ancestorState{
-			isLast:         isLast,
-			inBlockingPath: node.InBlockingPath,
-		})
-		renderTreeNodes(output, node.Children, childAncestors, false, colors)
-	}
 }
