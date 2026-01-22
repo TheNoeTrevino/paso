@@ -76,7 +76,11 @@ func (m Model) confirmDeleteComment() (tea.Model, tea.Cmd) {
 			comments, err := m.App.TaskService.GetCommentsByTask(ctx, taskID)
 			if err == nil {
 				m.Forms.Form.FormComments = comments
-				m.Forms.Comment.SetComments(comments)
+			}
+			// Refresh activities for comments view
+			activities, actErr := m.App.TaskService.GetTaskActivities(ctx, taskID)
+			if actErr == nil {
+				m.Forms.Comment.SetActivities(activities)
 			}
 		}
 	}

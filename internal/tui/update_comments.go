@@ -65,17 +65,17 @@ func (m Model) handleCommentsViewDown() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleCommentsViewEdit opens the comment form to edit the selected comment
+// handleCommentsViewEdit opens the comment form to edit the selected activity
 func (m Model) handleCommentsViewEdit() (tea.Model, tea.Cmd) {
-	selectedComment := m.Forms.Comment.GetSelectedComment()
-	if selectedComment == nil {
-		m.UI.Notification.Add(state.LevelError, "No comment selected")
+	selectedActivity := m.Forms.Comment.GetSelectedActivity()
+	if selectedActivity == nil {
+		m.UI.Notification.Add(state.LevelError, "No item selected")
 		return m, nil
 	}
 
 	// Set up form state for editing
-	m.Forms.Form.FormCommentMessage = selectedComment.Message
-	m.Forms.Form.EditingCommentID = selectedComment.ID
+	m.Forms.Form.FormCommentMessage = selectedActivity.Content
+	m.Forms.Form.EditingCommentID = selectedActivity.ID
 	m.Forms.Form.CommentFormReturnMode = state.CommentsViewMode
 
 	// Create comment form
@@ -113,16 +113,16 @@ func (m Model) handleCommentsViewAdd() (tea.Model, tea.Cmd) {
 	return m, m.Forms.Form.CommentForm.Init()
 }
 
-// handleCommentsViewDelete shows confirmation dialog for deleting the selected comment
+// handleCommentsViewDelete shows confirmation dialog for deleting the selected activity
 func (m Model) handleCommentsViewDelete() (tea.Model, tea.Cmd) {
-	selectedComment := m.Forms.Comment.GetSelectedComment()
-	if selectedComment == nil {
-		m.UI.Notification.Add(state.LevelError, "No comment selected")
+	selectedActivity := m.Forms.Comment.GetSelectedActivity()
+	if selectedActivity == nil {
+		m.UI.Notification.Add(state.LevelError, "No item selected")
 		return m, nil
 	}
 
 	// Store comment ID for deletion
-	m.Forms.Form.EditingCommentID = selectedComment.ID
+	m.Forms.Form.EditingCommentID = selectedActivity.ID
 
 	// Show delete confirmation
 	// We'll use the same DeleteConfirmMode and handle comment deletion there

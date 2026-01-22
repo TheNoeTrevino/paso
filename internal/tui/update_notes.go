@@ -4,7 +4,6 @@ import (
 	"log/slog"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -31,11 +30,11 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "enter":
-		// Open form to edit the selected comment
+		// Open form to edit the selected activity
 		if len(m.Forms.Comment.Items) > 0 && m.Forms.Comment.Cursor < len(m.Forms.Comment.Items) {
-			comment := m.Forms.Comment.Items[m.Forms.Comment.Cursor].Comment
-			m.Forms.Form.FormCommentMessage = comment.Message
-			m.Forms.Form.EditingCommentID = comment.ID
+			activity := m.Forms.Comment.Items[m.Forms.Comment.Cursor].Activity
+			m.Forms.Form.FormCommentMessage = activity.Content
+			m.Forms.Form.EditingCommentID = activity.ID
 			m.Forms.Form.CommentForm = huhforms.CreateCommentForm(&m.Forms.Form.FormCommentMessage, true).
 				WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 			m.Forms.Form.SnapshotCommentFormInitialValues()
@@ -55,12 +54,14 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.Forms.Form.CommentForm.Init()
 
 	case "delete", "d":
-		// Delete the selected comment
+		// Delete the selected activity
 		if len(m.Forms.Comment.Items) > 0 && m.Forms.Comment.Cursor < len(m.Forms.Comment.Items) {
+			activity := m.Forms.Comment.Items[m.Forms.Comment.Cursor].Activity
+
 			ctx, cancel := m.DBContext()
 			defer cancel()
 
-			commentID := m.Forms.Comment.Items[m.Forms.Comment.Cursor].Comment.ID
+			commentID := activity.ID
 			err := m.App.TaskService.DeleteComment(ctx, commentID)
 			if err != nil {
 				slog.Error("failed to deleting comment", "error", err)
@@ -77,9 +78,13 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			// Update form state and comment state
+			// Update form state
 			m.Forms.Form.FormComments = comments
-			m.Forms.Comment.Items = convertToCommentItems(comments)
+			// Reload activities for comments view
+			activities, actErr := m.App.TaskService.GetTaskActivities(ctx, taskID)
+			if actErr == nil {
+				m.Forms.Comment.SetActivities(activities)
+			}
 
 			// Adjust cursor if needed
 			if m.Forms.Comment.Cursor >= len(m.Forms.Comment.Items) && len(m.Forms.Comment.Items) > 0 {
@@ -95,15 +100,4 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
-}
-
-// convertToCommentItems converts a slice of Comment models to CommentItem for display
-func convertToCommentItems(comments []*models.Comment) []state.CommentItem {
-	items := make([]state.CommentItem, len(comments))
-	for i, comment := range comments {
-		items[i] = state.CommentItem{
-			Comment: comment,
-		}
-	}
-	return items
 }

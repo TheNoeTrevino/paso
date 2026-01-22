@@ -836,7 +836,13 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// No changes or in create mode - return to appropriate mode
 			returnMode := m.Forms.Form.CommentFormReturnMode
 			if returnMode == state.CommentsViewMode {
-				m.Forms.Comment.SetComments(m.Forms.Form.FormComments)
+				// Reload activities for the comments view
+				ctx, cancel := m.DBContext()
+				activities, err := m.App.TaskService.GetTaskActivities(ctx, m.Forms.Comment.TaskID)
+				cancel()
+				if err == nil {
+					m.Forms.Comment.SetActivities(activities)
+				}
 				m.UIState.Mode = state.CommentsViewMode
 			} else {
 				m.UIState.Mode = state.TicketFormMode
@@ -900,7 +906,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.UI.Notification.Add(state.LevelInfo, "Comment updated")
 			}
 
-			// Reload comments
+			// Reload comments for task form viewport
 			taskID := m.Forms.Form.EditingTaskID
 			comments, err := m.App.TaskService.GetCommentsByTask(ctx, taskID)
 			if err != nil {
@@ -908,14 +914,16 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.UI.Notification.Add(state.LevelError, "Failed to reload comments")
 			} else {
 				m.Forms.Form.FormComments = comments
-				m.Forms.Comment.Items = convertToCommentItems(comments)
 			}
 
 			// Return to appropriate mode based on where we came from
 			returnMode := m.Forms.Form.CommentFormReturnMode
 			if returnMode == state.CommentsViewMode {
-				// Refresh comments view and return to it
-				m.Forms.Comment.SetComments(m.Forms.Form.FormComments)
+				// Refresh activities for comments view and return to it
+				activities, err := m.App.TaskService.GetTaskActivities(ctx, taskID)
+				if err == nil {
+					m.Forms.Comment.SetActivities(activities)
+				}
 				m.UIState.Mode = state.CommentsViewMode
 			} else {
 				m.UIState.Mode = state.TicketFormMode
@@ -927,9 +935,26 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleOpenCommentsView opens the full-screen comments view
 func (m Model) handleOpenCommentsView() (tea.Model, tea.Cmd) {
-	// Set up comments view state
-	m.Forms.Comment.TaskID = m.Forms.Form.EditingTaskID
-	m.Forms.Comment.SetComments(m.Forms.Form.FormComments)
+	taskID := m.Forms.Form.EditingTaskID
+	if taskID == 0 {
+		m.UI.Notification.Add(state.LevelError, "No task selected")
+		return m, nil
+	}
+
+	// Fetch activities (events + comments) from the service
+	ctx, cancel := m.DBContext()
+	defer cancel()
+
+	activities, err := m.App.TaskService.GetTaskActivities(ctx, taskID)
+	if err != nil {
+		slog.Error("failed to fetch task activities", "error", err)
+		m.UI.Notification.Add(state.LevelError, "Failed to load activity")
+		return m, nil
+	}
+
+	// Set up comments view state with activities
+	m.Forms.Comment.TaskID = taskID
+	m.Forms.Comment.SetActivities(activities)
 	m.Forms.Comment.Cursor = 0
 	m.Forms.Comment.ScrollOffset = 0
 

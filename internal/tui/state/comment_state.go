@@ -2,10 +2,10 @@ package state
 
 import "github.com/thenoetrevino/paso/internal/models"
 
-// CommentItem represents a single comment for display.
+// CommentItem represents a single activity item (event or comment) for display.
 type CommentItem struct {
-	// Comment is the comment data from the database
-	Comment *models.Comment
+	// Activity is the activity data (event or comment)
+	Activity *models.ActivityItem
 }
 
 // CommentState manages the comments section state for a task.
@@ -66,19 +66,19 @@ func (s *CommentState) MoveCursorDown(maxIdx int) bool {
 	return false
 }
 
-// GetSelectedComment returns the currently selected comment, or nil if none
-func (s *CommentState) GetSelectedComment() *models.Comment {
+// GetSelectedActivity returns the currently selected activity item, or nil if none
+func (s *CommentState) GetSelectedActivity() *models.ActivityItem {
 	if s.Cursor >= 0 && s.Cursor < len(s.Items) {
-		return s.Items[s.Cursor].Comment
+		return s.Items[s.Cursor].Activity
 	}
 	return nil
 }
 
-// SetComments replaces the comment list with new data
-func (s *CommentState) SetComments(comments []*models.Comment) {
-	s.Items = make([]CommentItem, len(comments))
-	for i, c := range comments {
-		s.Items[i] = CommentItem{Comment: c}
+// SetActivities replaces the activity list with new data
+func (s *CommentState) SetActivities(activities []models.ActivityItem) {
+	s.Items = make([]CommentItem, len(activities))
+	for i := range activities {
+		s.Items[i] = CommentItem{Activity: &activities[i]}
 	}
 
 	// Reset cursor if out of bounds

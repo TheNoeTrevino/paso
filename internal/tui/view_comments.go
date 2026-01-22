@@ -23,8 +23,8 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 	}
 
 	// Title bar
-	commentCount := len(m.Forms.Comment.Items)
-	titleText := fmt.Sprintf("Task Comments - \"%s\" (%d comments)", taskTitle, commentCount)
+	itemCount := len(m.Forms.Comment.Items)
+	titleText := fmt.Sprintf("Task Activity - \"%s\" (%d items)", taskTitle, itemCount)
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color(theme.Highlight))
@@ -54,13 +54,13 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 		availableHeight,
 	)
 
-	// Render only visible comment cards
+	// Render only visible activity cards
 	var cards []string
 	visibleItems := m.Forms.Comment.Items[startIdx:endIdx]
 	for i, item := range visibleItems {
 		actualIdx := startIdx + i
 		selected := (actualIdx == m.Forms.Comment.Cursor)
-		card := components.RenderCommentCard(item.Comment, selected, cardWidth)
+		card := components.RenderActivityCard(item.Activity, selected, cardWidth)
 		cards = append(cards, card)
 	}
 
@@ -102,12 +102,12 @@ func renderEmptyCommentsState(width, height int) string {
 
 	lines := []string{
 		"",
-		"No comments yet.",
+		"No activity yet.",
 		"",
 		"Press 'a' to add your first comment.",
 		"",
-		"Comments help you track context and reasoning",
-		"as you work through tasks.",
+		"Activity includes comments and task events",
+		"to help track progress and context.",
 		"",
 	}
 
@@ -119,7 +119,7 @@ func renderCommentsHelpText() string {
 	helpStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Subtle))
 
-	return helpStyle.Render("[↑↓: navigate | Enter/e: edit | a: add | d: delete | Esc: close]")
+	return helpStyle.Render("[↑↓: navigate | e: edit | a: add comment | d: delete | Esc: close]")
 }
 
 // ScrollIndicators holds the top and bottom scroll indicator strings
