@@ -4,12 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/services/taskevent"
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
@@ -2233,6 +2236,431 @@ func TestMoveTaskToReadyColumn_MultipleTasksInProject(t *testing.T) {
 }
 
 // ============================================================================
+// TEST CASES - GET TASK ACTIVITIES
+// ============================================================================
+
+func TestGetTaskActivities_RetrievesBothCommentsAndEvents(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+
+	// Create mock event service with predefined events
+	mock := taskevent.NewMockService()
+	mock.GetEventsByTaskResult = []models.TaskEvent{
+		{
+			ID:        1,
+			TaskID:    taskID,
+			Content:   "Task created",
+			Author:    "system",
+			CreatedAt: time.Now().Add(-2 * time.Hour),
+		},
+		{
+			ID:        2,
+			TaskID:    taskID,
+			Content:   "Task moved from Todo to Done",
+			Author:    "system",
+			CreatedAt: time.Now().Add(-1 * time.Hour),
+		},
+	}
+
+	// Create some comments directly in the database
+	createTestComment(t, db, taskID, "First comment", "user1")
+	createTestComment(t, db, taskID, "Second comment", "user2")
+
+	svc := newTestServiceWithMock(t, db, mock)
+
+	activities, err := svc.GetTaskActivities(context.Background(), taskID)
+	require.NoError(t, err)
+
+	// Should have 4 activities total: 2 events + 2 comments
+	if len(activities) != 4 {
+		t.Fatalf("Expected 4 activities, got %d", len(activities))
+	}
+
+	// Count events and comments
+	eventCount := 0
+	commentCount := 0
+	for _, activity := range activities {
+		switch activity.Type {
+		case models.ActivityTypeEvent:
+			eventCount++
+		case models.ActivityTypeComment:
+			commentCount++
+		}
+	}
+
+	if eventCount != 2 {
+		t.Errorf("Expected 2 events, got %d", eventCount)
+	}
+	if commentCount != 2 {
+		t.Errorf("Expected 2 comments, got %d", commentCount)
+	}
+
+	// Verify mock was called
+	require.True(t, mock.HasCall("GetEventsByTask", taskID))
+}
+
+func TestGetTaskActivities_SortedByTimestampDescending(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+
+	// Create mock event service with events at specific times
+	mock := taskevent.NewMockService()
+	now := time.Now()
+	mock.GetEventsByTaskResult = []models.TaskEvent{
+		{
+			ID:        1,
+			TaskID:    taskID,
+			Content:   "Oldest event",
+			Author:    "system",
+			CreatedAt: now.Add(-3 * time.Hour),
+		},
+		{
+			ID:        2,
+			TaskID:    taskID,
+			Content:   "Newest event",
+			Author:    "system",
+			CreatedAt: now.Add(-30 * time.Minute),
+		},
+	}
+
+	// Create comments with specific timestamps
+	_, err := db.ExecContext(context.Background(),
+		`INSERT INTO task_comments (task_id, content, author, created_at) VALUES 
+		(?, 'Middle comment', 'user1', datetime('now', '-2 hours')),
+		(?, 'Recent comment', 'user2', datetime('now', '-1 hour'))`,
+		taskID, taskID)
+	if err != nil {
+		t.Fatalf("Failed to create test comments: %v", err)
+	}
+
+	svc := newTestServiceWithMock(t, db, mock)
+
+	activities, err := svc.GetTaskActivities(context.Background(), taskID)
+	require.NoError(t, err)
+
+	if len(activities) != 4 {
+		t.Fatalf("Expected 4 activities, got %d", len(activities))
+	}
+
+	// Verify activities are sorted by CreatedAt descending (newest first)
+	for i := 1; i < len(activities); i++ {
+		if activities[i-1].CreatedAt.Before(activities[i].CreatedAt) {
+			t.Errorf("Activities not sorted correctly: activity[%d].CreatedAt (%v) is before activity[%d].CreatedAt (%v)",
+				i-1, activities[i-1].CreatedAt, i, activities[i].CreatedAt)
+		}
+	}
+}
+
+func TestGetTaskActivities_TaskWithNoActivities(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+
+	// Create mock with no events
+	mock := taskevent.NewMockService()
+	mock.GetEventsByTaskResult = []models.TaskEvent{}
+
+	svc := newTestServiceWithMock(t, db, mock)
+
+	activities, err := svc.GetTaskActivities(context.Background(), taskID)
+	require.NoError(t, err)
+
+	if len(activities) != 0 {
+		t.Errorf("Expected 0 activities, got %d", len(activities))
+	}
+}
+
+func TestGetTaskActivities_TaskWithOnlyComments(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+
+	// Create mock with no events
+	mock := taskevent.NewMockService()
+	mock.GetEventsByTaskResult = []models.TaskEvent{}
+
+	// Create comments
+	createTestComment(t, db, taskID, "Comment 1", "user1")
+	createTestComment(t, db, taskID, "Comment 2", "user2")
+	createTestComment(t, db, taskID, "Comment 3", "user3")
+
+	svc := newTestServiceWithMock(t, db, mock)
+
+	activities, err := svc.GetTaskActivities(context.Background(), taskID)
+	require.NoError(t, err)
+
+	if len(activities) != 3 {
+		t.Fatalf("Expected 3 activities, got %d", len(activities))
+	}
+
+	// Verify all are comments
+	for _, activity := range activities {
+		if activity.Type != models.ActivityTypeComment {
+			t.Errorf("Expected ActivityTypeComment, got %v", activity.Type)
+		}
+	}
+}
+
+func TestGetTaskActivities_TaskWithOnlyEvents(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+
+	// Create mock with events
+	mock := taskevent.NewMockService()
+	mock.GetEventsByTaskResult = []models.TaskEvent{
+		{
+			ID:        1,
+			TaskID:    taskID,
+			Content:   "Task created",
+			Author:    "system",
+			CreatedAt: time.Now().Add(-2 * time.Hour),
+		},
+		{
+			ID:        2,
+			TaskID:    taskID,
+			Content:   "Label 'bug' added",
+			Author:    "user1",
+			CreatedAt: time.Now().Add(-1 * time.Hour),
+		},
+	}
+
+	svc := newTestServiceWithMock(t, db, mock)
+
+	activities, err := svc.GetTaskActivities(context.Background(), taskID)
+	require.NoError(t, err)
+
+	if len(activities) != 2 {
+		t.Fatalf("Expected 2 activities, got %d", len(activities))
+	}
+
+	// Verify all are events
+	for _, activity := range activities {
+		if activity.Type != models.ActivityTypeEvent {
+			t.Errorf("Expected ActivityTypeEvent, got %v", activity.Type)
+		}
+	}
+}
+
+func TestGetTaskActivities_InvalidTaskID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	mock := taskevent.NewMockService()
+	svc := newTestServiceWithMock(t, db, mock)
+
+	_, err := svc.GetTaskActivities(context.Background(), 0)
+
+	if err == nil {
+		t.Fatal("Expected error for invalid task ID")
+	}
+
+	if err != ErrInvalidTaskID {
+		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
+	}
+}
+
+func TestGetTaskActivities_NegativeTaskID(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	mock := taskevent.NewMockService()
+	svc := newTestServiceWithMock(t, db, mock)
+
+	_, err := svc.GetTaskActivities(context.Background(), -1)
+
+	if err == nil {
+		t.Fatal("Expected error for negative task ID")
+	}
+
+	if err != ErrInvalidTaskID {
+		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
+	}
+}
+
+func TestGetTaskActivities_EventServiceError(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+
+	// Create mock that returns an error
+	mock := taskevent.NewMockService()
+	mock.GetEventsByTaskErr = errors.New("event service unavailable")
+
+	svc := newTestServiceWithMock(t, db, mock)
+
+	_, err := svc.GetTaskActivities(context.Background(), taskID)
+
+	if err == nil {
+		t.Fatal("Expected error when event service fails")
+	}
+
+	if !strings.Contains(err.Error(), "failed to get task events") {
+		t.Errorf("Expected error to contain 'failed to get task events', got: %v", err)
+	}
+}
+
+func TestGetTaskActivities_VerifiesActivityItemFields(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+
+	// Create mock with a specific event
+	eventTime := time.Now().Add(-1 * time.Hour)
+	mock := taskevent.NewMockService()
+	mock.GetEventsByTaskResult = []models.TaskEvent{
+		{
+			ID:        42,
+			TaskID:    taskID,
+			Content:   "Task moved to Done",
+			Author:    "testauthor",
+			CreatedAt: eventTime,
+		},
+	}
+
+	// Create a comment
+	commentID := createTestComment(t, db, taskID, "Test comment content", "commentauthor")
+
+	svc := newTestServiceWithMock(t, db, mock)
+
+	activities, err := svc.GetTaskActivities(context.Background(), taskID)
+	require.NoError(t, err)
+
+	if len(activities) != 2 {
+		t.Fatalf("Expected 2 activities, got %d", len(activities))
+	}
+
+	// Find the event activity
+	var eventActivity *models.ActivityItem
+	var commentActivity *models.ActivityItem
+	for i := range activities {
+		if activities[i].Type == models.ActivityTypeEvent {
+			eventActivity = &activities[i]
+		} else {
+			commentActivity = &activities[i]
+		}
+	}
+
+	// Verify event activity fields
+	require.NotNil(t, eventActivity, "Event activity not found")
+	if eventActivity.ID != 42 {
+		t.Errorf("Expected event ID 42, got %d", eventActivity.ID)
+	}
+	if eventActivity.TaskID != taskID {
+		t.Errorf("Expected event TaskID %d, got %d", taskID, eventActivity.TaskID)
+	}
+	if eventActivity.Content != "Task moved to Done" {
+		t.Errorf("Expected event Content 'Task moved to Done', got '%s'", eventActivity.Content)
+	}
+	if eventActivity.Author != "testauthor" {
+		t.Errorf("Expected event Author 'testauthor', got '%s'", eventActivity.Author)
+	}
+
+	// Verify comment activity fields
+	require.NotNil(t, commentActivity, "Comment activity not found")
+	if commentActivity.ID != commentID {
+		t.Errorf("Expected comment ID %d, got %d", commentID, commentActivity.ID)
+	}
+	if commentActivity.TaskID != taskID {
+		t.Errorf("Expected comment TaskID %d, got %d", taskID, commentActivity.TaskID)
+	}
+	if commentActivity.Content != "Test comment content" {
+		t.Errorf("Expected comment Content 'Test comment content', got '%s'", commentActivity.Content)
+	}
+	if commentActivity.Author != "commentauthor" {
+		t.Errorf("Expected comment Author 'commentauthor', got '%s'", commentActivity.Author)
+	}
+}
+
+func TestGetTaskActivities_LargeNumberOfActivities(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	projectID := createTestProject(t, db)
+	columnID := createTestColumn(t, db, projectID, "To Do")
+	taskID := createTestTask(t, db, columnID, "Test Task")
+
+	// Create mock with many events
+	mock := taskevent.NewMockService()
+	events := make([]models.TaskEvent, 50)
+	for i := 0; i < 50; i++ {
+		events[i] = models.TaskEvent{
+			ID:        i + 1,
+			TaskID:    taskID,
+			Content:   "Event " + string(rune('A'+i%26)),
+			Author:    "system",
+			CreatedAt: time.Now().Add(-time.Duration(i) * time.Minute),
+		}
+	}
+	mock.GetEventsByTaskResult = events
+
+	// Create many comments
+	for i := 0; i < 50; i++ {
+		createTestComment(t, db, taskID, "Comment "+string(rune('A'+i%26)), "user")
+	}
+
+	svc := newTestServiceWithMock(t, db, mock)
+
+	activities, err := svc.GetTaskActivities(context.Background(), taskID)
+	require.NoError(t, err)
+
+	if len(activities) != 100 {
+		t.Fatalf("Expected 100 activities, got %d", len(activities))
+	}
+
+	// Verify sorting is maintained with large number of activities
+	for i := 1; i < len(activities); i++ {
+		if activities[i-1].CreatedAt.Before(activities[i].CreatedAt) {
+			t.Errorf("Activities not sorted correctly at index %d", i)
+			break
+		}
+	}
+}
+
+// ============================================================================
 // TEST CASES - COMMENT OPERATIONS
 // ============================================================================
 
@@ -3816,14 +4244,14 @@ func TestDeleteTask_ErrorPaths(t *testing.T) {
 			errType: ErrInvalidTaskID,
 		},
 		{
-			name:    "non-existent task ID - may succeed",
+			name:    "non-existent task ID",
 			taskID:  99999,
-			wantErr: false, // DELETE operations may succeed even if row doesn't exist
+			wantErr: true, // Now fails because we fetch project ID before deletion for event publishing
 		},
 		{
-			name:    "very large task ID - may succeed",
+			name:    "very large task ID",
 			taskID:  999999999,
-			wantErr: false, // DELETE operations may succeed even if row doesn't exist
+			wantErr: true, // Now fails because we fetch project ID before deletion for event publishing
 		},
 	}
 
