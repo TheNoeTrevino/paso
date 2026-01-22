@@ -29,7 +29,7 @@ func SetupTestModelWithDB(t *testing.T) (Model, *sql.DB) {
 	})
 
 	// Create app container with all services
-	taskSvc, err := task.NewService(db, database.SQLite, nil)
+	taskSvc, err := task.NewService(db, database.SQLite, nil, nil)
 	require.NoError(t, err, "failed to create task service")
 	columnSvc, err := column.NewService(db, database.SQLite, nil)
 	require.NoError(t, err, "failed to create column service")
