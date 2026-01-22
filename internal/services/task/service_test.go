@@ -4775,7 +4775,7 @@ func setupTestDB(t *testing.T) *sql.DB {
 // newTestService creates a new service for testing (panics on error since tests use valid SQLite)
 func newTestService(t *testing.T, db *sql.DB) Service {
 	t.Helper()
-	svc, err := NewService(db, database.SQLite, nil)
+	svc, err := NewService(db, database.SQLite, nil, nil)
 	require.NoError(t, err, "failed to create test service")
 	return svc
 }

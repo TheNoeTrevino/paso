@@ -14,11 +14,13 @@ import (
 	"github.com/thenoetrevino/paso/internal/database/types"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/services/taskevent"
 )
 
 // TaskReader defines task reading operations
 type TaskReader interface {
 	GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error)
+	GetTaskActivities(ctx context.Context, taskID int) ([]models.ActivityItem, error)
 	GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error)
 	GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error)
 	GetReadyTaskSummariesByProject(ctx context.Context, projectID int) ([]*models.TaskSummary, error)
@@ -123,23 +125,25 @@ type UpdateCommentRequest struct {
 
 // service implements Service interface using database.Querier abstraction
 type service struct {
-	db          *sql.DB
-	dbType      database.DatabaseType
-	queries     database.Querier
-	eventClient events.EventPublisher
+	db           *sql.DB
+	dbType       database.DatabaseType
+	queries      database.Querier
+	eventClient  events.EventPublisher
+	eventService taskevent.Service
 }
 
 // NewService creates a new task service with database-agnostic queries.
-func NewService(db *sql.DB, dbType database.DatabaseType, eventClient events.EventPublisher) (Service, error) {
+func NewService(db *sql.DB, dbType database.DatabaseType, eventClient events.EventPublisher, eventService taskevent.Service) (Service, error) {
 	queries, err := database.NewQuerier(db, dbType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create task service: %w", err)
 	}
 	return &service{
-		db:          db,
-		dbType:      dbType,
-		queries:     queries,
-		eventClient: eventClient,
+		db:           db,
+		dbType:       dbType,
+		queries:      queries,
+		eventClient:  eventClient,
+		eventService: eventService,
 	}, nil
 }
 
@@ -269,6 +273,13 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 			}
 		}
 
+		// Emit TaskCreated event within the transaction
+		if s.eventService != nil {
+			if err := s.eventService.CreateTaskCreatedEvent(ctx, qtx, int(createdTask.ID), req.Title, ""); err != nil {
+				return fmt.Errorf("failed to create task event: %w", err)
+			}
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -289,6 +300,36 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 
 	if err := validateUpdateTaskRequest(req); err != nil {
 		return err
+	}
+
+	// Before the update, get current values for event emission
+	var oldPriorityName, oldTypeName string
+	var currentPriorityID, currentTypeID int64
+	if s.eventService != nil && (req.PriorityID != nil || req.TypeID != nil) {
+		ids, err := s.queries.GetTaskTypeAndPriorityIDs(ctx, int64(req.TaskID))
+		if err == nil {
+			currentPriorityID = ids.PriorityID
+			currentTypeID = ids.TypeID
+
+			if req.PriorityID != nil {
+				priorities, _ := s.queries.GetAllPriorities(ctx)
+				for _, p := range priorities {
+					if p.ID == currentPriorityID {
+						oldPriorityName = p.Description
+						break
+					}
+				}
+			}
+			if req.TypeID != nil {
+				taskTypes, _ := s.queries.GetAllTypes(ctx)
+				for _, t := range taskTypes {
+					if t.ID == currentTypeID {
+						oldTypeName = t.Description
+						break
+					}
+				}
+			}
+		}
 	}
 
 	// Update basic fields if provided
@@ -344,6 +385,28 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 			ID:     int64(req.TaskID),
 		}); err != nil {
 			return fmt.Errorf("failed to update type: %w", err)
+		}
+	}
+
+	// After successful update, emit events for changes
+	if s.eventService != nil {
+		if req.PriorityID != nil && int64(*req.PriorityID) != currentPriorityID {
+			priorities, _ := s.queries.GetAllPriorities(ctx)
+			for _, p := range priorities {
+				if p.ID == int64(*req.PriorityID) {
+					_ = s.eventService.CreatePriorityChangedEvent(ctx, s.queries, req.TaskID, oldPriorityName, p.Description, "")
+					break
+				}
+			}
+		}
+		if req.TypeID != nil && int64(*req.TypeID) != currentTypeID {
+			taskTypes, _ := s.queries.GetAllTypes(ctx)
+			for _, t := range taskTypes {
+				if t.ID == int64(*req.TypeID) {
+					_ = s.eventService.CreateTypeChangedEvent(ctx, s.queries, req.TaskID, oldTypeName, t.Description, "")
+					break
+				}
+			}
 		}
 	}
 
@@ -444,6 +507,41 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 	}
 
 	return detail, nil
+}
+
+// GetTaskActivities retrieves all activity items (events and comments) for a task.
+// Returns a unified list sorted by creation time (newest first).
+func (s *service) GetTaskActivities(ctx context.Context, taskID int) ([]models.ActivityItem, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	if err := validateTaskID(taskID); err != nil {
+		return nil, ErrInvalidTaskID
+	}
+
+	// Get events from event service
+	events, err := s.eventService.GetEventsByTask(ctx, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task events: %w", err)
+	}
+
+	// Get comments
+	commentRows, err := s.queries.GetCommentsByTask(ctx, int64(taskID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task comments: %w", err)
+	}
+
+	// Convert comments to models
+	comments := converters.CommentsToModels(commentRows)
+
+	// Convert []*models.Comment to []models.Comment for MergeActivities
+	commentSlice := make([]models.Comment, len(comments))
+	for i, c := range comments {
+		commentSlice[i] = *c
+	}
+
+	// Merge and sort activities (newest first)
+	return models.MergeActivities(events, commentSlice), nil
 }
 
 // GetTaskTypeAndPriorityIDs retrieves only the type and priority IDs for a task
@@ -701,6 +799,15 @@ func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to get task position: %w", err)
 	}
 
+	// Get current column name for event
+	var fromColumnName string
+	if s.eventService != nil {
+		fromCol, err := s.queries.GetColumnByID(ctx, posRow.ColumnID)
+		if err == nil {
+			fromColumnName = fromCol.Name
+		}
+	}
+
 	// Get next column
 	nextColumnID, err := s.queries.GetNextColumnID(ctx, posRow.ColumnID)
 	if err != nil {
@@ -728,6 +835,14 @@ func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
+	// Emit TaskMoved event
+	if s.eventService != nil && fromColumnName != "" {
+		toCol, err := s.queries.GetColumnByID(ctx, nextColID)
+		if err == nil {
+			_ = s.eventService.CreateTaskMovedEvent(ctx, s.queries, taskID, fromColumnName, toCol.Name, "")
+		}
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
@@ -742,6 +857,15 @@ func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 	posRow, err := s.queries.GetTaskPosition(ctx, int64(taskID))
 	if err != nil {
 		return fmt.Errorf("failed to get task position: %w", err)
+	}
+
+	// Get current column name for event
+	var fromColumnName string
+	if s.eventService != nil {
+		fromCol, err := s.queries.GetColumnByID(ctx, posRow.ColumnID)
+		if err == nil {
+			fromColumnName = fromCol.Name
+		}
 	}
 
 	// Get previous column
@@ -771,6 +895,14 @@ func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
+	// Emit TaskMoved event
+	if s.eventService != nil && fromColumnName != "" {
+		toCol, err := s.queries.GetColumnByID(ctx, prevColID)
+		if err == nil {
+			_ = s.eventService.CreateTaskMovedEvent(ctx, s.queries, taskID, fromColumnName, toCol.Name, "")
+		}
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
@@ -784,13 +916,21 @@ func (s *service) MoveTaskToColumn(ctx context.Context, taskID, columnID int) er
 		return err
 	}
 
-	// Verify task exists before moving
-	_, err := s.queries.GetTaskPosition(ctx, int64(taskID))
+	// Get current column info before moving (for event)
+	var fromColumnName string
+	taskPos, err := s.queries.GetTaskPosition(ctx, int64(taskID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
 		return fmt.Errorf("failed to verify task exists: %w", err)
+	}
+
+	if s.eventService != nil {
+		fromCol, err := s.queries.GetColumnByID(ctx, taskPos.ColumnID)
+		if err == nil {
+			fromColumnName = fromCol.Name
+		}
 	}
 
 	// Get task count in target column to append at the end
@@ -805,6 +945,14 @@ func (s *service) MoveTaskToColumn(ctx context.Context, taskID, columnID int) er
 		ID:       int64(taskID),
 	}); err != nil {
 		return fmt.Errorf("failed to move task: %w", err)
+	}
+
+	// Emit TaskMoved event if column actually changed
+	if s.eventService != nil && fromColumnName != "" {
+		toCol, err := s.queries.GetColumnByID(ctx, int64(columnID))
+		if err == nil && toCol.Name != fromColumnName {
+			_ = s.eventService.CreateTaskMovedEvent(ctx, s.queries, taskID, fromColumnName, toCol.Name, "")
+		}
 	}
 
 	s.publishTaskEvent(ctx, taskID)
@@ -1172,6 +1320,22 @@ func (s *service) AddParentRelation(ctx context.Context, taskID, parentID int, r
 		return fmt.Errorf("failed to add parent relation: %w", err)
 	}
 
+	// Emit TaskAssociated event
+	if s.eventService != nil {
+		relationLabel := "Parent"
+		relTypes, _ := s.queries.GetAllRelationTypes(ctx)
+		for _, rt := range relTypes {
+			if rt.ID == int64(relationTypeID) {
+				relationLabel = rt.CToPLabel // Child-to-parent label since we're the child
+				break
+			}
+		}
+		parentTask, err := s.queries.GetTask(ctx, int64(parentID))
+		if err == nil {
+			_ = s.eventService.CreateTaskAssociatedEvent(ctx, s.queries, taskID, parentID, parentTask.Title, relationLabel, "")
+		}
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
@@ -1206,6 +1370,22 @@ func (s *service) AddChildRelation(ctx context.Context, taskID, childID int, rel
 		return fmt.Errorf("failed to add child relation: %w", err)
 	}
 
+	// Emit TaskAssociated event
+	if s.eventService != nil {
+		relationLabel := "Child"
+		relTypes, _ := s.queries.GetAllRelationTypes(ctx)
+		for _, rt := range relTypes {
+			if rt.ID == int64(relationTypeID) {
+				relationLabel = rt.PToCLabel // Parent-to-child label since we're the parent
+				break
+			}
+		}
+		childTask, err := s.queries.GetTask(ctx, int64(childID))
+		if err == nil {
+			_ = s.eventService.CreateTaskAssociatedEvent(ctx, s.queries, taskID, childID, childTask.Title, relationLabel, "")
+		}
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
@@ -1224,6 +1404,11 @@ func (s *service) RemoveParentRelation(ctx context.Context, taskID, parentID int
 		ChildID:  int64(taskID),
 	}); err != nil {
 		return fmt.Errorf("failed to remove parent relation: %w", err)
+	}
+
+	// Emit TaskDisassociated event
+	if s.eventService != nil {
+		_ = s.eventService.CreateTaskDisassociatedEvent(ctx, s.queries, taskID, parentID, "")
 	}
 
 	s.publishTaskEvent(ctx, taskID)
@@ -1246,6 +1431,11 @@ func (s *service) RemoveChildRelation(ctx context.Context, taskID, childID int) 
 		return fmt.Errorf("failed to remove child relation: %w", err)
 	}
 
+	// Emit TaskDisassociated event
+	if s.eventService != nil {
+		_ = s.eventService.CreateTaskDisassociatedEvent(ctx, s.queries, taskID, childID, "")
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
@@ -1266,6 +1456,14 @@ func (s *service) AttachLabel(ctx context.Context, taskID, labelID int) error {
 		return fmt.Errorf("failed to attach label: %w", err)
 	}
 
+	// Emit LabelAdded event
+	if s.eventService != nil {
+		label, err := s.queries.GetLabelByID(ctx, int64(labelID))
+		if err == nil {
+			_ = s.eventService.CreateLabelAddedEvent(ctx, s.queries, taskID, label.Name, "")
+		}
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
@@ -1279,11 +1477,25 @@ func (s *service) DetachLabel(ctx context.Context, taskID, labelID int) error {
 		return err
 	}
 
+	// Get label name before removal for event
+	var labelName string
+	if s.eventService != nil {
+		label, err := s.queries.GetLabelByID(ctx, int64(labelID))
+		if err == nil {
+			labelName = label.Name
+		}
+	}
+
 	if err := s.queries.RemoveLabelFromTask(ctx, types.RemoveLabelFromTaskParams{
 		TaskID:  int64(taskID),
 		LabelID: int64(labelID),
 	}); err != nil {
 		return fmt.Errorf("failed to detach label: %w", err)
+	}
+
+	// Emit LabelRemoved event
+	if s.eventService != nil && labelName != "" {
+		_ = s.eventService.CreateLabelRemovedEvent(ctx, s.queries, taskID, labelName, "")
 	}
 
 	s.publishTaskEvent(ctx, taskID)
