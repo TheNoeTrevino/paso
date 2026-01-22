@@ -33,10 +33,7 @@ func (m Model) handleCommentsViewInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleCommentsViewUp() (tea.Model, tea.Cmd) {
 	moved := m.Forms.Comment.MoveCursorUp()
 	if moved {
-		// Calculate max visible for auto-scroll
-		// Must match the height calculation in renderCommentsViewContent
-		layerHeight := m.UIState.Height * 8 / 10
-		availableHeight := layerHeight - 4 // Reserve for title + help
+		availableHeight := commentsViewAvailableHeight(m.UIState.Height)
 		_, _, maxVisible := calculateVisibleCommentRange(
 			m.Forms.Comment.ScrollOffset,
 			len(m.Forms.Comment.Items),
@@ -52,10 +49,7 @@ func (m Model) handleCommentsViewDown() (tea.Model, tea.Cmd) {
 	maxIdx := len(m.Forms.Comment.Items) - 1
 	moved := m.Forms.Comment.MoveCursorDown(maxIdx)
 	if moved {
-		// Calculate max visible for auto-scroll
-		// Must match the height calculation in renderCommentsViewContent
-		layerHeight := m.UIState.Height * 8 / 10
-		availableHeight := layerHeight - 4 // Reserve for title + help
+		availableHeight := commentsViewAvailableHeight(m.UIState.Height)
 		_, _, maxVisible := calculateVisibleCommentRange(
 			m.Forms.Comment.ScrollOffset,
 			len(m.Forms.Comment.Items),

@@ -34,7 +34,7 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 	// Empty state
 	if m.Forms.Comment.IsEmpty() {
 		emptyContent := renderEmptyCommentsState(width, height-4) // Reserve for title + help
-		helpText := renderCommentsHelpText(nil)                   // No selection in empty state
+		helpText := renderEmptyCommentsHelpText()
 		return lipgloss.JoinVertical(lipgloss.Left, titleBar, "", emptyContent, "", helpText)
 	}
 
@@ -74,6 +74,7 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 		startIdx,
 		endIdx,
 		len(m.Forms.Comment.Items),
+		cardWidth,
 	)
 
 	// Combine content
@@ -116,6 +117,15 @@ func renderEmptyCommentsState(width, height int) string {
 	return emptyStyle.Render(strings.Join(lines, "\n"))
 }
 
+// renderEmptyCommentsHelpText renders help text for the empty state.
+// Only shows options that are available when there are no items.
+func renderEmptyCommentsHelpText() string {
+	helpStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle))
+
+	return helpStyle.Render("[a: add comment | Esc: close]")
+}
+
 // renderCommentsHelpText renders the help text at the bottom of the comments view.
 // It shows different help text based on whether an event or comment is selected.
 func renderCommentsHelpText(selectedActivity *models.ActivityItem) string {
@@ -135,6 +145,14 @@ func renderCommentsHelpText(selectedActivity *models.ActivityItem) string {
 type ScrollIndicators struct {
 	Top    string
 	Bottom string
+}
+
+// commentsViewAvailableHeight calculates the available height for comments content
+// based on the total terminal height. This accounts for the layer scaling (80%)
+// and reserves space for the title bar and help text.
+func commentsViewAvailableHeight(totalHeight int) int {
+	layerHeight := totalHeight * 8 / 10
+	return layerHeight - 4 // Reserve for title + help
 }
 
 // calculateVisibleCommentRange determines which comments should be rendered
@@ -160,7 +178,7 @@ func calculateVisibleCommentRange(scrollOffset int, totalComments int, available
 }
 
 // calculateCommentsScrollIndicators determines if scroll indicators should be shown
-func calculateCommentsScrollIndicators(scrollOffset int, startIdx int, endIdx int, totalComments int) ScrollIndicators {
+func calculateCommentsScrollIndicators(scrollOffset int, startIdx int, endIdx int, totalComments int, width int) ScrollIndicators {
 	indicators := ScrollIndicators{
 		Top:    "",
 		Bottom: "",
@@ -168,7 +186,8 @@ func calculateCommentsScrollIndicators(scrollOffset int, startIdx int, endIdx in
 
 	indicatorStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Subtle)).
-		Align(lipgloss.Center)
+		Align(lipgloss.Center).
+		Width(width)
 
 	// Show top indicator if scrolled down
 	if scrollOffset > 0 {
