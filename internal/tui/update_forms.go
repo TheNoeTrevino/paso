@@ -840,7 +840,9 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				ctx, cancel := m.DBContext()
 				activities, err := m.App.TaskService.GetTaskActivities(ctx, m.Forms.Comment.TaskID)
 				cancel()
-				if err == nil {
+				if err != nil {
+					m.UI.Notification.Add(state.LevelError, "Failed to refresh activity")
+				} else {
 					m.Forms.Comment.SetActivities(activities)
 				}
 				m.UIState.Mode = state.CommentsViewMode
