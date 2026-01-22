@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
@@ -33,7 +34,7 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 	// Empty state
 	if m.Forms.Comment.IsEmpty() {
 		emptyContent := renderEmptyCommentsState(width, height-4) // Reserve for title + help
-		helpText := renderCommentsHelpText()
+		helpText := renderCommentsHelpText(nil)                   // No selection in empty state
 		return lipgloss.JoinVertical(lipgloss.Left, titleBar, "", emptyContent, "", helpText)
 	}
 
@@ -76,7 +77,8 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 	)
 
 	// Combine content
-	helpText := renderCommentsHelpText()
+	selectedActivity := m.Forms.Comment.GetSelectedActivity()
+	helpText := renderCommentsHelpText(selectedActivity)
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -114,11 +116,18 @@ func renderEmptyCommentsState(width, height int) string {
 	return emptyStyle.Render(strings.Join(lines, "\n"))
 }
 
-// renderCommentsHelpText renders the help text at the bottom of the comments view
-func renderCommentsHelpText() string {
+// renderCommentsHelpText renders the help text at the bottom of the comments view.
+// It shows different help text based on whether an event or comment is selected.
+func renderCommentsHelpText(selectedActivity *models.ActivityItem) string {
 	helpStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Subtle))
 
+	// Show limited options when an event is selected (events are read-only)
+	if selectedActivity != nil && selectedActivity.Type == models.ActivityTypeEvent {
+		return helpStyle.Render("[↑↓: navigate | a: add comment | Esc: close] (events are read-only)")
+	}
+
+	// Show full options when a comment is selected or no selection
 	return helpStyle.Render("[↑↓: navigate | e: edit | a: add comment | d: delete | Esc: close]")
 }
 

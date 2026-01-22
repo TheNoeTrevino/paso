@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -73,6 +74,12 @@ func (m Model) handleCommentsViewEdit() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Events are read-only and cannot be edited
+	if selectedActivity.Type == models.ActivityTypeEvent {
+		m.UI.Notification.Add(state.LevelWarning, "Events cannot be edited")
+		return m, nil
+	}
+
 	// Set up form state for editing
 	m.Forms.Form.FormCommentMessage = selectedActivity.Content
 	m.Forms.Form.EditingCommentID = selectedActivity.ID
@@ -118,6 +125,12 @@ func (m Model) handleCommentsViewDelete() (tea.Model, tea.Cmd) {
 	selectedActivity := m.Forms.Comment.GetSelectedActivity()
 	if selectedActivity == nil {
 		m.UI.Notification.Add(state.LevelError, "No item selected")
+		return m, nil
+	}
+
+	// Events are read-only and cannot be deleted
+	if selectedActivity.Type == models.ActivityTypeEvent {
+		m.UI.Notification.Add(state.LevelWarning, "Events cannot be deleted")
 		return m, nil
 	}
 

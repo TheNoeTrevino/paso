@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -30,9 +31,14 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "enter":
-		// Open form to edit the selected activity
+		// Open form to edit the selected activity (only comments are editable)
 		if len(m.Forms.Comment.Items) > 0 && m.Forms.Comment.Cursor < len(m.Forms.Comment.Items) {
 			activity := m.Forms.Comment.Items[m.Forms.Comment.Cursor].Activity
+			// Events are read-only and cannot be edited
+			if activity.Type == models.ActivityTypeEvent {
+				m.UI.Notification.Add(state.LevelWarning, "Events cannot be edited")
+				return m, nil
+			}
 			m.Forms.Form.FormCommentMessage = activity.Content
 			m.Forms.Form.EditingCommentID = activity.ID
 			m.Forms.Form.CommentForm = huhforms.CreateCommentForm(&m.Forms.Form.FormCommentMessage, true).
@@ -54,9 +60,14 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.Forms.Form.CommentForm.Init()
 
 	case "delete", "d":
-		// Delete the selected activity
+		// Delete the selected activity (only comments are deletable)
 		if len(m.Forms.Comment.Items) > 0 && m.Forms.Comment.Cursor < len(m.Forms.Comment.Items) {
 			activity := m.Forms.Comment.Items[m.Forms.Comment.Cursor].Activity
+			// Events are read-only and cannot be deleted
+			if activity.Type == models.ActivityTypeEvent {
+				m.UI.Notification.Add(state.LevelWarning, "Events cannot be deleted")
+				return m, nil
+			}
 
 			ctx, cancel := m.DBContext()
 			defer cancel()
