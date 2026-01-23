@@ -15,6 +15,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/commands"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -232,6 +233,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.UIState.Mode = state.DatabaseSelectMode
 			return m, nil
 		}
+
+	case commands.TaskDetailsPrefetchedMsg:
+		// Stop loading spinner
+		m.DetailPanelLoading = false
+
+		// Update cache with fetched details
+		if m.DetailCache != nil && len(msg.Details) > 0 {
+			m.DetailCache.SetBatch(msg.Details)
+		}
+
+		// Log any errors that occurred during prefetching
+		for taskID, err := range msg.Errors {
+			slog.Warn("failed to prefetch task detail", "task_id", taskID, "error", err)
+		}
+
+		return m, nil
 
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)

@@ -5,7 +5,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/commands"
 	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/helpers"
 	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -92,9 +94,9 @@ func (m Model) handleNavigateLeft() (tea.Model, tea.Cmd) {
 		m.UIState.SelectedColumn = m.UIState.SelectedColumn - 1
 		m.UIState.SelectedTask = 0
 		m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn)
-	} else {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the first column")
+		return m, m.triggerDetailPanelPrefetch()
 	}
+	m.UI.Notification.Add(state.LevelInfo, "Already at the first column")
 	return m, nil
 }
 
@@ -103,9 +105,9 @@ func (m Model) handleNavigateRight() (tea.Model, tea.Cmd) {
 		m.UIState.SelectedColumn = m.UIState.SelectedColumn + 1
 		m.UIState.SelectedTask = 0
 		m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn)
-	} else {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the last column")
+		return m, m.triggerDetailPanelPrefetch()
 	}
+	m.UI.Notification.Add(state.LevelInfo, "Already at the last column")
 	return m, nil
 }
 
@@ -134,9 +136,9 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
 			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
 		}
-	} else {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the first task")
+		return m, m.triggerDetailPanelPrefetch()
 	}
+	m.UI.Notification.Add(state.LevelInfo, "Already at the first task")
 	return m, nil
 }
 
@@ -167,7 +169,9 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
 			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
 		}
-	} else if len(currentTasks) > 0 {
+		return m, m.triggerDetailPanelPrefetch()
+	}
+	if len(currentTasks) > 0 {
 		m.UI.Notification.Add(state.LevelInfo, "Already at the last task")
 	}
 	return m, nil
@@ -432,4 +436,47 @@ func (m Model) handleEditProject() (tea.Model, tea.Cmd) {
 		loadGitDataForProjectFormCmd(m.Ctx, m.GitCache, true),
 		tickGitSpinner(),
 	)
+}
+
+// triggerDetailPanelPrefetch returns a command to prefetch task details for the detail panel.
+// Only triggers if the detail panel should be shown and there's a valid task selection.
+// Returns nil if panel is not visible or no task is selected.
+func (m *Model) triggerDetailPanelPrefetch() tea.Cmd {
+	// Only prefetch if panel is visible
+	if !m.UIState.ShouldShowDetailPanel() {
+		return nil
+	}
+
+	// Get adjacent task IDs for prefetching
+	adjacent := helpers.GetAdjacentTaskIDs(
+		m.AppState.Columns(),
+		m.AppState.Tasks(),
+		m.UIState.SelectedColumn,
+		m.UIState.SelectedTask,
+	)
+
+	// No current task selected
+	if adjacent.Current == 0 {
+		return nil
+	}
+
+	// Update the detail panel task ID
+	m.DetailPanelTaskID = adjacent.Current
+
+	// Check if current task is already cached
+	if m.DetailCache != nil && m.DetailCache.Has(adjacent.Current) {
+		// Current task is cached, but still prefetch adjacent for smooth navigation
+		m.DetailPanelLoading = false
+	} else {
+		// Current task not cached, show loading state
+		m.DetailPanelLoading = true
+	}
+
+	// Get cached IDs to avoid refetching
+	var cachedIDs []int
+	if m.DetailCache != nil {
+		cachedIDs = m.DetailCache.CachedIDs()
+	}
+
+	return commands.FetchTaskDetailsCmd(m.App.TaskService, adjacent, cachedIDs)
 }
