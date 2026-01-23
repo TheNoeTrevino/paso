@@ -9,6 +9,7 @@ import (
 	labelservice "github.com/thenoetrevino/paso/internal/services/label"
 	projectservice "github.com/thenoetrevino/paso/internal/services/project"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
+	"github.com/thenoetrevino/paso/internal/services/taskevent"
 )
 
 // App holds all application services and provides dependency injection.
@@ -47,7 +48,12 @@ func New(db *sql.DB, opts ...Option) (*App, error) {
 
 	// Create services with database connection and type
 	// Each service uses the database.Querier interface for database abstraction
-	taskSvc, err := taskservice.NewService(db, cfg.dbType, cfg.eventClient, nil)
+	taskEventSvc, err := taskevent.NewService(db, cfg.dbType)
+	if err != nil {
+		return nil, err
+	}
+
+	taskSvc, err := taskservice.NewService(db, cfg.dbType, cfg.eventClient, taskEventSvc)
 	if err != nil {
 		return nil, err
 	}
