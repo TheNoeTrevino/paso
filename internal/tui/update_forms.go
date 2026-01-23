@@ -105,6 +105,11 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 	defer cancel()
 	taskID := m.Forms.Form.EditingTaskID
 
+	// Invalidate cache entry since task is being modified
+	if m.DetailCache != nil {
+		m.DetailCache.Invalidate(taskID)
+	}
+
 	// update task basic fields
 	title := values.title
 	description := values.description

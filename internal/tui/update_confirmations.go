@@ -49,6 +49,10 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 			m.UI.Notification.Add(state.LevelError, "Failed to delete task")
 		} else {
 			m.removeCurrentTask()
+			// Invalidate the deleted task from detail cache
+			if m.DetailCache != nil {
+				m.DetailCache.Invalidate(task.ID)
+			}
 		}
 	}
 	m.UIState.Mode = state.NormalMode
