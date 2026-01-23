@@ -543,10 +543,14 @@ func (s *service) GetTaskActivities(ctx context.Context, taskID int) ([]models.A
 		return nil, ErrInvalidTaskID
 	}
 
-	// Get events from event service
-	events, err := s.eventService.GetEventsByTask(ctx, taskID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get task events: %w", err)
+	// Get events from event service (if available)
+	var events []models.TaskEvent
+	if s.eventService != nil {
+		var err error
+		events, err = s.eventService.GetEventsByTask(ctx, taskID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get task events: %w", err)
+		}
 	}
 
 	// Get comments
