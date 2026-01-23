@@ -43,6 +43,9 @@ type FormState struct {
 	FormComments        []*models.Comment // Current comments loaded from DB
 	InitialFormComments []*models.Comment // Snapshot for change detection
 
+	// Activities for task form (events + comments merged chronologically)
+	FormActivities []models.ActivityItem
+
 	// Comment viewport for scrollable comments section
 	CommentsViewport viewport.Model // Viewport for scrollable comments
 	ViewportReady    bool           // Track if viewport is initialized
@@ -126,6 +129,7 @@ func NewFormState() *FormState {
 		FormChildRefs:                 []*models.TaskReference{},
 		FormComments:                  []*models.Comment{},
 		InitialFormComments:           []*models.Comment{},
+		FormActivities:                []models.ActivityItem{},
 		CommentsViewport:              viewport.Model{},
 		ViewportReady:                 false,
 		ViewportFocused:               false,
@@ -177,6 +181,7 @@ func (s *FormState) ClearTaskForm() {
 	s.FormChildRefs = []*models.TaskReference{}
 	s.FormComments = []*models.Comment{}
 	s.InitialFormComments = []*models.Comment{}
+	s.FormActivities = []models.ActivityItem{}
 	s.CommentsViewport = viewport.Model{}
 	s.ViewportReady = false
 	s.ViewportFocused = false
