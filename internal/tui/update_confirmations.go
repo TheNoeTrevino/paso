@@ -77,12 +77,13 @@ func (m Model) confirmDeleteComment() (tea.Model, tea.Cmd) {
 			if err == nil {
 				m.Forms.Form.FormComments = comments
 			}
-			// Refresh activities for comments view
+			// Refresh activities for comments view and task form preview
 			activities, actErr := m.App.TaskService.GetTaskActivities(ctx, taskID)
 			if actErr != nil {
 				m.UI.Notification.Add(state.LevelError, "Failed to refresh activity")
 			} else {
 				m.Forms.Comment.SetActivities(activities)
+				m.Forms.Form.FormActivities = activities
 			}
 		}
 	}

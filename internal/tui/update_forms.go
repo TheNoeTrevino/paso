@@ -918,14 +918,16 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Forms.Form.FormComments = comments
 			}
 
+			// Refresh activities for task form preview and comments view
+			activities, actErr := m.App.TaskService.GetTaskActivities(ctx, taskID)
+			if actErr == nil {
+				m.Forms.Form.FormActivities = activities
+				m.Forms.Comment.SetActivities(activities)
+			}
+
 			// Return to appropriate mode based on where we came from
 			returnMode := m.Forms.Form.CommentFormReturnMode
 			if returnMode == state.CommentsViewMode {
-				// Refresh activities for comments view and return to it
-				activities, err := m.App.TaskService.GetTaskActivities(ctx, taskID)
-				if err == nil {
-					m.Forms.Comment.SetActivities(activities)
-				}
 				m.UIState.Mode = state.CommentsViewMode
 			} else {
 				m.UIState.Mode = state.TicketFormMode

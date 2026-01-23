@@ -91,10 +91,11 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 			// Update form state
 			m.Forms.Form.FormComments = comments
-			// Reload activities for comments view
+			// Reload activities for comments view and task form preview
 			activities, actErr := m.App.TaskService.GetTaskActivities(ctx, taskID)
 			if actErr == nil {
 				m.Forms.Comment.SetActivities(activities)
+				m.Forms.Form.FormActivities = activities
 			}
 
 			// Adjust cursor if needed
