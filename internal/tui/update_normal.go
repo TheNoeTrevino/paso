@@ -267,6 +267,15 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 	m.Forms.Form.InitialFormComments = make([]*models.Comment, len(taskDetail.Comments))
 	copy(m.Forms.Form.InitialFormComments, taskDetail.Comments)
 
+	// Load activities (events + comments) for the task form preview
+	activities, err := m.App.TaskService.GetTaskActivities(ctx, task.ID)
+	if err != nil {
+		slog.Error("failed to load task activities", "error", err)
+		m.Forms.Form.FormActivities = []models.ActivityItem{}
+	} else {
+		m.Forms.Form.FormActivities = activities
+	}
+
 	m.Forms.Form.FormCreatedAt = taskDetail.CreatedAt
 	m.Forms.Form.FormUpdatedAt = taskDetail.UpdatedAt
 	m.Forms.Form.FormTypeDescription = taskDetail.TypeDescription
