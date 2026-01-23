@@ -328,8 +328,14 @@ func (s *UIState) ShouldShowDetailPanel() bool {
 	return s.width >= minWidth
 }
 
-// DetailPanelWidth calculates the width available for the detail panel.
-// Returns the remaining space after accounting for the board, clamped to min/max.
+// DetailPanelWidth calculates the width for the detail panel based on terminal width.
+// The width is clamped between minPanelWidth and maxPanelWidth.
+//
+// The clamping logic handles edge cases gracefully:
+//   - If availableWidth > maxPanelWidth: returns maxPanelWidth (prevents oversized panel)
+//   - If availableWidth < minPanelWidth: returns minPanelWidth (ensures minimum usable width)
+//   - If the terminal is very narrow and availableWidth becomes negative, the lower bound
+//     check ensures we still return at least minPanelWidth for a usable panel.
 func (s *UIState) DetailPanelWidth() int {
 	const (
 		columnWidth   = 46
@@ -338,13 +344,13 @@ func (s *UIState) DetailPanelWidth() int {
 		maxPanelWidth = 120
 	)
 
-	// Calculate board width
+	// Calculate board width based on visible columns
 	boardWidth := (s.viewportSize * columnWidth) + reservedWidth
 
-	// Remaining space for panel
+	// Remaining space for panel (may be negative if terminal is very narrow)
 	availableWidth := s.width - boardWidth
 
-	// Clamp to min/max
+	// Clamp to min/max bounds
 	if availableWidth < minPanelWidth {
 		return minPanelWidth
 	}

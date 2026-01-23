@@ -307,7 +307,9 @@ func renderDetailFooter(width int) string {
 	return footerStyle.Render("Press Enter to view/edit")
 }
 
-// truncateString truncates a string to maxLen and adds ellipsis if needed
+// truncateString truncates s to maxLen characters, adding "..." suffix if truncated.
+// Edge case: when maxLen <= 3, returns s[:maxLen] without ellipsis since "..." itself
+// is 3 characters and would be longer than or equal to the allowed content.
 func truncateString(s string, maxLen int) string {
 	if maxLen <= 0 {
 		return ""

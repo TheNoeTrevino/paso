@@ -9,10 +9,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
-// ============================================================================
-// CONFIRMATION HANDLERS (Inlined from deleted confirmation.go)
-// ============================================================================
-
 // handleDeleteConfirm handles task or comment deletion confirmation.
 // Inlined from confirmation.go (deleted to reduce duplication)
 func (m Model) handleDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
