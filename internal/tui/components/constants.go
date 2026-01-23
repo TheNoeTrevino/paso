@@ -8,6 +8,10 @@ const (
 	headerLines           = 1  // column name and count
 	topIndicatorLines     = 1  // empty line or "▲ more above"
 
+	// Detail panel dimensions
+	DetailPanelMinWidth = 50
+	DetailPanelMaxWidth = 120
+
 	// Picker footer/help text strings
 	PickerFooterSelectConfirm = "Enter: select  Esc: cancel"       // Used by: Color, Priority, Type, Relation Type pickers
 	PickerFooterToggleCreate  = "Enter: toggle/create  Esc: close" // Used by: Label picker
