@@ -146,8 +146,8 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 	return style.Render(content)
 }
 
-// renderFormCommentsPreview renders a read-only preview of recent comments
-// Users press Ctrl+N to open the full comments view
+// renderFormCommentsPreview renders a read-only preview of recent activity (events + comments)
+// Users press Ctrl+N to open the full activity view
 func (m *Model) renderFormCommentsPreview(width, height int) string {
 	headerStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Subtle)).
@@ -157,14 +157,14 @@ func (m *Model) renderFormCommentsPreview(width, height int) string {
 		Foreground(lipgloss.Color(theme.Subtle)).
 		Italic(true)
 
-	commentCount := len(m.Forms.Form.FormComments)
+	activityCount := len(m.Forms.Form.FormActivities)
 
-	// Header: "Comments · {count} total · ctrl+n to open"
+	// Header: "Activity · {count} total · ctrl+n to open"
 	var headerText string
-	if commentCount == 0 {
-		headerText = "Comments · ctrl+n to add"
+	if activityCount == 0 {
+		headerText = "Activity · ctrl+n to add"
 	} else {
-		headerText = fmt.Sprintf("Recent Comments · %d total · ctrl+n to open all comments", commentCount)
+		headerText = fmt.Sprintf("Recent Activity · %d total · ctrl+n to open", activityCount)
 	}
 	header := headerStyle.Render(headerText)
 
@@ -174,40 +174,46 @@ func (m *Model) renderFormCommentsPreview(width, height int) string {
 
 	var previewContent string
 
-	if commentCount == 0 {
-		previewContent = subtleStyle.Render("No comments yet · ctrl+n to add")
+	if activityCount == 0 {
+		previewContent = subtleStyle.Render("No activity yet · ctrl+n to add comment")
 	} else {
-		// Show most recent comments based on available height
-		// Each comment takes ~2-3 lines (header + 1-2 lines content)
-		// Being very generous to show as many recent comments as possible
-		maxComments := max((availableHeight+1)/2, 1)
+		// Show most recent activities based on available height
+		// Each activity takes ~2-3 lines (header + 1-2 lines content)
+		maxActivities := max((availableHeight+1)/2, 1)
 
 		var previewLines []string
-		displayCount := min(commentCount, maxComments)
+		displayCount := min(activityCount, maxActivities)
 
-		// Show most recent comments first
-		for i := commentCount - 1; i >= max(commentCount-displayCount, 0); i-- {
-			comment := m.Forms.Form.FormComments[i]
+		// Activities are already sorted newest first by MergeActivities
+		for i := 0; i < displayCount; i++ {
+			activity := m.Forms.Form.FormActivities[i]
 
-			// Truncate comment content to fit preview
+			// Truncate content to fit preview
 			contentWidth := max(width-4, 20)
-			content := comment.Message
+			content := activity.Content
 			lines := strings.Split(wordwrap.String(content, contentWidth), "\n")
 
-			// Take first 2-3 lines only
+			// Take first 2 lines only
 			maxLines := 2
 			if len(lines) > maxLines {
 				lines = lines[:maxLines]
 				lines[maxLines-1] = lines[maxLines-1] + "..."
 			}
 
-			// Render comment preview
-			timestamp := comment.CreatedAt.Format("Jan 2 15:04")
-			authorIcon := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("󰀄 ")
+			// Render activity badge
+			badge := renderActivityBadgePreview(activity.Type)
+
+			// Render activity header with badge
+			timestamp := activity.CreatedAt.Format("Jan 2 15:04")
+			authorIcon := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render(" 󰀄 ")
+			author := activity.Author
+			if author == "" {
+				author = "Unknown"
+			}
 			dateIcon := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("  ")
 
-			commentHeader := fmt.Sprintf("%s%s%s%s", authorIcon, comment.Author, dateIcon, timestamp)
-			headerLine := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render(commentHeader)
+			activityHeader := fmt.Sprintf("%s%s%s%s%s", badge, authorIcon, author, dateIcon, timestamp)
+			headerLine := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render(activityHeader)
 
 			contentLines := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal)).Render(strings.Join(lines, "\n"))
 
@@ -236,4 +242,30 @@ func (m *Model) renderFormCommentsPreview(width, height int) string {
 		BorderForeground(lipgloss.Color(theme.Subtle))
 
 	return noteZoneStyle.Render(content)
+}
+
+// renderActivityBadgePreview renders a compact badge for activity type in the preview
+func renderActivityBadgePreview(activityType models.ActivityType) string {
+	var bgColor, fgColor, text string
+
+	switch activityType {
+	case models.ActivityTypeEvent:
+		bgColor = theme.Subtle
+		fgColor = "#ffffff"
+		text = "Event"
+	case models.ActivityTypeComment:
+		bgColor = theme.Create
+		fgColor = "#ffffff"
+		text = "Comment"
+	default:
+		bgColor = theme.Subtle
+		fgColor = "#ffffff"
+		text = "Unknown"
+	}
+
+	return lipgloss.NewStyle().
+		Background(lipgloss.Color(bgColor)).
+		Foreground(lipgloss.Color(fgColor)).
+		Padding(0, 1).
+		Render(text)
 }
