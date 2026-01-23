@@ -94,6 +94,30 @@ func (m Model) viewKanbanBoard() string {
 	columnsView := lipgloss.JoinHorizontal(lipgloss.Top, columns...)
 	board := lipgloss.JoinHorizontal(lipgloss.Top, scrollIndicators.Left, " ", columnsView, " ", scrollIndicators.Right)
 
+	// Add detail panel if screen is wide enough
+	if m.UIState.ShouldShowDetailPanel() {
+		currentTask := m.getCurrentTask()
+		panelHeight := columnHeight
+		panelWidth := m.UIState.DetailPanelWidth()
+
+		var detailPanel string
+		if currentTask == nil {
+			// No task selected - show empty panel
+			detailPanel = components.RenderDetailPanel(nil, panelWidth, panelHeight)
+		} else if m.DetailPanelLoading {
+			// Task detail is being fetched - show loading spinner
+			detailPanel = components.RenderDetailPanelLoading(panelWidth, panelHeight, m.SpinnerFrame)
+		} else if taskDetail, ok := m.DetailCache.Get(currentTask.ID); ok {
+			// Task detail is in cache - render it
+			detailPanel = components.RenderDetailPanel(taskDetail, panelWidth, panelHeight)
+		} else {
+			// Task not in cache yet - show loading
+			detailPanel = components.RenderDetailPanelLoading(panelWidth, panelHeight, m.SpinnerFrame)
+		}
+
+		board = lipgloss.JoinHorizontal(lipgloss.Top, board, detailPanel)
+	}
+
 	// Create project tabs from actual project data
 	var projectTabs []string
 	for _, project := range m.AppState.Projects() {
