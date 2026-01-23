@@ -56,13 +56,48 @@ func renderTaskCardLabels(labels []*models.Label, bg string) string {
 		return "\n " + emptyStyle.Render("no labels")
 	}
 
-	spacer := lipgloss.NewStyle().Background(lipgloss.Color(bg)).Render(" ")
-	var chips []string
-	for _, label := range labels {
-		chips = append(chips, RenderLabelChip(label, bg))
+	// Calculate total raw length of all labels joined by spaces
+	rawNames := make([]string, len(labels))
+	for i, label := range labels {
+		rawNames[i] = label.Name
 	}
-	labelChips := strings.Join(chips, spacer)
-	return "\n " + labelChips
+	aggregated := strings.Join(rawNames, " ")
+
+	spacer := lipgloss.NewStyle().Background(lipgloss.Color(bg)).Render(" ")
+
+	// If fits, render all labels
+	if len(aggregated) <= taskLabelsMaxLength {
+		var chips []string
+		for _, label := range labels {
+			chips = append(chips, RenderLabelChip(label, bg))
+		}
+		return "\n " + strings.Join(chips, spacer)
+	}
+
+	// Otherwise, add labels until we'd exceed the limit, then append ellipsis
+	var chips []string
+	currentLength := 0
+	ellipsis := "..."
+
+	for i, label := range labels {
+		nextLength := currentLength + len(label.Name)
+		if i > 0 {
+			nextLength += 1 // space separator
+		}
+
+		// Check if adding this label + ellipsis would exceed limit
+		if nextLength+len(ellipsis) > taskLabelsMaxLength {
+			break
+		}
+
+		chips = append(chips, RenderLabelChip(label, bg))
+		currentLength = nextLength
+	}
+
+	result := strings.Join(chips, spacer)
+	result += EllipsisStyle.Background(lipgloss.Color(bg)).Render(ellipsis)
+
+	return "\n " + result
 }
 
 // renderTaskSummaryMetadata Renders type, priority and blocked on the same line, separated by │
