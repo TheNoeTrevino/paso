@@ -76,7 +76,14 @@ func (m Model) confirmDeleteComment() (tea.Model, tea.Cmd) {
 			comments, err := m.App.TaskService.GetCommentsByTask(ctx, taskID)
 			if err == nil {
 				m.Forms.Form.FormComments = comments
-				m.Forms.Comment.SetComments(comments)
+			}
+			// Refresh activities for comments view and task form preview
+			activities, actErr := m.App.TaskService.GetTaskActivities(ctx, taskID)
+			if actErr != nil {
+				m.UI.Notification.Add(state.LevelError, "Failed to refresh activity")
+			} else {
+				m.Forms.Comment.SetActivities(activities)
+				m.Forms.Form.FormActivities = activities
 			}
 		}
 	}
@@ -134,7 +141,7 @@ func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
 	case state.CommentFormMode:
 		m.Forms.Form.ClearCommentForm()
 		// Return to comment list instead of normal mode
-		m.UIState.Mode = state.CommentEditMode
+		m.UIState.Mode = state.CommentsViewMode
 		m.UIState.DiscardContext = nil
 		return m, tea.ClearScreen
 	}

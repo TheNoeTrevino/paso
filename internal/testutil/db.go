@@ -205,6 +205,16 @@ func createTestSchema(db *sql.DB) error {
 		FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
 	);
 
+	-- Task events table (immutable audit trail)
+	CREATE TABLE IF NOT EXISTS task_events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		task_id INTEGER NOT NULL,
+		content TEXT NOT NULL,
+		author TEXT NOT NULL DEFAULT '',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+	);
+
 	-- Indexes for performance (from 00001_initial_schema)
 	CREATE INDEX IF NOT EXISTS idx_tasks_column ON tasks(column_id, position);
 	CREATE INDEX IF NOT EXISTS idx_columns_project ON columns(project_id);
@@ -213,6 +223,7 @@ func createTestSchema(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_task_subtasks_parent ON task_subtasks(parent_id);
 	CREATE INDEX IF NOT EXISTS idx_task_subtasks_child ON task_subtasks(child_id);
 	CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);
+	CREATE INDEX IF NOT EXISTS idx_task_events_task_id ON task_events(task_id);
 
 	-- Git branch indexes (from 00003_add_git_branch_to_projects)
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_git_branch_unique ON projects(git_branch) WHERE git_branch IS NOT NULL;

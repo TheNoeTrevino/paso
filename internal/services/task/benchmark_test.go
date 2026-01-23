@@ -24,7 +24,7 @@ func setupBenchmarkDB(b *testing.B) *sql.DB {
 // newBenchmarkService creates a new service for benchmarking (panics on error since tests use valid SQLite)
 func newBenchmarkService(b *testing.B, db *sql.DB) Service {
 	b.Helper()
-	svc, err := NewService(db, database.SQLite, nil)
+	svc, err := NewService(db, database.SQLite, nil, nil)
 	if err != nil {
 		b.Fatalf("failed to create benchmark service: %v", err)
 	}

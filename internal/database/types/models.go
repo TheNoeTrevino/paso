@@ -76,6 +76,15 @@ type TaskComment struct {
 	UpdatedAt NullTime
 }
 
+// TaskEvent represents an immutable event/audit entry on a task.
+type TaskEvent struct {
+	ID        int64
+	TaskID    int64
+	Content   string
+	Author    string
+	CreatedAt NullTime
+}
+
 // TaskLabel represents the many-to-many relationship between tasks and labels.
 type TaskLabel struct {
 	TaskID  int64

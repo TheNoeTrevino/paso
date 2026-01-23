@@ -472,7 +472,7 @@ func setupNotificationWarning(t *testing.T, db *sql.DB) Model {
 func createAppContainer(t *testing.T, db *sql.DB) *app.App {
 	t.Helper()
 	dbType := database.SQLite
-	taskSvc, err := task.NewService(db, dbType, nil)
+	taskSvc, err := task.NewService(db, dbType, nil, nil)
 	require.NoError(t, err, "failed to create task service")
 	columnSvc, err := column.NewService(db, dbType, nil)
 	require.NoError(t, err, "failed to create column service")
