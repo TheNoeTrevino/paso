@@ -3,6 +3,7 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -156,5 +157,5 @@ func fetchWithRetry(ctx context.Context, svc task.Service, taskID int, maxRetrie
 		}
 	}
 
-	return nil, lastErr
+	return nil, fmt.Errorf("fetch task %d failed after %d attempts: %w", taskID, maxRetries, lastErr)
 }
