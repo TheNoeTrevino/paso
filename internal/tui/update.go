@@ -82,6 +82,13 @@ type taskDetailForEditError struct {
 
 // prefetchDebounceMsg is sent after the debounce delay to trigger actual prefetch.
 // Contains the sequence number to verify the request is still valid.
+//
+// Synchronization: The seq field enables safe debouncing without explicit locks.
+// When a navigation occurs, PrefetchDebounceSeq is incremented and captured in this
+// message. If another navigation happens before this message is processed, the new
+// navigation increments PrefetchDebounceSeq again, causing this message's seq to be
+// stale (msg.seq != m.PrefetchDebounceSeq) and ignored. This pattern is thread-safe
+// because Bubble Tea's Update loop is single-threaded.
 type prefetchDebounceMsg struct {
 	seq int
 }
@@ -263,7 +270,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case prefetchDebounceMsg:
-		// Only trigger prefetch if this is still the current sequence
+		// Only trigger prefetch if this is still the current sequence.
+		// This check invalidates requests from previous navigations, ensuring only
+		// the most recent navigation triggers a prefetch after the debounce delay.
 		if msg.seq != m.PrefetchDebounceSeq {
 			return m, nil // Stale request, ignore
 		}

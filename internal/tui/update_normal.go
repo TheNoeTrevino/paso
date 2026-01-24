@@ -423,6 +423,12 @@ const prefetchDebounceDelay = 75 * time.Millisecond
 // Uses debouncing to avoid excessive API calls during rapid navigation.
 // Only triggers if the detail panel should be shown and there's a valid task selection.
 // Returns nil if panel is not visible or no task is selected.
+//
+// Synchronization: This method is safe from race conditions because Bubble Tea processes
+// messages sequentially in a single goroutine. PrefetchDebounceSeq is only mutated within
+// Update handlers, and the sequence comparison in prefetchDebounceMsg handling occurs in
+// the same goroutine. Each navigation increments the counter, invalidating any pending
+// debounce timers from previous navigations.
 func (m *Model) triggerDetailPanelPrefetch() tea.Cmd {
 	// Only prefetch if panel is visible
 	if !m.UIState.ShouldShowDetailPanel() {
