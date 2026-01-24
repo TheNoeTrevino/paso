@@ -1,16 +1,46 @@
 package tui
 
 import (
+	"context"
 	"log/slog"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/tui/commands"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/helpers"
 	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
+
+// loadTaskDetailForEditCmd creates a command that fetches task details and activities
+// for editing. Runs asynchronously to prevent blocking the UI.
+func loadTaskDetailForEditCmd(ctx context.Context, svc task.Service, taskID int) tea.Cmd {
+	return func() tea.Msg {
+		fetchCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+
+		taskDetail, err := svc.GetTaskDetail(fetchCtx, taskID)
+		if err != nil {
+			return taskDetailForEditError{err: err}
+		}
+
+		activities, err := svc.GetTaskActivities(fetchCtx, taskID)
+		if err != nil {
+			// Activities are optional, log but don't fail
+			slog.Error("failed to load task activities", "error", err)
+			activities = []models.ActivityItem{}
+		}
+
+		return taskDetailForEditMsg{
+			taskID:     taskID,
+			taskDetail: taskDetail,
+			activities: activities,
+		}
+	}
+}
 
 func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.UI.Notification.Clear()
@@ -239,68 +269,15 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	ctx, cancel := m.DBContext()
-	defer cancel()
-	taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, task.ID)
-	if err != nil {
-		m.HandleDBError(err, "Loading task details")
-		return m, nil
-	}
+	// Enter loading state and fetch task details asynchronously
+	m.UIState.Mode = state.TicketFormLoadingMode
+	m.LoadingGitInfo = true // Reuse this flag for the loading spinner
+	m.SpinnerFrame = 0
 
-	m.Forms.Form.FormTitle = taskDetail.Title
-	m.Forms.Form.FormDescription = taskDetail.Description
-	m.Forms.Form.FormLabelIDs = make([]int, len(taskDetail.Labels))
-	for i, label := range taskDetail.Labels {
-		m.Forms.Form.FormLabelIDs[i] = label.ID
-	}
-
-	m.Forms.Form.FormParentIDs = make([]int, len(taskDetail.ParentTasks))
-	m.Forms.Form.FormParentRefs = taskDetail.ParentTasks
-	for i, parent := range taskDetail.ParentTasks {
-		m.Forms.Form.FormParentIDs[i] = parent.ID
-	}
-
-	m.Forms.Form.FormChildIDs = make([]int, len(taskDetail.ChildTasks))
-	m.Forms.Form.FormChildRefs = taskDetail.ChildTasks
-	for i, child := range taskDetail.ChildTasks {
-		m.Forms.Form.FormChildIDs[i] = child.ID
-	}
-
-	// Load comments for the task
-	m.Forms.Form.FormComments = taskDetail.Comments
-	m.Forms.Form.InitialFormComments = make([]*models.Comment, len(taskDetail.Comments))
-	copy(m.Forms.Form.InitialFormComments, taskDetail.Comments)
-
-	// Load activities (events + comments) for the task form preview
-	activities, err := m.App.TaskService.GetTaskActivities(ctx, task.ID)
-	if err != nil {
-		slog.Error("failed to load task activities", "error", err)
-		m.Forms.Form.FormActivities = []models.ActivityItem{}
-	} else {
-		m.Forms.Form.FormActivities = activities
-	}
-
-	m.Forms.Form.FormCreatedAt = taskDetail.CreatedAt
-	m.Forms.Form.FormUpdatedAt = taskDetail.UpdatedAt
-	m.Forms.Form.FormTypeDescription = taskDetail.TypeDescription
-	m.Forms.Form.FormPriorityDescription = taskDetail.PriorityDescription
-	m.Forms.Form.FormPriorityColor = taskDetail.PriorityColor
-
-	m.Forms.Form.FormConfirm = true
-	m.Forms.Form.EditingTaskID = task.ID
-
-	// Calculate description lines based on current screen size
-	descriptionLines := m.calculateDescriptionLines()
-
-	m.Forms.Form.TaskForm = huhforms.CreateTaskForm(
-		&m.Forms.Form.FormTitle,
-		&m.Forms.Form.FormDescription,
-		&m.Forms.Form.FormConfirm,
-		descriptionLines,
-	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.Forms.Form.SnapshotTaskFormInitialValues()
-	m.UIState.Mode = state.TicketFormMode
-	return m, m.Forms.Form.TaskForm.Init()
+	return m, tea.Batch(
+		loadTaskDetailForEditCmd(m.Ctx, m.App.TaskService, task.ID),
+		tickGitSpinner(),
+	)
 }
 
 func (m Model) handleDeleteTask() (tea.Model, tea.Cmd) {

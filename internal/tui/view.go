@@ -37,6 +37,8 @@ func (m Model) View() tea.View {
 		switch m.UIState.Mode {
 		case state.TicketFormMode:
 			modalLayer = m.renderTaskFormLayer()
+		case state.TicketFormLoadingMode:
+			modalLayer = m.renderTicketFormLoadingLayer()
 		case state.ProjectFormMode, state.EditProjectFormMode:
 			modalLayer = m.renderProjectFormLayer()
 		case state.ProjectFormLoadingMode:

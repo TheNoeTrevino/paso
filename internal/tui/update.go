@@ -68,6 +68,18 @@ type gitInfoError struct {
 // GitSpinnerTickMsg is sent periodically to advance the git loading spinner animation
 type GitSpinnerTickMsg time.Time
 
+// taskDetailForEditMsg is sent when task details are fetched for the edit form
+type taskDetailForEditMsg struct {
+	taskID     int
+	taskDetail *models.TaskDetail
+	activities []models.ActivityItem
+}
+
+// taskDetailForEditError is sent when fetching task details fails
+type taskDetailForEditError struct {
+	err error
+}
+
 // databaseSaved and connectionConfirmation message types are defined in update_database.go
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -200,6 +212,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case taskDetailForEditMsg:
+		return m.handleTaskDetailForEdit(msg)
+
+	case taskDetailForEditError:
+		m.LoadingGitInfo = false
+		m.SpinnerFrame = 0
+		m.UIState.Mode = state.NormalMode
+		m.HandleDBError(msg.err, "Loading task details")
+		return m, nil
+
 	case gitInfoFetched:
 		m.LoadingGitInfo = false
 		m.LoadingBranches = false
@@ -272,6 +294,15 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDeleteColumnConfirm(msg)
 	case state.ProjectBranchConfirmMode:
 		return m.handleProjectBranchConfirm(msg)
+	case state.TicketFormLoadingMode:
+		switch msg.String() {
+		case "esc", m.Config.KeyMappings.Quit:
+			m.LoadingGitInfo = false
+			m.SpinnerFrame = 0
+			m.UIState.Mode = state.NormalMode
+			return m, tea.ClearScreen
+		}
+		return m, nil
 	case state.ProjectFormLoadingMode:
 		switch msg.String() {
 		case "esc", m.Config.KeyMappings.Quit:
@@ -366,6 +397,58 @@ func tickGitSpinner() tea.Cmd {
 	return tea.Tick(100*time.Millisecond, func(t time.Time) tea.Msg {
 		return GitSpinnerTickMsg(t)
 	})
+}
+
+// handleTaskDetailForEdit handles the taskDetailForEditMsg and creates the task edit form
+func (m Model) handleTaskDetailForEdit(msg taskDetailForEditMsg) (tea.Model, tea.Cmd) {
+	m.LoadingGitInfo = false
+	m.SpinnerFrame = 0
+
+	m.Forms.Form.FormTitle = msg.taskDetail.Title
+	m.Forms.Form.FormDescription = msg.taskDetail.Description
+	m.Forms.Form.FormLabelIDs = make([]int, len(msg.taskDetail.Labels))
+	for i, label := range msg.taskDetail.Labels {
+		m.Forms.Form.FormLabelIDs[i] = label.ID
+	}
+
+	m.Forms.Form.FormParentIDs = make([]int, len(msg.taskDetail.ParentTasks))
+	m.Forms.Form.FormParentRefs = msg.taskDetail.ParentTasks
+	for i, parent := range msg.taskDetail.ParentTasks {
+		m.Forms.Form.FormParentIDs[i] = parent.ID
+	}
+
+	m.Forms.Form.FormChildIDs = make([]int, len(msg.taskDetail.ChildTasks))
+	m.Forms.Form.FormChildRefs = msg.taskDetail.ChildTasks
+	for i, child := range msg.taskDetail.ChildTasks {
+		m.Forms.Form.FormChildIDs[i] = child.ID
+	}
+
+	m.Forms.Form.FormComments = msg.taskDetail.Comments
+	m.Forms.Form.InitialFormComments = make([]*models.Comment, len(msg.taskDetail.Comments))
+	copy(m.Forms.Form.InitialFormComments, msg.taskDetail.Comments)
+
+	m.Forms.Form.FormActivities = msg.activities
+
+	m.Forms.Form.FormCreatedAt = msg.taskDetail.CreatedAt
+	m.Forms.Form.FormUpdatedAt = msg.taskDetail.UpdatedAt
+	m.Forms.Form.FormTypeDescription = msg.taskDetail.TypeDescription
+	m.Forms.Form.FormPriorityDescription = msg.taskDetail.PriorityDescription
+	m.Forms.Form.FormPriorityColor = msg.taskDetail.PriorityColor
+
+	m.Forms.Form.FormConfirm = true
+	m.Forms.Form.EditingTaskID = msg.taskID
+
+	descriptionLines := m.calculateDescriptionLines()
+
+	m.Forms.Form.TaskForm = huhforms.CreateTaskForm(
+		&m.Forms.Form.FormTitle,
+		&m.Forms.Form.FormDescription,
+		&m.Forms.Form.FormConfirm,
+		descriptionLines,
+	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
+	m.Forms.Form.SnapshotTaskFormInitialValues()
+	m.UIState.Mode = state.TicketFormMode
+	return m, m.Forms.Form.TaskForm.Init()
 }
 
 // handleGitInfoFetched handles the gitInfoFetched message and creates the project form
