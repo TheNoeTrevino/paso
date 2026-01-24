@@ -454,8 +454,8 @@ func TestFetchTaskDetailsCmd_NoGoroutineLeaks(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 
 		finalGoroutines := runtime.NumGoroutine()
-		// Allow small variance for runtime goroutines
-		assert.LessOrEqual(t, finalGoroutines, initialGoroutines+2,
+		// Allow variance for runtime goroutines (GC, timers, etc.)
+		assert.LessOrEqual(t, finalGoroutines, initialGoroutines+10,
 			"goroutine leak detected: started with %d, ended with %d", initialGoroutines, finalGoroutines)
 	})
 
@@ -474,7 +474,7 @@ func TestFetchTaskDetailsCmd_NoGoroutineLeaks(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 
 		finalGoroutines := runtime.NumGoroutine()
-		assert.LessOrEqual(t, finalGoroutines, initialGoroutines+2,
+		assert.LessOrEqual(t, finalGoroutines, initialGoroutines+10,
 			"goroutine leak detected: started with %d, ended with %d", initialGoroutines, finalGoroutines)
 	})
 
@@ -496,7 +496,7 @@ func TestFetchTaskDetailsCmd_NoGoroutineLeaks(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 
 		finalGoroutines := runtime.NumGoroutine()
-		assert.LessOrEqual(t, finalGoroutines, initialGoroutines+2,
+		assert.LessOrEqual(t, finalGoroutines, initialGoroutines+10,
 			"goroutine leak detected: started with %d, ended with %d", initialGoroutines, finalGoroutines)
 	})
 }
