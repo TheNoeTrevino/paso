@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"errors"
-	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/services/task"
+	"go.uber.org/goleak"
 )
 
 // mockTaskService is a minimal mock that implements only GetTaskDetail for prefetch tests
@@ -436,53 +436,27 @@ func TestFetchTaskDetailsCmd_ContextHandling(t *testing.T) {
 }
 
 func TestFetchTaskDetailsCmd_NoGoroutineLeaks(t *testing.T) {
-	t.Parallel()
+	defer goleak.VerifyNone(t)
 
-	t.Run("no goroutine leaks on successful completion", func(t *testing.T) {
-		t.Parallel()
-
-		initialGoroutines := runtime.NumGoroutine()
-
+	t.Run("successful completion", func(t *testing.T) {
 		mock := newMockTaskService()
 		adjacent := AdjacentTasks{Current: 1, Above: 2, Below: 3, Left: 4, Right: 5}
 		cachedIDs := []int{}
 
 		cmd := FetchTaskDetailsCmd(mock, adjacent, cachedIDs)
 		_ = cmd()
-
-		// Allow goroutines to clean up
-		time.Sleep(50 * time.Millisecond)
-
-		finalGoroutines := runtime.NumGoroutine()
-		// Allow variance for runtime goroutines (GC, timers, etc.)
-		assert.LessOrEqual(t, finalGoroutines, initialGoroutines+10,
-			"goroutine leak detected: started with %d, ended with %d", initialGoroutines, finalGoroutines)
 	})
 
-	t.Run("no goroutine leaks when all cached", func(t *testing.T) {
-		t.Parallel()
-
-		initialGoroutines := runtime.NumGoroutine()
-
+	t.Run("all cached", func(t *testing.T) {
 		mock := newMockTaskService()
 		adjacent := AdjacentTasks{Current: 1, Above: 2, Below: 3}
 		cachedIDs := []int{1, 2, 3}
 
 		cmd := FetchTaskDetailsCmd(mock, adjacent, cachedIDs)
 		_ = cmd()
-
-		time.Sleep(50 * time.Millisecond)
-
-		finalGoroutines := runtime.NumGoroutine()
-		assert.LessOrEqual(t, finalGoroutines, initialGoroutines+10,
-			"goroutine leak detected: started with %d, ended with %d", initialGoroutines, finalGoroutines)
 	})
 
-	t.Run("no goroutine leaks on partial errors", func(t *testing.T) {
-		t.Parallel()
-
-		initialGoroutines := runtime.NumGoroutine()
-
+	t.Run("partial errors", func(t *testing.T) {
 		mock := newMockTaskService()
 		mock.setTaskError(2, errors.New("error"))
 		mock.setTaskError(4, errors.New("error"))
@@ -492,12 +466,6 @@ func TestFetchTaskDetailsCmd_NoGoroutineLeaks(t *testing.T) {
 
 		cmd := FetchTaskDetailsCmd(mock, adjacent, cachedIDs)
 		_ = cmd()
-
-		time.Sleep(50 * time.Millisecond)
-
-		finalGoroutines := runtime.NumGoroutine()
-		assert.LessOrEqual(t, finalGoroutines, initialGoroutines+10,
-			"goroutine leak detected: started with %d, ended with %d", initialGoroutines, finalGoroutines)
 	})
 }
 
