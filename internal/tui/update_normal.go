@@ -415,7 +415,12 @@ func (m Model) handleEditProject() (tea.Model, tea.Cmd) {
 	)
 }
 
+// prefetchDebounceDelay is the delay before triggering a prefetch after navigation.
+// This coalesces rapid navigation (e.g., holding arrow key) into a single prefetch.
+const prefetchDebounceDelay = 75 * time.Millisecond
+
 // triggerDetailPanelPrefetch returns a command to prefetch task details for the detail panel.
+// Uses debouncing to avoid excessive API calls during rapid navigation.
 // Only triggers if the detail panel should be shown and there's a valid task selection.
 // Returns nil if panel is not visible or no task is selected.
 func (m *Model) triggerDetailPanelPrefetch() tea.Cmd {
@@ -437,7 +442,7 @@ func (m *Model) triggerDetailPanelPrefetch() tea.Cmd {
 		return nil
 	}
 
-	// Update the detail panel task ID
+	// Update the detail panel task ID immediately for UI responsiveness
 	m.DetailPanelTaskID = adjacent.Current
 
 	// Check if current task is already cached
@@ -447,6 +452,36 @@ func (m *Model) triggerDetailPanelPrefetch() tea.Cmd {
 	} else {
 		// Current task not cached, show loading state
 		m.DetailPanelLoading = true
+	}
+
+	// Increment debounce sequence and schedule delayed prefetch
+	m.PrefetchDebounceSeq++
+	seq := m.PrefetchDebounceSeq
+
+	return tea.Tick(prefetchDebounceDelay, func(t time.Time) tea.Msg {
+		return prefetchDebounceMsg{seq: seq}
+	})
+}
+
+// executePrefetch performs the actual prefetch after debounce delay.
+// This is called from the Update function when a prefetchDebounceMsg is received.
+func (m *Model) executePrefetch() tea.Cmd {
+	// Only prefetch if panel is still visible
+	if !m.UIState.ShouldShowDetailPanel() {
+		return nil
+	}
+
+	// Get adjacent task IDs for prefetching
+	adjacent := helpers.GetAdjacentTaskIDs(
+		m.AppState.Columns(),
+		m.AppState.Tasks(),
+		m.UIState.SelectedColumn,
+		m.UIState.SelectedTask,
+	)
+
+	// No current task selected
+	if adjacent.Current == 0 {
+		return nil
 	}
 
 	// Get cached IDs to avoid refetching

@@ -57,6 +57,7 @@ type Model struct {
 	DetailCache         *state.TaskDetailCache      // LRU cache for task details (panel prefetch)
 	DetailPanelLoading  bool                        // True when fetching task detail for panel
 	DetailPanelTaskID   int                         // ID of task currently shown in detail panel
+	PrefetchDebounceSeq int                         // Sequence number for debouncing prefetch requests
 }
 
 // InitialModel creates and initializes the TUI model with data from the database

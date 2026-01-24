@@ -80,6 +80,12 @@ type taskDetailForEditError struct {
 	err error
 }
 
+// prefetchDebounceMsg is sent after the debounce delay to trigger actual prefetch.
+// Contains the sequence number to verify the request is still valid.
+type prefetchDebounceMsg struct {
+	seq int
+}
+
 // databaseSaved and connectionConfirmation message types are defined in update_database.go
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -255,6 +261,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.UIState.Mode = state.DatabaseSelectMode
 			return m, nil
 		}
+
+	case prefetchDebounceMsg:
+		// Only trigger prefetch if this is still the current sequence
+		if msg.seq != m.PrefetchDebounceSeq {
+			return m, nil // Stale request, ignore
+		}
+		return m, m.executePrefetch()
 
 	case commands.TaskDetailsPrefetchedMsg:
 		// Stop loading spinner
