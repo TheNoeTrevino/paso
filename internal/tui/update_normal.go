@@ -15,11 +15,15 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
+// taskDetailLoadTimeout is the maximum time allowed for loading task details
+// when opening the edit form. Prevents indefinite hangs if the backend is slow.
+const taskDetailLoadTimeout = 5 * time.Second
+
 // loadTaskDetailForEditCmd creates a command that fetches task details and activities
 // for editing. Runs asynchronously to prevent blocking the UI.
 func loadTaskDetailForEditCmd(ctx context.Context, svc task.Service, taskID int) tea.Cmd {
 	return func() tea.Msg {
-		fetchCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		fetchCtx, cancel := context.WithTimeout(ctx, taskDetailLoadTimeout)
 		defer cancel()
 
 		taskDetail, err := svc.GetTaskDetail(fetchCtx, taskID)

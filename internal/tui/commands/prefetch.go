@@ -12,6 +12,10 @@ import (
 	"github.com/thenoetrevino/paso/internal/services/task"
 )
 
+// taskDetailFetchTimeout is the maximum time allowed for fetching task details
+// during prefetch operations. Keeps the UI responsive even if the backend is slow.
+const taskDetailFetchTimeout = 5 * time.Second
+
 // AdjacentTasks contains the IDs of tasks adjacent to the currently selected task.
 // Used for prefetching task details to enable instant navigation in the detail panel.
 type AdjacentTasks struct {
@@ -42,7 +46,7 @@ type TaskDetailsPrefetchedMsg struct {
 // concurrently and return a TaskDetailsPrefetchedMsg.
 func FetchTaskDetailsCmd(svc task.Service, adjacent AdjacentTasks, cachedIDs []int) tea.Cmd {
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), taskDetailFetchTimeout)
 		defer cancel()
 
 		// Build set of cached IDs for O(1) lookup
