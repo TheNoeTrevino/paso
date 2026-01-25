@@ -1,14 +1,50 @@
 package tui
 
 import (
+	"context"
 	"log/slog"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/services/task"
+	"github.com/thenoetrevino/paso/internal/tui/commands"
 	"github.com/thenoetrevino/paso/internal/tui/components"
+	"github.com/thenoetrevino/paso/internal/tui/helpers"
 	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
+
+// taskDetailLoadTimeout is the maximum time allowed for loading task details
+// when opening the edit form. Prevents indefinite hangs if the backend is slow.
+const taskDetailLoadTimeout = 5 * time.Second
+
+// loadTaskDetailForEditCmd creates a command that fetches task details and activities
+// for editing. Runs asynchronously to prevent blocking the UI.
+func loadTaskDetailForEditCmd(ctx context.Context, svc task.Service, taskID int) tea.Cmd {
+	return func() tea.Msg {
+		fetchCtx, cancel := context.WithTimeout(ctx, taskDetailLoadTimeout)
+		defer cancel()
+
+		taskDetail, err := svc.GetTaskDetail(fetchCtx, taskID)
+		if err != nil {
+			return taskDetailForEditError{err: err}
+		}
+
+		activities, err := svc.GetTaskActivities(fetchCtx, taskID)
+		if err != nil {
+			// Activities are optional, log but don't fail
+			slog.Error("failed to load task activities", "error", err)
+			activities = []models.ActivityItem{}
+		}
+
+		return taskDetailForEditMsg{
+			taskID:     taskID,
+			taskDetail: taskDetail,
+			activities: activities,
+		}
+	}
+}
 
 func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.UI.Notification.Clear()
@@ -92,9 +128,9 @@ func (m Model) handleNavigateLeft() (tea.Model, tea.Cmd) {
 		m.UIState.SelectedColumn = m.UIState.SelectedColumn - 1
 		m.UIState.SelectedTask = 0
 		m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn)
-	} else {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the first column")
+		return m, m.triggerDetailPanelPrefetch()
 	}
+	m.UI.Notification.Add(state.LevelInfo, "Already at the first column")
 	return m, nil
 }
 
@@ -103,9 +139,9 @@ func (m Model) handleNavigateRight() (tea.Model, tea.Cmd) {
 		m.UIState.SelectedColumn = m.UIState.SelectedColumn + 1
 		m.UIState.SelectedTask = 0
 		m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn)
-	} else {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the last column")
+		return m, m.triggerDetailPanelPrefetch()
 	}
+	m.UI.Notification.Add(state.LevelInfo, "Already at the last column")
 	return m, nil
 }
 
@@ -134,9 +170,9 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
 			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
 		}
-	} else {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the first task")
+		return m, m.triggerDetailPanelPrefetch()
 	}
+	m.UI.Notification.Add(state.LevelInfo, "Already at the first task")
 	return m, nil
 }
 
@@ -167,7 +203,9 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
 			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
 		}
-	} else if len(currentTasks) > 0 {
+		return m, m.triggerDetailPanelPrefetch()
+	}
+	if len(currentTasks) > 0 {
 		m.UI.Notification.Add(state.LevelInfo, "Already at the last task")
 	}
 	return m, nil
@@ -235,68 +273,15 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	ctx, cancel := m.DBContext()
-	defer cancel()
-	taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, task.ID)
-	if err != nil {
-		m.HandleDBError(err, "Loading task details")
-		return m, nil
-	}
+	// Enter loading state and fetch task details asynchronously
+	m.UIState.Mode = state.TicketFormLoadingMode
+	m.LoadingGitInfo = true // Reuse this flag for the loading spinner
+	m.SpinnerFrame = 0
 
-	m.Forms.Form.FormTitle = taskDetail.Title
-	m.Forms.Form.FormDescription = taskDetail.Description
-	m.Forms.Form.FormLabelIDs = make([]int, len(taskDetail.Labels))
-	for i, label := range taskDetail.Labels {
-		m.Forms.Form.FormLabelIDs[i] = label.ID
-	}
-
-	m.Forms.Form.FormParentIDs = make([]int, len(taskDetail.ParentTasks))
-	m.Forms.Form.FormParentRefs = taskDetail.ParentTasks
-	for i, parent := range taskDetail.ParentTasks {
-		m.Forms.Form.FormParentIDs[i] = parent.ID
-	}
-
-	m.Forms.Form.FormChildIDs = make([]int, len(taskDetail.ChildTasks))
-	m.Forms.Form.FormChildRefs = taskDetail.ChildTasks
-	for i, child := range taskDetail.ChildTasks {
-		m.Forms.Form.FormChildIDs[i] = child.ID
-	}
-
-	// Load comments for the task
-	m.Forms.Form.FormComments = taskDetail.Comments
-	m.Forms.Form.InitialFormComments = make([]*models.Comment, len(taskDetail.Comments))
-	copy(m.Forms.Form.InitialFormComments, taskDetail.Comments)
-
-	// Load activities (events + comments) for the task form preview
-	activities, err := m.App.TaskService.GetTaskActivities(ctx, task.ID)
-	if err != nil {
-		slog.Error("failed to load task activities", "error", err)
-		m.Forms.Form.FormActivities = []models.ActivityItem{}
-	} else {
-		m.Forms.Form.FormActivities = activities
-	}
-
-	m.Forms.Form.FormCreatedAt = taskDetail.CreatedAt
-	m.Forms.Form.FormUpdatedAt = taskDetail.UpdatedAt
-	m.Forms.Form.FormTypeDescription = taskDetail.TypeDescription
-	m.Forms.Form.FormPriorityDescription = taskDetail.PriorityDescription
-	m.Forms.Form.FormPriorityColor = taskDetail.PriorityColor
-
-	m.Forms.Form.FormConfirm = true
-	m.Forms.Form.EditingTaskID = task.ID
-
-	// Calculate description lines based on current screen size
-	descriptionLines := m.calculateDescriptionLines()
-
-	m.Forms.Form.TaskForm = huhforms.CreateTaskForm(
-		&m.Forms.Form.FormTitle,
-		&m.Forms.Form.FormDescription,
-		&m.Forms.Form.FormConfirm,
-		descriptionLines,
-	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
-	m.Forms.Form.SnapshotTaskFormInitialValues()
-	m.UIState.Mode = state.TicketFormMode
-	return m, m.Forms.Form.TaskForm.Init()
+	return m, tea.Batch(
+		loadTaskDetailForEditCmd(m.Ctx, m.App.TaskService, task.ID),
+		tickGitSpinner(),
+	)
 }
 
 func (m Model) handleDeleteTask() (tea.Model, tea.Cmd) {
@@ -432,4 +417,88 @@ func (m Model) handleEditProject() (tea.Model, tea.Cmd) {
 		loadGitDataForProjectFormCmd(m.Ctx, m.GitCache, true),
 		tickGitSpinner(),
 	)
+}
+
+// prefetchDebounceDelay is the delay before triggering a prefetch after navigation.
+// This coalesces rapid navigation (e.g., holding arrow key) into a single prefetch.
+const prefetchDebounceDelay = 75 * time.Millisecond
+
+// triggerDetailPanelPrefetch returns a command to prefetch task details for the detail panel.
+// Uses debouncing to avoid excessive API calls during rapid navigation.
+// Only triggers if the detail panel should be shown and there's a valid task selection.
+// Returns nil if panel is not visible or no task is selected.
+//
+// Synchronization: This method is safe from race conditions because Bubble Tea processes
+// messages sequentially in a single goroutine. PrefetchDebounceSeq is only mutated within
+// Update handlers, and the sequence comparison in prefetchDebounceMsg handling occurs in
+// the same goroutine. Each navigation increments the counter, invalidating any pending
+// debounce timers from previous navigations.
+func (m *Model) triggerDetailPanelPrefetch() tea.Cmd {
+	// Only prefetch if panel is visible
+	if !m.UIState.ShouldShowDetailPanel() {
+		return nil
+	}
+
+	// Get adjacent task IDs for prefetching
+	adjacent := helpers.GetAdjacentTaskIDs(
+		m.AppState.Columns(),
+		m.AppState.Tasks(),
+		m.UIState.SelectedColumn,
+		m.UIState.SelectedTask,
+	)
+
+	// No current task selected
+	if adjacent.Current == 0 {
+		return nil
+	}
+
+	// Update the detail panel task ID immediately for UI responsiveness
+	m.DetailPanelTaskID = adjacent.Current
+
+	// Check if current task is already cached
+	if m.DetailCache != nil && m.DetailCache.Has(adjacent.Current) {
+		// Current task is cached, but still prefetch adjacent for smooth navigation
+		m.DetailPanelLoading = false
+	} else {
+		// Current task not cached, show loading state
+		m.DetailPanelLoading = true
+	}
+
+	// Increment debounce sequence and schedule delayed prefetch
+	m.PrefetchDebounceSeq++
+	seq := m.PrefetchDebounceSeq
+
+	return tea.Tick(prefetchDebounceDelay, func(t time.Time) tea.Msg {
+		return prefetchDebounceMsg{seq: seq}
+	})
+}
+
+// executePrefetch performs the actual prefetch after debounce delay.
+// This is called from the Update function when a prefetchDebounceMsg is received.
+func (m *Model) executePrefetch() tea.Cmd {
+	// Only prefetch if panel is still visible
+	if !m.UIState.ShouldShowDetailPanel() {
+		return nil
+	}
+
+	// Get adjacent task IDs for prefetching
+	adjacent := helpers.GetAdjacentTaskIDs(
+		m.AppState.Columns(),
+		m.AppState.Tasks(),
+		m.UIState.SelectedColumn,
+		m.UIState.SelectedTask,
+	)
+
+	// No current task selected
+	if adjacent.Current == 0 {
+		return nil
+	}
+
+	// Get cached IDs to avoid refetching
+	var cachedIDs []int
+	if m.DetailCache != nil {
+		cachedIDs = m.DetailCache.CachedIDs()
+	}
+
+	return commands.FetchTaskDetailsCmd(m.App.TaskService, adjacent, cachedIDs)
 }

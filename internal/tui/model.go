@@ -54,6 +54,10 @@ type Model struct {
 	LoadingBranches     bool                        // True when fetching git branches asynchronously
 	SpinnerFrame        int                         // Current frame for git loading spinner
 	GitCache            *git.Cache                  // Git information cache
+	DetailCache         *state.TaskDetailCache      // LRU cache for task details (panel prefetch)
+	DetailPanelLoading  bool                        // True when fetching task detail for panel
+	DetailPanelTaskID   int                         // ID of task currently shown in detail panel
+	PrefetchDebounceSeq int                         // Sequence number for debouncing prefetch requests
 }
 
 // InitialModel creates and initializes the TUI model with data from the database
@@ -171,6 +175,9 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	// Initialize git cache with default TTL
 	gitCache := git.NewCache(git.DefaultCacheTTL)
 
+	// Initialize task detail cache for panel prefetching
+	detailCache := state.NewTaskDetailCache(state.DefaultCacheSize)
+
 	// Start listening for events from daemon (optional - daemon may not be running)
 	var eventChan <-chan events.Event
 	if eventClient != nil {
@@ -223,6 +230,7 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 		CurrentDBType:       database.SQLite,
 		CurrentDBName:       "Local",
 		GitCache:            gitCache,
+		DetailCache:         detailCache,
 	}
 }
 
@@ -612,6 +620,11 @@ func (m Model) switchToProject(projectIndex int) {
 	}
 
 	m.AppState.SetSelectedProject(projectIndex)
+
+	// Clear task detail cache since we're switching projects
+	if m.DetailCache != nil {
+		m.DetailCache.Clear()
+	}
 
 	project := m.AppState.Projects()[projectIndex]
 

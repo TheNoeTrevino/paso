@@ -103,6 +103,26 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height)
 }
 
+// renderTicketFormLoadingLayer renders a loading indicator while task details are being fetched
+func (m Model) renderTicketFormLoadingLayer() *lipgloss.Layer {
+	spinnerFrames := []string{
+		"󰋙", "󰫃", "󰫄", "󰫅", "󰫆", "󰫇", "󰫈", "󰫇", "󰫆", "󰫅", "󰫄", "󰫃",
+	}
+	spinnerIcon := spinnerFrames[m.SpinnerFrame%len(spinnerFrames)]
+
+	loadingText := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Highlight)).
+		Bold(true).
+		Render("Loading task details " + spinnerIcon)
+
+	formBox := components.FormBoxStyle.
+		Width(m.UIState.Width() * 8 / 10).
+		Height(m.UIState.Height * 8 / 10).
+		Render(loadingText)
+
+	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height)
+}
+
 // renderProjectFormLoadingLayer renders a loading indicator while git data is being fetched
 func (m Model) renderProjectFormLoadingLayer() *lipgloss.Layer {
 	var title string

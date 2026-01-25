@@ -265,7 +265,9 @@ func TestViewportState_CalculatesCorrectly(t *testing.T) {
 	}{
 		{"Small width", 60, 1, 1},
 		{"Medium width", 120, 2, 3},
-		{"Large width", 300, 6, 7},
+		// Large width (300): With detail panel visible (120 chars max), available width = 300-120-4=176
+		// 176/46 = 3.8 columns, so we expect 3 columns
+		{"Large width", 300, 3, 4},
 	}
 
 	for _, tt := range tests {

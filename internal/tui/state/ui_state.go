@@ -15,6 +15,7 @@ const (
 	DeleteColumnConfirmMode                // Confirming column deletion
 	HelpMode                               // Displaying help screen
 	TicketFormMode                         // Full task form with huh
+	TicketFormLoadingMode                  // Loading task data for edit form
 	ProjectFormMode                        // Creating a new project with huh
 	EditProjectFormMode                    // Editing an existing project (huh form)
 	ProjectFormLoadingMode                 // Loading git data for project form
@@ -45,6 +46,7 @@ const (
 func (m Mode) UsesLayers() bool {
 	switch m {
 	case TicketFormMode,
+		TicketFormLoadingMode,
 		ProjectFormMode,
 		EditProjectFormMode,
 		ProjectFormLoadingMode,
@@ -164,16 +166,25 @@ func (s *UIState) ViewportSize() int {
 //
 // The calculation reserves 4 characters for margins and scroll indicators,
 // and ensures at least 1 column is always visible.
+// When the detail panel is visible, its width is subtracted from available space.
 func (s *UIState) calculateViewportSize() {
 	if s.width == 0 {
 		s.viewportSize = 1
 		return
 	}
 
-	const columnWidth = 46  // 40 content + 2 padding + 2 border + 2 spacing
-	const reservedWidth = 4 // margins and scroll indicators
+	const columnWidth = 46       // 40 content + 2 padding + 2 border + 2 spacing
+	const reservedWidth = 4      // margins and scroll indicators
+	const detailPanelWidth = 120 // max width of detail panel (prevents sawtooth resizing)
 
 	availableWidth := s.width - reservedWidth
+
+	// Reserve space for detail panel when screen is wide enough
+	// We reserve the MAX panel width to prevent the panel from shrinking
+	// when the terminal gets larger and gains another column
+	if s.ShouldShowDetailPanel() {
+		availableWidth -= detailPanelWidth
+	}
 
 	// Calculate how many columns fit, with minimum of 1
 	s.viewportSize = max(1, availableWidth/columnWidth)
@@ -304,4 +315,49 @@ func (s *UIState) EnsureTaskVisible(columnID int, selectedTaskIdx int, visibleCo
 	if selectedTaskIdx >= offset+visibleCount {
 		s.taskScrollOffsets[columnID] = selectedTaskIdx - visibleCount + 1
 	}
+}
+
+// ShouldShowDetailPanel returns true if the screen is wide enough to display
+// the detail panel alongside the kanban columns. Panel is shown when the terminal
+// can fit at least 5 columns (approximately 230 characters wide).
+func (s *UIState) ShouldShowDetailPanel() bool {
+	const (
+		columnWidth        = 46 // 40 content + 2 padding + 2 border + 2 spacing
+		minColumnsForPanel = 4  // require at least 4 columns worth of space
+		reservedWidth      = 4  // margins and scroll indicators
+	)
+	minWidth := (minColumnsForPanel * columnWidth) + reservedWidth
+	return s.width >= minWidth
+}
+
+// DetailPanelWidth calculates the width for the detail panel based on terminal width.
+// The width is clamped between minPanelWidth and maxPanelWidth.
+//
+// The clamping logic handles edge cases gracefully:
+//   - If availableWidth > maxPanelWidth: returns maxPanelWidth (prevents oversized panel)
+//   - If availableWidth < minPanelWidth: returns minPanelWidth (ensures minimum usable width)
+//   - If the terminal is very narrow and availableWidth becomes negative, the lower bound
+//     check ensures we still return at least minPanelWidth for a usable panel.
+func (s *UIState) DetailPanelWidth() int {
+	const (
+		columnWidth   = 46
+		reservedWidth = 4
+		minPanelWidth = 50
+		maxPanelWidth = 120
+	)
+
+	// Calculate board width based on visible columns
+	boardWidth := (s.viewportSize * columnWidth) + reservedWidth
+
+	// Remaining space for panel (may be negative if terminal is very narrow)
+	availableWidth := s.width - boardWidth
+
+	// Clamp to min/max bounds
+	if availableWidth < minPanelWidth {
+		return minPanelWidth
+	}
+	if availableWidth > maxPanelWidth {
+		return maxPanelWidth
+	}
+	return availableWidth
 }

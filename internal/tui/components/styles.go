@@ -108,6 +108,9 @@ var (
 
 	// StatusBarTipStyle defines the style for the tips in the status bar
 	StatusBarTipStyle lipgloss.Style
+
+	// DetailPanelStyle defines the appearance of the task detail panel
+	DetailPanelStyle lipgloss.Style
 )
 
 // InitStyles initializes all styles with the given color scheme
@@ -229,4 +232,7 @@ func InitStyles(colors colors.ColorScheme) {
 
 	SubtleStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Subtle))
+
+	DetailPanelStyle = lipgloss.NewStyle().
+		Padding(1, 2)
 }

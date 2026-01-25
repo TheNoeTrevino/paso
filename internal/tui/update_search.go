@@ -8,8 +8,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
-// ============================================================================
-
 // handleEnterSearch enters search mode and clears any previous search state.
 // Inlined from search.go (deleted to reduce duplication)
 func (m Model) handleEnterSearch() (tea.Model, tea.Cmd) {

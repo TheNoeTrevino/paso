@@ -9,10 +9,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
-// ============================================================================
-// CONFIRMATION HANDLERS (Inlined from deleted confirmation.go)
-// ============================================================================
-
 // handleDeleteConfirm handles task or comment deletion confirmation.
 // Inlined from confirmation.go (deleted to reduce duplication)
 func (m Model) handleDeleteConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -49,6 +45,10 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 			m.UI.Notification.Add(state.LevelError, "Failed to delete task")
 		} else {
 			m.removeCurrentTask()
+			// Invalidate the deleted task from detail cache
+			if m.DetailCache != nil {
+				m.DetailCache.Invalidate(task.ID)
+			}
 		}
 	}
 	m.UIState.Mode = state.NormalMode
