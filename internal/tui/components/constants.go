@@ -19,7 +19,6 @@ const (
 
 	// Task card layout
 	TaskCardBorderOverhead = 4 // Task card border (2 left + 2 right)
-	TaskCardMinPadding     = 3 // Minimum padding for task content
 
 	// Picker footer/help text strings
 	PickerFooterSelectConfirm = "Enter: select  Esc: cancel"       // Used by: Color, Priority, Type, Relation Type pickers
@@ -27,23 +26,3 @@ const (
 	PickerFooterToggle        = "Enter: toggle  Esc: close"        // Used by: Task picker
 	PickerFooterConfirm       = "Enter: confirm  Esc: cancel"      // Used by: Status picker
 )
-
-// TaskTitleMaxLength calculates the max title length based on available card width
-func TaskTitleMaxLength(cardWidth int) int {
-	// Leave room for padding and potential ellipsis
-	maxLen := cardWidth - TaskCardMinPadding
-	if maxLen < 10 {
-		return 10 // Absolute minimum
-	}
-	return maxLen
-}
-
-// TaskLabelsMaxLength calculates the max labels length based on available card width
-func TaskLabelsMaxLength(cardWidth int) int {
-	// Labels line has similar constraints to title
-	maxLen := cardWidth - TaskCardMinPadding
-	if maxLen < 10 {
-		return 10
-	}
-	return maxLen
-}
