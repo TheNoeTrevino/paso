@@ -8,15 +8,19 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
-// RenderTask renders a single task as a card
+// RenderTask renders a single task as a card with dynamic width
 //
-//		┌──────────────────────────────┐
-//		│ {Task Title}                 │
-//		│ type | priority | blocked    │
-//		│ [label1] [label2]...         │
-//		└──────────────────────────────┘
-//	 This has a fixed width and length
-func RenderTask(task *models.TaskSummary, selected bool) string {
+//	┌──────────────────────────────┐
+//	│ {Task Title}                 │
+//	│ type | priority | blocked    │
+//	│ [label1] [label2]...         │
+//	└──────────────────────────────┘
+//
+// Parameters:
+//   - task: The task summary to render
+//   - selected: Whether this task is currently selected
+//   - width: The width of the task card content area
+func RenderTask(task *models.TaskSummary, selected bool, width int) string {
 	var bg string
 	if selected {
 		bg = theme.SelectedBg
@@ -24,12 +28,13 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 		bg = theme.TaskBg
 	}
 
-	title := renderTaskSummaryTitle(task, bg)
+	title := renderTaskSummaryTitle(task, bg, width)
 	metadataLine := renderTaskSummaryMetadata(task, bg)
-	labelChips := renderTaskCardLabels(task.Labels, bg)
+	labelChips := renderTaskCardLabels(task.Labels, bg, width)
 	content := title + metadataLine + labelChips
 
 	style := TaskStyle.
+		Width(width).
 		BorderForeground(lipgloss.Color(theme.SelectedBorder)).
 		BorderBackground(lipgloss.Color(bg)).
 		Background(lipgloss.Color(bg))
@@ -37,11 +42,12 @@ func RenderTask(task *models.TaskSummary, selected bool) string {
 	return style.Render(content)
 }
 
-func renderTaskSummaryTitle(task *models.TaskSummary, bg string) string {
+func renderTaskSummaryTitle(task *models.TaskSummary, bg string, cardWidth int) string {
 	title := task.Title
+	maxLength := TaskTitleMaxLength(cardWidth)
 
-	if len(title) >= taskTitleMaxLength {
-		title = title[:taskTitleMaxLength] + EllipsisStyle.
+	if len(title) >= maxLength {
+		title = title[:maxLength] + EllipsisStyle.
 			Background(lipgloss.Color(bg)).
 			Render("...")
 	}
@@ -50,7 +56,9 @@ func renderTaskSummaryTitle(task *models.TaskSummary, bg string) string {
 }
 
 // renderTaskCardLabels renders the labels as chips, with their color as the background
-func renderTaskCardLabels(labels []*models.Label, bg string) string {
+func renderTaskCardLabels(labels []*models.Label, bg string, cardWidth int) string {
+	maxLength := TaskLabelsMaxLength(cardWidth)
+
 	if len(labels) == 0 {
 		emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Background(lipgloss.Color(bg)).Italic(true)
 		return "\n " + emptyStyle.Render("no labels")
@@ -66,7 +74,7 @@ func renderTaskCardLabels(labels []*models.Label, bg string) string {
 	spacer := lipgloss.NewStyle().Background(lipgloss.Color(bg)).Render(" ")
 
 	// If fits, render all labels
-	if len(aggregated) <= taskLabelsMaxLength {
+	if len(aggregated) <= maxLength {
 		var chips []string
 		for _, label := range labels {
 			chips = append(chips, RenderLabelChip(label, bg))
@@ -86,7 +94,7 @@ func renderTaskCardLabels(labels []*models.Label, bg string) string {
 		}
 
 		// Check if adding this label + ellipsis would exceed limit
-		if nextLength+len(ellipsis) > taskLabelsMaxLength {
+		if nextLength+len(ellipsis) > maxLength {
 			break
 		}
 
