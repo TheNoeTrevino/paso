@@ -263,9 +263,11 @@ func TestViewportState_CalculatesCorrectly(t *testing.T) {
 		minCols int
 		maxCols int
 	}{
-		{"Small width", 60, 1, 1},
-		{"Medium width", 120, 2, 3},
-		// Large width (300): With detail panel visible (120 chars max), available width = 300-120-4=176
+		// Minimum viewport size is 3, regardless of terminal width
+		{"Small width", 60, 3, 3},
+		// Width 120: no detail panel (120 < 262), available = 116, 116/46 = 2, min(3) applies
+		{"Medium width", 120, 3, 3},
+		// Large width (300): With detail panel visible (300 >= 262), available = 300-120-4=176
 		// 176/46 = 3.8 columns, so we expect 3 columns
 		{"Large width", 300, 3, 4},
 	}
@@ -280,9 +282,9 @@ func TestViewportState_CalculatesCorrectly(t *testing.T) {
 					tt.width, viewportSize, tt.minCols, tt.maxCols)
 			}
 
-			// Viewport should always show at least 1 column
-			if viewportSize < 1 {
-				t.Error("ViewportSize should be at least 1")
+			// Viewport should always show at least 3 columns (minimum enforced)
+			if viewportSize < 3 {
+				t.Error("ViewportSize should be at least 3")
 			}
 		})
 	}

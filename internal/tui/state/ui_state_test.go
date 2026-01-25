@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-// TestCalculateViewportSize_ZeroWidth ensures viewport defaults to 1 when terminal width is 0.
+// TestCalculateViewportSize_ZeroWidth ensures viewport defaults to minimum (3) when terminal width is 0.
 // Edge case: Terminal not fully initialized yet.
 // Security value: Prevents division by zero or negative viewport size.
 func TestCalculateViewportSize_ZeroWidth(t *testing.T) {
@@ -12,8 +12,8 @@ func TestCalculateViewportSize_ZeroWidth(t *testing.T) {
 	state.SetWidth(0)
 
 	got := state.ViewportSize()
-	if got != 1 {
-		t.Errorf("ViewportSize() with width=0 = %d, want 1", got)
+	if got != 3 {
+		t.Errorf("ViewportSize() with width=0 = %d, want 3 (minimum)", got)
 	}
 }
 
@@ -92,24 +92,24 @@ func TestAdjustViewportAfterColumnRemoval_EmptyColumns(t *testing.T) {
 // Security value: Ensures selection always accessible (prevents invisible selection state).
 func TestEnsureSelectionVisible_SelectionBeyondViewport(t *testing.T) {
 	state := NewUIState()
-	state.SetWidth(100) // Enough for 2 columns (46 chars per column + 4 reserved)
-	// ViewportSize should be 2: (100 - 4) / 46 = 2
+	state.SetWidth(100) // Width gives 2 calculated columns, but minimum is 3
+	// ViewportSize = max(3, (100 - 4) / 46) = max(3, 2) = 3 (minimum enforced)
 
-	state.ViewportOffset = 0 // Show columns 0-1
+	state.ViewportOffset = 0 // Show columns 0-2
 
-	// Select column 3 (beyond viewport)
+	// Select column 3 (beyond viewport of size 3)
 	state.EnsureSelectionVisible(3)
 
 	// Viewport should adjust so column 3 is visible
-	// New offset should be: 3 - viewportSize + 1 = 3 - 2 + 1 = 2
-	expectedOffset := 2
+	// New offset should be: 3 - viewportSize + 1 = 3 - 3 + 1 = 1
+	expectedOffset := 1
 	if state.ViewportOffset != expectedOffset {
 		t.Errorf("ViewportOffset after EnsureSelectionVisible(3) = %d, want %d", state.ViewportOffset, expectedOffset)
 	}
 
-	// Test left side: select column 0 when viewport is at offset 2
+	// Test left side: select column 0 when viewport is at offset 1
 	state.EnsureSelectionVisible(0)
 	if state.ViewportOffset != 0 {
-		t.Errorf("ViewportOffset after EnsureSelectionVisible(0) from offset=2 = %d, want 0", state.ViewportOffset)
+		t.Errorf("ViewportOffset after EnsureSelectionVisible(0) from offset=1 = %d, want 0", state.ViewportOffset)
 	}
 }

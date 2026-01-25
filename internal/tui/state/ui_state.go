@@ -126,7 +126,7 @@ func NewUIState() *UIState {
 		Height:            0,
 		Mode:              NormalMode,
 		ViewportOffset:    0,
-		viewportSize:      1, // Default to 1, will be recalculated when width is set
+		viewportSize:      3, // Default to 3 (minimum), will be recalculated when width is set
 		taskScrollOffsets: make(map[int]int),
 	}
 }
@@ -169,7 +169,7 @@ func (s *UIState) ViewportSize() int {
 // When the detail panel is visible, its width is subtracted from available space.
 func (s *UIState) calculateViewportSize() {
 	if s.width == 0 {
-		s.viewportSize = 1
+		s.viewportSize = 3
 		return
 	}
 
@@ -186,8 +186,8 @@ func (s *UIState) calculateViewportSize() {
 		availableWidth -= detailPanelWidth
 	}
 
-	// Calculate how many columns fit, with minimum of 1
-	s.viewportSize = max(1, availableWidth/columnWidth)
+	// Calculate how many columns fit, with minimum of 3
+	s.viewportSize = max(3, availableWidth/columnWidth)
 }
 
 // AdjustViewportAfterColumnRemoval adjusts the viewport offset after a column is removed.
@@ -319,14 +319,15 @@ func (s *UIState) EnsureTaskVisible(columnID int, selectedTaskIdx int, visibleCo
 
 // ShouldShowDetailPanel returns true if the screen is wide enough to display
 // the detail panel alongside the kanban columns. Panel is shown when the terminal
-// can fit at least 5 columns (approximately 230 characters wide).
+// can fit at least 3 columns plus the detail panel (approximately 262 characters wide).
 func (s *UIState) ShouldShowDetailPanel() bool {
 	const (
-		columnWidth        = 46 // 40 content + 2 padding + 2 border + 2 spacing
-		minColumnsForPanel = 4  // require at least 4 columns worth of space
-		reservedWidth      = 4  // margins and scroll indicators
+		columnWidth      = 46  // 40 content + 2 padding + 2 border + 2 spacing
+		minColumns       = 3   // enforce minimum of 3 columns when panel is visible
+		reservedWidth    = 4   // margins and scroll indicators
+		detailPanelWidth = 120 // max panel width (matches calculateViewportSize)
 	)
-	minWidth := (minColumnsForPanel * columnWidth) + reservedWidth
+	minWidth := (minColumns * columnWidth) + reservedWidth + detailPanelWidth
 	return s.width >= minWidth
 }
 
