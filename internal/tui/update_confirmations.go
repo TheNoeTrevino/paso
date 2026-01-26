@@ -186,6 +186,48 @@ func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) handleDeleteProjectConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y", "Y":
+		return m.confirmDeleteProject(false)
+	case "f", "F":
+		if m.Forms.Input.DeleteProjectTaskCount > 0 {
+			return m.confirmDeleteProject(true)
+		}
+		return m, nil
+	case "n", "N", "esc":
+		m.UIState.Mode = state.NormalMode
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m Model) confirmDeleteProject(force bool) (tea.Model, tea.Cmd) {
+	currentProject := m.AppState.GetCurrentProject()
+	if currentProject == nil {
+		m.UIState.Mode = state.NormalMode
+		return m, nil
+	}
+
+	projectName := currentProject.Name
+
+	ctx, cancel := m.DBContext()
+	defer cancel()
+
+	err := m.App.ProjectService.DeleteProject(ctx, currentProject.ID, force)
+	if err != nil {
+		slog.Error("failed to delete project", "error", err)
+		m.UI.Notification.Add(state.LevelError, "Failed to delete project: "+err.Error())
+		m.UIState.Mode = state.NormalMode
+		return m, nil
+	}
+
+	m.removeCurrentProject()
+	m.UI.Notification.Add(state.LevelInfo, fmt.Sprintf("Project '%s' deleted", projectName))
+	m.UIState.Mode = state.NormalMode
+	return m, nil
+}
+
 func (m Model) handleProjectBranchConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	ctx := m.UIState.ProjectBranchContext
 	if ctx == nil {
