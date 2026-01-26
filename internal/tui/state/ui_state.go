@@ -41,6 +41,7 @@ const (
 	DatabaseConnectConfirmMode             // Confirming connection to newly created database
 	DatabaseDeleteConfirmMode              // Confirming deletion of a database connection
 	ProjectBranchConfirmMode               // Confirming git branch association for project
+	DeleteProjectConfirmMode               // Confirming project deletion
 )
 
 // UsesLayers returns true if this mode uses layer-based rendering.
