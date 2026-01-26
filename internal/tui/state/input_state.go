@@ -16,6 +16,10 @@ type InputState struct {
 	// This is used to show a warning message in the delete confirmation dialog
 	DeleteColumnTaskCount int
 
+	// DeleteProjectTaskCount stores the number of tasks in a project being deleted
+	// This is used to show a warning message in the delete confirmation dialog
+	DeleteProjectTaskCount int
+
 	// InitialBuffer stores the original buffer value for change detection (EditColumnMode)
 	InitialBuffer string
 }

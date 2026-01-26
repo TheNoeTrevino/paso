@@ -41,6 +41,8 @@ const (
 	DatabaseConnectConfirmMode             // Confirming connection to newly created database
 	DatabaseDeleteConfirmMode              // Confirming deletion of a database connection
 	ProjectBranchConfirmMode               // Confirming git branch association for project
+	DeleteProjectConfirmMode               // Confirming project deletion
+	DeleteLabelConfirmMode                 // Confirming label deletion
 )
 
 // UsesLayers returns true if this mode uses layer-based rendering.
@@ -73,7 +75,11 @@ func (m Mode) UsesLayers() bool {
 		DatabaseCreateMode,
 		DatabaseConnectConfirmMode,
 		DatabaseDeleteConfirmMode,
-		ProjectBranchConfirmMode:
+		ProjectBranchConfirmMode,
+		DeleteProjectConfirmMode,
+		DeleteColumnConfirmMode,
+		DeleteLabelConfirmMode,
+		DeleteConfirmMode:
 		return true
 	default:
 		return false

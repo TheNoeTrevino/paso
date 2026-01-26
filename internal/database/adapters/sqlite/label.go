@@ -74,6 +74,10 @@ func (a *Adapter) GetLabelCountByProject(ctx context.Context, projectID int64) (
 	return a.queries.GetLabelCountByProject(ctx, projectID)
 }
 
+func (a *Adapter) CountTasksByLabel(ctx context.Context, labelID int64) (int64, error) {
+	return a.queries.CountTasksByLabel(ctx, labelID)
+}
+
 func (a *Adapter) UpsertLabel(ctx context.Context, arg types.UpsertLabelParams) error {
 	return a.queries.UpsertLabel(ctx, toGeneratedUpsertLabelParams(arg))
 }

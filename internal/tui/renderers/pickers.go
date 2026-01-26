@@ -83,6 +83,43 @@ func GetDefaultLabelColors() []struct {
 	}
 }
 
+// RenderLabelNameInput renders the name input step for creating a new label
+func RenderLabelNameInput(
+	nameBuffer string,
+	width int,
+) string {
+	var content strings.Builder
+
+	// Title
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Create))
+	content.WriteString(titleStyle.Render("Create Label") + "\n\n")
+
+	// Input label
+	normalStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
+	content.WriteString(normalStyle.Render("Enter label name:") + "\n\n")
+
+	// Input field with border
+	inputStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Highlight)).
+		Padding(0, 1).
+		Width(width - 8)
+
+	// Show the name buffer with a cursor indicator
+	displayText := nameBuffer + "_"
+	if nameBuffer == "" {
+		displayText = lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("Type a name...") + "_"
+	}
+	content.WriteString(inputStyle.Render(displayText) + "\n")
+
+	// Help text
+	content.WriteString("\n")
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+	content.WriteString(dimStyle.Render("Enter: continue  Esc: cancel") + "\n")
+
+	return content.String()
+}
+
 // RenderLabelPicker renders the label picker popup
 // This is a GitHub-style label picker with checkboxes
 // Note: filteredItems should already be filtered by the caller using LabelPickerState.GetFilteredItems()

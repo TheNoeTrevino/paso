@@ -314,6 +314,10 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDeleteConfirm(msg)
 	case state.DeleteColumnConfirmMode:
 		return m.handleDeleteColumnConfirm(msg)
+	case state.DeleteProjectConfirmMode:
+		return m.handleDeleteProjectConfirm(msg)
+	case state.DeleteLabelConfirmMode:
+		return m.handleDeleteLabelConfirm(msg)
 	case state.ProjectBranchConfirmMode:
 		return m.handleProjectBranchConfirm(msg)
 	case state.TicketFormLoadingMode:

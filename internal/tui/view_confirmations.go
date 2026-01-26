@@ -24,33 +24,3 @@ func (m Model) viewDeleteTaskConfirm() string {
 		confirmBox,
 	)
 }
-
-// viewDeleteColumnConfirm renders the column deletion confirmation with task count warning
-func (m Model) viewDeleteColumnConfirm() string {
-	column := m.getCurrentColumn()
-	if column == nil {
-		return ""
-	}
-
-	var content string
-	taskCount := m.Forms.Input.DeleteColumnTaskCount
-	if taskCount > 0 {
-		content = fmt.Sprintf(
-			"Delete column '%s'?\nThis will also delete %d task(s).\n\n[y]es  [n]o",
-			column.Name,
-			taskCount,
-		)
-	} else {
-		content = fmt.Sprintf("Delete column '%s'?\n\n[y]es  [n]o", column.Name)
-	}
-
-	confirmBox := components.DeleteConfirmBoxStyle.
-		Width(50).
-		Render(content)
-
-	return lipgloss.Place(
-		m.UIState.Width(), m.UIState.Height,
-		lipgloss.Center, lipgloss.Center,
-		confirmBox,
-	)
-}

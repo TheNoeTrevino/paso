@@ -99,6 +99,8 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleCreateProject()
 	case km.EditProject:
 		return m.handleEditProject()
+	case km.DeleteProject:
+		return m.handleDeleteProject()
 	case km.ToggleView:
 		return m.handleToggleView()
 	case km.ChangeStatus:
@@ -417,6 +419,26 @@ func (m Model) handleEditProject() (tea.Model, tea.Cmd) {
 		loadGitDataForProjectFormCmd(m.Ctx, m.GitCache, true),
 		tickGitSpinner(),
 	)
+}
+
+func (m Model) handleDeleteProject() (tea.Model, tea.Cmd) {
+	currentProject := m.AppState.GetCurrentProject()
+	if currentProject == nil {
+		m.UI.Notification.Add(state.LevelError, "No project selected to delete")
+		return m, nil
+	}
+
+	ctx, cancel := m.DBContext()
+	defer cancel()
+	taskCount, err := m.App.ProjectService.GetTaskCount(ctx, currentProject.ID)
+	if err != nil {
+		m.HandleDBError(err, "Checking project tasks")
+		return m, nil
+	}
+
+	m.Forms.Input.DeleteProjectTaskCount = taskCount
+	m.UIState.Mode = state.DeleteProjectConfirmMode
+	return m, nil
 }
 
 // prefetchDebounceDelay is the delay before triggering a prefetch after navigation.

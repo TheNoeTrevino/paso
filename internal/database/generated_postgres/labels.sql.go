@@ -25,6 +25,18 @@ func (q *Queries) AddLabelToTask(ctx context.Context, arg AddLabelToTaskParams) 
 	return err
 }
 
+const countTasksByLabel = `-- name: CountTasksByLabel :one
+select count(*) from task_labels where label_id = $1
+`
+
+// Returns the count of tasks that have this label attached
+func (q *Queries) CountTasksByLabel(ctx context.Context, labelID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countTasksByLabel, labelID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createLabel = `-- name: CreateLabel :one
 insert into labels (name, color, project_id)
 values ($1, $2, $3)

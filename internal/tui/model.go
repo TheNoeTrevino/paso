@@ -17,6 +17,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/models"
+	projectsvc "github.com/thenoetrevino/paso/internal/services/project"
 	tasksvc "github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/helpers"
@@ -397,6 +398,66 @@ func (m Model) removeCurrentColumn() {
 
 	// Adjust viewportOffset using UIState helper
 	m.UIState.AdjustViewportAfterColumnRemoval(m.UIState.SelectedColumn, len(m.AppState.Columns()))
+}
+
+// removeCurrentProject removes the currently selected project from local state
+// and navigates to an adjacent project, or creates a default project if none remain.
+func (m Model) removeCurrentProject() {
+	projects := m.AppState.Projects()
+	selectedIdx := m.AppState.SelectedProject()
+
+	if selectedIdx < 0 || selectedIdx >= len(projects) {
+		return
+	}
+
+	// Remove project from slice
+	newProjects := append(projects[:selectedIdx], projects[selectedIdx+1:]...)
+	m.AppState.SetProjects(newProjects)
+
+	// Clear detail cache since project context changed
+	if m.DetailCache != nil {
+		m.DetailCache.Clear()
+	}
+
+	if len(newProjects) == 0 {
+		// Create default project
+		m.createDefaultProject()
+		return
+	}
+
+	// Navigate to appropriate project
+	newIdx := selectedIdx
+	if newIdx >= len(newProjects) {
+		newIdx = len(newProjects) - 1
+	}
+
+	m.switchToProject(newIdx)
+}
+
+// createDefaultProject creates a "Default" project when no projects exist
+func (m Model) createDefaultProject() {
+	ctx, cancel := m.DBContext()
+	defer cancel()
+
+	newProject, err := m.App.ProjectService.CreateProject(ctx, projectsvc.CreateProjectRequest{
+		Name:        "Default",
+		Description: "Default project",
+	})
+	if err != nil {
+		slog.Error("failed to create default project", "error", err)
+		m.UI.Notification.Add(state.LevelError, "Failed to create default project")
+		// Clear state anyway
+		m.AppState.SetColumns([]*models.Column{})
+		m.AppState.SetTasks(make(map[int][]*models.TaskSummary))
+		m.AppState.SetLabels([]*models.Label{})
+		m.UIState.ResetSelection()
+		return
+	}
+
+	// Add to projects and switch to it
+	m.AppState.SetProjects([]*models.Project{newProject})
+	m.switchToProject(0)
+	m.UI.Notification.Add(state.LevelInfo, "Created default project")
 }
 
 // moveTaskRight moves the currently selected task to the next column (right)

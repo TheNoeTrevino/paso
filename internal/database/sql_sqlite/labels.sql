@@ -60,3 +60,7 @@ select count(*) from labels where project_id = ?;
 -- name: UpsertLabel :exec
 -- Inserts a label or ignores if it already exists (for seeding)
 insert or ignore into labels (name, color, project_id) values (?, ?, ?);
+
+-- name: CountTasksByLabel :one
+-- Returns the count of tasks that have this label attached
+select count(*) from task_labels where label_id = ?;
