@@ -273,6 +273,32 @@ func (m Model) renderDeleteProjectConfirmLayer() *lipgloss.Layer {
 	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
 }
 
+// renderDeleteLabelConfirmLayer renders the label deletion confirmation dialog as a layer
+func (m Model) renderDeleteLabelConfirmLayer() *lipgloss.Layer {
+	labelName := m.Pickers.Label.DeleteLabelName
+	if labelName == "" {
+		return nil
+	}
+
+	var content string
+	taskCount := m.Pickers.Label.DeleteLabelTaskCount
+	if taskCount > 0 {
+		content = fmt.Sprintf(
+			"There are %d task(s) with this label.\n\nAre you sure you want to delete '%s'?\nAssociations will be removed.\n\n[y]es  [n]o",
+			taskCount,
+			labelName,
+		)
+	} else {
+		content = fmt.Sprintf("Delete label '%s'?\n\n[y]es  [n]o", labelName)
+	}
+
+	confirmBox := components.DeleteConfirmBoxStyle.
+		Width(55).
+		Render(content)
+
+	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
+}
+
 // generateHelpText creates help text based on current key mappings
 func (m Model) generateHelpText() string {
 	km := m.Config.KeyMappings
@@ -501,6 +527,26 @@ func (m Model) createPickerLayer(config pickerLayerConfig) *lipgloss.Layer {
 
 // renderLabelPickerLayer renders the label picker modal as a layer
 func (m Model) renderLabelPickerLayer() *lipgloss.Layer {
+	// Name input step (first step of label creation)
+	if m.Pickers.Label.NameInputMode {
+		return m.createPickerLayer(pickerLayerConfig{
+			dimensionStrategy: dynamicPickerDimensions{
+				itemCount: 3, // Small dialog for name input
+				hasFilter: false,
+				minWidth:  layers.PickerDefaultMinWidth,
+				maxWidth:  layers.PickerDefaultMaxWidth,
+			},
+			contentRenderer: func(width, height int) string {
+				return renderers.RenderLabelNameInput(
+					m.Pickers.Label.NameBuffer,
+					width-layers.PickerBorderPaddingWidth,
+				)
+			},
+			boxStyle: components.LabelPickerCreateBoxStyle,
+		})
+	}
+
+	// Color picker step (second step of label creation)
 	if m.Pickers.Label.CreateMode {
 		return m.createPickerLayer(pickerLayerConfig{
 			dimensionStrategy: dynamicPickerDimensions{

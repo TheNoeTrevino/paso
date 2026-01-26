@@ -67,6 +67,10 @@ func (m Model) View() tea.View {
 			modalLayer = m.renderDeleteProjectConfirmLayer()
 		case state.DeleteColumnConfirmMode:
 			modalLayer = m.renderDeleteColumnConfirmLayer()
+		case state.DeleteLabelConfirmMode:
+			// Show label picker as background, with delete confirmation on top
+			layers = m.buildPickerLayers(layers, m.Pickers.Label.ReturnMode, m.renderLabelPickerLayer())
+			modalLayer = m.renderDeleteLabelConfirmLayer()
 		case state.TaskFormHelpMode:
 			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderTaskFormHelpLayer()
