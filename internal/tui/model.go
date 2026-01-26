@@ -58,6 +58,7 @@ type Model struct {
 	DetailPanelLoading  bool                        // True when fetching task detail for panel
 	DetailPanelTaskID   int                         // ID of task currently shown in detail panel
 	PrefetchDebounceSeq int                         // Sequence number for debouncing prefetch requests
+	InitialPrefetchDone bool                        // True after first detail panel prefetch is triggered
 }
 
 // InitialModel creates and initializes the TUI model with data from the database

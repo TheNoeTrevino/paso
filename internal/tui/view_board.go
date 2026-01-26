@@ -58,6 +58,9 @@ func (m Model) viewKanbanBoard() string {
 	// Calculate fixed content height using shared method
 	columnHeight := m.UIState.ContentHeight()
 
+	// Calculate dynamic column width based on available space and visible column count
+	columnWidth := m.UIState.ColumnContentWidth(len(visibleColumns))
+
 	// Render only visible columns
 	var columns []string
 	for i, col := range visibleColumns {
@@ -81,7 +84,7 @@ func (m Model) viewKanbanBoard() string {
 
 		scrollOffset := m.UIState.TaskScrollOffset(col.ID)
 
-		columns = append(columns, components.RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight, scrollOffset))
+		columns = append(columns, components.RenderColumn(col, tasks, isSelected, selectedTaskIdx, columnHeight, scrollOffset, columnWidth))
 	}
 
 	scrollIndicators := helpers.GetScrollIndicators(

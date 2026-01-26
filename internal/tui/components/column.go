@@ -29,6 +29,7 @@ import (
 //   - selectedTaskIdx: Index of selected task in this column (-1 if not this column)
 //   - height: Fixed height for the column (0 for auto)
 //   - scrollOffset: Index of first visible task
+//   - width: Content width for the column (excluding border/padding)
 func RenderColumn(
 	column *models.Column,
 	tasks []*models.TaskSummary,
@@ -36,16 +37,20 @@ func RenderColumn(
 	selectedTaskIdx int,
 	height int,
 	scrollOffset int,
+	width int,
 ) string {
 	header := renderColumnHeader(column, len(tasks))
 
+	// Calculate task card width (column content minus task card border overhead)
+	taskCardWidth := width - TaskCardBorderOverhead
+
 	if len(tasks) == 0 {
 		content := renderEmptyColumnContent(header)
-		return applyColumnStyle(content, selected, height)
+		return applyColumnStyle(content, selected, height, width)
 	}
 
-	content := renderColumnWithTasksContent(header, tasks, selected, selectedTaskIdx, height, scrollOffset)
-	return applyColumnStyle(content, selected, height)
+	content := renderColumnWithTasksContent(header, tasks, selected, selectedTaskIdx, height, scrollOffset, taskCardWidth)
+	return applyColumnStyle(content, selected, height, width)
 }
 
 // renderColumnHeader formats the column title with task count
@@ -84,6 +89,7 @@ func renderColumnWithTasksContent(
 	selectedTaskIdx int,
 	height int,
 	scrollOffset int,
+	taskCardWidth int,
 ) string {
 	content := header + "\n"
 
@@ -99,7 +105,7 @@ func renderColumnWithTasksContent(
 	for i, task := range visibleTasks {
 		actualIdx := scrollOffset + i
 		isTaskSelected := selected && actualIdx == selectedTaskIdx
-		content += RenderTask(task, isTaskSelected)
+		content += RenderTask(task, isTaskSelected, taskCardWidth)
 	}
 
 	showBottomIndicator := endIdx < len(tasks)
@@ -108,9 +114,9 @@ func renderColumnWithTasksContent(
 	return content
 }
 
-// applyColumnStyle applies border, selection highlighting, and height to content
-func applyColumnStyle(content string, selected bool, height int) string {
-	style := ColumnStyle
+// applyColumnStyle applies border, selection highlighting, dimensions to content
+func applyColumnStyle(content string, selected bool, height int, width int) string {
+	style := ColumnStyle.Width(width)
 
 	if selected {
 		style = style.BorderForeground(lipgloss.Color(theme.SelectedBorder))

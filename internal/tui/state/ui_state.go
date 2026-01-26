@@ -1,6 +1,9 @@
 package state
 
-import "github.com/thenoetrevino/paso/internal/models"
+import (
+	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/layout"
+)
 
 // Mode represents the current interaction mode of the TUI.
 // Each mode determines which keyboard shortcuts are active and what UI is displayed.
@@ -126,7 +129,7 @@ func NewUIState() *UIState {
 		Height:            0,
 		Mode:              NormalMode,
 		ViewportOffset:    0,
-		viewportSize:      1, // Default to 1, will be recalculated when width is set
+		viewportSize:      layout.MinViewportColumns, // Default to minimum, recalculated when width is set
 		taskScrollOffsets: make(map[int]int),
 	}
 }
@@ -157,37 +160,22 @@ func (s *UIState) ViewportSize() int {
 
 // calculateViewportSize calculates how many columns can fit in the terminal width.
 //
-// Column layout:
-//   - Content width: 40 characters
-//   - Padding: 2 characters (1 on each side)
-//   - Border: 2 characters (1 on each side)
-//   - Spacing: 2 characters (between columns)
-//   - Total per column: 46 characters
-//
-// The calculation reserves 4 characters for margins and scroll indicators,
-// and ensures at least 1 column is always visible.
-// When the detail panel is visible, its width is subtracted from available space.
+// This uses the responsive layout system where columns expand to fill available space.
+// The viewport size is determined by how many columns can fit at minimum width,
+// ensuring we always show at least 3 columns when possible.
 func (s *UIState) calculateViewportSize() {
 	if s.width == 0 {
-		s.viewportSize = 1
+		s.viewportSize = layout.MinViewportColumns
 		return
 	}
 
-	const columnWidth = 46       // 40 content + 2 padding + 2 border + 2 spacing
-	const reservedWidth = 4      // margins and scroll indicators
-	const detailPanelWidth = 120 // max width of detail panel (prevents sawtooth resizing)
+	availableWidth := s.width - layout.Chrome
 
-	availableWidth := s.width - reservedWidth
-
-	// Reserve space for detail panel when screen is wide enough
-	// We reserve the MAX panel width to prevent the panel from shrinking
-	// when the terminal gets larger and gains another column
 	if s.ShouldShowDetailPanel() {
-		availableWidth -= detailPanelWidth
+		availableWidth -= s.DetailPanelWidth()
 	}
 
-	// Calculate how many columns fit, with minimum of 1
-	s.viewportSize = max(1, availableWidth/columnWidth)
+	s.viewportSize = max(layout.MinViewportColumns, availableWidth/layout.ColumnMinTotalWidth)
 }
 
 // AdjustViewportAfterColumnRemoval adjusts the viewport offset after a column is removed.
@@ -319,45 +307,62 @@ func (s *UIState) EnsureTaskVisible(columnID int, selectedTaskIdx int, visibleCo
 
 // ShouldShowDetailPanel returns true if the screen is wide enough to display
 // the detail panel alongside the kanban columns. Panel is shown when the terminal
-// can fit at least 5 columns (approximately 230 characters wide).
+// can fit at least 3 columns at minimum width plus the minimum panel width.
 func (s *UIState) ShouldShowDetailPanel() bool {
-	const (
-		columnWidth        = 46 // 40 content + 2 padding + 2 border + 2 spacing
-		minColumnsForPanel = 4  // require at least 4 columns worth of space
-		reservedWidth      = 4  // margins and scroll indicators
-	)
-	minWidth := (minColumnsForPanel * columnWidth) + reservedWidth
+	minWidth := (layout.MinViewportColumns * layout.ColumnMinTotalWidth) + layout.Chrome + layout.DetailPanelMinWidth
 	return s.width >= minWidth
 }
 
 // DetailPanelWidth calculates the width for the detail panel based on terminal width.
-// The width is clamped between minPanelWidth and maxPanelWidth.
-//
-// The clamping logic handles edge cases gracefully:
-//   - If availableWidth > maxPanelWidth: returns maxPanelWidth (prevents oversized panel)
-//   - If availableWidth < minPanelWidth: returns minPanelWidth (ensures minimum usable width)
-//   - If the terminal is very narrow and availableWidth becomes negative, the lower bound
-//     check ensures we still return at least minPanelWidth for a usable panel.
+// Uses percentage-based sizing (35% of available content area) clamped to min/max bounds.
 func (s *UIState) DetailPanelWidth() int {
-	const (
-		columnWidth   = 46
-		reservedWidth = 4
-		minPanelWidth = 50
-		maxPanelWidth = 120
-	)
+	availableContent := s.width - layout.Chrome
+	panelWidth := (availableContent * layout.DetailPanelPercent) / 100
 
-	// Calculate board width based on visible columns
-	boardWidth := (s.viewportSize * columnWidth) + reservedWidth
-
-	// Remaining space for panel (may be negative if terminal is very narrow)
-	availableWidth := s.width - boardWidth
-
-	// Clamp to min/max bounds
-	if availableWidth < minPanelWidth {
-		return minPanelWidth
+	if panelWidth < layout.DetailPanelMinWidth {
+		return layout.DetailPanelMinWidth
 	}
-	if availableWidth > maxPanelWidth {
-		return maxPanelWidth
+	if panelWidth > layout.DetailPanelMaxWidth {
+		return layout.DetailPanelMaxWidth
 	}
-	return availableWidth
+	return panelWidth
+}
+
+// ColumnsAreaWidth returns the total width available for the columns area.
+// This is the terminal width minus chrome and detail panel (if shown).
+func (s *UIState) ColumnsAreaWidth() int {
+	availableWidth := s.width - layout.Chrome
+
+	if s.ShouldShowDetailPanel() {
+		availableWidth -= s.DetailPanelWidth()
+	}
+
+	return max(availableWidth, 0)
+}
+
+// ColumnContentWidth calculates the content width for each column based on
+// available space and the number of visible columns.
+// Returns the inner content width (excluding border and padding).
+func (s *UIState) ColumnContentWidth(visibleColumns int) int {
+	if visibleColumns <= 0 {
+		visibleColumns = 1
+	}
+
+	columnsArea := s.ColumnsAreaWidth()
+	columnTotalWidth := columnsArea / visibleColumns
+	contentWidth := columnTotalWidth - layout.ColumnOverhead
+
+	if contentWidth < layout.ColumnMinContentWidth {
+		return layout.ColumnMinContentWidth
+	}
+	if contentWidth > layout.ColumnMaxContentWidth {
+		return layout.ColumnMaxContentWidth
+	}
+	return contentWidth
+}
+
+// TaskCardWidth calculates the width for task cards based on column content width.
+// Task cards have their own border which reduces available content space.
+func (s *UIState) TaskCardWidth(visibleColumns int) int {
+	return s.ColumnContentWidth(visibleColumns) - layout.TaskCardBorderOverhead
 }

@@ -386,6 +386,12 @@ func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	if m.UIState.ViewportOffset+m.UIState.ViewportSize() > len(m.AppState.Columns()) {
 		m.UIState.ViewportOffset = max(0, len(m.AppState.Columns())-m.UIState.ViewportSize())
 	}
+
+	if !m.InitialPrefetchDone && m.UIState.ShouldShowDetailPanel() {
+		m.InitialPrefetchDone = true
+		return m, m.triggerDetailPanelPrefetch()
+	}
+
 	return m, nil
 }
 
