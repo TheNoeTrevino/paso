@@ -65,6 +65,8 @@ func (m Model) View() tea.View {
 			modalLayer = m.renderProjectBranchConfirmLayer()
 		case state.DeleteProjectConfirmMode:
 			modalLayer = m.renderDeleteProjectConfirmLayer()
+		case state.DeleteConfirmMode:
+			modalLayer = m.renderDeleteTaskConfirmLayer()
 		case state.DeleteColumnConfirmMode:
 			modalLayer = m.renderDeleteColumnConfirmLayer()
 		case state.DeleteLabelConfirmMode:
@@ -130,14 +132,7 @@ func (m Model) View() tea.View {
 		canvas := lipgloss.NewCanvas(layers...)
 		view.Content = canvas.Render()
 	} else {
-		var content string
-		switch m.UIState.Mode {
-		case state.DeleteConfirmMode:
-			content = m.viewDeleteTaskConfirm()
-		default:
-			content = m.viewKanbanBoard()
-		}
-		view.Content = content
+		view.Content = m.viewKanbanBoard()
 	}
 
 	return view

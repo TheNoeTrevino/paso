@@ -78,7 +78,8 @@ func (m Mode) UsesLayers() bool {
 		ProjectBranchConfirmMode,
 		DeleteProjectConfirmMode,
 		DeleteColumnConfirmMode,
-		DeleteLabelConfirmMode:
+		DeleteLabelConfirmMode,
+		DeleteConfirmMode:
 		return true
 	default:
 		return false
