@@ -221,6 +221,32 @@ func (m Model) renderProjectBranchConfirmLayer() *lipgloss.Layer {
 	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
 }
 
+// renderDeleteProjectConfirmLayer renders the project deletion confirmation dialog as a layer
+func (m Model) renderDeleteProjectConfirmLayer() *lipgloss.Layer {
+	project := m.AppState.GetCurrentProject()
+	if project == nil {
+		return nil
+	}
+
+	var content string
+	taskCount := m.Forms.Input.DeleteProjectTaskCount
+	if taskCount > 0 {
+		content = fmt.Sprintf(
+			"Delete project '%s'?\nThis will also delete %d task(s).\n\n[y]es  [f]orce delete  [n]o",
+			project.Name,
+			taskCount,
+		)
+	} else {
+		content = fmt.Sprintf("Delete project '%s'?\n\n[y]es  [n]o", project.Name)
+	}
+
+	confirmBox := components.DeleteConfirmBoxStyle.
+		Width(50).
+		Render(content)
+
+	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
+}
+
 // generateHelpText creates help text based on current key mappings
 func (m Model) generateHelpText() string {
 	km := m.Config.KeyMappings
@@ -253,6 +279,7 @@ PROJECTS
   %s     Switch to previous project
   %s     Switch to next project
   %s     Create new project
+  %s     Delete current project
 
 VIEW
   %s     Toggle between kanban and list view
@@ -285,6 +312,7 @@ Press any key to close`,
 		km.PrevProject,
 		km.NextProject,
 		km.CreateProject,
+		km.DeleteProject,
 		km.ToggleView,
 		km.ChangeStatus,
 		km.SortList,

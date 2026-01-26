@@ -74,7 +74,8 @@ func (m Mode) UsesLayers() bool {
 		DatabaseCreateMode,
 		DatabaseConnectConfirmMode,
 		DatabaseDeleteConfirmMode,
-		ProjectBranchConfirmMode:
+		ProjectBranchConfirmMode,
+		DeleteProjectConfirmMode:
 		return true
 	default:
 		return false

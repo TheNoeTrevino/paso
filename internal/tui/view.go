@@ -63,6 +63,8 @@ func (m Model) View() tea.View {
 			modalLayer = m.renderDiscardConfirmLayer()
 		case state.ProjectBranchConfirmMode:
 			modalLayer = m.renderProjectBranchConfirmLayer()
+		case state.DeleteProjectConfirmMode:
+			modalLayer = m.renderDeleteProjectConfirmLayer()
 		case state.TaskFormHelpMode:
 			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderTaskFormHelpLayer()
