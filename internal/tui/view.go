@@ -65,6 +65,8 @@ func (m Model) View() tea.View {
 			modalLayer = m.renderProjectBranchConfirmLayer()
 		case state.DeleteProjectConfirmMode:
 			modalLayer = m.renderDeleteProjectConfirmLayer()
+		case state.DeleteColumnConfirmMode:
+			modalLayer = m.renderDeleteColumnConfirmLayer()
 		case state.TaskFormHelpMode:
 			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderTaskFormHelpLayer()
@@ -128,8 +130,6 @@ func (m Model) View() tea.View {
 		switch m.UIState.Mode {
 		case state.DeleteConfirmMode:
 			content = m.viewDeleteTaskConfirm()
-		case state.DeleteColumnConfirmMode:
-			content = m.viewDeleteColumnConfirm()
 		default:
 			content = m.viewKanbanBoard()
 		}

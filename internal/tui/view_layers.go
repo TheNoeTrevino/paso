@@ -221,6 +221,32 @@ func (m Model) renderProjectBranchConfirmLayer() *lipgloss.Layer {
 	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
 }
 
+// renderDeleteColumnConfirmLayer renders the column deletion confirmation dialog as a layer
+func (m Model) renderDeleteColumnConfirmLayer() *lipgloss.Layer {
+	column := m.getCurrentColumn()
+	if column == nil {
+		return nil
+	}
+
+	var content string
+	taskCount := m.Forms.Input.DeleteColumnTaskCount
+	if taskCount > 0 {
+		content = fmt.Sprintf(
+			"Delete column '%s'?\nThis will also delete %d task(s).\n\n[y]es  [n]o",
+			column.Name,
+			taskCount,
+		)
+	} else {
+		content = fmt.Sprintf("Delete column '%s'?\n\n[y]es  [n]o", column.Name)
+	}
+
+	confirmBox := components.DeleteConfirmBoxStyle.
+		Width(50).
+		Render(content)
+
+	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
+}
+
 // renderDeleteProjectConfirmLayer renders the project deletion confirmation dialog as a layer
 func (m Model) renderDeleteProjectConfirmLayer() *lipgloss.Layer {
 	project := m.AppState.GetCurrentProject()
