@@ -26,6 +26,7 @@ type KeyMappings struct {
 	// Projects
 	CreateProject string `yaml:"create_project"`
 	EditProject   string `yaml:"edit_project"`
+	DeleteProject string `yaml:"delete_project"`
 
 	// Navigation
 	PrevColumn          string `yaml:"prev_column"`
@@ -73,6 +74,7 @@ func DefaultKeyMappings() KeyMappings {
 		// Projects
 		CreateProject: "P",
 		EditProject:   "E",
+		DeleteProject: "D",
 
 		// Navigation
 		PrevColumn:          "h",
@@ -150,6 +152,9 @@ func (k *KeyMappings) applyDefaults() {
 	}
 	if k.EditProject == "" {
 		k.EditProject = defaults.EditProject
+	}
+	if k.DeleteProject == "" {
+		k.DeleteProject = defaults.DeleteProject
 	}
 	if k.PrevColumn == "" {
 		k.PrevColumn = defaults.PrevColumn
