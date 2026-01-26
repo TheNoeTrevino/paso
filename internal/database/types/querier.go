@@ -108,6 +108,8 @@ type Querier interface {
 	GetLabelsForTask(ctx context.Context, taskID int64) ([]Label, error)
 	// Returns the count of labels for a project
 	GetLabelCountByProject(ctx context.Context, projectID int64) (int64, error)
+	// Returns the count of tasks that have this label attached
+	CountTasksByLabel(ctx context.Context, labelID int64) (int64, error)
 	// Retrieves the ID of the next column in the linked list
 	GetNextColumnID(ctx context.Context, id int64) (NullInt64, error)
 	// Retrieves the next available ticket number for a project

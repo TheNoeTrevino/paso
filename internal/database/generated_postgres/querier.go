@@ -24,6 +24,8 @@ type Querier interface {
 	ClearReadyColumnByProject(ctx context.Context, projectID int64) error
 	// Checks if a column exists with the given ID
 	ColumnExists(ctx context.Context, id int64) (int64, error)
+	// Returns the count of tasks that have this label attached
+	CountTasksByLabel(ctx context.Context, labelID int64) (int64, error)
 	// Creates a new column in a project with optional
 	// linked list positioning and task type flags
 	CreateColumn(ctx context.Context, arg CreateColumnParams) (Column, error)
@@ -35,6 +37,8 @@ type Querier interface {
 	CreateProjectRecord(ctx context.Context, arg CreateProjectRecordParams) (Project, error)
 	// Creates a new task with title, description, position, and ticket number
 	CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error)
+	// Creates a new event for a task
+	CreateTaskEvent(ctx context.Context, arg CreateTaskEventParams) (TaskEvent, error)
 	// Removes all labels from a task
 	DeleteAllLabelsFromTask(ctx context.Context, taskID int64) error
 	// Permanently deletes a column by ID
@@ -43,6 +47,8 @@ type Querier interface {
 	DeleteColumnsByProject(ctx context.Context, projectID int64) error
 	// Deletes a comment by ID
 	DeleteComment(ctx context.Context, id int64) error
+	// Deletes all events for a task (for testing/cleanup)
+	DeleteEventsByTask(ctx context.Context, taskID int64) error
 	// Permanently deletes a label by ID
 	DeleteLabel(ctx context.Context, id int64) error
 	// Permanently deletes a project by ID
@@ -81,6 +87,8 @@ type Querier interface {
 	GetCommentsByTask(ctx context.Context, taskID int64) ([]TaskComment, error)
 	// Retrieves the column designated for completed tasks in a project
 	GetCompletedColumnByProject(ctx context.Context, projectID int64) (GetCompletedColumnByProjectRow, error)
+	// Retrieves all events for a task, ordered by creation time (newest first)
+	GetEventsByTask(ctx context.Context, taskID int64) ([]TaskEvent, error)
 	// Retrieves the column designated for in-progress tasks in a project
 	GetInProgressColumnByProject(ctx context.Context, projectID int64) (GetInProgressColumnByProjectRow, error)
 	// Retrieves comprehensive details for all in-progress tasks using string_agg to avoid N+1 queries

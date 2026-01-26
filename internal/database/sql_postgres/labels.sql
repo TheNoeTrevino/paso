@@ -62,3 +62,7 @@ select count(*) from labels where project_id = $1;
 -- Inserts a label or ignores if it already exists (for seeding)
 insert into labels (name, color, project_id) values ($1, $2, $3)
 on conflict (name, project_id) do nothing;
+
+-- name: CountTasksByLabel :one
+-- Returns the count of tasks that have this label attached
+select count(*) from task_labels where label_id = $1;
