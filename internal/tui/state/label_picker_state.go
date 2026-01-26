@@ -35,23 +35,43 @@ type LabelPickerState struct {
 	// ColorIdx is the cursor position in the color picker (when creating new labels)
 	ColorIdx int
 
+	// NameInputMode indicates whether we're in the name input step of label creation
+	NameInputMode bool
+
+	// NameBuffer holds the text being typed for the new label name
+	NameBuffer string
+
 	// CreateMode indicates whether we're in color selection mode for new label creation
 	CreateMode bool
 
 	// ReturnMode is the mode to return to after label selection
 	ReturnMode Mode
+
+	// DeleteLabelID stores the ID of the label being deleted (for confirmation dialog)
+	DeleteLabelID int
+
+	// DeleteLabelName stores the name of the label being deleted (for confirmation dialog)
+	DeleteLabelName string
+
+	// DeleteLabelTaskCount stores the number of tasks using the label being deleted
+	DeleteLabelTaskCount int
 }
 
 // NewLabelPickerState creates a new LabelPickerState with default values.
 func NewLabelPickerState() *LabelPickerState {
 	return &LabelPickerState{
-		Items:      []LabelPickerItem{},
-		Cursor:     0,
-		Filter:     "",
-		TaskID:     0,
-		ColorIdx:   0,
-		CreateMode: false,
-		ReturnMode: NormalMode,
+		Items:                []LabelPickerItem{},
+		Cursor:               0,
+		Filter:               "",
+		TaskID:               0,
+		ColorIdx:             0,
+		NameInputMode:        false,
+		NameBuffer:           "",
+		CreateMode:           false,
+		ReturnMode:           NormalMode,
+		DeleteLabelID:        0,
+		DeleteLabelName:      "",
+		DeleteLabelTaskCount: 0,
 	}
 }
 
@@ -79,8 +99,13 @@ func (s *LabelPickerState) Clear() {
 	s.Filter = ""
 	s.TaskID = 0
 	s.ColorIdx = 0
+	s.NameInputMode = false
+	s.NameBuffer = ""
 	s.CreateMode = false
 	s.ReturnMode = NormalMode
+	s.DeleteLabelID = 0
+	s.DeleteLabelName = ""
+	s.DeleteLabelTaskCount = 0
 }
 
 // MoveCursorUp moves the cursor up one position if possible.
