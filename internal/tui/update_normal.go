@@ -166,8 +166,8 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 		if m.UIState.SelectedColumn < len(m.AppState.Columns()) {
 			currentCol := m.AppState.Columns()[m.UIState.SelectedColumn]
 			columnHeight := m.UIState.ContentHeight()
-			const columnOverhead = 5
-			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
+			const columnHeightOverhead = 5 // border + header + indicator (vertical)
+			maxTasksVisible := max((columnHeight-columnHeightOverhead)/components.TaskCardHeight, 1)
 			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
 		}
 		return m, m.triggerDetailPanelPrefetch()
@@ -199,8 +199,8 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 		if m.UIState.SelectedColumn < len(m.AppState.Columns()) {
 			currentCol := m.AppState.Columns()[m.UIState.SelectedColumn]
 			columnHeight := m.UIState.ContentHeight()
-			const columnOverhead = 5
-			maxTasksVisible := max((columnHeight-columnOverhead)/components.TaskCardHeight, 1)
+			const columnHeightOverhead = 5 // border + header + indicator (vertical)
+			maxTasksVisible := max((columnHeight-columnHeightOverhead)/components.TaskCardHeight, 1)
 			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
 		}
 		return m, m.triggerDetailPanelPrefetch()

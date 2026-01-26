@@ -1,6 +1,9 @@
 package state
 
-import "github.com/thenoetrevino/paso/internal/models"
+import (
+	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/layout"
+)
 
 // Mode represents the current interaction mode of the TUI.
 // Each mode determines which keyboard shortcuts are active and what UI is displayed.
@@ -126,7 +129,7 @@ func NewUIState() *UIState {
 		Height:            0,
 		Mode:              NormalMode,
 		ViewportOffset:    0,
-		viewportSize:      3, // Default to 3 (minimum), will be recalculated when width is set
+		viewportSize:      layout.MinViewportColumns, // Default to minimum, recalculated when width is set
 		taskScrollOffsets: make(map[int]int),
 	}
 }
@@ -162,28 +165,17 @@ func (s *UIState) ViewportSize() int {
 // ensuring we always show at least 3 columns when possible.
 func (s *UIState) calculateViewportSize() {
 	if s.width == 0 {
-		s.viewportSize = 3
+		s.viewportSize = layout.MinViewportColumns
 		return
 	}
 
-	const (
-		chrome           = 4  // scroll indicators: "◀ " + " ▶"
-		columnMinTotal   = 39 // ColumnMinContentWidth(35) + ColumnOverhead(4)
-		detailPanelMin   = 50
-		detailPanelRatio = 35 // percentage
-	)
+	availableWidth := s.width - layout.Chrome
 
-	// Calculate available width for columns
-	availableWidth := s.width - chrome
-
-	// If detail panel will be shown, subtract its width
 	if s.ShouldShowDetailPanel() {
-		panelWidth := s.DetailPanelWidth()
-		availableWidth -= panelWidth
+		availableWidth -= s.DetailPanelWidth()
 	}
 
-	// Calculate how many columns fit at minimum width
-	s.viewportSize = max(3, availableWidth/columnMinTotal)
+	s.viewportSize = max(layout.MinViewportColumns, availableWidth/layout.ColumnMinTotalWidth)
 }
 
 // AdjustViewportAfterColumnRemoval adjusts the viewport offset after a column is removed.
@@ -317,38 +309,21 @@ func (s *UIState) EnsureTaskVisible(columnID int, selectedTaskIdx int, visibleCo
 // the detail panel alongside the kanban columns. Panel is shown when the terminal
 // can fit at least 3 columns at minimum width plus the minimum panel width.
 func (s *UIState) ShouldShowDetailPanel() bool {
-	const (
-		chrome         = 4  // scroll indicators
-		columnMinTotal = 39 // ColumnMinContentWidth(35) + ColumnOverhead(4)
-		minColumns     = 3
-		detailPanelMin = 50
-	)
-	minWidth := (minColumns * columnMinTotal) + chrome + detailPanelMin
+	minWidth := (layout.MinViewportColumns * layout.ColumnMinTotalWidth) + layout.Chrome + layout.DetailPanelMinWidth
 	return s.width >= minWidth
 }
 
 // DetailPanelWidth calculates the width for the detail panel based on terminal width.
 // Uses percentage-based sizing (35% of available content area) clamped to min/max bounds.
 func (s *UIState) DetailPanelWidth() int {
-	const (
-		chrome        = 4  // scroll indicators
-		panelPercent  = 35 // target percentage of content area
-		minPanelWidth = 50
-		maxPanelWidth = 120
-	)
+	availableContent := s.width - layout.Chrome
+	panelWidth := (availableContent * layout.DetailPanelPercent) / 100
 
-	// Available content area (terminal minus chrome)
-	availableContent := s.width - chrome
-
-	// Calculate percentage-based width
-	panelWidth := (availableContent * panelPercent) / 100
-
-	// Clamp to min/max bounds
-	if panelWidth < minPanelWidth {
-		return minPanelWidth
+	if panelWidth < layout.DetailPanelMinWidth {
+		return layout.DetailPanelMinWidth
 	}
-	if panelWidth > maxPanelWidth {
-		return maxPanelWidth
+	if panelWidth > layout.DetailPanelMaxWidth {
+		return layout.DetailPanelMaxWidth
 	}
 	return panelWidth
 }
@@ -356,9 +331,7 @@ func (s *UIState) DetailPanelWidth() int {
 // ColumnsAreaWidth returns the total width available for the columns area.
 // This is the terminal width minus chrome and detail panel (if shown).
 func (s *UIState) ColumnsAreaWidth() int {
-	const chrome = 4 // scroll indicators
-
-	availableWidth := s.width - chrome
+	availableWidth := s.width - layout.Chrome
 
 	if s.ShouldShowDetailPanel() {
 		availableWidth -= s.DetailPanelWidth()
@@ -371,29 +344,19 @@ func (s *UIState) ColumnsAreaWidth() int {
 // available space and the number of visible columns.
 // Returns the inner content width (excluding border and padding).
 func (s *UIState) ColumnContentWidth(visibleColumns int) int {
-	const (
-		columnOverhead = 4 // 2 border + 2 padding
-		minContent     = 35
-		maxContent     = 60
-	)
-
 	if visibleColumns <= 0 {
 		visibleColumns = 1
 	}
 
-	// Divide available space evenly among columns
 	columnsArea := s.ColumnsAreaWidth()
 	columnTotalWidth := columnsArea / visibleColumns
+	contentWidth := columnTotalWidth - layout.ColumnOverhead
 
-	// Subtract overhead to get content width
-	contentWidth := columnTotalWidth - columnOverhead
-
-	// Clamp to min/max
-	if contentWidth < minContent {
-		return minContent
+	if contentWidth < layout.ColumnMinContentWidth {
+		return layout.ColumnMinContentWidth
 	}
-	if contentWidth > maxContent {
-		return maxContent
+	if contentWidth > layout.ColumnMaxContentWidth {
+		return layout.ColumnMaxContentWidth
 	}
 	return contentWidth
 }
@@ -401,8 +364,5 @@ func (s *UIState) ColumnContentWidth(visibleColumns int) int {
 // TaskCardWidth calculates the width for task cards based on column content width.
 // Task cards have their own border which reduces available content space.
 func (s *UIState) TaskCardWidth(visibleColumns int) int {
-	const taskBorderOverhead = 4 // task card border (2 left + 2 right)
-
-	columnContent := s.ColumnContentWidth(visibleColumns)
-	return columnContent - taskBorderOverhead
+	return s.ColumnContentWidth(visibleColumns) - layout.TaskCardBorderOverhead
 }
