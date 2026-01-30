@@ -18,24 +18,27 @@ func ListCmd() *cobra.Command {
 		Long: `List all columns in a project (in order).
 
 Examples:
-  # Human-readable list
-  paso column list --project=1
+  # Human-readable list (shorthand)
+  paso column list -p 1
 
   # JSON output for agents
-  paso column list --project=1 --json
+  paso column list -p 1 -j
 
   # Quiet mode (one ID per line)
-  paso column list --project=1 --quiet
+  paso column list -p 1 -q
+
+  # Long-form flags also supported
+  paso column list --project=1 --json
 `,
 		RunE: runList,
 	}
 
 	// Flags
-	cmd.Flags().Int("project", 0, "Project ID (uses git branch association if not specified)")
+	cmd.Flags().IntP("project", "p", 0, "Project ID (uses git branch association if not specified)")
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (IDs only)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (IDs only)")
 
 	return cmd
 }

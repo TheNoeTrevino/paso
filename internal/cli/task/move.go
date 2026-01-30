@@ -20,35 +20,36 @@ func MoveCmd() *cobra.Command {
 		Long: `Move a task to another column by direction or column name.
 
 Examples:
-  # Move to next column
-  paso task move --id 1 next
-
-  # Move to previous column
-  paso task move --id 1 prev
+  # Move to next/previous column (shorthand)
+  paso task move -i 1 next
+  paso task move -i 1 prev
 
   # Move to specific column by name (case-insensitive)
-  paso task move --id 1 "In Progress"
-  paso task move --id 1 done
+  paso task move -i 1 "In Progress"
+  paso task move -i 1 done
 
   # JSON output for agents
-  paso task move --id 1 next --json
+  paso task move -i 1 next -j
 
   # Quiet mode for bash capture
-  paso task move --id 1 next --quiet
+  paso task move -i 1 next -q
+
+  # Long-form flags also supported
+  paso task move --id 1 next --json
 `,
 		RunE: runMove,
 		Args: cobra.ExactArgs(1),
 	}
 
 	// Required flags
-	cmd.Flags().Int("id", 0, "Task ID (required)")
+	cmd.Flags().IntP("id", "i", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (ID only)")
 
 	return cmd
 }

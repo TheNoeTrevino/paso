@@ -22,37 +22,40 @@ func CommentCmd() *cobra.Command {
 Comments are limited to 1000 characters and are displayed in the task detail view.
 
 Examples:
-  # Add a comment to task #42
-  paso task comment --id=42 --message="Need to follow up with team"
+  # Add a comment using shorthand flags
+  paso task comment -i 42 -m "Need to follow up with team"
 
-  # Add a longer comment
-  paso task comment --id=42 --message="Blocked by API changes in PR #123"
+  # With author
+  paso task comment -i 42 -m "Blocked by API changes in PR #123" -a "noe"
 
   # JSON output for agents
-  paso task comment --id=42 --message="Investigation complete" --json
+  paso task comment -i 42 -m "Investigation complete" -j
 
   # Quiet mode for bash capture
-  COMMENT_ID=$(paso task comment --id=42 --message="Fixed" --quiet)
+  COMMENT_ID=$(paso task comment -i 42 -m "Fixed" -q)
+
+  # Long-form flags also supported
+  paso task comment --id=42 --message="Fixed" --quiet
 `,
 		RunE: runComment,
 	}
 
 	// Required flags
-	cmd.Flags().Int("id", 0, "Task ID (required)")
+	cmd.Flags().IntP("id", "i", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		slog.Error("failed to marking flag as required", "error", err)
 	}
 
-	cmd.Flags().String("message", "", "Comment message (required, max 1000 chars)")
+	cmd.Flags().StringP("message", "m", "", "Comment message (required, max 1000 chars)")
 	if err := cmd.MarkFlagRequired("message"); err != nil {
 		slog.Error("failed to marking flag as required", "error", err)
 	}
 
-	cmd.Flags().String("author", "", "Comment author (defaults to current user)")
+	cmd.Flags().StringP("author", "a", "", "Comment author (defaults to current user)")
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (comment ID only)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (comment ID only)")
 
 	return cmd
 }

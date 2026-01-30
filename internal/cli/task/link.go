@@ -18,44 +18,47 @@ func LinkCmd() *cobra.Command {
 		Long: `Create a relationship between two tasks.
 
 Relationship Types:
-  (default)  Parent-Child: Non-blocking hierarchical relationship
-  --blocker  Blocked By/Blocker: Blocking relationship (parent blocked by child)
-  --related  Related To: Non-blocking associative relationship
+  (default)    Parent-Child: Non-blocking hierarchical relationship
+  --blocker/-b Blocked By/Blocker: Blocking relationship (parent blocked by child)
+  --related/-R Related To: Non-blocking associative relationship
 
-The --blocker and --related flags are mutually exclusive. If neither is specified,
+The --blocker/-b and --related/-R flags are mutually exclusive. If neither is specified,
 a parent-child relationship is created.
 
 Examples:
-  # Parent-child relationship (default)
-  paso task link --parent=5 --child=3
+  # Parent-child relationship (shorthand)
+  paso task link -P 5 -C 3
 
   # Blocking relationship (task 5 blocked by task 3)
-  paso task link --parent=5 --child=3 --blocker
+  paso task link -P 5 -C 3 -b
 
   # Related relationship
-  paso task link --parent=5 --child=3 --related
+  paso task link -P 5 -C 3 -R
+
+  # Long-form flags also supported
+  paso task link --parent=5 --child=3 --blocker
 `,
 		RunE: runLink,
 	}
 
 	// Required flags
-	cmd.Flags().Int("parent", 0, "Parent task ID (required)")
+	cmd.Flags().IntP("parent", "P", 0, "Parent task ID (required)")
 	if err := cmd.MarkFlagRequired("parent"); err != nil {
 		slog.Error("failed to marking flag as required", "error", err)
 	}
 
-	cmd.Flags().Int("child", 0, "Child task ID (required)")
+	cmd.Flags().IntP("child", "C", 0, "Child task ID (required)")
 	if err := cmd.MarkFlagRequired("child"); err != nil {
 		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output")
 
 	// Relationship type flags (mutually exclusive)
-	cmd.Flags().Bool("blocker", false, "Create blocking relationship (Blocked By/Blocker)")
-	cmd.Flags().Bool("related", false, "Create related relationship (Related To)")
+	cmd.Flags().BoolP("blocker", "b", false, "Create blocking relationship (Blocked By/Blocker)")
+	cmd.Flags().BoolP("related", "R", false, "Create related relationship (Related To)")
 
 	return cmd
 }

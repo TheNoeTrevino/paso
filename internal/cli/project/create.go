@@ -25,35 +25,36 @@ func CreateCmd() *cobra.Command {
 		Long: `Create a new project with specified attributes.
 
 Examples:
-  # Simple project (human-readable output)
-  paso project create --title="Backend API"
-
-  # JSON output for agents
-  paso project create --title="Backend API" --json
-
-  # Quiet mode for bash capture
-  PROJECT_ID=$(paso project create --title="Backend API" --quiet)
+  # Simple project using shorthand flags
+  paso project create -t "Backend API"
 
   # With description
-  paso project create \
-    --title="Backend API" \
-    --description="REST API for mobile app"
+  paso project create -t "Backend API" -d "REST API for mobile app"
+
+  # JSON output for agents
+  paso project create -t "Backend API" -j
+
+  # Quiet mode for bash capture
+  PROJECT_ID=$(paso project create -t "Backend API" -q)
+
+  # Long-form flags also supported
+  paso project create --title="Backend API" --description="REST API for mobile app"
 `,
 		RunE: handler.Command(&createHandler{}, parseCreateFlags),
 	}
 
 	// Required flags
-	cmd.Flags().String("title", "", "Project title (required)")
+	cmd.Flags().StringP("title", "t", "", "Project title (required)")
 	if err := cmd.MarkFlagRequired("title"); err != nil {
 		slog.Error("failed to mark flag as required", "error", err)
 	}
 
 	// Optional flags
-	cmd.Flags().String("description", "", "Project description")
+	cmd.Flags().StringP("description", "d", "", "Project description")
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (ID only)")
 
 	return cmd
 }

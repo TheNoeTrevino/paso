@@ -21,25 +21,28 @@ func DoneCmd() *cobra.Command {
 		Long: `Move a task to the column designated as holding completed tasks.
 
 The completed column is marked with holds_completed_tasks = true.
-Use 'paso column update --id=<column_id> --completed' to designate a completed column.
+Use 'paso column update -i <column_id> -c' to designate a completed column.
 
 Examples:
   # Move task to completed column
   paso task done 42
 
   # JSON output for agents
-  paso task done 42 --json
+  paso task done 42 -j
 
   # Quiet mode for bash capture
-  paso task done 42 --quiet
+  paso task done 42 -q
+
+  # Long-form flags also supported
+  paso task done 42 --json
 `,
 		RunE: runDone,
 		Args: cobra.ExactArgs(1),
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (ID only)")
 
 	return cmd
 }

@@ -18,32 +18,35 @@ func DetachCmd() *cobra.Command {
 		Long: `Detach a label from a task by their IDs.
 
 Examples:
-  # Detach label from task
-  paso label detach --task=5 --label=2
+  # Detach label from task (shorthand)
+  paso label detach -t 5 -l 2
 
   # JSON output
-  paso label detach --task=5 --label=2 --json
+  paso label detach -t 5 -l 2 -j
 
   # Quiet mode
-  paso label detach --task=5 --label=2 --quiet
+  paso label detach -t 5 -l 2 -q
+
+  # Long-form flags also supported
+  paso label detach --task=5 --label=2 --json
 `,
 		RunE: runDetach,
 	}
 
 	// Required flags
-	cmd.Flags().Int("task", 0, "Task ID (required)")
+	cmd.Flags().IntP("task", "t", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("task"); err != nil {
 		slog.Error("failed to marking flag as required", "error", err)
 	}
 
-	cmd.Flags().Int("label", 0, "Label ID (required)")
+	cmd.Flags().IntP("label", "l", 0, "Label ID (required)")
 	if err := cmd.MarkFlagRequired("label"); err != nil {
 		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output")
 
 	return cmd
 }

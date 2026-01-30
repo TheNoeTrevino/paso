@@ -16,16 +16,22 @@ func ListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List tasks",
-		Long:  "List all tasks in a project.",
-		RunE:  runList,
+		Long: `List all tasks in a project.
+
+Examples:
+  paso task list -p 1
+  paso task list -p 1 -j
+  paso task list --project=1 --json
+`,
+		RunE: runList,
 	}
 
 	// Flags
-	cmd.Flags().Int("project", 0, "Project ID (uses git branch association if not specified)")
+	cmd.Flags().IntP("project", "p", 0, "Project ID (uses git branch association if not specified)")
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (ID only)")
 
 	return cmd
 }

@@ -19,30 +19,33 @@ func UpdateCmd() *cobra.Command {
 		Long: `Update a label's name and/or color.
 
 Examples:
-  # Update both name and color
-  paso label update --id=1 --name="critical-bug" --color="#FF0000"
+  # Update both name and color (shorthand)
+  paso label update -i 1 -n "critical-bug" -c "#FF0000"
 
   # Update only name (keeps existing color)
-  paso label update --id=1 --name="critical-bug"
+  paso label update -i 1 -n "critical-bug"
 
   # Update only color (keeps existing name)
-  paso label update --id=1 --color="#FF0000"
+  paso label update -i 1 -c "#FF0000"
 
   # JSON output
+  paso label update -i 1 -n "urgent" -j
+
+  # Long-form flags also supported
   paso label update --id=1 --name="urgent" --json
 `,
 		RunE: runUpdate,
 	}
 
-	cmd.Flags().Int("id", 0, "Label ID (required)")
+	cmd.Flags().IntP("id", "i", 0, "Label ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		slog.Error("failed to marking flag as required", "error", err)
 	}
-	cmd.Flags().String("name", "", "New label name")
-	cmd.Flags().String("color", "", "New label color in hex format #RRGGBB")
+	cmd.Flags().StringP("name", "n", "", "New label name")
+	cmd.Flags().StringP("color", "c", "", "New label color in hex format #RRGGBB")
 
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output")
 
 	return cmd
 }

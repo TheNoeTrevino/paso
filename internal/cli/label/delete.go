@@ -16,33 +16,36 @@ func DeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete a label",
-		Long: `Delete a label by ID (requires confirmation unless --force or --quiet).
+		Long: `Delete a label by ID (requires confirmation unless --force/-f or --quiet/-q).
 
 Examples:
-  # Delete with confirmation
-  paso label delete --id=1
+  # Delete with confirmation (shorthand)
+  paso label delete -i 1
 
   # Skip confirmation
-  paso label delete --id=1 --force
+  paso label delete -i 1 -f
 
   # Quiet mode (no confirmation)
-  paso label delete --id=1 --quiet
+  paso label delete -i 1 -q
+
+  # Long-form flags also supported
+  paso label delete --id=1 --force
 `,
 		RunE: runDelete,
 	}
 
 	// Required flags
-	cmd.Flags().Int("id", 0, "Label ID (required)")
+	cmd.Flags().IntP("id", "i", 0, "Label ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Optional flags
-	cmd.Flags().Bool("force", false, "Skip confirmation")
+	cmd.Flags().BoolP("force", "f", false, "Skip confirmation")
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output")
 
 	return cmd
 }

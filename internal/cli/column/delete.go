@@ -16,35 +16,38 @@ func DeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete a column",
-		Long: `Delete a column by ID (requires confirmation unless --force or --quiet).
+		Long: `Delete a column by ID (requires confirmation unless --force/-f or --quiet/-q).
 
 Warning: Deleting a column will move all tasks in that column to the project's first column.
 
 Examples:
-  # Delete with confirmation
-  paso column delete --id=1
+  # Delete with confirmation (shorthand)
+  paso column delete -i 1
 
   # Skip confirmation
-  paso column delete --id=1 --force
+  paso column delete -i 1 -f
 
   # Quiet mode (no confirmation)
-  paso column delete --id=1 --quiet
+  paso column delete -i 1 -q
+
+  # Long-form flags also supported
+  paso column delete --id=1 --force
 `,
 		RunE: runDelete,
 	}
 
 	// Required flags
-	cmd.Flags().Int("id", 0, "Column ID (required)")
+	cmd.Flags().IntP("id", "i", 0, "Column ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		slog.Error("failed to mark flag as required", "error", err)
 	}
 
 	// Optional flags
-	cmd.Flags().Bool("force", false, "Skip confirmation")
+	cmd.Flags().BoolP("force", "f", false, "Skip confirmation")
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output")
 
 	return cmd
 }
