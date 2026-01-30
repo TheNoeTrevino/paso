@@ -21,25 +21,28 @@ func ReadyMoveCmd() *cobra.Command {
 		Long: `Move a task to the column designated as holding ready tasks.
 
 The ready column is marked with holds_ready_tasks = true.
-Use 'paso column update --id=<column_id> --ready' to designate a ready column.
+Use 'paso column update -i <column_id> -r' to designate a ready column.
 
 Examples:
   # Move task to ready column
   paso task to-ready 42
 
   # JSON output for agents
-  paso task to-ready 42 --json
+  paso task to-ready 42 -j
 
   # Quiet mode for bash capture
-  paso task to-ready 42 --quiet
+  paso task to-ready 42 -q
+
+  # Long-form flags also supported
+  paso task to-ready 42 --json
 `,
 		RunE: runReadyMove,
 		Args: cobra.ExactArgs(1),
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (ID only)")
 
 	return cmd
 }

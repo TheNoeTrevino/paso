@@ -22,24 +22,27 @@ These are tasks that can be started immediately as they are not
 waiting on any other tasks to be completed.
 
 Examples:
-  # Human-readable output
-  paso task ready --project=1
+  # Human-readable output (shorthand)
+  paso task ready -p 1
 
   # JSON output for agents
-  paso task ready --project=1 --json
+  paso task ready -p 1 -j
 
   # Quiet mode for bash capture
-  TASK_IDS=$(paso task ready --project=1 --quiet)
+  TASK_IDS=$(paso task ready -p 1 -q)
+
+  # Long-form flags also supported
+  paso task ready --project=1 --json
 `,
 		RunE: runReady,
 	}
 
 	// Flags
-	cmd.Flags().Int("project", 0, "Project ID (uses git branch association if not specified)")
+	cmd.Flags().IntP("project", "p", 0, "Project ID (uses git branch association if not specified)")
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (ID only)")
 
 	return cmd
 }

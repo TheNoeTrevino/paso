@@ -16,24 +16,35 @@ func UpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "Update a task",
-		Long:  "Update task title, description, or priority.",
-		RunE:  runUpdate,
+		Long: `Update task title, description, or priority.
+
+Examples:
+  # Update title and priority (shorthand)
+  paso task update -i 42 -t "New title" -r high
+
+  # Update description
+  paso task update -i 42 -d "Updated description"
+
+  # Long-form flags also supported
+  paso task update --id=42 --title="New title" --priority=high
+`,
+		RunE: runUpdate,
 	}
 
 	// Required flags
-	cmd.Flags().Int("id", 0, "Task ID (required)")
+	cmd.Flags().IntP("id", "i", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Optional update flags
-	cmd.Flags().String("title", "", "New task title")
-	cmd.Flags().String("description", "", "New task description")
-	cmd.Flags().String("priority", "", "New priority: trivial, low, medium, high, critical")
+	cmd.Flags().StringP("title", "t", "", "New task title")
+	cmd.Flags().StringP("description", "d", "", "New task description")
+	cmd.Flags().StringP("priority", "r", "", "New priority: trivial, low, medium, high, critical")
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (ID only)")
 
 	return cmd
 }
