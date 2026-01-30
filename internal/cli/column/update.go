@@ -16,37 +16,43 @@ func UpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "Update a column",
-		Long: `Update a column's name.
+		Long: `Update a column's name or designation.
 
 Examples:
-  # Update column name (human-readable output)
-  paso column update --id=1 --name="Completed"
+  # Update column name (shorthand)
+  paso column update -i 1 -n "Completed"
+
+  # Set column designations
+  paso column update -i 1 -r          # Mark as ready column
+  paso column update -i 2 -I          # Mark as in-progress column
+  paso column update -i 3 -c          # Mark as completed column
+  paso column update -i 3 -c -f       # Force completed column override
 
   # JSON output for agents
-  paso column update --id=1 --name="Completed" --json
+  paso column update -i 1 -n "Completed" -j
 
-  # Quiet mode
-  paso column update --id=1 --name="Completed" --quiet
+  # Long-form flags also supported
+  paso column update --id=1 --name="Completed" --json
 `,
 		RunE: runUpdate,
 	}
 
 	// Required flags
-	cmd.Flags().Int("id", 0, "Column ID (required)")
+	cmd.Flags().IntP("id", "i", 0, "Column ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		slog.Error("failed to mark flag as required", "error", err)
 	}
 
 	// Optional flags
-	cmd.Flags().String("name", "", "New column name")
-	cmd.Flags().Bool("ready", false, "Set this column as holding ready tasks")
-	cmd.Flags().Bool("completed", false, "Set this column as holding completed tasks")
-	cmd.Flags().Bool("in-progress", false, "Set this column as holding in-progress tasks")
-	cmd.Flags().Bool("force", false, "Force setting completed column even if one already exists")
+	cmd.Flags().StringP("name", "n", "", "New column name")
+	cmd.Flags().BoolP("ready", "r", false, "Set this column as holding ready tasks")
+	cmd.Flags().BoolP("completed", "c", false, "Set this column as holding completed tasks")
+	cmd.Flags().BoolP("in-progress", "I", false, "Set this column as holding in-progress tasks")
+	cmd.Flags().BoolP("force", "f", false, "Force setting completed column even if one already exists")
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output")
 
 	return cmd
 }
