@@ -21,34 +21,37 @@ func CreateCmd() *cobra.Command {
 		Long: `Create a new label with a name and color.
 
 Examples:
-  # Create label (human-readable output)
-  paso label create --name="bug" --color="#FF0000" --project=1
+  # Create label using shorthand flags
+  paso label create -n "bug" -c "#FF0000" -p 1
 
   # JSON output for agents
-  paso label create --name="bug" --color="#FF0000" --project=1 --json
+  paso label create -n "bug" -c "#FF0000" -p 1 -j
 
   # Quiet mode for bash capture
-  LABEL_ID=$(paso label create --name="bug" --color="#FF0000" --project=1 --quiet)
+  LABEL_ID=$(paso label create -n "bug" -c "#FF0000" -p 1 -q)
+
+  # Long-form flags also supported
+  paso label create --name="bug" --color="#FF0000" --project=1
 `,
 		RunE: handler.Command(&createHandler{}, parseCreateFlags),
 	}
 
 	// Required flags
-	cmd.Flags().String("name", "", "Label name (required)")
+	cmd.Flags().StringP("name", "n", "", "Label name (required)")
 	if err := cmd.MarkFlagRequired("name"); err != nil {
 		slog.Error("failed to marking flag as required", "error", err)
 	}
 
-	cmd.Flags().String("color", "", "Label color in hex format #RRGGBB (required)")
+	cmd.Flags().StringP("color", "c", "", "Label color in hex format #RRGGBB (required)")
 	if err := cmd.MarkFlagRequired("color"); err != nil {
 		slog.Error("failed to marking flag as required", "error", err)
 	}
 
-	cmd.Flags().Int("project", 0, "Project ID (uses git branch association if not specified)")
+	cmd.Flags().IntP("project", "p", 0, "Project ID (uses git branch association if not specified)")
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (ID only)")
 
 	return cmd
 }
