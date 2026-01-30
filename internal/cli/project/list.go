@@ -20,13 +20,20 @@ func ListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all projects",
-		Long:  "List all projects with their details.",
-		RunE:  runList,
+		Long: `List all projects with their details.
+
+Examples:
+  paso project list
+  paso project list -j
+  paso project list -q
+  paso project list --json
+`,
+		RunE: runList,
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (IDs only)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (IDs only)")
 
 	return cmd
 }

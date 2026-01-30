@@ -19,17 +19,21 @@ func GitUnlinkCmd() *cobra.Command {
 		Short: "Unlink a project from its git branch",
 		Long: `Unlink a project from its git branch.
 
-If --id is not provided, defaults to the project associated with the current branch.
+If --id/-i is not provided, defaults to the project associated with the current branch.
 
 Examples:
-  paso project git-unlink --id 5
-  paso project git-unlink  # unlinks current project`,
+  # Shorthand flags
+  paso project git-unlink -i 5
+  paso project git-unlink          # unlinks current project
+
+  # Long-form flags also supported
+  paso project git-unlink --id 5`,
 		RunE: runGitUnlink,
 	}
 
-	cmd.Flags().Int("id", 0, "Project ID to unlink (defaults to current project)")
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output")
+	cmd.Flags().IntP("id", "i", 0, "Project ID to unlink (defaults to current project)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output")
 
 	return cmd
 }

@@ -20,9 +20,9 @@ func ProjectCmd() *cobra.Command {
 	}
 
 	// Flags for --show-current
-	cmd.Flags().Bool("show-current", false, "Show the project associated with the current git branch")
-	cmd.Flags().Bool("json", false, "Output in JSON format (used with --show-current)")
-	cmd.Flags().Bool("quiet", false, "Minimal output - ID only (used with --show-current)")
+	cmd.Flags().BoolP("show-current", "s", false, "Show the project associated with the current git branch")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format (used with --show-current)")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output - ID only (used with --show-current)")
 
 	cmd.AddCommand(CreateCmd())
 	cmd.AddCommand(ListCmd())

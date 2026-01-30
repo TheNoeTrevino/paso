@@ -19,22 +19,29 @@ func GitLinkCmd() *cobra.Command {
 		Short: "Link a project to a git branch",
 		Long: `Link a project to a git branch.
 
-If --id is not provided, defaults to the project associated with the current branch.
-If --branch is not provided, defaults to the current git branch.
+If --id/-i is not provided, defaults to the project associated with the current branch.
+If --branch/-b is not provided, defaults to the current git branch.
 
 Examples:
-  paso project git-link --id 5 --branch feature/auth
-  paso project git-link --branch feature/new  # uses current project
-  paso project git-link --id 5                # uses current branch
-  paso project git-link                       # uses current project and branch`,
+  # Shorthand flags
+  paso project git-link -i 5 -b feature/auth
+  paso project git-link -b feature/new    # uses current project
+  paso project git-link -i 5              # uses current branch
+  paso project git-link                   # uses current project and branch
+
+  # Force transfer branch from another project
+  paso project git-link -i 5 -b feature/auth -f
+
+  # Long-form flags also supported
+  paso project git-link --id 5 --branch feature/auth --force`,
 		RunE: runGitLink,
 	}
 
-	cmd.Flags().Int("id", 0, "Project ID to link (defaults to current project)")
-	cmd.Flags().String("branch", "", "Branch name to link (defaults to current branch)")
-	cmd.Flags().Bool("force", false, "Transfer branch from another project if already linked")
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output")
+	cmd.Flags().IntP("id", "i", 0, "Project ID to link (defaults to current project)")
+	cmd.Flags().StringP("branch", "b", "", "Branch name to link (defaults to current branch)")
+	cmd.Flags().BoolP("force", "f", false, "Transfer branch from another project if already linked")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output")
 
 	return cmd
 }
