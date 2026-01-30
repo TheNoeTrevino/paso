@@ -419,9 +419,9 @@ from columns where id = ?
 `
 
 // Retrieves the ID of the next column in the linked list
-func (q *Queries) GetNextColumnID(ctx context.Context, id int64) (any, error) {
+func (q *Queries) GetNextColumnID(ctx context.Context, id int64) (interface{}, error) {
 	row := q.db.QueryRowContext(ctx, getNextColumnID, id)
-	var next_id any
+	var next_id interface{}
 	err := row.Scan(&next_id)
 	return next_id, err
 }
@@ -500,9 +500,9 @@ select prev_id from columns where id = ?
 `
 
 // Retrieves the ID of the previous column in the linked list
-func (q *Queries) GetPrevColumnID(ctx context.Context, id int64) (any, error) {
+func (q *Queries) GetPrevColumnID(ctx context.Context, id int64) (interface{}, error) {
 	row := q.db.QueryRowContext(ctx, getPrevColumnID, id)
-	var prev_id any
+	var prev_id interface{}
 	err := row.Scan(&prev_id)
 	return prev_id, err
 }

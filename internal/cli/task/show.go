@@ -20,15 +20,22 @@ func ShowCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "show [id]",
 		Short: "Show task details",
-		Long:  "Display all details of a task including description, relationships, labels, and metadata.",
-		Args:  cobra.MaximumNArgs(1),
-		RunE:  runShow,
+		Long: `Display all details of a task including description, relationships, labels, and metadata.
+
+Examples:
+  paso task show 42
+  paso task show -i 42
+  paso task show -i 42 -j
+  paso task show --id=42 --json
+`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: runShow,
 	}
 
 	// Flags
-	cmd.Flags().Int("id", 0, "Task ID (can also be provided as positional argument)")
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
+	cmd.Flags().IntP("id", "i", 0, "Task ID (can also be provided as positional argument)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (ID only)")
 
 	return cmd
 }

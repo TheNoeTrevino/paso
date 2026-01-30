@@ -7,11 +7,12 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"go.uber.org/goleak"
 )
 
 // ============================================================================
@@ -1387,13 +1388,7 @@ func TestSendEvent_ErrorMessageClarity(t *testing.T) {
 // - Context cancellation propagates through all operations
 // - No panics or deadlocks during shutdown
 func TestClient_ContextCancellationDuringReconnection(t *testing.T) {
-	t.Parallel()
-
-	// Track goroutines before test starts
-	// Give time for any background goroutines to stabilize
-	time.Sleep(100 * time.Millisecond)
-	startGoroutines := runtime.NumGoroutine()
-	t.Logf("Starting goroutines: %d", startGoroutines)
+	defer goleak.VerifyNone(t)
 
 	// Create a controllable mock daemon
 	socketPath, startFunc, stopFunc, messages := setupMockDaemonWithControl(t)
@@ -1507,23 +1502,6 @@ func TestClient_ContextCancellationDuringReconnection(t *testing.T) {
 		t.Logf("✓ Listen loop exited cleanly")
 	case <-time.After(5 * time.Second):
 		t.Error("Listen loop did not exit within 5 seconds - context cancellation may not be propagating")
-	}
-
-	// Give goroutines time to fully exit
-	time.Sleep(500 * time.Millisecond)
-
-	// Check goroutine count - should return to baseline (or close to it)
-	endGoroutines := runtime.NumGoroutine()
-	goroutineLeak := endGoroutines - startGoroutines
-
-	t.Logf("Ending goroutines: %d (diff: %+d)", endGoroutines, goroutineLeak)
-
-	// Allow some tolerance (±3 goroutines) for runtime background tasks
-	if goroutineLeak > 3 {
-		t.Errorf("Possible goroutine leak: started with %d, ended with %d (leaked %d)",
-			startGoroutines, endGoroutines, goroutineLeak)
-	} else {
-		t.Logf("✓ No significant goroutine leak detected")
 	}
 
 	// Verify we can call Close again (idempotent)

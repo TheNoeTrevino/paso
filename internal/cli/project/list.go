@@ -6,12 +6,13 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
-	"strings"
 
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/table"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/git"
 )
 
 // ListCmd returns the project list subcommand
@@ -19,13 +20,20 @@ func ListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all projects",
-		Long:  "List all projects with their details.",
-		RunE:  runList,
+		Long: `List all projects with their details.
+
+Examples:
+  paso project list
+  paso project list -j
+  paso project list -q
+  paso project list --json
+`,
+		RunE: runList,
 	}
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (IDs only)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (IDs only)")
 
 	return cmd
 }
@@ -83,61 +91,99 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	baseStyle := lipgloss.NewStyle().Padding(0, 1)
-	headerStyle := baseStyle.Bold(true).Foreground(lipgloss.Color("252"))
+	// Get git branch info for markers
+	gitInfo := git.DetectGitInfo(ctx)
+	branchMarkers := make(map[string]string)
 
-	var rows [][]string
-	for _, p := range projects {
-		desc := p.Description
-		if len(desc) > 40 {
-			desc = desc[:37] + "..."
+	if gitInfo.IsRepo {
+		branches, err := git.ListBranches(ctx)
+		if err == nil {
+			for _, branch := range branches {
+				branchMarkers[branch.Name] = branch.Marker
+			}
 		}
-		rows = append(rows, []string{
-			strconv.Itoa(p.ID),
-			p.Name,
-			desc,
-			p.GitBranch,
-		})
 	}
 
-	tbl := table.New().
+	// Load config for color scheme
+	cfg, err := config.Load()
+	if err != nil {
+		cfg = &config.Config{
+			ColorScheme: config.DefaultColorScheme(),
+		}
+	}
+
+	// Define colors
+	greenColor := lipgloss.Color(cfg.ColorScheme.Create)  // Green for current branch
+	cyanColor := lipgloss.Color("#00CED1")                // Cyan for worktree
+	normalColor := lipgloss.Color(cfg.ColorScheme.Normal) // Normal text
+	subtleColor := lipgloss.Color(cfg.ColorScheme.Subtle) // For dash when no branch
+	headerColor := lipgloss.Color(cfg.ColorScheme.Accent) // Header color
+
+	// Build table data
+	var rows [][]string
+	projectRowMarkers := make(map[int]string) // row index -> marker type
+
+	for i, p := range projects {
+		marker := "  "
+		branch := "-"
+
+		if p.GitBranch != "" {
+			branch = p.GitBranch
+			if m, ok := branchMarkers[p.GitBranch]; ok {
+				marker = m
+			}
+		}
+
+		rows = append(rows, []string{
+			marker,
+			strconv.Itoa(p.ID),
+			p.Name,
+			branch,
+		})
+		projectRowMarkers[i] = marker
+	}
+
+	// Create table with styling
+	baseStyle := lipgloss.NewStyle().Padding(0, 1)
+	headerStyle := baseStyle.Bold(true).Foreground(headerColor)
+
+	t := table.New().
 		Border(lipgloss.RoundedBorder()).
 		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("238"))).
-		Headers("ID", "NAME", "DESCRIPTION", "GIT BRANCH").
+		Headers("", "ID", "NAME", "BRANCH").
 		Rows(rows...).
 		StyleFunc(func(row, col int) lipgloss.Style {
+			// Header row
 			if row == table.HeaderRow {
 				return headerStyle
 			}
 
-			project := projects[row]
-			even := row%2 == 0
+			marker := projectRowMarkers[row]
 
-			if col == 3 {
-				return baseStyle.Foreground(lipgloss.Color(branchColor(project.GitBranch)))
+			// Marker column (col 0) and Branch column (col 3)
+			if col == 0 || col == 3 {
+				switch marker {
+				case "* ": // Current branch - green
+					return baseStyle.Foreground(greenColor)
+				case "+ ": // Worktree - cyan
+					return baseStyle.Foreground(cyanColor)
+				default:
+					// For branch column with "-", use subtle color
+					if col == 3 {
+						rowData := rows[row]
+						if rowData[3] == "-" {
+							return baseStyle.Foreground(subtleColor)
+						}
+					}
+					return baseStyle.Foreground(normalColor)
+				}
 			}
 
-			if even {
-				return baseStyle.Foreground(lipgloss.Color("245"))
-			}
-			return baseStyle.Foreground(lipgloss.Color("252"))
+			// Other columns - normal color
+			return baseStyle.Foreground(normalColor)
 		})
 
-	fmt.Println(tbl)
-	return nil
-}
+	fmt.Println(t)
 
-func branchColor(branch string) string {
-	switch {
-	case strings.HasPrefix(branch, "feature/"):
-		return "#00E2C7"
-	case strings.HasPrefix(branch, "bugfix/") || strings.HasPrefix(branch, "fix/"):
-		return "#FF7698"
-	case strings.HasPrefix(branch, "release/"):
-		return "#01BE85"
-	case branch == "main" || branch == "master":
-		return "#929292"
-	default:
-		return "252"
-	}
+	return nil
 }

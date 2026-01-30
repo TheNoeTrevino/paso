@@ -16,19 +16,25 @@ func DeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete a task",
-		Long:  "Delete a task by ID (requires confirmation unless --force or --quiet).",
-		RunE:  runDelete,
+		Long: `Delete a task by ID (requires confirmation unless --force/-f or --quiet/-q).
+
+Examples:
+  paso task delete -i 42
+  paso task delete -i 42 -f
+  paso task delete --id=42 --force --json
+`,
+		RunE: runDelete,
 	}
 
-	cmd.Flags().Int("id", 0, "Task ID (required)")
+	cmd.Flags().IntP("id", "i", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
 		slog.Error("failed to marking flag as required", "error", err)
 	}
 
-	cmd.Flags().Bool("force", false, "Skip confirmation")
+	cmd.Flags().BoolP("force", "f", false, "Skip confirmation")
 
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output")
 
 	return cmd
 }

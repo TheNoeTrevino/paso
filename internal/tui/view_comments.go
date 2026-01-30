@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
@@ -23,8 +24,8 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 	}
 
 	// Title bar
-	commentCount := len(m.Forms.Comment.Items)
-	titleText := fmt.Sprintf("Task Comments - \"%s\" (%d comments)", taskTitle, commentCount)
+	itemCount := len(m.Forms.Comment.Items)
+	titleText := fmt.Sprintf("Task Activity - \"%s\" (%d items)", taskTitle, itemCount)
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color(theme.Highlight))
@@ -33,7 +34,7 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 	// Empty state
 	if m.Forms.Comment.IsEmpty() {
 		emptyContent := renderEmptyCommentsState(width, height-4) // Reserve for title + help
-		helpText := renderCommentsHelpText()
+		helpText := renderEmptyCommentsHelpText()
 		return lipgloss.JoinVertical(lipgloss.Left, titleBar, "", emptyContent, "", helpText)
 	}
 
@@ -54,13 +55,13 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 		availableHeight,
 	)
 
-	// Render only visible comment cards
+	// Render only visible activity cards
 	var cards []string
 	visibleItems := m.Forms.Comment.Items[startIdx:endIdx]
 	for i, item := range visibleItems {
 		actualIdx := startIdx + i
 		selected := (actualIdx == m.Forms.Comment.Cursor)
-		card := components.RenderCommentCard(item.Comment, selected, cardWidth)
+		card := components.RenderActivityCard(item.Activity, selected, cardWidth)
 		cards = append(cards, card)
 	}
 
@@ -73,10 +74,12 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 		startIdx,
 		endIdx,
 		len(m.Forms.Comment.Items),
+		cardWidth,
 	)
 
 	// Combine content
-	helpText := renderCommentsHelpText()
+	selectedActivity := m.Forms.Comment.GetSelectedActivity()
+	helpText := renderCommentsHelpText(selectedActivity)
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -102,30 +105,54 @@ func renderEmptyCommentsState(width, height int) string {
 
 	lines := []string{
 		"",
-		"No comments yet.",
+		"No activity yet.",
 		"",
 		"Press 'a' to add your first comment.",
 		"",
-		"Comments help you track context and reasoning",
-		"as you work through tasks.",
+		"Activity includes comments and task events",
+		"to help track progress and context.",
 		"",
 	}
 
 	return emptyStyle.Render(strings.Join(lines, "\n"))
 }
 
-// renderCommentsHelpText renders the help text at the bottom of the comments view
-func renderCommentsHelpText() string {
+// renderEmptyCommentsHelpText renders help text for the empty state.
+// Only shows options that are available when there are no items.
+func renderEmptyCommentsHelpText() string {
 	helpStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Subtle))
 
-	return helpStyle.Render("[↑↓: navigate | Enter/e: edit | a: add | d: delete | Esc: close]")
+	return helpStyle.Render("[a: add comment | Esc: close]")
+}
+
+// renderCommentsHelpText renders the help text at the bottom of the comments view.
+// It shows different help text based on whether an event or comment is selected.
+func renderCommentsHelpText(selectedActivity *models.ActivityItem) string {
+	helpStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Subtle))
+
+	// Show limited options when an event is selected (events are read-only)
+	if selectedActivity != nil && selectedActivity.Type == models.ActivityTypeEvent {
+		return helpStyle.Render("[↑↓: navigate | a: add comment | Esc: close] (events are read-only)")
+	}
+
+	// Show full options when a comment is selected or no selection
+	return helpStyle.Render("[↑↓: navigate | e: edit | a: add comment | d: delete | Esc: close]")
 }
 
 // ScrollIndicators holds the top and bottom scroll indicator strings
 type ScrollIndicators struct {
 	Top    string
 	Bottom string
+}
+
+// commentsViewAvailableHeight calculates the available height for comments content
+// based on the total terminal height. This accounts for the layer scaling (80%)
+// and reserves space for the title bar and help text.
+func commentsViewAvailableHeight(totalHeight int) int {
+	layerHeight := totalHeight * 8 / 10
+	return layerHeight - 4 // Reserve for title + help
 }
 
 // calculateVisibleCommentRange determines which comments should be rendered
@@ -151,7 +178,7 @@ func calculateVisibleCommentRange(scrollOffset int, totalComments int, available
 }
 
 // calculateCommentsScrollIndicators determines if scroll indicators should be shown
-func calculateCommentsScrollIndicators(scrollOffset int, startIdx int, endIdx int, totalComments int) ScrollIndicators {
+func calculateCommentsScrollIndicators(scrollOffset int, startIdx int, endIdx int, totalComments int, width int) ScrollIndicators {
 	indicators := ScrollIndicators{
 		Top:    "",
 		Bottom: "",
@@ -159,7 +186,8 @@ func calculateCommentsScrollIndicators(scrollOffset int, startIdx int, endIdx in
 
 	indicatorStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Subtle)).
-		Align(lipgloss.Center)
+		Align(lipgloss.Center).
+		Width(width)
 
 	// Show top indicator if scrolled down
 	if scrollOffset > 0 {

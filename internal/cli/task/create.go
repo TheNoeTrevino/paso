@@ -25,47 +25,44 @@ func CreateCmd() *cobra.Command {
 		Long: `Create a new task with specified attributes.
 
 Examples:
-  # Simple task (human-readable output)
-  paso task create --title="Fix bug" --project=1 --blocked-by 15 --blocks 20
+  # Simple task using shorthand flags
+  paso task create -t "Fix bug" -p 1 -b 15 -B 20
+
+  # Full example with all options (shorthand)
+  paso task create -t "Add authentication" -d "Implement JWT auth" -T feature -r high -P 3 -p 1
 
   # JSON output for agents
-  paso task create --title="Fix bug" --project=1 --json
+  paso task create -t "Fix bug" -p 1 -j
 
   # Quiet mode for bash capture
-  TASK_ID=$(paso task create --title="Fix bug" --project=1 --quiet)
+  TASK_ID=$(paso task create -t "Fix bug" -p 1 -q)
 
-  # Full example with all options
-  paso task create \
-    --title="Add authentication" \
-    --description="Implement JWT auth" \
-    --type=feature \
-    --priority=high \
-    --parent=3 \
-    --project=1
+  # Long-form flags also supported
+  paso task create --title="Fix bug" --project=1 --blocked-by 15 --blocks 20
 `,
 		RunE: handler.Command(&createHandler{}, parseCreateFlags),
 	}
 
 	// Required flags
-	cmd.Flags().String("title", "", "Task title (required)")
+	cmd.Flags().StringP("title", "t", "", "Task title (required)")
 	if err := cmd.MarkFlagRequired("title"); err != nil {
 		slog.Error("failed to mark flag as required", "error", err)
 	}
 
-	cmd.Flags().Int("project", 0, "Project ID (uses git branch association if not specified)")
+	cmd.Flags().IntP("project", "p", 0, "Project ID (uses git branch association if not specified)")
 
 	// Optional flags
-	cmd.Flags().String("description", "", "Task description (use - for stdin)")
-	cmd.Flags().String("type", "task", "Task type: task or feature")
-	cmd.Flags().String("priority", "medium", "Priority: trivial, low, medium, high, critical")
-	cmd.Flags().Int("parent", 0, "Parent task ID (creates dependency)")
-	cmd.Flags().Int("blocked-by", 0, "Task ID that blocks this task")
-	cmd.Flags().Int("blocks", 0, "Task ID that is blocked by this task")
-	cmd.Flags().String("column", "", "Column name (defaults to first column)")
+	cmd.Flags().StringP("description", "d", "", "Task description (use - for stdin)")
+	cmd.Flags().StringP("type", "T", "task", "Task type: task or feature")
+	cmd.Flags().StringP("priority", "r", "medium", "Priority: trivial, low, medium, high, critical")
+	cmd.Flags().IntP("parent", "P", 0, "Parent task ID (creates dependency)")
+	cmd.Flags().IntP("blocked-by", "b", 0, "Task ID that blocks this task")
+	cmd.Flags().IntP("blocks", "B", 0, "Task ID that is blocked by this task")
+	cmd.Flags().StringP("column", "c", "", "Column name (defaults to first column)")
 
 	// Agent-friendly flags (REQUIRED on all commands)
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (ID only)")
 
 	return cmd
 }

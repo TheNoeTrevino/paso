@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -32,10 +33,7 @@ func (m Model) handleCommentsViewInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleCommentsViewUp() (tea.Model, tea.Cmd) {
 	moved := m.Forms.Comment.MoveCursorUp()
 	if moved {
-		// Calculate max visible for auto-scroll
-		// Must match the height calculation in renderCommentsViewContent
-		layerHeight := m.UIState.Height * 8 / 10
-		availableHeight := layerHeight - 4 // Reserve for title + help
+		availableHeight := commentsViewAvailableHeight(m.UIState.Height)
 		_, _, maxVisible := calculateVisibleCommentRange(
 			m.Forms.Comment.ScrollOffset,
 			len(m.Forms.Comment.Items),
@@ -51,10 +49,7 @@ func (m Model) handleCommentsViewDown() (tea.Model, tea.Cmd) {
 	maxIdx := len(m.Forms.Comment.Items) - 1
 	moved := m.Forms.Comment.MoveCursorDown(maxIdx)
 	if moved {
-		// Calculate max visible for auto-scroll
-		// Must match the height calculation in renderCommentsViewContent
-		layerHeight := m.UIState.Height * 8 / 10
-		availableHeight := layerHeight - 4 // Reserve for title + help
+		availableHeight := commentsViewAvailableHeight(m.UIState.Height)
 		_, _, maxVisible := calculateVisibleCommentRange(
 			m.Forms.Comment.ScrollOffset,
 			len(m.Forms.Comment.Items),
@@ -65,17 +60,23 @@ func (m Model) handleCommentsViewDown() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleCommentsViewEdit opens the comment form to edit the selected comment
+// handleCommentsViewEdit opens the comment form to edit the selected activity
 func (m Model) handleCommentsViewEdit() (tea.Model, tea.Cmd) {
-	selectedComment := m.Forms.Comment.GetSelectedComment()
-	if selectedComment == nil {
-		m.UI.Notification.Add(state.LevelError, "No comment selected")
+	selectedActivity := m.Forms.Comment.GetSelectedActivity()
+	if selectedActivity == nil {
+		m.UI.Notification.Add(state.LevelError, "No item selected")
+		return m, nil
+	}
+
+	// Events are read-only and cannot be edited
+	if selectedActivity.Type == models.ActivityTypeEvent {
+		m.UI.Notification.Add(state.LevelWarning, "Events cannot be edited")
 		return m, nil
 	}
 
 	// Set up form state for editing
-	m.Forms.Form.FormCommentMessage = selectedComment.Message
-	m.Forms.Form.EditingCommentID = selectedComment.ID
+	m.Forms.Form.FormCommentMessage = selectedActivity.Content
+	m.Forms.Form.EditingCommentID = selectedActivity.ID
 	m.Forms.Form.CommentFormReturnMode = state.CommentsViewMode
 
 	// Create comment form
@@ -113,16 +114,22 @@ func (m Model) handleCommentsViewAdd() (tea.Model, tea.Cmd) {
 	return m, m.Forms.Form.CommentForm.Init()
 }
 
-// handleCommentsViewDelete shows confirmation dialog for deleting the selected comment
+// handleCommentsViewDelete shows confirmation dialog for deleting the selected activity
 func (m Model) handleCommentsViewDelete() (tea.Model, tea.Cmd) {
-	selectedComment := m.Forms.Comment.GetSelectedComment()
-	if selectedComment == nil {
-		m.UI.Notification.Add(state.LevelError, "No comment selected")
+	selectedActivity := m.Forms.Comment.GetSelectedActivity()
+	if selectedActivity == nil {
+		m.UI.Notification.Add(state.LevelError, "No item selected")
+		return m, nil
+	}
+
+	// Events are read-only and cannot be deleted
+	if selectedActivity.Type == models.ActivityTypeEvent {
+		m.UI.Notification.Add(state.LevelWarning, "Events cannot be deleted")
 		return m, nil
 	}
 
 	// Store comment ID for deletion
-	m.Forms.Form.EditingCommentID = selectedComment.ID
+	m.Forms.Form.EditingCommentID = selectedActivity.ID
 
 	// Show delete confirmation
 	// We'll use the same DeleteConfirmMode and handle comment deletion there

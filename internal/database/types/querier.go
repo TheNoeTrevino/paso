@@ -86,6 +86,12 @@ type Querier interface {
 	GetCommentCountByTask(ctx context.Context, taskID int64) (int64, error)
 	// Retrieves all comments for a task, ordered by creation time (newest first)
 	GetCommentsByTask(ctx context.Context, taskID int64) ([]TaskComment, error)
+	// Creates a new event for a task
+	CreateTaskEvent(ctx context.Context, arg CreateTaskEventParams) (TaskEvent, error)
+	// Retrieves all events for a task, ordered by creation time (newest first)
+	GetEventsByTask(ctx context.Context, taskID int64) ([]TaskEvent, error)
+	// Deletes all events for a task
+	DeleteEventsByTask(ctx context.Context, taskID int64) error
 	// Retrieves the column designated for completed tasks in a project
 	GetCompletedColumnByProject(ctx context.Context, projectID int64) (GetCompletedColumnByProjectRow, error)
 	// Retrieves the column designated for in-progress tasks in a project
@@ -102,6 +108,8 @@ type Querier interface {
 	GetLabelsForTask(ctx context.Context, taskID int64) ([]Label, error)
 	// Returns the count of labels for a project
 	GetLabelCountByProject(ctx context.Context, projectID int64) (int64, error)
+	// Returns the count of tasks that have this label attached
+	CountTasksByLabel(ctx context.Context, labelID int64) (int64, error)
 	// Retrieves the ID of the next column in the linked list
 	GetNextColumnID(ctx context.Context, id int64) (NullInt64, error)
 	// Retrieves the next available ticket number for a project

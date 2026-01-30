@@ -108,6 +108,9 @@ var (
 
 	// StatusBarTipStyle defines the style for the tips in the status bar
 	StatusBarTipStyle lipgloss.Style
+
+	// DetailPanelStyle defines the appearance of the task detail panel
+	DetailPanelStyle lipgloss.Style
 )
 
 // InitStyles initializes all styles with the given color scheme
@@ -126,20 +129,20 @@ func InitStyles(colors colors.ColorScheme) {
 		BorderLeft(false).
 		BorderRight(false)
 
+	// ColumnStyle defines appearance without fixed width - width is set dynamically
 	ColumnStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(colors.ColumnBorder)).
 		PaddingLeft(1).
-		PaddingRight(1).
-		Width(40)
+		PaddingRight(1)
 
+	// TaskStyle defines appearance without fixed width - width is set dynamically
 	TaskStyle = lipgloss.NewStyle().
 		BorderStyle(lipgloss.ThickBorder()).
 		BorderForeground(lipgloss.Color(colors.TaskBorder)).
 		BorderBackground(lipgloss.Color(colors.TaskBackground)).
 		Background(lipgloss.Color(colors.TaskBackground)).
-		Padding(0).
-		Width(36)
+		Padding(0)
 
 	TaskTitleStyle = lipgloss.NewStyle().
 		Bold(true)
@@ -229,4 +232,7 @@ func InitStyles(colors colors.ColorScheme) {
 
 	SubtleStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Subtle))
+
+	DetailPanelStyle = lipgloss.NewStyle().
+		Padding(1, 2)
 }

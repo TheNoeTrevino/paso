@@ -9,12 +9,14 @@ import (
 // by converting between database-agnostic types and SQLite-specific generated types.
 type Adapter struct {
 	queries *generated_sqlite.Queries
+	db      types.DBTX
 }
 
 // New creates a new SQLite adapter that implements types.Querier.
 func New(db types.DBTX) *Adapter {
 	return &Adapter{
 		queries: generated_sqlite.New(db),
+		db:      db,
 	}
 }
 

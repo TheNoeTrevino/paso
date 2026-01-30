@@ -19,7 +19,12 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Handle color picker sub-mode for creating new label
+	// Handle name input sub-mode for creating new label (first step)
+	if m.Pickers.Label.NameInputMode {
+		return m.updateLabelNameInput(keyMsg)
+	}
+
+	// Handle color picker sub-mode for creating new label (second step)
 	if m.Pickers.Label.CreateMode {
 		return m.updateLabelColorPicker(keyMsg)
 	}
@@ -99,14 +104,39 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		} else {
-			// Create new label - switch to color picker sub-mode
+			// Create new label - switch to name input sub-mode (first step)
+			// Pre-populate name buffer with filter text if present
 			if strings.TrimSpace(m.Pickers.Label.Filter) != "" {
-				m.Forms.Form.FormLabelName = strings.TrimSpace(m.Pickers.Label.Filter)
+				m.Pickers.Label.NameBuffer = strings.TrimSpace(m.Pickers.Label.Filter)
 			} else {
-				m.Forms.Form.FormLabelName = "New Label"
+				m.Pickers.Label.NameBuffer = ""
 			}
-			m.Pickers.Label.CreateMode = true
-			m.Pickers.Label.ColorIdx = 0
+			m.Pickers.Label.NameInputMode = true
+		}
+		return m, nil
+
+	case "ctrl+d":
+		// Delete the label at cursor position (only if cursor is on a label, not "+ Create new label")
+		if m.Pickers.Label.Cursor < len(filteredItems) {
+			item := filteredItems[m.Pickers.Label.Cursor]
+
+			// Count tasks using this label
+			ctx, cancel := m.UIContext()
+			defer cancel()
+			taskCount, err := m.App.LabelService.CountTasksByLabel(ctx, item.Label.ID)
+			if err != nil {
+				slog.Error("failed to count tasks by label", "error", err)
+				m.UI.Notification.Add(state.LevelError, "Failed to count tasks for label")
+				return m, nil
+			}
+
+			// Store label info for confirmation dialog
+			m.Pickers.Label.DeleteLabelID = item.Label.ID
+			m.Pickers.Label.DeleteLabelName = item.Label.Name
+			m.Pickers.Label.DeleteLabelTaskCount = taskCount
+
+			// Switch to delete confirmation mode
+			m.UIState.Mode = state.DeleteLabelConfirmMode
 		}
 		return m, nil
 
@@ -134,6 +164,46 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
+// updateLabelNameInput handles keyboard input when entering a name for a new label
+func (m Model) updateLabelNameInput(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch keyMsg.String() {
+	case "esc":
+		// Cancel and return to label list
+		m.Pickers.Label.NameInputMode = false
+		m.Pickers.Label.NameBuffer = ""
+		return m, nil
+
+	case "enter":
+		// Validate name is not empty, then proceed to color picker
+		name := strings.TrimSpace(m.Pickers.Label.NameBuffer)
+		if name == "" {
+			// Don't proceed if name is empty - stay in name input mode
+			return m, nil
+		}
+		// Set the label name and transition to color picker
+		m.Forms.Form.FormLabelName = name
+		m.Pickers.Label.NameInputMode = false
+		m.Pickers.Label.CreateMode = true
+		m.Pickers.Label.ColorIdx = 0
+		return m, nil
+
+	case "backspace", "ctrl+h":
+		// Remove last character from name buffer
+		if len(m.Pickers.Label.NameBuffer) > 0 {
+			m.Pickers.Label.NameBuffer = m.Pickers.Label.NameBuffer[:len(m.Pickers.Label.NameBuffer)-1]
+		}
+		return m, nil
+
+	default:
+		// Type to add characters to name
+		key := keyMsg.String()
+		if len(key) == 1 && len(m.Pickers.Label.NameBuffer) < 50 {
+			m.Pickers.Label.NameBuffer += key
+		}
+		return m, nil
+	}
+}
+
 // updateLabelColorPicker handles keyboard input when selecting a color for new label
 func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	colors := renderers.GetDefaultLabelColors()
@@ -143,6 +213,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		// Cancel and return to label list
 		m.Pickers.Label.CreateMode = false
+		m.Pickers.Label.NameBuffer = ""
 		return m, nil
 
 	case "up", "k":
@@ -199,9 +270,10 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Reload task summaries for the current column
 		m.reloadCurrentColumnTasks()
 
-		// Exit create mode and clear filter
+		// Exit create mode and clear filter/name buffer
 		m.Pickers.Label.CreateMode = false
 		m.Pickers.Label.Filter = ""
+		m.Pickers.Label.NameBuffer = ""
 		m.Pickers.Label.Cursor = 0
 
 		return m, nil

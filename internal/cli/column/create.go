@@ -25,37 +25,44 @@ func CreateCmd() *cobra.Command {
 		Long: `Create a new column in a project.
 
 Examples:
-  # Create column at end (human-readable output)
-  paso column create --name="Review" --project=1
-
-  # JSON output for agents
-  paso column create --name="Review" --project=1 --json
-
-  # Quiet mode for bash capture
-  COLUMN_ID=$(paso column create --name="Review" --project=1 --quiet)
+  # Create column using shorthand flags
+  paso column create -n "Review" -p 1
 
   # Create column after specific column
-  paso column create --name="Done" --project=1 --after=3
+  paso column create -n "Done" -p 1 -a 3
+
+  # Mark as ready or completed column
+  paso column create -n "Backlog" -p 1 -r
+  paso column create -n "Done" -p 1 -c
+
+  # JSON output for agents
+  paso column create -n "Review" -p 1 -j
+
+  # Quiet mode for bash capture
+  COLUMN_ID=$(paso column create -n "Review" -p 1 -q)
+
+  # Long-form flags also supported
+  paso column create --name="Review" --project=1 --json
 `,
 		RunE: runCreate,
 	}
 
 	// Required flags
-	cmd.Flags().String("name", "", "Column name (required)")
+	cmd.Flags().StringP("name", "n", "", "Column name (required)")
 	if err := cmd.MarkFlagRequired("name"); err != nil {
 		slog.Error("failed to mark flag as required", "error", err)
 	}
 
-	cmd.Flags().Int("project", 0, "Project ID (uses git branch association if not specified)")
+	cmd.Flags().IntP("project", "p", 0, "Project ID (uses git branch association if not specified)")
 
 	// Optional flags
-	cmd.Flags().Int("after", 0, "Insert after column ID (0 = append to end)")
-	cmd.Flags().Bool("ready", false, "Mark this column as holding ready tasks")
-	cmd.Flags().Bool("completed", false, "Mark this column as holding completed tasks")
+	cmd.Flags().IntP("after", "a", 0, "Insert after column ID (0 = append to end)")
+	cmd.Flags().BoolP("ready", "r", false, "Mark this column as holding ready tasks")
+	cmd.Flags().BoolP("completed", "c", false, "Mark this column as holding completed tasks")
 
 	// Agent-friendly flags
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (ID only)")
 
 	return cmd
 }

@@ -1,6 +1,9 @@
 package state
 
-import "github.com/thenoetrevino/paso/internal/models"
+import (
+	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/layout"
+)
 
 // Mode represents the current interaction mode of the TUI.
 // Each mode determines which keyboard shortcuts are active and what UI is displayed.
@@ -15,6 +18,7 @@ const (
 	DeleteColumnConfirmMode                // Confirming column deletion
 	HelpMode                               // Displaying help screen
 	TicketFormMode                         // Full task form with huh
+	TicketFormLoadingMode                  // Loading task data for edit form
 	ProjectFormMode                        // Creating a new project with huh
 	EditProjectFormMode                    // Editing an existing project (huh form)
 	ProjectFormLoadingMode                 // Loading git data for project form
@@ -37,6 +41,8 @@ const (
 	DatabaseConnectConfirmMode             // Confirming connection to newly created database
 	DatabaseDeleteConfirmMode              // Confirming deletion of a database connection
 	ProjectBranchConfirmMode               // Confirming git branch association for project
+	DeleteProjectConfirmMode               // Confirming project deletion
+	DeleteLabelConfirmMode                 // Confirming label deletion
 )
 
 // UsesLayers returns true if this mode uses layer-based rendering.
@@ -45,6 +51,7 @@ const (
 func (m Mode) UsesLayers() bool {
 	switch m {
 	case TicketFormMode,
+		TicketFormLoadingMode,
 		ProjectFormMode,
 		EditProjectFormMode,
 		ProjectFormLoadingMode,
@@ -68,7 +75,11 @@ func (m Mode) UsesLayers() bool {
 		DatabaseCreateMode,
 		DatabaseConnectConfirmMode,
 		DatabaseDeleteConfirmMode,
-		ProjectBranchConfirmMode:
+		ProjectBranchConfirmMode,
+		DeleteProjectConfirmMode,
+		DeleteColumnConfirmMode,
+		DeleteLabelConfirmMode,
+		DeleteConfirmMode:
 		return true
 	default:
 		return false
@@ -124,7 +135,7 @@ func NewUIState() *UIState {
 		Height:            0,
 		Mode:              NormalMode,
 		ViewportOffset:    0,
-		viewportSize:      1, // Default to 1, will be recalculated when width is set
+		viewportSize:      layout.MinViewportColumns, // Default to minimum, recalculated when width is set
 		taskScrollOffsets: make(map[int]int),
 	}
 }
@@ -155,28 +166,22 @@ func (s *UIState) ViewportSize() int {
 
 // calculateViewportSize calculates how many columns can fit in the terminal width.
 //
-// Column layout:
-//   - Content width: 40 characters
-//   - Padding: 2 characters (1 on each side)
-//   - Border: 2 characters (1 on each side)
-//   - Spacing: 2 characters (between columns)
-//   - Total per column: 46 characters
-//
-// The calculation reserves 4 characters for margins and scroll indicators,
-// and ensures at least 1 column is always visible.
+// This uses the responsive layout system where columns expand to fill available space.
+// The viewport size is determined by how many columns can fit at minimum width,
+// ensuring we always show at least 3 columns when possible.
 func (s *UIState) calculateViewportSize() {
 	if s.width == 0 {
-		s.viewportSize = 1
+		s.viewportSize = layout.MinViewportColumns
 		return
 	}
 
-	const columnWidth = 46  // 40 content + 2 padding + 2 border + 2 spacing
-	const reservedWidth = 4 // margins and scroll indicators
+	availableWidth := s.width - layout.Chrome
 
-	availableWidth := s.width - reservedWidth
+	if s.ShouldShowDetailPanel() {
+		availableWidth -= s.DetailPanelWidth()
+	}
 
-	// Calculate how many columns fit, with minimum of 1
-	s.viewportSize = max(1, availableWidth/columnWidth)
+	s.viewportSize = max(layout.MinViewportColumns, availableWidth/layout.ColumnMinTotalWidth)
 }
 
 // AdjustViewportAfterColumnRemoval adjusts the viewport offset after a column is removed.
@@ -304,4 +309,66 @@ func (s *UIState) EnsureTaskVisible(columnID int, selectedTaskIdx int, visibleCo
 	if selectedTaskIdx >= offset+visibleCount {
 		s.taskScrollOffsets[columnID] = selectedTaskIdx - visibleCount + 1
 	}
+}
+
+// ShouldShowDetailPanel returns true if the screen is wide enough to display
+// the detail panel alongside the kanban columns. Panel is shown when the terminal
+// can fit at least 3 columns at minimum width plus the minimum panel width.
+func (s *UIState) ShouldShowDetailPanel() bool {
+	minWidth := (layout.MinViewportColumns * layout.ColumnMinTotalWidth) + layout.Chrome + layout.DetailPanelMinWidth
+	return s.width >= minWidth
+}
+
+// DetailPanelWidth calculates the width for the detail panel based on terminal width.
+// Uses percentage-based sizing (35% of available content area) clamped to min/max bounds.
+func (s *UIState) DetailPanelWidth() int {
+	availableContent := s.width - layout.Chrome
+	panelWidth := (availableContent * layout.DetailPanelPercent) / 100
+
+	if panelWidth < layout.DetailPanelMinWidth {
+		return layout.DetailPanelMinWidth
+	}
+	if panelWidth > layout.DetailPanelMaxWidth {
+		return layout.DetailPanelMaxWidth
+	}
+	return panelWidth
+}
+
+// ColumnsAreaWidth returns the total width available for the columns area.
+// This is the terminal width minus chrome and detail panel (if shown).
+func (s *UIState) ColumnsAreaWidth() int {
+	availableWidth := s.width - layout.Chrome
+
+	if s.ShouldShowDetailPanel() {
+		availableWidth -= s.DetailPanelWidth()
+	}
+
+	return max(availableWidth, 0)
+}
+
+// ColumnContentWidth calculates the content width for each column based on
+// available space and the number of visible columns.
+// Returns the inner content width (excluding border and padding).
+func (s *UIState) ColumnContentWidth(visibleColumns int) int {
+	if visibleColumns <= 0 {
+		visibleColumns = 1
+	}
+
+	columnsArea := s.ColumnsAreaWidth()
+	columnTotalWidth := columnsArea / visibleColumns
+	contentWidth := columnTotalWidth - layout.ColumnOverhead
+
+	if contentWidth < layout.ColumnMinContentWidth {
+		return layout.ColumnMinContentWidth
+	}
+	if contentWidth > layout.ColumnMaxContentWidth {
+		return layout.ColumnMaxContentWidth
+	}
+	return contentWidth
+}
+
+// TaskCardWidth calculates the width for task cards based on column content width.
+// Task cards have their own border which reduces available content space.
+func (s *UIState) TaskCardWidth(visibleColumns int) int {
+	return s.ColumnContentWidth(visibleColumns) - layout.TaskCardBorderOverhead
 }

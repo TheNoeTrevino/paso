@@ -5,13 +5,10 @@ import (
 	"log/slog"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/services/project"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
-
-// ============================================================================
-// CONFIRMATION HANDLERS (Inlined from deleted confirmation.go)
-// ============================================================================
 
 // handleDeleteConfirm handles task or comment deletion confirmation.
 // Inlined from confirmation.go (deleted to reduce duplication)
@@ -49,6 +46,10 @@ func (m Model) confirmDeleteTask() (tea.Model, tea.Cmd) {
 			m.UI.Notification.Add(state.LevelError, "Failed to delete task")
 		} else {
 			m.removeCurrentTask()
+			// Invalidate the deleted task from detail cache
+			if m.DetailCache != nil {
+				m.DetailCache.Invalidate(task.ID)
+			}
 		}
 	}
 	m.UIState.Mode = state.NormalMode
@@ -76,7 +77,14 @@ func (m Model) confirmDeleteComment() (tea.Model, tea.Cmd) {
 			comments, err := m.App.TaskService.GetCommentsByTask(ctx, taskID)
 			if err == nil {
 				m.Forms.Form.FormComments = comments
-				m.Forms.Comment.SetComments(comments)
+			}
+			// Refresh activities for comments view and task form preview
+			activities, actErr := m.App.TaskService.GetTaskActivities(ctx, taskID)
+			if actErr != nil {
+				m.UI.Notification.Add(state.LevelError, "Failed to refresh activity")
+			} else {
+				m.Forms.Comment.SetActivities(activities)
+				m.Forms.Form.FormActivities = activities
 			}
 		}
 	}
@@ -134,7 +142,7 @@ func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
 	case state.CommentFormMode:
 		m.Forms.Form.ClearCommentForm()
 		// Return to comment list instead of normal mode
-		m.UIState.Mode = state.CommentEditMode
+		m.UIState.Mode = state.CommentsViewMode
 		m.UIState.DiscardContext = nil
 		return m, tea.ClearScreen
 	}
@@ -175,6 +183,48 @@ func (m Model) confirmDeleteColumn() (tea.Model, tea.Cmd) {
 			m.removeCurrentColumn()
 		}
 	}
+	m.UIState.Mode = state.NormalMode
+	return m, nil
+}
+
+func (m Model) handleDeleteProjectConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y", "Y":
+		return m.confirmDeleteProject(false)
+	case "f", "F":
+		if m.Forms.Input.DeleteProjectTaskCount > 0 {
+			return m.confirmDeleteProject(true)
+		}
+		return m, nil
+	case "n", "N", "esc":
+		m.UIState.Mode = state.NormalMode
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m Model) confirmDeleteProject(force bool) (tea.Model, tea.Cmd) {
+	currentProject := m.AppState.GetCurrentProject()
+	if currentProject == nil {
+		m.UIState.Mode = state.NormalMode
+		return m, nil
+	}
+
+	projectName := currentProject.Name
+
+	ctx, cancel := m.DBContext()
+	defer cancel()
+
+	err := m.App.ProjectService.DeleteProject(ctx, currentProject.ID, force)
+	if err != nil {
+		slog.Error("failed to delete project", "error", err)
+		m.UI.Notification.Add(state.LevelError, "Failed to delete project: "+err.Error())
+		m.UIState.Mode = state.NormalMode
+		return m, nil
+	}
+
+	m.removeCurrentProject()
+	m.UI.Notification.Add(state.LevelInfo, fmt.Sprintf("Project '%s' deleted", projectName))
 	m.UIState.Mode = state.NormalMode
 	return m, nil
 }
@@ -231,5 +281,74 @@ func (m Model) handleProjectBranchConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.ClearScreen
 	}
 
+	return m, nil
+}
+
+// handleDeleteLabelConfirm handles label deletion confirmation.
+func (m Model) handleDeleteLabelConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y", "Y":
+		return m.confirmDeleteLabel()
+	case "n", "N", "esc":
+		// Clear delete state and return to label picker
+		m.Pickers.Label.DeleteLabelID = 0
+		m.Pickers.Label.DeleteLabelName = ""
+		m.Pickers.Label.DeleteLabelTaskCount = 0
+		m.UIState.Mode = state.LabelPickerMode
+		return m, nil
+	}
+	return m, nil
+}
+
+// confirmDeleteLabel performs the actual label deletion.
+func (m Model) confirmDeleteLabel() (tea.Model, tea.Cmd) {
+	labelID := m.Pickers.Label.DeleteLabelID
+	labelName := m.Pickers.Label.DeleteLabelName
+
+	if labelID != 0 {
+		ctx, cancel := m.DBContext()
+		defer cancel()
+
+		err := m.App.LabelService.DeleteLabel(ctx, labelID)
+		if err != nil {
+			slog.Error("failed to delete label", "error", err)
+			m.UI.Notification.Add(state.LevelError, "Failed to delete label")
+		} else {
+			// Remove from picker items
+			newItems := make([]state.LabelPickerItem, 0, len(m.Pickers.Label.Items)-1)
+			for _, item := range m.Pickers.Label.Items {
+				if item.Label.ID != labelID {
+					newItems = append(newItems, item)
+				}
+			}
+			m.Pickers.Label.Items = newItems
+
+			// Remove from global labels list
+			currentLabels := m.AppState.Labels()
+			newLabels := make([]*models.Label, 0, len(currentLabels)-1)
+			for _, label := range currentLabels {
+				if label.ID != labelID {
+					newLabels = append(newLabels, label)
+				}
+			}
+			m.AppState.SetLabels(newLabels)
+
+			// Adjust cursor if needed
+			if m.Pickers.Label.Cursor >= len(m.Pickers.Label.Items) && m.Pickers.Label.Cursor > 0 {
+				m.Pickers.Label.Cursor--
+			}
+
+			// Reload task summaries to reflect removed label associations
+			m.reloadCurrentColumnTasks()
+
+			m.UI.Notification.Add(state.LevelInfo, fmt.Sprintf("Label '%s' deleted", labelName))
+		}
+	}
+
+	// Clear delete state and return to label picker
+	m.Pickers.Label.DeleteLabelID = 0
+	m.Pickers.Label.DeleteLabelName = ""
+	m.Pickers.Label.DeleteLabelTaskCount = 0
+	m.UIState.Mode = state.LabelPickerMode
 	return m, nil
 }

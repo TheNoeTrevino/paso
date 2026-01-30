@@ -167,3 +167,11 @@ type UpdateCommentParams struct {
 	Content string
 	ID      int64
 }
+
+// task_events.sql.go params
+// CreateTaskEventParams contains the parameters for creating a task event.
+type CreateTaskEventParams struct {
+	TaskID  int64
+	Content string
+	Author  string
+}

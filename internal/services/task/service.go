@@ -14,11 +14,14 @@ import (
 	"github.com/thenoetrevino/paso/internal/database/types"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/services/taskevent"
+	"github.com/thenoetrevino/paso/internal/user"
 )
 
 // TaskReader defines task reading operations
 type TaskReader interface {
 	GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error)
+	GetTaskActivities(ctx context.Context, taskID int) ([]models.ActivityItem, error)
 	GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error)
 	GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error)
 	GetReadyTaskSummariesByProject(ctx context.Context, projectID int) ([]*models.TaskSummary, error)
@@ -123,23 +126,25 @@ type UpdateCommentRequest struct {
 
 // service implements Service interface using database.Querier abstraction
 type service struct {
-	db          *sql.DB
-	dbType      database.DatabaseType
-	queries     database.Querier
-	eventClient events.EventPublisher
+	db           *sql.DB
+	dbType       database.DatabaseType
+	queries      database.Querier
+	eventClient  events.EventPublisher
+	eventService taskevent.Service
 }
 
 // NewService creates a new task service with database-agnostic queries.
-func NewService(db *sql.DB, dbType database.DatabaseType, eventClient events.EventPublisher) (Service, error) {
+func NewService(db *sql.DB, dbType database.DatabaseType, eventClient events.EventPublisher, eventService taskevent.Service) (Service, error) {
 	queries, err := database.NewQuerier(db, dbType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create task service: %w", err)
 	}
 	return &service{
-		db:          db,
-		dbType:      dbType,
-		queries:     queries,
-		eventClient: eventClient,
+		db:           db,
+		dbType:       dbType,
+		queries:      queries,
+		eventClient:  eventClient,
+		eventService: eventService,
 	}, nil
 }
 
@@ -269,6 +274,13 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 			}
 		}
 
+		// Emit TaskCreated event within the transaction
+		if s.eventService != nil {
+			if err := s.eventService.CreateTaskCreatedEvent(ctx, qtx, int(createdTask.ID), req.Title, user.GetCurrentUsername()); err != nil {
+				return fmt.Errorf("failed to create task event: %w", err)
+			}
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -291,63 +303,129 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 		return err
 	}
 
-	// Update basic fields if provided
-	if req.Title != nil || req.Description != nil {
-		var title string
-		var description types.NullString
+	// Before the update, get current values for event emission
+	var oldPriorityName, oldTypeName string
+	var currentPriorityID, currentTypeID int64
+	if s.eventService != nil && (req.PriorityID != nil || req.TypeID != nil) {
+		ids, err := s.queries.GetTaskTypeAndPriorityIDs(ctx, int64(req.TaskID))
+		if err == nil {
+			currentPriorityID = ids.PriorityID
+			currentTypeID = ids.TypeID
 
-		// Only query if we need to preserve existing values for fields not being updated
-		if req.Title == nil || req.Description == nil {
-			detail, err := s.queries.GetTaskDetail(ctx, int64(req.TaskID))
-			if err != nil {
-				return fmt.Errorf("failed to get task: %w", err)
+			if req.PriorityID != nil {
+				priorities, _ := s.queries.GetAllPriorities(ctx)
+				for _, p := range priorities {
+					if p.ID == currentPriorityID {
+						oldPriorityName = p.Description
+						break
+					}
+				}
 			}
-			if req.Title == nil {
-				title = detail.Title
+			if req.TypeID != nil {
+				taskTypes, _ := s.queries.GetAllTypes(ctx)
+				for _, t := range taskTypes {
+					if t.ID == currentTypeID {
+						oldTypeName = t.Description
+						break
+					}
+				}
 			}
-			if req.Description == nil {
-				description = detail.Description
-			}
-		}
-
-		// Use provided values or fall back to existing values
-		if req.Title != nil {
-			title = *req.Title
-		}
-		if req.Description != nil {
-			description = types.NullString{String: *req.Description, Valid: true}
-		}
-
-		if err := s.queries.UpdateTask(ctx, types.UpdateTaskParams{
-			Title:       title,
-			Description: description,
-			ID:          int64(req.TaskID),
-		}); err != nil {
-			return fmt.Errorf("failed to update task: %w", err)
 		}
 	}
 
-	// Update priority if provided
-	if req.PriorityID != nil {
-		if err := s.queries.UpdateTaskPriority(ctx, types.UpdateTaskPriorityParams{
-			PriorityID: int64(*req.PriorityID),
-			ID:         int64(req.TaskID),
-		}); err != nil {
-			return fmt.Errorf("failed to update priority: %w", err)
+	// Use WithTx helper for transaction management to ensure atomicity
+	err := database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		qtx := database.MustNewQuerier(tx, s.dbType)
+
+		// Update basic fields if provided
+		if req.Title != nil || req.Description != nil {
+			var title string
+			var description types.NullString
+
+			// Only query if we need to preserve existing values for fields not being updated
+			if req.Title == nil || req.Description == nil {
+				detail, err := qtx.GetTaskDetail(ctx, int64(req.TaskID))
+				if err != nil {
+					return fmt.Errorf("failed to get task: %w", err)
+				}
+				if req.Title == nil {
+					title = detail.Title
+				}
+				if req.Description == nil {
+					description = detail.Description
+				}
+			}
+
+			// Use provided values or fall back to existing values
+			if req.Title != nil {
+				title = *req.Title
+			}
+			if req.Description != nil {
+				description = types.NullString{String: *req.Description, Valid: true}
+			}
+
+			if err := qtx.UpdateTask(ctx, types.UpdateTaskParams{
+				Title:       title,
+				Description: description,
+				ID:          int64(req.TaskID),
+			}); err != nil {
+				return fmt.Errorf("failed to update task: %w", err)
+			}
 		}
+
+		// Update priority if provided
+		if req.PriorityID != nil {
+			if err := qtx.UpdateTaskPriority(ctx, types.UpdateTaskPriorityParams{
+				PriorityID: int64(*req.PriorityID),
+				ID:         int64(req.TaskID),
+			}); err != nil {
+				return fmt.Errorf("failed to update priority: %w", err)
+			}
+		}
+
+		// Update type if provided
+		if req.TypeID != nil {
+			if err := qtx.UpdateTaskType(ctx, types.UpdateTaskTypeParams{
+				TypeID: int64(*req.TypeID),
+				ID:     int64(req.TaskID),
+			}); err != nil {
+				return fmt.Errorf("failed to update type: %w", err)
+			}
+		}
+
+		// Emit events within transaction for consistency
+		if s.eventService != nil {
+			if req.PriorityID != nil && int64(*req.PriorityID) != currentPriorityID {
+				priorities, _ := qtx.GetAllPriorities(ctx)
+				for _, p := range priorities {
+					if p.ID == int64(*req.PriorityID) {
+						if err := s.eventService.CreatePriorityChangedEvent(ctx, qtx, req.TaskID, oldPriorityName, p.Description, user.GetCurrentUsername()); err != nil {
+							slog.Warn("failed to create priority changed event", "error", err, "taskID", req.TaskID, "eventType", "PriorityChanged")
+						}
+						break
+					}
+				}
+			}
+			if req.TypeID != nil && int64(*req.TypeID) != currentTypeID {
+				taskTypes, _ := qtx.GetAllTypes(ctx)
+				for _, t := range taskTypes {
+					if t.ID == int64(*req.TypeID) {
+						if err := s.eventService.CreateTypeChangedEvent(ctx, qtx, req.TaskID, oldTypeName, t.Description, user.GetCurrentUsername()); err != nil {
+							slog.Warn("failed to create type changed event", "error", err, "taskID", req.TaskID, "eventType", "TypeChanged")
+						}
+						break
+					}
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
-	// Update type if provided
-	if req.TypeID != nil {
-		if err := s.queries.UpdateTaskType(ctx, types.UpdateTaskTypeParams{
-			TypeID: int64(*req.TypeID),
-			ID:     int64(req.TaskID),
-		}); err != nil {
-			return fmt.Errorf("failed to update type: %w", err)
-		}
-	}
-
-	// Publish event
+	// Publish event after successful commit
 	s.publishTaskEvent(ctx, req.TaskID)
 
 	return nil
@@ -355,16 +433,25 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 
 // DeleteTask handles task deletion
 func (s *service) DeleteTask(ctx context.Context, taskID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateTaskID(taskID); err != nil {
 		return err
+	}
+
+	// Get project ID BEFORE deletion to avoid race condition in event publishing
+	projectID, err := s.queries.GetProjectIDFromTask(ctx, int64(taskID))
+	if err != nil {
+		return fmt.Errorf("failed to get project ID for task: %w", err)
 	}
 
 	if err := s.queries.DeleteTask(ctx, int64(taskID)); err != nil {
 		return fmt.Errorf("failed to delete task: %w", err)
 	}
 
-	// Publish event
-	s.publishTaskEvent(ctx, taskID)
+	// Publish event using the pre-fetched project ID
+	s.publishTaskEventForProject(int(projectID))
 
 	return nil
 }
@@ -446,6 +533,45 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 	return detail, nil
 }
 
+// GetTaskActivities retrieves all activity items (events and comments) for a task.
+// Returns a unified list sorted by creation time (newest first).
+func (s *service) GetTaskActivities(ctx context.Context, taskID int) ([]models.ActivityItem, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	if err := validateTaskID(taskID); err != nil {
+		return nil, ErrInvalidTaskID
+	}
+
+	// Get events from event service (if available)
+	var events []models.TaskEvent
+	if s.eventService != nil {
+		var err error
+		events, err = s.eventService.GetEventsByTask(ctx, taskID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get task events: %w", err)
+		}
+	}
+
+	// Get comments
+	commentRows, err := s.queries.GetCommentsByTask(ctx, int64(taskID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task comments: %w", err)
+	}
+
+	// Convert comments to models
+	comments := converters.CommentsToModels(commentRows)
+
+	// Convert []*models.Comment to []models.Comment for MergeActivities
+	commentSlice := make([]models.Comment, len(comments))
+	for i, c := range comments {
+		commentSlice[i] = *c
+	}
+
+	// Merge and sort activities (newest first)
+	return models.MergeActivities(events, commentSlice), nil
+}
+
 // GetTaskTypeAndPriorityIDs retrieves only the type and priority IDs for a task
 // This is a lightweight alternative to GetTaskDetail when only these IDs are needed
 func (s *service) GetTaskTypeAndPriorityIDs(ctx context.Context, taskID int) (typeID, priorityID int, err error) {
@@ -486,6 +612,9 @@ func (s *service) GetTaskSummariesByProject(ctx context.Context, projectID int) 
 
 // GetTaskSummariesByProjectFiltered retrieves filtered task summaries
 func (s *service) GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Add wildcards for LIKE query
 	searchPattern := "%" + searchQuery + "%"
 
@@ -510,6 +639,9 @@ func (s *service) GetTaskSummariesByProjectFiltered(ctx context.Context, project
 
 // GetReadyTaskSummariesByProject retrieves task summaries for tasks in ready columns (and not blocked)
 func (s *service) GetReadyTaskSummariesByProject(ctx context.Context, projectID int) ([]*models.TaskSummary, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	rows, err := s.queries.GetReadyTaskSummariesByProject(ctx, int64(projectID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ready task summaries: %w", err)
@@ -529,6 +661,9 @@ func (s *service) GetReadyTaskSummariesByProject(ctx context.Context, projectID 
 
 // GetTaskReferencesForProject retrieves task references for a project
 func (s *service) GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	rows, err := s.queries.GetTaskReferencesForProject(ctx, int64(projectID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task references: %w", err)
@@ -561,6 +696,9 @@ type childRelation struct {
 // GetTaskTreeByProject builds a hierarchical tree of tasks for a project
 // Returns root tasks (tasks with no parents) with their children nested recursively
 func (s *service) GetTaskTreeByProject(ctx context.Context, projectID int) ([]*models.TaskTreeNode, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Get all tasks in the project
 	taskRows, err := s.queries.GetTasksForTree(ctx, int64(projectID))
 	if err != nil {
@@ -691,6 +829,9 @@ func extractColumnID(columnID types.NullInt64) (int64, error) {
 
 // MoveTaskToNextColumn moves task to next column
 func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateTaskID(taskID); err != nil {
 		return err
 	}
@@ -699,6 +840,15 @@ func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 	posRow, err := s.queries.GetTaskPosition(ctx, int64(taskID))
 	if err != nil {
 		return fmt.Errorf("failed to get task position: %w", err)
+	}
+
+	// Get current column name for event
+	var fromColumnName string
+	if s.eventService != nil {
+		fromCol, err := s.queries.GetColumnByID(ctx, posRow.ColumnID)
+		if err == nil {
+			fromColumnName = fromCol.Name
+		}
 	}
 
 	// Get next column
@@ -728,12 +878,25 @@ func (s *service) MoveTaskToNextColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
+	// Emit TaskMoved event
+	if s.eventService != nil && fromColumnName != "" {
+		toCol, err := s.queries.GetColumnByID(ctx, nextColID)
+		if err == nil {
+			if err := s.eventService.CreateTaskMovedEvent(ctx, s.queries, taskID, fromColumnName, toCol.Name, user.GetCurrentUsername()); err != nil {
+				slog.Warn("failed to create task moved event", "error", err, "taskID", taskID, "eventType", "TaskMoved")
+			}
+		}
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
 // MoveTaskToPrevColumn moves task to previous column
 func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateTaskID(taskID); err != nil {
 		return err
 	}
@@ -742,6 +905,15 @@ func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 	posRow, err := s.queries.GetTaskPosition(ctx, int64(taskID))
 	if err != nil {
 		return fmt.Errorf("failed to get task position: %w", err)
+	}
+
+	// Get current column name for event
+	var fromColumnName string
+	if s.eventService != nil {
+		fromCol, err := s.queries.GetColumnByID(ctx, posRow.ColumnID)
+		if err == nil {
+			fromColumnName = fromCol.Name
+		}
 	}
 
 	// Get previous column
@@ -771,12 +943,25 @@ func (s *service) MoveTaskToPrevColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
+	// Emit TaskMoved event
+	if s.eventService != nil && fromColumnName != "" {
+		toCol, err := s.queries.GetColumnByID(ctx, prevColID)
+		if err == nil {
+			if err := s.eventService.CreateTaskMovedEvent(ctx, s.queries, taskID, fromColumnName, toCol.Name, user.GetCurrentUsername()); err != nil {
+				slog.Warn("failed to create task moved event", "error", err, "taskID", taskID, "eventType", "TaskMoved")
+			}
+		}
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
 // MoveTaskToColumn moves task to specific column
 func (s *service) MoveTaskToColumn(ctx context.Context, taskID, columnID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateTaskID(taskID); err != nil {
 		return err
 	}
@@ -784,13 +969,21 @@ func (s *service) MoveTaskToColumn(ctx context.Context, taskID, columnID int) er
 		return err
 	}
 
-	// Verify task exists before moving
-	_, err := s.queries.GetTaskPosition(ctx, int64(taskID))
+	// Get current column info before moving (for event)
+	var fromColumnName string
+	taskPos, err := s.queries.GetTaskPosition(ctx, int64(taskID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
 		return fmt.Errorf("failed to verify task exists: %w", err)
+	}
+
+	if s.eventService != nil {
+		fromCol, err := s.queries.GetColumnByID(ctx, taskPos.ColumnID)
+		if err == nil {
+			fromColumnName = fromCol.Name
+		}
 	}
 
 	// Get task count in target column to append at the end
@@ -807,12 +1000,31 @@ func (s *service) MoveTaskToColumn(ctx context.Context, taskID, columnID int) er
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
+	// Emit TaskMoved event if column actually changed
+	if s.eventService != nil && fromColumnName != "" {
+		toCol, err := s.queries.GetColumnByID(ctx, int64(columnID))
+		if err == nil && toCol.Name != fromColumnName {
+			if err := s.eventService.CreateTaskMovedEvent(ctx, s.queries, taskID, fromColumnName, toCol.Name, user.GetCurrentUsername()); err != nil {
+				slog.Warn("failed to create task moved event", "error", err, "taskID", taskID, "eventType", "TaskMoved")
+			}
+		}
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
-// MoveTaskToReadyColumn moves task to the column marked as holding ready tasks
-func (s *service) MoveTaskToReadyColumn(ctx context.Context, taskID int) error {
+// specialColumnFinder is a function type that finds a special column for a project.
+// It takes a project ID and returns the column ID or an error.
+type specialColumnFinder func(ctx context.Context, projectID int64) (int64, error)
+
+// moveToSpecialColumn is a helper that handles the common logic for moving tasks
+// to special columns (ready, completed, in-progress). It validates the task,
+// finds the project, gets the target column via the finder function, and moves the task.
+func (s *service) moveToSpecialColumn(ctx context.Context, taskID int, findColumn specialColumnFinder, columnTypeName string) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateTaskID(taskID); err != nil {
 		return err
 	}
@@ -832,100 +1044,46 @@ func (s *service) MoveTaskToReadyColumn(ctx context.Context, taskID int) error {
 		return fmt.Errorf("failed to get column: %w", err)
 	}
 
-	// Get ready column for project
-	readyColumn, err := s.queries.GetReadyColumnByProject(ctx, column.ProjectID)
+	// Get target special column for project
+	targetColumnID, err := findColumn(ctx, column.ProjectID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("no ready column configured for this project")
+			return fmt.Errorf("no %s column configured for this project", columnTypeName)
 		}
-		return fmt.Errorf("failed to get ready column: %w", err)
+		return fmt.Errorf("failed to get %s column: %w", columnTypeName, err)
 	}
 
-	// Check if already in ready column
-	if taskDetail.ColumnID == readyColumn.ID {
+	// Check if already in target column
+	if taskDetail.ColumnID == targetColumnID {
 		return ErrTaskAlreadyInTargetColumn
 	}
 
-	// Move task to ready column
-	return s.MoveTaskToColumn(ctx, taskID, int(readyColumn.ID))
+	// Move task to target column
+	return s.MoveTaskToColumn(ctx, taskID, int(targetColumnID))
+}
+
+// MoveTaskToReadyColumn moves task to the column marked as holding ready tasks
+func (s *service) MoveTaskToReadyColumn(ctx context.Context, taskID int) error {
+	return s.moveToSpecialColumn(ctx, taskID, func(ctx context.Context, projectID int64) (int64, error) {
+		col, err := s.queries.GetReadyColumnByProject(ctx, projectID)
+		return col.ID, err
+	}, "ready")
 }
 
 // MoveTaskToCompletedColumn moves task to the column marked as holding completed tasks
 func (s *service) MoveTaskToCompletedColumn(ctx context.Context, taskID int) error {
-	if err := validateTaskID(taskID); err != nil {
-		return err
-	}
-
-	// Get task detail to find project
-	taskDetail, err := s.queries.GetTaskDetail(ctx, int64(taskID))
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return err
-		}
-		return fmt.Errorf("failed to get task: %w", err)
-	}
-
-	// Get the column via project ID
-	column, err := s.queries.GetColumnByID(ctx, taskDetail.ColumnID)
-	if err != nil {
-		return fmt.Errorf("failed to get column: %w", err)
-	}
-
-	// Get completed column for project
-	completedColumn, err := s.queries.GetCompletedColumnByProject(ctx, column.ProjectID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("no completed column configured for this project")
-		}
-		return fmt.Errorf("failed to get completed column: %w", err)
-	}
-
-	// Check if already in completed column
-	if taskDetail.ColumnID == completedColumn.ID {
-		return ErrTaskAlreadyInTargetColumn
-	}
-
-	// Move task to completed column
-	return s.MoveTaskToColumn(ctx, taskID, int(completedColumn.ID))
+	return s.moveToSpecialColumn(ctx, taskID, func(ctx context.Context, projectID int64) (int64, error) {
+		col, err := s.queries.GetCompletedColumnByProject(ctx, projectID)
+		return col.ID, err
+	}, "completed")
 }
 
 // MoveTaskToInProgressColumn moves a task to the column marked as holding in-progress tasks
 func (s *service) MoveTaskToInProgressColumn(ctx context.Context, taskID int) error {
-	if err := validateTaskID(taskID); err != nil {
-		return err
-	}
-
-	// Get task detail to find project
-	taskDetail, err := s.queries.GetTaskDetail(ctx, int64(taskID))
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return err
-		}
-		return fmt.Errorf("failed to get task: %w", err)
-	}
-
-	// Get the column via project ID
-	column, err := s.queries.GetColumnByID(ctx, taskDetail.ColumnID)
-	if err != nil {
-		return fmt.Errorf("failed to get column: %w", err)
-	}
-
-	// Get in-progress column for project
-	inProgressColumn, err := s.queries.GetInProgressColumnByProject(ctx, column.ProjectID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("no in-progress column configured for this project")
-		}
-		return fmt.Errorf("failed to get in-progress column: %w", err)
-	}
-
-	// Check if already in in-progress column
-	if taskDetail.ColumnID == inProgressColumn.ID {
-		return ErrTaskAlreadyInTargetColumn
-	}
-
-	// Move task to in-progress column
-	return s.MoveTaskToColumn(ctx, taskID, int(inProgressColumn.ID))
+	return s.moveToSpecialColumn(ctx, taskID, func(ctx context.Context, projectID int64) (int64, error) {
+		col, err := s.queries.GetInProgressColumnByProject(ctx, projectID)
+		return col.ID, err
+	}, "in-progress")
 }
 
 // GetInProgressTasksByProject retrieves all tasks in in-progress columns for a project
@@ -991,6 +1149,9 @@ func (s *service) GetInProgressTasksByProject(ctx context.Context, projectID int
 
 // MoveTaskUp moves task up in its column
 func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateTaskID(taskID); err != nil {
 		return err
 	}
@@ -1048,6 +1209,9 @@ func (s *service) MoveTaskUp(ctx context.Context, taskID int) error {
 
 // MoveTaskDown moves task down in its column
 func (s *service) MoveTaskDown(ctx context.Context, taskID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateTaskID(taskID); err != nil {
 		return err
 	}
@@ -1142,8 +1306,30 @@ func (s *service) wouldCreateCycle(ctx context.Context, parentID, childID int) (
 	return false, nil
 }
 
+// getRelationLabel looks up the label for a relation type.
+// useChildToParent determines whether to return the child-to-parent label (true)
+// or the parent-to-child label (false).
+func (s *service) getRelationLabel(ctx context.Context, relationTypeID int, useChildToParent bool, defaultLabel string) string {
+	relTypes, err := s.queries.GetAllRelationTypes(ctx)
+	if err != nil {
+		return defaultLabel
+	}
+	for _, rt := range relTypes {
+		if rt.ID == int64(relationTypeID) {
+			if useChildToParent {
+				return rt.CToPLabel
+			}
+			return rt.PToCLabel
+		}
+	}
+	return defaultLabel
+}
+
 // AddParentRelation adds a parent relationship (parent depends on this task)
 func (s *service) AddParentRelation(ctx context.Context, taskID, parentID int, relationTypeID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateTaskID(taskID); err != nil {
 		return err
 	}
@@ -1172,12 +1358,26 @@ func (s *service) AddParentRelation(ctx context.Context, taskID, parentID int, r
 		return fmt.Errorf("failed to add parent relation: %w", err)
 	}
 
+	// Emit TaskAssociated event
+	if s.eventService != nil {
+		relationLabel := s.getRelationLabel(ctx, relationTypeID, true, "Parent")
+		parentTask, err := s.queries.GetTask(ctx, int64(parentID))
+		if err == nil {
+			if err := s.eventService.CreateTaskAssociatedEvent(ctx, s.queries, taskID, parentID, parentTask.Title, relationLabel, user.GetCurrentUsername()); err != nil {
+				slog.Warn("failed to create task associated event", "error", err, "taskID", taskID, "eventType", "TaskAssociated")
+			}
+		}
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
 // AddChildRelation adds a child relationship (this task depends on child)
 func (s *service) AddChildRelation(ctx context.Context, taskID, childID int, relationTypeID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateTaskID(taskID); err != nil {
 		return err
 	}
@@ -1206,12 +1406,26 @@ func (s *service) AddChildRelation(ctx context.Context, taskID, childID int, rel
 		return fmt.Errorf("failed to add child relation: %w", err)
 	}
 
+	// Emit TaskAssociated event
+	if s.eventService != nil {
+		relationLabel := s.getRelationLabel(ctx, relationTypeID, false, "Child")
+		childTask, err := s.queries.GetTask(ctx, int64(childID))
+		if err == nil {
+			if err := s.eventService.CreateTaskAssociatedEvent(ctx, s.queries, taskID, childID, childTask.Title, relationLabel, user.GetCurrentUsername()); err != nil {
+				slog.Warn("failed to create task associated event", "error", err, "taskID", taskID, "eventType", "TaskAssociated")
+			}
+		}
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
 // RemoveParentRelation removes a parent relationship
 func (s *service) RemoveParentRelation(ctx context.Context, taskID, parentID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateTaskID(taskID); err != nil {
 		return err
 	}
@@ -1226,12 +1440,22 @@ func (s *service) RemoveParentRelation(ctx context.Context, taskID, parentID int
 		return fmt.Errorf("failed to remove parent relation: %w", err)
 	}
 
+	// Emit TaskDisassociated event
+	if s.eventService != nil {
+		if err := s.eventService.CreateTaskDisassociatedEvent(ctx, s.queries, taskID, parentID, user.GetCurrentUsername()); err != nil {
+			slog.Warn("failed to create task disassociated event", "error", err, "taskID", taskID, "eventType", "TaskDisassociated")
+		}
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
 // RemoveChildRelation removes a child relationship
 func (s *service) RemoveChildRelation(ctx context.Context, taskID, childID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateTaskID(taskID); err != nil {
 		return err
 	}
@@ -1246,12 +1470,22 @@ func (s *service) RemoveChildRelation(ctx context.Context, taskID, childID int) 
 		return fmt.Errorf("failed to remove child relation: %w", err)
 	}
 
+	// Emit TaskDisassociated event
+	if s.eventService != nil {
+		if err := s.eventService.CreateTaskDisassociatedEvent(ctx, s.queries, taskID, childID, user.GetCurrentUsername()); err != nil {
+			slog.Warn("failed to create task disassociated event", "error", err, "taskID", taskID, "eventType", "TaskDisassociated")
+		}
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
 // AttachLabel attaches a label to a task
 func (s *service) AttachLabel(ctx context.Context, taskID, labelID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateTaskID(taskID); err != nil {
 		return err
 	}
@@ -1266,17 +1500,39 @@ func (s *service) AttachLabel(ctx context.Context, taskID, labelID int) error {
 		return fmt.Errorf("failed to attach label: %w", err)
 	}
 
+	// Emit LabelAdded event
+	if s.eventService != nil {
+		label, err := s.queries.GetLabelByID(ctx, int64(labelID))
+		if err == nil {
+			if err := s.eventService.CreateLabelAddedEvent(ctx, s.queries, taskID, label.Name, user.GetCurrentUsername()); err != nil {
+				slog.Warn("failed to create label added event", "error", err, "taskID", taskID, "eventType", "LabelAdded")
+			}
+		}
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
 // DetachLabel detaches a label from a task
 func (s *service) DetachLabel(ctx context.Context, taskID, labelID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateTaskID(taskID); err != nil {
 		return err
 	}
 	if err := validateLabelID(labelID); err != nil {
 		return err
+	}
+
+	// Get label name before removal for event
+	var labelName string
+	if s.eventService != nil {
+		label, err := s.queries.GetLabelByID(ctx, int64(labelID))
+		if err == nil {
+			labelName = label.Name
+		}
 	}
 
 	if err := s.queries.RemoveLabelFromTask(ctx, types.RemoveLabelFromTaskParams{
@@ -1286,12 +1542,22 @@ func (s *service) DetachLabel(ctx context.Context, taskID, labelID int) error {
 		return fmt.Errorf("failed to detach label: %w", err)
 	}
 
+	// Emit LabelRemoved event
+	if s.eventService != nil && labelName != "" {
+		if err := s.eventService.CreateLabelRemovedEvent(ctx, s.queries, taskID, labelName, user.GetCurrentUsername()); err != nil {
+			slog.Warn("failed to create label removed event", "error", err, "taskID", taskID, "eventType", "LabelRemoved")
+		}
+	}
+
 	s.publishTaskEvent(ctx, taskID)
 	return nil
 }
 
 // CreateComment creates a new comment on a task
 func (s *service) CreateComment(ctx context.Context, req CreateCommentRequest) (*models.Comment, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Validate request
 	if err := validateCreateCommentRequest(req); err != nil {
 		return nil, err
@@ -1328,6 +1594,9 @@ func (s *service) CreateComment(ctx context.Context, req CreateCommentRequest) (
 
 // UpdateComment updates a comment's message
 func (s *service) UpdateComment(ctx context.Context, req UpdateCommentRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	// Validate request
 	if err := validateUpdateCommentRequest(req); err != nil {
 		return err
@@ -1354,6 +1623,9 @@ func (s *service) UpdateComment(ctx context.Context, req UpdateCommentRequest) e
 
 // DeleteComment deletes a comment
 func (s *service) DeleteComment(ctx context.Context, commentID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateCommentID(commentID); err != nil {
 		return err
 	}
@@ -1376,6 +1648,9 @@ func (s *service) DeleteComment(ctx context.Context, commentID int) error {
 
 // GetCommentsByTask retrieves all comments for a task
 func (s *service) GetCommentsByTask(ctx context.Context, taskID int) ([]*models.Comment, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	if err := validateTaskID(taskID); err != nil {
 		return nil, ErrInvalidTaskID
 	}
@@ -1404,10 +1679,21 @@ func (s *service) publishTaskEvent(ctx context.Context, taskID int) {
 		return
 	}
 
+	s.publishTaskEventForProject(int(projectID))
+}
+
+// publishTaskEventForProject publishes a task event for a known project ID.
+// Use this when the project ID is already known (e.g., after task deletion
+// where the task no longer exists in the database).
+func (s *service) publishTaskEventForProject(projectID int) {
+	if s.eventClient == nil {
+		return
+	}
+
 	// Publish with retry (3 attempts with exponential backoff)
 	// Non-blocking: errors are logged but don't affect the operation
 	_ = events.PublishWithRetry(s.eventClient, events.Event{
 		Type:      events.EventDatabaseChanged,
-		ProjectID: int(projectID),
+		ProjectID: projectID,
 	}, 3)
 }

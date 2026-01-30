@@ -103,6 +103,26 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height)
 }
 
+// renderTicketFormLoadingLayer renders a loading indicator while task details are being fetched
+func (m Model) renderTicketFormLoadingLayer() *lipgloss.Layer {
+	spinnerFrames := []string{
+		"󰋙", "󰫃", "󰫄", "󰫅", "󰫆", "󰫇", "󰫈", "󰫇", "󰫆", "󰫅", "󰫄", "󰫃",
+	}
+	spinnerIcon := spinnerFrames[m.SpinnerFrame%len(spinnerFrames)]
+
+	loadingText := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Highlight)).
+		Bold(true).
+		Render("Loading task details " + spinnerIcon)
+
+	formBox := components.FormBoxStyle.
+		Width(m.UIState.Width() * 8 / 10).
+		Height(m.UIState.Height * 8 / 10).
+		Render(loadingText)
+
+	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height)
+}
+
 // renderProjectFormLoadingLayer renders a loading indicator while git data is being fetched
 func (m Model) renderProjectFormLoadingLayer() *lipgloss.Layer {
 	var title string
@@ -201,6 +221,98 @@ func (m Model) renderProjectBranchConfirmLayer() *lipgloss.Layer {
 	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
 }
 
+// renderDeleteTaskConfirmLayer renders the task deletion confirmation dialog as a layer
+func (m Model) renderDeleteTaskConfirmLayer() *lipgloss.Layer {
+	task := m.getCurrentTask()
+	if task == nil {
+		return nil
+	}
+
+	confirmBox := components.DeleteConfirmBoxStyle.
+		Width(50).
+		Render(fmt.Sprintf("Delete '%s'?\n\n[y]es  [n]o", task.Title))
+
+	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
+}
+
+// renderDeleteColumnConfirmLayer renders the column deletion confirmation dialog as a layer
+func (m Model) renderDeleteColumnConfirmLayer() *lipgloss.Layer {
+	column := m.getCurrentColumn()
+	if column == nil {
+		return nil
+	}
+
+	var content string
+	taskCount := m.Forms.Input.DeleteColumnTaskCount
+	if taskCount > 0 {
+		content = fmt.Sprintf(
+			"Delete column '%s'?\nThis will also delete %d task(s).\n\n[y]es  [n]o",
+			column.Name,
+			taskCount,
+		)
+	} else {
+		content = fmt.Sprintf("Delete column '%s'?\n\n[y]es  [n]o", column.Name)
+	}
+
+	confirmBox := components.DeleteConfirmBoxStyle.
+		Width(50).
+		Render(content)
+
+	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
+}
+
+// renderDeleteProjectConfirmLayer renders the project deletion confirmation dialog as a layer
+func (m Model) renderDeleteProjectConfirmLayer() *lipgloss.Layer {
+	project := m.AppState.GetCurrentProject()
+	if project == nil {
+		return nil
+	}
+
+	var content string
+	taskCount := m.Forms.Input.DeleteProjectTaskCount
+	if taskCount > 0 {
+		content = fmt.Sprintf(
+			"Delete project '%s'?\nThis will also delete %d task(s).\n\n[y]es  [f]orce delete  [n]o",
+			project.Name,
+			taskCount,
+		)
+	} else {
+		content = fmt.Sprintf("Delete project '%s'?\n\n[y]es  [n]o", project.Name)
+	}
+
+	confirmBox := components.DeleteConfirmBoxStyle.
+		Width(50).
+		Render(content)
+
+	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
+}
+
+// renderDeleteLabelConfirmLayer renders the label deletion confirmation dialog as a layer
+func (m Model) renderDeleteLabelConfirmLayer() *lipgloss.Layer {
+	labelName := m.Pickers.Label.DeleteLabelName
+	if labelName == "" {
+		return nil
+	}
+
+	var content string
+	taskCount := m.Pickers.Label.DeleteLabelTaskCount
+	if taskCount > 0 {
+		content = fmt.Sprintf(
+			"There are %d task(s) with this label.\n\nAre you sure you want to delete '%s'?\nAssociations will be removed.\n\n[y]es  [n]o",
+			taskCount,
+			labelName,
+		)
+	} else {
+		content = fmt.Sprintf("Delete label '%s'?\n\n[y]es  [n]o", labelName)
+	}
+
+	confirmBox := components.DeleteConfirmBoxStyle.
+		Width(55).
+		Render(content)
+
+	return layers.CreateCenteredLayer(confirmBox, m.UIState.Width(), m.UIState.Height)
+}
+
 // generateHelpText creates help text based on current key mappings
 func (m Model) generateHelpText() string {
 	km := m.Config.KeyMappings
@@ -233,6 +345,7 @@ PROJECTS
   %s     Switch to previous project
   %s     Switch to next project
   %s     Create new project
+  %s     Delete current project
 
 VIEW
   %s     Toggle between kanban and list view
@@ -265,6 +378,7 @@ Press any key to close`,
 		km.PrevProject,
 		km.NextProject,
 		km.CreateProject,
+		km.DeleteProject,
 		km.ToggleView,
 		km.ChangeStatus,
 		km.SortList,
@@ -427,6 +541,26 @@ func (m Model) createPickerLayer(config pickerLayerConfig) *lipgloss.Layer {
 
 // renderLabelPickerLayer renders the label picker modal as a layer
 func (m Model) renderLabelPickerLayer() *lipgloss.Layer {
+	// Name input step (first step of label creation)
+	if m.Pickers.Label.NameInputMode {
+		return m.createPickerLayer(pickerLayerConfig{
+			dimensionStrategy: dynamicPickerDimensions{
+				itemCount: 3, // Small dialog for name input
+				hasFilter: false,
+				minWidth:  layers.PickerDefaultMinWidth,
+				maxWidth:  layers.PickerDefaultMaxWidth,
+			},
+			contentRenderer: func(width, height int) string {
+				return renderers.RenderLabelNameInput(
+					m.Pickers.Label.NameBuffer,
+					width-layers.PickerBorderPaddingWidth,
+				)
+			},
+			boxStyle: components.LabelPickerCreateBoxStyle,
+		})
+	}
+
+	// Color picker step (second step of label creation)
 	if m.Pickers.Label.CreateMode {
 		return m.createPickerLayer(pickerLayerConfig{
 			dimensionStrategy: dynamicPickerDimensions{

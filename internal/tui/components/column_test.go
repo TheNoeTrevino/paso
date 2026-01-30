@@ -124,9 +124,10 @@ func TestRenderEmptyColumnContent_PaddingCalculation(t *testing.T) {
 
 func TestApplyColumnStyle_Selection(t *testing.T) {
 	content := "test content"
+	width := 40
 
 	// Test with selection
-	selected := applyColumnStyle(content, true, 30)
+	selected := applyColumnStyle(content, true, 30, width)
 	if selected == "" {
 		t.Error("applyColumnStyle(true) returned empty string")
 	}
@@ -135,7 +136,7 @@ func TestApplyColumnStyle_Selection(t *testing.T) {
 	}
 
 	// Test without selection
-	notSelected := applyColumnStyle(content, false, 30)
+	notSelected := applyColumnStyle(content, false, 30, width)
 	if notSelected == "" {
 		t.Error("applyColumnStyle(false) returned empty string")
 	}
@@ -146,15 +147,16 @@ func TestApplyColumnStyle_Selection(t *testing.T) {
 
 func TestApplyColumnStyle_Height(t *testing.T) {
 	content := "test content"
+	width := 40
 
 	// Test with height
-	withHeight := applyColumnStyle(content, false, 30)
+	withHeight := applyColumnStyle(content, false, 30, width)
 	if withHeight == "" {
 		t.Error("applyColumnStyle() with height returned empty string")
 	}
 
 	// Test with auto height (0)
-	autoHeight := applyColumnStyle(content, false, 0)
+	autoHeight := applyColumnStyle(content, false, 0, width)
 	if autoHeight == "" {
 		t.Error("applyColumnStyle() with auto height returned empty string")
 	}
@@ -173,8 +175,9 @@ func TestRenderColumnWithTasksContent_VisibleTaskCalculation(t *testing.T) {
 	header := "Test Header"
 	height := 30
 	scrollOffset := 0
+	taskCardWidth := 32 // typical task card width
 
-	result := renderColumnWithTasksContent(header, tasks, false, -1, height, scrollOffset)
+	result := renderColumnWithTasksContent(header, tasks, false, -1, height, scrollOffset, taskCardWidth)
 
 	// Should contain header
 	if !strings.Contains(result, header) {
@@ -203,15 +206,16 @@ func TestRenderColumnWithTasksContent_ScrollIndicators(t *testing.T) {
 
 	header := "Test"
 	height := 30
+	taskCardWidth := 32 // typical task card width
 
 	// Test scrolled down (should show top indicator)
-	scrolledDown := renderColumnWithTasksContent(header, tasks, false, -1, height, 5)
+	scrolledDown := renderColumnWithTasksContent(header, tasks, false, -1, height, 5, taskCardWidth)
 	if !strings.Contains(scrolledDown, "▲") {
 		t.Error("Should show top indicator when scrolled down")
 	}
 
 	// Test at top (should not show top indicator in indicator line)
-	atTop := renderColumnWithTasksContent(header, tasks, false, -1, height, 0)
+	atTop := renderColumnWithTasksContent(header, tasks, false, -1, height, 0, taskCardWidth)
 	// The ▲ should not appear since we're at the top
 	lines := strings.Split(atTop, "\n")
 	hasTopIndicator := false

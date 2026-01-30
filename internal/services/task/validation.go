@@ -12,11 +12,11 @@ func validateCreateTaskRequest(req CreateTaskRequest) error {
 	if err := validatePosition(req.Position); err != nil {
 		return err
 	}
-	if req.PriorityID < 0 {
-		return ErrInvalidPriority
+	if err := validatePriorityID(req.PriorityID); err != nil {
+		return err
 	}
-	if req.TypeID < 0 {
-		return ErrInvalidType
+	if err := validateTypeID(req.TypeID); err != nil {
+		return err
 	}
 	return nil
 }
@@ -32,11 +32,15 @@ func validateUpdateTaskRequest(req UpdateTaskRequest) error {
 			return err
 		}
 	}
-	if req.PriorityID != nil && *req.PriorityID < 0 {
-		return ErrInvalidPriority
+	if req.PriorityID != nil {
+		if err := validatePriorityID(*req.PriorityID); err != nil {
+			return err
+		}
 	}
-	if req.TypeID != nil && *req.TypeID < 0 {
-		return ErrInvalidType
+	if req.TypeID != nil {
+		if err := validateTypeID(*req.TypeID); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -93,6 +97,24 @@ func validateLabelID(id int) error {
 func validateCommentID(id int) error {
 	if id <= 0 {
 		return ErrInvalidCommentID
+	}
+	return nil
+}
+
+// validatePriorityID validates a priority ID.
+// Note: 0 is allowed as it means "use default priority".
+func validatePriorityID(id int) error {
+	if id < 0 {
+		return ErrInvalidPriority
+	}
+	return nil
+}
+
+// validateTypeID validates a type ID.
+// Note: 0 is allowed as it means "use default type".
+func validateTypeID(id int) error {
+	if id < 0 {
+		return ErrInvalidType
 	}
 	return nil
 }

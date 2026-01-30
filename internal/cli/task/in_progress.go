@@ -23,29 +23,32 @@ func InProgressCmd() *cobra.Command {
 or list all in-progress tasks for a project.
 
 The in-progress column is marked with holds_in_progress_tasks = true.
-Use 'paso column update --id=<column_id> --in-progress' to designate an in-progress column.
+Use 'paso column update -i <column_id> -I' to designate an in-progress column.
 
 Examples:
   # Move task to in-progress column
   paso task in-progress 42
 
-  # List all in-progress tasks for a project
-  paso task in-progress --project=1
+  # List all in-progress tasks for a project (shorthand)
+  paso task in-progress -p 1
 
   # JSON output for agents
-  paso task in-progress --project=1 --json
+  paso task in-progress -p 1 -j
 
   # Quiet mode for bash capture
-  paso task in-progress 42 --quiet
+  paso task in-progress 42 -q
+
+  # Long-form flags also supported
+  paso task in-progress --project=1 --json
 `,
 		RunE: runInProgress,
 		Args: cobra.MaximumNArgs(1),
 	}
 
 	// Flags
-	cmd.Flags().Int("project", 0, "Project ID (for listing in-progress tasks)")
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (ID only)")
+	cmd.Flags().IntP("project", "p", 0, "Project ID (for listing in-progress tasks)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (ID only)")
 
 	return cmd
 }

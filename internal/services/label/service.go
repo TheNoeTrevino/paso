@@ -23,6 +23,7 @@ type Service interface {
 	// Read operations
 	GetLabelsByProject(ctx context.Context, projectID int) ([]*models.Label, error)
 	GetLabelsForTask(ctx context.Context, taskID int) ([]*models.Label, error)
+	CountTasksByLabel(ctx context.Context, labelID int) (int, error)
 
 	// Write operations
 	CreateLabel(ctx context.Context, req CreateLabelRequest) (*models.Label, error)
@@ -91,6 +92,18 @@ func (s *service) GetLabelsForTask(ctx context.Context, taskID int) ([]*models.L
 		return nil, err
 	}
 	return converters.LabelsToModels(labels), nil
+}
+
+// CountTasksByLabel returns the count of tasks that have this label attached
+func (s *service) CountTasksByLabel(ctx context.Context, labelID int) (int, error) {
+	if err := validateLabelID(labelID); err != nil {
+		return 0, err
+	}
+	count, err := s.queries.CountTasksByLabel(ctx, int64(labelID))
+	if err != nil {
+		return 0, fmt.Errorf("failed to count tasks by label: %w", err)
+	}
+	return int(count), nil
 }
 
 // CreateLabel creates a new label with validation

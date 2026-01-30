@@ -37,6 +37,8 @@ func (m Model) View() tea.View {
 		switch m.UIState.Mode {
 		case state.TicketFormMode:
 			modalLayer = m.renderTaskFormLayer()
+		case state.TicketFormLoadingMode:
+			modalLayer = m.renderTicketFormLoadingLayer()
 		case state.ProjectFormMode, state.EditProjectFormMode:
 			modalLayer = m.renderProjectFormLayer()
 		case state.ProjectFormLoadingMode:
@@ -61,6 +63,16 @@ func (m Model) View() tea.View {
 			modalLayer = m.renderDiscardConfirmLayer()
 		case state.ProjectBranchConfirmMode:
 			modalLayer = m.renderProjectBranchConfirmLayer()
+		case state.DeleteProjectConfirmMode:
+			modalLayer = m.renderDeleteProjectConfirmLayer()
+		case state.DeleteConfirmMode:
+			modalLayer = m.renderDeleteTaskConfirmLayer()
+		case state.DeleteColumnConfirmMode:
+			modalLayer = m.renderDeleteColumnConfirmLayer()
+		case state.DeleteLabelConfirmMode:
+			// Show label picker as background, with delete confirmation on top
+			layers = m.buildPickerLayers(layers, m.Pickers.Label.ReturnMode, m.renderLabelPickerLayer())
+			modalLayer = m.renderDeleteLabelConfirmLayer()
 		case state.TaskFormHelpMode:
 			layers = append(layers, m.renderTaskFormLayer())
 			modalLayer = m.renderTaskFormHelpLayer()
@@ -120,16 +132,7 @@ func (m Model) View() tea.View {
 		canvas := lipgloss.NewCanvas(layers...)
 		view.Content = canvas.Render()
 	} else {
-		var content string
-		switch m.UIState.Mode {
-		case state.DeleteConfirmMode:
-			content = m.viewDeleteTaskConfirm()
-		case state.DeleteColumnConfirmMode:
-			content = m.viewDeleteColumnConfirm()
-		default:
-			content = m.viewKanbanBoard()
-		}
-		view.Content = content
+		view.Content = m.viewKanbanBoard()
 	}
 
 	return view

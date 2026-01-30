@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/muesli/reflow/wordwrap"
@@ -83,7 +84,10 @@ func renderCommentHeader(comment *models.Comment) string {
 	return headerStyle.Render(authorIcon + author + dateIcon + createdDate + editedIndicator)
 }
 
-// renderCommentContent renders the comment content with word wrapping
+// Maximum number of lines to display for comment content before truncating
+const maxCommentContentLines = 10
+
+// renderCommentContent renders the comment content with word wrapping and truncation
 func renderCommentContent(comment *models.Comment, width int, bg string) string {
 	// Reserve space for padding/borders
 	contentWidth := max(width-4, 20)
@@ -91,7 +95,123 @@ func renderCommentContent(comment *models.Comment, width int, bg string) string 
 	// Wrap content to width
 	wrapped := wordwrap.String(comment.Message, contentWidth)
 
+	// Truncate to max lines if content is too long
+	lines := strings.Split(wrapped, "\n")
+	if len(lines) > maxCommentContentLines {
+		lines = lines[:maxCommentContentLines]
+		wrapped = strings.Join(lines, "\n") + "\n... (more)"
+	}
+
 	// Apply styling with background
+	contentStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(theme.Normal)).
+		Background(lipgloss.Color(bg))
+
+	return contentStyle.Render(wrapped)
+}
+
+// RenderActivityCard renders a single activity item (event or comment) as a card
+func RenderActivityCard(item *models.ActivityItem, selected bool, width int) string {
+	var bg string
+	if selected {
+		bg = theme.SelectedBg
+	} else {
+		bg = theme.TaskBg
+	}
+
+	header := renderActivityHeader(item)
+	content := renderActivityContent(item, width, bg)
+
+	fullContent := header + "\n" + content
+
+	var borderForeground string
+	if selected {
+		borderForeground = theme.SelectedBorder
+	} else {
+		borderForeground = theme.Subtle
+	}
+
+	style := lipgloss.NewStyle().
+		BorderStyle(lipgloss.ThickBorder()).
+		BorderForeground(lipgloss.Color(borderForeground)).
+		BorderBackground(lipgloss.Color(bg)).
+		Background(lipgloss.Color(bg)).
+		Width(width).
+		Padding(0, 1)
+
+	return style.Render(fullContent)
+}
+
+// renderActivityBadge renders the Event/Comment badge
+func renderActivityBadge(activityType models.ActivityType) string {
+	var bgColor, fgColor, text string
+
+	switch activityType {
+	case models.ActivityTypeEvent:
+		bgColor = theme.Subtle
+		fgColor = "#ffffff"
+		text = "Event"
+	case models.ActivityTypeComment:
+		bgColor = theme.Create
+		fgColor = "#ffffff"
+		text = "Comment"
+	default:
+		bgColor = theme.Subtle
+		fgColor = "#ffffff"
+		text = "Unknown"
+	}
+
+	return lipgloss.NewStyle().
+		Background(lipgloss.Color(bgColor)).
+		Foreground(lipgloss.Color(fgColor)).
+		Padding(0, 1).
+		Render(text)
+}
+
+// renderActivityHeader renders header with badge, author, date
+// Format: [Badge] 󰀄 {author}  {date}  (edited)
+func renderActivityHeader(item *models.ActivityItem) string {
+	badge := renderActivityBadge(item.Type)
+
+	authorIcon := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render(" 󰀄 ")
+	author := item.Author
+	if author == "" {
+		author = "Unknown"
+	}
+
+	dateIcon := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("  ")
+	createdDate := item.CreatedAt.Format("Jan 2 15:04")
+
+	var editedIndicator string
+	if item.UpdatedAt != nil && item.UpdatedAt.After(item.CreatedAt) {
+		editedStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Subtle)).
+			Italic(true)
+
+		editedDate := item.UpdatedAt.Format("Jan 2 15:04")
+		editedIndicator = " " + editedStyle.Render(fmt.Sprintf("(edited %s)", editedDate))
+	}
+
+	headerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
+	return badge + headerStyle.Render(authorIcon+author+dateIcon+createdDate+editedIndicator)
+}
+
+// Maximum number of lines to display for activity content before truncating
+const maxActivityContentLines = 10
+
+// renderActivityContent renders the activity content with word wrapping and truncation
+func renderActivityContent(item *models.ActivityItem, width int, bg string) string {
+	contentWidth := max(width-4, 20)
+
+	wrapped := wordwrap.String(item.Content, contentWidth)
+
+	// Truncate to max lines if content is too long
+	lines := strings.Split(wrapped, "\n")
+	if len(lines) > maxActivityContentLines {
+		lines = lines[:maxActivityContentLines]
+		wrapped = strings.Join(lines, "\n") + "\n... (more)"
+	}
+
 	contentStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Normal)).
 		Background(lipgloss.Color(bg))

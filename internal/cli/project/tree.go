@@ -24,15 +24,28 @@ func TreeCmd() *cobra.Command {
 		Short: "Display tasks in a tree structure",
 		Long: `Display all tasks in a project as a hierarchical tree structure.
 Subtasks are indented under their parent tasks. Blocking relationships
-are highlighted in red to show the blocking chain.`,
+are highlighted in red to show the blocking chain.
+
+Examples:
+  # Using positional argument
+  paso project tree 1
+
+  # Using shorthand flag
+  paso project tree -p 1
+
+  # JSON output
+  paso project tree 1 -j
+
+  # Long-form flags also supported
+  paso project tree --project=1 --json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: runTree,
 	}
 
 	// Flags
-	cmd.Flags().Int("project", 0, "Project ID (uses git branch association if not specified)")
-	cmd.Flags().Bool("json", false, "Output in JSON format")
-	cmd.Flags().Bool("quiet", false, "Minimal output (IDs with relation labels in tree order)")
+	cmd.Flags().IntP("project", "p", 0, "Project ID (uses git branch association if not specified)")
+	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (IDs with relation labels in tree order)")
 
 	return cmd
 }
