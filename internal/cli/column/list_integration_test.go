@@ -4,12 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
+
+// stripANSI removes ANSI escape codes from a string
+func stripANSI(str string) string {
+	ansiRegex := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	return ansiRegex.ReplaceAllString(str, "")
+}
 
 func TestListColumns_Positive(t *testing.T) {
 	// Setup test DB and App
@@ -54,11 +61,24 @@ func TestListColumns_Positive(t *testing.T) {
 		})
 
 		assert.NoError(t, err)
-		assert.Contains(t, output, "Columns in project 'Test Project':")
+
+		// Strip ANSI codes for easier assertions
+		cleanOutput := stripANSI(output)
+
+		// Verify table headers are present
+		assert.Contains(t, cleanOutput, "ID")
+		assert.Contains(t, cleanOutput, "NAME")
+		assert.Contains(t, cleanOutput, "TYPE")
+
 		// Default columns created with project: Todo, In Progress, Done
-		assert.Contains(t, output, "Todo")
-		assert.Contains(t, output, "In Progress")
-		assert.Contains(t, output, "Done")
+		assert.Contains(t, cleanOutput, "Todo")
+		assert.Contains(t, cleanOutput, "In Progress")
+		assert.Contains(t, cleanOutput, "Done")
+
+		// Verify type flags appear in output
+		assert.Contains(t, output, "[READY]")
+		assert.Contains(t, output, "[IN-PROGRESS]")
+		assert.Contains(t, output, "[COMPLETED]")
 	})
 
 	t.Run("List columns with JSON output", func(t *testing.T) {
@@ -157,21 +177,24 @@ func TestListColumns_Positive(t *testing.T) {
 
 		assert.NoError(t, err)
 
-		// Verify columns appear in order with position numbers
-		firstPos := strings.Index(output, "1. First")
-		secondPos := strings.Index(output, "2. Second")
-		thirdPos := strings.Index(output, "3. Third")
+		// Strip ANSI codes for easier assertions
+		cleanOutput := stripANSI(output)
 
-		assert.Greater(t, firstPos, -1)
-		assert.Greater(t, secondPos, -1)
-		assert.Greater(t, thirdPos, -1)
-		assert.Less(t, firstPos, secondPos)
-		assert.Less(t, secondPos, thirdPos)
+		// Verify columns appear in order in the table
+		firstPos := strings.Index(cleanOutput, "First")
+		secondPos := strings.Index(cleanOutput, "Second")
+		thirdPos := strings.Index(cleanOutput, "Third")
 
-		// Verify column IDs appear in output
-		assert.Contains(t, output, fmt.Sprintf("ID: %d", column1ID))
-		assert.Contains(t, output, fmt.Sprintf("ID: %d", column2ID))
-		assert.Contains(t, output, fmt.Sprintf("ID: %d", column3ID))
+		assert.Greater(t, firstPos, -1, "First column should appear in output")
+		assert.Greater(t, secondPos, -1, "Second column should appear in output")
+		assert.Greater(t, thirdPos, -1, "Third column should appear in output")
+		assert.Less(t, firstPos, secondPos, "First should appear before Second")
+		assert.Less(t, secondPos, thirdPos, "Second should appear before Third")
+
+		// Verify column IDs appear in the table
+		assert.Contains(t, cleanOutput, fmt.Sprintf("%d", column1ID))
+		assert.Contains(t, cleanOutput, fmt.Sprintf("%d", column2ID))
+		assert.Contains(t, cleanOutput, fmt.Sprintf("%d", column3ID))
 	})
 
 	t.Run("List columns with column flags set", func(t *testing.T) {
@@ -285,14 +308,18 @@ func TestListColumns_Positive(t *testing.T) {
 		})
 
 		assert.NoError(t, err)
-		assert.Contains(t, output, "Columns in project 'Second Project':")
-		assert.Contains(t, output, "Custom1")
-		assert.Contains(t, output, "Custom2")
 
-		// Verify first project's columns are NOT in the output
-		assert.NotContains(t, output, "Todo")
-		assert.NotContains(t, output, "In Progress")
-		assert.NotContains(t, output, "Done")
+		// Strip ANSI codes for easier assertions
+		cleanOutput := stripANSI(output)
+
+		// Verify second project's columns appear in table
+		assert.Contains(t, cleanOutput, "Custom1")
+		assert.Contains(t, cleanOutput, "Custom2")
+
+		// Verify first project's columns are NOT in the output (project isolation)
+		assert.NotContains(t, cleanOutput, "Todo")
+		assert.NotContains(t, cleanOutput, "In Progress")
+		assert.NotContains(t, cleanOutput, "Done")
 	})
 
 	t.Run("List columns with all flag combinations", func(t *testing.T) {
