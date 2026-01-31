@@ -36,7 +36,7 @@ func ListCmd() *cobra.Command {
 					})
 				}
 				fmt.Println("No databases configured")
-				fmt.Println("Use 'paso db connect' to add a database")
+				fmt.Println("Use 'paso db add' to add a database")
 				return nil
 			}
 

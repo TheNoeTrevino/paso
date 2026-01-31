@@ -7,29 +7,24 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/database"
 )
 
 func ConnectCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "connect",
-		Short: "Add a database connection",
-		Long: `Add a new database connection to paso.
+		Use:   "connect <name>",
+		Short: "Switch to a saved database connection",
+		Long: `Switch the active database to a previously saved connection and verify connectivity.
 
 Examples:
-  # Add a remote PostgreSQL database
-  paso db connect --remote "postgresql://user:pass@host:5432/dbname" --name cloud
+  # Connect to a saved database
+  paso db connect cloud
 
-  # Add a local SQLite database
-  paso db connect --local ~/.paso/tasks.db --name local
+  # Connect with JSON output
+  paso db connect local --json
 `,
+		Args: cobra.ExactArgs(1),
 		RunE: runConnect,
-	}
-
-	cmd.Flags().String("remote", "", "Remote PostgreSQL connection URL")
-	cmd.Flags().String("local", "", "Local SQLite database path")
-	cmd.Flags().String("name", "", "Name for this connection (required)")
-	if err := cmd.MarkFlagRequired("name"); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to mark flag as required: %v\n", err)
 	}
 
 	cmd.Flags().Bool("json", false, "Output in JSON format")
@@ -39,36 +34,26 @@ Examples:
 }
 
 func runConnect(cmd *cobra.Command, args []string) error {
-	remote, _ := cmd.Flags().GetString("remote")
-	local, _ := cmd.Flags().GetString("local")
-	name, _ := cmd.Flags().GetString("name")
+	name := args[0]
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quiet, _ := cmd.Flags().GetBool("quiet")
-
-	if remote == "" && local == "" {
-		return fmt.Errorf("either --remote or --local must be provided")
-	}
-	if remote != "" && local != "" {
-		return fmt.Errorf("cannot specify both --remote and --local")
-	}
-
-	var connStr, dbType string
-	if remote != "" {
-		connStr = remote
-		dbType = "postgres"
-	} else {
-		connStr = local
-		dbType = "sqlite"
-	}
 
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if err := cfg.AddDatabase(name, connStr, dbType); err != nil {
-		return fmt.Errorf("failed to add database: %w", err)
+	db := cfg.GetDatabase(name)
+	if db == nil {
+		return fmt.Errorf("database '%s' not found. Use 'paso db list' to see available databases", name)
 	}
+
+	if err := cfg.SetActiveDatabase(name); err != nil {
+		return fmt.Errorf("failed to switch database: %w", err)
+	}
+
+	pingErr := database.TestConnection(db.ConnectionString, database.DatabaseType(db.Type))
+	connected := pingErr == nil
 
 	if quiet {
 		fmt.Println(name)
@@ -77,13 +62,27 @@ func runConnect(cmd *cobra.Command, args []string) error {
 
 	if jsonOutput {
 		return json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"success": true,
-			"name":    name,
-			"type":    dbType,
-			"message": fmt.Sprintf("Database '%s' added successfully", name),
+			"success":   true,
+			"name":      name,
+			"type":      db.Type,
+			"connected": connected,
+			"message":   formatConnectMessage(name, connected),
 		})
 	}
 
-	fmt.Printf("Database '%s' added successfully\n", name)
+	if connected {
+		fmt.Printf("✓ Connected to '%s'\n", name)
+	} else {
+		fmt.Printf("✓ Switched to '%s'\n", name)
+		fmt.Fprintf(os.Stderr, "⚠ Connection test failed: %v\n", pingErr)
+	}
+
 	return nil
+}
+
+func formatConnectMessage(name string, connected bool) string {
+	if connected {
+		return fmt.Sprintf("Connected to '%s'", name)
+	}
+	return fmt.Sprintf("Switched to '%s' (connection test failed)", name)
 }

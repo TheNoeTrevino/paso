@@ -8,9 +8,9 @@ func DbCmd() *cobra.Command {
 		Short: "Manage database connections",
 	}
 
+	cmd.AddCommand(AddCmd())
 	cmd.AddCommand(ConnectCmd())
 	cmd.AddCommand(ListCmd())
-	cmd.AddCommand(UseCmd())
 	cmd.AddCommand(RemoveCmd())
 
 	return cmd
