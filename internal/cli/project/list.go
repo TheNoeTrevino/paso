@@ -112,16 +112,14 @@ func runList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Define colors
-	greenColor := lipgloss.Color(cfg.ColorScheme.Create)  // Green for current branch
-	cyanColor := lipgloss.Color("#00CED1")                // Cyan for worktree
-	normalColor := lipgloss.Color(cfg.ColorScheme.Normal) // Normal text
-	subtleColor := lipgloss.Color(cfg.ColorScheme.Subtle) // For dash when no branch
-	headerColor := lipgloss.Color(cfg.ColorScheme.Accent) // Header color
+	greenColor := lipgloss.Color(cfg.ColorScheme.Create)
+	cyanColor := lipgloss.Color("#00CED1")
+	normalColor := lipgloss.Color(cfg.ColorScheme.Normal)
+	subtleColor := lipgloss.Color(cfg.ColorScheme.Subtle)
+	headerColor := lipgloss.Color(cfg.ColorScheme.Accent)
 
-	// Build table data
 	var rows [][]string
-	projectRowMarkers := make(map[int]string) // row index -> marker type
+	projectRowMarkers := make(map[int]string)
 
 	for i, p := range projects {
 		marker := "  "
@@ -143,32 +141,28 @@ func runList(cmd *cobra.Command, args []string) error {
 		projectRowMarkers[i] = marker
 	}
 
-	// Create table with styling
 	baseStyle := lipgloss.NewStyle().Padding(0, 1)
 	headerStyle := baseStyle.Bold(true).Foreground(headerColor)
 
-	t := table.New().
+	tbl := table.New().
 		Border(lipgloss.RoundedBorder()).
 		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("238"))).
 		Headers("", "ID", "NAME", "BRANCH").
 		Rows(rows...).
 		StyleFunc(func(row, col int) lipgloss.Style {
-			// Header row
 			if row == table.HeaderRow {
 				return headerStyle
 			}
 
 			marker := projectRowMarkers[row]
 
-			// Marker column (col 0) and Branch column (col 3)
 			if col == 0 || col == 3 {
 				switch marker {
-				case "* ": // Current branch - green
+				case "* ":
 					return baseStyle.Foreground(greenColor)
-				case "+ ": // Worktree - cyan
+				case "+ ":
 					return baseStyle.Foreground(cyanColor)
 				default:
-					// For branch column with "-", use subtle color
 					if col == 3 {
 						rowData := rows[row]
 						if rowData[3] == "-" {
@@ -179,11 +173,9 @@ func runList(cmd *cobra.Command, args []string) error {
 				}
 			}
 
-			// Other columns - normal color
 			return baseStyle.Foreground(normalColor)
 		})
 
-	fmt.Println(t)
-
+	fmt.Println(tbl)
 	return nil
 }

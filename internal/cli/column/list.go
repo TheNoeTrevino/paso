@@ -5,9 +5,14 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
+	"strings"
 
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/table"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/models"
 )
 
 // ListCmd returns the column list subcommand
@@ -126,19 +131,66 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fmt.Printf("Columns in project '%s':\n", project.Name)
-	for i, col := range columns {
-		flags := ""
-		if col.HoldsReadyTasks {
-			flags += " [READY]"
-		}
-		if col.HoldsInProgressTasks {
-			flags += " [IN-PROGRESS]"
-		}
-		if col.HoldsCompletedTasks {
-			flags += " [COMPLETED]"
-		}
-		fmt.Printf("  %d. %s%s (ID: %d)\n", i+1, col.Name, flags, col.ID)
+	baseStyle := lipgloss.NewStyle().Padding(0, 1)
+	headerStyle := baseStyle.Bold(true).Foreground(lipgloss.Color("252"))
+
+	var rows [][]string
+	for _, col := range columns {
+		rows = append(rows, []string{
+			strconv.Itoa(col.ID),
+			col.Name,
+			renderTypeFlags(col),
+		})
 	}
+
+	tbl := table.New().
+		Border(lipgloss.RoundedBorder()).
+		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("238"))).
+		Headers("ID", "NAME", "TYPE").
+		Rows(rows...).
+		StyleFunc(func(row, col int) lipgloss.Style {
+			if row == table.HeaderRow {
+				return headerStyle
+			}
+
+			even := row%2 == 0
+			if even {
+				return baseStyle.Foreground(lipgloss.Color("245"))
+			}
+			return baseStyle.Foreground(lipgloss.Color("252"))
+		})
+
+	fmt.Println(tbl)
 	return nil
+}
+
+func renderTypeFlags(col *models.Column) string {
+	var parts []string
+
+	if col.HoldsReadyTasks {
+		styled := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#00E2C7")).
+			Render("[READY]")
+		parts = append(parts, styled)
+	}
+	if col.HoldsInProgressTasks {
+		styled := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#FFAB40")).
+			Render("[IN-PROGRESS]")
+		parts = append(parts, styled)
+	}
+	if col.HoldsCompletedTasks {
+		styled := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#64B5F6")).
+			Render("[COMPLETED]")
+		parts = append(parts, styled)
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.Join(parts, " ")
 }

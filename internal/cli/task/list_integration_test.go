@@ -3,6 +3,7 @@ package task
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -10,6 +11,12 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
+
+// stripANSI removes ANSI escape codes from a string
+func stripANSI(str string) string {
+	ansiRegex := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	return ansiRegex.ReplaceAllString(str, "")
+}
 
 func TestListTask_Positive(t *testing.T) {
 	// Setup test DB and App
@@ -38,10 +45,22 @@ func TestListTask_Positive(t *testing.T) {
 		})
 
 		assert.NoError(t, err)
-		assert.Contains(t, output, "Found 3 tasks")
-		assert.Contains(t, output, "Task 1")
-		assert.Contains(t, output, "Task 2")
-		assert.Contains(t, output, "Task 3")
+
+		// Strip ANSI codes for easier assertions
+		cleanOutput := stripANSI(output)
+
+		// Verify table headers are present
+		assert.Contains(t, cleanOutput, "ID")
+		assert.Contains(t, cleanOutput, "TITLE")
+		assert.Contains(t, cleanOutput, "TYPE")
+		assert.Contains(t, cleanOutput, "PRIORITY")
+		assert.Contains(t, cleanOutput, "LABELS")
+		assert.Contains(t, cleanOutput, "STATUS")
+
+		// Verify all tasks appear in the table
+		assert.Contains(t, cleanOutput, "Task 1")
+		assert.Contains(t, cleanOutput, "Task 2")
+		assert.Contains(t, cleanOutput, "Task 3")
 	})
 
 	t.Run("List tasks quiet mode", func(t *testing.T) {

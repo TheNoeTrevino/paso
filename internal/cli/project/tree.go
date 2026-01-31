@@ -6,8 +6,9 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
-	"strings"
 
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/tree"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/styles"
@@ -36,13 +37,13 @@ Examples:
   paso project tree 1 -j
 
   # Long-form flags also supported
-  paso project tree --project-id=1 --json`,
+  paso project tree --project=1 --json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: runTree,
 	}
 
 	// Flags
-	cmd.Flags().IntP("project-id", "p", 0, "Project ID (can also be provided as positional argument)")
+	cmd.Flags().IntP("project", "p", 0, "Project ID (uses git branch association if not specified)")
 	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
 	cmd.Flags().BoolP("quiet", "q", false, "Minimal output (IDs with relation labels in tree order)")
 
@@ -52,31 +53,10 @@ Examples:
 func runTree(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
-	var projectID int
-	if len(args) > 0 {
-		var err error
-		projectID, err = strconv.Atoi(args[0])
-		if err != nil {
-			projectID = 0
-		}
-	} else {
-		// TODO: chore and handle the never existent error
-		projectID, _ = cmd.Flags().GetInt("project-id")
-	}
-
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
-
-	if projectID <= 0 {
-		if fmtErr := formatter.ErrorWithSuggestion("INVALID_PROJECT_ID",
-			"project ID must be a positive integer",
-			"Usage: paso project tree <project-id> or paso project tree --project-id=<id>"); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
-	}
 
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
@@ -90,6 +70,29 @@ func runTree(cmd *cobra.Command, args []string) error {
 			slog.Error("failed to closing CLI", "error", err)
 		}
 	}()
+
+	var projectID int
+	if len(args) > 0 {
+		projectID, err = strconv.Atoi(args[0])
+		if err != nil || projectID <= 0 {
+			if fmtErr := formatter.ErrorWithSuggestion("INVALID_PROJECT_ID",
+				"project ID must be a positive integer",
+				"Usage: paso project tree <project-id> or paso project tree -p <id>"); fmtErr != nil {
+				slog.Error("failed to formatting error message", "error", fmtErr)
+			}
+			os.Exit(cli.ExitUsage)
+		}
+	} else {
+		projectID, err = cli.GetProjectIDWithCLI(cmd, cliInstance)
+		if err != nil {
+			if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
+				err.Error(),
+				"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
+				slog.Error("failed to formatting error message", "error", fmtErr)
+			}
+			os.Exit(cli.ExitUsage)
+		}
+	}
 
 	tree, err := cliInstance.App.TaskService.GetTaskTreeByProject(ctx, projectID)
 	if err != nil {
@@ -163,6 +166,75 @@ func hasIncompleteChild(node *models.TaskTreeNode) bool {
 	return false
 }
 
+// taskNode wraps a TaskTreeNode for lipgloss tree rendering
+type taskNode struct {
+	node   *models.TaskTreeNode
+	colors colors.ColorScheme
+	isRoot bool
+}
+
+func (t taskNode) String() string {
+	shouldDim := t.node.IsCompleted && !hasIncompleteChild(t.node)
+
+	if t.isRoot {
+		color := t.colors.Title
+		if shouldDim {
+			color = styles.DimColor(color, styles.CompletedDimIntensity)
+		}
+		return lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(color)).
+			Render(fmt.Sprintf("%d: %s - %s", t.node.TicketNumber, t.node.Title, t.node.ColumnName))
+	}
+
+	textColor := t.colors.Normal
+	if t.node.IsBlocking {
+		textColor = t.colors.ErrorFg
+	}
+	if shouldDim {
+		textColor = styles.DimColor(textColor, styles.CompletedDimIntensity)
+	}
+
+	ticketStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(textColor))
+	relationStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color(textColor)).
+		Bold(t.node.IsBlocking)
+	titleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(textColor))
+
+	ticketNum := ticketStyle.Render(fmt.Sprintf("%d: ", t.node.TicketNumber))
+	relationChip := relationStyle.Render(t.node.RelationLabel)
+	titleInfo := titleStyle.Render(fmt.Sprintf(" %s - %s", t.node.Title, t.node.ColumnName))
+
+	return fmt.Sprintf("%s%s%s", ticketNum, relationChip, titleInfo)
+}
+
+// buildTaskTrees converts a slice of TaskTreeNodes to lipgloss trees (one per root)
+func buildTaskTrees(nodes []*models.TaskTreeNode, clrs colors.ColorScheme) []*tree.Tree {
+	trees := make([]*tree.Tree, 0, len(nodes))
+
+	for _, node := range nodes {
+		rootNode := taskNode{node: node, colors: clrs, isRoot: true}
+		t := tree.Root(rootNode)
+		addChildren(t, node.Children, clrs)
+		trees = append(trees, t)
+	}
+
+	return trees
+}
+
+func addChildren(parent *tree.Tree, children []*models.TaskTreeNode, clrs colors.ColorScheme) {
+	for _, child := range children {
+		childNode := taskNode{node: child, colors: clrs, isRoot: false}
+		if len(child.Children) > 0 {
+			subtree := tree.Root(childNode)
+			addChildren(subtree, child.Children, clrs)
+			parent.Child(subtree)
+		} else {
+			parent.Child(childNode)
+		}
+	}
+}
+
 // outputQuietTree outputs the tree in quiet mode (IDs with relation labels)
 func outputQuietTree(nodes []*models.TaskTreeNode, prefix string, isRoot bool) {
 	for i, node := range nodes {
@@ -225,7 +297,7 @@ func outputJSONTree(projectID int, tree []*models.TaskTreeNode) error {
 	})
 }
 
-func outputStyledTree(tree []*models.TaskTreeNode) error {
+func outputStyledTree(taskTree []*models.TaskTreeNode) error {
 	cfg, err := config.Load()
 	if err != nil {
 		cfg = &config.Config{
@@ -235,53 +307,28 @@ func outputStyledTree(tree []*models.TaskTreeNode) error {
 
 	styles.Init(cfg.ColorScheme)
 
-	var output strings.Builder
-	renderTreeNodes(&output, tree, nil, true, cfg.ColorScheme)
+	enumeratorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(cfg.ColorScheme.Subtle))
+	styledIndenter := makeStyledIndenter(cfg.ColorScheme.Subtle)
+	trees := buildTaskTrees(taskTree, cfg.ColorScheme)
 
-	fmt.Print(output.String())
+	for _, t := range trees {
+		t.Enumerator(tree.RoundedEnumerator).
+			EnumeratorStyle(enumeratorStyle).
+			Indenter(styledIndenter)
+		fmt.Println(t)
+	}
 	return nil
 }
 
-// ancestorState tracks whether an ancestor was last and in blocking path
-type ancestorState struct {
-	isLast         bool
-	inBlockingPath bool
-}
+func makeStyledIndenter(color string) tree.Indenter {
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color(color))
+	styledVertical := style.Render("│") + "  "
+	spaces := "   "
 
-// renderPrefix renders the accumulated prefix from ancestor states. will dim if shouldDim
-func renderPrefix(ancestors []ancestorState, shouldDim bool, colors colors.ColorScheme) string {
-	var prefix strings.Builder
-	for _, a := range ancestors {
-		if a.isLast {
-			prefix.WriteString(styles.TreeSpace)
-		} else {
-			prefix.WriteString(styles.RenderTreeVertical(a.inBlockingPath, shouldDim, colors))
+	return func(children tree.Children, index int) string {
+		if children.Length()-1 == index {
+			return spaces
 		}
-	}
-	return prefix.String()
-}
-
-// recursive
-func renderTreeNodes(output *strings.Builder, nodes []*models.TaskTreeNode, ancestors []ancestorState, isRoot bool, colors colors.ColorScheme) {
-	for i, node := range nodes {
-		isLast := i == len(nodes)-1
-		shouldDim := node.IsCompleted && !hasIncompleteChild(node)
-
-		if isRoot {
-			line := styles.RenderTreeRootTask(node.TicketNumber, node.Title, node.ColumnName, shouldDim, colors)
-			output.WriteString(line + "\n")
-			renderTreeNodes(output, node.Children, nil, false, colors)
-			continue
-		}
-
-		prefix := renderPrefix(ancestors, shouldDim, colors)
-		line := styles.RenderTreeChildLine(prefix, isLast, node, shouldDim, colors)
-		output.WriteString(line + "\n")
-
-		childAncestors := append(ancestors, ancestorState{
-			isLast:         isLast,
-			inBlockingPath: node.InBlockingPath,
-		})
-		renderTreeNodes(output, node.Children, childAncestors, false, colors)
+		return styledVertical
 	}
 }
