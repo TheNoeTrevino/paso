@@ -11,7 +11,6 @@ import (
 
 // TestModeDispatch_TaskFormMode ensures form mode intercepts all messages.
 // Edge case: When in TicketFormMode, ALL messages should go to updateTaskForm.
-// Security value: Form receives input correctly (keyboard events reach form handler).
 func TestModeDispatch_TaskFormMode(t *testing.T) {
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	m := setupTestModel(columns, nil)
@@ -43,7 +42,6 @@ func TestModeDispatch_TaskFormMode(t *testing.T) {
 
 // TestModeDispatch_NormalMode ensures normal mode routes to handlers.
 // Edge case: KeyMsg in NormalMode should go to handleKeyMsg dispatcher.
-// Security value: Correct handler called (navigation, add task, etc.).
 func TestModeDispatch_NormalMode(t *testing.T) {
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
@@ -111,7 +109,6 @@ func TestUpdateTaskForm_EscapeCancels(t *testing.T) {
 
 // TestUpdateTaskForm_EmptyTitleNoOp ensures empty title doesn't create task.
 // Edge case: Form submitted with empty title.
-// Security value: Data validation (prevents empty task titles in database).
 // Note: This test documents expected behavior - actual validation happens in update.go:124
 func TestUpdateTaskForm_EmptyTitleNoOp(t *testing.T) {
 	// This test requires the form to actually complete, which is complex
@@ -126,5 +123,4 @@ func TestUpdateTaskForm_EmptyTitleNoOp(t *testing.T) {
 
 	t.Log("Empty title validation exists in update.go")
 	t.Log("Validation: strings.TrimSpace(title) != \"\" before database write")
-	t.Log("Security value: Prevents empty task titles in database")
 }

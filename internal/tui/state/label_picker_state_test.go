@@ -8,7 +8,6 @@ import (
 
 // TestGetFilteredItems_EmptyFilter ensures no filter returns all items.
 // Edge case: User hasn't typed any filter text yet.
-// Security value: Baseline behavior - filter is optional functionality.
 func TestGetFilteredItems_EmptyFilter(t *testing.T) {
 	state := NewLabelPickerState()
 	state.Items = []LabelPickerItem{
@@ -25,7 +24,6 @@ func TestGetFilteredItems_EmptyFilter(t *testing.T) {
 
 // TestGetFilteredItems_NoMatches ensures filter matching nothing returns empty result.
 // Edge case: User's filter text doesn't match any labels.
-// Security value: Returns nil slice (safe to iterate in Go - len(nil) = 0).
 func TestGetFilteredItems_NoMatches(t *testing.T) {
 	state := NewLabelPickerState()
 	state.Items = []LabelPickerItem{
@@ -44,7 +42,6 @@ func TestGetFilteredItems_NoMatches(t *testing.T) {
 
 // TestGetFilteredItems_CaseInsensitive ensures "BUG" matches "bug" label.
 // Edge case: User types filter in different case than label name.
-// Security value: Matches user expectation (search should be case-insensitive).
 func TestGetFilteredItems_CaseInsensitive(t *testing.T) {
 	state := NewLabelPickerState()
 	state.Items = []LabelPickerItem{
@@ -75,7 +72,6 @@ func TestGetFilteredItems_CaseInsensitive(t *testing.T) {
 
 // TestMoveCursorDown_EmptyItems ensures cursor movement with no labels is safe.
 // Edge case: User navigates in label picker with zero labels.
-// Security value: Cursor stays at 0 (doesn't go negative or out of bounds).
 func TestMoveCursorDown_EmptyItems(t *testing.T) {
 	state := NewLabelPickerState()
 	state.Items = []LabelPickerItem{} // No items
@@ -93,7 +89,6 @@ func TestMoveCursorDown_EmptyItems(t *testing.T) {
 
 // TestMoveCursorDown_AtMax ensures cursor at last item doesn't move beyond.
 // Edge case: User presses down when cursor is at bottom.
-// Security value: No movement beyond end (prevents out of bounds access).
 func TestMoveCursorDown_AtMax(t *testing.T) {
 	state := NewLabelPickerState()
 	state.Items = []LabelPickerItem{
@@ -115,7 +110,6 @@ func TestMoveCursorDown_AtMax(t *testing.T) {
 
 // TestCursorAdjustment_FilterReducesList ensures cursor repositions when filter shrinks list.
 // Edge case: User types filter that reduces list to fewer items than cursor position.
-// Security value: Cursor repositions to valid index (prevents out of bounds).
 // Note: This is a behavioral test - actual adjustment happens in update.go, not in state.
 func TestCursorAdjustment_FilterReducesList(t *testing.T) {
 	state := NewLabelPickerState()
@@ -145,7 +139,6 @@ func TestCursorAdjustment_FilterReducesList(t *testing.T) {
 
 // TestAppendFilter_MaxLength ensures filter at 50 chars rejects more input.
 // Edge case: User types continuously until reaching filter limit.
-// Security value: Prevents excessive memory use in filter string.
 func TestAppendFilter_MaxLength(t *testing.T) {
 	state := NewLabelPickerState()
 
@@ -167,7 +160,6 @@ func TestAppendFilter_MaxLength(t *testing.T) {
 
 // TestBackspaceFilter_Empty ensures backspace on empty filter is safe.
 // Edge case: User presses backspace when filter is already empty.
-// Security value: No-op, no crash (no string slice underflow).
 func TestBackspaceFilter_Empty(t *testing.T) {
 	state := NewLabelPickerState()
 	state.Filter = ""

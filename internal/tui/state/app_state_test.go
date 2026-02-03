@@ -8,7 +8,6 @@ import (
 
 // TestGetCurrentProject_EmptyProjects ensures project access with no projects returns nil.
 // Edge case: Application startup with no projects in database.
-// Security value: Prevents nil pointer dereference.
 func TestGetCurrentProject_EmptyProjects(t *testing.T) {
 	state := NewAppState(
 		[]*models.Project{}, // Empty projects
@@ -26,7 +25,6 @@ func TestGetCurrentProject_EmptyProjects(t *testing.T) {
 
 // TestGetCurrentProject_InvalidIndex ensures project access with out-of-bounds index returns nil.
 // Edge case: Corrupted state with invalid selectedProject index.
-// Security value: Prevents index out of bounds panic.
 func TestGetCurrentProject_InvalidIndex(t *testing.T) {
 	projects := []*models.Project{
 		{ID: 1, Name: "Project 1"},
@@ -59,7 +57,6 @@ func TestGetCurrentProject_InvalidIndex(t *testing.T) {
 
 // TestGetCurrentProjectID_NilProject ensures project ID returns 0 when no project selected.
 // Edge case: GetCurrentProject() returns nil.
-// Security value: Returns safe default (0) instead of panicking.
 func TestGetCurrentProjectID_NilProject(t *testing.T) {
 	// Empty projects -> GetCurrentProject returns nil
 	state := NewAppState([]*models.Project{}, 0, nil, nil, nil)
@@ -80,7 +77,6 @@ func TestGetCurrentProjectID_NilProject(t *testing.T) {
 
 // TestNewAppState_NilTasks ensures constructor initializes nil tasks map to empty map.
 // Edge case: Constructor called with nil tasks map.
-// Security value: Prevents nil map write panic (assigning to nil map causes panic).
 func TestNewAppState_NilTasks(t *testing.T) {
 	// Pass nil for tasks map
 	state := NewAppState(nil, 0, nil, nil, nil)
@@ -131,7 +127,6 @@ func TestGetColumnByID_ValidColumn(t *testing.T) {
 
 // TestGetColumnByID_InvalidColumn ensures lookup for non-existent column returns nil.
 // Edge case: Querying for a column ID that doesn't exist.
-// Security value: Prevents nil pointer dereference.
 func TestGetColumnByID_InvalidColumn(t *testing.T) {
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo"},
@@ -149,7 +144,6 @@ func TestGetColumnByID_InvalidColumn(t *testing.T) {
 
 // TestGetColumnByID_EmptyColumns ensures lookup with no columns returns nil.
 // Edge case: Application state with no columns loaded.
-// Security value: Prevents nil pointer dereference.
 func TestGetColumnByID_EmptyColumns(t *testing.T) {
 	state := NewAppState(nil, 0, []*models.Column{}, nil, nil)
 

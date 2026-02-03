@@ -16,7 +16,6 @@ func makeTestDetail(id int) *models.TaskDetail {
 
 // TestNewTaskDetailCache_DefaultSize ensures default cache size is used for invalid maxSize.
 // Edge case: User provides zero or negative maxSize.
-// Security value: Prevents zero-capacity cache that would always evict.
 func TestNewTaskDetailCache_DefaultSize(t *testing.T) {
 	tests := []struct {
 		name     string

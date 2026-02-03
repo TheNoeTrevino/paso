@@ -6,7 +6,6 @@ import (
 
 // TestCalculateViewportSize_ZeroWidth ensures viewport defaults to minimum (3) when terminal width is 0.
 // Edge case: Terminal not fully initialized yet.
-// Security value: Prevents division by zero or negative viewport size.
 func TestCalculateViewportSize_ZeroWidth(t *testing.T) {
 	state := NewUIState()
 	state.SetWidth(0)
@@ -19,7 +18,6 @@ func TestCalculateViewportSize_ZeroWidth(t *testing.T) {
 
 // TestCalculateViewportSize_NarrowTerminal ensures viewport is at least 1 even with very small width.
 // Edge case: User has extremely narrow terminal (< column width).
-// Security value: Ensures minimum viewport of 1 column (prevents zero-column state).
 func TestCalculateViewportSize_NarrowTerminal(t *testing.T) {
 	state := NewUIState()
 
@@ -34,7 +32,6 @@ func TestCalculateViewportSize_NarrowTerminal(t *testing.T) {
 
 // TestScrollViewportLeft_AtBoundary ensures scroll left at offset 0 is a no-op.
 // Edge case: User presses scroll-left when already at leftmost position.
-// Security value: Prevents negative offset (array underflow).
 func TestScrollViewportLeft_AtBoundary(t *testing.T) {
 	state := NewUIState()
 	state.ViewportOffset = 0
@@ -51,7 +48,6 @@ func TestScrollViewportLeft_AtBoundary(t *testing.T) {
 
 // TestScrollViewportRight_AtBoundary ensures scroll right at last column is a no-op.
 // Edge case: User presses scroll-right when viewport shows the last column.
-// Security value: Prevents offset beyond column count.
 func TestScrollViewportRight_AtBoundary(t *testing.T) {
 	state := NewUIState()
 	state.SetWidth(300)      // Large enough for 6 columns
@@ -74,7 +70,6 @@ func TestScrollViewportRight_AtBoundary(t *testing.T) {
 
 // TestAdjustViewportAfterColumnRemoval_EmptyColumns ensures viewport resets when all columns deleted.
 // Edge case: User deletes the last remaining column.
-// Security value: Prevents panic on empty state.
 func TestAdjustViewportAfterColumnRemoval_EmptyColumns(t *testing.T) {
 	state := NewUIState()
 	state.ViewportOffset = 3 // Offset at position 3
@@ -89,7 +84,6 @@ func TestAdjustViewportAfterColumnRemoval_EmptyColumns(t *testing.T) {
 
 // TestEnsureSelectionVisible_SelectionBeyondViewport ensures viewport auto-scrolls to show selection.
 // Edge case: User navigates to column outside current viewport.
-// Security value: Ensures selection always accessible (prevents invisible selection state).
 func TestEnsureSelectionVisible_SelectionBeyondViewport(t *testing.T) {
 	state := NewUIState()
 	state.SetWidth(100) // Width gives 2 calculated columns, but minimum is 3

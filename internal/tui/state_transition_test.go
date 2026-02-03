@@ -9,7 +9,6 @@ import (
 
 // TestModeTransition_NormalToForm verifies mode transitions from NormalMode to form modes.
 // Edge case: User initiates form entry (create task, edit column, etc).
-// Security value: Form state is properly initialized and previous mode is tracked.
 func TestModeTransition_NormalToForm(t *testing.T) {
 	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
 	m.UIState.Mode = state.NormalMode
@@ -29,7 +28,6 @@ func TestModeTransition_NormalToForm(t *testing.T) {
 
 // TestModeTransition_FormToNormal verifies mode transitions from form modes back to NormalMode.
 // Edge case: User cancels or submits form (ESC or Enter).
-// Security value: Form state is properly cleared when returning to normal mode.
 func TestModeTransition_FormToNormal(t *testing.T) {
 	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
 
@@ -49,7 +47,6 @@ func TestModeTransition_FormToNormal(t *testing.T) {
 
 // TestModeTransition_MultipleTransitions verifies sequential mode changes work correctly.
 // Edge case: User enters form, exits, enters picker, exits.
-// Security value: Each transition is independent and mode state is always consistent.
 func TestModeTransition_MultipleTransitions(t *testing.T) {
 	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
 	m.UIState.Mode = state.NormalMode
@@ -74,7 +71,6 @@ func TestModeTransition_MultipleTransitions(t *testing.T) {
 
 // TestSelectedColumn_BoundaryConditions verifies column selection respects boundaries.
 // Edge case: Selection at column 0 (first), at last column, out of bounds.
-// Security value: Selection never results in invalid indices.
 func TestSelectedColumn_BoundaryConditions(t *testing.T) {
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
@@ -105,7 +101,6 @@ func TestSelectedColumn_BoundaryConditions(t *testing.T) {
 
 // TestSelectedTask_UpdatesCorrectly verifies task selection state updates work.
 // Edge case: Task selection at 0, middle, last, and boundary crossing.
-// Security value: Task selection can be updated independently and maintains consistency.
 func TestSelectedTask_UpdatesCorrectly(t *testing.T) {
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	tasks := map[int][]*models.TaskSummary{
@@ -142,7 +137,6 @@ func TestSelectedTask_UpdatesCorrectly(t *testing.T) {
 
 // TestCursorPosition_AtEnd verifies cursor positioning at boundaries.
 // Edge case: Selected indices are at the end of available items.
-// Security value: Boundary checks prevent invalid selections.
 func TestCursorPosition_AtEnd(t *testing.T) {
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
@@ -174,7 +168,6 @@ func TestCursorPosition_AtEnd(t *testing.T) {
 
 // TestEmptyState_HandlesEmptyColumns verifies behavior with no columns.
 // Edge case: Project with no columns created yet.
-// Security value: Empty state doesn't crash, selection defaults to 0.
 func TestEmptyState_HandlesEmptyColumns(t *testing.T) {
 	m := setupTestModel([]*models.Column{}, nil)
 
@@ -192,7 +185,6 @@ func TestEmptyState_HandlesEmptyColumns(t *testing.T) {
 
 // TestEmptyState_HandlesEmptyTasks verifies behavior when selected column has no tasks.
 // Edge case: Column exists but has no tasks yet.
-// Security value: Task selection is safe even when column is empty.
 func TestEmptyState_HandlesEmptyTasks(t *testing.T) {
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo"},
@@ -222,7 +214,6 @@ func TestEmptyState_HandlesEmptyTasks(t *testing.T) {
 
 // TestStateIndependence_ColumnAndTaskSelection verifies column and task selection are independent.
 // Edge case: Changing column doesn't affect task selection value (though task may be out of bounds).
-// Security value: State management is predictable and doesn't have side effects.
 func TestStateIndependence_ColumnAndTaskSelection(t *testing.T) {
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
@@ -249,7 +240,6 @@ func TestStateIndependence_ColumnAndTaskSelection(t *testing.T) {
 
 // TestViewportState_CalculatesCorrectly verifies viewport calculations for column visibility.
 // Edge case: Terminal width changes, viewport must recalculate visible columns.
-// Security value: Viewport calculations don't cause index out of bounds.
 func TestViewportState_CalculatesCorrectly(t *testing.T) {
 	columns := make([]*models.Column, 10)
 	for i := 0; i < 10; i++ {
@@ -292,7 +282,6 @@ func TestViewportState_CalculatesCorrectly(t *testing.T) {
 
 // TestModeUsesLayers verifies that certain modes require layer-based rendering.
 // Edge case: Identifying which modes use layered vs full-screen rendering.
-// Security value: Modes are correctly categorized for rendering system.
 func TestModeUsesLayers(t *testing.T) {
 	tests := []struct {
 		mode       state.Mode

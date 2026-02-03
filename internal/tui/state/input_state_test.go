@@ -7,7 +7,6 @@ import (
 
 // TestAppendChar_MaxLength ensures buffer at 100 chars rejects more input.
 // Edge case: User types continuously until reaching buffer limit.
-// Security value: Prevents buffer overflow (unbounded memory growth).
 func TestAppendChar_MaxLength(t *testing.T) {
 	state := NewInputState()
 
@@ -30,7 +29,6 @@ func TestAppendChar_MaxLength(t *testing.T) {
 
 // TestAppendChar_AtMaxLength ensures exactly at limit, one more char is rejected.
 // Edge case: Boundary condition at exactly maxLength.
-// Security value: Validates buffer overflow protection at exact boundary.
 func TestAppendChar_AtMaxLength(t *testing.T) {
 	state := NewInputState()
 
@@ -56,7 +54,6 @@ func TestAppendChar_AtMaxLength(t *testing.T) {
 
 // TestBackspace_EmptyBuffer ensures backspace on empty string is safe.
 // Edge case: User presses backspace repeatedly when buffer is empty.
-// Security value: Prevents string slice underflow.
 func TestBackspace_EmptyBuffer(t *testing.T) {
 	state := NewInputState()
 	state.Buffer = ""
@@ -82,7 +79,6 @@ func TestBackspace_EmptyBuffer(t *testing.T) {
 
 // TestIsEmpty_WhitespaceOnly ensures detection of whitespace-only input.
 // Edge case: User enters only spaces/tabs, then submits.
-// Security value: Prevents empty column names in database.
 func TestIsEmpty_WhitespaceOnly(t *testing.T) {
 	testCases := []struct {
 		name   string
@@ -114,7 +110,6 @@ func TestIsEmpty_WhitespaceOnly(t *testing.T) {
 
 // TestTrimmedBuffer_LeadingTrailingSpaces ensures input sanitization works.
 // Edge case: User enters text with leading/trailing whitespace.
-// Security value: Clean data for database storage (no accidental whitespace in column names).
 func TestTrimmedBuffer_LeadingTrailingSpaces(t *testing.T) {
 	testCases := []struct {
 		name   string

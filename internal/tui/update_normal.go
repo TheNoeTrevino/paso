@@ -126,25 +126,25 @@ func (m Model) handleShowHelp() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleNavigateLeft() (tea.Model, tea.Cmd) {
-	if m.UIState.SelectedColumn > 0 {
-		m.UIState.SelectedColumn = m.UIState.SelectedColumn - 1
-		m.UIState.SelectedTask = 0
-		m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn)
-		return m, m.triggerDetailPanelPrefetch()
+	if m.UIState.SelectedColumn == 0 {
+		m.UI.Notification.Add(state.LevelInfo, "Already at the first column")
+		return m, nil
 	}
-	m.UI.Notification.Add(state.LevelInfo, "Already at the first column")
-	return m, nil
+	m.UIState.SelectedColumn = m.UIState.SelectedColumn - 1
+	m.UIState.SelectedTask = 0
+	m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn)
+	return m, m.triggerDetailPanelPrefetch()
 }
 
 func (m Model) handleNavigateRight() (tea.Model, tea.Cmd) {
-	if m.UIState.SelectedColumn < len(m.AppState.Columns())-1 {
-		m.UIState.SelectedColumn = m.UIState.SelectedColumn + 1
-		m.UIState.SelectedTask = 0
-		m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn)
-		return m, m.triggerDetailPanelPrefetch()
+	if m.UIState.SelectedColumn >= len(m.AppState.Columns())-1 {
+		m.UI.Notification.Add(state.LevelInfo, "Already at the last column")
+		return m, nil
 	}
-	m.UI.Notification.Add(state.LevelInfo, "Already at the last column")
-	return m, nil
+	m.UIState.SelectedColumn = m.UIState.SelectedColumn + 1
+	m.UIState.SelectedTask = 0
+	m.UIState.EnsureSelectionVisible(m.UIState.SelectedColumn)
+	return m, m.triggerDetailPanelPrefetch()
 }
 
 func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
@@ -162,20 +162,14 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if m.UIState.SelectedTask > 0 {
-		m.UIState.SelectedTask = m.UIState.SelectedTask - 1
-
-		if m.UIState.SelectedColumn < len(m.AppState.Columns()) {
-			currentCol := m.AppState.Columns()[m.UIState.SelectedColumn]
-			columnHeight := m.UIState.ContentHeight()
-			const columnHeightOverhead = 5 // border + header + indicator (vertical)
-			maxTasksVisible := max((columnHeight-columnHeightOverhead)/components.TaskCardHeight, 1)
-			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
-		}
-		return m, m.triggerDetailPanelPrefetch()
+	if m.UIState.SelectedTask == 0 {
+		m.UI.Notification.Add(state.LevelInfo, "Already at the first task")
+		return m, nil
 	}
-	m.UI.Notification.Add(state.LevelInfo, "Already at the first task")
-	return m, nil
+
+	m.UIState.SelectedTask = m.UIState.SelectedTask - 1
+	m.ensureCurrentTaskVisible()
+	return m, m.triggerDetailPanelPrefetch()
 }
 
 func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
@@ -195,46 +189,40 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 	}
 
 	currentTasks := m.getCurrentTasks()
-	if len(currentTasks) > 0 && m.UIState.SelectedTask < len(currentTasks)-1 {
-		m.UIState.SelectedTask = m.UIState.SelectedTask + 1
-
-		if m.UIState.SelectedColumn < len(m.AppState.Columns()) {
-			currentCol := m.AppState.Columns()[m.UIState.SelectedColumn]
-			columnHeight := m.UIState.ContentHeight()
-			const columnHeightOverhead = 5 // border + header + indicator (vertical)
-			maxTasksVisible := max((columnHeight-columnHeightOverhead)/components.TaskCardHeight, 1)
-			m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
+	if len(currentTasks) == 0 || m.UIState.SelectedTask >= len(currentTasks)-1 {
+		if len(currentTasks) > 0 {
+			m.UI.Notification.Add(state.LevelInfo, "Already at the last task")
 		}
-		return m, m.triggerDetailPanelPrefetch()
+		return m, nil
 	}
-	if len(currentTasks) > 0 {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the last task")
-	}
-	return m, nil
+
+	m.UIState.SelectedTask = m.UIState.SelectedTask + 1
+	m.ensureCurrentTaskVisible()
+	return m, m.triggerDetailPanelPrefetch()
 }
 
 func (m Model) handleScrollRight() (tea.Model, tea.Cmd) {
-	if m.UIState.ViewportOffset+m.UIState.ViewportSize() < len(m.AppState.Columns()) {
-		m.UIState.ViewportOffset = m.UIState.ViewportOffset + 1
-		if m.UIState.SelectedColumn < m.UIState.ViewportOffset {
-			m.UIState.SelectedColumn = m.UIState.ViewportOffset
-			m.UIState.SelectedTask = 0
-		}
-	} else {
+	if m.UIState.ViewportOffset+m.UIState.ViewportSize() >= len(m.AppState.Columns()) {
 		m.UI.Notification.Add(state.LevelInfo, "Already at the rightmost view")
+		return m, nil
+	}
+	m.UIState.ViewportOffset = m.UIState.ViewportOffset + 1
+	if m.UIState.SelectedColumn < m.UIState.ViewportOffset {
+		m.UIState.SelectedColumn = m.UIState.ViewportOffset
+		m.UIState.SelectedTask = 0
 	}
 	return m, nil
 }
 
 func (m Model) handleScrollLeft() (tea.Model, tea.Cmd) {
-	if m.UIState.ViewportOffset > 0 {
-		m.UIState.ViewportOffset = m.UIState.ViewportOffset - 1
-		if m.UIState.SelectedColumn >= m.UIState.ViewportOffset+m.UIState.ViewportSize() {
-			m.UIState.SelectedColumn = m.UIState.ViewportOffset + m.UIState.ViewportSize() - 1
-			m.UIState.SelectedTask = 0
-		}
-	} else {
+	if m.UIState.ViewportOffset == 0 {
 		m.UI.Notification.Add(state.LevelInfo, "Already at the leftmost view")
+		return m, nil
+	}
+	m.UIState.ViewportOffset = m.UIState.ViewportOffset - 1
+	if m.UIState.SelectedColumn >= m.UIState.ViewportOffset+m.UIState.ViewportSize() {
+		m.UIState.SelectedColumn = m.UIState.ViewportOffset + m.UIState.ViewportSize() - 1
+		m.UIState.SelectedTask = 0
 	}
 	return m, nil
 }
@@ -360,25 +348,25 @@ func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handlePrevProject() (tea.Model, tea.Cmd) {
-	if m.AppState.SelectedProject() > 0 {
-		newIndex := m.AppState.SelectedProject() - 1
-		slog.Info("navigating to previous project", "current_index", m.AppState.SelectedProject(), "new_index", newIndex)
-		m.switchToProject(newIndex)
-	} else {
+	if m.AppState.SelectedProject() == 0 {
 		m.UI.Notification.Add(state.LevelInfo, "Already at the first project")
+		return m, nil
 	}
-	return m, nil
+	newIndex := m.AppState.SelectedProject() - 1
+	slog.Info("navigating to previous project", "current_index", m.AppState.SelectedProject(), "new_index", newIndex)
+	m.switchToProject(newIndex)
+	return m, m.triggerDetailPanelPrefetch()
 }
 
 func (m Model) handleNextProject() (tea.Model, tea.Cmd) {
-	if m.AppState.SelectedProject() < len(m.AppState.Projects())-1 {
-		newIndex := m.AppState.SelectedProject() + 1
-		slog.Info("navigating to next project", "current_index", m.AppState.SelectedProject(), "new_index", newIndex)
-		m.switchToProject(newIndex)
-	} else {
+	if m.AppState.SelectedProject() >= len(m.AppState.Projects())-1 {
 		m.UI.Notification.Add(state.LevelInfo, "Already at the last project")
+		return m, nil
 	}
-	return m, nil
+	newIndex := m.AppState.SelectedProject() + 1
+	slog.Info("navigating to next project", "current_index", m.AppState.SelectedProject(), "new_index", newIndex)
+	m.switchToProject(newIndex)
+	return m, m.triggerDetailPanelPrefetch()
 }
 
 func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
@@ -523,4 +511,26 @@ func (m *Model) executePrefetch() tea.Cmd {
 	}
 
 	return commands.FetchTaskDetailsCmd(m.App.TaskService, adjacent, cachedIDs)
+}
+
+// ensureCurrentTaskVisible ensures the selected task is visible within the column viewport.
+// Calculates the available space for tasks by subtracting UI overhead (borders, headers, indicators)
+// and scrolls the column viewport if necessary to keep the selected task in view.
+func (m *Model) ensureCurrentTaskVisible() {
+	if m.UIState.SelectedColumn >= len(m.AppState.Columns()) {
+		return
+	}
+
+	currentCol := m.AppState.Columns()[m.UIState.SelectedColumn]
+	columnHeight := m.UIState.ContentHeight()
+
+	const (
+		columnBorderLines    = 2
+		columnHeaderLines    = 2
+		columnIndicatorLines = 1
+		columnHeightOverhead = columnBorderLines + columnHeaderLines + columnIndicatorLines
+	)
+
+	maxTasksVisible := max((columnHeight-columnHeightOverhead)/components.TaskCardHeight, 1)
+	m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
 }
