@@ -2,12 +2,59 @@ package tui
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
+
+// detailPanelVisibleWidth is the minimum terminal width required for the detail panel
+// to be visible during tests. This ensures prefetch behavior is triggered.
+const detailPanelVisibleWidth = 200
+
+// testDBCleanup is a helper to standardize database cleanup in tests.
+func testDBCleanup(t *testing.T, db *sql.DB) {
+	t.Helper()
+	if err := db.Close(); err != nil {
+		t.Errorf("failed to close database: %v", err)
+	}
+}
+
+// setupProjectSwitchTest creates a test model with initialized projects,
+// detail cache, and UI state configured for project switching tests.
+//
+// Parameters:
+//   - t: testing context
+//   - selectedProject: which project index to start at (0-based)
+//
+// Returns configured model and database connection. Caller must register cleanup:
+//
+//	t.Cleanup(func() { testDBCleanup(t, db) })
+func setupProjectSwitchTest(t *testing.T, selectedProject int) (Model, *sql.DB) {
+	t.Helper()
+
+	m, db := SetupTestModelWithDB(t)
+	ctx := context.Background()
+
+	// Load all available projects
+	projects, err := m.App.ProjectService.GetAllProjects(ctx)
+	if err != nil {
+		t.Fatalf("Failed to load projects: %v", err)
+	}
+
+	m.AppState.SetProjects(projects)
+	m.AppState.SetSelectedProject(selectedProject)
+
+	// Initialize detail cache with reasonable size
+	m.DetailCache = state.NewTaskDetailCache(10)
+
+	// Set width to enable detail panel visibility
+	m.UIState.SetWidth(detailPanelVisibleWidth)
+
+	return m, db
+}
 
 // TestHandleNextProject_ClearsCacheAndTriggersPrefetch verifies that switching to the next
 // project clears the detail cache and triggers a prefetch for the new project's tasks.
@@ -16,7 +63,7 @@ import (
 // the detail panel should load the task at the new cursor position (column 0, task 0).
 func TestHandleNextProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 	m, db := SetupTestModelWithDB(t)
-	defer db.Close()
+	t.Cleanup(func() { testDBCleanup(t, db) })
 
 	ctx := context.Background()
 
@@ -44,8 +91,8 @@ func TestHandleNextProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 	firstColID := columns2[0].ID
 	taskID := testutil.CreateTestTask(t, db, firstColID, "Task in Project 2")
 
-	// Set terminal width large enough to show detail panel
-	m.UIState.SetWidth(200) // Large enough for detail panel to be visible
+	// Set terminal width to enable detail panel
+	m.UIState.SetWidth(detailPanelVisibleWidth)
 
 	// Initialize detail cache
 	m.DetailCache = state.NewTaskDetailCache(10)
@@ -126,7 +173,7 @@ func TestHandleNextProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 // the detail panel should load the task at the new cursor position (column 0, task 0).
 func TestHandlePrevProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 	m, db := SetupTestModelWithDB(t)
-	defer db.Close()
+	t.Cleanup(func() { testDBCleanup(t, db) })
 
 	ctx := context.Background()
 
@@ -168,8 +215,8 @@ func TestHandlePrevProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 	firstColID := columns2[0].ID
 	testutil.CreateTestTask(t, db, firstColID, "Task in Project 2")
 
-	// Set terminal width large enough to show detail panel
-	m.UIState.SetWidth(200)
+	// Set terminal width to enable detail panel
+	m.UIState.SetWidth(detailPanelVisibleWidth)
 
 	// Initialize detail cache
 	m.DetailCache = state.NewTaskDetailCache(10)
@@ -225,21 +272,11 @@ func TestHandlePrevProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 // Edge case: User presses } when already at the last project.
 // Security value: No change, no panic, appropriate notification shown.
 func TestHandleNextProject_AtLastProject_NoOp(t *testing.T) {
-	m, db := SetupTestModelWithDB(t)
-	defer db.Close()
+	m, db := setupProjectSwitchTest(t, 0)
+	t.Cleanup(func() { testDBCleanup(t, db) })
 
-	ctx := context.Background()
-
-	// Load all projects (should be just 1 from setup)
-	projects, err := m.App.ProjectService.GetAllProjects(ctx)
-	if err != nil {
-		t.Fatalf("Failed to load projects: %v", err)
-	}
-	m.AppState.SetProjects(projects)
-	m.AppState.SetSelectedProject(len(projects) - 1) // Set to last project
-
-	// Initialize detail cache
-	m.DetailCache = state.NewTaskDetailCache(10)
+	// Position at last project for this edge case test
+	m.AppState.SetSelectedProject(len(m.AppState.Projects()) - 1)
 
 	// Call handleNextProject when already at last project
 	initialProjectIndex := m.AppState.SelectedProject()
@@ -278,21 +315,8 @@ func TestHandleNextProject_AtLastProject_NoOp(t *testing.T) {
 // Edge case: User presses { when already at the first project.
 // Security value: No change, no panic, appropriate notification shown.
 func TestHandlePrevProject_AtFirstProject_NoOp(t *testing.T) {
-	m, db := SetupTestModelWithDB(t)
-	defer db.Close()
-
-	ctx := context.Background()
-
-	// Load all projects (should be just 1 from setup)
-	projects, err := m.App.ProjectService.GetAllProjects(ctx)
-	if err != nil {
-		t.Fatalf("Failed to load projects: %v", err)
-	}
-	m.AppState.SetProjects(projects)
-	m.AppState.SetSelectedProject(0) // Already at first project
-
-	// Initialize detail cache
-	m.DetailCache = state.NewTaskDetailCache(10)
+	m, db := setupProjectSwitchTest(t, 0)
+	t.Cleanup(func() { testDBCleanup(t, db) })
 
 	// Call handlePrevProject when already at first project
 	initialProjectIndex := m.AppState.SelectedProject()
@@ -332,7 +356,7 @@ func TestHandlePrevProject_AtFirstProject_NoOp(t *testing.T) {
 // and triggers prefetch, preventing stale task details from appearing.
 func TestProjectSwitch_MultipleProjectsRoundTrip(t *testing.T) {
 	m, db := SetupTestModelWithDB(t)
-	defer db.Close()
+	t.Cleanup(func() { testDBCleanup(t, db) })
 
 	ctx := context.Background()
 
@@ -372,8 +396,8 @@ func TestProjectSwitch_MultipleProjectsRoundTrip(t *testing.T) {
 		testutil.CreateTestTask(t, db, cols3[0].ID, "Task in Project 3")
 	}
 
-	// Set terminal width large enough to show detail panel
-	m.UIState.SetWidth(200)
+	// Set terminal width to enable detail panel
+	m.UIState.SetWidth(detailPanelVisibleWidth)
 
 	// Initialize detail cache
 	m.DetailCache = state.NewTaskDetailCache(10)

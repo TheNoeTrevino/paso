@@ -268,3 +268,159 @@ func TestHandleScrollRight_SelectionFollows(t *testing.T) {
 		t.Errorf("SelectedTask after scroll adjustment = %d, want 0", m.UIState.SelectedTask)
 	}
 }
+
+// TestHandleNavigateUp_MovesUp ensures up navigation moves from task 1 to task 0.
+// Edge case: User presses 'k' or up arrow at task index 1.
+// Security value: Selection decrements correctly (board view).
+func TestHandleNavigateUp_MovesUp(t *testing.T) {
+	columns := []*models.Column{{ID: 1, Name: "Todo"}}
+	tasks := map[int][]*models.TaskSummary{
+		1: {
+			{ID: 1, Title: "Task 1"},
+			{ID: 2, Title: "Task 2"},
+			{ID: 3, Title: "Task 3"},
+		},
+	}
+	m := setupTestModel(columns, tasks)
+	m.UIState.SelectedColumn = 0
+	m.UIState.SelectedTask = 1 // At second task
+
+	newModel, _ := m.handleNavigateUp()
+	m = newModel.(Model)
+
+	// Should move up to task 0
+	if m.UIState.SelectedTask != 0 {
+		t.Errorf("SelectedTask after navigate up = %d, want 0", m.UIState.SelectedTask)
+	}
+}
+
+// TestHandleNavigateDown_MovesDown ensures down navigation moves from task 0 to task 1.
+// Edge case: User presses 'j' or down arrow at task index 0.
+// Security value: Selection increments correctly (board view).
+func TestHandleNavigateDown_MovesDown(t *testing.T) {
+	columns := []*models.Column{{ID: 1, Name: "Todo"}}
+	tasks := map[int][]*models.TaskSummary{
+		1: {
+			{ID: 1, Title: "Task 1"},
+			{ID: 2, Title: "Task 2"},
+			{ID: 3, Title: "Task 3"},
+		},
+	}
+	m := setupTestModel(columns, tasks)
+	m.UIState.SelectedColumn = 0
+	m.UIState.SelectedTask = 0 // At first task
+
+	newModel, _ := m.handleNavigateDown()
+	m = newModel.(Model)
+
+	// Should move down to task 1
+	if m.UIState.SelectedTask != 1 {
+		t.Errorf("SelectedTask after navigate down = %d, want 1", m.UIState.SelectedTask)
+	}
+}
+
+// TestHandleNavigateLeft_MovesLeft ensures left navigation moves from column 1 to column 0.
+// Edge case: User presses 'h' or left arrow at column index 1.
+// Security value: Selection decrements correctly and task resets.
+func TestHandleNavigateLeft_MovesLeft(t *testing.T) {
+	columns := []*models.Column{
+		{ID: 1, Name: "Col1"},
+		{ID: 2, Name: "Col2"},
+	}
+	m := setupTestModel(columns, nil)
+	m.UIState.SelectedColumn = 1 // At second column
+	m.UIState.SelectedTask = 5   // Some task selected
+
+	newModel, _ := m.handleNavigateLeft()
+	m = newModel.(Model)
+
+	// Should move to column 0
+	if m.UIState.SelectedColumn != 0 {
+		t.Errorf("SelectedColumn after navigate left = %d, want 0", m.UIState.SelectedColumn)
+	}
+
+	// Task selection should reset to 0
+	if m.UIState.SelectedTask != 0 {
+		t.Errorf("SelectedTask after navigate left = %d, want 0 (reset)", m.UIState.SelectedTask)
+	}
+}
+
+// TestHandleScrollRight_AtRightmostView_NoOp ensures scroll right at rightmost view is safe.
+// Edge case: User presses scroll right when viewport is already at the rightmost position.
+// Security value: No change, no panic, notification shown.
+func TestHandleScrollRight_AtRightmostView_NoOp(t *testing.T) {
+	columns := []*models.Column{
+		{ID: 1, Name: "Col1"},
+		{ID: 2, Name: "Col2"},
+		{ID: 3, Name: "Col3"},
+	}
+	m := setupTestModel(columns, nil)
+	m.UIState.SetWidth(100)      // Viewport size will be 2 columns
+	m.UIState.ViewportOffset = 1 // Already showing columns 1-2 (rightmost)
+	m.UIState.SelectedColumn = 1
+
+	newModel, _ := m.handleScrollRight()
+	m = newModel.(Model)
+
+	// Viewport should not have scrolled
+	if m.UIState.ViewportOffset != 1 {
+		t.Errorf("ViewportOffset after scroll right at rightmost = %d, want 1 (no change)", m.UIState.ViewportOffset)
+	}
+
+	// Should set notification
+	if !m.UI.Notification.HasAny() {
+		t.Error("handleScrollRight at rightmost should set notification, but HasAny() = false")
+	}
+}
+
+// TestHandleScrollLeft_MovesLeft ensures scroll left moves viewport offset.
+// Edge case: User presses scroll left when viewport offset is 1.
+// Security value: Viewport offset decrements correctly.
+func TestHandleScrollLeft_MovesLeft(t *testing.T) {
+	columns := []*models.Column{
+		{ID: 1, Name: "Col1"},
+		{ID: 2, Name: "Col2"},
+		{ID: 3, Name: "Col3"},
+		{ID: 4, Name: "Col4"},
+	}
+	m := setupTestModel(columns, nil)
+	m.UIState.SetWidth(100)      // Viewport size will be 2 columns
+	m.UIState.ViewportOffset = 1 // Showing columns 1-2
+	m.UIState.SelectedColumn = 1
+
+	newModel, _ := m.handleScrollLeft()
+	m = newModel.(Model)
+
+	// Viewport should have scrolled left
+	if m.UIState.ViewportOffset != 0 {
+		t.Errorf("ViewportOffset after scroll left = %d, want 0", m.UIState.ViewportOffset)
+	}
+}
+
+// TestHandleScrollLeft_AtLeftmostView_NoOp ensures scroll left at leftmost view is safe.
+// Edge case: User presses scroll left when viewport offset is already 0.
+// Security value: No change, no panic, notification shown.
+func TestHandleScrollLeft_AtLeftmostView_NoOp(t *testing.T) {
+	columns := []*models.Column{
+		{ID: 1, Name: "Col1"},
+		{ID: 2, Name: "Col2"},
+		{ID: 3, Name: "Col3"},
+	}
+	m := setupTestModel(columns, nil)
+	m.UIState.SetWidth(100)      // Viewport size will be 2 columns
+	m.UIState.ViewportOffset = 0 // Already at leftmost
+	m.UIState.SelectedColumn = 0
+
+	newModel, _ := m.handleScrollLeft()
+	m = newModel.(Model)
+
+	// Viewport should not have scrolled
+	if m.UIState.ViewportOffset != 0 {
+		t.Errorf("ViewportOffset after scroll left at leftmost = %d, want 0 (no change)", m.UIState.ViewportOffset)
+	}
+
+	// Should set notification
+	if !m.UI.Notification.HasAny() {
+		t.Error("handleScrollLeft at leftmost should set notification, but HasAny() = false")
+	}
+}
