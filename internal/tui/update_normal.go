@@ -168,25 +168,7 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 	}
 
 	m.UIState.SelectedTask = m.UIState.SelectedTask - 1
-
-	if m.UIState.SelectedColumn < len(m.AppState.Columns()) {
-		currentCol := m.AppState.Columns()[m.UIState.SelectedColumn]
-		columnHeight := m.UIState.ContentHeight()
-
-		// Column height overhead accounts for non-task visual elements:
-		//   - 2 lines for top/bottom borders
-		//   - 2 lines for column title and padding
-		//   - 1 line for selection indicator
-		const (
-			columnBorderLines    = 2
-			columnHeaderLines    = 2
-			columnIndicatorLines = 1
-			columnHeightOverhead = columnBorderLines + columnHeaderLines + columnIndicatorLines
-		)
-
-		maxTasksVisible := max((columnHeight-columnHeightOverhead)/components.TaskCardHeight, 1)
-		m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
-	}
+	m.ensureCurrentTaskVisible()
 	return m, m.triggerDetailPanelPrefetch()
 }
 
@@ -215,25 +197,7 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 	}
 
 	m.UIState.SelectedTask = m.UIState.SelectedTask + 1
-
-	if m.UIState.SelectedColumn < len(m.AppState.Columns()) {
-		currentCol := m.AppState.Columns()[m.UIState.SelectedColumn]
-		columnHeight := m.UIState.ContentHeight()
-
-		// Column height overhead accounts for non-task visual elements:
-		//   - 2 lines for top/bottom borders
-		//   - 2 lines for column title and padding
-		//   - 1 line for selection indicator
-		const (
-			columnBorderLines    = 2
-			columnHeaderLines    = 2
-			columnIndicatorLines = 1
-			columnHeightOverhead = columnBorderLines + columnHeaderLines + columnIndicatorLines
-		)
-
-		maxTasksVisible := max((columnHeight-columnHeightOverhead)/components.TaskCardHeight, 1)
-		m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
-	}
+	m.ensureCurrentTaskVisible()
 	return m, m.triggerDetailPanelPrefetch()
 }
 
@@ -547,4 +511,26 @@ func (m *Model) executePrefetch() tea.Cmd {
 	}
 
 	return commands.FetchTaskDetailsCmd(m.App.TaskService, adjacent, cachedIDs)
+}
+
+// ensureCurrentTaskVisible ensures the selected task is visible within the column viewport.
+// Calculates the available space for tasks by subtracting UI overhead (borders, headers, indicators)
+// and scrolls the column viewport if necessary to keep the selected task in view.
+func (m *Model) ensureCurrentTaskVisible() {
+	if m.UIState.SelectedColumn >= len(m.AppState.Columns()) {
+		return
+	}
+
+	currentCol := m.AppState.Columns()[m.UIState.SelectedColumn]
+	columnHeight := m.UIState.ContentHeight()
+
+	const (
+		columnBorderLines    = 2
+		columnHeaderLines    = 2
+		columnIndicatorLines = 1
+		columnHeightOverhead = columnBorderLines + columnHeaderLines + columnIndicatorLines
+	)
+
+	maxTasksVisible := max((columnHeight-columnHeightOverhead)/components.TaskCardHeight, 1)
+	m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
 }
