@@ -31,7 +31,6 @@ func setupTestModel(columns []*models.Column, tasks map[int][]*models.TaskSummar
 
 // TestHandleNavigateLeft_FirstColumn ensures left navigation at column 0 is safe.
 // Edge case: User presses 'h' or left arrow when already at first column.
-// Security value: No change, no panic (selection stays at 0).
 func TestHandleNavigateLeft_FirstColumn(t *testing.T) {
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
@@ -57,7 +56,6 @@ func TestHandleNavigateLeft_FirstColumn(t *testing.T) {
 
 // TestHandleNavigateRight_LastColumn ensures right navigation at last column is safe.
 // Edge case: User presses 'l' or right arrow when already at final column.
-// Security value: No change, no panic.
 func TestHandleNavigateRight_LastColumn(t *testing.T) {
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
@@ -84,7 +82,6 @@ func TestHandleNavigateRight_LastColumn(t *testing.T) {
 
 // TestHandleNavigateUp_FirstTask ensures up navigation at task 0 is safe.
 // Edge case: User presses 'k' or up arrow when already at first task.
-// Security value: No change, no panic.
 func TestHandleNavigateUp_FirstTask(t *testing.T) {
 	m := setupTestModel(nil, nil)
 	m.UIState.SelectedTask = 0 // Already at first task
@@ -100,7 +97,6 @@ func TestHandleNavigateUp_FirstTask(t *testing.T) {
 
 // TestHandleNavigateDown_LastTask ensures down navigation at final task is safe.
 // Edge case: User presses 'j' or down arrow when at last task in column.
-// Security value: No change, no panic.
 func TestHandleNavigateDown_LastTask(t *testing.T) {
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	tasks := map[int][]*models.TaskSummary{
@@ -125,7 +121,6 @@ func TestHandleNavigateDown_LastTask(t *testing.T) {
 
 // TestHandleNavigateRight_ResetsTaskSelection ensures column change resets task to 0.
 // Edge case: User navigates to different column while task 5 is selected.
-// Security value: Prevents stale task index (new column may have fewer tasks).
 func TestHandleNavigateRight_ResetsTaskSelection(t *testing.T) {
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
@@ -151,7 +146,6 @@ func TestHandleNavigateRight_ResetsTaskSelection(t *testing.T) {
 
 // TestHandleAddTask_NoColumns ensures add task with no columns shows error.
 // Edge case: User presses 'a' when no columns exist.
-// Security value: Shows error, doesn't crash.
 func TestHandleAddTask_NoColumns(t *testing.T) {
 	m := setupTestModel([]*models.Column{}, nil) // No columns
 
@@ -177,7 +171,6 @@ func TestHandleAddTask_NoColumns(t *testing.T) {
 
 // TestHandleEditTask_NoTask ensures edit task with no task selected shows error.
 // Edge case: User presses 'e' when column is empty or no task selected.
-// Security value: Shows error, doesn't crash.
 func TestHandleEditTask_NoTask(t *testing.T) {
 	columns := []*models.Column{{ID: 1, Name: "Empty Column"}}
 	tasks := map[int][]*models.TaskSummary{1: {}} // Empty tasks
@@ -207,7 +200,6 @@ func TestHandleEditTask_NoTask(t *testing.T) {
 
 // TestHandleDeleteTask_NoTask ensures delete task with no task selected shows error.
 // Edge case: User presses 'd' when no task is selected.
-// Security value: Shows error, doesn't crash.
 func TestHandleDeleteTask_NoTask(t *testing.T) {
 	columns := []*models.Column{{ID: 1, Name: "Empty"}}
 	tasks := map[int][]*models.TaskSummary{1: {}}
@@ -235,7 +227,6 @@ func TestHandleDeleteTask_NoTask(t *testing.T) {
 
 // TestHandleScrollRight_SelectionFollows ensures scroll pushes selection into view.
 // Edge case: Viewport scrolls right, pushing selected column out of view.
-// Security value: Selection remains visible (auto-adjusts to viewport).
 func TestHandleScrollRight_SelectionFollows(t *testing.T) {
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
@@ -271,7 +262,6 @@ func TestHandleScrollRight_SelectionFollows(t *testing.T) {
 
 // TestHandleNavigateUp_MovesUp ensures up navigation moves from task 1 to task 0.
 // Edge case: User presses 'k' or up arrow at task index 1.
-// Security value: Selection decrements correctly (board view).
 func TestHandleNavigateUp_MovesUp(t *testing.T) {
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	tasks := map[int][]*models.TaskSummary{
@@ -296,7 +286,6 @@ func TestHandleNavigateUp_MovesUp(t *testing.T) {
 
 // TestHandleNavigateDown_MovesDown ensures down navigation moves from task 0 to task 1.
 // Edge case: User presses 'j' or down arrow at task index 0.
-// Security value: Selection increments correctly (board view).
 func TestHandleNavigateDown_MovesDown(t *testing.T) {
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	tasks := map[int][]*models.TaskSummary{
@@ -321,7 +310,6 @@ func TestHandleNavigateDown_MovesDown(t *testing.T) {
 
 // TestHandleNavigateLeft_MovesLeft ensures left navigation moves from column 1 to column 0.
 // Edge case: User presses 'h' or left arrow at column index 1.
-// Security value: Selection decrements correctly and task resets.
 func TestHandleNavigateLeft_MovesLeft(t *testing.T) {
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
@@ -347,7 +335,6 @@ func TestHandleNavigateLeft_MovesLeft(t *testing.T) {
 
 // TestHandleScrollRight_AtRightmostView_NoOp ensures scroll right at rightmost view is safe.
 // Edge case: User presses scroll right when viewport is already at the rightmost position.
-// Security value: No change, no panic, notification shown.
 func TestHandleScrollRight_AtRightmostView_NoOp(t *testing.T) {
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
@@ -375,7 +362,6 @@ func TestHandleScrollRight_AtRightmostView_NoOp(t *testing.T) {
 
 // TestHandleScrollLeft_MovesLeft ensures scroll left moves viewport offset.
 // Edge case: User presses scroll left when viewport offset is 1.
-// Security value: Viewport offset decrements correctly.
 func TestHandleScrollLeft_MovesLeft(t *testing.T) {
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
@@ -399,7 +385,6 @@ func TestHandleScrollLeft_MovesLeft(t *testing.T) {
 
 // TestHandleScrollLeft_AtLeftmostView_NoOp ensures scroll left at leftmost view is safe.
 // Edge case: User presses scroll left when viewport offset is already 0.
-// Security value: No change, no panic, notification shown.
 func TestHandleScrollLeft_AtLeftmostView_NoOp(t *testing.T) {
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},

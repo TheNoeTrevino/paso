@@ -270,7 +270,6 @@ func TestHandlePrevProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 // project when already at the last project shows a notification and returns nil command.
 //
 // Edge case: User presses } when already at the last project.
-// Security value: No change, no panic, appropriate notification shown.
 func TestHandleNextProject_AtLastProject_NoOp(t *testing.T) {
 	m, db := setupProjectSwitchTest(t, 0)
 	t.Cleanup(func() { testDBCleanup(t, db) })
@@ -313,7 +312,6 @@ func TestHandleNextProject_AtLastProject_NoOp(t *testing.T) {
 // project when already at the first project shows a notification and returns nil command.
 //
 // Edge case: User presses { when already at the first project.
-// Security value: No change, no panic, appropriate notification shown.
 func TestHandlePrevProject_AtFirstProject_NoOp(t *testing.T) {
 	m, db := setupProjectSwitchTest(t, 0)
 	t.Cleanup(func() { testDBCleanup(t, db) })

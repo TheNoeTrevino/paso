@@ -12,7 +12,6 @@ import (
 
 // TestEventHandler_TaskUpdateEvent verifies that task update events trigger model state changes.
 // Edge case: Task update event received, model should reflect new task data.
-// Security value: Task state updates propagate correctly to UI state.
 func TestEventHandler_TaskUpdateEvent(t *testing.T) {
 	m := setupTestModel(
 		[]*models.Column{{ID: 1, Name: "Todo"}},
@@ -54,7 +53,6 @@ func TestEventHandler_TaskUpdateEvent(t *testing.T) {
 
 // TestEventHandler_ColumnUpdateEvent verifies that column update events update column state.
 // Edge case: Column is added/renamed/deleted, UI state must reflect changes.
-// Security value: Column state remains consistent across updates.
 func TestEventHandler_ColumnUpdateEvent(t *testing.T) {
 	originalColumns := []*models.Column{
 		{ID: 1, Name: "Todo"},
@@ -86,7 +84,6 @@ func TestEventHandler_ColumnUpdateEvent(t *testing.T) {
 
 // TestEventHandler_LabelUpdateEvent verifies that label events update label lists.
 // Edge case: Labels added/removed from project, picker should reflect changes.
-// Security value: Label state is updated and available for assignment.
 func TestEventHandler_LabelUpdateEvent(t *testing.T) {
 	m := setupTestModel(
 		[]*models.Column{{ID: 1, Name: "Todo"}},
@@ -119,7 +116,6 @@ func TestEventHandler_LabelUpdateEvent(t *testing.T) {
 
 // TestEventHandler_EventBatching verifies that multiple events are processed correctly.
 // Edge case: Rapid-fire events (task, column, label updates) should batch or queue.
-// Security value: No event loss, all updates are processed in order.
 func TestEventHandler_EventBatching(t *testing.T) {
 	m := setupTestModel(
 		[]*models.Column{{ID: 1, Name: "Todo"}},
@@ -156,7 +152,6 @@ func TestEventHandler_EventBatching(t *testing.T) {
 
 // TestEventHandler_OutOfOrderEvents verifies handling of out-of-order events.
 // Edge case: Events arrive out of order (network reordering or concurrency).
-// Security value: Sequence IDs prevent applying stale updates.
 func TestEventHandler_OutOfOrderEvents(t *testing.T) {
 	m := setupTestModel(
 		[]*models.Column{{ID: 1, Name: "Todo"}},
@@ -210,7 +205,6 @@ func TestEventHandler_OutOfOrderEvents(t *testing.T) {
 
 // TestEventHandler_ConcurrentEventProcessing verifies state consistency during event processing.
 // Edge case: Multiple state changes in sequence, state must remain consistent.
-// Security value: State updates don't cause inconsistencies.
 // Note: UIState is designed for single-threaded access (bubbletea event loop), not concurrent access.
 func TestEventHandler_ConcurrentEventProcessing(t *testing.T) {
 	m := setupTestModel(
@@ -267,7 +261,6 @@ func TestEventHandler_ConcurrentEventProcessing(t *testing.T) {
 
 // TestEventHandler_EventWithNilProjectID verifies handling of broadcast events.
 // Edge case: Event with ProjectID=0 (broadcast to all projects).
-// Security value: Broadcast events don't filter incorrectly.
 func TestEventHandler_EventWithNilProjectID(t *testing.T) {
 	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
 
@@ -287,7 +280,6 @@ func TestEventHandler_EventWithNilProjectID(t *testing.T) {
 
 // TestEventHandler_ConnectionStateTracking verifies connection state updates.
 // Edge case: Connection to daemon established/lost, state reflects availability.
-// Security value: UI reflects actual connection status.
 func TestEventHandler_ConnectionStateTracking(t *testing.T) {
 	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
 
