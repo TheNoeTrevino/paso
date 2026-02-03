@@ -172,7 +172,18 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 	if m.UIState.SelectedColumn < len(m.AppState.Columns()) {
 		currentCol := m.AppState.Columns()[m.UIState.SelectedColumn]
 		columnHeight := m.UIState.ContentHeight()
-		const columnHeightOverhead = 5 // border + header + indicator (vertical)
+
+		// Column height overhead accounts for non-task visual elements:
+		//   - 2 lines for top/bottom borders
+		//   - 2 lines for column title and padding
+		//   - 1 line for selection indicator
+		const (
+			columnBorderLines    = 2
+			columnHeaderLines    = 2
+			columnIndicatorLines = 1
+			columnHeightOverhead = columnBorderLines + columnHeaderLines + columnIndicatorLines
+		)
+
 		maxTasksVisible := max((columnHeight-columnHeightOverhead)/components.TaskCardHeight, 1)
 		m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
 	}
@@ -208,7 +219,18 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 	if m.UIState.SelectedColumn < len(m.AppState.Columns()) {
 		currentCol := m.AppState.Columns()[m.UIState.SelectedColumn]
 		columnHeight := m.UIState.ContentHeight()
-		const columnHeightOverhead = 5 // border + header + indicator (vertical)
+
+		// Column height overhead accounts for non-task visual elements:
+		//   - 2 lines for top/bottom borders
+		//   - 2 lines for column title and padding
+		//   - 1 line for selection indicator
+		const (
+			columnBorderLines    = 2
+			columnHeaderLines    = 2
+			columnIndicatorLines = 1
+			columnHeightOverhead = columnBorderLines + columnHeaderLines + columnIndicatorLines
+		)
+
 		maxTasksVisible := max((columnHeight-columnHeightOverhead)/components.TaskCardHeight, 1)
 		m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
 	}
