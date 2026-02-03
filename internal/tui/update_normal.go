@@ -364,9 +364,9 @@ func (m Model) handlePrevProject() (tea.Model, tea.Cmd) {
 		newIndex := m.AppState.SelectedProject() - 1
 		slog.Info("navigating to previous project", "current_index", m.AppState.SelectedProject(), "new_index", newIndex)
 		m.switchToProject(newIndex)
-	} else {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the first project")
+		return m, m.triggerDetailPanelPrefetch()
 	}
+	m.UI.Notification.Add(state.LevelInfo, "Already at the first project")
 	return m, nil
 }
 
@@ -375,9 +375,9 @@ func (m Model) handleNextProject() (tea.Model, tea.Cmd) {
 		newIndex := m.AppState.SelectedProject() + 1
 		slog.Info("navigating to next project", "current_index", m.AppState.SelectedProject(), "new_index", newIndex)
 		m.switchToProject(newIndex)
-	} else {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the last project")
+		return m, m.triggerDetailPanelPrefetch()
 	}
+	m.UI.Notification.Add(state.LevelInfo, "Already at the last project")
 	return m, nil
 }
 
