@@ -146,6 +146,14 @@ func createTestSchema(db *sql.DB) error {
 		(2, 'Blocked By', 'Blocker', '#EF4444', 1),
 		(3, 'Related To', 'Related To', '#3B82F6', 0);
 
+	-- Assignees table
+	CREATE TABLE IF NOT EXISTS assignees (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+
 	-- Tasks table
 	CREATE TABLE IF NOT EXISTS tasks (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -156,11 +164,13 @@ func createTestSchema(db *sql.DB) error {
 		ticket_number INTEGER,
 		type_id INTEGER NOT NULL DEFAULT 1,
 		priority_id INTEGER NOT NULL DEFAULT 3,
+		assignee_id INTEGER,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
 		FOREIGN KEY (type_id) REFERENCES types(id),
 		FOREIGN KEY (priority_id) REFERENCES priorities(id),
+		FOREIGN KEY (assignee_id) REFERENCES assignees(id) ON DELETE SET NULL,
 		UNIQUE(column_id, position)
 	);
 
@@ -243,6 +253,7 @@ func createTestSchema(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_task_comments_task_id ON task_comments(task_id);
 	CREATE INDEX IF NOT EXISTS idx_tasks_type_id ON tasks(type_id);
 	CREATE INDEX IF NOT EXISTS idx_tasks_priority_id ON tasks(priority_id);
+	CREATE INDEX IF NOT EXISTS idx_tasks_assignee_id ON tasks(assignee_id);
 
 	-- Partial indexes for column type queries
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_ready_unique ON columns(project_id) WHERE holds_ready_tasks = 1;
@@ -324,4 +335,15 @@ func CreateTestLabel(t *testing.T, db *sql.DB, projectID int, name, color string
 	}
 	labelID, _ := result.LastInsertId()
 	return int(labelID)
+}
+
+// CreateTestAssignee creates a test assignee and returns its ID
+func CreateTestAssignee(t *testing.T, db *sql.DB, name string) int {
+	t.Helper()
+	result, err := db.ExecContext(context.Background(), "INSERT INTO assignees (name) VALUES (?)", name)
+	if err != nil {
+		t.Fatalf("Failed to create test assignee: %v", err)
+	}
+	assigneeID, _ := result.LastInsertId()
+	return int(assigneeID)
 }
