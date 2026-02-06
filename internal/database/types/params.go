@@ -107,6 +107,7 @@ type CreateTaskParams struct {
 	ColumnID     int64
 	Position     int64
 	TicketNumber NullInt64
+	AssigneeID   NullInt64
 }
 
 type GetTaskAboveParams struct {
@@ -154,6 +155,11 @@ type UpdateTaskPriorityParams struct {
 type UpdateTaskTypeParams struct {
 	TypeID int64
 	ID     int64
+}
+
+type UpdateTaskAssigneeParams struct {
+	AssigneeID NullInt64
+	ID         int64
 }
 
 // comments.sql.go params

@@ -14,6 +14,7 @@ func toGeneratedCreateTaskParams(t types.CreateTaskParams) generated_sqlite.Crea
 		ColumnID:     t.ColumnID,
 		Position:     t.Position,
 		TicketNumber: t.TicketNumber.ToSQLNullInt64(),
+		AssigneeID:   t.AssigneeID.ToInterface(),
 	}
 }
 
@@ -94,6 +95,13 @@ func toGeneratedUpdateTaskTypeParams(t types.UpdateTaskTypeParams) generated_sql
 	return generated_sqlite.UpdateTaskTypeParams{
 		TypeID: t.TypeID,
 		ID:     t.ID,
+	}
+}
+
+func toGeneratedUpdateTaskAssigneeParams(t types.UpdateTaskAssigneeParams) generated_sqlite.UpdateTaskAssigneeParams {
+	return generated_sqlite.UpdateTaskAssigneeParams{
+		AssigneeID: t.AssigneeID.ToInterface(),
+		ID:         t.ID,
 	}
 }
 

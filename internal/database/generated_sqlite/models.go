@@ -8,6 +8,13 @@ import (
 	"database/sql"
 )
 
+type Assignee struct {
+	ID        int64
+	Name      string
+	CreatedAt sql.NullTime
+	UpdatedAt sql.NullTime
+}
+
 type Column struct {
 	ID                   int64
 	Name                 string
@@ -65,6 +72,7 @@ type Task struct {
 	PriorityID   int64
 	CreatedAt    sql.NullTime
 	UpdatedAt    sql.NullTime
+	AssigneeID   interface{}
 }
 
 type TaskComment struct {

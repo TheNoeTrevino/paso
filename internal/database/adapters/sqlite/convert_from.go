@@ -5,6 +5,15 @@ import (
 	"github.com/thenoetrevino/paso/internal/database/types"
 )
 
+func fromGeneratedAssignee(g generated_sqlite.Assignee) types.Assignee {
+	return types.Assignee{
+		ID:        g.ID,
+		Name:      g.Name,
+		CreatedAt: types.FromSQLNullTime(g.CreatedAt),
+		UpdatedAt: types.FromSQLNullTime(g.UpdatedAt),
+	}
+}
+
 func fromGeneratedTask(g generated_sqlite.Task) types.Task {
 	return types.Task{
 		ID:           g.ID,
@@ -150,6 +159,8 @@ func fromGeneratedGetInProgressTaskDetailsRow(g generated_sqlite.GetInProgressTa
 		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
 		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
 		PriorityColor:       types.FromSQLNullString(g.PriorityColor),
+		AssigneeID:          types.NullInt64FromInterface(g.AssigneeID),
+		AssigneeName:        types.FromSQLNullString(g.AssigneeName),
 		LabelIds:            g.LabelIds,
 		LabelNames:          g.LabelNames,
 		LabelColors:         g.LabelColors,
@@ -190,6 +201,8 @@ func fromGeneratedGetReadyTaskSummariesByProjectRow(g generated_sqlite.GetReadyT
 		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
 		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
 		PriorityColor:       types.FromSQLNullString(g.PriorityColor),
+		AssigneeID:          types.NullInt64FromInterface(g.AssigneeID),
+		AssigneeName:        types.FromSQLNullString(g.AssigneeName),
 		LabelIds:            g.LabelIds,
 		LabelNames:          g.LabelNames,
 		LabelColors:         g.LabelColors,
@@ -238,6 +251,8 @@ func fromGeneratedGetTaskDetailRow(g generated_sqlite.GetTaskDetailRow) types.Ge
 		PriorityColor:       types.FromSQLNullString(g.PriorityColor),
 		ColumnName:          g.ColumnName,
 		ProjectName:         g.ProjectName,
+		AssigneeID:          types.NullInt64FromInterface(g.AssigneeID),
+		AssigneeName:        types.FromSQLNullString(g.AssigneeName),
 		IsBlocked:           g.IsBlocked != 0,
 	}
 }
@@ -277,6 +292,8 @@ func fromGeneratedGetTaskSummariesByColumnRow(g generated_sqlite.GetTaskSummarie
 		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
 		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
 		PriorityColor:       types.FromSQLNullString(g.PriorityColor),
+		AssigneeID:          types.NullInt64FromInterface(g.AssigneeID),
+		AssigneeName:        types.FromSQLNullString(g.AssigneeName),
 		LabelIds:            g.LabelIds,
 		LabelNames:          g.LabelNames,
 		LabelColors:         g.LabelColors,
@@ -292,6 +309,8 @@ func fromGeneratedGetTaskSummariesByProjectRow(g generated_sqlite.GetTaskSummari
 		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
 		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
 		PriorityColor:       types.FromSQLNullString(g.PriorityColor),
+		AssigneeID:          types.NullInt64FromInterface(g.AssigneeID),
+		AssigneeName:        types.FromSQLNullString(g.AssigneeName),
 		LabelIds:            g.LabelIds,
 		LabelNames:          g.LabelNames,
 		LabelColors:         g.LabelColors,
@@ -308,6 +327,8 @@ func fromGeneratedGetTaskSummariesByProjectFilteredRow(g generated_sqlite.GetTas
 		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
 		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
 		PriorityColor:       types.FromSQLNullString(g.PriorityColor),
+		AssigneeID:          types.NullInt64FromInterface(g.AssigneeID),
+		AssigneeName:        types.FromSQLNullString(g.AssigneeName),
 		LabelIds:            g.LabelIds,
 		LabelNames:          g.LabelNames,
 		LabelColors:         g.LabelColors,

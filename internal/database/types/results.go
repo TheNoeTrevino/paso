@@ -27,6 +27,8 @@ type GetInProgressTaskDetailsRow struct {
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
+	AssigneeID          NullInt64
+	AssigneeName        NullString
 	LabelIds            string
 	LabelNames          string
 	LabelColors         string
@@ -64,6 +66,8 @@ type GetReadyTaskSummariesByProjectRow struct {
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
+	AssigneeID          NullInt64
+	AssigneeName        NullString
 	LabelIds            string
 	LabelNames          string
 	LabelColors         string
@@ -108,6 +112,8 @@ type GetTaskDetailRow struct {
 	PriorityColor       NullString
 	ColumnName          string
 	ProjectName         string
+	AssigneeID          NullInt64
+	AssigneeName        NullString
 	IsBlocked           bool
 }
 
@@ -143,6 +149,8 @@ type GetTaskSummariesByColumnRow struct {
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
+	AssigneeID          NullInt64
+	AssigneeName        NullString
 	LabelIds            string
 	LabelNames          string
 	LabelColors         string
@@ -157,6 +165,8 @@ type GetTaskSummariesByProjectRow struct {
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
+	AssigneeID          NullInt64
+	AssigneeName        NullString
 	LabelIds            string
 	LabelNames          string
 	LabelColors         string
@@ -172,6 +182,8 @@ type GetTaskSummariesByProjectFilteredRow struct {
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
+	AssigneeID          NullInt64
+	AssigneeName        NullString
 	LabelIds            string
 	LabelNames          string
 	LabelColors         string

@@ -19,6 +19,16 @@ import (
 type Querier interface {
 	// Attaches a label to a task (ignores if already attached)
 	AddLabelToTask(ctx context.Context, arg AddLabelToTaskParams) error
+	// Creates a new assignee
+	CreateAssignee(ctx context.Context, name string) (Assignee, error)
+	// Retrieves an assignee by ID
+	GetAssigneeByID(ctx context.Context, id int64) (Assignee, error)
+	// Retrieves an assignee by name (case-insensitive)
+	GetAssigneeByName(ctx context.Context, name string) (Assignee, error)
+	// Lists all assignees ordered by name
+	ListAssignees(ctx context.Context) ([]Assignee, error)
+	// Deletes an assignee by ID
+	DeleteAssignee(ctx context.Context, id int64) (int64, error)
 	// Creates a parent-child relationship between two tasks (ignores duplicates)
 	AddSubtask(ctx context.Context, arg AddSubtaskParams) error
 	// Creates or updates a parent-child relationship with a specific relation type
@@ -206,6 +216,8 @@ type Querier interface {
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) error
 	// Updates a task's priority level
 	UpdateTaskPriority(ctx context.Context, arg UpdateTaskPriorityParams) error
+	// Updates a task's assignee
+	UpdateTaskAssignee(ctx context.Context, arg UpdateTaskAssigneeParams) error
 	// Updates a task's type classification
 	UpdateTaskType(ctx context.Context, arg UpdateTaskTypeParams) error
 	// Inserts a label or ignores if it already exists (for seeding)
