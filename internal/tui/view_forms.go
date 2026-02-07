@@ -79,6 +79,16 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 	}
 	parts = append(parts, "")
 
+	// Assignee section
+	parts = append(parts, labelHeaderStyle.Render("Assignee"))
+	if m.Forms.Form.FormAssigneeName != "" {
+		assigneeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight))
+		parts = append(parts, assigneeStyle.Render("@"+m.Forms.Form.FormAssigneeName))
+	} else {
+		parts = append(parts, subtleStyle.Render("unassigned"))
+	}
+	parts = append(parts, "")
+
 	// Created timestamp
 	parts = append(parts, labelHeaderStyle.Render("Created"))
 	parts = append(parts, createdStr)

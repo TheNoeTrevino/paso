@@ -57,6 +57,8 @@ type FormState struct {
 	FormTypeDescription     string    // Task type (e.g., "task", "feature")
 	FormPriorityDescription string    // Task priority (e.g., "low", "high", "critical")
 	FormPriorityColor       string    // Task priority color (hex code)
+	FormAssigneeID          int       // Task assignee ID (0 means unassigned)
+	FormAssigneeName        string    // Task assignee display name
 
 	// Task form initial values (for change detection)
 	InitialFormTitle       string // Initial title value when form was created
@@ -191,6 +193,8 @@ func (s *FormState) ClearTaskForm() {
 	s.InitialFormLabelIDs = []int{}
 	s.InitialFormParentIDs = []int{}
 	s.InitialFormChildIDs = []int{}
+	s.FormAssigneeID = 0
+	s.FormAssigneeName = ""
 }
 
 // IsTaskFormActive returns true if a task form is currently active.

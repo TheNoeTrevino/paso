@@ -137,7 +137,7 @@ func renderTaskCardLabels(labels []*models.Label, bg string, cardWidth int) stri
 	return "\n " + result
 }
 
-// renderTaskSummaryMetadata Renders type, priority and blocked on the same line, separated by │
+// renderTaskSummaryMetadata Renders type, priority, assignee and blocked on the same line, separated by │
 func renderTaskSummaryMetadata(task *models.TaskSummary, bg string) string {
 	var typeDisplay string
 	var priorityDisplay string
@@ -162,6 +162,13 @@ func renderTaskSummaryMetadata(task *models.TaskSummary, bg string) string {
 	separator := separatorStyle.Render(" │ ")
 
 	result := typeDisplay + separator + priorityDisplay
+
+	if task.AssigneeName != nil {
+		assigneeStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Highlight)).
+			Background(lipgloss.Color(bg))
+		result += separator + assigneeStyle.Render("@"+*task.AssigneeName)
+	}
 
 	if task.IsBlocked {
 		blockedDisplay := BlockedStyle.

@@ -466,6 +466,12 @@ func (m Model) handleTaskDetailForEdit(msg taskDetailForEditMsg) (tea.Model, tea
 	m.Forms.Form.FormTypeDescription = msg.taskDetail.TypeDescription
 	m.Forms.Form.FormPriorityDescription = msg.taskDetail.PriorityDescription
 	m.Forms.Form.FormPriorityColor = msg.taskDetail.PriorityColor
+	if msg.taskDetail.AssigneeID != nil {
+		m.Forms.Form.FormAssigneeID = *msg.taskDetail.AssigneeID
+	}
+	if msg.taskDetail.AssigneeName != nil {
+		m.Forms.Form.FormAssigneeName = *msg.taskDetail.AssigneeName
+	}
 
 	m.Forms.Form.FormConfirm = true
 	m.Forms.Form.EditingTaskID = msg.taskID
