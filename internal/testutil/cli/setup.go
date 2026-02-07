@@ -1,27 +1,71 @@
 package cli
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/app"
+	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
 // SetupCLITest creates an in-memory DB and returns both the DB and App instance
 // This function is only for CLI tests and is isolated in a separate package
 // to avoid import cycles when service tests import testutil
-func SetupCLITest(tb testing.TB) (*sql.DB, *app.App) {
+func SetupCLITest(tb testing.TB, opts ...app.Option) (*sql.DB, *app.App) {
 	tb.Helper()
 	db := testutil.SetupTestDB(tb)
 
 	// Create app instance with services
 	// Note: EventPublisher is nil - event publishing is tested elsewhere
-	appInstance, err := app.New(db)
+	appInstance, err := app.New(db, opts...)
 	require.NoError(tb, err, "failed to create app instance")
 
 	return db, appInstance
+}
+
+// SetupCLITestWithGit creates an in-memory DB and App with a mock git detector.
+// Returns the DB, App, and mock so tests can configure git behavior.
+func SetupCLITestWithGit(tb testing.TB) (*sql.DB, *app.App, *MockGitDetector) {
+	tb.Helper()
+	mock := NewMockGitDetector()
+	db, appInstance := SetupCLITest(tb, app.WithGitDetector(mock))
+	return db, appInstance, mock
+}
+
+// MockGitDetector is a configurable mock for git.Detector, usable by CLI tests.
+type MockGitDetector struct {
+	Info     git.GitInfo
+	Branches map[string]bool
+}
+
+// NewMockGitDetector creates a MockGitDetector that defaults to "not in a repo".
+func NewMockGitDetector() *MockGitDetector {
+	return &MockGitDetector{
+		Info:     git.GitInfo{},
+		Branches: make(map[string]bool),
+	}
+}
+
+func (m *MockGitDetector) DetectGitInfo(_ context.Context) git.GitInfo {
+	return m.Info
+}
+
+func (m *MockGitDetector) ValidateBranchName(_ context.Context, branchName string) error {
+	if branchName == "" {
+		return git.ErrEmptyBranchName
+	}
+	return nil
+}
+
+func (m *MockGitDetector) BranchExists(_ context.Context, branchName string) (bool, error) {
+	exists, ok := m.Branches[branchName]
+	if !ok {
+		return true, nil // default: branch exists
+	}
+	return exists, nil
 }
 
 // CreateTestProject wraps testutil.CreateTestProject for CLI tests

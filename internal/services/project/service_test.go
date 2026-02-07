@@ -10,21 +10,35 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/database"
+	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
-// mockGitChecker is a mock implementation of GitChecker for testing
-type mockGitChecker struct {
+// mockGitDetector is a mock implementation of git.Detector for testing
+type mockGitDetector struct {
 	branches map[string]bool
+	gitInfo  git.GitInfo
 }
 
-func newMockGitChecker() *mockGitChecker {
-	return &mockGitChecker{
+func newMockGitDetector() *mockGitDetector {
+	return &mockGitDetector{
 		branches: make(map[string]bool),
+		gitInfo:  git.GitInfo{}, // default: not in a repo
 	}
 }
 
-func (m *mockGitChecker) BranchExists(_ context.Context, branchName string) (bool, error) {
+func (m *mockGitDetector) DetectGitInfo(_ context.Context) git.GitInfo {
+	return m.gitInfo
+}
+
+func (m *mockGitDetector) ValidateBranchName(_ context.Context, branchName string) error {
+	if strings.TrimSpace(branchName) == "" {
+		return git.ErrEmptyBranchName
+	}
+	return nil
+}
+
+func (m *mockGitDetector) BranchExists(_ context.Context, branchName string) (bool, error) {
 	exists, ok := m.branches[branchName]
 	if !ok {
 		return true, nil
@@ -35,7 +49,7 @@ func (m *mockGitChecker) BranchExists(_ context.Context, branchName string) (boo
 // newTestService creates a new service for testing (panics on error since tests use valid SQLite)
 func newTestService(t *testing.T, db *sql.DB) Service {
 	t.Helper()
-	mockGit := newMockGitChecker()
+	mockGit := newMockGitDetector()
 	svc, err := NewService(db, database.SQLite, nil, mockGit)
 	require.NoError(t, err, "failed to create test service")
 	return svc

@@ -5,6 +5,7 @@ import (
 
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
+	"github.com/thenoetrevino/paso/internal/git"
 	assigneeservice "github.com/thenoetrevino/paso/internal/services/assignee"
 	columnservice "github.com/thenoetrevino/paso/internal/services/column"
 	labelservice "github.com/thenoetrevino/paso/internal/services/label"
@@ -21,6 +22,9 @@ type App struct {
 
 	// Database configuration
 	dbType database.DatabaseType
+
+	// Git detection (injectable for testing)
+	GitDetector git.Detector
 
 	// Service layer (business logic) - ONLY public interface
 	TaskService     taskservice.Service
@@ -41,11 +45,18 @@ func New(db *sql.DB, opts ...Option) (*App, error) {
 		eventClient: nil,
 		logger:      nil,
 		dbType:      database.SQLite, // Default to SQLite
+		gitDetector: nil,
 	}
 
 	// Apply provided options
 	for _, opt := range opts {
 		opt(cfg)
+	}
+
+	// Resolve git detector: use provided or default to real
+	gitDetector := cfg.gitDetector
+	if gitDetector == nil {
+		gitDetector = git.RealDetector{}
 	}
 
 	// Create services with database connection and type
@@ -60,7 +71,7 @@ func New(db *sql.DB, opts ...Option) (*App, error) {
 		return nil, err
 	}
 
-	projectSvc, err := projectservice.NewService(db, cfg.dbType, cfg.eventClient, nil)
+	projectSvc, err := projectservice.NewService(db, cfg.dbType, cfg.eventClient, gitDetector)
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +94,7 @@ func New(db *sql.DB, opts ...Option) (*App, error) {
 	return &App{
 		eventClient:     cfg.eventClient,
 		dbType:          cfg.dbType,
+		GitDetector:     gitDetector,
 		TaskService:     taskSvc,
 		ProjectService:  projectSvc,
 		ColumnService:   columnSvc,

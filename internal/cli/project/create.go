@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/handler"
-	"github.com/thenoetrevino/paso/internal/git"
 	projectservice "github.com/thenoetrevino/paso/internal/services/project"
 )
 
@@ -83,7 +82,7 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 	}()
 
 	// Detect git repository information and try to associate with branch
-	gitInfo := git.DetectGitInfo(ctx)
+	gitInfo := cliInstance.App.GitDetector.DetectGitInfo(ctx)
 	var gitBranch string
 	if gitInfo.IsValidForAssociation() {
 		gitBranch = gitInfo.CurrentBranch

@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/git"
 	projectsvc "github.com/thenoetrevino/paso/internal/services/project"
 )
 
@@ -64,7 +63,7 @@ func runGitUnlink(cmd *cobra.Command, args []string) error {
 	// Resolve project ID
 	if projectID == 0 {
 		// Default to current project (project associated with current branch)
-		gitInfo := git.DetectGitInfo(ctx)
+		gitInfo := cliInstance.App.GitDetector.DetectGitInfo(ctx)
 
 		if !gitInfo.IsRepo {
 			return outputError(formatter, jsonOutput, "NOT_IN_GIT_REPO",

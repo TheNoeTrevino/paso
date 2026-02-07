@@ -5,6 +5,7 @@ import (
 
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
+	"github.com/thenoetrevino/paso/internal/git"
 )
 
 // Option is a functional option for configuring App initialization
@@ -15,6 +16,7 @@ type appConfig struct {
 	eventClient events.EventPublisher
 	logger      *slog.Logger
 	dbType      database.DatabaseType
+	gitDetector git.Detector
 }
 
 // WithEventPublisher sets the event publisher for the application
@@ -35,5 +37,13 @@ func WithLogger(logger *slog.Logger) Option {
 func WithDatabaseType(dbType database.DatabaseType) Option {
 	return func(cfg *appConfig) {
 		cfg.dbType = dbType
+	}
+}
+
+// WithGitDetector sets the git detector for the application.
+// If not set, the real git detector (shelling out to git) is used.
+func WithGitDetector(gd git.Detector) Option {
+	return func(cfg *appConfig) {
+		cfg.gitDetector = gd
 	}
 }

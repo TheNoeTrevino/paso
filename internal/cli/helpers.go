@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -201,7 +200,7 @@ func tryGitBranchDetection(ctx context.Context) (int, error) {
 		}
 	}()
 
-	gitInfo := git.DetectGitInfo(ctx)
+	gitInfo := cliInstance.App.GitDetector.DetectGitInfo(ctx)
 
 	if !gitInfo.IsValidForAssociation() {
 		return 0, fmt.Errorf("not in valid git repository state")
@@ -226,7 +225,7 @@ func tryGitBranchDetection(ctx context.Context) (int, error) {
 // Accepts an existing CLI instance instead of creating a new one.
 // Returns (0, error) if detection fails or no project found.
 func tryGitBranchDetectionWithCLI(ctx context.Context, cliInstance *CLI) (int, error) {
-	gitInfo := git.DetectGitInfo(ctx)
+	gitInfo := cliInstance.App.GitDetector.DetectGitInfo(ctx)
 
 	if !gitInfo.IsValidForAssociation() {
 		return 0, fmt.Errorf("not in valid git repository state")
