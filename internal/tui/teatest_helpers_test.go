@@ -72,7 +72,6 @@ func SendKeysToModel(m *Model, keys ...tea.Msg) *Model {
 	for _, key := range keys {
 		updatedModel, _ := m.Update(key)
 		*m = updatedModel.(Model)
-		time.Sleep(10 * time.Millisecond)
 	}
 	return m
 }
@@ -82,7 +81,6 @@ func SendSpecialKeyToModel(m *Model, code rune) *Model {
 	msg := tea.KeyPressMsg(tea.Key{Code: code})
 	updatedModel, _ := m.Update(msg)
 	*m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 	return m
 }
 
@@ -92,20 +90,15 @@ func TypeStringToModel(m *Model, s string) *Model {
 		msg := tea.KeyPressMsg(tea.Key{Text: string(r), Code: r})
 		updatedModel, _ := m.Update(msg)
 		*m = updatedModel.(Model)
-		time.Sleep(5 * time.Millisecond)
 	}
 	return m
 }
 
-// WaitForModeChange waits for the model's mode to change to the expected state
+// WaitForModeChange verifies the model's mode matches the expected state
+// Note: Bubbletea model updates are synchronous, so this checks immediately
 func WaitForModeChange(t *testing.T, m *Model, expectedMode state.Mode, timeout time.Duration) {
 	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if m.UIState.Mode == expectedMode {
-			return
-		}
-		time.Sleep(10 * time.Millisecond)
+	if m.UIState.Mode != expectedMode {
+		t.Fatalf("Expected mode %v, got %v", expectedMode, m.UIState.Mode)
 	}
-	t.Fatalf("Timeout waiting for mode %v (timeout: %v)", expectedMode, timeout)
 }
