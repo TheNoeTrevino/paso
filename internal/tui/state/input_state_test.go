@@ -3,6 +3,9 @@ package state
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestAppendChar_MaxLength ensures buffer at 100 chars rejects more input.
@@ -16,15 +19,9 @@ func TestAppendChar_MaxLength(t *testing.T) {
 	// Try to append one more character
 	added := state.AppendChar('x')
 
-	if added {
-		t.Error("AppendChar() at max length (100) returned true, want false")
-	}
-	if len(state.Buffer) != 100 {
-		t.Errorf("Buffer length after append at max = %d, want 100", len(state.Buffer))
-	}
-	if strings.Contains(state.Buffer, "x") {
-		t.Error("AppendChar() at max length modified buffer, want no change")
-	}
+	assert.False(t, added, "AppendChar() at max length (100) returned true, want false")
+	assert.Equal(t, 100, len(state.Buffer))
+	assert.False(t, strings.Contains(state.Buffer, "x"), "AppendChar() at max length modified buffer, want no change")
 }
 
 // TestAppendChar_AtMaxLength ensures exactly at limit, one more char is rejected.
@@ -35,21 +32,15 @@ func TestAppendChar_AtMaxLength(t *testing.T) {
 	// Add exactly 100 characters
 	for i := 0; i < 100; i++ {
 		added := state.AppendChar('a')
-		if !added {
-			t.Fatalf("AppendChar() failed at character %d, want success until 100", i+1)
-		}
+		require.True(t, added, "AppendChar() failed at character %d, want success until 100", i+1)
 	}
 
 	// Verify we can't add more
 	added := state.AppendChar('b')
-	if added {
-		t.Error("AppendChar() at position 101 returned true, want false")
-	}
+	assert.False(t, added, "AppendChar() at position 101 returned true, want false")
 
 	// Verify length is still 100
-	if len(state.Buffer) != 100 {
-		t.Errorf("Buffer length = %d, want 100", len(state.Buffer))
-	}
+	assert.Equal(t, 100, len(state.Buffer))
 }
 
 // TestBackspace_EmptyBuffer ensures backspace on empty string is safe.
@@ -61,19 +52,13 @@ func TestBackspace_EmptyBuffer(t *testing.T) {
 	// Try backspace on empty buffer
 	removed := state.Backspace()
 
-	if removed {
-		t.Error("Backspace() on empty buffer returned true, want false")
-	}
-	if state.Buffer != "" {
-		t.Errorf("Buffer after backspace on empty = %q, want empty string", state.Buffer)
-	}
+	assert.False(t, removed, "Backspace() on empty buffer returned true, want false")
+	assert.Equal(t, "", state.Buffer)
 
 	// Try multiple backspaces to ensure stability
 	for i := 0; i < 5; i++ {
 		removed = state.Backspace()
-		if removed {
-			t.Errorf("Backspace() call %d on empty buffer returned true, want false", i+1)
-		}
+		assert.False(t, removed, "Backspace() call %d on empty buffer returned true, want false", i+1)
 	}
 }
 
@@ -101,9 +86,7 @@ func TestIsEmpty_WhitespaceOnly(t *testing.T) {
 			state.Buffer = tc.buffer
 
 			got := state.IsEmpty()
-			if got != tc.want {
-				t.Errorf("IsEmpty() with buffer %q = %v, want %v", tc.buffer, got, tc.want)
-			}
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -132,9 +115,7 @@ func TestTrimmedBuffer_LeadingTrailingSpaces(t *testing.T) {
 			state.Buffer = tc.buffer
 
 			got := state.TrimmedBuffer()
-			if got != tc.want {
-				t.Errorf("TrimmedBuffer() with buffer %q = %q, want %q", tc.buffer, got, tc.want)
-			}
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }

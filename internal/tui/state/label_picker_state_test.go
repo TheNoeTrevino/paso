@@ -3,6 +3,7 @@ package state
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -17,9 +18,7 @@ func TestGetFilteredItems_EmptyFilter(t *testing.T) {
 	state.Filter = ""
 
 	filtered := state.GetFilteredItems()
-	if len(filtered) != 2 {
-		t.Errorf("GetFilteredItems() with empty filter = %d items, want 2", len(filtered))
-	}
+	assert.Len(t, filtered, 2)
 }
 
 // TestGetFilteredItems_NoMatches ensures filter matching nothing returns empty result.
@@ -35,9 +34,7 @@ func TestGetFilteredItems_NoMatches(t *testing.T) {
 	filtered := state.GetFilteredItems()
 	// Note: In Go, an uninitialized slice is nil, which is safe to iterate
 	// len(nil) == 0, so this is correct behavior
-	if len(filtered) != 0 {
-		t.Errorf("GetFilteredItems() with no matches = %d items, want 0", len(filtered))
-	}
+	assert.Len(t, filtered, 0)
 }
 
 // TestGetFilteredItems_CaseInsensitive ensures "BUG" matches "bug" label.
@@ -64,9 +61,7 @@ func TestGetFilteredItems_CaseInsensitive(t *testing.T) {
 	for _, tc := range testCases {
 		state.Filter = tc.filter
 		filtered := state.GetFilteredItems()
-		if len(filtered) != tc.want {
-			t.Errorf("GetFilteredItems() with filter %q = %d items, want %d", tc.filter, len(filtered), tc.want)
-		}
+		assert.Len(t, filtered, tc.want, "GetFilteredItems() with filter %q", tc.filter)
 	}
 }
 
@@ -79,12 +74,8 @@ func TestMoveCursorDown_EmptyItems(t *testing.T) {
 
 	moved := state.MoveCursorDown(0) // maxIdx = 0 (no items)
 
-	if moved {
-		t.Error("MoveCursorDown() with no items returned true, want false")
-	}
-	if state.Cursor != 0 {
-		t.Errorf("Cursor after MoveCursorDown with no items = %d, want 0", state.Cursor)
-	}
+	assert.False(t, moved, "MoveCursorDown() with no items returned true, want false")
+	assert.Equal(t, 0, state.Cursor)
 }
 
 // TestMoveCursorDown_AtMax ensures cursor at last item doesn't move beyond.
@@ -100,12 +91,8 @@ func TestMoveCursorDown_AtMax(t *testing.T) {
 
 	moved := state.MoveCursorDown(3) // maxIdx = 3
 
-	if moved {
-		t.Error("MoveCursorDown() at max returned true, want false")
-	}
-	if state.Cursor != 3 {
-		t.Errorf("Cursor after MoveCursorDown at max = %d, want 3", state.Cursor)
-	}
+	assert.False(t, moved, "MoveCursorDown() at max returned true, want false")
+	assert.Equal(t, 3, state.Cursor)
 }
 
 // TestCursorAdjustment_FilterReducesList ensures cursor repositions when filter shrinks list.
@@ -128,9 +115,7 @@ func TestCursorAdjustment_FilterReducesList(t *testing.T) {
 	// Cursor is now beyond filtered list (cursor=2, but filtered has only 1 item at index 0)
 	// In real code, update.go should adjust cursor to len(filtered) or 0
 	// Here we just document that filtered list has fewer items
-	if len(filtered) != 1 {
-		t.Errorf("Filtered items = %d, want 1", len(filtered))
-	}
+	assert.Len(t, filtered, 1)
 	if state.Cursor >= len(filtered) {
 		// This is expected - cursor needs adjustment by caller
 		t.Logf("Cursor (%d) is beyond filtered list length (%d) - caller should adjust", state.Cursor, len(filtered))
@@ -150,12 +135,8 @@ func TestAppendFilter_MaxLength(t *testing.T) {
 	// Try to append one more
 	added := state.AppendFilter('x')
 
-	if added {
-		t.Error("AppendFilter() at max length (50) returned true, want false")
-	}
-	if len(state.Filter) != 50 {
-		t.Errorf("Filter length after append at max = %d, want 50", len(state.Filter))
-	}
+	assert.False(t, added, "AppendFilter() at max length (50) returned true, want false")
+	assert.Equal(t, 50, len(state.Filter))
 }
 
 // TestBackspaceFilter_Empty ensures backspace on empty filter is safe.
@@ -166,18 +147,12 @@ func TestBackspaceFilter_Empty(t *testing.T) {
 
 	removed := state.BackspaceFilter()
 
-	if removed {
-		t.Error("BackspaceFilter() on empty filter returned true, want false")
-	}
-	if state.Filter != "" {
-		t.Errorf("Filter after backspace on empty = %q, want empty string", state.Filter)
-	}
+	assert.False(t, removed, "BackspaceFilter() on empty filter returned true, want false")
+	assert.Equal(t, "", state.Filter)
 
 	// Multiple backspaces should be safe
 	for i := 0; i < 5; i++ {
 		removed = state.BackspaceFilter()
-		if removed {
-			t.Errorf("BackspaceFilter() call %d on empty returned true, want false", i+1)
-		}
+		assert.False(t, removed, "BackspaceFilter() call %d on empty returned true, want false", i+1)
 	}
 }
