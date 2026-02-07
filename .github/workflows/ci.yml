@@ -73,9 +73,10 @@ jobs:
       - name: Check gofmt
         run: |
           echo "Checking Go code formatting..."
-          if [ "$(gofmt -s -l . | grep -v '^crush/' | wc -l)" -gt 0 ]; then
+          UNFORMATTED=$(gofmt -s -l .)
+          if [ -n "$UNFORMATTED" ]; then
             echo "The following files are not formatted:"
-            gofmt -s -l . | grep -v '^crush/'
+            echo "$UNFORMATTED"
             exit 1
           fi
           echo "All files are properly formatted"
@@ -150,7 +151,7 @@ jobs:
             echo "Failed to parse coverage from coverage.txt"
             exit 1
           fi
-          THRESHOLD=30.0
+          THRESHOLD=35.0
           echo "Current coverage: ${COVERAGE}%"
           echo "Required threshold: ${THRESHOLD}%"
 
