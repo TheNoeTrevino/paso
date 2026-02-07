@@ -8,6 +8,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/thenoetrevino/paso/internal/database"
 	_ "modernc.org/sqlite"
 )
 
@@ -51,7 +52,8 @@ func CaptureOutput(tb testing.TB, fn func()) string {
 	return <-outC
 }
 
-// SetupTestDB creates an in-memory database with full schema
+// SetupTestDB creates an in-memory database with the full production schema applied via goose migrations.
+// This ensures the test schema always matches production, eliminating schema drift.
 func SetupTestDB(tb testing.TB) *sql.DB {
 	tb.Helper()
 	db, err := sql.Open("sqlite", ":memory:")
@@ -65,9 +67,9 @@ func SetupTestDB(tb testing.TB) *sql.DB {
 		tb.Fatalf("Failed to enable foreign keys: %v", err)
 	}
 
-	// Run migrations inline
-	if err := createTestSchema(db); err != nil {
-		tb.Fatalf("Failed to create schema: %v", err)
+	// Apply production migrations (schema only, no seed data)
+	if err := database.RunMigrationsOnly(db, database.SQLite); err != nil {
+		tb.Fatalf("Failed to run migrations: %v", err)
 	}
 
 	tb.Cleanup(func() {
@@ -77,198 +79,6 @@ func SetupTestDB(tb testing.TB) *sql.DB {
 	})
 
 	return db
-}
-
-// createTestSchema creates the complete database schema for testing
-func createTestSchema(db *sql.DB) error {
-	schema := `
-	-- Projects table
-	CREATE TABLE IF NOT EXISTS projects (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		description TEXT,
-		git_branch TEXT,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
-
-	-- Project counters for ticket numbers
-	CREATE TABLE IF NOT EXISTS project_counters (
-		project_id INTEGER PRIMARY KEY,
-		next_ticket_number INTEGER DEFAULT 1,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-	);
-
-	-- Columns table
-	CREATE TABLE IF NOT EXISTS columns (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		project_id INTEGER NOT NULL,
-		name TEXT NOT NULL,
-		prev_id INTEGER,
-		next_id INTEGER,
-		holds_ready_tasks BOOLEAN NOT NULL DEFAULT 0,
-		holds_completed_tasks BOOLEAN NOT NULL DEFAULT 0,
-		holds_in_progress_tasks BOOLEAN NOT NULL DEFAULT 0,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-	);
-
-	-- Types lookup table
-	CREATE TABLE IF NOT EXISTS types (
-		id INTEGER PRIMARY KEY,
-		description TEXT NOT NULL UNIQUE
-	);
-
-	INSERT OR IGNORE INTO types (id, description) VALUES
-		(1, 'task'),
-		(2, 'feature'),
-		(3, 'bug');
-
-	-- Priorities lookup table
-	CREATE TABLE IF NOT EXISTS priorities (
-		id INTEGER PRIMARY KEY,
-		description TEXT NOT NULL UNIQUE,
-		color TEXT NOT NULL
-	);
-
-	INSERT OR IGNORE INTO priorities (id, description, color) VALUES
-		(1, 'trivial', '#3B82F6'),
-		(2, 'low', '#22C55E'),
-		(3, 'medium', '#EAB308'),
-		(4, 'high', '#F97316'),
-		(5, 'critical', '#EF4444');
-
-	-- Relation types
-	CREATE TABLE IF NOT EXISTS relation_types (
-		id INTEGER PRIMARY KEY,
-		p_to_c_label TEXT NOT NULL,
-		c_to_p_label TEXT NOT NULL,
-		color TEXT NOT NULL,
-		is_blocking BOOLEAN NOT NULL DEFAULT 0
-	);
-
-	INSERT OR IGNORE INTO relation_types (id, p_to_c_label, c_to_p_label, color, is_blocking) VALUES
-		(1, 'Parent', 'Child', '#6B7280', 0),
-		(2, 'Blocked By', 'Blocker', '#EF4444', 1),
-		(3, 'Related To', 'Related To', '#3B82F6', 0);
-
-	-- Assignees table
-	CREATE TABLE IF NOT EXISTS assignees (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL UNIQUE COLLATE NOCASE,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
-
-	-- Tasks table
-	CREATE TABLE IF NOT EXISTS tasks (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		title TEXT NOT NULL,
-		description TEXT,
-		column_id INTEGER NOT NULL,
-		position INTEGER NOT NULL DEFAULT 0,
-		ticket_number INTEGER,
-		type_id INTEGER NOT NULL DEFAULT 1,
-		priority_id INTEGER NOT NULL DEFAULT 3,
-		assignee_id INTEGER,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
-		FOREIGN KEY (type_id) REFERENCES types(id),
-		FOREIGN KEY (priority_id) REFERENCES priorities(id),
-		FOREIGN KEY (assignee_id) REFERENCES assignees(id) ON DELETE SET NULL,
-		UNIQUE(column_id, position)
-	);
-
-	-- Task relationships (parent-child, blocking, etc.)
-	CREATE TABLE IF NOT EXISTS task_subtasks (
-		parent_id INTEGER NOT NULL,
-		child_id INTEGER NOT NULL,
-		relation_type_id INTEGER NOT NULL DEFAULT 1,
-		PRIMARY KEY (parent_id, child_id),
-		FOREIGN KEY (parent_id) REFERENCES tasks(id) ON DELETE CASCADE,
-		FOREIGN KEY (child_id) REFERENCES tasks(id) ON DELETE CASCADE,
-		FOREIGN KEY (relation_type_id) REFERENCES relation_types(id)
-	);
-
-	-- Labels table
-	CREATE TABLE IF NOT EXISTS labels (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		color TEXT NOT NULL,
-		project_id INTEGER NOT NULL,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-		UNIQUE(name, project_id)
-	);
-
-	-- Task-labels join table
-	CREATE TABLE IF NOT EXISTS task_labels (
-		task_id INTEGER NOT NULL,
-		label_id INTEGER NOT NULL,
-		PRIMARY KEY (task_id, label_id),
-		FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-		FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE
-	);
-
-	-- Task comments table
-	CREATE TABLE IF NOT EXISTS task_comments (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		task_id INTEGER NOT NULL,
-		content TEXT NOT NULL CHECK(length(content) <= 1000),
-		author TEXT NOT NULL DEFAULT '',
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
-	);
-
-	-- Task events table (immutable audit trail)
-	CREATE TABLE IF NOT EXISTS task_events (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		task_id INTEGER NOT NULL,
-		content TEXT NOT NULL,
-		author TEXT NOT NULL DEFAULT '',
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
-	);
-
-	-- Indexes for performance (from 00001_initial_schema)
-	CREATE INDEX IF NOT EXISTS idx_tasks_column ON tasks(column_id, position);
-	CREATE INDEX IF NOT EXISTS idx_columns_project ON columns(project_id);
-	CREATE INDEX IF NOT EXISTS idx_labels_project ON labels(project_id);
-	CREATE INDEX IF NOT EXISTS idx_task_labels_label ON task_labels(label_id);
-	CREATE INDEX IF NOT EXISTS idx_task_subtasks_parent ON task_subtasks(parent_id);
-	CREATE INDEX IF NOT EXISTS idx_task_subtasks_child ON task_subtasks(child_id);
-	CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);
-	CREATE INDEX IF NOT EXISTS idx_task_events_task_id ON task_events(task_id);
-
-	-- Git branch indexes (from 00003_add_git_branch_to_projects)
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_git_branch_unique ON projects(git_branch) WHERE git_branch IS NOT NULL;
-	CREATE INDEX IF NOT EXISTS idx_projects_git_branch ON projects(git_branch);
-
-	-- Unique partial indexes for column constraints
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_ready_per_project ON columns(project_id) WHERE holds_ready_tasks = 1;
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_completed_per_project ON columns(project_id) WHERE holds_completed_tasks = 1;
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_in_progress_per_project ON columns(project_id) WHERE holds_in_progress_tasks = 1;
-
-	-- Additional performance indexes (from 00002_add_performance_indexes)
-	CREATE INDEX IF NOT EXISTS idx_tasks_column_id ON tasks(column_id);
-	CREATE INDEX IF NOT EXISTS idx_task_labels_task_id ON task_labels(task_id);
-	CREATE INDEX IF NOT EXISTS idx_labels_project_id ON labels(project_id);
-	CREATE INDEX IF NOT EXISTS idx_columns_project_id ON columns(project_id);
-	CREATE INDEX IF NOT EXISTS idx_task_subtasks_child_id ON task_subtasks(child_id);
-	CREATE INDEX IF NOT EXISTS idx_task_comments_task_id ON task_comments(task_id);
-	CREATE INDEX IF NOT EXISTS idx_tasks_type_id ON tasks(type_id);
-	CREATE INDEX IF NOT EXISTS idx_tasks_priority_id ON tasks(priority_id);
-	CREATE INDEX IF NOT EXISTS idx_tasks_assignee_id ON tasks(assignee_id);
-
-	-- Partial indexes for column type queries
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_ready_unique ON columns(project_id) WHERE holds_ready_tasks = 1;
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_completed_unique ON columns(project_id) WHERE holds_completed_tasks = 1;
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_columns_in_progress_unique ON columns(project_id) WHERE holds_in_progress_tasks = 1;
-	`
-
-	_, err := db.ExecContext(context.Background(), schema)
-	return err
 }
 
 // CreateTestProject creates a test project with default columns (Todo, In Progress, Done)
