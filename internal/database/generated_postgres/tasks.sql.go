@@ -51,9 +51,10 @@ insert into tasks (
     description,
     column_id,
     position,
-    ticket_number)
-values ($1, $2, $3, $4, $5)
-returning id, title, description, column_id, position, ticket_number, type_id, priority_id, created_at, updated_at
+    ticket_number,
+    assignee_id)
+values ($1, $2, $3, $4, $5, $6)
+returning id, title, description, column_id, position, ticket_number, type_id, priority_id, created_at, updated_at, assignee_id
 `
 
 type CreateTaskParams struct {
@@ -62,9 +63,10 @@ type CreateTaskParams struct {
 	ColumnID     int64
 	Position     int64
 	TicketNumber sql.NullInt64
+	AssigneeID   sql.NullInt32
 }
 
-// Creates a new task with title, description, position, and ticket number
+// Creates a new task with title, description, position, ticket number, and assignee
 func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error) {
 	row := q.db.QueryRowContext(ctx, createTask,
 		arg.Title,
@@ -72,6 +74,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		arg.ColumnID,
 		arg.Position,
 		arg.TicketNumber,
+		arg.AssigneeID,
 	)
 	var i Task
 	err := row.Scan(
@@ -85,6 +88,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		&i.PriorityID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AssigneeID,
 	)
 	return i, err
 }
@@ -263,6 +267,8 @@ select
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
+    t.assignee_id,
+    a.name as assignee_name,
     cast(coalesce(string_agg(l.id::text, chr(31)), '') as text) as label_ids,
     cast(coalesce(string_agg(l.name, chr(31)), '') as text) as label_names,
     cast(coalesce(string_agg(l.color, chr(31)), '') as text) as label_colors,
@@ -270,13 +276,16 @@ select
         select 1
         from task_subtasks ts
         inner join relation_types rt on ts.relation_type_id = rt.id
-        where ts.parent_id = t.id and rt.is_blocking = true
+        inner join tasks blocker on ts.child_id = blocker.id
+        inner join columns bc on blocker.column_id = bc.id
+        where ts.parent_id = t.id and rt.is_blocking = true and bc.holds_completed_tasks = false
     ) as is_blocked
 from tasks t
 inner join columns c on t.column_id = c.id
 inner join projects proj on c.project_id = proj.id
 left join types ty on t.type_id = ty.id
 left join priorities p on t.priority_id = p.id
+left join assignees a on t.assignee_id = a.id
 left join task_labels tl on t.id = tl.task_id
 left join labels l on tl.label_id = l.id
 where proj.id = $1 and c.holds_in_progress_tasks = true
@@ -293,7 +302,9 @@ group by
     proj.name,
     ty.description,
     p.description,
-    p.color
+    p.color,
+    t.assignee_id,
+    a.name
 order by t.position
 `
 
@@ -311,6 +322,8 @@ type GetInProgressTaskDetailsRow struct {
 	TypeDescription     sql.NullString
 	PriorityDescription sql.NullString
 	PriorityColor       sql.NullString
+	AssigneeID          sql.NullInt32
+	AssigneeName        sql.NullString
 	LabelIds            string
 	LabelNames          string
 	LabelColors         string
@@ -341,6 +354,8 @@ func (q *Queries) GetInProgressTaskDetails(ctx context.Context, id int64) ([]Get
 			&i.TypeDescription,
 			&i.PriorityDescription,
 			&i.PriorityColor,
+			&i.AssigneeID,
+			&i.AssigneeName,
 			&i.LabelIds,
 			&i.LabelNames,
 			&i.LabelColors,
@@ -545,6 +560,8 @@ select
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
+    t.assignee_id,
+    a.name as assignee_name,
     cast(coalesce(string_agg(l.id::text, chr(31)), '') as text) as label_ids,
     cast(coalesce(string_agg(l.name, chr(31)), '') as text) as label_names,
     cast(coalesce(string_agg(l.color, chr(31)), '') as text) as label_colors,
@@ -552,12 +569,15 @@ select
         select 1
         from task_subtasks ts
         inner join relation_types rt on ts.relation_type_id = rt.id
-        where ts.parent_id = t.id and rt.is_blocking = true
+        inner join tasks blocker on ts.child_id = blocker.id
+        inner join columns bc on blocker.column_id = bc.id
+        where ts.parent_id = t.id and rt.is_blocking = true and bc.holds_completed_tasks = false
     ) as is_blocked
 from tasks t
 inner join columns c on t.column_id = c.id
 left join types ty on t.type_id = ty.id
 left join priorities p on t.priority_id = p.id
+left join assignees a on t.assignee_id = a.id
 left join task_labels tl on t.id = tl.task_id
 left join labels l on tl.label_id = l.id
 where c.project_id = $1 and c.holds_ready_tasks = true
@@ -568,7 +588,9 @@ group by
     t.position,
     ty.description,
     p.description,
-    p.color
+    p.color,
+    t.assignee_id,
+    a.name
 order by t.position
 `
 
@@ -580,6 +602,8 @@ type GetReadyTaskSummariesByProjectRow struct {
 	TypeDescription     sql.NullString
 	PriorityDescription sql.NullString
 	PriorityColor       sql.NullString
+	AssigneeID          sql.NullInt32
+	AssigneeName        sql.NullString
 	LabelIds            string
 	LabelNames          string
 	LabelColors         string
@@ -604,6 +628,8 @@ func (q *Queries) GetReadyTaskSummariesByProject(ctx context.Context, projectID 
 			&i.TypeDescription,
 			&i.PriorityDescription,
 			&i.PriorityColor,
+			&i.AssigneeID,
+			&i.AssigneeName,
 			&i.LabelIds,
 			&i.LabelNames,
 			&i.LabelColors,
@@ -739,16 +765,21 @@ select
     p.color as priority_color,
     c.name as column_name,
     proj.name as project_name,
+    t.assignee_id,
+    a.name as assignee_name,
     exists(
         select 1 from task_subtasks ts
         inner join relation_types rt on ts.relation_type_id = rt.id
-        where ts.parent_id = t.id and rt.is_blocking = true
+        inner join tasks blocker on ts.child_id = blocker.id
+        inner join columns bc on blocker.column_id = bc.id
+        where ts.parent_id = t.id and rt.is_blocking = true and bc.holds_completed_tasks = false
     ) as is_blocked
 from tasks t
 inner join columns c on t.column_id = c.id
 inner join projects proj on c.project_id = proj.id
 left join types ty on t.type_id = ty.id
 left join priorities p on t.priority_id = p.id
+left join assignees a on t.assignee_id = a.id
 where t.id = $1
 `
 
@@ -766,11 +797,13 @@ type GetTaskDetailRow struct {
 	PriorityColor       sql.NullString
 	ColumnName          string
 	ProjectName         string
+	AssigneeID          sql.NullInt32
+	AssigneeName        sql.NullString
 	IsBlocked           bool
 }
 
 // Retrieves comprehensive task details including:
-// type, priority, column, project, and blocking status
+// type, priority, column, project, assignee, and blocking status
 func (q *Queries) GetTaskDetail(ctx context.Context, id int64) (GetTaskDetailRow, error) {
 	row := q.db.QueryRowContext(ctx, getTaskDetail, id)
 	var i GetTaskDetailRow
@@ -788,6 +821,8 @@ func (q *Queries) GetTaskDetail(ctx context.Context, id int64) (GetTaskDetailRow
 		&i.PriorityColor,
 		&i.ColumnName,
 		&i.ProjectName,
+		&i.AssigneeID,
+		&i.AssigneeName,
 		&i.IsBlocked,
 	)
 	return i, err
@@ -956,12 +991,15 @@ select
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
+    t.assignee_id,
+    a.name as assignee_name,
     cast(coalesce(string_agg(l.id::text, chr(31)), '') as text) as label_ids,
     cast(coalesce(string_agg(l.name, chr(31)), '') as text) as label_names,
     cast(coalesce(string_agg(l.color, chr(31)), '') as text) as label_colors
 from tasks t
 left join types ty on t.type_id = ty.id
 left join priorities p on t.priority_id = p.id
+left join assignees a on t.assignee_id = a.id
 left join task_labels tl on t.id = tl.task_id
 left join labels l on tl.label_id = l.id
 where t.column_id = $1
@@ -972,7 +1010,9 @@ group by
     t.position,
     ty.description,
     p.description,
-    p.color
+    p.color,
+    t.assignee_id,
+    a.name
 order by t.position
 `
 
@@ -984,6 +1024,8 @@ type GetTaskSummariesByColumnRow struct {
 	TypeDescription     sql.NullString
 	PriorityDescription sql.NullString
 	PriorityColor       sql.NullString
+	AssigneeID          sql.NullInt32
+	AssigneeName        sql.NullString
 	LabelIds            string
 	LabelNames          string
 	LabelColors         string
@@ -1007,6 +1049,8 @@ func (q *Queries) GetTaskSummariesByColumn(ctx context.Context, columnID int64) 
 			&i.TypeDescription,
 			&i.PriorityDescription,
 			&i.PriorityColor,
+			&i.AssigneeID,
+			&i.AssigneeName,
 			&i.LabelIds,
 			&i.LabelNames,
 			&i.LabelColors,
@@ -1033,6 +1077,8 @@ select
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
+    t.assignee_id,
+    a.name as assignee_name,
     cast(coalesce(string_agg(l.id::text, chr(31)), '') as text) as label_ids,
     cast(coalesce(string_agg(l.name, chr(31)), '') as text) as label_names,
     cast(coalesce(string_agg(l.color, chr(31)), '') as text) as label_colors,
@@ -1040,12 +1086,15 @@ select
         select 1
         from task_subtasks ts
         inner join relation_types rt on ts.relation_type_id = rt.id
-        where ts.parent_id = t.id and rt.is_blocking = true
+        inner join tasks blocker on ts.child_id = blocker.id
+        inner join columns bc on blocker.column_id = bc.id
+        where ts.parent_id = t.id and rt.is_blocking = true and bc.holds_completed_tasks = false
     ) as is_blocked
 from tasks t
 inner join columns c on t.column_id = c.id
 left join types ty on t.type_id = ty.id
 left join priorities p on t.priority_id = p.id
+left join assignees a on t.assignee_id = a.id
 left join task_labels tl on t.id = tl.task_id
 left join labels l on tl.label_id = l.id
 where c.project_id = $1
@@ -1056,7 +1105,9 @@ group by
     t.position,
     ty.description,
     p.description,
-    p.color
+    p.color,
+    t.assignee_id,
+    a.name
 order by t.position
 `
 
@@ -1068,6 +1119,8 @@ type GetTaskSummariesByProjectRow struct {
 	TypeDescription     sql.NullString
 	PriorityDescription sql.NullString
 	PriorityColor       sql.NullString
+	AssigneeID          sql.NullInt32
+	AssigneeName        sql.NullString
 	LabelIds            string
 	LabelNames          string
 	LabelColors         string
@@ -1093,6 +1146,8 @@ func (q *Queries) GetTaskSummariesByProject(ctx context.Context, projectID int64
 			&i.TypeDescription,
 			&i.PriorityDescription,
 			&i.PriorityColor,
+			&i.AssigneeID,
+			&i.AssigneeName,
 			&i.LabelIds,
 			&i.LabelNames,
 			&i.LabelColors,
@@ -1120,6 +1175,8 @@ select
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
+    t.assignee_id,
+    a.name as assignee_name,
     cast(coalesce(string_agg(l.id::text, chr(31)), '') as text) as label_ids,
     cast(coalesce(string_agg(l.name, chr(31)), '') as text) as label_names,
     cast(coalesce(string_agg(l.color, chr(31)), '') as text) as label_colors,
@@ -1127,12 +1184,15 @@ select
         select 1
         from task_subtasks ts
         inner join relation_types rt on ts.relation_type_id = rt.id
-        where ts.parent_id = t.id and rt.is_blocking = true
+        inner join tasks blocker on ts.child_id = blocker.id
+        inner join columns bc on blocker.column_id = bc.id
+        where ts.parent_id = t.id and rt.is_blocking = true and bc.holds_completed_tasks = false
     ) as is_blocked
 from tasks t
 inner join columns c on t.column_id = c.id
 left join types ty on t.type_id = ty.id
 left join priorities p on t.priority_id = p.id
+left join assignees a on t.assignee_id = a.id
 left join task_labels tl on t.id = tl.task_id
 left join labels l on tl.label_id = l.id
 where c.project_id = $1 and t.title like $2
@@ -1143,7 +1203,9 @@ group by
     t.position,
     ty.description,
     p.description,
-    p.color
+    p.color,
+    t.assignee_id,
+    a.name
 order by t.position
 `
 
@@ -1160,6 +1222,8 @@ type GetTaskSummariesByProjectFilteredRow struct {
 	TypeDescription     sql.NullString
 	PriorityDescription sql.NullString
 	PriorityColor       sql.NullString
+	AssigneeID          sql.NullInt32
+	AssigneeName        sql.NullString
 	LabelIds            string
 	LabelNames          string
 	LabelColors         string
@@ -1184,6 +1248,8 @@ func (q *Queries) GetTaskSummariesByProjectFiltered(ctx context.Context, arg Get
 			&i.TypeDescription,
 			&i.PriorityDescription,
 			&i.PriorityColor,
+			&i.AssigneeID,
+			&i.AssigneeName,
 			&i.LabelIds,
 			&i.LabelNames,
 			&i.LabelColors,
@@ -1428,6 +1494,23 @@ type UpdateTaskParams struct {
 // Updates a task's title and description
 func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) error {
 	_, err := q.db.ExecContext(ctx, updateTask, arg.Title, arg.Description, arg.ID)
+	return err
+}
+
+const updateTaskAssignee = `-- name: UpdateTaskAssignee :exec
+update tasks
+set assignee_id = $1, updated_at = current_timestamp
+where id = $2
+`
+
+type UpdateTaskAssigneeParams struct {
+	AssigneeID sql.NullInt32
+	ID         int64
+}
+
+// Updates a task's assignee
+func (q *Queries) UpdateTaskAssignee(ctx context.Context, arg UpdateTaskAssigneeParams) error {
+	_, err := q.db.ExecContext(ctx, updateTaskAssignee, arg.AssigneeID, arg.ID)
 	return err
 }
 

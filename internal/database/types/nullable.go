@@ -17,6 +17,11 @@ func FromSQLNullInt64(n sql.NullInt64) NullInt64 {
 	return NullInt64{Int64: n.Int64, Valid: n.Valid}
 }
 
+// FromSQLNullInt32 converts sql.NullInt32 to types.NullInt64
+func FromSQLNullInt32(n sql.NullInt32) NullInt64 {
+	return NullInt64{Int64: int64(n.Int32), Valid: n.Valid}
+}
+
 // NullInt64FromInterface converts any (SQLite representation) to types.NullInt64.
 // Handles int64, int32, and int types that databases may return for nullable integer columns.
 func NullInt64FromInterface(v any) NullInt64 {
@@ -38,6 +43,11 @@ func NullInt64FromInterface(v any) NullInt64 {
 // ToSQLNullInt64 converts types.NullInt64 to sql.NullInt64
 func (n NullInt64) ToSQLNullInt64() sql.NullInt64 {
 	return sql.NullInt64{Int64: n.Int64, Valid: n.Valid}
+}
+
+// ToSQLNullInt32 converts types.NullInt64 to sql.NullInt32
+func (n NullInt64) ToSQLNullInt32() sql.NullInt32 {
+	return sql.NullInt32{Int32: int32(n.Int64), Valid: n.Valid}
 }
 
 // ToInterface converts types.NullInt64 to any (for SQLite)

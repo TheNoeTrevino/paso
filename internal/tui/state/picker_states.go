@@ -11,6 +11,7 @@ type PickerStates struct {
 	Type         *TypePickerState         // Picker for selecting task type (task, bug, feature, etc.)
 	RelationType *RelationTypePickerState // Picker for selecting relationship types (blocking, related, etc.)
 	Status       *StatusPickerState       // Picker for selecting task status/column
+	Assignee     *AssigneePickerState     // Picker for selecting task assignee
 }
 
 // NewPickerStates creates a new PickerStates instance with all pickers initialized.
@@ -23,5 +24,6 @@ func NewPickerStates() *PickerStates {
 		Type:         NewTypePickerState(),
 		RelationType: NewRelationTypePickerState(),
 		Status:       NewStatusPickerState(),
+		Assignee:     NewAssigneePickerState(),
 	}
 }

@@ -26,6 +26,8 @@ type Querier interface {
 	ColumnExists(ctx context.Context, id int64) (int64, error)
 	// Returns the count of tasks that have this label attached
 	CountTasksByLabel(ctx context.Context, labelID int64) (int64, error)
+	// Creates a new assignee
+	CreateAssignee(ctx context.Context, name string) (Assignee, error)
 	// Creates a new column in a project with optional
 	// linked list positioning and task type flags
 	CreateColumn(ctx context.Context, arg CreateColumnParams) (Column, error)
@@ -35,12 +37,15 @@ type Querier interface {
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
 	// Creates a new project with name and description
 	CreateProjectRecord(ctx context.Context, arg CreateProjectRecordParams) (Project, error)
-	// Creates a new task with title, description, position, and ticket number
+	// Creates a new task with title, description, position, ticket number, and assignee
 	CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error)
 	// Creates a new event for a task
 	CreateTaskEvent(ctx context.Context, arg CreateTaskEventParams) (TaskEvent, error)
 	// Removes all labels from a task
 	DeleteAllLabelsFromTask(ctx context.Context, taskID int64) error
+	// Deletes an assignee by ID
+	// Note: Tasks will have assignee_id set to null via on delete set null
+	DeleteAssignee(ctx context.Context, id int32) error
 	// Permanently deletes a column by ID
 	DeleteColumn(ctx context.Context, id int64) error
 	// Deletes all columns belonging to a project
@@ -69,6 +74,10 @@ type Querier interface {
 	GetAllRelationTypes(ctx context.Context) ([]RelationType, error)
 	// Retrieves all available task types
 	GetAllTypes(ctx context.Context) ([]Type, error)
+	// Retrieves an assignee by ID
+	GetAssigneeByID(ctx context.Context, id int32) (Assignee, error)
+	// Retrieves an assignee by name (case-insensitive)
+	GetAssigneeByName(ctx context.Context, lower string) (Assignee, error)
 	// Retrieves all child tasks for a given parent task with relationship details
 	GetChildTasks(ctx context.Context, parentID int64) ([]GetChildTasksRow, error)
 	// Retrieves a column by its ID with all metadata
@@ -136,7 +145,7 @@ type Querier interface {
 	// Returns the number of tasks in a specific column
 	GetTaskCountByColumn(ctx context.Context, columnID int64) (int64, error)
 	// Retrieves comprehensive task details including:
-	// type, priority, column, project, and blocking status
+	// type, priority, column, project, assignee, and blocking status
 	GetTaskDetail(ctx context.Context, id int64) (GetTaskDetailRow, error)
 	// Retrieves all labels attached to a specific task
 	GetTaskLabels(ctx context.Context, taskID int64) ([]Label, error)
@@ -167,6 +176,8 @@ type Querier interface {
 	InitializeProjectCounter(ctx context.Context, projectID int64) error
 	// Creates a task-label association
 	InsertTaskLabel(ctx context.Context, arg InsertTaskLabelParams) error
+	// Lists all assignees ordered by name
+	ListAssignees(ctx context.Context) ([]Assignee, error)
 	// Moves a task to a different column and updates its position
 	MoveTaskToColumn(ctx context.Context, arg MoveTaskToColumnParams) error
 	// Removes a specific label from a task
@@ -197,6 +208,8 @@ type Querier interface {
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) error
 	// Updates a task's title and description
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) error
+	// Updates a task's assignee
+	UpdateTaskAssignee(ctx context.Context, arg UpdateTaskAssigneeParams) error
 	// Updates a task's priority level
 	UpdateTaskPriority(ctx context.Context, arg UpdateTaskPriorityParams) error
 	// Updates a task's type classification

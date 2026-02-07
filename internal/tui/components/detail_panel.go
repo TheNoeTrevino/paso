@@ -147,6 +147,14 @@ func renderDetailMetadata(task *models.TaskDetail, width int) string {
 		parts = append(parts, priorityLine)
 	}
 
+	// Assignee
+	if task.AssigneeName != nil {
+		assigneeStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Highlight))
+		assigneeLine := labelStyle.Render("Assignee: ") + assigneeStyle.Render("@"+*task.AssigneeName)
+		parts = append(parts, assigneeLine)
+	}
+
 	// Blocked status
 	if task.IsBlocked {
 		blockedStyle := lipgloss.NewStyle().

@@ -16,8 +16,10 @@ import (
 func setupLinkedColumns(t *testing.T, db *sql.DB) (projectID, column1ID, column2ID, column3ID int) {
 	t.Helper()
 
+	ctx := context.Background()
+
 	// Create project manually
-	result, err := db.ExecContext(context.Background(),
+	result, err := db.ExecContext(ctx,
 		"INSERT INTO projects (name, description) VALUES (?, ?)", "Test Project", "Test description")
 	require.NoError(t, err, "Failed to insert project")
 	projID, err := result.LastInsertId()
@@ -25,12 +27,12 @@ func setupLinkedColumns(t *testing.T, db *sql.DB) (projectID, column1ID, column2
 	projectID = int(projID)
 
 	// Initialize project counter
-	_, err = db.ExecContext(context.Background(),
+	_, err = db.ExecContext(ctx,
 		"INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)", projectID)
 	assert.NoError(t, err)
 
 	// Create first column (Todo)
-	result, err = db.ExecContext(context.Background(),
+	result, err = db.ExecContext(ctx,
 		"INSERT INTO columns (project_id, name, prev_id, next_id) VALUES (?, ?, NULL, NULL)",
 		projectID, "Todo")
 	require.NoError(t, err, "Failed to insert first column")
@@ -39,7 +41,7 @@ func setupLinkedColumns(t *testing.T, db *sql.DB) (projectID, column1ID, column2
 	column1ID = int(col1ID)
 
 	// Create second column (In Progress)
-	result, err = db.ExecContext(context.Background(),
+	result, err = db.ExecContext(ctx,
 		"INSERT INTO columns (project_id, name, prev_id, next_id) VALUES (?, ?, ?, NULL)",
 		projectID, "In Progress", column1ID)
 	require.NoError(t, err, "Failed to insert second column")
@@ -48,12 +50,12 @@ func setupLinkedColumns(t *testing.T, db *sql.DB) (projectID, column1ID, column2
 	column2ID = int(col2ID)
 
 	// Link column1 to column2
-	_, err = db.ExecContext(context.Background(),
+	_, err = db.ExecContext(ctx,
 		"UPDATE columns SET next_id = ? WHERE id = ?", column2ID, column1ID)
 	assert.NoError(t, err)
 
 	// Create third column (Done)
-	result, err = db.ExecContext(context.Background(),
+	result, err = db.ExecContext(ctx,
 		"INSERT INTO columns (project_id, name, prev_id, next_id) VALUES (?, ?, ?, NULL)",
 		projectID, "Done", column2ID)
 	require.NoError(t, err, "Failed to insert third column")
@@ -62,7 +64,7 @@ func setupLinkedColumns(t *testing.T, db *sql.DB) (projectID, column1ID, column2
 	column3ID = int(col3ID)
 
 	// Link column2 to column3
-	_, err = db.ExecContext(context.Background(),
+	_, err = db.ExecContext(ctx,
 		"UPDATE columns SET next_id = ? WHERE id = ?", column3ID, column2ID)
 	assert.NoError(t, err)
 
@@ -72,9 +74,8 @@ func setupLinkedColumns(t *testing.T, db *sql.DB) (projectID, column1ID, column2
 func TestMoveTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+
+	ctx := context.Background()
 
 	// Create test project with properly linked columns
 	_, column1ID, column2ID, column3ID := setupLinkedColumns(t, db)
@@ -85,7 +86,7 @@ func TestMoveTask_Positive(t *testing.T) {
 
 		// Verify task is in column 1
 		var columnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column1ID, columnID)
@@ -101,7 +102,7 @@ func TestMoveTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("Task %d moved to", taskID))
 
 		// Verify task moved to column 2
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column2ID, columnID)
@@ -113,7 +114,7 @@ func TestMoveTask_Positive(t *testing.T) {
 
 		// Verify task is in column 3
 		var columnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column3ID, columnID)
@@ -129,7 +130,7 @@ func TestMoveTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("Task %d moved to", taskID))
 
 		// Verify task moved to column 2
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column2ID, columnID)
@@ -151,7 +152,7 @@ func TestMoveTask_Positive(t *testing.T) {
 
 		// Verify task moved to column 3 (Done)
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column3ID, columnID)
@@ -173,7 +174,7 @@ func TestMoveTask_Positive(t *testing.T) {
 
 		// Verify task moved to column 3 (Done)
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column3ID, columnID)
@@ -196,7 +197,7 @@ func TestMoveTask_Positive(t *testing.T) {
 
 		// Verify task is still in column 1
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column1ID, columnID)
@@ -218,7 +219,7 @@ func TestMoveTask_Positive(t *testing.T) {
 
 		// Verify task moved to column 2 (In Progress)
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column2ID, columnID)
@@ -242,7 +243,7 @@ func TestMoveTask_Positive(t *testing.T) {
 
 		// Verify task moved
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column2ID, columnID)
@@ -275,7 +276,7 @@ func TestMoveTask_Positive(t *testing.T) {
 
 		// Verify task moved
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column2ID, columnID)
@@ -287,7 +288,7 @@ func TestMoveTask_Positive(t *testing.T) {
 
 		// Get initial position
 		var initialPosition int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT position FROM tasks WHERE id = ?", taskID).Scan(&initialPosition)
 		assert.NoError(t, err)
 
@@ -302,7 +303,7 @@ func TestMoveTask_Positive(t *testing.T) {
 
 		// Get new position (should be at the end of the target column)
 		var newPosition int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT position FROM tasks WHERE id = ?", taskID).Scan(&newPosition)
 		assert.NoError(t, err)
 
@@ -328,7 +329,7 @@ func TestMoveTask_Positive(t *testing.T) {
 
 		// Verify task is still in column 1
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column1ID, columnID)
@@ -347,7 +348,7 @@ func TestMoveTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column2ID, columnID)
@@ -360,7 +361,7 @@ func TestMoveTask_Positive(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column3ID, columnID)
@@ -373,7 +374,7 @@ func TestMoveTask_Positive(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column2ID, columnID)
@@ -386,7 +387,7 @@ func TestMoveTask_Positive(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, column1ID, columnID)
@@ -396,9 +397,6 @@ func TestMoveTask_Positive(t *testing.T) {
 func TestMoveTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
 
 	// Create test project with properly linked columns
 	_, column1ID, _, column3ID := setupLinkedColumns(t, db)

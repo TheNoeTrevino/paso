@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/cli/assignee"
 	"github.com/thenoetrevino/paso/internal/cli/column"
 	"github.com/thenoetrevino/paso/internal/cli/db"
 	"github.com/thenoetrevino/paso/internal/cli/label"
@@ -49,6 +50,7 @@ func init() {
 	rootCmd.AddCommand(project.ProjectCmd())
 	rootCmd.AddCommand(column.ColumnCmd())
 	rootCmd.AddCommand(label.LabelCmd())
+	rootCmd.AddCommand(assignee.AssigneeCmd())
 	rootCmd.AddCommand(tutorial.TutorialCmd())
 	rootCmd.AddCommand(setup.SetupCmd())
 	rootCmd.AddCommand(db.DbCmd())

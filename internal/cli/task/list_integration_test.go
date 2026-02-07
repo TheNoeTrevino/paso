@@ -3,27 +3,18 @@ package task
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
-
-// stripANSI removes ANSI escape codes from a string
-func stripANSI(str string) string {
-	ansiRegex := regexp.MustCompile(`\x1b\[[0-9;]*m`)
-	return ansiRegex.ReplaceAllString(str, "")
-}
 
 func TestListTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
 
 	// Create test project
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -47,7 +38,7 @@ func TestListTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Strip ANSI codes for easier assertions
-		cleanOutput := stripANSI(output)
+		cleanOutput := testutil.StripANSI(output)
 
 		// Verify table headers are present
 		assert.Contains(t, cleanOutput, "ID")

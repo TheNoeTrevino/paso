@@ -15,16 +15,15 @@ import (
 func TestCommentTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		require.NoError(t, db.Close(), "Failed to close database")
-	}()
+
+	ctx := context.Background()
 
 	// Create test project with default columns (Todo, In Progress, Done)
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	// Get the default "Todo" column ID
 	var columnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 		projectID).Scan(&columnID)
 	require.NoError(t, err)
@@ -44,7 +43,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "This is a test comment")
 
 		// Verify comment in database
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, "This is a test comment", taskDetail.Comments[0].Message)
@@ -64,7 +63,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "✓ Comment added")
 
 		// Verify author in database
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, "john.doe", taskDetail.Comments[0].Author)
@@ -122,7 +121,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Regexp(t, `^\d+$`, commentIDStr)
 
 		// Verify comment was actually created
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, "Quiet comment test", taskDetail.Comments[0].Message)
@@ -164,7 +163,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify all comments exist
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 3)
 
@@ -201,13 +200,13 @@ func TestCommentTask_Positive(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify task 1 has only its comment
-		task1Detail, err := app.TaskService.GetTaskDetail(context.Background(), task1ID)
+		task1Detail, err := app.TaskService.GetTaskDetail(ctx, task1ID)
 		require.NoError(t, err)
 		require.Len(t, task1Detail.Comments, 1)
 		assert.Equal(t, "Comment on task 1", task1Detail.Comments[0].Message)
 
 		// Verify task 2 has only its comment
-		task2Detail, err := app.TaskService.GetTaskDetail(context.Background(), task2ID)
+		task2Detail, err := app.TaskService.GetTaskDetail(ctx, task2ID)
 		require.NoError(t, err)
 		require.Len(t, task2Detail.Comments, 1)
 		assert.Equal(t, "Comment on task 2", task2Detail.Comments[0].Message)
@@ -229,7 +228,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, err.Error(), "empty")
 
 		// Verify no comment was stored
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		assert.Len(t, taskDetail.Comments, 0)
 	})
@@ -250,7 +249,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "✓ Comment added")
 
 		// Verify it was saved correctly
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, 999, len(taskDetail.Comments[0].Message))
@@ -273,7 +272,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "✓ Comment added")
 
 		// Verify it was saved correctly
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, 1000, len(taskDetail.Comments[0].Message))
@@ -295,7 +294,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "✓ Comment added")
 
 		// Verify emoji preserved
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, message, taskDetail.Comments[0].Message)
@@ -316,7 +315,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "✓ Comment added")
 
 		// Verify Chinese characters preserved
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, message, taskDetail.Comments[0].Message)
@@ -337,7 +336,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "✓ Comment added")
 
 		// Verify Arabic characters preserved
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, message, taskDetail.Comments[0].Message)
@@ -358,7 +357,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "✓ Comment added")
 
 		// Verify newlines preserved
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, message, taskDetail.Comments[0].Message)
@@ -380,7 +379,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "✓ Comment added")
 
 		// Verify single quotes preserved
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, message, taskDetail.Comments[0].Message)
@@ -401,7 +400,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "✓ Comment added")
 
 		// Verify double quotes preserved
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, message, taskDetail.Comments[0].Message)
@@ -422,7 +421,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "✓ Comment added")
 
 		// Verify backslashes preserved
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, message, taskDetail.Comments[0].Message)
@@ -443,7 +442,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "✓ Comment added")
 
 		// Verify whitespace preserved
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, message, taskDetail.Comments[0].Message)
@@ -464,7 +463,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "✓ Comment added")
 
 		// Verify HTML-like content preserved as plain text (no sanitization)
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, message, taskDetail.Comments[0].Message)
@@ -485,14 +484,14 @@ func TestCommentTask_Positive(t *testing.T) {
 		assert.Contains(t, output, "✓ Comment added")
 
 		// Verify SQL-like content stored as plain text (no injection)
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.Equal(t, message, taskDetail.Comments[0].Message)
 
 		// Verify no SQL injection occurred - tasks table still exists
 		var count int
-		err = db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM tasks").Scan(&count)
+		err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks").Scan(&count)
 		require.NoError(t, err)
 		assert.Greater(t, count, 0, "Tasks table should still exist and have data")
 	})
@@ -511,7 +510,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		// Verify timestamp via direct database query
 		// Note: GetTaskDetail may not populate timestamps from sql.NullTime correctly
 		var createdAt, updatedAt string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT created_at, updated_at FROM task_comments WHERE task_id = ?",
 			taskID).Scan(&createdAt, &updatedAt)
 		require.NoError(t, err)
@@ -531,7 +530,7 @@ func TestCommentTask_Positive(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify author is set (not empty)
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 
@@ -543,16 +542,15 @@ func TestCommentTask_Positive(t *testing.T) {
 func TestCommentTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		require.NoError(t, db.Close(), "Failed to close database")
-	}()
+
+	ctx := context.Background()
 
 	// Create test project
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	// Get the default "Todo" column ID
 	var columnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 		projectID).Scan(&columnID)
 	require.NoError(t, err)
@@ -657,7 +655,7 @@ func TestCommentTask_Negative(t *testing.T) {
 		assert.Contains(t, output, "✓ Comment added")
 
 		// Verify default author was used (not empty)
-		taskDetail, err := app.TaskService.GetTaskDetail(context.Background(), taskID)
+		taskDetail, err := app.TaskService.GetTaskDetail(ctx, taskID)
 		require.NoError(t, err)
 		require.Len(t, taskDetail.Comments, 1)
 		assert.NotEmpty(t, taskDetail.Comments[0].Author)

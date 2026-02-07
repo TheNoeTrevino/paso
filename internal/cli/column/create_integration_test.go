@@ -15,9 +15,6 @@ import (
 func TestCreateColumn_Integration(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
 
 	// Create test project with default columns (Todo, In Progress, Done)
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -186,9 +183,6 @@ func TestCreateColumn_Integration(t *testing.T) {
 func TestCreateColumn_ErrorCases(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
 
 	// Create test project
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -239,9 +233,7 @@ func TestCreateColumn_ErrorCases(t *testing.T) {
 
 func TestCreateColumn_FlagCombinations(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+	ctx := context.Background()
 
 	projectID := cli.CreateTestProject(t, db, "Combo Test Project")
 
@@ -264,7 +256,7 @@ func TestCreateColumn_FlagCombinations(t *testing.T) {
 		// Verify in database
 		var columnID int
 		var holdsReady bool
-		err = db.QueryRowContext(context.Background(), `
+		err = db.QueryRowContext(ctx, `
 			SELECT id, holds_ready_tasks
 			FROM columns
 			WHERE project_id = ? AND name = 'Ready and Quiet'
@@ -293,7 +285,7 @@ func TestCreateColumn_FlagCombinations(t *testing.T) {
 
 		// Verify database state
 		var holdsCompleted bool
-		err = db.QueryRowContext(context.Background(), `
+		err = db.QueryRowContext(ctx, `
 			SELECT holds_completed_tasks
 			FROM columns
 			WHERE project_id = ? AND name = 'Completed and JSON'
@@ -320,7 +312,7 @@ func TestCreateColumn_FlagCombinations(t *testing.T) {
 
 		// Verify all columns exist in database
 		var count int
-		err := db.QueryRowContext(context.Background(), `
+		err := db.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			FROM columns
 			WHERE project_id = ? AND name LIKE 'Sequential Column %'

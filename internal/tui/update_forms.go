@@ -70,6 +70,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 		Description: values.description,
 		ColumnID:    currentCol.ID,
 		Position:    len(m.getTasksForColumn(currentCol.ID)),
+		AssigneeID:  m.Forms.Form.FormAssigneeID,
 		LabelIDs:    values.labelIDs,
 		ParentIDs:   parentIDs,
 		ChildIDs:    childIDs,
@@ -457,6 +458,13 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Open type picker
 			if m.initTypePickerForForm() {
 				m.UIState.Mode = state.TypePickerMode
+			}
+			return m, nil
+
+		case "ctrl+a":
+			// Open assignee picker
+			if m.initAssigneePickerForForm() {
+				m.UIState.Mode = state.AssigneePickerMode
 			}
 			return m, nil
 

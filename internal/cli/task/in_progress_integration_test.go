@@ -15,16 +15,14 @@ import (
 func TestInProgressTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+	ctx := context.Background()
 
 	// Create test project with columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	// Get the default "Todo" column ID
 	var todoColumnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 		projectID).Scan(&todoColumnID)
 	assert.NoError(t, err)
@@ -33,7 +31,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 	inProgressColumnID := cli.CreateTestColumn(t, db, projectID, "In Progress")
 
 	// Mark "In Progress" column as in-progress column
-	_, err = db.ExecContext(context.Background(),
+	_, err = db.ExecContext(ctx,
 		"UPDATE columns SET holds_in_progress_tasks = true WHERE id = ?", inProgressColumnID)
 	assert.NoError(t, err)
 
@@ -42,7 +40,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task to Start")
 
 		// Assign ticket number
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 1 WHERE id = ?", taskID)
 		assert.NoError(t, err)
 
@@ -58,7 +56,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 
 		// Verify task moved to in-progress column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, inProgressColumnID, columnID)
@@ -69,7 +67,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Quiet Mode Task")
 
 		// Assign ticket number
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 2 WHERE id = ?", taskID)
 		assert.NoError(t, err)
 
@@ -86,7 +84,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 
 		// Verify task moved to in-progress column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, inProgressColumnID, columnID)
@@ -97,7 +95,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "JSON Mode Task")
 
 		// Assign ticket number
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 3 WHERE id = ?", taskID)
 		assert.NoError(t, err)
 
@@ -123,7 +121,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 
 		// Verify task moved to in-progress column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, inProgressColumnID, columnID)
@@ -132,7 +130,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 	t.Run("List in-progress tasks", func(t *testing.T) {
 		// Create task and move it to in-progress using the command
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Listed In Progress Task")
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 4 WHERE id = ?", taskID)
 		assert.NoError(t, err)
 
@@ -160,10 +158,10 @@ func TestInProgressTask_Positive(t *testing.T) {
 		// Create and move tasks to in-progress using the command
 		taskID1 := cli.CreateTestTask(t, db, todoColumnID, "Quiet List Task 1")
 		taskID2 := cli.CreateTestTask(t, db, todoColumnID, "Quiet List Task 2")
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 5 WHERE id = ?", taskID1)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 6 WHERE id = ?", taskID2)
 		assert.NoError(t, err)
 
@@ -204,7 +202,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 	t.Run("List in-progress tasks - JSON mode", func(t *testing.T) {
 		// Create and move a task to in-progress using the command
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "JSON List Task")
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 7 WHERE id = ?", taskID)
 		assert.NoError(t, err)
 
@@ -257,7 +255,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Already In Progress")
 
 		// Assign ticket number
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 8 WHERE id = ?", taskID)
 		assert.NoError(t, err)
 
@@ -284,13 +282,13 @@ func TestInProgressTask_Positive(t *testing.T) {
 		taskID3 := cli.CreateTestTask(t, db, todoColumnID, "Multi Task 3")
 
 		// Assign ticket numbers
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 9 WHERE id = ?", taskID1)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 10 WHERE id = ?", taskID2)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 11 WHERE id = ?", taskID3)
 		assert.NoError(t, err)
 
@@ -320,7 +318,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		// Verify all tasks moved to in-progress column
 		for _, taskID := range []int{taskID1, taskID2, taskID3} {
 			var columnID int
-			err = db.QueryRowContext(context.Background(),
+			err = db.QueryRowContext(ctx,
 				"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 			assert.NoError(t, err)
 			assert.Equal(t, inProgressColumnID, columnID)
@@ -334,13 +332,13 @@ func TestInProgressTask_Positive(t *testing.T) {
 		criticalPriorityTaskID := cli.CreateTestTask(t, db, inProgressColumnID, "Critical Priority Task")
 
 		// Assign ticket numbers and priorities
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 12, priority_id = 2 WHERE id = ?", lowPriorityTaskID)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 13, priority_id = 4 WHERE id = ?", highPriorityTaskID)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 14, priority_id = 5 WHERE id = ?", criticalPriorityTaskID)
 		assert.NoError(t, err)
 
@@ -362,15 +360,15 @@ func TestInProgressTask_Positive(t *testing.T) {
 		blockedTaskID := cli.CreateTestTask(t, db, inProgressColumnID, "Blocked In Progress Task")
 
 		// Assign ticket numbers
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 15 WHERE id = ?", blockerTaskID)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 16 WHERE id = ?", blockedTaskID)
 		assert.NoError(t, err)
 
 		// Create blocking relationship (relation_type_id = 2 for blocking)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 2)",
 			blockedTaskID, blockerTaskID)
 		assert.NoError(t, err)
@@ -393,7 +391,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		emptyInProgressColumnID := cli.CreateTestColumn(t, db, newProjectID, "In Progress")
 
 		// Mark as in-progress column
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE columns SET holds_in_progress_tasks = true WHERE id = ?", emptyInProgressColumnID)
 		assert.NoError(t, err)
 
@@ -412,7 +410,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task With Labels")
 
 		// Assign ticket number
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 17 WHERE id = ?", taskID)
 		assert.NoError(t, err)
 
@@ -420,10 +418,10 @@ func TestInProgressTask_Positive(t *testing.T) {
 		labelID1 := testutil.CreateTestLabel(t, db, projectID, "bug", "#EF4444")
 		labelID2 := testutil.CreateTestLabel(t, db, projectID, "urgent", "#F97316")
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID1)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID2)
 		assert.NoError(t, err)
 
@@ -438,14 +436,14 @@ func TestInProgressTask_Positive(t *testing.T) {
 
 		// Verify task moved to in-progress column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, inProgressColumnID, columnID)
 
 		// Verify labels are still attached
 		var labelCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_labels WHERE task_id = ?", taskID).Scan(&labelCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, labelCount)
@@ -459,7 +457,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, doneColumnID, "Task From Done")
 
 		// Assign ticket number
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 18 WHERE id = ?", taskID)
 		assert.NoError(t, err)
 
@@ -474,7 +472,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 
 		// Verify task moved from Done to In Progress
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, inProgressColumnID, columnID)
@@ -485,7 +483,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task With Description")
 
 		description := "This is a detailed description of the task that needs to be completed."
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET description = ?, ticket_number = 19 WHERE id = ?", description, taskID)
 		assert.NoError(t, err)
 
@@ -501,7 +499,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		// Verify task moved and description is preserved
 		var columnID int
 		var savedDescription string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id, description FROM tasks WHERE id = ?", taskID).Scan(&columnID, &savedDescription)
 		assert.NoError(t, err)
 		assert.Equal(t, inProgressColumnID, columnID)
@@ -512,7 +510,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		// Create a task with all metadata
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Complete Metadata Task")
 
-		_, err := db.ExecContext(context.Background(), `
+		_, err := db.ExecContext(ctx, `
 			UPDATE tasks 
 			SET description = ?, 
 			    ticket_number = ?,

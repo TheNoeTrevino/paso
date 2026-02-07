@@ -11,16 +11,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
-// ============================================================================
-// TEST HELPERS
-// ============================================================================
-
-// setupTestDB creates an in-memory database with full schema using testutil
-func setupTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-	return testutil.SetupTestDB(t)
-}
-
 // newTestService creates a new service for testing (panics on error since tests use valid SQLite)
 func newTestService(t *testing.T, db *sql.DB) Service {
 	t.Helper()
@@ -58,15 +48,10 @@ func createTestTask(t *testing.T, db *sql.DB, columnID int) int {
 	return int(id)
 }
 
-// ============================================================================
-// TEST CASES
-// ============================================================================
-
 func TestCreateColumn(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
@@ -152,8 +137,7 @@ func TestCreateColumn_Validation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := setupTestDB(t)
-			defer func() { _ = db.Close() }()
+			db := testutil.SetupTestDB(t)
 
 			projectID := tt.projectID
 			if tt.setupFn != nil {
@@ -183,14 +167,14 @@ func TestCreateColumn_Validation(t *testing.T) {
 func TestCreateColumn_LinkedList(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create first column
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
@@ -199,7 +183,7 @@ func TestCreateColumn_LinkedList(t *testing.T) {
 	}
 
 	// Create second column (should append to end)
-	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "In Progress",
 		ProjectID: projectID,
 	})
@@ -208,7 +192,7 @@ func TestCreateColumn_LinkedList(t *testing.T) {
 	}
 
 	// Create third column (should append to end)
-	col3, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col3, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "Done",
 		ProjectID: projectID,
 	})
@@ -219,7 +203,7 @@ func TestCreateColumn_LinkedList(t *testing.T) {
 	// Verify linked list structure: col1 <-> col2 <-> col3
 
 	// Get updated column 1
-	col1Updated, err := svc.GetColumnByID(context.Background(), col1.ID)
+	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to get column 1: %v", err)
 	}
@@ -232,7 +216,7 @@ func TestCreateColumn_LinkedList(t *testing.T) {
 	}
 
 	// Get updated column 2
-	col2Updated, err := svc.GetColumnByID(context.Background(), col2.ID)
+	col2Updated, err := svc.GetColumnByID(ctx, col2.ID)
 	if err != nil {
 		t.Fatalf("Failed to get column 2: %v", err)
 	}
@@ -256,14 +240,14 @@ func TestCreateColumn_LinkedList(t *testing.T) {
 func TestCreateColumn_InsertAfter(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create two columns
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
@@ -271,7 +255,7 @@ func TestCreateColumn_InsertAfter(t *testing.T) {
 		t.Fatalf("Failed to create column 1: %v", err)
 	}
 
-	col3, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col3, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "Done",
 		ProjectID: projectID,
 	})
@@ -281,7 +265,7 @@ func TestCreateColumn_InsertAfter(t *testing.T) {
 
 	// Insert column 2 after column 1
 	afterID := col1.ID
-	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "In Progress",
 		ProjectID: projectID,
 		AfterID:   &afterID,
@@ -293,9 +277,9 @@ func TestCreateColumn_InsertAfter(t *testing.T) {
 	// Verify linked list: col1 <-> col2 <-> col3
 
 	// Get updated columns
-	col1Updated, _ := svc.GetColumnByID(context.Background(), col1.ID)
-	col2Updated, _ := svc.GetColumnByID(context.Background(), col2.ID)
-	col3Updated, _ := svc.GetColumnByID(context.Background(), col3.ID)
+	col1Updated, _ := svc.GetColumnByID(ctx, col1.ID)
+	col2Updated, _ := svc.GetColumnByID(ctx, col2.ID)
+	col3Updated, _ := svc.GetColumnByID(ctx, col3.ID)
 
 	if col1Updated.NextID == nil || *col1Updated.NextID != col2.ID {
 		t.Errorf("Expected col1 next_id %d, got %v", col2.ID, col1Updated.NextID)
@@ -316,14 +300,14 @@ func TestCreateColumn_InsertAfter(t *testing.T) {
 func TestGetColumnsByProject(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create two columns
-	_, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	_, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
@@ -331,7 +315,7 @@ func TestGetColumnsByProject(t *testing.T) {
 		t.Fatalf("Failed to create column 1: %v", err)
 	}
 
-	_, err = svc.CreateColumn(context.Background(), CreateColumnRequest{
+	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "Done",
 		ProjectID: projectID,
 	})
@@ -339,7 +323,7 @@ func TestGetColumnsByProject(t *testing.T) {
 		t.Fatalf("Failed to create column 2: %v", err)
 	}
 
-	results, err := svc.GetColumnsByProject(context.Background(), projectID)
+	results, err := svc.GetColumnsByProject(ctx, projectID)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -360,8 +344,7 @@ func TestGetColumnsByProject(t *testing.T) {
 func TestGetColumnsByProject_Empty(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
@@ -379,8 +362,7 @@ func TestGetColumnsByProject_Empty(t *testing.T) {
 func TestGetColumnsByProject_InvalidProjectID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -398,13 +380,13 @@ func TestGetColumnsByProject_InvalidProjectID(t *testing.T) {
 func TestGetColumnByID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
-	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	created, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
@@ -412,7 +394,7 @@ func TestGetColumnByID(t *testing.T) {
 		t.Fatalf("Failed to create column: %v", err)
 	}
 
-	result, err := svc.GetColumnByID(context.Background(), created.ID)
+	result, err := svc.GetColumnByID(ctx, created.ID)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -429,8 +411,7 @@ func TestGetColumnByID(t *testing.T) {
 func TestGetColumnByID_NotFound(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -448,8 +429,7 @@ func TestGetColumnByID_NotFound(t *testing.T) {
 func TestGetColumnByID_InvalidID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -467,13 +447,13 @@ func TestGetColumnByID_InvalidID(t *testing.T) {
 func TestUpdateColumnName(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
-	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	created, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
@@ -481,13 +461,13 @@ func TestUpdateColumnName(t *testing.T) {
 		t.Fatalf("Failed to create column: %v", err)
 	}
 
-	err = svc.UpdateColumnName(context.Background(), created.ID, "Backlog")
+	err = svc.UpdateColumnName(ctx, created.ID, "Backlog")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
 	// Verify update
-	updated, err := svc.GetColumnByID(context.Background(), created.ID)
+	updated, err := svc.GetColumnByID(ctx, created.ID)
 	if err != nil {
 		t.Fatalf("Failed to get updated column: %v", err)
 	}
@@ -534,8 +514,7 @@ func TestUpdateColumnName_Validation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := setupTestDB(t)
-			defer func() { _ = db.Close() }()
+			db := testutil.SetupTestDB(t)
 
 			columnID := tt.columnID
 			if tt.setupFn != nil {
@@ -560,13 +539,13 @@ func TestUpdateColumnName_Validation(t *testing.T) {
 func TestDeleteColumn(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
-	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	created, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
@@ -574,13 +553,13 @@ func TestDeleteColumn(t *testing.T) {
 		t.Fatalf("Failed to create column: %v", err)
 	}
 
-	err = svc.DeleteColumn(context.Background(), created.ID)
+	err = svc.DeleteColumn(ctx, created.ID)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
 	// Verify column is deleted
-	_, err = svc.GetColumnByID(context.Background(), created.ID)
+	_, err = svc.GetColumnByID(ctx, created.ID)
 	if err != sql.ErrNoRows {
 		t.Errorf("Expected sql.ErrNoRows after deletion, got %v", err)
 	}
@@ -621,8 +600,7 @@ func TestDeleteColumn_Validation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := setupTestDB(t)
-			defer func() { _ = db.Close() }()
+			db := testutil.SetupTestDB(t)
 
 			columnID := tt.columnID
 			if tt.setupFn != nil {
@@ -647,38 +625,38 @@ func TestDeleteColumn_Validation(t *testing.T) {
 func TestDeleteColumn_LinkedListIntegrity(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create three columns: col1 <-> col2 <-> col3
-	col1, _ := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, _ := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
 
-	col2, _ := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, _ := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "In Progress",
 		ProjectID: projectID,
 	})
 
-	col3, _ := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col3, _ := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "Done",
 		ProjectID: projectID,
 	})
 
 	// Delete middle column (col2)
-	err := svc.DeleteColumn(context.Background(), col2.ID)
+	err := svc.DeleteColumn(ctx, col2.ID)
 	if err != nil {
 		t.Fatalf("Failed to delete column 2: %v", err)
 	}
 
 	// Verify linked list is repaired: col1 <-> col3
 
-	col1Updated, _ := svc.GetColumnByID(context.Background(), col1.ID)
-	col3Updated, _ := svc.GetColumnByID(context.Background(), col3.ID)
+	col1Updated, _ := svc.GetColumnByID(ctx, col1.ID)
+	col3Updated, _ := svc.GetColumnByID(ctx, col3.ID)
 
 	if col1Updated.NextID == nil || *col1Updated.NextID != col3.ID {
 		t.Errorf("Expected col1 next_id %d after deletion, got %v", col3.ID, col1Updated.NextID)
@@ -689,15 +667,10 @@ func TestDeleteColumn_LinkedListIntegrity(t *testing.T) {
 	}
 }
 
-// ============================================================================
-// TEST CASES - HOLDS_READY_TASKS FEATURE
-// ============================================================================
-
 func TestCreateColumn_WithHoldsReadyTasks(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
@@ -721,14 +694,14 @@ func TestCreateColumn_WithHoldsReadyTasks(t *testing.T) {
 func TestCreateColumn_HoldsReadyTasks_ClearsPrevious(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create first column with HoldsReadyTasks = true
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:            "To Do",
 		ProjectID:       projectID,
 		HoldsReadyTasks: true,
@@ -742,7 +715,7 @@ func TestCreateColumn_HoldsReadyTasks_ClearsPrevious(t *testing.T) {
 	}
 
 	// Create second column with HoldsReadyTasks = true
-	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:            "In Progress",
 		ProjectID:       projectID,
 		HoldsReadyTasks: true,
@@ -756,7 +729,7 @@ func TestCreateColumn_HoldsReadyTasks_ClearsPrevious(t *testing.T) {
 	}
 
 	// Verify col1 is no longer the ready column
-	col1Updated, err := svc.GetColumnByID(context.Background(), col1.ID)
+	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to get updated col1: %v", err)
 	}
@@ -769,14 +742,14 @@ func TestCreateColumn_HoldsReadyTasks_ClearsPrevious(t *testing.T) {
 func TestSetHoldsReadyTasks_Success(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create two columns (neither ready)
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:            "To Do",
 		ProjectID:       projectID,
 		HoldsReadyTasks: false,
@@ -785,7 +758,7 @@ func TestSetHoldsReadyTasks_Success(t *testing.T) {
 		t.Fatalf("Failed to create column 1: %v", err)
 	}
 
-	_, err = svc.CreateColumn(context.Background(), CreateColumnRequest{
+	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:            "Done",
 		ProjectID:       projectID,
 		HoldsReadyTasks: false,
@@ -795,7 +768,7 @@ func TestSetHoldsReadyTasks_Success(t *testing.T) {
 	}
 
 	// Set col1 as ready
-	updated, err := svc.SetHoldsReadyTasks(context.Background(), col1.ID)
+	updated, err := svc.SetHoldsReadyTasks(ctx, col1.ID)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -808,14 +781,14 @@ func TestSetHoldsReadyTasks_Success(t *testing.T) {
 func TestSetHoldsReadyTasks_TransfersFromPrevious(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create col1 as ready
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:            "To Do",
 		ProjectID:       projectID,
 		HoldsReadyTasks: true,
@@ -825,7 +798,7 @@ func TestSetHoldsReadyTasks_TransfersFromPrevious(t *testing.T) {
 	}
 
 	// Create col2 as not ready
-	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:            "In Progress",
 		ProjectID:       projectID,
 		HoldsReadyTasks: false,
@@ -835,7 +808,7 @@ func TestSetHoldsReadyTasks_TransfersFromPrevious(t *testing.T) {
 	}
 
 	// Attempt to set col2 as ready - should fail because col1 already holds ready tasks
-	_, err = svc.SetHoldsReadyTasks(context.Background(), col2.ID)
+	_, err = svc.SetHoldsReadyTasks(ctx, col2.ID)
 	if err == nil {
 		t.Fatal("Expected error when setting ready tasks on col2 while col1 is ready, got nil")
 	}
@@ -847,7 +820,7 @@ func TestSetHoldsReadyTasks_TransfersFromPrevious(t *testing.T) {
 	}
 
 	// Verify col1 still holds ready tasks
-	col1Updated, err := svc.GetColumnByID(context.Background(), col1.ID)
+	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to get col1: %v", err)
 	}
@@ -857,7 +830,7 @@ func TestSetHoldsReadyTasks_TransfersFromPrevious(t *testing.T) {
 	}
 
 	// Verify col2 does not hold ready tasks
-	col2Updated, err := svc.GetColumnByID(context.Background(), col2.ID)
+	col2Updated, err := svc.GetColumnByID(ctx, col2.ID)
 	if err != nil {
 		t.Fatalf("Failed to get col2: %v", err)
 	}
@@ -870,14 +843,14 @@ func TestSetHoldsReadyTasks_TransfersFromPrevious(t *testing.T) {
 func TestGetColumnByID_IncludesHoldsReadyTasks(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create column with HoldsReadyTasks = true
-	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	created, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:            "To Do",
 		ProjectID:       projectID,
 		HoldsReadyTasks: true,
@@ -887,7 +860,7 @@ func TestGetColumnByID_IncludesHoldsReadyTasks(t *testing.T) {
 	}
 
 	// Fetch via GetColumnByID
-	result, err := svc.GetColumnByID(context.Background(), created.ID)
+	result, err := svc.GetColumnByID(ctx, created.ID)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -900,14 +873,14 @@ func TestGetColumnByID_IncludesHoldsReadyTasks(t *testing.T) {
 func TestGetColumnsByProject_IncludesHoldsReadyTasks(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create one ready column and one not ready
-	_, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	_, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:            "To Do",
 		ProjectID:       projectID,
 		HoldsReadyTasks: true,
@@ -916,7 +889,7 @@ func TestGetColumnsByProject_IncludesHoldsReadyTasks(t *testing.T) {
 		t.Fatalf("Failed to create ready column: %v", err)
 	}
 
-	_, err = svc.CreateColumn(context.Background(), CreateColumnRequest{
+	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:            "Done",
 		ProjectID:       projectID,
 		HoldsReadyTasks: false,
@@ -926,7 +899,7 @@ func TestGetColumnsByProject_IncludesHoldsReadyTasks(t *testing.T) {
 	}
 
 	// Fetch all columns
-	results, err := svc.GetColumnsByProject(context.Background(), projectID)
+	results, err := svc.GetColumnsByProject(ctx, projectID)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -949,8 +922,7 @@ func TestGetColumnsByProject_IncludesHoldsReadyTasks(t *testing.T) {
 func TestSetHoldsReadyTasks_InvalidColumnID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -968,8 +940,7 @@ func TestSetHoldsReadyTasks_InvalidColumnID(t *testing.T) {
 func TestSetHoldsReadyTasks_ColumnNotFound(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -988,21 +959,21 @@ func TestSetHoldsReadyTasks_ColumnNotFound(t *testing.T) {
 func TestCreateColumn_OnlyOneReadyPerProject(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
+	ctx := context.Background()
 
 	// Manually insert two columns with holds_ready_tasks = 1
 	// This should violate the unique partial index constraint
-	_, err := db.ExecContext(context.Background(),
+	_, err := db.ExecContext(ctx,
 		"INSERT INTO columns (name, project_id, holds_ready_tasks) VALUES (?, ?, ?)",
 		"To Do", projectID, true)
 	if err != nil {
 		t.Fatalf("Failed to insert first ready column: %v", err)
 	}
 
-	_, err = db.ExecContext(context.Background(),
+	_, err = db.ExecContext(ctx,
 		"INSERT INTO columns (name, project_id, holds_ready_tasks) VALUES (?, ?, ?)",
 		"Review", projectID, true)
 
@@ -1031,15 +1002,10 @@ func hasSubstring(s, substr string) bool {
 	return false
 }
 
-// ============================================================================
-// ERROR PATH TESTS - INVALID IDs
-// ============================================================================
-
 func TestGetColumnByID_NegativeID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1057,8 +1023,7 @@ func TestGetColumnByID_NegativeID(t *testing.T) {
 func TestGetColumnsByProject_NegativeProjectID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1076,8 +1041,7 @@ func TestGetColumnsByProject_NegativeProjectID(t *testing.T) {
 func TestGetColumnsByProject_NonExistentProject(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1095,8 +1059,7 @@ func TestGetColumnsByProject_NonExistentProject(t *testing.T) {
 func TestUpdateColumnName_NegativeID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1114,8 +1077,7 @@ func TestUpdateColumnName_NegativeID(t *testing.T) {
 func TestUpdateColumnName_NonExistentColumn(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1133,8 +1095,7 @@ func TestUpdateColumnName_NonExistentColumn(t *testing.T) {
 func TestUpdateColumnName_NameTooLong(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
@@ -1164,8 +1125,7 @@ func TestUpdateColumnName_NameTooLong(t *testing.T) {
 func TestDeleteColumn_NegativeID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1183,8 +1143,7 @@ func TestDeleteColumn_NegativeID(t *testing.T) {
 func TestDeleteColumn_NonExistentColumn(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1198,10 +1157,6 @@ func TestDeleteColumn_NonExistentColumn(t *testing.T) {
 		t.Errorf("Expected error about failed to get column info, got %v", err)
 	}
 }
-
-// ============================================================================
-// ERROR PATH TESTS - COLUMN LINKING EDGE CASES
-// ============================================================================
 
 func TestCreateColumn_InvalidAfterID(t *testing.T) {
 	t.Parallel()
@@ -1244,8 +1199,7 @@ func TestCreateColumn_InvalidAfterID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := setupTestDB(t)
-			defer func() { _ = db.Close() }()
+			db := testutil.SetupTestDB(t)
 
 			projectID := tt.setupFn(db)
 			svc := newTestService(t, db)
@@ -1271,17 +1225,17 @@ func TestCreateColumn_InvalidAfterID(t *testing.T) {
 func TestCreateColumn_AfterColumnFromDifferentProject(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create two projects
 	projectID1 := createTestProject(t, db)
 	projectID2 := createTestProject(t, db)
 
 	// Create column in project 1
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "Column 1",
 		ProjectID: projectID1,
 	})
@@ -1292,7 +1246,7 @@ func TestCreateColumn_AfterColumnFromDifferentProject(t *testing.T) {
 	// Try to create column in project 2 after column from project 1
 	// This should succeed because the service doesn't validate project matching
 	afterID := col1.ID
-	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "Column 2",
 		ProjectID: projectID2,
 		AfterID:   &afterID,
@@ -1315,38 +1269,38 @@ func TestCreateColumn_AfterColumnFromDifferentProject(t *testing.T) {
 func TestDeleteColumn_FirstColumn(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create three columns: col1 <-> col2 <-> col3
-	col1, _ := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, _ := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
 
-	col2, _ := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, _ := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "In Progress",
 		ProjectID: projectID,
 	})
 
-	col3, _ := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col3, _ := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "Done",
 		ProjectID: projectID,
 	})
 
 	// Delete first column (col1)
-	err := svc.DeleteColumn(context.Background(), col1.ID)
+	err := svc.DeleteColumn(ctx, col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to delete column 1: %v", err)
 	}
 
 	// Verify linked list is repaired: col2 <-> col3
 
-	col2Updated, _ := svc.GetColumnByID(context.Background(), col2.ID)
-	col3Updated, _ := svc.GetColumnByID(context.Background(), col3.ID)
+	col2Updated, _ := svc.GetColumnByID(ctx, col2.ID)
+	col3Updated, _ := svc.GetColumnByID(ctx, col3.ID)
 
 	if col2Updated.PrevID != nil {
 		t.Errorf("Expected col2 prev_id nil after deletion, got %v", col2Updated.PrevID)
@@ -1364,38 +1318,38 @@ func TestDeleteColumn_FirstColumn(t *testing.T) {
 func TestDeleteColumn_LastColumn(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create three columns: col1 <-> col2 <-> col3
-	col1, _ := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, _ := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
 
-	col2, _ := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, _ := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "In Progress",
 		ProjectID: projectID,
 	})
 
-	col3, _ := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col3, _ := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "Done",
 		ProjectID: projectID,
 	})
 
 	// Delete last column (col3)
-	err := svc.DeleteColumn(context.Background(), col3.ID)
+	err := svc.DeleteColumn(ctx, col3.ID)
 	if err != nil {
 		t.Fatalf("Failed to delete column 3: %v", err)
 	}
 
 	// Verify linked list is repaired: col1 <-> col2
 
-	col1Updated, _ := svc.GetColumnByID(context.Background(), col1.ID)
-	col2Updated, _ := svc.GetColumnByID(context.Background(), col2.ID)
+	col1Updated, _ := svc.GetColumnByID(ctx, col1.ID)
+	col2Updated, _ := svc.GetColumnByID(ctx, col2.ID)
 
 	if col1Updated.NextID == nil || *col1Updated.NextID != col2.ID {
 		t.Errorf("Expected col1 next_id %d after deletion, got %v", col2.ID, col1Updated.NextID)
@@ -1413,26 +1367,26 @@ func TestDeleteColumn_LastColumn(t *testing.T) {
 func TestDeleteColumn_OnlyColumn(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create single column
-	col, _ := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col, _ := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
 
 	// Delete it
-	err := svc.DeleteColumn(context.Background(), col.ID)
+	err := svc.DeleteColumn(ctx, col.ID)
 	if err != nil {
 		t.Fatalf("Failed to delete only column: %v", err)
 	}
 
 	// Verify project has no columns
-	columns, err := svc.GetColumnsByProject(context.Background(), projectID)
+	columns, err := svc.GetColumnsByProject(ctx, projectID)
 	if err != nil {
 		t.Fatalf("Failed to get columns: %v", err)
 	}
@@ -1442,15 +1396,10 @@ func TestDeleteColumn_OnlyColumn(t *testing.T) {
 	}
 }
 
-// ============================================================================
-// ERROR PATH TESTS - SPECIAL COLUMN FLAGS (HOLDS_READY_TASKS)
-// ============================================================================
-
 func TestSetHoldsReadyTasks_NegativeColumnID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1468,17 +1417,17 @@ func TestSetHoldsReadyTasks_NegativeColumnID(t *testing.T) {
 func TestCreateColumn_MultipleReadyColumns_DifferentProjects(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create two projects
 	projectID1 := createTestProject(t, db)
 	projectID2 := createTestProject(t, db)
 
 	// Create ready column in project 1
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:            "To Do",
 		ProjectID:       projectID1,
 		HoldsReadyTasks: true,
@@ -1492,7 +1441,7 @@ func TestCreateColumn_MultipleReadyColumns_DifferentProjects(t *testing.T) {
 	}
 
 	// Create ready column in project 2 - should succeed
-	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:            "To Do",
 		ProjectID:       projectID2,
 		HoldsReadyTasks: true,
@@ -1506,8 +1455,8 @@ func TestCreateColumn_MultipleReadyColumns_DifferentProjects(t *testing.T) {
 	}
 
 	// Verify both columns are still ready
-	col1Check, _ := svc.GetColumnByID(context.Background(), col1.ID)
-	col2Check, _ := svc.GetColumnByID(context.Background(), col2.ID)
+	col1Check, _ := svc.GetColumnByID(ctx, col1.ID)
+	col2Check, _ := svc.GetColumnByID(ctx, col2.ID)
 
 	if !col1Check.HoldsReadyTasks {
 		t.Error("Expected col1 to still hold ready tasks")
@@ -1518,15 +1467,10 @@ func TestCreateColumn_MultipleReadyColumns_DifferentProjects(t *testing.T) {
 	}
 }
 
-// ============================================================================
-// ERROR PATH TESTS - SPECIAL COLUMN FLAGS (HOLDS_COMPLETED_TASKS)
-// ============================================================================
-
 func TestSetHoldsCompletedTasks_NegativeColumnID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1544,17 +1488,17 @@ func TestSetHoldsCompletedTasks_NegativeColumnID(t *testing.T) {
 func TestCreateColumn_MultipleCompletedColumns_DifferentProjects(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create two projects
 	projectID1 := createTestProject(t, db)
 	projectID2 := createTestProject(t, db)
 
 	// Create completed column in project 1
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Done",
 		ProjectID:           projectID1,
 		HoldsCompletedTasks: true,
@@ -1568,7 +1512,7 @@ func TestCreateColumn_MultipleCompletedColumns_DifferentProjects(t *testing.T) {
 	}
 
 	// Create completed column in project 2 - should succeed
-	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Done",
 		ProjectID:           projectID2,
 		HoldsCompletedTasks: true,
@@ -1582,8 +1526,8 @@ func TestCreateColumn_MultipleCompletedColumns_DifferentProjects(t *testing.T) {
 	}
 
 	// Verify both columns are still completed
-	col1Check, _ := svc.GetColumnByID(context.Background(), col1.ID)
-	col2Check, _ := svc.GetColumnByID(context.Background(), col2.ID)
+	col1Check, _ := svc.GetColumnByID(ctx, col1.ID)
+	col2Check, _ := svc.GetColumnByID(ctx, col2.ID)
 
 	if !col1Check.HoldsCompletedTasks {
 		t.Error("Expected col1 to still hold completed tasks")
@@ -1594,15 +1538,10 @@ func TestCreateColumn_MultipleCompletedColumns_DifferentProjects(t *testing.T) {
 	}
 }
 
-// ============================================================================
-// ERROR PATH TESTS - SPECIAL COLUMN FLAGS (HOLDS_IN_PROGRESS_TASKS)
-// ============================================================================
-
 func TestCreateColumn_WithHoldsInProgressTasks(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
@@ -1626,14 +1565,14 @@ func TestCreateColumn_WithHoldsInProgressTasks(t *testing.T) {
 func TestCreateColumn_HoldsInProgressTasks_ClearsPrevious(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create first column with HoldsInProgressTasks = true
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                 "In Progress",
 		ProjectID:            projectID,
 		HoldsInProgressTasks: true,
@@ -1647,7 +1586,7 @@ func TestCreateColumn_HoldsInProgressTasks_ClearsPrevious(t *testing.T) {
 	}
 
 	// Create second column with HoldsInProgressTasks = true
-	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                 "Doing",
 		ProjectID:            projectID,
 		HoldsInProgressTasks: true,
@@ -1661,7 +1600,7 @@ func TestCreateColumn_HoldsInProgressTasks_ClearsPrevious(t *testing.T) {
 	}
 
 	// Verify col1 is no longer the in-progress column
-	col1Updated, err := svc.GetColumnByID(context.Background(), col1.ID)
+	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to get updated col1: %v", err)
 	}
@@ -1674,14 +1613,14 @@ func TestCreateColumn_HoldsInProgressTasks_ClearsPrevious(t *testing.T) {
 func TestSetHoldsInProgressTasks_Success(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create two columns (neither in-progress)
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                 "In Progress",
 		ProjectID:            projectID,
 		HoldsInProgressTasks: false,
@@ -1690,7 +1629,7 @@ func TestSetHoldsInProgressTasks_Success(t *testing.T) {
 		t.Fatalf("Failed to create column 1: %v", err)
 	}
 
-	_, err = svc.CreateColumn(context.Background(), CreateColumnRequest{
+	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                 "Done",
 		ProjectID:            projectID,
 		HoldsInProgressTasks: false,
@@ -1700,7 +1639,7 @@ func TestSetHoldsInProgressTasks_Success(t *testing.T) {
 	}
 
 	// Set col1 as in-progress
-	updated, err := svc.SetHoldsInProgressTasks(context.Background(), col1.ID)
+	updated, err := svc.SetHoldsInProgressTasks(ctx, col1.ID)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1713,14 +1652,14 @@ func TestSetHoldsInProgressTasks_Success(t *testing.T) {
 func TestSetHoldsInProgressTasks_FailsWhenExists(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create col1 as in-progress
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                 "In Progress",
 		ProjectID:            projectID,
 		HoldsInProgressTasks: true,
@@ -1730,7 +1669,7 @@ func TestSetHoldsInProgressTasks_FailsWhenExists(t *testing.T) {
 	}
 
 	// Create col2 as not in-progress
-	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                 "Doing",
 		ProjectID:            projectID,
 		HoldsInProgressTasks: false,
@@ -1740,7 +1679,7 @@ func TestSetHoldsInProgressTasks_FailsWhenExists(t *testing.T) {
 	}
 
 	// Attempt to set col2 as in-progress - should fail
-	_, err = svc.SetHoldsInProgressTasks(context.Background(), col2.ID)
+	_, err = svc.SetHoldsInProgressTasks(ctx, col2.ID)
 	if err == nil {
 		t.Fatal("Expected error when setting in-progress tasks on col2 while col1 is in-progress")
 	}
@@ -1752,7 +1691,7 @@ func TestSetHoldsInProgressTasks_FailsWhenExists(t *testing.T) {
 	}
 
 	// Verify col1 still holds in-progress tasks
-	col1Updated, err := svc.GetColumnByID(context.Background(), col1.ID)
+	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to get col1: %v", err)
 	}
@@ -1762,7 +1701,7 @@ func TestSetHoldsInProgressTasks_FailsWhenExists(t *testing.T) {
 	}
 
 	// Verify col2 does not hold in-progress tasks
-	col2Updated, err := svc.GetColumnByID(context.Background(), col2.ID)
+	col2Updated, err := svc.GetColumnByID(ctx, col2.ID)
 	if err != nil {
 		t.Fatalf("Failed to get col2: %v", err)
 	}
@@ -1775,8 +1714,7 @@ func TestSetHoldsInProgressTasks_FailsWhenExists(t *testing.T) {
 func TestSetHoldsInProgressTasks_InvalidColumnID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1794,8 +1732,7 @@ func TestSetHoldsInProgressTasks_InvalidColumnID(t *testing.T) {
 func TestSetHoldsInProgressTasks_NegativeColumnID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1813,8 +1750,7 @@ func TestSetHoldsInProgressTasks_NegativeColumnID(t *testing.T) {
 func TestSetHoldsInProgressTasks_ColumnNotFound(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1833,14 +1769,14 @@ func TestSetHoldsInProgressTasks_ColumnNotFound(t *testing.T) {
 func TestGetColumnByID_IncludesHoldsInProgressTasks(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create column with HoldsInProgressTasks = true
-	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	created, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                 "In Progress",
 		ProjectID:            projectID,
 		HoldsInProgressTasks: true,
@@ -1850,7 +1786,7 @@ func TestGetColumnByID_IncludesHoldsInProgressTasks(t *testing.T) {
 	}
 
 	// Fetch via GetColumnByID
-	result, err := svc.GetColumnByID(context.Background(), created.ID)
+	result, err := svc.GetColumnByID(ctx, created.ID)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1863,14 +1799,14 @@ func TestGetColumnByID_IncludesHoldsInProgressTasks(t *testing.T) {
 func TestGetColumnsByProject_IncludesHoldsInProgressTasks(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create one in-progress column and one not in-progress
-	_, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	_, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                 "In Progress",
 		ProjectID:            projectID,
 		HoldsInProgressTasks: true,
@@ -1879,7 +1815,7 @@ func TestGetColumnsByProject_IncludesHoldsInProgressTasks(t *testing.T) {
 		t.Fatalf("Failed to create in-progress column: %v", err)
 	}
 
-	_, err = svc.CreateColumn(context.Background(), CreateColumnRequest{
+	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                 "Done",
 		ProjectID:            projectID,
 		HoldsInProgressTasks: false,
@@ -1889,7 +1825,7 @@ func TestGetColumnsByProject_IncludesHoldsInProgressTasks(t *testing.T) {
 	}
 
 	// Fetch all columns
-	results, err := svc.GetColumnsByProject(context.Background(), projectID)
+	results, err := svc.GetColumnsByProject(ctx, projectID)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -1912,17 +1848,17 @@ func TestGetColumnsByProject_IncludesHoldsInProgressTasks(t *testing.T) {
 func TestCreateColumn_MultipleInProgressColumns_DifferentProjects(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create two projects
 	projectID1 := createTestProject(t, db)
 	projectID2 := createTestProject(t, db)
 
 	// Create in-progress column in project 1
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                 "In Progress",
 		ProjectID:            projectID1,
 		HoldsInProgressTasks: true,
@@ -1936,7 +1872,7 @@ func TestCreateColumn_MultipleInProgressColumns_DifferentProjects(t *testing.T) 
 	}
 
 	// Create in-progress column in project 2 - should succeed
-	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                 "In Progress",
 		ProjectID:            projectID2,
 		HoldsInProgressTasks: true,
@@ -1950,8 +1886,8 @@ func TestCreateColumn_MultipleInProgressColumns_DifferentProjects(t *testing.T) 
 	}
 
 	// Verify both columns are still in-progress
-	col1Check, _ := svc.GetColumnByID(context.Background(), col1.ID)
-	col2Check, _ := svc.GetColumnByID(context.Background(), col2.ID)
+	col1Check, _ := svc.GetColumnByID(ctx, col1.ID)
+	col2Check, _ := svc.GetColumnByID(ctx, col2.ID)
 
 	if !col1Check.HoldsInProgressTasks {
 		t.Error("Expected col1 to still hold in-progress tasks")
@@ -1962,15 +1898,10 @@ func TestCreateColumn_MultipleInProgressColumns_DifferentProjects(t *testing.T) 
 	}
 }
 
-// ============================================================================
-// ERROR PATH TESTS - BOUNDARY CONDITIONS
-// ============================================================================
-
 func TestCreateColumn_NameExactly50Characters(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
@@ -1996,8 +1927,7 @@ func TestCreateColumn_NameExactly50Characters(t *testing.T) {
 func TestCreateColumn_NonExistentProject(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -2020,13 +1950,13 @@ func TestCreateColumn_NonExistentProject(t *testing.T) {
 func TestUpdateColumnName_Exact50Characters(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
-	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	created, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
@@ -2037,13 +1967,13 @@ func TestUpdateColumnName_Exact50Characters(t *testing.T) {
 	// Create a name that's exactly 50 characters
 	name50 := strings.Repeat("a", 50)
 
-	err = svc.UpdateColumnName(context.Background(), created.ID, name50)
+	err = svc.UpdateColumnName(ctx, created.ID, name50)
 	if err != nil {
 		t.Fatalf("Expected no error for 50-character name, got %v", err)
 	}
 
 	// Verify update
-	updated, err := svc.GetColumnByID(context.Background(), created.ID)
+	updated, err := svc.GetColumnByID(ctx, created.ID)
 	if err != nil {
 		t.Fatalf("Failed to get updated column: %v", err)
 	}
@@ -2056,8 +1986,7 @@ func TestUpdateColumnName_Exact50Characters(t *testing.T) {
 func TestCreateColumn_AllSpecialFlagsTrue(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
@@ -2093,8 +2022,7 @@ func TestCreateColumn_AllSpecialFlagsTrue(t *testing.T) {
 func TestCreateColumn_ProjectIDMaxInt(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -2114,15 +2042,10 @@ func TestCreateColumn_ProjectIDMaxInt(t *testing.T) {
 	}
 }
 
-// ============================================================================
-// TEST CASES - HOLDS_COMPLETED_TASKS FEATURE
-// ============================================================================
-
 func TestCreateColumn_WithHoldsCompletedTasks(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
@@ -2146,14 +2069,14 @@ func TestCreateColumn_WithHoldsCompletedTasks(t *testing.T) {
 func TestCreateColumn_HoldsCompletedTasks_FailsWhenExists(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create first column with HoldsCompletedTasks = true
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Done",
 		ProjectID:           projectID,
 		HoldsCompletedTasks: true,
@@ -2167,7 +2090,7 @@ func TestCreateColumn_HoldsCompletedTasks_FailsWhenExists(t *testing.T) {
 	}
 
 	// Create second column with HoldsCompletedTasks = true (should fail)
-	_, err = svc.CreateColumn(context.Background(), CreateColumnRequest{
+	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Archive",
 		ProjectID:           projectID,
 		HoldsCompletedTasks: true,
@@ -2185,14 +2108,14 @@ func TestCreateColumn_HoldsCompletedTasks_FailsWhenExists(t *testing.T) {
 func TestSetHoldsCompletedTasks_Success(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create two columns (neither completed)
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Done",
 		ProjectID:           projectID,
 		HoldsCompletedTasks: false,
@@ -2201,7 +2124,7 @@ func TestSetHoldsCompletedTasks_Success(t *testing.T) {
 		t.Fatalf("Failed to create column 1: %v", err)
 	}
 
-	_, err = svc.CreateColumn(context.Background(), CreateColumnRequest{
+	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Archive",
 		ProjectID:           projectID,
 		HoldsCompletedTasks: false,
@@ -2211,7 +2134,7 @@ func TestSetHoldsCompletedTasks_Success(t *testing.T) {
 	}
 
 	// Set col1 as completed
-	updated, err := svc.SetHoldsCompletedTasks(context.Background(), col1.ID, false)
+	updated, err := svc.SetHoldsCompletedTasks(ctx, col1.ID, false)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -2224,14 +2147,14 @@ func TestSetHoldsCompletedTasks_Success(t *testing.T) {
 func TestSetHoldsCompletedTasks_FailsWhenExistsWithoutForce(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create col1 as completed
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Done",
 		ProjectID:           projectID,
 		HoldsCompletedTasks: true,
@@ -2241,7 +2164,7 @@ func TestSetHoldsCompletedTasks_FailsWhenExistsWithoutForce(t *testing.T) {
 	}
 
 	// Create col2 as not completed
-	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Archive",
 		ProjectID:           projectID,
 		HoldsCompletedTasks: false,
@@ -2251,7 +2174,7 @@ func TestSetHoldsCompletedTasks_FailsWhenExistsWithoutForce(t *testing.T) {
 	}
 
 	// Try to set col2 as completed without force (should fail)
-	_, err = svc.SetHoldsCompletedTasks(context.Background(), col2.ID, false)
+	_, err = svc.SetHoldsCompletedTasks(ctx, col2.ID, false)
 
 	if err == nil {
 		t.Fatal("Expected error when setting completed without force")
@@ -2262,7 +2185,7 @@ func TestSetHoldsCompletedTasks_FailsWhenExistsWithoutForce(t *testing.T) {
 	}
 
 	// Verify col1 is still completed
-	col1Updated, err := svc.GetColumnByID(context.Background(), col1.ID)
+	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to get col1: %v", err)
 	}
@@ -2275,14 +2198,14 @@ func TestSetHoldsCompletedTasks_FailsWhenExistsWithoutForce(t *testing.T) {
 func TestSetHoldsCompletedTasks_SucceedsWithForce(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create col1 as completed
-	col1, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Done",
 		ProjectID:           projectID,
 		HoldsCompletedTasks: true,
@@ -2292,7 +2215,7 @@ func TestSetHoldsCompletedTasks_SucceedsWithForce(t *testing.T) {
 	}
 
 	// Create col2 as not completed
-	col2, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Archive",
 		ProjectID:           projectID,
 		HoldsCompletedTasks: false,
@@ -2302,7 +2225,7 @@ func TestSetHoldsCompletedTasks_SucceedsWithForce(t *testing.T) {
 	}
 
 	// Set col2 as completed with force (should succeed)
-	updated, err := svc.SetHoldsCompletedTasks(context.Background(), col2.ID, true)
+	updated, err := svc.SetHoldsCompletedTasks(ctx, col2.ID, true)
 	if err != nil {
 		t.Fatalf("Expected no error with force flag, got %v", err)
 	}
@@ -2312,7 +2235,7 @@ func TestSetHoldsCompletedTasks_SucceedsWithForce(t *testing.T) {
 	}
 
 	// Verify col1 is no longer completed
-	col1Updated, err := svc.GetColumnByID(context.Background(), col1.ID)
+	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
 	if err != nil {
 		t.Fatalf("Failed to get col1: %v", err)
 	}
@@ -2325,14 +2248,14 @@ func TestSetHoldsCompletedTasks_SucceedsWithForce(t *testing.T) {
 func TestGetColumnByID_IncludesHoldsCompletedTasks(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create column with HoldsCompletedTasks = true
-	created, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	created, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Done",
 		ProjectID:           projectID,
 		HoldsCompletedTasks: true,
@@ -2342,7 +2265,7 @@ func TestGetColumnByID_IncludesHoldsCompletedTasks(t *testing.T) {
 	}
 
 	// Fetch via GetColumnByID
-	result, err := svc.GetColumnByID(context.Background(), created.ID)
+	result, err := svc.GetColumnByID(ctx, created.ID)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -2355,14 +2278,14 @@ func TestGetColumnByID_IncludesHoldsCompletedTasks(t *testing.T) {
 func TestGetColumnsByProject_IncludesHoldsCompletedTasks(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create one completed column and one not completed
-	_, err := svc.CreateColumn(context.Background(), CreateColumnRequest{
+	_, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Done",
 		ProjectID:           projectID,
 		HoldsCompletedTasks: true,
@@ -2371,7 +2294,7 @@ func TestGetColumnsByProject_IncludesHoldsCompletedTasks(t *testing.T) {
 		t.Fatalf("Failed to create completed column: %v", err)
 	}
 
-	_, err = svc.CreateColumn(context.Background(), CreateColumnRequest{
+	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Todo",
 		ProjectID:           projectID,
 		HoldsCompletedTasks: false,
@@ -2381,7 +2304,7 @@ func TestGetColumnsByProject_IncludesHoldsCompletedTasks(t *testing.T) {
 	}
 
 	// Fetch all columns
-	results, err := svc.GetColumnsByProject(context.Background(), projectID)
+	results, err := svc.GetColumnsByProject(ctx, projectID)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -2404,8 +2327,7 @@ func TestGetColumnsByProject_IncludesHoldsCompletedTasks(t *testing.T) {
 func TestSetHoldsCompletedTasks_InvalidColumnID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -2423,8 +2345,7 @@ func TestSetHoldsCompletedTasks_InvalidColumnID(t *testing.T) {
 func TestSetHoldsCompletedTasks_ColumnNotFound(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -2443,21 +2364,21 @@ func TestSetHoldsCompletedTasks_ColumnNotFound(t *testing.T) {
 func TestCreateColumn_OnlyOneCompletedPerProject(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	projectID := createTestProject(t, db)
+	ctx := context.Background()
 
 	// Manually insert two columns with holds_completed_tasks = 1
 	// This should violate the unique partial index constraint
-	_, err := db.ExecContext(context.Background(),
+	_, err := db.ExecContext(ctx,
 		"INSERT INTO columns (name, project_id, holds_completed_tasks) VALUES (?, ?, ?)",
 		"Done", projectID, true)
 	if err != nil {
 		t.Fatalf("Failed to insert first completed column: %v", err)
 	}
 
-	_, err = db.ExecContext(context.Background(),
+	_, err = db.ExecContext(ctx,
 		"INSERT INTO columns (name, project_id, holds_completed_tasks) VALUES (?, ?, ?)",
 		"Archive", projectID, true)
 

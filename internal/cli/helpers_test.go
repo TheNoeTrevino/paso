@@ -170,7 +170,6 @@ func TestParseTaskType_Invalid(t *testing.T) {
 
 func TestGetLabelByID_Found(t *testing.T) {
 	db, appInstance := testutilcli.SetupCLITest(t)
-	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 
@@ -204,7 +203,6 @@ func TestGetLabelByID_Found(t *testing.T) {
 
 func TestGetLabelByID_Found_MultipleProjects(t *testing.T) {
 	db, appInstance := testutilcli.SetupCLITest(t)
-	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 
@@ -234,8 +232,7 @@ func TestGetLabelByID_Found_MultipleProjects(t *testing.T) {
 }
 
 func TestGetLabelByID_NotFound(t *testing.T) {
-	db, appInstance := testutilcli.SetupCLITest(t)
-	defer func() { _ = db.Close() }()
+	_, appInstance := testutilcli.SetupCLITest(t)
 
 	ctx := context.Background()
 
@@ -259,8 +256,7 @@ func TestGetLabelByID_NotFound(t *testing.T) {
 }
 
 func TestGetLabelByID_EmptyDatabase(t *testing.T) {
-	db, appInstance := testutilcli.SetupCLITest(t)
-	defer func() { _ = db.Close() }()
+	_, appInstance := testutilcli.SetupCLITest(t)
 
 	ctx := context.Background()
 

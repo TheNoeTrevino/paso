@@ -95,9 +95,6 @@ func TestSnapshots(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			db := testutil.SetupTestDB(t)
-			defer func() {
-				_ = db.Close()
-			}()
 
 			m := tt.setup(t, db)
 

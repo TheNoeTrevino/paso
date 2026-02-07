@@ -14,16 +14,14 @@ import (
 func TestDeleteColumnIntegration_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+	ctx := context.Background()
 
 	// Create test project with default columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	// Get the default "Todo" column ID for later use
 	var todoColumnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 		projectID).Scan(&todoColumnID)
 	assert.NoError(t, err)
@@ -43,7 +41,7 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 
 		// Verify column was deleted from database
 		var count int
-		dbErr := db.QueryRowContext(context.Background(),
+		dbErr := db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM columns WHERE id = ?", columnID).Scan(&count)
 		assert.NoError(t, dbErr)
 		assert.Equal(t, 0, count, "Column should be deleted from database")
@@ -64,7 +62,7 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 
 		// Verify column was deleted
 		var count int
-		dbErr := db.QueryRowContext(context.Background(),
+		dbErr := db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM columns WHERE id = ?", columnID).Scan(&count)
 		assert.NoError(t, dbErr)
 		assert.Equal(t, 0, count, "Column should be deleted from database")
@@ -95,7 +93,7 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 
 		// Verify column was deleted
 		var count int
-		dbErr := db.QueryRowContext(context.Background(),
+		dbErr := db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM columns WHERE id = ?", columnID).Scan(&count)
 		assert.NoError(t, dbErr)
 		assert.Equal(t, 0, count, "Column should be deleted from database")
@@ -116,7 +114,7 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 
 		// Verify column was deleted
 		var count int
-		dbErr := db.QueryRowContext(context.Background(),
+		dbErr := db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM columns WHERE id = ?", columnID).Scan(&count)
 		assert.NoError(t, dbErr)
 		assert.Equal(t, 0, count, "Column should be deleted from database")
@@ -139,7 +137,7 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 
 		// Verify column still exists
 		var count int
-		dbErr := db.QueryRowContext(context.Background(),
+		dbErr := db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM columns WHERE id = ?", columnID).Scan(&count)
 		assert.NoError(t, dbErr)
 		assert.Equal(t, 1, count, "Column should not be deleted if it contains tasks")
@@ -160,7 +158,7 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 
 		// Verify column was deleted
 		var count int
-		dbErr := db.QueryRowContext(context.Background(),
+		dbErr := db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM columns WHERE id = ?", columnID).Scan(&count)
 		assert.NoError(t, dbErr)
 		assert.Equal(t, 0, count, "Column should be deleted from database")
@@ -189,10 +187,10 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 
 		// Verify both are deleted
 		var count1, count2 int
-		err3 := db.QueryRowContext(context.Background(),
+		err3 := db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM columns WHERE id = ?", columnID1).Scan(&count1)
 		assert.NoError(t, err3)
-		err4 := db.QueryRowContext(context.Background(),
+		err4 := db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM columns WHERE id = ?", columnID2).Scan(&count2)
 		assert.NoError(t, err4)
 
@@ -203,10 +201,7 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 
 func TestDeleteColumnIntegration_Negative(t *testing.T) {
 	// Setup test DB and App
-	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+	_, app := cli.SetupCLITest(t)
 
 	t.Run("Delete non-existent column", func(t *testing.T) {
 		// Note: This test case calls os.Exit() in delete.go which terminates the process

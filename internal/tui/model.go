@@ -977,6 +977,35 @@ func (m *Model) initTypePickerForForm() bool {
 	return true
 }
 
+// initAssigneePickerForForm initializes the assignee picker for use in task form mode.
+// Loads available assignees and sets the cursor to the current assignee.
+func (m *Model) initAssigneePickerForForm() bool {
+	ctx, cancel := m.DBContext()
+	defer cancel()
+
+	assignees, err := m.App.AssigneeService.List(ctx)
+	if err != nil {
+		slog.Error("failed to load assignees for picker", "error", err)
+		return false
+	}
+
+	m.Pickers.Assignee.SetAssignees(assignees)
+	m.Pickers.Assignee.SetSelectedID(m.Forms.Form.FormAssigneeID)
+
+	// Position cursor to match current assignee (offset by 1 for the clear option)
+	cursorPos := 0 // Default to "clear assignee" option
+	for i, a := range assignees {
+		if a.ID == m.Forms.Form.FormAssigneeID {
+			cursorPos = i + 1 // +1 because index 0 is the clear option
+			break
+		}
+	}
+	m.Pickers.Assignee.SetCursor(cursorPos)
+	m.Pickers.Assignee.ReturnMode = state.TicketFormMode
+
+	return true
+}
+
 // buildListViewRows creates a flat list of all tasks with their column names.
 // The list is sorted according to the current sort settings in listViewState.
 func (m Model) buildListViewRows() []renderers.ListViewRow {

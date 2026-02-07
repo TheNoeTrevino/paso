@@ -16,16 +16,15 @@ import (
 func TestBlockedTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		require.NoError(t, db.Close(), "Failed to close database")
-	}()
+
+	ctx := context.Background()
 
 	// Create test project with columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	// Get the default "Todo" column ID
 	var todoColumnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 		projectID).Scan(&todoColumnID)
 	require.NoError(t, err, "Failed to query Todo column")
@@ -36,13 +35,13 @@ func TestBlockedTask_Positive(t *testing.T) {
 	t.Run("List blocked tasks with blocking relationships", func(t *testing.T) {
 		// Create parent task
 		parentID := cli.CreateTestTask(t, db, todoColumnID, "Parent Task")
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 1 WHERE id = ?", parentID)
 		assert.NoError(t, err)
 
 		// Create child task (blocker)
 		childID := cli.CreateTestTask(t, db, todoColumnID, "Child Task (Blocker)")
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 2 WHERE id = ?", childID)
 		assert.NoError(t, err)
 
@@ -69,7 +68,7 @@ func TestBlockedTask_Positive(t *testing.T) {
 
 		// Get the default "Todo" column ID
 		var emptyTodoColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			newProjectID).Scan(&emptyTodoColumnID)
 		assert.NoError(t, err)
@@ -94,16 +93,16 @@ func TestBlockedTask_Positive(t *testing.T) {
 		blocker2 := cli.CreateTestTask(t, db, todoColumnID, "Blocker Task 2")
 
 		// Assign ticket numbers
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 10 WHERE id = ?", blocked1)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 11 WHERE id = ?", blocker1)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 12 WHERE id = ?", blocked2)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 13 WHERE id = ?", blocker2)
 		assert.NoError(t, err)
 
@@ -135,10 +134,10 @@ func TestBlockedTask_Positive(t *testing.T) {
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "JSON Blocker Task")
 
 		// Assign ticket numbers
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 20 WHERE id = ?", blockedID)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 21 WHERE id = ?", blockerID)
 		assert.NoError(t, err)
 
@@ -188,10 +187,10 @@ func TestBlockedTask_Positive(t *testing.T) {
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "Quiet Blocker Task")
 
 		// Assign ticket numbers
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 30 WHERE id = ?", blockedID)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 31 WHERE id = ?", blockerID)
 		assert.NoError(t, err)
 
@@ -230,13 +229,13 @@ func TestBlockedTask_Positive(t *testing.T) {
 		blockerTask := cli.CreateTestTask(t, db, todoColumnID, "Blocker For Test")
 
 		// Assign ticket numbers
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 40 WHERE id = ?", normalTask)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 41 WHERE id = ?", blockedTask)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 42 WHERE id = ?", blockerTask)
 		assert.NoError(t, err)
 
@@ -279,16 +278,16 @@ func TestBlockedTask_Positive(t *testing.T) {
 
 		// Assign ticket numbers and priorities
 		// priority_id: 2=low, 3=medium, 4=high, 5=critical
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 50, priority_id = 2 WHERE id = ?", lowPriorityBlocked)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 51 WHERE id = ?", lowBlocker)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 52, priority_id = 4 WHERE id = ?", highPriorityBlocked)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 53 WHERE id = ?", highBlocker)
 		assert.NoError(t, err)
 
@@ -324,16 +323,16 @@ func TestBlockedTask_Positive(t *testing.T) {
 		inProgressBlocker := cli.CreateTestTask(t, db, inProgressColumnID, "In Progress Blocker")
 
 		// Assign ticket numbers
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 70 WHERE id = ?", todoBlocked)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 71 WHERE id = ?", todoBlocker)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 72 WHERE id = ?", inProgressBlocked)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 73 WHERE id = ?", inProgressBlocker)
 		assert.NoError(t, err)
 
@@ -365,10 +364,10 @@ func TestBlockedTask_Positive(t *testing.T) {
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "Label Blocker")
 
 		// Assign ticket numbers
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 80 WHERE id = ?", blockedID)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 81 WHERE id = ?", blockerID)
 		assert.NoError(t, err)
 
@@ -376,10 +375,10 @@ func TestBlockedTask_Positive(t *testing.T) {
 		labelID1 := testutil.CreateTestLabel(t, db, projectID, "blocked", "#EF4444")
 		labelID2 := testutil.CreateTestLabel(t, db, projectID, "urgent", "#F97316")
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", blockedID, labelID1)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", blockedID, labelID2)
 		assert.NoError(t, err)
 
@@ -422,10 +421,10 @@ func TestBlockedTask_Positive(t *testing.T) {
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "Structure Blocker")
 
 		// Assign ticket numbers
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 90 WHERE id = ?", blockedID)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 91 WHERE id = ?", blockerID)
 		assert.NoError(t, err)
 
@@ -477,10 +476,10 @@ func TestBlockedTask_Positive(t *testing.T) {
 		criticalBlocker := cli.CreateTestTask(t, db, todoColumnID, "Critical Blocker")
 
 		// Assign ticket numbers and critical priority (priority_id = 5)
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 100, priority_id = 5 WHERE id = ?", criticalBlocked)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 101 WHERE id = ?", criticalBlocker)
 		assert.NoError(t, err)
 
@@ -504,10 +503,7 @@ func TestBlockedTask_Positive(t *testing.T) {
 
 func TestBlockedTask_Negative(t *testing.T) {
 	// Setup test DB and App
-	db, app := cli.SetupCLITest(t)
-	defer func() {
-		require.NoError(t, db.Close(), "Failed to close database")
-	}()
+	_, app := cli.SetupCLITest(t)
 
 	t.Run("Missing project ID - no flag and no env var", func(t *testing.T) {
 		// Note: This test will trigger os.Exit() call in the command

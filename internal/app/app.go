@@ -5,6 +5,7 @@ import (
 
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
+	assigneeservice "github.com/thenoetrevino/paso/internal/services/assignee"
 	columnservice "github.com/thenoetrevino/paso/internal/services/column"
 	labelservice "github.com/thenoetrevino/paso/internal/services/label"
 	projectservice "github.com/thenoetrevino/paso/internal/services/project"
@@ -22,10 +23,11 @@ type App struct {
 	dbType database.DatabaseType
 
 	// Service layer (business logic) - ONLY public interface
-	TaskService    taskservice.Service
-	ProjectService projectservice.Service
-	ColumnService  columnservice.Service
-	LabelService   labelservice.Service
+	TaskService     taskservice.Service
+	ProjectService  projectservice.Service
+	ColumnService   columnservice.Service
+	LabelService    labelservice.Service
+	AssigneeService assigneeservice.Service
 }
 
 // New creates a new App with all services initialized.
@@ -73,13 +75,19 @@ func New(db *sql.DB, opts ...Option) (*App, error) {
 		return nil, err
 	}
 
+	assigneeSvc, err := assigneeservice.NewService(db, cfg.dbType)
+	if err != nil {
+		return nil, err
+	}
+
 	return &App{
-		eventClient:    cfg.eventClient,
-		dbType:         cfg.dbType,
-		TaskService:    taskSvc,
-		ProjectService: projectSvc,
-		ColumnService:  columnSvc,
-		LabelService:   labelSvc,
+		eventClient:     cfg.eventClient,
+		dbType:          cfg.dbType,
+		TaskService:     taskSvc,
+		ProjectService:  projectSvc,
+		ColumnService:   columnSvc,
+		LabelService:    labelSvc,
+		AssigneeService: assigneeSvc,
 	}, nil
 }
 

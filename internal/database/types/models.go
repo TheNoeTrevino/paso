@@ -1,5 +1,13 @@
 package types
 
+// Assignee represents a lightweight user identity for task assignment.
+type Assignee struct {
+	ID        int64
+	Name      string
+	CreatedAt NullTime
+	UpdatedAt NullTime
+}
+
 // Column represents a kanban column in the project board.
 type Column struct {
 	ID                   int64

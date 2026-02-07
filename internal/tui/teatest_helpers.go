@@ -24,9 +24,6 @@ import (
 func SetupTestModelWithDB(t *testing.T) (Model, *sql.DB) {
 	t.Helper()
 	db := testutil.SetupTestDB(t)
-	t.Cleanup(func() {
-		_ = db.Close()
-	})
 
 	// Create app container with all services
 	taskSvc, err := task.NewService(db, database.SQLite, nil, nil)

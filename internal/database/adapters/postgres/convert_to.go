@@ -12,6 +12,7 @@ func toGeneratedCreateTaskParams(t types.CreateTaskParams) generated_postgres.Cr
 		ColumnID:     t.ColumnID,
 		Position:     t.Position,
 		TicketNumber: t.TicketNumber.ToSQLNullInt64(),
+		AssigneeID:   t.AssigneeID.ToSQLNullInt32(),
 	}
 }
 
@@ -92,6 +93,13 @@ func toGeneratedUpdateTaskTypeParams(t types.UpdateTaskTypeParams) generated_pos
 	return generated_postgres.UpdateTaskTypeParams{
 		TypeID: t.TypeID,
 		ID:     t.ID,
+	}
+}
+
+func toGeneratedUpdateTaskAssigneeParams(t types.UpdateTaskAssigneeParams) generated_postgres.UpdateTaskAssigneeParams {
+	return generated_postgres.UpdateTaskAssigneeParams{
+		AssigneeID: t.AssigneeID.ToSQLNullInt32(),
+		ID:         t.ID,
 	}
 }
 

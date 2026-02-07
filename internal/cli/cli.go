@@ -4,6 +4,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/logging"
 	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/user"
 )
 
 // CLI represents the CLI application context
@@ -129,6 +131,16 @@ func NewCLIWithApp(ctx context.Context, testApp *app.App) (*CLI, error) {
 	application, err := app.New(db, appOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize application: %w", err)
+	}
+
+	activeAssignee := cfg.GetActiveAssignee()
+	if activeAssignee == "" {
+		activeAssignee = user.GetCurrentUsername()
+	}
+
+	_, err = application.AssigneeService.GetOrCreate(ctx, activeAssignee)
+	if err != nil {
+		slog.Warn("failed to initialize active assignee", "assignee", activeAssignee, "error", err)
 	}
 
 	return &CLI{

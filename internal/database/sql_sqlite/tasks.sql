@@ -1,12 +1,13 @@
 -- name: CreateTask :one
--- Creates a new task with title, description, position, and ticket number
+-- Creates a new task with title, description, position, ticket number, and assignee
 insert into tasks (
     title,
     description,
     column_id,
     position,
-    ticket_number)
-values (?, ?, ?, ?, ?)
+    ticket_number,
+    assignee_id)
+values (?, ?, ?, ?, ?, ?)
 returning *;
 
 -- name: GetTask :one
@@ -67,6 +68,12 @@ update tasks
 set type_id = ?, updated_at = current_timestamp
 where id = ?;
 
+-- name: UpdateTaskAssignee :exec
+-- Updates a task's assignee
+update tasks
+set assignee_id = ?, updated_at = current_timestamp
+where id = ?;
+
 -- name: DeleteTask :exec
 -- Permanently deletes a task by ID
 delete from tasks
@@ -74,7 +81,7 @@ where id = ?;
 
 -- name: GetTaskDetail :one
 -- Retrieves comprehensive task details including:
--- type, priority, column, project, and blocking status
+-- type, priority, column, project, assignee, and blocking status
 select
     t.id,
     t.title,
@@ -89,16 +96,21 @@ select
     p.color as priority_color,
     c.name as column_name,
     proj.name as project_name,
+    t.assignee_id,
+    a.name as assignee_name,
     exists(
         select 1 from task_subtasks ts
         inner join relation_types rt on ts.relation_type_id = rt.id
-        where ts.parent_id = t.id and rt.is_blocking = 1
+        inner join tasks blocker on ts.child_id = blocker.id
+        inner join columns bc on blocker.column_id = bc.id
+        where ts.parent_id = t.id and rt.is_blocking = 1 and bc.holds_completed_tasks = 0
     ) as is_blocked
 from tasks t
 inner join columns c on t.column_id = c.id
 inner join projects proj on c.project_id = proj.id
 left join types ty on t.type_id = ty.id
 left join priorities p on t.priority_id = p.id
+left join assignees a on t.assignee_id = a.id
 where t.id = ?;
 
 -- name: GetTaskLabels :many
@@ -119,12 +131,15 @@ select
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
+    t.assignee_id,
+    a.name as assignee_name,
     cast(coalesce(group_concat(l.id, char(31)), '') as text) as label_ids,
     cast(coalesce(group_concat(l.name, char(31)), '') as text) as label_names,
     cast(coalesce(group_concat(l.color, char(31)), '') as text) as label_colors
 from tasks t
 left join types ty on t.type_id = ty.id
 left join priorities p on t.priority_id = p.id
+left join assignees a on t.assignee_id = a.id
 left join task_labels tl on t.id = tl.task_id
 left join labels l on tl.label_id = l.id
 where t.column_id = ?
@@ -135,7 +150,9 @@ group by
     t.position,
     ty.description,
     p.description,
-    p.color
+    p.color,
+    t.assignee_id,
+    a.name
 order by t.position;
 
 -- name: GetTaskSummariesByProject :many
@@ -149,6 +166,8 @@ select
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
+    t.assignee_id,
+    a.name as assignee_name,
     cast(coalesce(group_concat(l.id, char(31)), '') as text) as label_ids,
     cast(coalesce(group_concat(l.name, char(31)), '') as text) as label_names,
     cast(coalesce(group_concat(l.color, char(31)), '') as text) as label_colors,
@@ -156,12 +175,15 @@ select
         select 1
         from task_subtasks ts
         inner join relation_types rt on ts.relation_type_id = rt.id
-        where ts.parent_id = t.id and rt.is_blocking = 1
+        inner join tasks blocker on ts.child_id = blocker.id
+        inner join columns bc on blocker.column_id = bc.id
+        where ts.parent_id = t.id and rt.is_blocking = 1 and bc.holds_completed_tasks = 0
     ) as is_blocked
 from tasks t
 inner join columns c on t.column_id = c.id
 left join types ty on t.type_id = ty.id
 left join priorities p on t.priority_id = p.id
+left join assignees a on t.assignee_id = a.id
 left join task_labels tl on t.id = tl.task_id
 left join labels l on tl.label_id = l.id
 where c.project_id = ?
@@ -172,7 +194,9 @@ group by
     t.position,
     ty.description,
     p.description,
-    p.color
+    p.color,
+    t.assignee_id,
+    a.name
 order by t.position;
 
 -- name: GetReadyTaskSummariesByProject :many
@@ -185,6 +209,8 @@ select
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
+    t.assignee_id,
+    a.name as assignee_name,
     cast(coalesce(group_concat(l.id, char(31)), '') as text) as label_ids,
     cast(coalesce(group_concat(l.name, char(31)), '') as text) as label_names,
     cast(coalesce(group_concat(l.color, char(31)), '') as text) as label_colors,
@@ -192,12 +218,15 @@ select
         select 1
         from task_subtasks ts
         inner join relation_types rt on ts.relation_type_id = rt.id
-        where ts.parent_id = t.id and rt.is_blocking = 1
+        inner join tasks blocker on ts.child_id = blocker.id
+        inner join columns bc on blocker.column_id = bc.id
+        where ts.parent_id = t.id and rt.is_blocking = 1 and bc.holds_completed_tasks = 0
     ) as is_blocked
 from tasks t
 inner join columns c on t.column_id = c.id
 left join types ty on t.type_id = ty.id
 left join priorities p on t.priority_id = p.id
+left join assignees a on t.assignee_id = a.id
 left join task_labels tl on t.id = tl.task_id
 left join labels l on tl.label_id = l.id
 where c.project_id = ? and c.holds_ready_tasks = 1
@@ -208,7 +237,9 @@ group by
     t.position,
     ty.description,
     p.description,
-    p.color
+    p.color,
+    t.assignee_id,
+    a.name
 order by t.position;
 
 -- name: GetInProgressTasksByProject :many
@@ -242,6 +273,8 @@ select
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
+    t.assignee_id,
+    a.name as assignee_name,
     cast(coalesce(group_concat(l.id, char(31)), '') as text) as label_ids,
     cast(coalesce(group_concat(l.name, char(31)), '') as text) as label_names,
     cast(coalesce(group_concat(l.color, char(31)), '') as text) as label_colors,
@@ -249,13 +282,16 @@ select
         select 1
         from task_subtasks ts
         inner join relation_types rt on ts.relation_type_id = rt.id
-        where ts.parent_id = t.id and rt.is_blocking = 1
+        inner join tasks blocker on ts.child_id = blocker.id
+        inner join columns bc on blocker.column_id = bc.id
+        where ts.parent_id = t.id and rt.is_blocking = 1 and bc.holds_completed_tasks = 0
     ) as is_blocked
 from tasks t
 inner join columns c on t.column_id = c.id
 inner join projects proj on c.project_id = proj.id
 left join types ty on t.type_id = ty.id
 left join priorities p on t.priority_id = p.id
+left join assignees a on t.assignee_id = a.id
 left join task_labels tl on t.id = tl.task_id
 left join labels l on tl.label_id = l.id
 where proj.id = ? and c.holds_in_progress_tasks = 1
@@ -272,7 +308,9 @@ group by
     proj.name,
     ty.description,
     p.description,
-    p.color
+    p.color,
+    t.assignee_id,
+    a.name
 order by t.position;
 
 -- name: GetTaskSummariesByProjectFiltered :many
@@ -285,6 +323,8 @@ select
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
+    t.assignee_id,
+    a.name as assignee_name,
     cast(coalesce(group_concat(l.id, char(31)), '') as text) as label_ids,
     cast(coalesce(group_concat(l.name, char(31)), '') as text) as label_names,
     cast(coalesce(group_concat(l.color, char(31)), '') as text) as label_colors,
@@ -292,12 +332,15 @@ select
         select 1
         from task_subtasks ts
         inner join relation_types rt on ts.relation_type_id = rt.id
-        where ts.parent_id = t.id and rt.is_blocking = 1
+        inner join tasks blocker on ts.child_id = blocker.id
+        inner join columns bc on blocker.column_id = bc.id
+        where ts.parent_id = t.id and rt.is_blocking = 1 and bc.holds_completed_tasks = 0
     ) as is_blocked
 from tasks t
 inner join columns c on t.column_id = c.id
 left join types ty on t.type_id = ty.id
 left join priorities p on t.priority_id = p.id
+left join assignees a on t.assignee_id = a.id
 left join task_labels tl on t.id = tl.task_id
 left join labels l on tl.label_id = l.id
 where c.project_id = ? and t.title like ?
@@ -308,7 +351,9 @@ group by
     t.position,
     ty.description,
     p.description,
-    p.color
+    p.color,
+    t.assignee_id,
+    a.name
 order by t.position;
 
 -- name: GetTaskPosition :one

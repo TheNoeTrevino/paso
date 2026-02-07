@@ -17,7 +17,7 @@ const (
 type DatabaseTestCase struct {
 	Name     string
 	DBType   DatabaseType
-	SetupDB  func(t *testing.T) *sql.DB
+	SetupDB  func(tb testing.TB) *sql.DB
 	TearDown func(db *sql.DB)
 }
 

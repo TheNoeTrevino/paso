@@ -32,12 +32,6 @@ func (m *mockGitChecker) BranchExists(_ context.Context, branchName string) (boo
 	return exists, nil
 }
 
-// setupTestDB creates an in-memory database with full schema using testutil
-func setupTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-	return testutil.SetupTestDB(t)
-}
-
 // newTestService creates a new service for testing (panics on error since tests use valid SQLite)
 func newTestService(t *testing.T, db *sql.DB) Service {
 	t.Helper()
@@ -50,8 +44,7 @@ func newTestService(t *testing.T, db *sql.DB) Service {
 func TestCreateProject(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db) // nil event publisher is OK
 
@@ -81,8 +74,7 @@ func TestCreateProject(t *testing.T) {
 func TestCreateProject_EmptyName(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -105,8 +97,7 @@ func TestCreateProject_EmptyName(t *testing.T) {
 func TestCreateProject_NameTooLong(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -134,25 +125,25 @@ func TestCreateProject_NameTooLong(t *testing.T) {
 func TestGetAllProjects(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create two projects
-	_, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	_, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Project 1",
 		Description: "Desc 1",
 	})
 	require.NoError(t, err, "Failed to create project 1")
 
-	_, err = svc.CreateProject(context.Background(), CreateProjectRequest{
+	_, err = svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Project 2",
 		Description: "Desc 2",
 	})
 	require.NoError(t, err, "Failed to create project 2")
 
-	results, err := svc.GetAllProjects(context.Background())
+	results, err := svc.GetAllProjects(ctx)
 	assert.NoError(t, err, "Failed to get all projects")
 
 	if len(results) != 2 {
@@ -171,8 +162,7 @@ func TestGetAllProjects(t *testing.T) {
 func TestGetAllProjects_Empty(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -188,19 +178,19 @@ func TestGetAllProjects_Empty(t *testing.T) {
 func TestGetProjectByID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create a project
-	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	created, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Test Project",
 		Description: "Test Description",
 	})
 	require.NoError(t, err, "Failed to create project")
 
-	result, err := svc.GetProjectByID(context.Background(), created.ID)
+	result, err := svc.GetProjectByID(ctx, created.ID)
 	assert.NoError(t, err, "Failed to get project by ID")
 
 	if result.ID != created.ID {
@@ -219,8 +209,7 @@ func TestGetProjectByID(t *testing.T) {
 func TestGetProjectByID_NotFound(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -238,8 +227,7 @@ func TestGetProjectByID_NotFound(t *testing.T) {
 func TestGetProjectByID_InvalidID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -257,13 +245,13 @@ func TestGetProjectByID_InvalidID(t *testing.T) {
 func TestUpdateProject(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create a project
-	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	created, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Old Name",
 		Description: "Old Description",
 	})
@@ -275,11 +263,11 @@ func TestUpdateProject(t *testing.T) {
 		Name: &newName,
 	}
 
-	err = svc.UpdateProject(context.Background(), req)
+	err = svc.UpdateProject(ctx, req)
 	assert.NoError(t, err, "Failed to update project")
 
 	// Verify update
-	updated, err := svc.GetProjectByID(context.Background(), created.ID)
+	updated, err := svc.GetProjectByID(ctx, created.ID)
 	require.NoError(t, err, "Failed to get updated project")
 
 	if updated.Name != "Updated Project" {
@@ -294,13 +282,13 @@ func TestUpdateProject(t *testing.T) {
 func TestUpdateProject_EmptyName(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create a project
-	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	created, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Old Name",
 		Description: "Old Description",
 	})
@@ -312,7 +300,7 @@ func TestUpdateProject_EmptyName(t *testing.T) {
 		Name: &emptyName,
 	}
 
-	err = svc.UpdateProject(context.Background(), req)
+	err = svc.UpdateProject(ctx, req)
 
 	if err == nil {
 		t.Fatal("Expected validation error for empty name")
@@ -326,8 +314,7 @@ func TestUpdateProject_EmptyName(t *testing.T) {
 func TestUpdateProject_InvalidID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -351,24 +338,24 @@ func TestUpdateProject_InvalidID(t *testing.T) {
 func TestDeleteProject(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create a project (which will have default columns)
-	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	created, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Test Project",
 		Description: "Test Description",
 	})
 	require.NoError(t, err, "Failed to create project")
 
 	// Delete should succeed since project has no tasks (columns don't matter)
-	err = svc.DeleteProject(context.Background(), created.ID, false)
+	err = svc.DeleteProject(ctx, created.ID, false)
 	assert.NoError(t, err, "Failed to delete project")
 
 	// Verify project is deleted
-	_, err = svc.GetProjectByID(context.Background(), created.ID)
+	_, err = svc.GetProjectByID(ctx, created.ID)
 	if err != sql.ErrNoRows {
 		t.Errorf("Expected sql.ErrNoRows after deletion, got %v", err)
 	}
@@ -377,30 +364,30 @@ func TestDeleteProject(t *testing.T) {
 func TestDeleteProject_WithTasks(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create a project
-	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	created, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Test Project",
 		Description: "Test Description",
 	})
 	require.NoError(t, err, "Failed to create project")
 
 	// Create a column first (tasks are associated via column)
-	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", created.ID, "Test Column")
+	result, err := db.ExecContext(ctx, "INSERT INTO columns (project_id, name) VALUES (?, ?)", created.ID, "Test Column")
 	require.NoError(t, err, "Failed to create column")
 	columnID, err := result.LastInsertId()
 	require.NoError(t, err, "Failed to get column ID")
 
 	// Create a task in the column
-	_, err = db.ExecContext(context.Background(), "INSERT INTO tasks (column_id, title, position) VALUES (?, ?, ?)", columnID, "Test Task", 0)
+	_, err = db.ExecContext(ctx, "INSERT INTO tasks (column_id, title, position) VALUES (?, ?, ?)", columnID, "Test Task", 0)
 	require.NoError(t, err, "Failed to create task")
 
 	// This should fail because project has tasks and force=false
-	err = svc.DeleteProject(context.Background(), created.ID, false)
+	err = svc.DeleteProject(ctx, created.ID, false)
 
 	if err == nil {
 		t.Fatal("Expected error when deleting project with tasks")
@@ -414,34 +401,34 @@ func TestDeleteProject_WithTasks(t *testing.T) {
 func TestDeleteProject_WithTasksForce(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create a project
-	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	created, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Test Project",
 		Description: "Test Description",
 	})
 	require.NoError(t, err, "Failed to create project")
 
 	// Create a column first (tasks are associated via column)
-	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", created.ID, "Test Column")
+	result, err := db.ExecContext(ctx, "INSERT INTO columns (project_id, name) VALUES (?, ?)", created.ID, "Test Column")
 	require.NoError(t, err, "Failed to create column")
 	columnID, err := result.LastInsertId()
 	require.NoError(t, err, "Failed to get column ID")
 
 	// Create a task in the column
-	_, err = db.ExecContext(context.Background(), "INSERT INTO tasks (column_id, title, position) VALUES (?, ?, ?)", columnID, "Test Task", 0)
+	_, err = db.ExecContext(ctx, "INSERT INTO tasks (column_id, title, position) VALUES (?, ?, ?)", columnID, "Test Task", 0)
 	require.NoError(t, err, "Failed to create task")
 
 	// This should succeed because force=true
-	err = svc.DeleteProject(context.Background(), created.ID, true)
+	err = svc.DeleteProject(ctx, created.ID, true)
 	assert.NoError(t, err, "Failed to delete project with force=true")
 
 	// Verify project is deleted
-	_, err = svc.GetProjectByID(context.Background(), created.ID)
+	_, err = svc.GetProjectByID(ctx, created.ID)
 	if err != sql.ErrNoRows {
 		t.Errorf("Expected sql.ErrNoRows after deletion, got %v", err)
 	}
@@ -450,8 +437,7 @@ func TestDeleteProject_WithTasksForce(t *testing.T) {
 func TestDeleteProject_InvalidID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -469,20 +455,20 @@ func TestDeleteProject_InvalidID(t *testing.T) {
 func TestGetTaskCount(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create a project
-	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	created, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Test Project",
 		Description: "Test Description",
 	})
 	require.NoError(t, err, "Failed to create project")
 
 	// Initially should have 0 tasks
-	count, err := svc.GetTaskCount(context.Background(), created.ID)
+	count, err := svc.GetTaskCount(ctx, created.ID)
 	assert.NoError(t, err, "Failed to get task count")
 
 	if count != 0 {
@@ -493,8 +479,7 @@ func TestGetTaskCount(t *testing.T) {
 func TestGetTaskCount_InvalidID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -508,10 +493,6 @@ func TestGetTaskCount_InvalidID(t *testing.T) {
 		t.Errorf("Expected ErrInvalidProjectID, got %v", err)
 	}
 }
-
-// ============================================================================
-// ADDITIONAL ERROR PATH TESTS
-// ============================================================================
 
 // TestCreateProject_ErrorCases tests various error scenarios for CreateProject using table-driven tests
 func TestCreateProject_ErrorCases(t *testing.T) {
@@ -571,8 +552,7 @@ func TestCreateProject_ErrorCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := setupTestDB(t)
-			defer func() { _ = db.Close() }()
+			db := testutil.SetupTestDB(t)
 
 			svc := newTestService(t, db)
 
@@ -613,8 +593,7 @@ func TestGetProjectByID_NegativeID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := setupTestDB(t)
-			defer func() { _ = db.Close() }()
+			db := testutil.SetupTestDB(t)
 
 			svc := newTestService(t, db)
 
@@ -635,8 +614,7 @@ func TestGetProjectByID_NegativeID(t *testing.T) {
 func TestGetProjectByID_VeryLargeID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -653,13 +631,13 @@ func TestGetProjectByID_VeryLargeID(t *testing.T) {
 
 // TestUpdateProject_ErrorCases tests various error scenarios for UpdateProject
 func TestUpdateProject_ErrorCases(t *testing.T) {
-	db := setupTestDB(t)
-	t.Cleanup(func() { _ = db.Close() })
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create a project for update tests
-	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	created, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Original Name",
 		Description: "Original Description",
 	})
@@ -712,7 +690,7 @@ func TestUpdateProject_ErrorCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := svc.UpdateProject(context.Background(), tt.req)
+			err := svc.UpdateProject(ctx, tt.req)
 
 			if tt.expectedErr != nil {
 				if err == nil {
@@ -736,8 +714,7 @@ func TestUpdateProject_ErrorCases(t *testing.T) {
 func TestUpdateProject_NonExistentProject(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -801,8 +778,7 @@ func TestDeleteProject_ErrorCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := setupTestDB(t)
-			defer func() { _ = db.Close() }()
+			db := testutil.SetupTestDB(t)
 
 			svc := newTestService(t, db)
 
@@ -833,8 +809,7 @@ func TestDeleteProject_ErrorCases(t *testing.T) {
 func TestDeleteProject_NonExistentProject(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -878,8 +853,7 @@ func TestGetTaskCount_ErrorCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := setupTestDB(t)
-			defer func() { _ = db.Close() }()
+			db := testutil.SetupTestDB(t)
 
 			svc := newTestService(t, db)
 
@@ -900,8 +874,7 @@ func TestGetTaskCount_ErrorCases(t *testing.T) {
 func TestGetTaskCount_NonExistentProject(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -919,30 +892,30 @@ func TestGetTaskCount_NonExistentProject(t *testing.T) {
 func TestGetAllProjects_AfterDelete(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create two projects
-	proj1, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	proj1, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Project 1",
 		Description: "Desc 1",
 	})
 	require.NoError(t, err, "Failed to create project 1")
 
-	proj2, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	proj2, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Project 2",
 		Description: "Desc 2",
 	})
 	require.NoError(t, err, "Failed to create project 2")
 
 	// Delete first project
-	err = svc.DeleteProject(context.Background(), proj1.ID, false)
+	err = svc.DeleteProject(ctx, proj1.ID, false)
 	require.NoError(t, err, "Failed to delete project 1")
 
 	// Get all projects
-	results, err := svc.GetAllProjects(context.Background())
+	results, err := svc.GetAllProjects(ctx)
 	require.NoError(t, err, "Failed to get all projects")
 
 	// Should only have project 2
@@ -960,21 +933,17 @@ func strPtr(s string) *string {
 	return &s
 }
 
-// ============================================================================
-// GIT BRANCH ASSOCIATION TESTS (TDD RED PHASE)
-// ============================================================================
-
 // TestGetProjectByGitBranch_Found tests finding a project by git branch
 func TestGetProjectByGitBranch_Found(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create a project with git branch
-	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	created, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Test Project",
 		Description: "Test Description",
 		GitBranch:   "feature/my-feature",
@@ -982,7 +951,7 @@ func TestGetProjectByGitBranch_Found(t *testing.T) {
 	require.NoError(t, err, "Failed to create project with git branch")
 
 	// Find project by git branch
-	project, err := svc.GetProjectByGitBranch(context.Background(), "feature/my-feature")
+	project, err := svc.GetProjectByGitBranch(ctx, "feature/my-feature")
 	assert.NoError(t, err, "Should find project by git branch")
 	require.NotNil(t, project, "Project should not be nil")
 
@@ -995,20 +964,20 @@ func TestGetProjectByGitBranch_Found(t *testing.T) {
 func TestGetProjectByGitBranch_NotFound(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create a project without git branch
-	_, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	_, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Test Project",
 		Description: "Test Description",
 	})
 	require.NoError(t, err, "Failed to create project")
 
 	// Try to find project by non-existent branch
-	project, err := svc.GetProjectByGitBranch(context.Background(), "feature/non-existent")
+	project, err := svc.GetProjectByGitBranch(ctx, "feature/non-existent")
 	assert.NoError(t, err, "Should not return error for not found (nil is valid)")
 	assert.Nil(t, project, "Project should be nil when not found")
 }
@@ -1017,8 +986,7 @@ func TestGetProjectByGitBranch_NotFound(t *testing.T) {
 func TestGetProjectByGitBranch_EmptyBranch(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1032,26 +1000,26 @@ func TestGetProjectByGitBranch_EmptyBranch(t *testing.T) {
 func TestGetProjectByGitBranch_MultipleProjectsOneWithBranch(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create multiple projects, only one with git branch
-	_, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	_, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Project 1",
 		Description: "No branch",
 	})
 	require.NoError(t, err)
 
-	proj2, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	proj2, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Project 2",
 		Description: "With branch",
 		GitBranch:   "feature/target",
 	})
 	require.NoError(t, err)
 
-	_, err = svc.CreateProject(context.Background(), CreateProjectRequest{
+	_, err = svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Project 3",
 		Description: "Different branch",
 		GitBranch:   "feature/other",
@@ -1059,25 +1027,21 @@ func TestGetProjectByGitBranch_MultipleProjectsOneWithBranch(t *testing.T) {
 	require.NoError(t, err)
 
 	// Find the specific project
-	project, err := svc.GetProjectByGitBranch(context.Background(), "feature/target")
+	project, err := svc.GetProjectByGitBranch(ctx, "feature/target")
 	assert.NoError(t, err)
 	require.NotNil(t, project)
 	assert.Equal(t, proj2.ID, project.ID, "Should return the correct project")
 	assert.Equal(t, "feature/target", project.GitBranch)
 }
 
-// ============================================================================
-// CREATE PROJECT WITH GIT BRANCH TESTS
-// ============================================================================
-
 // TestCreateProject_WithGitBranch tests creating a project with a git branch
 func TestCreateProject_WithGitBranch(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	req := CreateProjectRequest{
 		Name:        "Test Project",
@@ -1085,7 +1049,7 @@ func TestCreateProject_WithGitBranch(t *testing.T) {
 		GitBranch:   "feature/my-feature",
 	}
 
-	result, err := svc.CreateProject(context.Background(), req)
+	result, err := svc.CreateProject(ctx, req)
 	require.NoError(t, err, "Failed to create project with git branch")
 
 	require.NotNil(t, result, "Expected project result, got nil")
@@ -1093,7 +1057,7 @@ func TestCreateProject_WithGitBranch(t *testing.T) {
 	assert.Equal(t, "feature/my-feature", result.GitBranch, "Git branch should be set")
 
 	// Verify project can be retrieved by git branch
-	found, err := svc.GetProjectByGitBranch(context.Background(), "feature/my-feature")
+	found, err := svc.GetProjectByGitBranch(ctx, "feature/my-feature")
 	assert.NoError(t, err)
 	require.NotNil(t, found)
 	assert.Equal(t, result.ID, found.ID)
@@ -1103,8 +1067,7 @@ func TestCreateProject_WithGitBranch(t *testing.T) {
 func TestCreateProject_WithoutGitBranch(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1125,13 +1088,13 @@ func TestCreateProject_WithoutGitBranch(t *testing.T) {
 func TestCreateProject_DuplicateGitBranch(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create first project with git branch
-	_, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	_, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "First Project",
 		Description: "First",
 		GitBranch:   "feature/duplicate",
@@ -1139,7 +1102,7 @@ func TestCreateProject_DuplicateGitBranch(t *testing.T) {
 	require.NoError(t, err, "Failed to create first project")
 
 	// Try to create second project with same git branch
-	_, err = svc.CreateProject(context.Background(), CreateProjectRequest{
+	_, err = svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Second Project",
 		Description: "Second",
 		GitBranch:   "feature/duplicate",
@@ -1154,14 +1117,14 @@ func TestCreateProject_DuplicateGitBranch(t *testing.T) {
 func TestCreateProject_MultipleProjectsWithoutBranch(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create multiple projects without git branches
 	for i := 0; i < 5; i++ {
-		_, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+		_, err := svc.CreateProject(ctx, CreateProjectRequest{
 			Name:        fmt.Sprintf("Project %d", i),
 			Description: "No branch",
 			GitBranch:   "", // Empty is allowed multiple times (NULL in DB)
@@ -1170,7 +1133,7 @@ func TestCreateProject_MultipleProjectsWithoutBranch(t *testing.T) {
 	}
 
 	// Verify all were created
-	projects, err := svc.GetAllProjects(context.Background())
+	projects, err := svc.GetAllProjects(ctx)
 	require.NoError(t, err)
 	assert.Len(t, projects, 5, "Should have 5 projects")
 }
@@ -1179,8 +1142,7 @@ func TestCreateProject_MultipleProjectsWithoutBranch(t *testing.T) {
 func TestCreateProject_VeryLongGitBranch(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1249,8 +1211,7 @@ func TestCreateProject_GitBranchWithSpecialChars(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := setupTestDB(t)
-			defer func() { _ = db.Close() }()
+			db := testutil.SetupTestDB(t)
 
 			svc := newTestService(t, db)
 
@@ -1273,21 +1234,17 @@ func TestCreateProject_GitBranchWithSpecialChars(t *testing.T) {
 	}
 }
 
-// ============================================================================
-// UPDATE PROJECT WITH GIT BRANCH TESTS
-// ============================================================================
-
 // TestUpdateProject_SetGitBranch tests setting a git branch on an existing project
 func TestUpdateProject_SetGitBranch(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create project without git branch
-	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	created, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Test Project",
 		Description: "Test Description",
 	})
@@ -1295,19 +1252,19 @@ func TestUpdateProject_SetGitBranch(t *testing.T) {
 
 	// Update to add git branch
 	newBranch := "feature/new-branch"
-	err = svc.UpdateProject(context.Background(), UpdateProjectRequest{
+	err = svc.UpdateProject(ctx, UpdateProjectRequest{
 		ID:        created.ID,
 		GitBranch: &newBranch,
 	})
 	assert.NoError(t, err, "Should be able to set git branch on update")
 
 	// Verify update
-	updated, err := svc.GetProjectByID(context.Background(), created.ID)
+	updated, err := svc.GetProjectByID(ctx, created.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "feature/new-branch", updated.GitBranch, "Git branch should be updated")
 
 	// Verify can be found by branch
-	found, err := svc.GetProjectByGitBranch(context.Background(), "feature/new-branch")
+	found, err := svc.GetProjectByGitBranch(ctx, "feature/new-branch")
 	assert.NoError(t, err)
 	require.NotNil(t, found)
 	assert.Equal(t, created.ID, found.ID)
@@ -1317,13 +1274,13 @@ func TestUpdateProject_SetGitBranch(t *testing.T) {
 func TestUpdateProject_ClearGitBranch(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create project with git branch
-	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	created, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Test Project",
 		Description: "Test Description",
 		GitBranch:   "feature/to-clear",
@@ -1332,19 +1289,19 @@ func TestUpdateProject_ClearGitBranch(t *testing.T) {
 
 	// Update to clear git branch
 	emptyBranch := ""
-	err = svc.UpdateProject(context.Background(), UpdateProjectRequest{
+	err = svc.UpdateProject(ctx, UpdateProjectRequest{
 		ID:        created.ID,
 		GitBranch: &emptyBranch,
 	})
 	assert.NoError(t, err, "Should be able to clear git branch")
 
 	// Verify update
-	updated, err := svc.GetProjectByID(context.Background(), created.ID)
+	updated, err := svc.GetProjectByID(ctx, created.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "", updated.GitBranch, "Git branch should be empty")
 
 	// Verify cannot be found by old branch
-	found, err := svc.GetProjectByGitBranch(context.Background(), "feature/to-clear")
+	found, err := svc.GetProjectByGitBranch(ctx, "feature/to-clear")
 	assert.NoError(t, err)
 	assert.Nil(t, found, "Should not find project by old branch")
 }
@@ -1353,13 +1310,13 @@ func TestUpdateProject_ClearGitBranch(t *testing.T) {
 func TestUpdateProject_ChangeGitBranch(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create project with git branch
-	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	created, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Test Project",
 		Description: "Test Description",
 		GitBranch:   "feature/old-branch",
@@ -1368,24 +1325,24 @@ func TestUpdateProject_ChangeGitBranch(t *testing.T) {
 
 	// Update to different git branch
 	newBranch := "feature/new-branch"
-	err = svc.UpdateProject(context.Background(), UpdateProjectRequest{
+	err = svc.UpdateProject(ctx, UpdateProjectRequest{
 		ID:        created.ID,
 		GitBranch: &newBranch,
 	})
 	assert.NoError(t, err, "Should be able to change git branch")
 
 	// Verify update
-	updated, err := svc.GetProjectByID(context.Background(), created.ID)
+	updated, err := svc.GetProjectByID(ctx, created.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "feature/new-branch", updated.GitBranch)
 
 	// Verify old branch doesn't work
-	found, err := svc.GetProjectByGitBranch(context.Background(), "feature/old-branch")
+	found, err := svc.GetProjectByGitBranch(ctx, "feature/old-branch")
 	assert.NoError(t, err)
 	assert.Nil(t, found, "Should not find by old branch")
 
 	// Verify new branch works
-	found, err = svc.GetProjectByGitBranch(context.Background(), "feature/new-branch")
+	found, err = svc.GetProjectByGitBranch(ctx, "feature/new-branch")
 	assert.NoError(t, err)
 	require.NotNil(t, found)
 	assert.Equal(t, created.ID, found.ID)
@@ -1395,20 +1352,20 @@ func TestUpdateProject_ChangeGitBranch(t *testing.T) {
 func TestUpdateProject_DuplicateGitBranch(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create two projects with different branches
-	proj1, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	proj1, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Project 1",
 		Description: "First",
 		GitBranch:   "feature/taken",
 	})
 	require.NoError(t, err)
 
-	proj2, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	proj2, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Project 2",
 		Description: "Second",
 		GitBranch:   "feature/other",
@@ -1417,7 +1374,7 @@ func TestUpdateProject_DuplicateGitBranch(t *testing.T) {
 
 	// Try to update proj2 to use proj1's branch
 	takenBranch := "feature/taken"
-	err = svc.UpdateProject(context.Background(), UpdateProjectRequest{
+	err = svc.UpdateProject(ctx, UpdateProjectRequest{
 		ID:        proj2.ID,
 		GitBranch: &takenBranch,
 	})
@@ -1427,12 +1384,12 @@ func TestUpdateProject_DuplicateGitBranch(t *testing.T) {
 	assert.ErrorIs(t, err, ErrGitBranchAlreadyAssociated, "Should return ErrGitBranchAlreadyAssociated")
 
 	// Verify proj2 still has original branch
-	updated, err := svc.GetProjectByID(context.Background(), proj2.ID)
+	updated, err := svc.GetProjectByID(ctx, proj2.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "feature/other", updated.GitBranch, "Git branch should not have changed")
 
 	// Verify proj1 still owns the taken branch
-	found, err := svc.GetProjectByGitBranch(context.Background(), "feature/taken")
+	found, err := svc.GetProjectByGitBranch(ctx, "feature/taken")
 	assert.NoError(t, err)
 	require.NotNil(t, found)
 	assert.Equal(t, proj1.ID, found.ID)
@@ -1442,13 +1399,13 @@ func TestUpdateProject_DuplicateGitBranch(t *testing.T) {
 func TestUpdateProject_SameGitBranchNoChange(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create project with git branch
-	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	created, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Test Project",
 		Description: "Test Description",
 		GitBranch:   "feature/my-branch",
@@ -1457,46 +1414,42 @@ func TestUpdateProject_SameGitBranchNoChange(t *testing.T) {
 
 	// Update with the same git branch
 	sameBranch := "feature/my-branch"
-	err = svc.UpdateProject(context.Background(), UpdateProjectRequest{
+	err = svc.UpdateProject(ctx, UpdateProjectRequest{
 		ID:        created.ID,
 		GitBranch: &sameBranch,
 	})
 	assert.NoError(t, err, "Should succeed when updating to same branch")
 
 	// Verify branch unchanged
-	updated, err := svc.GetProjectByID(context.Background(), created.ID)
+	updated, err := svc.GetProjectByID(ctx, created.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "feature/my-branch", updated.GitBranch)
 }
-
-// ============================================================================
-// INTEGRATION TESTS WITH OTHER OPERATIONS
-// ============================================================================
 
 // TestGetAllProjects_IncludesGitBranch tests that GetAllProjects returns git branch info
 func TestGetAllProjects_IncludesGitBranch(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create projects with and without git branches
-	_, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	_, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Project 1",
 		Description: "With branch",
 		GitBranch:   "feature/one",
 	})
 	require.NoError(t, err)
 
-	_, err = svc.CreateProject(context.Background(), CreateProjectRequest{
+	_, err = svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Project 2",
 		Description: "Without branch",
 	})
 	require.NoError(t, err)
 
-	_, err = svc.CreateProject(context.Background(), CreateProjectRequest{
+	_, err = svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Project 3",
 		Description: "With branch",
 		GitBranch:   "feature/three",
@@ -1504,7 +1457,7 @@ func TestGetAllProjects_IncludesGitBranch(t *testing.T) {
 	require.NoError(t, err)
 
 	// Get all projects
-	projects, err := svc.GetAllProjects(context.Background())
+	projects, err := svc.GetAllProjects(ctx)
 	require.NoError(t, err)
 	assert.Len(t, projects, 3)
 
@@ -1518,13 +1471,13 @@ func TestGetAllProjects_IncludesGitBranch(t *testing.T) {
 func TestGetProjectByID_IncludesGitBranch(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create project with git branch
-	created, err := svc.CreateProject(context.Background(), CreateProjectRequest{
+	created, err := svc.CreateProject(ctx, CreateProjectRequest{
 		Name:        "Test Project",
 		Description: "Test Description",
 		GitBranch:   "feature/test",
@@ -1532,7 +1485,7 @@ func TestGetProjectByID_IncludesGitBranch(t *testing.T) {
 	require.NoError(t, err)
 
 	// Get project by ID
-	project, err := svc.GetProjectByID(context.Background(), created.ID)
+	project, err := svc.GetProjectByID(ctx, created.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "feature/test", project.GitBranch, "Git branch should be included")
 }

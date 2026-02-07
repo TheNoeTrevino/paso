@@ -16,22 +16,21 @@ import (
 func TestReadyTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+
+	ctx := context.Background()
 
 	// Create test project with default columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	// Get the default "Todo" column ID (which we'll mark as ready column)
 	var todoColumnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 		projectID).Scan(&todoColumnID)
 	assert.NoError(t, err)
 
 	// Mark "Todo" column as ready column
-	_, err = db.ExecContext(context.Background(),
+	_, err = db.ExecContext(ctx,
 		"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", todoColumnID)
 	assert.NoError(t, err)
 
@@ -60,12 +59,12 @@ func TestReadyTask_Positive(t *testing.T) {
 
 		// Get Todo column and mark as ready
 		var emptyTodoColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			newProjectID).Scan(&emptyTodoColumnID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", emptyTodoColumnID)
 		assert.NoError(t, err)
 
@@ -84,12 +83,12 @@ func TestReadyTask_Positive(t *testing.T) {
 		jsonProjectID := cli.CreateTestProject(t, db, "JSON Project")
 
 		var jsonTodoColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			jsonProjectID).Scan(&jsonTodoColumnID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", jsonTodoColumnID)
 		assert.NoError(t, err)
 
@@ -152,12 +151,12 @@ func TestReadyTask_Positive(t *testing.T) {
 		quietProjectID := cli.CreateTestProject(t, db, "Quiet Project")
 
 		var quietTodoColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			quietProjectID).Scan(&quietTodoColumnID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", quietTodoColumnID)
 		assert.NoError(t, err)
 
@@ -197,12 +196,12 @@ func TestReadyTask_Positive(t *testing.T) {
 		blockProjectID := cli.CreateTestProject(t, db, "Block Project")
 
 		var blockTodoColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			blockProjectID).Scan(&blockTodoColumnID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", blockTodoColumnID)
 		assert.NoError(t, err)
 
@@ -213,7 +212,7 @@ func TestReadyTask_Positive(t *testing.T) {
 
 		// Create blocking relationship (blockedTask is blocked by blockerTask)
 		// relation_type_id = 2 for blocking relationship
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 2)",
 			blockedTaskID, blockerTaskID)
 		assert.NoError(t, err)
@@ -247,12 +246,12 @@ func TestReadyTask_Positive(t *testing.T) {
 		priorityProjectID := cli.CreateTestProject(t, db, "Priority Project")
 
 		var priorityTodoColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			priorityProjectID).Scan(&priorityTodoColumnID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", priorityTodoColumnID)
 		assert.NoError(t, err)
 
@@ -263,16 +262,16 @@ func TestReadyTask_Positive(t *testing.T) {
 		mediumTaskID := cli.CreateTestTask(t, db, priorityTodoColumnID, "Medium Priority Task")
 
 		// Set priorities (1=trivial, 2=low, 3=medium, 4=high, 5=critical)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET priority_id = 2 WHERE id = ?", lowTaskID)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET priority_id = 4 WHERE id = ?", highTaskID)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET priority_id = 5 WHERE id = ?", criticalTaskID)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET priority_id = 3 WHERE id = ?", mediumTaskID)
 		assert.NoError(t, err)
 
@@ -305,18 +304,18 @@ func TestReadyTask_Positive(t *testing.T) {
 
 		// Get Todo and In Progress columns
 		var flagTodoColumnID, flagInProgressColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			flagProjectID).Scan(&flagTodoColumnID)
 		assert.NoError(t, err)
 
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'In Progress'",
 			flagProjectID).Scan(&flagInProgressColumnID)
 		assert.NoError(t, err)
 
 		// Only mark Todo as ready column
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", flagTodoColumnID)
 		assert.NoError(t, err)
 
@@ -348,12 +347,12 @@ func TestReadyTask_Positive(t *testing.T) {
 		labelProjectID := cli.CreateTestProject(t, db, "Label Project")
 
 		var labelTodoColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			labelProjectID).Scan(&labelTodoColumnID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", labelTodoColumnID)
 		assert.NoError(t, err)
 
@@ -366,10 +365,10 @@ func TestReadyTask_Positive(t *testing.T) {
 		labelID2 := testutil.CreateTestLabel(t, db, labelProjectID, "urgent", "#F97316")
 
 		// Attach labels to task1
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID1, labelID1)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID1, labelID2)
 		assert.NoError(t, err)
 
@@ -390,19 +389,19 @@ func TestReadyTask_Positive(t *testing.T) {
 		completeProjectID := cli.CreateTestProject(t, db, "Complete Project")
 
 		var completeTodoColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			completeProjectID).Scan(&completeTodoColumnID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", completeTodoColumnID)
 		assert.NoError(t, err)
 
 		// Create task with all metadata
 		taskID := cli.CreateTestTask(t, db, completeTodoColumnID, "Complete Task")
 
-		_, err = db.ExecContext(context.Background(), `
+		_, err = db.ExecContext(ctx, `
 			UPDATE tasks 
 			SET type_id = 2, 
 			    priority_id = 4,
@@ -412,7 +411,7 @@ func TestReadyTask_Positive(t *testing.T) {
 
 		// Add label
 		labelID := testutil.CreateTestLabel(t, db, completeProjectID, "feature", "#3B82F6")
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID)
 		assert.NoError(t, err)
 
@@ -455,12 +454,12 @@ func TestReadyTask_Positive(t *testing.T) {
 		emptyJSONProjectID := cli.CreateTestProject(t, db, "Empty JSON Project")
 
 		var emptyJSONTodoColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			emptyJSONProjectID).Scan(&emptyJSONTodoColumnID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", emptyJSONTodoColumnID)
 		assert.NoError(t, err)
 
@@ -491,12 +490,12 @@ func TestReadyTask_Positive(t *testing.T) {
 		emptyQuietProjectID := cli.CreateTestProject(t, db, "Empty Quiet Project")
 
 		var emptyQuietTodoColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			emptyQuietProjectID).Scan(&emptyQuietTodoColumnID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", emptyQuietTodoColumnID)
 		assert.NoError(t, err)
 
@@ -517,12 +516,12 @@ func TestReadyTask_Positive(t *testing.T) {
 		orderProjectID := cli.CreateTestProject(t, db, "Order Project")
 
 		var orderTodoColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			orderProjectID).Scan(&orderTodoColumnID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", orderTodoColumnID)
 		assert.NoError(t, err)
 
@@ -558,12 +557,12 @@ func TestReadyTask_Positive(t *testing.T) {
 		complexProjectID := cli.CreateTestProject(t, db, "Complex Block Project")
 
 		var complexTodoColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			complexProjectID).Scan(&complexTodoColumnID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", complexTodoColumnID)
 		assert.NoError(t, err)
 
@@ -574,11 +573,11 @@ func TestReadyTask_Positive(t *testing.T) {
 		cli.CreateTestTask(t, db, complexTodoColumnID, "Independent Task")
 
 		// Create two blocking relationships for the same task
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 2)",
 			blockedTaskID, blocker1ID)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 2)",
 			blockedTaskID, blocker2ID)
 		assert.NoError(t, err)
@@ -609,9 +608,8 @@ func TestReadyTask_Positive(t *testing.T) {
 func TestReadyTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+
+	ctx := context.Background()
 
 	t.Run("Missing project ID - no flag and no env var", func(t *testing.T) {
 		// Note: This test case calls os.Exit() in ready.go:63 (ExitUsage)
@@ -633,7 +631,7 @@ func TestReadyTask_Negative(t *testing.T) {
 
 		// Get Todo column and create a task (but don't mark column as ready)
 		var todoColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			projectID).Scan(&todoColumnID)
 		assert.NoError(t, err)
@@ -657,18 +655,18 @@ func TestReadyTask_Negative(t *testing.T) {
 		projectID := cli.CreateTestProject(t, db, "All Blocked Project")
 
 		var todoColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 			projectID).Scan(&todoColumnID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", todoColumnID)
 		assert.NoError(t, err)
 
 		// Create a blocked task and its blocker (blocker is in a different column)
 		var inProgressColumnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'In Progress'",
 			projectID).Scan(&inProgressColumnID)
 		assert.NoError(t, err)
@@ -677,7 +675,7 @@ func TestReadyTask_Negative(t *testing.T) {
 		blockerTaskID := cli.CreateTestTask(t, db, inProgressColumnID, "Blocker in Different Column")
 
 		// Create blocking relationship
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 2)",
 			blockedTaskID, blockerTaskID)
 		assert.NoError(t, err)

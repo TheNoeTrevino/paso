@@ -365,6 +365,8 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updatePriorityPicker(msg)
 	case state.TypePickerMode:
 		return m.updateTypePicker(msg)
+	case state.AssigneePickerMode:
+		return m.updateAssigneePicker(msg)
 	case state.RelationTypePickerMode:
 		return m.updateRelationTypePicker(msg)
 	case state.DatabaseSelectMode:
@@ -466,6 +468,12 @@ func (m Model) handleTaskDetailForEdit(msg taskDetailForEditMsg) (tea.Model, tea
 	m.Forms.Form.FormTypeDescription = msg.taskDetail.TypeDescription
 	m.Forms.Form.FormPriorityDescription = msg.taskDetail.PriorityDescription
 	m.Forms.Form.FormPriorityColor = msg.taskDetail.PriorityColor
+	if msg.taskDetail.AssigneeID != nil {
+		m.Forms.Form.FormAssigneeID = *msg.taskDetail.AssigneeID
+	}
+	if msg.taskDetail.AssigneeName != nil {
+		m.Forms.Form.FormAssigneeName = *msg.taskDetail.AssigneeName
+	}
 
 	m.Forms.Form.FormConfirm = true
 	m.Forms.Form.EditingTaskID = msg.taskID

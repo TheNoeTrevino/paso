@@ -233,6 +233,10 @@ func (a *Adapter) UpdateTaskPriority(ctx context.Context, arg types.UpdateTaskPr
 	return a.queries.UpdateTaskPriority(ctx, toGeneratedUpdateTaskPriorityParams(arg))
 }
 
+func (a *Adapter) UpdateTaskAssignee(ctx context.Context, arg types.UpdateTaskAssigneeParams) error {
+	return a.queries.UpdateTaskAssignee(ctx, toGeneratedUpdateTaskAssigneeParams(arg))
+}
+
 func (a *Adapter) UpdateTaskType(ctx context.Context, arg types.UpdateTaskTypeParams) error {
 	return a.queries.UpdateTaskType(ctx, toGeneratedUpdateTaskTypeParams(arg))
 }

@@ -14,16 +14,15 @@ import (
 func TestDeleteTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+
+	ctx := context.Background()
 
 	// Create test project with default columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	// Get the first column ID (Todo column)
 	var columnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? LIMIT 1", projectID).Scan(&columnID)
 	assert.NoError(t, err)
 
@@ -44,7 +43,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 
 		// Verify task is gone from DB
 		var count int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM tasks WHERE id = ?", taskID).Scan(&count)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, count, "Task should be deleted from database")
@@ -66,7 +65,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 
 		// Verify task is gone from DB
 		var count int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM tasks WHERE id = ?", taskID).Scan(&count)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, count, "Task should be deleted from database")
@@ -97,7 +96,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 
 		// Verify task is gone from DB
 		var count int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM tasks WHERE id = ?", taskID).Scan(&count)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, count, "Task should be deleted from database")
@@ -109,14 +108,14 @@ func TestDeleteTask_Positive(t *testing.T) {
 		childID := cli.CreateTestTask(t, db, columnID, "Child Task")
 
 		// Create parent-child relationship (relation_type_id = 1 for Parent/Child)
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
 			parentID, childID)
 		assert.NoError(t, err)
 
 		// Verify relationship exists
 		var relCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_subtasks WHERE parent_id = ? AND child_id = ?",
 			parentID, childID).Scan(&relCount)
 		assert.NoError(t, err)
@@ -134,20 +133,20 @@ func TestDeleteTask_Positive(t *testing.T) {
 
 		// Verify parent task is deleted
 		var taskCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM tasks WHERE id = ?", parentID).Scan(&taskCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, taskCount, "Parent task should be deleted")
 
 		// Verify relationship was cascade deleted
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_subtasks WHERE parent_id = ? OR child_id = ?",
 			parentID, parentID).Scan(&relCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, relCount, "Relationships should be cascade deleted")
 
 		// Verify child task still exists (only relationship should be deleted)
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM tasks WHERE id = ?", childID).Scan(&taskCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, taskCount, "Child task should still exist")
@@ -159,7 +158,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 		blockedID := cli.CreateTestTask(t, db, columnID, "Blocked Task")
 
 		// Create blocking relationship (relation_type_id = 2 for Blocks/Blocked By)
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 2)",
 			blockerID, blockedID)
 		assert.NoError(t, err)
@@ -176,21 +175,21 @@ func TestDeleteTask_Positive(t *testing.T) {
 
 		// Verify blocker task is deleted
 		var taskCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM tasks WHERE id = ?", blockerID).Scan(&taskCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, taskCount, "Blocker task should be deleted")
 
 		// Verify blocking relationship was cascade deleted
 		var relCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_subtasks WHERE parent_id = ? OR child_id = ?",
 			blockerID, blockerID).Scan(&relCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, relCount, "Blocking relationships should be cascade deleted")
 
 		// Verify blocked task still exists
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM tasks WHERE id = ?", blockedID).Scan(&taskCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, taskCount, "Blocked task should still exist")
@@ -201,25 +200,25 @@ func TestDeleteTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, columnID, "Task with Labels")
 
 		// Create labels and attach to task
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)",
 			projectID, "bug", "#FF0000")
 		assert.NoError(t, err)
 
 		var labelID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT id FROM labels WHERE name = ?", "bug").Scan(&labelID)
 		assert.NoError(t, err)
 
 		// Attach label to task
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)",
 			taskID, labelID)
 		assert.NoError(t, err)
 
 		// Verify label attachment exists
 		var labelCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_labels WHERE task_id = ?", taskID).Scan(&labelCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, labelCount, "Label should be attached to task")
@@ -236,20 +235,20 @@ func TestDeleteTask_Positive(t *testing.T) {
 
 		// Verify task is deleted
 		var taskCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM tasks WHERE id = ?", taskID).Scan(&taskCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, taskCount, "Task should be deleted")
 
 		// Verify label attachment was cascade deleted
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_labels WHERE task_id = ?", taskID).Scan(&labelCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, labelCount, "Label attachments should be cascade deleted")
 
 		// Verify label itself still exists
 		var labelStillExists int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM labels WHERE id = ?", labelID).Scan(&labelStillExists)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, labelStillExists, "Label should still exist after task deletion")
@@ -277,7 +276,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 		// Verify all tasks are deleted
 		for _, taskID := range taskIDs {
 			var count int
-			err := db.QueryRowContext(context.Background(),
+			err := db.QueryRowContext(ctx,
 				"SELECT COUNT(*) FROM tasks WHERE id = ?", taskID).Scan(&count)
 			assert.NoError(t, err)
 			assert.Equal(t, 0, count, fmt.Sprintf("Task %d should be deleted", taskID))
@@ -289,19 +288,19 @@ func TestDeleteTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, columnID, "Task with Comments")
 
 		// Add comments to task
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"INSERT INTO task_comments (task_id, content, author) VALUES (?, ?, ?)",
 			taskID, "First comment", "testuser")
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_comments (task_id, content, author) VALUES (?, ?, ?)",
 			taskID, "Second comment", "testuser")
 		assert.NoError(t, err)
 
 		// Verify comments exist
 		var commentCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_comments WHERE task_id = ?", taskID).Scan(&commentCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, commentCount, "Task should have 2 comments")
@@ -318,13 +317,13 @@ func TestDeleteTask_Positive(t *testing.T) {
 
 		// Verify task is deleted
 		var taskCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM tasks WHERE id = ?", taskID).Scan(&taskCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, taskCount, "Task should be deleted")
 
 		// Verify comments were cascade deleted
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_comments WHERE task_id = ?", taskID).Scan(&commentCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, commentCount, "Comments should be cascade deleted")
@@ -338,35 +337,35 @@ func TestDeleteTask_Positive(t *testing.T) {
 		childTaskID := cli.CreateTestTask(t, db, columnID, "Child Task")
 
 		// Add parent relationship
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
 			parentTaskID, mainTaskID)
 		assert.NoError(t, err)
 
 		// Add child relationship
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
 			mainTaskID, childTaskID)
 		assert.NoError(t, err)
 
 		// Add label
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)",
 			projectID, "feature", "#00FF00")
 		assert.NoError(t, err)
 
 		var labelID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT id FROM labels WHERE name = ?", "feature").Scan(&labelID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)",
 			mainTaskID, labelID)
 		assert.NoError(t, err)
 
 		// Add comment
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_comments (task_id, content, author) VALUES (?, ?, ?)",
 			mainTaskID, "Important comment", "testuser")
 		assert.NoError(t, err)
@@ -383,14 +382,14 @@ func TestDeleteTask_Positive(t *testing.T) {
 
 		// Verify main task is deleted
 		var taskCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM tasks WHERE id = ?", mainTaskID).Scan(&taskCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, taskCount, "Main task should be deleted")
 
 		// Verify all relationships involving main task are deleted
 		var relCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_subtasks WHERE parent_id = ? OR child_id = ?",
 			mainTaskID, mainTaskID).Scan(&relCount)
 		assert.NoError(t, err)
@@ -398,20 +397,20 @@ func TestDeleteTask_Positive(t *testing.T) {
 
 		// Verify label attachment is deleted
 		var labelCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_labels WHERE task_id = ?", mainTaskID).Scan(&labelCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, labelCount, "Label attachments should be cascade deleted")
 
 		// Verify comments are deleted
 		var commentCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_comments WHERE task_id = ?", mainTaskID).Scan(&commentCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, commentCount, "Comments should be cascade deleted")
 
 		// Verify parent and child tasks still exist
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM tasks WHERE id IN (?, ?)", parentTaskID, childTaskID).Scan(&taskCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, taskCount, "Parent and child tasks should still exist")

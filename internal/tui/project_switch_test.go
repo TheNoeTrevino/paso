@@ -2,7 +2,6 @@ package tui
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/thenoetrevino/paso/internal/models"
@@ -14,28 +13,16 @@ import (
 // to be visible during tests. This ensures prefetch behavior is triggered.
 const detailPanelVisibleWidth = 200
 
-// testDBCleanup is a helper to standardize database cleanup in tests.
-func testDBCleanup(t *testing.T, db *sql.DB) {
-	t.Helper()
-	if err := db.Close(); err != nil {
-		t.Errorf("failed to close database: %v", err)
-	}
-}
-
 // setupProjectSwitchTest creates a test model with initialized projects,
 // detail cache, and UI state configured for project switching tests.
 //
 // Parameters:
 //   - t: testing context
 //   - selectedProject: which project index to start at (0-based)
-//
-// Returns configured model and database connection. Caller must register cleanup:
-//
-//	t.Cleanup(func() { testDBCleanup(t, db) })
-func setupProjectSwitchTest(t *testing.T, selectedProject int) (Model, *sql.DB) {
+func setupProjectSwitchTest(t *testing.T, selectedProject int) Model {
 	t.Helper()
 
-	m, db := SetupTestModelWithDB(t)
+	m, _ := SetupTestModelWithDB(t)
 	ctx := context.Background()
 
 	// Load all available projects
@@ -53,7 +40,7 @@ func setupProjectSwitchTest(t *testing.T, selectedProject int) (Model, *sql.DB) 
 	// Set width to enable detail panel visibility
 	m.UIState.SetWidth(detailPanelVisibleWidth)
 
-	return m, db
+	return m
 }
 
 // TestHandleNextProject_ClearsCacheAndTriggersPrefetch verifies that switching to the next
@@ -63,7 +50,6 @@ func setupProjectSwitchTest(t *testing.T, selectedProject int) (Model, *sql.DB) 
 // the detail panel should load the task at the new cursor position (column 0, task 0).
 func TestHandleNextProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 	m, db := SetupTestModelWithDB(t)
-	t.Cleanup(func() { testDBCleanup(t, db) })
 
 	ctx := context.Background()
 
@@ -173,7 +159,6 @@ func TestHandleNextProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 // the detail panel should load the task at the new cursor position (column 0, task 0).
 func TestHandlePrevProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 	m, db := SetupTestModelWithDB(t)
-	t.Cleanup(func() { testDBCleanup(t, db) })
 
 	ctx := context.Background()
 
@@ -271,8 +256,7 @@ func TestHandlePrevProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 //
 // Edge case: User presses } when already at the last project.
 func TestHandleNextProject_AtLastProject_NoOp(t *testing.T) {
-	m, db := setupProjectSwitchTest(t, 0)
-	t.Cleanup(func() { testDBCleanup(t, db) })
+	m := setupProjectSwitchTest(t, 0)
 
 	// Position at last project for this edge case test
 	m.AppState.SetSelectedProject(len(m.AppState.Projects()) - 1)
@@ -313,8 +297,7 @@ func TestHandleNextProject_AtLastProject_NoOp(t *testing.T) {
 //
 // Edge case: User presses { when already at the first project.
 func TestHandlePrevProject_AtFirstProject_NoOp(t *testing.T) {
-	m, db := setupProjectSwitchTest(t, 0)
-	t.Cleanup(func() { testDBCleanup(t, db) })
+	m := setupProjectSwitchTest(t, 0)
 
 	// Call handlePrevProject when already at first project
 	initialProjectIndex := m.AppState.SelectedProject()
@@ -354,7 +337,6 @@ func TestHandlePrevProject_AtFirstProject_NoOp(t *testing.T) {
 // and triggers prefetch, preventing stale task details from appearing.
 func TestProjectSwitch_MultipleProjectsRoundTrip(t *testing.T) {
 	m, db := SetupTestModelWithDB(t)
-	t.Cleanup(func() { testDBCleanup(t, db) })
 
 	ctx := context.Background()
 
