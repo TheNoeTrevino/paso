@@ -77,8 +77,10 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonOutput {
+		// TODO: can we type this more strongly?
 		assigneeList := make([]map[string]any, len(assignees))
 		for i, assignee := range assignees {
+			// TODO: this would be the type of above
 			assigneeList[i] = map[string]any{
 				"id":   assignee.ID,
 				"name": assignee.Name,
@@ -96,6 +98,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println("Assignees:")
+	// QUESTION: Cant we run .String() directly? Do we need to fmt print this?
 	fmt.Println(renderAssigneeTable(assignees))
 	return nil
 }
@@ -117,7 +120,7 @@ func renderAssigneeTable(assignees []*models.Assignee) string {
 		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("238"))).
 		Headers("ID", "NAME").
 		Rows(rows...).
-		StyleFunc(func(row, col int) lipgloss.Style {
+		StyleFunc(func(row int, col int) lipgloss.Style {
 			if row == table.HeaderRow {
 				return headerStyle
 			}
