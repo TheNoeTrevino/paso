@@ -55,8 +55,10 @@ func TestClient_EventReceiverHandlesMalformedJSON(t *testing.T) {
 
 		// Send malformed JSON (not a valid Message structure)
 		malformedJSON := []byte(`{"invalid": "json", "missing": "required_fields`)
-		_, _ = conn.Write(malformedJSON)
-		_, _ = conn.Write([]byte("\n"))
+		_, err = conn.Write(malformedJSON)
+		require.NoError(t, err)
+		_, err = conn.Write([]byte("\n"))
+		require.NoError(t, err)
 	}()
 
 	// Create and connect client

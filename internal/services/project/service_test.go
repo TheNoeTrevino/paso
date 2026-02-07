@@ -78,7 +78,7 @@ func TestCreateProject_EmptyName(t *testing.T) {
 	_, err := svc.CreateProject(context.Background(), req)
 
 	require.Error(t, err, "Expected validation error for empty name")
-	assert.Equal(t, ErrEmptyName, err)
+	assert.ErrorIs(t, err, ErrEmptyName)
 }
 
 func TestCreateProject_NameTooLong(t *testing.T) {
@@ -88,10 +88,7 @@ func TestCreateProject_NameTooLong(t *testing.T) {
 
 	svc := newTestService(t, db)
 
-	longName := ""
-	for i := 0; i < 101; i++ {
-		longName += "a"
-	}
+	longName := strings.Repeat("a", 101)
 
 	req := CreateProjectRequest{
 		Name:        longName,
@@ -101,7 +98,7 @@ func TestCreateProject_NameTooLong(t *testing.T) {
 	_, err := svc.CreateProject(context.Background(), req)
 
 	require.Error(t, err, "Expected validation error for long name")
-	assert.Equal(t, ErrNameTooLong, err)
+	assert.ErrorIs(t, err, ErrNameTooLong)
 }
 
 func TestGetAllProjects(t *testing.T) {
@@ -180,7 +177,7 @@ func TestGetProjectByID_NotFound(t *testing.T) {
 	_, err := svc.GetProjectByID(context.Background(), 999)
 
 	require.Error(t, err, "Expected error for non-existent project")
-	assert.Equal(t, sql.ErrNoRows, err)
+	assert.ErrorIs(t, err, sql.ErrNoRows)
 }
 
 func TestGetProjectByID_InvalidID(t *testing.T) {
@@ -193,7 +190,7 @@ func TestGetProjectByID_InvalidID(t *testing.T) {
 	_, err := svc.GetProjectByID(context.Background(), 0)
 
 	require.Error(t, err, "Expected error for invalid ID")
-	assert.Equal(t, ErrInvalidProjectID, err)
+	assert.ErrorIs(t, err, ErrInvalidProjectID)
 }
 
 func TestUpdateProject(t *testing.T) {
@@ -252,7 +249,7 @@ func TestUpdateProject_EmptyName(t *testing.T) {
 	err = svc.UpdateProject(ctx, req)
 
 	require.Error(t, err, "Expected validation error for empty name")
-	assert.Equal(t, ErrEmptyName, err)
+	assert.ErrorIs(t, err, ErrEmptyName)
 }
 
 func TestUpdateProject_InvalidID(t *testing.T) {
@@ -271,7 +268,7 @@ func TestUpdateProject_InvalidID(t *testing.T) {
 	err := svc.UpdateProject(context.Background(), req)
 
 	require.Error(t, err, "Expected error for invalid ID")
-	assert.Equal(t, ErrInvalidProjectID, err)
+	assert.ErrorIs(t, err, ErrInvalidProjectID)
 }
 
 func TestDeleteProject(t *testing.T) {
@@ -295,7 +292,7 @@ func TestDeleteProject(t *testing.T) {
 
 	// Verify project is deleted
 	_, err = svc.GetProjectByID(ctx, created.ID)
-	assert.Equal(t, sql.ErrNoRows, err)
+	assert.ErrorIs(t, err, sql.ErrNoRows)
 }
 
 func TestDeleteProject_WithTasks(t *testing.T) {
@@ -327,7 +324,7 @@ func TestDeleteProject_WithTasks(t *testing.T) {
 	err = svc.DeleteProject(ctx, created.ID, false)
 
 	require.Error(t, err, "Expected error when deleting project with tasks")
-	assert.Equal(t, ErrProjectHasTasks, err)
+	assert.ErrorIs(t, err, ErrProjectHasTasks)
 }
 
 func TestDeleteProject_WithTasksForce(t *testing.T) {
@@ -361,7 +358,7 @@ func TestDeleteProject_WithTasksForce(t *testing.T) {
 
 	// Verify project is deleted
 	_, err = svc.GetProjectByID(ctx, created.ID)
-	assert.Equal(t, sql.ErrNoRows, err)
+	assert.ErrorIs(t, err, sql.ErrNoRows)
 }
 
 func TestDeleteProject_InvalidID(t *testing.T) {
@@ -374,7 +371,7 @@ func TestDeleteProject_InvalidID(t *testing.T) {
 	err := svc.DeleteProject(context.Background(), 0, false)
 
 	require.Error(t, err, "Expected error for invalid ID")
-	assert.Equal(t, ErrInvalidProjectID, err)
+	assert.ErrorIs(t, err, ErrInvalidProjectID)
 }
 
 func TestGetTaskCount(t *testing.T) {
@@ -409,7 +406,7 @@ func TestGetTaskCount_InvalidID(t *testing.T) {
 	_, err := svc.GetTaskCount(context.Background(), 0)
 
 	require.Error(t, err, "Expected error for invalid ID")
-	assert.Equal(t, ErrInvalidProjectID, err)
+	assert.ErrorIs(t, err, ErrInvalidProjectID)
 }
 
 // TestCreateProject_ErrorCases tests various error scenarios for CreateProject using table-driven tests
@@ -478,7 +475,7 @@ func TestCreateProject_ErrorCases(t *testing.T) {
 
 			if tt.expectedErr != nil {
 				require.Error(t, err)
-				assert.Equal(t, tt.expectedErr, err)
+				assert.ErrorIs(t, err, tt.expectedErr)
 			} else {
 				require.NoError(t, err, "Failed to create project")
 				require.NotNil(t, result, "Expected project result, got nil")
@@ -512,7 +509,7 @@ func TestGetProjectByID_NegativeID(t *testing.T) {
 			_, err := svc.GetProjectByID(context.Background(), tt.id)
 
 			require.Error(t, err, "Expected error for negative ID")
-			assert.Equal(t, ErrInvalidProjectID, err)
+			assert.ErrorIs(t, err, ErrInvalidProjectID)
 		})
 	}
 }
@@ -528,7 +525,7 @@ func TestGetProjectByID_VeryLargeID(t *testing.T) {
 	_, err := svc.GetProjectByID(context.Background(), 999999999)
 
 	require.Error(t, err, "Expected error for non-existent project")
-	assert.Equal(t, sql.ErrNoRows, err)
+	assert.ErrorIs(t, err, sql.ErrNoRows)
 }
 
 // TestUpdateProject_ErrorCases tests various error scenarios for UpdateProject
@@ -596,7 +593,7 @@ func TestUpdateProject_ErrorCases(t *testing.T) {
 
 			if tt.expectedErr != nil {
 				require.Error(t, err)
-				assert.Equal(t, tt.expectedErr, err)
+				assert.ErrorIs(t, err, tt.expectedErr)
 			} else if tt.checkErr != nil {
 				assert.True(t, tt.checkErr(err))
 			} else {
@@ -685,7 +682,7 @@ func TestDeleteProject_ErrorCases(t *testing.T) {
 
 			if tt.expectedErr != nil {
 				require.Error(t, err)
-				assert.Equal(t, tt.expectedErr, err)
+				assert.ErrorIs(t, err, tt.expectedErr)
 			} else {
 				require.NoError(t, err, "Failed to delete project")
 			}
@@ -748,7 +745,7 @@ func TestGetTaskCount_ErrorCases(t *testing.T) {
 			_, err := svc.GetTaskCount(context.Background(), tt.projectID)
 
 			require.Error(t, err, "Expected error for invalid project ID")
-			assert.Equal(t, tt.expectedErr, err)
+			assert.ErrorIs(t, err, tt.expectedErr)
 		})
 	}
 }

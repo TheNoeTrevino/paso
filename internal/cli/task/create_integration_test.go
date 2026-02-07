@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -24,7 +25,7 @@ func TestCreateTask_Positive(t *testing.T) {
 
 		// Capture output to verify task ID is returned
 		output, err := cli.ExecuteCLICommand(t, app, cmd,
-			[]string{"--project", "1", "--title", "Simple Task", "--quiet"})
+			[]string{"--project", fmt.Sprintf("%d", projectID), "--title", "Simple Task", "--quiet"})
 
 		assert.NoError(t, err)
 
@@ -51,7 +52,7 @@ func TestCreateTask_Positive(t *testing.T) {
 		// This is safer because cobra flags rely on pflag which can be tricky in tests
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--project", "1",
+			"--project", fmt.Sprintf("%d", projectID),
 			"--title", "Detailed Task",
 			"--description", "This is a detailed description",
 			"--priority", "high",

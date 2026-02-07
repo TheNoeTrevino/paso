@@ -1,6 +1,7 @@
 package state
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -128,9 +129,7 @@ func TestAppendFilter_MaxLength(t *testing.T) {
 	state := NewLabelPickerState()
 
 	// Fill filter to exactly 50 characters
-	for i := 0; i < 50; i++ {
-		state.Filter += "a"
-	}
+	state.Filter = strings.Repeat("a", 50)
 
 	// Try to append one more
 	added := state.AppendFilter('x')

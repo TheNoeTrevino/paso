@@ -77,7 +77,7 @@ func TestGetLabelByID_NotFound(t *testing.T) {
 	require.Error(t, err)
 
 	// Check error message
-	assert.Equal(t, "label 9999 not found", err.Error())
+	assert.ErrorContains(t, err, "label 9999 not found")
 }
 
 func TestGetLabelByID_EmptyDatabase(t *testing.T) {

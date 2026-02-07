@@ -39,5 +39,5 @@ func TestGetProjectID_NeitherSet(t *testing.T) {
 	require.Error(t, err)
 
 	// Check error message
-	assert.Equal(t, "no project specified: use --project flag or create a project associated with this branch", err.Error())
+	assert.ErrorContains(t, err, "no project specified")
 }

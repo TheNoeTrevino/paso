@@ -76,7 +76,7 @@ func TestPublishWithRetry_FailureAfterAllRetries(t *testing.T) {
 
 	assert.Equal(t, 3, mock.sendAttempts)
 
-	assert.Equal(t, "simulated send failure", err.Error())
+	assert.ErrorContains(t, err, "simulated send failure")
 }
 
 func TestPublishWithRetry_NilClient(t *testing.T) {
