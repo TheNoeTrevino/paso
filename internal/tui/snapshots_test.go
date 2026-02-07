@@ -115,6 +115,7 @@ func TestSnapshots(t *testing.T) {
 
 // setupEmptyProject creates a model with an empty project and default columns
 func setupEmptyProject(t *testing.T, db *sql.DB) Model {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -153,6 +154,7 @@ func setupEmptyProject(t *testing.T, db *sql.DB) Model {
 
 // setupBoardWithTasks creates a model with tasks across columns
 func setupBoardWithTasks(t *testing.T, db *sql.DB) Model {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -192,6 +194,7 @@ func setupBoardWithTasks(t *testing.T, db *sql.DB) Model {
 
 // setupBoardWithMultipleTasks creates a model with many tasks for testing rendering at scale
 func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) Model {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -233,6 +236,7 @@ func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) Model {
 
 // setupBoardWithLabels creates a model with labeled tasks
 func setupBoardWithLabels(t *testing.T, db *sql.DB) Model {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -283,6 +287,7 @@ func setupBoardWithLabels(t *testing.T, db *sql.DB) Model {
 
 // setupNoProjects creates a model with no projects at all
 func setupNoProjects(t *testing.T, db *sql.DB) Model {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -309,6 +314,7 @@ func setupNoProjects(t *testing.T, db *sql.DB) Model {
 
 // setupProjectNoColumns creates a model with a project but no columns
 func setupProjectNoColumns(t *testing.T, db *sql.DB) Model {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -337,6 +343,7 @@ func setupProjectNoColumns(t *testing.T, db *sql.DB) Model {
 
 // setupConnectionDisconnected creates a model with disconnected daemon status
 func setupConnectionDisconnected(t *testing.T, db *sql.DB) Model {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -370,6 +377,7 @@ func setupConnectionDisconnected(t *testing.T, db *sql.DB) Model {
 
 // setupConnectionReconnecting creates a model in reconnecting state
 func setupConnectionReconnecting(t *testing.T, db *sql.DB) Model {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -402,6 +410,7 @@ func setupConnectionReconnecting(t *testing.T, db *sql.DB) Model {
 
 // setupNotificationError creates a model with an error notification
 func setupNotificationError(t *testing.T, db *sql.DB) Model {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -435,6 +444,7 @@ func setupNotificationError(t *testing.T, db *sql.DB) Model {
 
 // setupNotificationWarning creates a model with a warning notification
 func setupNotificationWarning(t *testing.T, db *sql.DB) Model {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
