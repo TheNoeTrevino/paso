@@ -24,7 +24,7 @@ func setupGitRepo(t *testing.T) string {
 	ctx := context.Background()
 
 	// Initialize git repo
-	cmd := exec.CommandContext(ctx, "git", "init")
+	cmd := exec.CommandContext(ctx, "git", "init", "-b", "main")
 	cmd.Dir = tmpDir
 	err := cmd.Run()
 	require.NoError(t, err, "Failed to initialize git repository")
@@ -144,7 +144,7 @@ func TestDetectGitInfo_NormalRepo(t *testing.T) {
 	assert.False(t, info.IsDetached, "Should not be in detached HEAD state")
 	assert.NotEmpty(t, info.CurrentBranch, "Should have a current branch")
 	// Git init creates 'master' or 'main' depending on git config
-	assert.Contains(t, []string{"master", "main"}, info.CurrentBranch, "Should be on default branch")
+	assert.Equal(t, "main", info.CurrentBranch, "Should be on default branch")
 }
 
 func TestDetectGitInfo_FeatureBranch(t *testing.T) {
@@ -361,7 +361,7 @@ func TestDetectGitInfo_BranchWithSpecialChars(t *testing.T) {
 			assert.Equal(t, branchName, info.CurrentBranch, "Should detect branch name correctly")
 
 			// Switch back to main/master for next iteration
-			checkoutBranch(t, repoDir, "master")
+			checkoutBranch(t, repoDir, "main")
 		})
 	}
 }
@@ -408,7 +408,7 @@ func TestDetectGitInfo_MultipleWorktrees(t *testing.T) {
 	repoDir := setupGitRepo(t)
 	createCommit(t, repoDir, "Initial commit")
 	createBranch(t, repoDir, "feature/branch1")
-	checkoutBranch(t, repoDir, "master")
+	checkoutBranch(t, repoDir, "main")
 
 	// Create a worktree (requires git 2.5+)
 	worktreeDir := filepath.Join(t.TempDir(), "worktree")
@@ -433,7 +433,7 @@ func TestDetectGitInfo_MultipleWorktrees(t *testing.T) {
 	require.NoError(t, err)
 
 	infoMain := DetectGitInfo(ctx)
-	assert.Contains(t, []string{"master", "main"}, infoMain.CurrentBranch, "Should detect main branch in main repo")
+	assert.Equal(t, "main", infoMain.CurrentBranch, "Should detect main branch in main repo")
 
 	// Test from worktree
 	err = os.Chdir(worktreeDir)
