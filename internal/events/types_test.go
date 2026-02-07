@@ -3,12 +3,13 @@ package events
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestProtocolVersion(t *testing.T) {
-	if ProtocolVersion != 1 {
-		t.Errorf("Expected ProtocolVersion to be 1, got %d", ProtocolVersion)
-	}
+	assert.Equal(t, 1, ProtocolVersion)
 }
 
 func TestEventTypes(t *testing.T) {
@@ -22,9 +23,7 @@ func TestEventTypes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if string(tt.eventType) != tt.expected {
-			t.Errorf("Expected %s, got %s", tt.expected, string(tt.eventType))
-		}
+		assert.Equal(t, tt.expected, string(tt.eventType))
 	}
 }
 
@@ -37,32 +36,20 @@ func TestEvent_Creation(t *testing.T) {
 		SequenceID: 123,
 	}
 
-	if event.Type != EventDatabaseChanged {
-		t.Errorf("Expected type %s, got %s", EventDatabaseChanged, event.Type)
-	}
-	if event.ProjectID != 42 {
-		t.Errorf("Expected ProjectID 42, got %d", event.ProjectID)
-	}
-	if !event.Timestamp.Equal(now) {
-		t.Errorf("Expected timestamp %v, got %v", now, event.Timestamp)
-	}
-	if event.SequenceID != 123 {
-		t.Errorf("Expected SequenceID 123, got %d", event.SequenceID)
-	}
+	assert.Equal(t, EventDatabaseChanged, event.Type)
+	assert.Equal(t, 42, event.ProjectID)
+	assert.Equal(t, now, event.Timestamp)
+	assert.Equal(t, int64(123), event.SequenceID)
 }
 
 func TestSubscribeMessage_Creation(t *testing.T) {
 	// Test specific project subscription
 	msg := SubscribeMessage{ProjectID: 5}
-	if msg.ProjectID != 5 {
-		t.Errorf("Expected ProjectID 5, got %d", msg.ProjectID)
-	}
+	assert.Equal(t, 5, msg.ProjectID)
 
 	// Test all projects subscription
 	allMsg := SubscribeMessage{ProjectID: 0}
-	if allMsg.ProjectID != 0 {
-		t.Errorf("Expected ProjectID 0 (all projects), got %d", allMsg.ProjectID)
-	}
+	assert.Equal(t, 0, allMsg.ProjectID)
 }
 
 func TestMessage_EventMessage(t *testing.T) {
@@ -77,21 +64,11 @@ func TestMessage_EventMessage(t *testing.T) {
 		Event:   event,
 	}
 
-	if msg.Version != ProtocolVersion {
-		t.Errorf("Expected version %d, got %d", ProtocolVersion, msg.Version)
-	}
-	if msg.Type != "event" {
-		t.Errorf("Expected type 'event', got '%s'", msg.Type)
-	}
-	if msg.Event == nil {
-		t.Fatal("Expected Event to be set, got nil")
-	}
-	if msg.Event.ProjectID != 10 {
-		t.Errorf("Expected Event ProjectID 10, got %d", msg.Event.ProjectID)
-	}
-	if msg.Subscribe != nil {
-		t.Error("Expected Subscribe to be nil")
-	}
+	assert.Equal(t, ProtocolVersion, msg.Version)
+	assert.Equal(t, "event", msg.Type)
+	require.NotNil(t, msg.Event)
+	assert.Equal(t, 10, msg.Event.ProjectID)
+	assert.Nil(t, msg.Subscribe)
 }
 
 func TestMessage_SubscribeMessage(t *testing.T) {
@@ -103,21 +80,11 @@ func TestMessage_SubscribeMessage(t *testing.T) {
 		Subscribe: subscribe,
 	}
 
-	if msg.Version != ProtocolVersion {
-		t.Errorf("Expected version %d, got %d", ProtocolVersion, msg.Version)
-	}
-	if msg.Type != "subscribe" {
-		t.Errorf("Expected type 'subscribe', got '%s'", msg.Type)
-	}
-	if msg.Subscribe == nil {
-		t.Fatal("Expected Subscribe to be set, got nil")
-	}
-	if msg.Subscribe.ProjectID != 7 {
-		t.Errorf("Expected Subscribe ProjectID 7, got %d", msg.Subscribe.ProjectID)
-	}
-	if msg.Event != nil {
-		t.Error("Expected Event to be nil")
-	}
+	assert.Equal(t, ProtocolVersion, msg.Version)
+	assert.Equal(t, "subscribe", msg.Type)
+	require.NotNil(t, msg.Subscribe)
+	assert.Equal(t, 7, msg.Subscribe.ProjectID)
+	assert.Nil(t, msg.Event)
 }
 
 func TestMessage_PingPong(t *testing.T) {
@@ -126,18 +93,14 @@ func TestMessage_PingPong(t *testing.T) {
 		Version: ProtocolVersion,
 		Type:    "ping",
 	}
-	if pingMsg.Type != "ping" {
-		t.Errorf("Expected type 'ping', got '%s'", pingMsg.Type)
-	}
+	assert.Equal(t, "ping", pingMsg.Type)
 
 	// Test pong message
 	pongMsg := Message{
 		Version: ProtocolVersion,
 		Type:    "pong",
 	}
-	if pongMsg.Type != "pong" {
-		t.Errorf("Expected type 'pong', got '%s'", pongMsg.Type)
-	}
+	assert.Equal(t, "pong", pongMsg.Type)
 }
 
 func TestNotificationMsg_Levels(t *testing.T) {
@@ -157,12 +120,8 @@ func TestNotificationMsg_Levels(t *testing.T) {
 				Message: tt.message,
 			}
 
-			if notif.Level != tt.level {
-				t.Errorf("Expected level '%s', got '%s'", tt.level, notif.Level)
-			}
-			if notif.Message != tt.message {
-				t.Errorf("Expected message '%s', got '%s'", tt.message, notif.Message)
-			}
+			assert.Equal(t, tt.level, notif.Level)
+			assert.Equal(t, tt.message, notif.Message)
 		})
 	}
 }

@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestNilClientMethods verifies that calling methods on a nil *Client doesn't panic
@@ -12,68 +15,53 @@ func TestNilClientMethods(t *testing.T) {
 
 	t.Run("SetNotifyFunc on nil client", func(t *testing.T) {
 		defer func() {
-			if r := recover(); r != nil {
-				t.Errorf("SetNotifyFunc panicked on nil client: %v", r)
-			}
+			r := recover()
+			assert.Nil(t, r)
 		}()
 		client.SetNotifyFunc(func(level, message string) {})
 	})
 
 	t.Run("Listen on nil client", func(t *testing.T) {
 		defer func() {
-			if r := recover(); r != nil {
-				t.Errorf("Listen panicked on nil client: %v", r)
-			}
+			r := recover()
+			assert.Nil(t, r)
 		}()
 		ctx := context.Background()
 		eventChan, err := client.Listen(ctx)
-		if err == nil {
-			t.Error("expected error from Listen on nil client")
-		}
+		require.Error(t, err)
 		// Channel should be closed
 		select {
 		case _, ok := <-eventChan:
-			if ok {
-				t.Error("expected closed channel from nil client Listen")
-			}
+			assert.False(t, ok)
 		case <-time.After(100 * time.Millisecond):
-			t.Error("channel should be immediately readable (closed)")
+			assert.Fail(t, "channel should be immediately readable (closed)")
 		}
 	})
 
 	t.Run("Subscribe on nil client", func(t *testing.T) {
 		defer func() {
-			if r := recover(); r != nil {
-				t.Errorf("Subscribe panicked on nil client: %v", r)
-			}
+			r := recover()
+			assert.Nil(t, r)
 		}()
 		err := client.Subscribe(1)
-		if err == nil {
-			t.Error("expected error from Subscribe on nil client")
-		}
+		assert.Error(t, err)
 	})
 
 	t.Run("SendEvent on nil client", func(t *testing.T) {
 		defer func() {
-			if r := recover(); r != nil {
-				t.Errorf("SendEvent panicked on nil client: %v", r)
-			}
+			r := recover()
+			assert.Nil(t, r)
 		}()
 		err := client.SendEvent(Event{Type: EventDatabaseChanged})
-		if err == nil {
-			t.Error("expected error from SendEvent on nil client")
-		}
+		assert.Error(t, err)
 	})
 
 	t.Run("Close on nil client", func(t *testing.T) {
 		defer func() {
-			if r := recover(); r != nil {
-				t.Errorf("Close panicked on nil client: %v", r)
-			}
+			r := recover()
+			assert.Nil(t, r)
 		}()
 		err := client.Close()
-		if err != nil {
-			t.Errorf("Close should return nil error on nil client, got: %v", err)
-		}
+		assert.NoError(t, err)
 	})
 }

@@ -5,6 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSendEvent_Success(t *testing.T) {
@@ -12,23 +15,20 @@ func TestSendEvent_Success(t *testing.T) {
 	defer func() { _ = listener.Close() }()
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Drain initial subscribe message
 	select {
 	case <-messages:
 	case <-time.After(500 * time.Millisecond):
-		t.Fatal("Timeout waiting for initial subscribe")
+		require.Fail(t, "Timeout waiting for initial subscribe")
 	}
 
 	// Send an event
@@ -38,9 +38,8 @@ func TestSendEvent_Success(t *testing.T) {
 		Timestamp: time.Now(),
 	}
 
-	if err := client.SendEvent(testEvent); err != nil {
-		t.Fatalf("Expected SendEvent to succeed, got error: %v", err)
-	}
+	err = client.SendEvent(testEvent)
+	require.NoError(t, err)
 
 	// Note: Events are batched, so we need to wait for debounce duration
 	time.Sleep(client.debounce + 50*time.Millisecond)
@@ -48,15 +47,11 @@ func TestSendEvent_Success(t *testing.T) {
 	// Check if message was received (might be batched)
 	select {
 	case msg := <-messages:
-		if msg.Type != "event" {
-			t.Errorf("Expected event message, got: %s", msg.Type)
-		}
-		if msg.Event == nil {
-			t.Fatal("Expected event message to have Event field")
-		}
-		t.Logf("✓ Event sent successfully: %+v", msg.Event)
+		assert.Equal(t, "event", msg.Type)
+		require.NotNil(t, msg.Event)
+		t.Logf("Event sent successfully: %+v", msg.Event)
 	case <-time.After(2 * time.Second):
-		t.Fatal("Timeout waiting for event message")
+		require.Fail(t, "Timeout waiting for event message")
 	}
 }
 
@@ -64,9 +59,7 @@ func TestSendEvent_BeforeConnect(t *testing.T) {
 	socketPath := filepath.Join(t.TempDir(), "paso.sock")
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	// Send event before connecting - should succeed (queued)
@@ -76,11 +69,9 @@ func TestSendEvent_BeforeConnect(t *testing.T) {
 	}
 
 	err = client.SendEvent(testEvent)
-	if err != nil {
-		t.Errorf("Expected SendEvent to succeed (queue event), got error: %v", err)
-	}
+	assert.NoError(t, err)
 
-	t.Logf("✓ SendEvent queues events before connection")
+	t.Logf("SendEvent queues events before connection")
 }
 
 func TestSendEvent_Batching(t *testing.T) {
@@ -91,23 +82,20 @@ func TestSendEvent_Batching(t *testing.T) {
 	t.Setenv("PASO_EVENT_DEBOUNCE_MS", "50")
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Drain initial subscribe message
 	select {
 	case <-messages:
 	case <-time.After(500 * time.Millisecond):
-		t.Fatal("Timeout waiting for initial subscribe")
+		require.Fail(t, "Timeout waiting for initial subscribe")
 	}
 
 	// Send multiple events rapidly
@@ -117,9 +105,8 @@ func TestSendEvent_Batching(t *testing.T) {
 			Type:      EventDatabaseChanged,
 			ProjectID: i,
 		}
-		if err := client.SendEvent(testEvent); err != nil {
-			t.Fatalf("Failed to send event %d: %v", i, err)
-		}
+		err := client.SendEvent(testEvent)
+		require.NoError(t, err)
 	}
 
 	// Wait for batch to be sent
@@ -128,11 +115,9 @@ func TestSendEvent_Batching(t *testing.T) {
 	// Should receive at least one message (events might be batched)
 	select {
 	case msg := <-messages:
-		if msg.Type != "event" {
-			t.Errorf("Expected event message, got: %s", msg.Type)
-		}
-		t.Logf("✓ Batched events sent successfully")
+		assert.Equal(t, "event", msg.Type)
+		t.Logf("Batched events sent successfully")
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for batched events")
+		require.Fail(t, "Timeout waiting for batched events")
 	}
 }

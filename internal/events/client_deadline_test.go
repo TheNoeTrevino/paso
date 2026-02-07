@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestSubscribe_AfterLongDelay tests that Subscribe works even after the write
@@ -19,9 +22,7 @@ func TestSubscribe_AfterLongDelay(t *testing.T) {
 	defer func() { _ = listener.Close() }()
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	// Set short write deadline for faster test execution
@@ -30,18 +31,15 @@ func TestSubscribe_AfterLongDelay(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Drain initial subscribe message (project 0)
 	select {
 	case msg := <-messages:
-		if msg.Type != "subscribe" {
-			t.Fatalf("Expected initial subscribe, got: %s", msg.Type)
-		}
+		require.Equal(t, "subscribe", msg.Type)
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for initial subscribe")
+		require.Fail(t, "Timeout waiting for initial subscribe")
 	}
 
 	// Send an event to trigger setting a write deadline
@@ -50,9 +48,8 @@ func TestSubscribe_AfterLongDelay(t *testing.T) {
 		ProjectID: 1,
 		Timestamp: time.Now(),
 	}
-	if err := client.SendEvent(testEvent); err != nil {
-		t.Fatalf("Failed to send event: %v", err)
-	}
+	err = client.SendEvent(testEvent)
+	require.NoError(t, err)
 
 	// Wait for event to be sent (batching)
 	time.Sleep(client.debounce + 100*time.Millisecond)
@@ -60,12 +57,10 @@ func TestSubscribe_AfterLongDelay(t *testing.T) {
 	// Drain the event message
 	select {
 	case msg := <-messages:
-		if msg.Type != "event" {
-			t.Fatalf("Expected event message, got: %s", msg.Type)
-		}
-		t.Logf("✓ Event sent successfully")
+		assert.Equal(t, "event", msg.Type)
+		t.Logf("Event sent successfully")
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for event")
+		require.Fail(t, "Timeout waiting for event")
 	}
 
 	// Wait LONGER than the write deadline (600ms > 500ms)
@@ -79,22 +74,18 @@ func TestSubscribe_AfterLongDelay(t *testing.T) {
 	// 2. We waited 600ms (deadline expired)
 	// 3. Subscribe() would inherit the expired deadline and immediately fail
 	t.Logf("Attempting Subscribe after deadline expired...")
-	if err := client.Subscribe(2); err != nil {
-		t.Fatalf("Subscribe failed after deadline expired: %v (BUG REPRODUCED)", err)
-	}
+	err = client.Subscribe(2)
+	require.NoError(t, err)
 
 	// Verify subscribe message was sent
 	select {
 	case msg := <-messages:
-		if msg.Type != "subscribe" {
-			t.Errorf("Expected subscribe message, got: %s", msg.Type)
-		}
-		if msg.Subscribe == nil || msg.Subscribe.ProjectID != 2 {
-			t.Errorf("Expected subscribe to project 2, got: %+v", msg.Subscribe)
-		}
-		t.Logf("✓ Subscribe succeeded after deadline expired (BUG FIXED)")
+		assert.Equal(t, "subscribe", msg.Type)
+		require.NotNil(t, msg.Subscribe)
+		assert.Equal(t, 2, msg.Subscribe.ProjectID)
+		t.Logf("Subscribe succeeded after deadline expired (BUG FIXED)")
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for subscribe message")
+		require.Fail(t, "Timeout waiting for subscribe message")
 	}
 
 	// Verify we can still send events after this
@@ -103,20 +94,17 @@ func TestSubscribe_AfterLongDelay(t *testing.T) {
 		ProjectID: 2,
 		Timestamp: time.Now(),
 	}
-	if err := client.SendEvent(testEvent2); err != nil {
-		t.Fatalf("Failed to send event after subscribe: %v", err)
-	}
+	err = client.SendEvent(testEvent2)
+	require.NoError(t, err)
 
 	time.Sleep(client.debounce + 100*time.Millisecond)
 
 	select {
 	case msg := <-messages:
-		if msg.Type != "event" {
-			t.Errorf("Expected event message, got: %s", msg.Type)
-		}
-		t.Logf("✓ Events still work after deadline recovery")
+		assert.Equal(t, "event", msg.Type)
+		t.Logf("Events still work after deadline recovery")
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for event after subscribe")
+		require.Fail(t, "Timeout waiting for event after subscribe")
 	}
 }
 
@@ -127,9 +115,7 @@ func TestSubscribe_ClearsWriteDeadline(t *testing.T) {
 	defer func() { _ = listener.Close() }()
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	// Set short write deadline for faster test
@@ -138,48 +124,43 @@ func TestSubscribe_ClearsWriteDeadline(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Drain initial subscribe (project 0)
 	select {
 	case <-messages:
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for initial subscribe")
+		require.Fail(t, "Timeout waiting for initial subscribe")
 	}
 
 	// Subscribe to project 1
-	if err := client.Subscribe(1); err != nil {
-		t.Fatalf("First subscribe failed: %v", err)
-	}
+	err = client.Subscribe(1)
+	require.NoError(t, err)
 
 	// Drain subscribe message
 	select {
 	case msg := <-messages:
-		if msg.Type != "subscribe" || msg.Subscribe.ProjectID != 1 {
-			t.Fatalf("Expected subscribe to project 1, got: %+v", msg)
-		}
+		require.Equal(t, "subscribe", msg.Type)
+		require.Equal(t, 1, msg.Subscribe.ProjectID)
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for first subscribe")
+		require.Fail(t, "Timeout waiting for first subscribe")
 	}
 
 	// Wait longer than deadline
 	time.Sleep(600 * time.Millisecond)
 
 	// Subscribe to project 2 - should work because deadline was cleared
-	if err := client.Subscribe(2); err != nil {
-		t.Fatalf("Second subscribe failed after deadline: %v", err)
-	}
+	err = client.Subscribe(2)
+	require.NoError(t, err)
 
 	select {
 	case msg := <-messages:
-		if msg.Type != "subscribe" || msg.Subscribe.ProjectID != 2 {
-			t.Fatalf("Expected subscribe to project 2, got: %+v", msg)
-		}
-		t.Logf("✓ Subscribe clears write deadline correctly")
+		require.Equal(t, "subscribe", msg.Type)
+		require.Equal(t, 2, msg.Subscribe.ProjectID)
+		t.Logf("Subscribe clears write deadline correctly")
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for second subscribe")
+		require.Fail(t, "Timeout waiting for second subscribe")
 	}
 }
 
@@ -190,31 +171,27 @@ func TestSubscribe_MultipleRapidChanges(t *testing.T) {
 	defer func() { _ = listener.Close() }()
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Drain initial subscribe (project 0)
 	select {
 	case <-messages:
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for initial subscribe")
+		require.Fail(t, "Timeout waiting for initial subscribe")
 	}
 
 	// Rapidly switch between 5 projects
 	projects := []int{1, 2, 3, 4, 5, 4, 3, 2, 1}
 	for _, projectID := range projects {
-		if err := client.Subscribe(projectID); err != nil {
-			t.Fatalf("Subscribe to project %d failed: %v", projectID, err)
-		}
+		err := client.Subscribe(projectID)
+		require.NoError(t, err)
 		time.Sleep(10 * time.Millisecond) // Very short delay
 	}
 
@@ -229,11 +206,11 @@ func TestSubscribe_MultipleRapidChanges(t *testing.T) {
 				receivedCount++
 			}
 		case <-timeout:
-			t.Fatalf("Only received %d/%d subscribe messages", receivedCount, len(projects))
+			require.Equal(t, len(projects), receivedCount)
 		}
 	}
 
-	t.Logf("✓ All %d rapid subscribe changes succeeded", len(projects))
+	t.Logf("All %d rapid subscribe changes succeeded", len(projects))
 }
 
 // TestSendEvent_ClearsDeadline verifies that SendEvent (via sendToSocket) properly
@@ -243,9 +220,7 @@ func TestSendEvent_ClearsDeadline(t *testing.T) {
 	defer func() { _ = listener.Close() }()
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	// Set short write deadline for faster test
@@ -254,15 +229,14 @@ func TestSendEvent_ClearsDeadline(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Drain initial subscribe (project 0)
 	select {
 	case <-messages:
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for initial subscribe")
+		require.Fail(t, "Timeout waiting for initial subscribe")
 	}
 
 	// Send first event
@@ -271,9 +245,8 @@ func TestSendEvent_ClearsDeadline(t *testing.T) {
 		ProjectID: 1,
 		Timestamp: time.Now(),
 	}
-	if err := client.SendEvent(event1); err != nil {
-		t.Fatalf("First SendEvent failed: %v", err)
-	}
+	err = client.SendEvent(event1)
+	require.NoError(t, err)
 
 	// Wait for batching
 	time.Sleep(client.debounce + 100*time.Millisecond)
@@ -281,11 +254,9 @@ func TestSendEvent_ClearsDeadline(t *testing.T) {
 	// Drain first event
 	select {
 	case msg := <-messages:
-		if msg.Type != "event" {
-			t.Fatalf("Expected event, got: %s", msg.Type)
-		}
+		require.Equal(t, "event", msg.Type)
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for first event")
+		require.Fail(t, "Timeout waiting for first event")
 	}
 
 	// Wait longer than deadline
@@ -297,19 +268,16 @@ func TestSendEvent_ClearsDeadline(t *testing.T) {
 		ProjectID: 2,
 		Timestamp: time.Now(),
 	}
-	if err := client.SendEvent(event2); err != nil {
-		t.Fatalf("Second SendEvent failed after deadline: %v", err)
-	}
+	err = client.SendEvent(event2)
+	require.NoError(t, err)
 
 	time.Sleep(client.debounce + 100*time.Millisecond)
 
 	select {
 	case msg := <-messages:
-		if msg.Type != "event" {
-			t.Fatalf("Expected event, got: %s", msg.Type)
-		}
-		t.Logf("✓ SendEvent clears write deadline correctly")
+		require.Equal(t, "event", msg.Type)
+		t.Logf("SendEvent clears write deadline correctly")
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for second event")
+		require.Fail(t, "Timeout waiting for second event")
 	}
 }

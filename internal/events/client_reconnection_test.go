@@ -3,9 +3,11 @@ package events
 import (
 	"context"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestClient_ContextCancellationDuringReconnection verifies graceful shutdown
@@ -19,15 +21,12 @@ func TestClient_ContextCancellationDuringReconnection(t *testing.T) {
 	socketPath, startFunc, stopFunc, messages := setupMockDaemonWithControl(t)
 
 	// Start the daemon initially
-	if err := startFunc(); err != nil {
-		t.Fatalf("Failed to start mock daemon: %v", err)
-	}
+	err := startFunc()
+	require.NoError(t, err)
 
 	// Create and connect the client
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Set short retry parameters to speed up the test
 	client.baseDelay = 100 * time.Millisecond
@@ -37,16 +36,15 @@ func TestClient_ContextCancellationDuringReconnection(t *testing.T) {
 	// This way when Close() cancels c.ctx, the listen loop will exit
 	ctx := client.ctx
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Drain initial subscribe message
 	select {
 	case <-messages:
-		t.Logf("✓ Initial connection established")
+		t.Logf("Initial connection established")
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for initial subscribe")
+		require.Fail(t, "Timeout waiting for initial subscribe")
 	}
 
 	// Verify client is connected and batcher is running
@@ -54,9 +52,7 @@ func TestClient_ContextCancellationDuringReconnection(t *testing.T) {
 	connected := client.conn != nil
 	client.mu.Unlock()
 
-	if !connected {
-		t.Fatal("Expected client to be connected")
-	}
+	require.True(t, connected)
 
 	// Now simulate connection loss by stopping the daemon
 	t.Logf("Stopping daemon to trigger reconnection...")
@@ -65,9 +61,7 @@ func TestClient_ContextCancellationDuringReconnection(t *testing.T) {
 	// Start a listen loop that will trigger reconnection
 	// This is important because Listen() is what drives the reconnection logic
 	eventChan, err := client.Listen(ctx)
-	if err != nil {
-		t.Fatalf("Failed to start listen loop: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Start draining events in background
 	eventDone := make(chan struct{})
@@ -98,25 +92,23 @@ func TestClient_ContextCancellationDuringReconnection(t *testing.T) {
 	t.Logf("Close() completed in %v", closeDuration)
 
 	// Close should complete quickly (not block waiting for all retries)
-	if closeDuration > 2*time.Second {
-		t.Errorf("Close() took too long (%v), context cancellation may not be working", closeDuration)
-	}
+	assert.Less(t, closeDuration, 2*time.Second)
 
 	// Verify that batcherDone channel is closed
 	// This should be non-blocking if Close() worked correctly
 	select {
 	case <-client.batcherDone:
-		t.Logf("✓ batcherDone channel closed successfully")
+		t.Logf("batcherDone channel closed successfully")
 	case <-time.After(2 * time.Second):
-		t.Error("batcherDone channel was not closed - possible goroutine leak")
+		assert.Fail(t, "batcherDone channel was not closed - possible goroutine leak")
 	}
 
 	// Verify that the context was cancelled
 	select {
 	case <-client.ctx.Done():
-		t.Logf("✓ Client context cancelled successfully")
+		t.Logf("Client context cancelled successfully")
 	default:
-		t.Error("Client context was not cancelled")
+		assert.Fail(t, "Client context was not cancelled")
 	}
 
 	// Wait for event channel to close (listen loop should exit)
@@ -124,31 +116,24 @@ func TestClient_ContextCancellationDuringReconnection(t *testing.T) {
 	// the reconnect function checks ctx.Done(), so it should exit promptly
 	select {
 	case <-eventDone:
-		t.Logf("✓ Listen loop exited cleanly")
+		t.Logf("Listen loop exited cleanly")
 	case <-time.After(5 * time.Second):
-		t.Error("Listen loop did not exit within 5 seconds - context cancellation may not be propagating")
+		assert.Fail(t, "Listen loop did not exit within 5 seconds - context cancellation may not be propagating")
 	}
 
 	// Verify we can call Close again (idempotent)
 	closeErr2 := client.Close()
-	if closeErr2 != nil {
-		t.Errorf("Second Close() should be idempotent, got error: %v", closeErr2)
-	} else {
-		t.Logf("✓ Close() is idempotent")
-	}
+	assert.NoError(t, closeErr2)
+	t.Logf("Close() is idempotent")
 
 	// Verify connection is nil after close
 	client.mu.Lock()
 	finalConn := client.conn
 	client.mu.Unlock()
 
-	if finalConn != nil {
-		t.Error("Connection should be nil after Close()")
-	} else {
-		t.Logf("✓ Connection properly cleaned up")
-	}
+	assert.Nil(t, finalConn)
 
-	t.Logf("✓ Test completed: graceful shutdown during reconnection verified")
+	t.Logf("Test completed: graceful shutdown during reconnection verified")
 }
 
 // TestClient_ExponentialBackoffDuringReconnection verifies the exponential
@@ -169,9 +154,7 @@ func TestClient_ExponentialBackoffDuringReconnection(t *testing.T) {
 	socketPath := filepath.Join(t.TempDir(), "nonexistent.sock")
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	// Use shorter delays for faster testing
@@ -203,9 +186,7 @@ func TestClient_ExponentialBackoffDuringReconnection(t *testing.T) {
 	totalTime := time.Since(startTime)
 
 	// Reconnection should fail with non-existent socket
-	if success {
-		t.Error("Expected reconnection to fail with non-existent socket")
-	}
+	assert.False(t, success)
 
 	t.Logf("Reconnection attempts completed in %v", totalTime)
 
@@ -234,34 +215,26 @@ func TestClient_ExponentialBackoffDuringReconnection(t *testing.T) {
 	minExpected := expectedTotalTime - (expectedTotalTime * 30 / 100)
 	maxExpected := expectedTotalTime + (expectedTotalTime * 50 / 100)
 
-	if totalTime < minExpected {
-		t.Errorf("Reconnection completed too quickly: %v (expected at least %v)", totalTime, minExpected)
-	}
-	if totalTime > maxExpected {
-		t.Errorf("Reconnection took too long: %v (expected at most %v)", totalTime, maxExpected)
-	}
+	assert.GreaterOrEqual(t, totalTime, minExpected)
+	assert.LessOrEqual(t, totalTime, maxExpected)
 
 	// Verify maxRetries was respected - reconnection should have stopped
 	// after 5 attempts (not infinite loop)
-	if totalTime > 5*time.Second {
-		t.Error("Reconnection appears to be running too long - may not respect maxRetries")
-	}
+	assert.LessOrEqual(t, totalTime, 5*time.Second)
 
-	t.Logf("✓ Exponential backoff verified: baseDelay=%v, maxRetries=%d",
+	t.Logf("Exponential backoff verified: baseDelay=%v, maxRetries=%d",
 		client.baseDelay, client.maxRetries)
-	t.Logf("✓ Total time within expected range: %v (min=%v, max=%v)",
+	t.Logf("Total time within expected range: %v (min=%v, max=%v)",
 		totalTime, minExpected, maxExpected)
-	t.Logf("✓ Client gave up gracefully after %d attempts", client.maxRetries)
+	t.Logf("Client gave up gracefully after %d attempts", client.maxRetries)
 
 	// Additional verification: Try to use the client after failed reconnection
 	// The client should not be in a broken state
-	if err := client.Subscribe(1); err == nil {
-		t.Error("Expected Subscribe to fail after failed reconnection (not connected)")
-	} else if !strings.Contains(err.Error(), "not connected") {
-		t.Errorf("Expected 'not connected' error, got: %v", err)
-	}
+	err = client.Subscribe(1)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not connected")
 
-	t.Logf("✓ Client remains in valid state after failed reconnection")
+	t.Logf("Client remains in valid state after failed reconnection")
 }
 
 // TestClient_RestoresSubscriptionAfterReconnect verifies that the client
@@ -278,15 +251,12 @@ func TestClient_RestoresSubscriptionAfterReconnect(t *testing.T) {
 	socketPath, startFunc, stopFunc, messages := setupMockDaemonWithControl(t)
 
 	// Start daemon
-	if err := startFunc(); err != nil {
-		t.Fatalf("Failed to start mock daemon: %v", err)
-	}
+	err := startFunc()
+	require.NoError(t, err)
 
 	// Create and connect client
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	// Set shorter retry parameters for faster test execution
@@ -296,42 +266,34 @@ func TestClient_RestoresSubscriptionAfterReconnect(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Drain initial subscribe message (project 0)
 	select {
 	case msg := <-messages:
-		if msg.Type != "subscribe" || msg.Subscribe == nil || msg.Subscribe.ProjectID != 0 {
-			t.Fatalf("Expected initial subscribe for project 0, got: %+v", msg)
-		}
-		t.Logf("✓ Initial subscribe to project 0 received")
+		require.Equal(t, "subscribe", msg.Type)
+		require.NotNil(t, msg.Subscribe)
+		require.Equal(t, 0, msg.Subscribe.ProjectID)
+		t.Logf("Initial subscribe to project 0 received")
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for initial subscribe")
+		require.Fail(t, "Timeout waiting for initial subscribe")
 	}
 
 	// Subscribe to project 123
 	testProjectID := 123
-	if err := client.Subscribe(testProjectID); err != nil {
-		t.Fatalf("Failed to subscribe to project %d: %v", testProjectID, err)
-	}
+	err = client.Subscribe(testProjectID)
+	require.NoError(t, err)
 
 	// Wait for initial subscribe message for project 123
 	select {
 	case msg := <-messages:
-		if msg.Type != "subscribe" {
-			t.Errorf("Expected subscribe message, got: %s", msg.Type)
-		}
-		if msg.Subscribe == nil {
-			t.Fatal("Expected subscribe message to have Subscribe field")
-		}
-		if msg.Subscribe.ProjectID != testProjectID {
-			t.Errorf("Expected project ID %d, got %d", testProjectID, msg.Subscribe.ProjectID)
-		}
-		t.Logf("✓ Subscribe message received for project %d", testProjectID)
+		assert.Equal(t, "subscribe", msg.Type)
+		require.NotNil(t, msg.Subscribe)
+		assert.Equal(t, testProjectID, msg.Subscribe.ProjectID)
+		t.Logf("Subscribe message received for project %d", testProjectID)
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for initial subscribe message")
+		require.Fail(t, "Timeout waiting for initial subscribe message")
 	}
 
 	// Verify currentProjectID is stored
@@ -339,10 +301,8 @@ func TestClient_RestoresSubscriptionAfterReconnect(t *testing.T) {
 	storedProjectID := client.currentProjectID
 	client.mu.Unlock()
 
-	if storedProjectID != testProjectID {
-		t.Fatalf("Expected currentProjectID to be %d, got %d", testProjectID, storedProjectID)
-	}
-	t.Logf("✓ currentProjectID stored correctly: %d", storedProjectID)
+	require.Equal(t, testProjectID, storedProjectID)
+	t.Logf("currentProjectID stored correctly: %d", storedProjectID)
 
 	// Stop daemon to simulate connection loss
 	t.Logf("Stopping daemon to simulate connection loss...")
@@ -359,7 +319,7 @@ func TestClient_RestoresSubscriptionAfterReconnect(t *testing.T) {
 	// Wait for old batcher to exit
 	select {
 	case <-client.batcherDone:
-		t.Logf("✓ Old batcher exited cleanly")
+		t.Logf("Old batcher exited cleanly")
 	case <-time.After(1 * time.Second):
 		t.Log("Warning: Old batcher did not exit in time")
 	}
@@ -369,9 +329,8 @@ func TestClient_RestoresSubscriptionAfterReconnect(t *testing.T) {
 
 	// Restart daemon
 	t.Logf("Restarting daemon...")
-	if err := startFunc(); err != nil {
-		t.Fatalf("Failed to restart daemon: %v", err)
-	}
+	err = startFunc()
+	require.NoError(t, err)
 
 	// Give daemon time to fully start
 	time.Sleep(100 * time.Millisecond)
@@ -381,10 +340,8 @@ func TestClient_RestoresSubscriptionAfterReconnect(t *testing.T) {
 	t.Logf("Testing reconnect() with subscription restoration...")
 	success := client.reconnect(ctx)
 
-	if !success {
-		t.Fatal("reconnect() failed - daemon should be available")
-	}
-	t.Logf("✓ reconnect() succeeded")
+	require.True(t, success)
+	t.Logf("reconnect() succeeded")
 
 	// Wait for re-subscribe message
 	// The reconnect() method should have automatically called Subscribe(currentProjectID)
@@ -401,7 +358,7 @@ ResubscribeLoop:
 				subscribeCount++
 				t.Logf("Received subscribe message #%d: project %d", subscribeCount, msg.Subscribe.ProjectID)
 				if msg.Subscribe.ProjectID == testProjectID {
-					t.Logf("✓ Re-subscribe message received for project %d after reconnection", testProjectID)
+					t.Logf("Re-subscribe message received for project %d after reconnection", testProjectID)
 					resubscribeReceived = true
 				}
 			}
@@ -415,9 +372,7 @@ ResubscribeLoop:
 		}
 	}
 
-	if !resubscribeReceived {
-		t.Fatalf("Did not receive re-subscribe for project %d (received %d subscribe messages)", testProjectID, subscribeCount)
-	}
+	require.True(t, resubscribeReceived)
 
 	// Verify the client is connected after reconnection
 	t.Logf("Verifying client state after reconnection...")
@@ -427,33 +382,26 @@ ResubscribeLoop:
 	finalProjectID := client.currentProjectID
 	client.mu.Unlock()
 
-	if !connected {
-		t.Error("Expected client to be connected after reconnection")
-	} else {
-		t.Logf("✓ Client successfully reconnected")
-	}
+	assert.True(t, connected)
+	t.Logf("Client successfully reconnected")
 
-	if finalProjectID != testProjectID {
-		t.Errorf("Expected currentProjectID to still be %d, got %d", testProjectID, finalProjectID)
-	} else {
-		t.Logf("✓ currentProjectID preserved after reconnection: %d", finalProjectID)
-	}
+	assert.Equal(t, testProjectID, finalProjectID)
+	t.Logf("currentProjectID preserved after reconnection: %d", finalProjectID)
 
 	// Verify we can still send subscribe messages after reconnection
 	t.Logf("Testing subscribe after reconnection...")
-	if err := client.Subscribe(456); err != nil {
-		t.Errorf("Failed to subscribe after reconnection: %v", err)
-	}
+	err = client.Subscribe(456)
+	assert.NoError(t, err)
 
 	// Wait for new subscribe message
 	select {
 	case msg := <-messages:
 		if msg.Type == "subscribe" && msg.Subscribe != nil && msg.Subscribe.ProjectID == 456 {
-			t.Logf("✓ Client can subscribe to new projects after reconnection")
+			t.Logf("Client can subscribe to new projects after reconnection")
 		}
 	case <-time.After(1 * time.Second):
-		t.Error("Timeout waiting for subscribe message after reconnection")
+		assert.Fail(t, "Timeout waiting for subscribe message after reconnection")
 	}
 
-	t.Logf("✓ Test completed: subscription restored after reconnect")
+	t.Logf("Test completed: subscription restored after reconnect")
 }

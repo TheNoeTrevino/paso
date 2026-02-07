@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestClient_EventReceiverHandlesMalformedJSON tests that the event receiver
@@ -20,9 +23,7 @@ func TestClient_EventReceiverHandlesMalformedJSON(t *testing.T) {
 
 	// Create Unix socket listener
 	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create mock daemon listener: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = listener.Close() }()
 
 	// Channel to track if client handled error gracefully
@@ -60,23 +61,18 @@ func TestClient_EventReceiverHandlesMalformedJSON(t *testing.T) {
 
 	// Create and connect client
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Start listening for events
 	eventChan, err := client.Listen(ctx)
-	if err != nil {
-		t.Fatalf("Failed to start listening: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Monitor for graceful handling
 	go func() {
@@ -89,9 +85,9 @@ func TestClient_EventReceiverHandlesMalformedJSON(t *testing.T) {
 	// Wait for error handling
 	select {
 	case <-handledError:
-		t.Logf("✓ Client handled malformed JSON gracefully (event channel closed)")
+		t.Logf("Client handled malformed JSON gracefully (event channel closed)")
 	case <-time.After(2 * time.Second):
-		t.Logf("✓ Client handled malformed JSON gracefully (timeout without crash)")
+		t.Logf("Client handled malformed JSON gracefully (timeout without crash)")
 	}
 }
 
@@ -106,9 +102,7 @@ func TestClient_EventReceiverHandlesInvalidEventType(t *testing.T) {
 
 	// Create Unix socket listener
 	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create mock daemon listener: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = listener.Close() }()
 
 	// Channel to receive events
@@ -183,23 +177,18 @@ func TestClient_EventReceiverHandlesInvalidEventType(t *testing.T) {
 
 	// Create and connect client
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Start listening for events
 	eventChan, err := client.Listen(ctx)
-	if err != nil {
-		t.Fatalf("Failed to start listening: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Collect events
 	go func() {
@@ -218,21 +207,13 @@ func TestClient_EventReceiverHandlesInvalidEventType(t *testing.T) {
 		case event, ok := <-receivedEvents:
 			if !ok {
 				// Channel closed
-				if eventCount >= 2 {
-					t.Logf("✓ Client handled invalid event types gracefully and received %d valid events", eventCount)
-					return
-				}
-				t.Errorf("Expected at least 2 events, got %d", eventCount)
+				assert.GreaterOrEqual(t, eventCount, 2)
 				return
 			}
 			eventCount++
 			t.Logf("Received event: ProjectID=%d, SequenceID=%d", event.ProjectID, event.SequenceID)
 		case <-timeout:
-			if eventCount >= 2 {
-				t.Logf("✓ Client handled invalid event types gracefully and received %d valid events", eventCount)
-				return
-			}
-			t.Errorf("Timeout: expected at least 2 events, got %d", eventCount)
+			assert.GreaterOrEqual(t, eventCount, 2)
 			return
 		}
 	}
@@ -249,9 +230,7 @@ func TestClient_EventReceiverTracksSequenceNumbers(t *testing.T) {
 
 	// Create Unix socket listener
 	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create mock daemon listener: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = listener.Close() }()
 
 	// Channel to receive events
@@ -304,32 +283,25 @@ func TestClient_EventReceiverTracksSequenceNumbers(t *testing.T) {
 
 	// Create and connect client
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Verify initial lastSequence is 0
 	client.mu.Lock()
 	initialSeq := client.lastSequence
 	client.mu.Unlock()
 
-	if initialSeq != 0 {
-		t.Errorf("Expected initial lastSequence to be 0, got %d", initialSeq)
-	}
+	assert.Equal(t, int64(0), initialSeq)
 
 	// Start listening for events
 	eventChan, err := client.Listen(ctx)
-	if err != nil {
-		t.Fatalf("Failed to start listening: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Collect events
 	go func() {
@@ -360,18 +332,14 @@ func TestClient_EventReceiverTracksSequenceNumbers(t *testing.T) {
 verify:
 	// We should receive: 1, 2, 3, 4 (duplicates and old sequences filtered)
 	expectedSeqs := []int64{1, 2, 3, 4}
-	if len(receivedSeqs) != len(expectedSeqs) {
-		t.Errorf("Expected %d events, got %d", len(expectedSeqs), len(receivedSeqs))
-	}
+	assert.Equal(t, len(expectedSeqs), len(receivedSeqs))
 
 	for i, expected := range expectedSeqs {
 		if i >= len(receivedSeqs) {
-			t.Errorf("Missing event at index %d with SequenceID=%d", i, expected)
+			assert.Fail(t, "missing event", "at index %d with SequenceID=%d", i, expected)
 			continue
 		}
-		if receivedSeqs[i] != expected {
-			t.Errorf("At index %d: expected SequenceID=%d, got %d", i, expected, receivedSeqs[i])
-		}
+		assert.Equal(t, expected, receivedSeqs[i])
 	}
 
 	// Verify lastSequence is updated correctly
@@ -379,11 +347,9 @@ verify:
 	finalSeq := client.lastSequence
 	client.mu.Unlock()
 
-	if finalSeq != 4 {
-		t.Errorf("Expected final lastSequence to be 4, got %d", finalSeq)
-	}
+	assert.Equal(t, int64(4), finalSeq)
 
-	t.Logf("✓ Client tracks sequence numbers correctly: lastSequence=%d", finalSeq)
+	t.Logf("Client tracks sequence numbers correctly: lastSequence=%d", finalSeq)
 }
 
 // TestClient_EventReceiverHandlesMissingSequenceNumbers tests that the receiver
@@ -397,9 +363,7 @@ func TestClient_EventReceiverHandlesMissingSequenceNumbers(t *testing.T) {
 
 	// Create Unix socket listener
 	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create mock daemon listener: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = listener.Close() }()
 
 	// Channel to receive events
@@ -474,23 +438,18 @@ func TestClient_EventReceiverHandlesMissingSequenceNumbers(t *testing.T) {
 
 	// Create and connect client
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Start listening for events
 	eventChan, err := client.Listen(ctx)
-	if err != nil {
-		t.Fatalf("Failed to start listening: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Collect events
 	go func() {
@@ -520,21 +479,17 @@ func TestClient_EventReceiverHandlesMissingSequenceNumbers(t *testing.T) {
 verify:
 	// We should receive events with sequence 1 and 2 (0 is filtered)
 	expectedSeqs := []int64{1, 2}
-	if len(receivedSeqs) != len(expectedSeqs) {
-		t.Errorf("Expected %d events, got %d (sequences: %v)", len(expectedSeqs), len(receivedSeqs), receivedSeqs)
-	}
+	assert.Equal(t, len(expectedSeqs), len(receivedSeqs))
 
 	for i, expected := range expectedSeqs {
 		if i >= len(receivedSeqs) {
-			t.Errorf("Missing event at index %d with SequenceID=%d", i, expected)
+			assert.Fail(t, "missing event", "at index %d with SequenceID=%d", i, expected)
 			continue
 		}
-		if receivedSeqs[i] != expected {
-			t.Errorf("At index %d: expected SequenceID=%d, got %d", i, expected, receivedSeqs[i])
-		}
+		assert.Equal(t, expected, receivedSeqs[i])
 	}
 
-	t.Logf("✓ Client handles missing sequence numbers gracefully")
+	t.Logf("Client handles missing sequence numbers gracefully")
 }
 
 // TestClient_NotificationCallbackRouting tests that notification messages
@@ -545,9 +500,7 @@ func TestClient_NotificationCallbackRouting(t *testing.T) {
 	socketPath := filepath.Join(t.TempDir(), "paso.sock")
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	// Set up notification callback to capture messages
@@ -565,15 +518,11 @@ func TestClient_NotificationCallbackRouting(t *testing.T) {
 	// Verify notification was received
 	select {
 	case notif := <-notifications:
-		if notif.Level != "info" {
-			t.Errorf("Expected level 'info', got '%s'", notif.Level)
-		}
-		if notif.Message != "test notification message" {
-			t.Errorf("Expected message 'test notification message', got '%s'", notif.Message)
-		}
-		t.Logf("✓ Notification routed correctly: level=%s, message=%s", notif.Level, notif.Message)
+		assert.Equal(t, "info", notif.Level)
+		assert.Equal(t, "test notification message", notif.Message)
+		t.Logf("Notification routed correctly: level=%s, message=%s", notif.Level, notif.Message)
 	case <-time.After(1 * time.Second):
-		t.Error("Timeout waiting for notification")
+		assert.Fail(t, "Timeout waiting for notification")
 	}
 
 	// Test multiple notification levels
@@ -591,18 +540,14 @@ func TestClient_NotificationCallbackRouting(t *testing.T) {
 
 		select {
 		case notif := <-notifications:
-			if notif.Level != tc.level {
-				t.Errorf("Expected level '%s', got '%s'", tc.level, notif.Level)
-			}
-			if notif.Message != tc.message {
-				t.Errorf("Expected message '%s', got '%s'", tc.message, notif.Message)
-			}
+			assert.Equal(t, tc.level, notif.Level)
+			assert.Equal(t, tc.message, notif.Message)
 		case <-time.After(1 * time.Second):
-			t.Errorf("Timeout waiting for notification: level=%s", tc.level)
+			assert.Fail(t, "timeout waiting for notification", "level=%s", tc.level)
 		}
 	}
 
-	t.Logf("✓ All notification levels routed correctly")
+	t.Logf("All notification levels routed correctly")
 }
 
 // TestClient_EventReceiverPingPongHandling tests that the receiver properly
@@ -616,9 +561,7 @@ func TestClient_EventReceiverPingPongHandling(t *testing.T) {
 
 	// Create Unix socket listener
 	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create mock daemon listener: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = listener.Close() }()
 
 	// Channel to track if pong was received
@@ -675,30 +618,25 @@ func TestClient_EventReceiverPingPongHandling(t *testing.T) {
 
 	// Create and connect client
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Start listening to trigger the event receiver loop
 	_, err = client.Listen(ctx)
-	if err != nil {
-		t.Fatalf("Failed to start listening: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify pong was received by server
 	select {
 	case <-pongReceived:
-		t.Logf("✓ Client responded to ping with pong correctly")
+		t.Logf("Client responded to ping with pong correctly")
 	case <-time.After(2 * time.Second):
-		t.Error("Timeout: client did not respond to ping")
+		assert.Fail(t, "Timeout: client did not respond to ping")
 	}
 }
 
@@ -713,9 +651,7 @@ func TestClient_EventReceiverContinuesAfterErrors(t *testing.T) {
 
 	// Create Unix socket listener
 	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create mock daemon listener: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = listener.Close() }()
 
 	// Channel to receive events
@@ -790,23 +726,18 @@ func TestClient_EventReceiverContinuesAfterErrors(t *testing.T) {
 
 	// Create and connect client
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Start listening for events
 	eventChan, err := client.Listen(ctx)
-	if err != nil {
-		t.Fatalf("Failed to start listening: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Collect events
 	go func() {
@@ -836,19 +767,15 @@ func TestClient_EventReceiverContinuesAfterErrors(t *testing.T) {
 verify:
 	// We should receive events from projects 1 and 3 (project 2 filtered)
 	expectedProjectIDs := []int{1, 3}
-	if len(receivedProjectIDs) != len(expectedProjectIDs) {
-		t.Errorf("Expected %d events, got %d", len(expectedProjectIDs), len(receivedProjectIDs))
-	}
+	assert.Equal(t, len(expectedProjectIDs), len(receivedProjectIDs))
 
 	for i, expected := range expectedProjectIDs {
 		if i >= len(receivedProjectIDs) {
-			t.Errorf("Missing event at index %d with ProjectID=%d", i, expected)
+			assert.Fail(t, "missing event", "at index %d with ProjectID=%d", i, expected)
 			continue
 		}
-		if receivedProjectIDs[i] != expected {
-			t.Errorf("At index %d: expected ProjectID=%d, got %d", i, expected, receivedProjectIDs[i])
-		}
+		assert.Equal(t, expected, receivedProjectIDs[i])
 	}
 
-	t.Logf("✓ Client continues processing valid events after errors")
+	t.Logf("Client continues processing valid events after errors")
 }

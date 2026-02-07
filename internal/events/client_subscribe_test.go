@@ -5,24 +5,23 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSubscribe_BeforeConnect(t *testing.T) {
 	socketPath := filepath.Join(t.TempDir(), "paso.sock")
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	// Try to subscribe before connecting
 	err = client.Subscribe(1)
-	if err == nil {
-		t.Error("Expected Subscribe to fail before connecting")
-	}
+	assert.Error(t, err)
 
-	t.Logf("✓ Subscribe correctly fails before connection")
+	t.Logf("Subscribe correctly fails before connection")
 }
 
 func TestSubscribe_AfterConnect(t *testing.T) {
@@ -30,48 +29,38 @@ func TestSubscribe_AfterConnect(t *testing.T) {
 	defer func() { _ = listener.Close() }()
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Drain initial subscribe message (project 0)
 	select {
 	case msg := <-messages:
 		if msg.Type != "subscribe" || msg.Subscribe == nil || msg.Subscribe.ProjectID != 0 {
-			t.Fatalf("Expected initial subscribe for project 0, got: %+v", msg)
+			require.Fail(t, "Expected initial subscribe for project 0", "got: %+v", msg)
 		}
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for initial subscribe")
+		require.Fail(t, "Timeout waiting for initial subscribe")
 	}
 
 	// Subscribe to project 5
-	if err := client.Subscribe(5); err != nil {
-		t.Fatalf("Expected Subscribe to succeed, got error: %v", err)
-	}
+	err = client.Subscribe(5)
+	require.NoError(t, err)
 
 	// Wait for subscribe message
 	select {
 	case msg := <-messages:
-		if msg.Type != "subscribe" {
-			t.Errorf("Expected subscribe message, got: %s", msg.Type)
-		}
-		if msg.Subscribe == nil {
-			t.Fatal("Expected subscribe message to have Subscribe field")
-		}
-		if msg.Subscribe.ProjectID != 5 {
-			t.Errorf("Expected project ID 5, got %d", msg.Subscribe.ProjectID)
-		}
-		t.Logf("✓ Subscribe message sent correctly for project 5")
+		assert.Equal(t, "subscribe", msg.Type)
+		require.NotNil(t, msg.Subscribe)
+		assert.Equal(t, 5, msg.Subscribe.ProjectID)
+		t.Logf("Subscribe message sent correctly for project 5")
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for subscribe message")
+		require.Fail(t, "Timeout waiting for subscribe message")
 	}
 
 	// Verify client's currentProjectID is updated
@@ -79,9 +68,7 @@ func TestSubscribe_AfterConnect(t *testing.T) {
 	currentProject := client.currentProjectID
 	client.mu.Unlock()
 
-	if currentProject != 5 {
-		t.Errorf("Expected currentProjectID to be 5, got %d", currentProject)
-	}
+	assert.Equal(t, 5, currentProject)
 }
 
 func TestSubscribe_MultipleProjects(t *testing.T) {
@@ -89,31 +76,27 @@ func TestSubscribe_MultipleProjects(t *testing.T) {
 	defer func() { _ = listener.Close() }()
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Drain initial subscribe message (project 0)
 	select {
 	case <-messages:
 	case <-time.After(1 * time.Second):
-		t.Fatal("Timeout waiting for initial subscribe")
+		require.Fail(t, "Timeout waiting for initial subscribe")
 	}
 
 	// Subscribe to multiple projects
 	projects := []int{1, 2, 3}
 	for _, projectID := range projects {
-		if err := client.Subscribe(projectID); err != nil {
-			t.Fatalf("Failed to subscribe to project %d: %v", projectID, err)
-		}
+		err := client.Subscribe(projectID)
+		require.NoError(t, err)
 		time.Sleep(50 * time.Millisecond)
 	}
 
@@ -128,15 +111,13 @@ func TestSubscribe_MultipleProjects(t *testing.T) {
 				receivedProjects[msg.Subscribe.ProjectID] = true
 			}
 		case <-timeout:
-			t.Fatal("Timeout waiting for subscribe messages")
+			require.Fail(t, "Timeout waiting for subscribe messages")
 		}
 	}
 
 	for _, projectID := range projects {
-		if !receivedProjects[projectID] {
-			t.Errorf("Did not receive subscribe message for project %d", projectID)
-		}
+		assert.True(t, receivedProjects[projectID])
 	}
 
-	t.Logf("✓ Multiple subscribe messages sent correctly")
+	t.Logf("Multiple subscribe messages sent correctly")
 }

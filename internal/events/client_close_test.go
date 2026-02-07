@@ -6,24 +6,22 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
-)
 
-// ============================================================================
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
 func TestClose_BeforeConnect(t *testing.T) {
 	socketPath := filepath.Join(t.TempDir(), "paso.sock")
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Close before connecting should not error
-	if err := client.Close(); err != nil {
-		t.Errorf("Expected Close to succeed, got error: %v", err)
-	}
+	err = client.Close()
+	assert.NoError(t, err)
 
-	t.Logf("✓ Close before connect succeeds")
+	t.Logf("Close before connect succeeds")
 }
 
 func TestClose_AfterConnect(t *testing.T) {
@@ -31,32 +29,26 @@ func TestClose_AfterConnect(t *testing.T) {
 	defer func() { _ = listener.Close() }()
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Close after connecting
-	if err := client.Close(); err != nil {
-		t.Errorf("Expected Close to succeed, got error: %v", err)
-	}
+	err = client.Close()
+	assert.NoError(t, err)
 
 	// Verify connection is closed
 	client.mu.Lock()
 	connected := client.conn != nil
 	client.mu.Unlock()
 
-	if connected {
-		t.Error("Expected connection to be closed")
-	}
+	assert.False(t, connected)
 
-	t.Logf("✓ Close after connect succeeds")
+	t.Logf("Close after connect succeeds")
 }
 
 func TestClose_Idempotent(t *testing.T) {
@@ -64,40 +56,29 @@ func TestClose_Idempotent(t *testing.T) {
 	defer func() { _ = listener.Close() }()
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	// Close multiple times
-	if err := client.Close(); err != nil {
-		t.Errorf("First close failed: %v", err)
-	}
+	err = client.Close()
+	assert.NoError(t, err)
 
-	if err := client.Close(); err != nil {
-		t.Errorf("Second close should be idempotent, got error: %v", err)
-	}
+	err = client.Close()
+	assert.NoError(t, err)
 
-	t.Logf("✓ Close is idempotent")
+	t.Logf("Close is idempotent")
 }
-
-// ============================================================================
-// Notify Callback Tests
-// ============================================================================
 
 func TestSetNotifyFunc(t *testing.T) {
 	socketPath := filepath.Join(t.TempDir(), "paso.sock")
 
 	client, err := NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	// Set notify function
@@ -110,38 +91,25 @@ func TestSetNotifyFunc(t *testing.T) {
 	// Trigger notification by calling notify directly
 	client.notify("info", "test notification")
 
-	if capturedLevel != "info" {
-		t.Errorf("Expected level 'info', got '%s'", capturedLevel)
-	}
+	assert.Equal(t, "info", capturedLevel)
+	assert.Equal(t, "test notification", capturedMessage)
 
-	if capturedMessage != "test notification" {
-		t.Errorf("Expected message 'test notification', got '%s'", capturedMessage)
-	}
-
-	t.Logf("✓ SetNotifyFunc works correctly")
+	t.Logf("SetNotifyFunc works correctly")
 }
-
-// ============================================================================
-// Error Handling Tests
-// ============================================================================
 
 func TestConnect_InvalidSocketPath(t *testing.T) {
 	// Use a path that's too long or invalid
 	invalidPath := fmt.Sprintf("/tmp/%s.sock", string(make([]byte, 200)))
 
 	client, err := NewClient(invalidPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 
 	err = client.Connect(ctx)
-	if err == nil {
-		t.Error("Expected Connect to fail with invalid socket path")
-	}
+	assert.Error(t, err)
 
-	t.Logf("✓ Connect handles invalid socket path")
+	t.Logf("Connect handles invalid socket path")
 }

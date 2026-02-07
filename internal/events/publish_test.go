@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // mockEventPublisher is a mock implementation of EventPublisher for testing
@@ -40,17 +42,11 @@ func TestPublishWithRetry_Success(t *testing.T) {
 	}
 
 	err := PublishWithRetry(mock, event, 3)
-	if err != nil {
-		t.Errorf("Expected success, got error: %v", err)
-	}
+	assert.NoError(t, err)
 
-	if mock.sendAttempts != 1 {
-		t.Errorf("Expected 1 attempt, got %d", mock.sendAttempts)
-	}
+	assert.Equal(t, 1, mock.sendAttempts)
 
-	if mock.lastEvent.ProjectID != 1 {
-		t.Errorf("Expected event project ID 1, got %d", mock.lastEvent.ProjectID)
-	}
+	assert.Equal(t, 1, mock.lastEvent.ProjectID)
 }
 
 func TestPublishWithRetry_SuccessAfterRetries(t *testing.T) {
@@ -62,13 +58,9 @@ func TestPublishWithRetry_SuccessAfterRetries(t *testing.T) {
 	}
 
 	err := PublishWithRetry(mock, event, 3)
-	if err != nil {
-		t.Errorf("Expected success after retries, got error: %v", err)
-	}
+	assert.NoError(t, err)
 
-	if mock.sendAttempts != 3 {
-		t.Errorf("Expected 3 attempts, got %d", mock.sendAttempts)
-	}
+	assert.Equal(t, 3, mock.sendAttempts)
 }
 
 func TestPublishWithRetry_FailureAfterAllRetries(t *testing.T) {
@@ -80,18 +72,11 @@ func TestPublishWithRetry_FailureAfterAllRetries(t *testing.T) {
 	}
 
 	err := PublishWithRetry(mock, event, 3)
-	if err == nil {
-		t.Error("Expected error after all retries failed, got nil")
-	}
+	assert.Error(t, err)
 
-	if mock.sendAttempts != 3 {
-		t.Errorf("Expected 3 attempts, got %d", mock.sendAttempts)
-	}
+	assert.Equal(t, 3, mock.sendAttempts)
 
-	expectedErr := "simulated send failure"
-	if err.Error() != expectedErr {
-		t.Errorf("Expected error '%s', got '%s'", expectedErr, err.Error())
-	}
+	assert.Equal(t, "simulated send failure", err.Error())
 }
 
 func TestPublishWithRetry_NilClient(t *testing.T) {
@@ -102,9 +87,7 @@ func TestPublishWithRetry_NilClient(t *testing.T) {
 
 	// Should not panic and return nil
 	err := PublishWithRetry(nil, event, 3)
-	if err != nil {
-		t.Errorf("Expected nil error for nil client, got: %v", err)
-	}
+	assert.NoError(t, err)
 }
 
 func TestPublishWithRetry_ExponentialBackoff(t *testing.T) {
@@ -119,22 +102,16 @@ func TestPublishWithRetry_ExponentialBackoff(t *testing.T) {
 	err := PublishWithRetry(mock, event, 3)
 	duration := time.Since(start)
 
-	if err != nil {
-		t.Errorf("Expected success after retries, got error: %v", err)
-	}
+	assert.NoError(t, err)
 
 	// First retry: 50ms, Second retry: 100ms = 150ms minimum
 	// Add some tolerance for test execution overhead
 	minDuration := 150 * time.Millisecond
 	maxDuration := 500 * time.Millisecond
 
-	if duration < minDuration {
-		t.Errorf("Expected at least %v delay for retries, got %v", minDuration, duration)
-	}
+	assert.GreaterOrEqual(t, duration, minDuration)
 
-	if duration > maxDuration {
-		t.Errorf("Expected delay under %v, got %v (may indicate backoff is too long)", maxDuration, duration)
-	}
+	assert.LessOrEqual(t, duration, maxDuration)
 }
 
 func TestPublishWithRetry_ZeroRetries(t *testing.T) {
@@ -146,11 +123,7 @@ func TestPublishWithRetry_ZeroRetries(t *testing.T) {
 
 	// With 0 retries, should not attempt any sends
 	err := PublishWithRetry(mock, event, 0)
-	if err != nil {
-		t.Errorf("Expected nil error with 0 retries (no attempts), got: %v", err)
-	}
+	assert.NoError(t, err)
 
-	if mock.sendAttempts != 0 {
-		t.Errorf("Expected 0 attempts with maxRetries=0, got %d", mock.sendAttempts)
-	}
+	assert.Equal(t, 0, mock.sendAttempts)
 }

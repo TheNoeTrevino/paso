@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // setupMockDaemon creates a simple mock daemon server for testing
@@ -22,9 +24,7 @@ func setupMockDaemon(t *testing.T) (string, net.Listener, chan Message) {
 
 	// Create Unix socket listener
 	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create mock daemon listener: %v", err)
-	}
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		_ = listener.Close()
