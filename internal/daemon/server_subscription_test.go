@@ -30,9 +30,10 @@ func TestSubscription_Switching(t *testing.T) {
 	require.NoError(t, err)
 
 	// Subscribe to project 1
+	waiter := expectSubscriptions(t, server, 1)
 	err = client.Subscribe(1)
 	require.NoError(t, err)
-	waitForSubscriptions(t, server, 1)
+	waiter.Wait()
 
 	// Publish event for project 1 - should receive
 	event1 := events.Event{
@@ -60,9 +61,10 @@ func TestSubscription_Switching(t *testing.T) {
 	t.Logf("Correctly did not receive event for unsubscribed project 2")
 
 	// Switch subscription to project 2
+	waiter = expectSubscriptions(t, server, 1)
 	err = client.Subscribe(2)
 	require.NoError(t, err)
-	waitForSubscriptions(t, server, 1)
+	waiter.Wait()
 
 	// Publish event for project 2 - should NOW receive
 	event3 := events.Event{
@@ -105,8 +107,6 @@ func TestSubscription_ProjectZeroHandling(t *testing.T) {
 	defer cancel1()
 	eventChan1, err := client1.Listen(ctx1)
 	require.NoError(t, err)
-	err = client1.Subscribe(1)
-	require.NoError(t, err)
 
 	// Create client subscribed to project 2
 	client2 := setupTestClient(t, socketPath)
@@ -114,10 +114,13 @@ func TestSubscription_ProjectZeroHandling(t *testing.T) {
 	defer cancel2()
 	eventChan2, err := client2.Listen(ctx2)
 	require.NoError(t, err)
+
+	waiter := expectSubscriptions(t, server, 2)
+	err = client1.Subscribe(1)
+	require.NoError(t, err)
 	err = client2.Subscribe(2)
 	require.NoError(t, err)
-
-	waitForSubscriptions(t, server, 2)
+	waiter.Wait()
 
 	// Publish event with ProjectID=0 (broadcast to all)
 	broadcastEvent := events.Event{

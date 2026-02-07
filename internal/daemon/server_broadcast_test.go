@@ -21,9 +21,10 @@ func TestBroadcast_SingleClient(t *testing.T) {
 	require.NoError(t, err)
 
 	// Subscribe to project 1 and wait for subscription to register
+	waiter := expectSubscriptions(t, server, 1)
 	err = client.Subscribe(1)
 	require.NoError(t, err)
-	waitForSubscriptions(t, server, 1)
+	waiter.Wait()
 
 	// Broadcast an event
 	testEvent := events.Event{
@@ -53,6 +54,7 @@ func TestBroadcast_MultipleClients(t *testing.T) {
 	var eventChans []<-chan events.Event
 
 	// Connect multiple clients
+	waiter := expectSubscriptions(t, server, numClients)
 	for i := 0; i < numClients; i++ {
 		client := setupTestClient(t, socketPath)
 
@@ -66,7 +68,7 @@ func TestBroadcast_MultipleClients(t *testing.T) {
 	}
 
 	// Wait for all subscriptions to register
-	waitForSubscriptions(t, server, numClients)
+	waiter.Wait()
 
 	// Broadcast event
 	testEvent := events.Event{
@@ -92,16 +94,18 @@ func TestBroadcast_SubscriptionFiltering(t *testing.T) {
 	// Client A subscribes to project 1
 	clientA := setupTestClient(t, socketPath)
 	eventChanA, _ := clientA.Listen(context.Background())
+	waiterA := expectSubscriptions(t, server, 1)
 	err := clientA.Subscribe(1)
 	require.NoError(t, err)
-	waitForSubscriptions(t, server, 1)
+	waiterA.Wait()
 
 	// Client B subscribes to project 2
 	clientB := setupTestClient(t, socketPath)
 	eventChanB, _ := clientB.Listen(context.Background())
+	waiterB := expectSubscriptions(t, server, 1)
 	err = clientB.Subscribe(2)
 	require.NoError(t, err)
-	waitForSubscriptions(t, server, 1)
+	waiterB.Wait()
 
 	// Broadcast event for project 1
 	testEvent := events.Event{
@@ -129,16 +133,18 @@ func TestBroadcast_AllProjects(t *testing.T) {
 	// Client A subscribes to project 1
 	clientA := setupTestClient(t, socketPath)
 	eventChanA, _ := clientA.Listen(context.Background())
+	waiterA := expectSubscriptions(t, server, 1)
 	err := clientA.Subscribe(1)
 	require.NoError(t, err)
-	waitForSubscriptions(t, server, 1)
+	waiterA.Wait()
 
 	// Client B subscribes to project 2
 	clientB := setupTestClient(t, socketPath)
 	eventChanB, _ := clientB.Listen(context.Background())
+	waiterB := expectSubscriptions(t, server, 1)
 	err = clientB.Subscribe(2)
 	require.NoError(t, err)
-	waitForSubscriptions(t, server, 1)
+	waiterB.Wait()
 
 	// Broadcast event for all projects (projectID = 0)
 	testEvent := events.Event{
@@ -165,10 +171,11 @@ func TestBroadcast_SequenceNumbers(t *testing.T) {
 
 	client := setupTestClient(t, socketPath)
 	eventChan, _ := client.Listen(context.Background())
+	waiter := expectSubscriptions(t, server, 1)
 	err := client.Subscribe(1)
 	require.NoError(t, err)
 
-	waitForSubscriptions(t, server, 1)
+	waiter.Wait()
 
 	// Send 10 events
 	numEvents := 10

@@ -120,25 +120,49 @@ func logServerState(t *testing.T, server *Server, label string) {
 	t.Logf("========================")
 }
 
-func waitForSubscriptions(t *testing.T, server *Server, count int) {
+// subscriptionWaiter allows tests to install the OnSubscribe callback before
+// sending subscribe messages, then wait for those subscriptions to be processed.
+// This avoids the race where a subscribe message is processed before the
+// callback is installed.
+type subscriptionWaiter struct {
+	t      *testing.T
+	server *Server
+	ch     chan int
+	count  int
+}
+
+// expectSubscriptions installs the OnSubscribe callback and returns a waiter.
+// Call this before sending subscribe messages, then call waiter.Wait() after.
+// Subscriptions to projectID=0 (the auto-subscribe from Client.Connect) are
+// ignored since tests always subscribe to non-zero project IDs.
+func expectSubscriptions(t *testing.T, server *Server, count int) *subscriptionWaiter {
 	t.Helper()
-
-	ch := make(chan int, count)
+	ch := make(chan int, count+10)
+	server.onSubscribeMu.Lock()
 	server.OnSubscribe = func(projectID int) {
-		ch <- projectID
+		if projectID != 0 {
+			ch <- projectID
+		}
 	}
+	server.onSubscribeMu.Unlock()
+	return &subscriptionWaiter{t: t, server: server, ch: ch, count: count}
+}
 
+func (w *subscriptionWaiter) Wait() {
+	w.t.Helper()
 	timeout := time.After(2 * time.Second)
 	received := 0
 
-	for received < count {
+	for received < w.count {
 		select {
-		case <-ch:
+		case <-w.ch:
 			received++
 		case <-timeout:
-			require.Fail(t, "Timeout waiting for subscriptions", "expected %d, got %d", count, received)
+			require.Fail(w.t, "Timeout waiting for subscriptions", "expected %d, got %d", w.count, received)
 		}
 	}
 
-	server.OnSubscribe = nil
+	w.server.onSubscribeMu.Lock()
+	w.server.OnSubscribe = nil
+	w.server.onSubscribeMu.Unlock()
 }
