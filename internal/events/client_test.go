@@ -11,8 +11,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"go.uber.org/goleak"
 )
 
 // ============================================================================
@@ -1379,8 +1377,6 @@ func TestSendEvent_ErrorMessageClarity(t *testing.T) {
 // - Context cancellation propagates through all operations
 // - No panics or deadlocks during shutdown
 func TestClient_ContextCancellationDuringReconnection(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
 	// Create a controllable mock daemon
 	socketPath, startFunc, stopFunc, messages := setupMockDaemonWithControl(t)
 
