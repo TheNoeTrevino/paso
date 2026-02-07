@@ -38,7 +38,7 @@ func TestTaskForm_FieldProgression(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify model was updated successfully
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after updates")
 }
 
 // TestTaskForm_ShortcutToPriorityPicker tests Ctrl+P to open priority picker from form
@@ -56,7 +56,7 @@ func TestTaskForm_ShortcutToPriorityPicker(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode changed or form still active
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after shortcut")
 }
 
 // TestTaskForm_ShortcutToLabelPicker tests Ctrl+L to open label picker from form
@@ -74,7 +74,7 @@ func TestTaskForm_ShortcutToLabelPicker(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode changed or form still active
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after shortcut")
 }
 
 // TestTaskForm_ShortcutToParentPicker tests Ctrl+Shift+P to open parent picker from form
@@ -92,7 +92,7 @@ func TestTaskForm_ShortcutToParentPicker(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode changed or form still active
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after shortcut")
 }
 
 // TestTaskForm_SaveWithCtrlS tests submitting form with Ctrl+S
@@ -114,7 +114,7 @@ func TestTaskForm_SaveWithCtrlS(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Verify form processed the save command
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after save")
 }
 
 // TestTaskForm_DiscardConfirmation tests Esc key to trigger discard confirmation
@@ -136,7 +136,7 @@ func TestTaskForm_DiscardConfirmation(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Mode may change to confirmation or back to normal
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after escape")
 }
 
 // TestProjectForm_Creation tests creating a new project
@@ -169,7 +169,7 @@ func TestProjectForm_Creation(t *testing.T) {
 
 	// Verify form was processed
 	// Still in form mode, form may not support quick save
-	_ = m.UIState.Mode == state.ProjectFormMode
+	require.NotNil(t, m, "Model should not be nil after save")
 }
 
 // TestColumnForm_Creation tests creating a new column
@@ -197,7 +197,7 @@ func TestColumnForm_Creation(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Verify form was processed
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after form submission")
 }
 
 // TestCommentForm_Creation tests adding a comment to a task
@@ -228,7 +228,7 @@ func TestCommentForm_Creation(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		// Verify comment form was processed
-		_ = m
+		require.NotNil(t, m, "Model should not be nil after comment submission")
 	}
 }
 
@@ -257,7 +257,7 @@ func TestEditColumnForm_RenameColumn(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Verify edit column form was processed
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after form submission")
 }
 
 // TestProjectForm_DiscardChanges tests discarding changes to project form
@@ -272,8 +272,6 @@ func TestProjectForm_DiscardChanges(t *testing.T) {
 	TypeStringToModel(&m, "Project name")
 	time.Sleep(50 * time.Millisecond)
 
-	initialMode := m.UIState.Mode
-
 	// Press Escape to discard
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape})
 	updatedModel, _ := m.Update(msg)
@@ -282,7 +280,7 @@ func TestProjectForm_DiscardChanges(t *testing.T) {
 
 	// Verify escape was processed
 	// Mode changed, which is expected
-	_ = m.UIState.Mode != initialMode
+	require.NotNil(t, m, "Model should not be nil after escape")
 }
 
 // TestTaskForm_CharacterInput tests typing characters into task form

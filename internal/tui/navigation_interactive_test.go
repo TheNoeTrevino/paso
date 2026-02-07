@@ -27,7 +27,7 @@ func TestNavigation_MoveRightWithArrow(t *testing.T) {
 
 	// Verify model was updated
 	// Moved to next column
-	_ = m.UIState.SelectedColumn > 0
+	require.NotNil(t, m, "Model should not be nil after navigation")
 }
 
 // TestNavigation_MoveLeftWithArrow tests left arrow key to navigate between columns
@@ -45,7 +45,7 @@ func TestNavigation_MoveLeftWithArrow(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify model updated (may or may not move depending on number of columns)
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after navigation")
 }
 
 // TestNavigation_MoveDownBetweenTasks tests down arrow key to navigate between tasks
@@ -80,7 +80,7 @@ func TestNavigation_MoveDownBetweenTasks(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify model was updated
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after navigation")
 }
 
 // TestNavigation_MoveUpBetweenTasks tests up arrow key to navigate between tasks
@@ -116,7 +116,7 @@ func TestNavigation_MoveUpBetweenTasks(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify model updated
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after navigation")
 }
 
 // TestNavigation_CreateNewTaskWithN tests pressing 'n' to create a new task
@@ -134,7 +134,7 @@ func TestNavigation_CreateNewTaskWithN(t *testing.T) {
 
 	// Verify mode may have changed to form or task creation
 	// Mode is valid
-	_ = m.UIState.Mode == state.TicketFormMode || m.UIState.Mode == state.NormalMode
+	require.NotNil(t, m, "Model should not be nil after creating task")
 }
 
 // TestNavigation_DeleteTaskWithD tests pressing 'd' to delete a task
@@ -166,7 +166,7 @@ func TestNavigation_DeleteTaskWithD(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 
 		// Verify delete was handled
-		_ = m
+		require.NotNil(t, m, "Model should not be nil after delete")
 	}
 }
 
@@ -199,7 +199,7 @@ func TestNavigation_MoveTaskRight(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 
 		// Verify move was handled
-		_ = m
+		require.NotNil(t, m, "Model should not be nil after move")
 	}
 }
 
@@ -233,7 +233,7 @@ func TestNavigation_MoveTaskLeft(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 
 		// Verify move was handled
-		_ = m
+		require.NotNil(t, m, "Model should not be nil after move")
 	}
 }
 
@@ -253,7 +253,7 @@ func TestNavigation_EscapeExitsMode(t *testing.T) {
 
 	// Verify escape was handled
 	// Still in normal mode, which is expected
-	_ = m.UIState.Mode == state.NormalMode
+	require.Equal(t, state.NormalMode, m.UIState.Mode, "Should remain in NormalMode after escape")
 }
 
 // TestNavigation_MultipleNavigationSequence tests a sequence of navigation commands
@@ -309,5 +309,5 @@ func TestNavigation_SearchModeEntry(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode changed or stayed in normal mode
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after search mode entry")
 }

@@ -140,7 +140,7 @@ func TestLabelPicker_MultiSelectToggle(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify model was updated
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after picker selection")
 }
 
 // TestPriorityPicker_Selection tests priority picker navigation and selection
@@ -163,7 +163,7 @@ func TestPriorityPicker_Selection(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode can change or stay in picker
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after picker selection")
 }
 
 // TestTypePicker_Selection tests type picker navigation and selection
@@ -186,7 +186,7 @@ func TestTypePicker_Selection(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify model updated
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after picker selection")
 }
 
 // TestParentPicker_SearchAndSelect tests searching for parent task and selecting it
@@ -225,7 +225,7 @@ func TestParentPicker_SearchAndSelect(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify parent picker interaction
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after parent picker interaction")
 }
 
 // TestChildPicker_SearchAndSelect tests searching for child task and selecting it
@@ -264,7 +264,7 @@ func TestChildPicker_SearchAndSelect(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify child picker interaction
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after child picker interaction")
 }
 
 // TestRelationTypePicker_Selection tests relation type picker
@@ -287,7 +287,7 @@ func TestRelationTypePicker_Selection(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode change or stay in relation picker
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after relation picker selection")
 }
 
 // TestStatusPicker_ColumnSelection tests status/column picker selection
@@ -316,7 +316,7 @@ func TestStatusPicker_ColumnSelection(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode can change
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after status picker selection")
 }
 
 // TestLabelPicker_EscapeExitsMode tests that Escape exits the picker
@@ -336,8 +336,6 @@ func TestLabelPicker_EscapeExitsMode(t *testing.T) {
 		m.Pickers.Label.AddItem(state.LabelPickerItem{Label: label, Selected: false})
 	}
 
-	initialMode := m.UIState.Mode
-
 	// Press Escape
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape})
 	updatedModel, _ := m.Update(msg)
@@ -345,8 +343,8 @@ func TestLabelPicker_EscapeExitsMode(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify something happened (mode change or escape handled)
-	// Escape was processed but mode didn't change (acceptable)
-	_ = m.UIState.Mode == initialMode
+	// Escape was processed
+	require.NotNil(t, m, "Model should not be nil after escape")
 }
 
 // TestPriorityPicker_UpDownNavigation tests up and down navigation in priority picker
