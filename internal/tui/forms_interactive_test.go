@@ -6,13 +6,15 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
 // TestTaskForm_FieldProgression tests Tab and Shift+Tab navigation between form fields
 func TestTaskForm_FieldProgression(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Enter task form mode
 	m.UIState.Mode = state.TicketFormMode
@@ -41,7 +43,8 @@ func TestTaskForm_FieldProgression(t *testing.T) {
 
 // TestTaskForm_ShortcutToPriorityPicker tests Ctrl+P to open priority picker from form
 func TestTaskForm_ShortcutToPriorityPicker(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Enter task form mode
 	m.UIState.Mode = state.TicketFormMode
@@ -58,7 +61,8 @@ func TestTaskForm_ShortcutToPriorityPicker(t *testing.T) {
 
 // TestTaskForm_ShortcutToLabelPicker tests Ctrl+L to open label picker from form
 func TestTaskForm_ShortcutToLabelPicker(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Enter task form mode
 	m.UIState.Mode = state.TicketFormMode
@@ -75,7 +79,8 @@ func TestTaskForm_ShortcutToLabelPicker(t *testing.T) {
 
 // TestTaskForm_ShortcutToParentPicker tests Ctrl+Shift+P to open parent picker from form
 func TestTaskForm_ShortcutToParentPicker(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Enter task form mode
 	m.UIState.Mode = state.TicketFormMode
@@ -92,7 +97,8 @@ func TestTaskForm_ShortcutToParentPicker(t *testing.T) {
 
 // TestTaskForm_SaveWithCtrlS tests submitting form with Ctrl+S
 func TestTaskForm_SaveWithCtrlS(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Enter task form mode
 	m.UIState.Mode = state.TicketFormMode
@@ -113,7 +119,8 @@ func TestTaskForm_SaveWithCtrlS(t *testing.T) {
 
 // TestTaskForm_DiscardConfirmation tests Esc key to trigger discard confirmation
 func TestTaskForm_DiscardConfirmation(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Enter task form mode
 	m.UIState.Mode = state.TicketFormMode
@@ -134,7 +141,8 @@ func TestTaskForm_DiscardConfirmation(t *testing.T) {
 
 // TestProjectForm_Creation tests creating a new project
 func TestProjectForm_Creation(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Enter project form mode
 	m.UIState.Mode = state.ProjectFormMode
@@ -166,7 +174,8 @@ func TestProjectForm_Creation(t *testing.T) {
 
 // TestColumnForm_Creation tests creating a new column
 func TestColumnForm_Creation(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Enter column form mode
 	m.UIState.Mode = state.AddColumnFormMode
@@ -194,11 +203,13 @@ func TestColumnForm_Creation(t *testing.T) {
 // TestCommentForm_Creation tests adding a comment to a task
 func TestCommentForm_Creation(t *testing.T) {
 	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Create a task to comment on
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	columns, _ := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load columns for test setup")
 	if len(columns) > 0 {
 		taskID := testutil.CreateTestTask(t, db, columns[0].ID, "Task to comment on")
 
@@ -223,7 +234,8 @@ func TestCommentForm_Creation(t *testing.T) {
 
 // TestEditColumnForm_RenameColumn tests renaming an existing column
 func TestEditColumnForm_RenameColumn(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Enter edit column form mode
 	m.UIState.Mode = state.EditColumnFormMode
@@ -250,7 +262,8 @@ func TestEditColumnForm_RenameColumn(t *testing.T) {
 
 // TestProjectForm_DiscardChanges tests discarding changes to project form
 func TestProjectForm_DiscardChanges(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Enter project form mode
 	m.UIState.Mode = state.ProjectFormMode
@@ -274,7 +287,8 @@ func TestProjectForm_DiscardChanges(t *testing.T) {
 
 // TestTaskForm_CharacterInput tests typing characters into task form
 func TestTaskForm_CharacterInput(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Enter task form mode
 	m.UIState.Mode = state.TicketFormMode

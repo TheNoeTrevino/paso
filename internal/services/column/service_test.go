@@ -3,6 +3,7 @@ package column
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
 	"testing"
 
@@ -157,7 +158,7 @@ func TestCreateColumn_Validation(t *testing.T) {
 				return
 			}
 
-			if tt.errType != nil && err != tt.errType {
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
 				t.Errorf("CreateColumn() error = %v, want %v", err, tt.errType)
 			}
 		})
@@ -372,7 +373,7 @@ func TestGetColumnsByProject_InvalidProjectID(t *testing.T) {
 		t.Fatal("Expected error for invalid project ID")
 	}
 
-	if err != ErrInvalidProjectID {
+	if !errors.Is(err, ErrInvalidProjectID) {
 		t.Errorf("Expected ErrInvalidProjectID, got %v", err)
 	}
 }
@@ -421,7 +422,7 @@ func TestGetColumnByID_NotFound(t *testing.T) {
 		t.Fatal("Expected error for non-existent column")
 	}
 
-	if err != sql.ErrNoRows {
+	if !errors.Is(err, sql.ErrNoRows) {
 		t.Errorf("Expected sql.ErrNoRows, got %v", err)
 	}
 }
@@ -439,7 +440,7 @@ func TestGetColumnByID_InvalidID(t *testing.T) {
 		t.Fatal("Expected error for invalid ID")
 	}
 
-	if err != ErrInvalidColumnID {
+	if !errors.Is(err, ErrInvalidColumnID) {
 		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
 	}
 }
@@ -529,7 +530,7 @@ func TestUpdateColumnName_Validation(t *testing.T) {
 				return
 			}
 
-			if tt.errType != nil && err != tt.errType {
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
 				t.Errorf("UpdateColumnName() error = %v, want %v", err, tt.errType)
 			}
 		})
@@ -560,7 +561,7 @@ func TestDeleteColumn(t *testing.T) {
 
 	// Verify column is deleted
 	_, err = svc.GetColumnByID(ctx, created.ID)
-	if err != sql.ErrNoRows {
+	if !errors.Is(err, sql.ErrNoRows) {
 		t.Errorf("Expected sql.ErrNoRows after deletion, got %v", err)
 	}
 }
@@ -615,7 +616,7 @@ func TestDeleteColumn_Validation(t *testing.T) {
 				return
 			}
 
-			if tt.errType != nil && err != tt.errType {
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
 				t.Errorf("DeleteColumn() error = %v, want %v", err, tt.errType)
 			}
 		})
@@ -932,7 +933,7 @@ func TestSetHoldsReadyTasks_InvalidColumnID(t *testing.T) {
 		t.Fatal("Expected error for invalid column ID")
 	}
 
-	if err != ErrInvalidColumnID {
+	if !errors.Is(err, ErrInvalidColumnID) {
 		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
 	}
 }
@@ -951,7 +952,7 @@ func TestSetHoldsReadyTasks_ColumnNotFound(t *testing.T) {
 	}
 
 	// Should get a wrapped sql.ErrNoRows
-	if err != sql.ErrNoRows && !contains(err.Error(), "no rows") {
+	if !errors.Is(err, sql.ErrNoRows) && !contains(err.Error(), "no rows") {
 		t.Errorf("Expected sql.ErrNoRows or wrapped error, got %v", err)
 	}
 }
@@ -1015,7 +1016,7 @@ func TestGetColumnByID_NegativeID(t *testing.T) {
 		t.Fatal("Expected error for negative ID")
 	}
 
-	if err != ErrInvalidColumnID {
+	if !errors.Is(err, ErrInvalidColumnID) {
 		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
 	}
 }
@@ -1033,7 +1034,7 @@ func TestGetColumnsByProject_NegativeProjectID(t *testing.T) {
 		t.Fatal("Expected error for negative project ID")
 	}
 
-	if err != ErrInvalidProjectID {
+	if !errors.Is(err, ErrInvalidProjectID) {
 		t.Errorf("Expected ErrInvalidProjectID, got %v", err)
 	}
 }
@@ -1069,7 +1070,7 @@ func TestUpdateColumnName_NegativeID(t *testing.T) {
 		t.Fatal("Expected error for negative ID")
 	}
 
-	if err != ErrInvalidColumnID {
+	if !errors.Is(err, ErrInvalidColumnID) {
 		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
 	}
 }
@@ -1117,7 +1118,7 @@ func TestUpdateColumnName_NameTooLong(t *testing.T) {
 		t.Fatal("Expected error for name too long")
 	}
 
-	if err != ErrNameTooLong {
+	if !errors.Is(err, ErrNameTooLong) {
 		t.Errorf("Expected ErrNameTooLong, got %v", err)
 	}
 }
@@ -1135,7 +1136,7 @@ func TestDeleteColumn_NegativeID(t *testing.T) {
 		t.Fatal("Expected error for negative ID")
 	}
 
-	if err != ErrInvalidColumnID {
+	if !errors.Is(err, ErrInvalidColumnID) {
 		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
 	}
 }
@@ -1215,7 +1216,7 @@ func TestCreateColumn_InvalidAfterID(t *testing.T) {
 				return
 			}
 
-			if tt.errType != nil && err != tt.errType {
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
 				t.Errorf("CreateColumn() error = %v, want %v", err, tt.errType)
 			}
 		})
@@ -1409,7 +1410,7 @@ func TestSetHoldsReadyTasks_NegativeColumnID(t *testing.T) {
 		t.Fatal("Expected error for negative column ID")
 	}
 
-	if err != ErrInvalidColumnID {
+	if !errors.Is(err, ErrInvalidColumnID) {
 		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
 	}
 }
@@ -1480,7 +1481,7 @@ func TestSetHoldsCompletedTasks_NegativeColumnID(t *testing.T) {
 		t.Fatal("Expected error for negative column ID")
 	}
 
-	if err != ErrInvalidColumnID {
+	if !errors.Is(err, ErrInvalidColumnID) {
 		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
 	}
 }
@@ -1724,7 +1725,7 @@ func TestSetHoldsInProgressTasks_InvalidColumnID(t *testing.T) {
 		t.Fatal("Expected error for invalid column ID")
 	}
 
-	if err != ErrInvalidColumnID {
+	if !errors.Is(err, ErrInvalidColumnID) {
 		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
 	}
 }
@@ -1742,7 +1743,7 @@ func TestSetHoldsInProgressTasks_NegativeColumnID(t *testing.T) {
 		t.Fatal("Expected error for negative column ID")
 	}
 
-	if err != ErrInvalidColumnID {
+	if !errors.Is(err, ErrInvalidColumnID) {
 		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
 	}
 }
@@ -1761,7 +1762,7 @@ func TestSetHoldsInProgressTasks_ColumnNotFound(t *testing.T) {
 	}
 
 	// Should get a wrapped sql.ErrNoRows
-	if err != sql.ErrNoRows && !contains(err.Error(), "no rows") {
+	if !errors.Is(err, sql.ErrNoRows) && !contains(err.Error(), "no rows") {
 		t.Errorf("Expected sql.ErrNoRows or wrapped error, got %v", err)
 	}
 }
@@ -2100,7 +2101,7 @@ func TestCreateColumn_HoldsCompletedTasks_FailsWhenExists(t *testing.T) {
 		t.Fatal("Expected error when creating second completed column")
 	}
 
-	if err != ErrCompletedColumnExists && !contains(err.Error(), "completed column already exists") {
+	if !errors.Is(err, ErrCompletedColumnExists) && !contains(err.Error(), "completed column already exists") {
 		t.Errorf("Expected ErrCompletedColumnExists, got %v", err)
 	}
 }
@@ -2180,7 +2181,7 @@ func TestSetHoldsCompletedTasks_FailsWhenExistsWithoutForce(t *testing.T) {
 		t.Fatal("Expected error when setting completed without force")
 	}
 
-	if err != ErrCompletedColumnExists && !contains(err.Error(), "completed column already exists") {
+	if !errors.Is(err, ErrCompletedColumnExists) && !contains(err.Error(), "completed column already exists") {
 		t.Errorf("Expected ErrCompletedColumnExists, got %v", err)
 	}
 
@@ -2337,7 +2338,7 @@ func TestSetHoldsCompletedTasks_InvalidColumnID(t *testing.T) {
 		t.Fatal("Expected error for invalid column ID")
 	}
 
-	if err != ErrInvalidColumnID {
+	if !errors.Is(err, ErrInvalidColumnID) {
 		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
 	}
 }
@@ -2356,7 +2357,7 @@ func TestSetHoldsCompletedTasks_ColumnNotFound(t *testing.T) {
 	}
 
 	// Should get a wrapped sql.ErrNoRows
-	if err != sql.ErrNoRows && !contains(err.Error(), "no rows") {
+	if !errors.Is(err, sql.ErrNoRows) && !contains(err.Error(), "no rows") {
 		t.Errorf("Expected sql.ErrNoRows or wrapped error, got %v", err)
 	}
 }

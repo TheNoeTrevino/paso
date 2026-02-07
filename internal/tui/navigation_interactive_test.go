@@ -206,6 +206,7 @@ func TestNavigation_MoveTaskRight(t *testing.T) {
 // TestNavigation_MoveTaskLeft tests pressing '<' to move task to previous column
 func TestNavigation_MoveTaskLeft(t *testing.T) {
 	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Create a task in middle column
 	ctx := context.Background()
@@ -238,7 +239,8 @@ func TestNavigation_MoveTaskLeft(t *testing.T) {
 
 // TestNavigation_EscapeExitsMode tests Escape key exits from menus
 func TestNavigation_EscapeExitsMode(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Set normal mode
 	m.UIState.Mode = state.NormalMode
@@ -257,6 +259,7 @@ func TestNavigation_EscapeExitsMode(t *testing.T) {
 // TestNavigation_MultipleNavigationSequence tests a sequence of navigation commands
 func TestNavigation_MultipleNavigationSequence(t *testing.T) {
 	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Create some tasks
 	ctx := context.Background()
@@ -293,7 +296,8 @@ func TestNavigation_MultipleNavigationSequence(t *testing.T) {
 
 // TestNavigation_SearchModeEntry tests entering search mode
 func TestNavigation_SearchModeEntry(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer db.Close()
 
 	// Set normal mode
 	m.UIState.Mode = state.NormalMode

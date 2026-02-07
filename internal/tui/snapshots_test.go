@@ -244,7 +244,8 @@ func setupBoardWithLabels(t *testing.T, db *sql.DB) Model {
 	labelFeature := testutil.CreateTestLabel(t, db, projectID, "feature", "#00FF00")
 	labelDoc := testutil.CreateTestLabel(t, db, projectID, "documentation", "#0000FF")
 
-	columns, _ := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
+	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err)
 
 	// Create tasks with labels
 	task1ID := testutil.CreateTestTask(t, db, columns[0].ID, "Fix critical bug")
@@ -252,7 +253,7 @@ func setupBoardWithLabels(t *testing.T, db *sql.DB) Model {
 	task3ID := testutil.CreateTestTask(t, db, columns[1].ID, "Write API docs")
 
 	// Attach labels
-	_, err := db.ExecContext(ctx, "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", task1ID, labelBug)
+	_, err = db.ExecContext(ctx, "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", task1ID, labelBug)
 	require.NoError(t, err)
 	_, err = db.ExecContext(ctx, "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", task2ID, labelFeature)
 	require.NoError(t, err)

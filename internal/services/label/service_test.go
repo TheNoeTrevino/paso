@@ -3,6 +3,7 @@ package label
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
 	"testing"
 
@@ -174,7 +175,7 @@ func TestCreateLabel_Validation(t *testing.T) {
 				return
 			}
 
-			if tt.errType != nil && err != tt.errType {
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
 				t.Errorf("CreateLabel() error = %v, want %v", err, tt.errType)
 			}
 		})
@@ -216,7 +217,7 @@ func TestCreateLabel_InvalidColor(t *testing.T) {
 				t.Fatalf("Expected validation error for color %q", tc.color)
 			}
 
-			if err != ErrInvalidColor {
+			if !errors.Is(err, ErrInvalidColor) {
 				t.Errorf("Expected ErrInvalidColor, got %v", err)
 			}
 		})
@@ -242,7 +243,7 @@ func TestCreateLabel_InvalidProjectID(t *testing.T) {
 		t.Fatal("Expected validation error for invalid project ID")
 	}
 
-	if err != ErrInvalidProjectID {
+	if !errors.Is(err, ErrInvalidProjectID) {
 		t.Errorf("Expected ErrInvalidProjectID, got %v", err)
 	}
 }
@@ -324,7 +325,7 @@ func TestGetLabelsByProject_InvalidProjectID(t *testing.T) {
 		t.Fatal("Expected error for invalid project ID")
 	}
 
-	if err != ErrInvalidProjectID {
+	if !errors.Is(err, ErrInvalidProjectID) {
 		t.Errorf("Expected ErrInvalidProjectID, got %v", err)
 	}
 }
@@ -417,7 +418,7 @@ func TestGetLabelsForTask_InvalidTaskID(t *testing.T) {
 		t.Fatal("Expected error for invalid task ID")
 	}
 
-	if err != ErrInvalidTaskID {
+	if !errors.Is(err, ErrInvalidTaskID) {
 		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
 	}
 }
@@ -593,7 +594,7 @@ func TestUpdateLabel_Validation(t *testing.T) {
 				return
 			}
 
-			if tt.errType != nil && err != tt.errType {
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
 				t.Errorf("UpdateLabel() error = %v, want %v", err, tt.errType)
 			}
 		})
@@ -670,7 +671,7 @@ func TestDeleteLabel_Validation(t *testing.T) {
 				return
 			}
 
-			if tt.errType != nil && err != tt.errType {
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
 				t.Errorf("DeleteLabel() error = %v, want %v", err, tt.errType)
 			}
 		})
@@ -773,7 +774,7 @@ func TestCreateLabel_InvalidLabelID_Errors(t *testing.T) {
 			_, err := svc.CreateLabel(context.Background(), req)
 
 			if tt.wantErr != nil {
-				if err != tt.wantErr {
+				if !errors.Is(err, tt.wantErr) {
 					t.Errorf("CreateLabel() error = %v, want %v", err, tt.wantErr)
 				}
 			} else {
@@ -938,7 +939,7 @@ func TestGetLabelsByProject_NegativeProjectID(t *testing.T) {
 		t.Fatal("GetLabelsByProject() expected error for negative project ID, got nil")
 	}
 
-	if err != ErrInvalidProjectID {
+	if !errors.Is(err, ErrInvalidProjectID) {
 		t.Errorf("GetLabelsByProject() error = %v, want %v", err, ErrInvalidProjectID)
 	}
 }
@@ -974,7 +975,7 @@ func TestGetLabelsForTask_NegativeTaskID(t *testing.T) {
 		t.Fatal("GetLabelsForTask() expected error for negative task ID, got nil")
 	}
 
-	if err != ErrInvalidTaskID {
+	if !errors.Is(err, ErrInvalidTaskID) {
 		t.Errorf("GetLabelsForTask() error = %v, want %v", err, ErrInvalidTaskID)
 	}
 }
@@ -1036,7 +1037,7 @@ func TestUpdateLabel_InvalidLabelID_Errors(t *testing.T) {
 
 			err := svc.UpdateLabel(context.Background(), req)
 
-			if err != tt.wantErr {
+			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("UpdateLabel() error = %v, want %v", err, tt.wantErr)
 			}
 		})
@@ -1061,7 +1062,7 @@ func TestUpdateLabel_NonExistentLabel(t *testing.T) {
 		t.Fatal("UpdateLabel() expected error for non-existent label, got nil")
 	}
 
-	if err != ErrLabelNotFound {
+	if !errors.Is(err, ErrLabelNotFound) {
 		t.Errorf("UpdateLabel() error = %v, want %v", err, ErrLabelNotFound)
 	}
 }
@@ -1102,7 +1103,7 @@ func TestUpdateLabel_NameTooLong(t *testing.T) {
 		t.Fatal("UpdateLabel() expected error for name too long, got nil")
 	}
 
-	if err != ErrNameTooLong {
+	if !errors.Is(err, ErrNameTooLong) {
 		t.Errorf("UpdateLabel() error = %v, want %v", err, ErrNameTooLong)
 	}
 }
@@ -1154,7 +1155,7 @@ func TestUpdateLabel_InvalidColorFormats(t *testing.T) {
 				t.Errorf("UpdateLabel() expected error for color %q, got nil", tc.color)
 			}
 
-			if err != ErrInvalidColor {
+			if !errors.Is(err, ErrInvalidColor) {
 				t.Errorf("UpdateLabel() error = %v, want %v", err, ErrInvalidColor)
 			}
 		})
@@ -1239,7 +1240,7 @@ func TestDeleteLabel_InvalidLabelID_Errors(t *testing.T) {
 
 			err := svc.DeleteLabel(context.Background(), tt.labelID)
 
-			if err != tt.wantErr {
+			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("DeleteLabel() error = %v, want %v", err, tt.wantErr)
 			}
 		})
