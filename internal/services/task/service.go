@@ -35,6 +35,7 @@ type TaskReader interface {
 type TaskWriter interface {
 	CreateTask(ctx context.Context, req CreateTaskRequest) (*models.Task, error)
 	UpdateTask(ctx context.Context, req UpdateTaskRequest) error
+	UpdateTaskAssignee(ctx context.Context, taskID int, assigneeID *int) error
 	DeleteTask(ctx context.Context, taskID int) error
 }
 
@@ -94,6 +95,7 @@ type CreateTaskRequest struct {
 	Position     int
 	PriorityID   int // Optional: 0 means use default
 	TypeID       int // Optional: 0 means use default
+	AssigneeID   int // Optional: 0 means use active assignee from config
 	LabelIDs     []int
 	ParentIDs    []int // Parent task IDs (tasks that depend on this task)
 	ChildIDs     []int // Child task IDs (tasks this task depends on)
@@ -181,6 +183,11 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 			desc = types.NullString{String: req.Description, Valid: true}
 		}
 
+		var assigneeID types.NullInt64
+		if req.AssigneeID > 0 {
+			assigneeID = types.NullInt64{Int64: int64(req.AssigneeID), Valid: true}
+		}
+
 		var taskErr error
 		createdTask, taskErr = qtx.CreateTask(ctx, types.CreateTaskParams{
 			Title:        req.Title,
@@ -188,6 +195,7 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 			ColumnID:     int64(req.ColumnID),
 			Position:     int64(req.Position),
 			TicketNumber: ticketNumber,
+			AssigneeID:   assigneeID,
 		})
 		if taskErr != nil {
 			return fmt.Errorf("failed to create task: %w", taskErr)
@@ -431,6 +439,31 @@ func (s *service) UpdateTask(ctx context.Context, req UpdateTaskRequest) error {
 	return nil
 }
 
+// UpdateTaskAssignee updates the assignee for a task
+func (s *service) UpdateTaskAssignee(ctx context.Context, taskID int, assigneeID *int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	if err := validateTaskID(taskID); err != nil {
+		return err
+	}
+
+	var nullID types.NullInt64
+	if assigneeID != nil {
+		nullID = types.NullInt64{Int64: int64(*assigneeID), Valid: true}
+	}
+
+	if err := s.queries.UpdateTaskAssignee(ctx, types.UpdateTaskAssigneeParams{
+		AssigneeID: nullID,
+		ID:         int64(taskID),
+	}); err != nil {
+		return fmt.Errorf("failed to update task assignee: %w", err)
+	}
+
+	s.publishTaskEvent(ctx, taskID)
+	return nil
+}
+
 // DeleteTask handles task deletion
 func (s *service) DeleteTask(ctx context.Context, taskID int) error {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -528,6 +561,14 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 	}
 	if taskRow.UpdatedAt.Valid {
 		detail.UpdatedAt = taskRow.UpdatedAt.Time
+	}
+	if taskRow.AssigneeID.Valid {
+		id := int(taskRow.AssigneeID.Int64)
+		detail.AssigneeID = &id
+	}
+	if taskRow.AssigneeName.Valid {
+		name := taskRow.AssigneeName.String
+		detail.AssigneeName = &name
 	}
 
 	return detail, nil
@@ -1135,6 +1176,14 @@ func (s *service) GetInProgressTasksByProject(ctx context.Context, projectID int
 		}
 		if row.PriorityColor.Valid {
 			taskDetail.PriorityColor = row.PriorityColor.String
+		}
+		if row.AssigneeID.Valid {
+			id := int(row.AssigneeID.Int64)
+			taskDetail.AssigneeID = &id
+		}
+		if row.AssigneeName.Valid {
+			name := row.AssigneeName.String
+			taskDetail.AssigneeName = &name
 		}
 
 		// NOTE: Parent/child tasks and comments are NOT fetched here.

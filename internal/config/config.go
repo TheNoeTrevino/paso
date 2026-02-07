@@ -24,6 +24,7 @@ type Config struct {
 	ColorScheme    colors.ColorScheme `yaml:"theme"`
 	Databases      []DatabaseConfig   `yaml:"databases"`
 	ActiveDatabase string             `yaml:"active_database,omitempty"`
+	ActiveAssignee string             `yaml:"active_assignee,omitempty"`
 }
 
 // loadThemeFile loads and merges theme from PASO_THEME_FILE environment variable
@@ -213,6 +214,17 @@ func (c *Config) GetDatabase(name string) *DatabaseConfig {
 		}
 	}
 	return nil
+}
+
+// SetActiveAssignee sets the active assignee name and saves config
+func (c *Config) SetActiveAssignee(name string) error {
+	c.ActiveAssignee = name
+	return c.Save()
+}
+
+// GetActiveAssignee returns the active assignee name, or empty string if none set
+func (c *Config) GetActiveAssignee() string {
+	return c.ActiveAssignee
 }
 
 // getConfigPath returns the path to the config file

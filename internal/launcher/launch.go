@@ -17,6 +17,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/logging"
 	"github.com/thenoetrevino/paso/internal/tui/core"
+	"github.com/thenoetrevino/paso/internal/user"
 )
 
 // Launch starts the TUI application
@@ -114,6 +115,17 @@ func Launch() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize application: %w", err)
 	}
+
+	activeAssignee := cfg.GetActiveAssignee()
+	if activeAssignee == "" {
+		activeAssignee = user.GetCurrentUsername()
+	}
+
+	_, err = application.AssigneeService.GetOrCreate(initCtx, activeAssignee)
+	if err != nil {
+		slog.Warn("failed to initialize active assignee", "assignee", activeAssignee, "error", err)
+	}
+
 	tuiApp := core.New(ctx, application, cfg, eventClient, db)
 	p := tea.NewProgram(tuiApp, tea.WithContext(ctx))
 

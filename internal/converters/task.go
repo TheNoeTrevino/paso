@@ -140,6 +140,14 @@ func TaskSummaryFromRowToModel(row types.GetTaskSummariesByProjectRow) *models.T
 	if row.PriorityColor.Valid {
 		summary.PriorityColor = row.PriorityColor.String
 	}
+	if row.AssigneeID.Valid {
+		id := int(row.AssigneeID.Int64)
+		summary.AssigneeID = &id
+	}
+	if row.AssigneeName.Valid {
+		name := row.AssigneeName.String
+		summary.AssigneeName = &name
+	}
 
 	return summary
 }
@@ -164,6 +172,14 @@ func ReadyTaskSummaryFromRowToModel(row types.GetReadyTaskSummariesByProjectRow)
 	if row.PriorityColor.Valid {
 		summary.PriorityColor = row.PriorityColor.String
 	}
+	if row.AssigneeID.Valid {
+		id := int(row.AssigneeID.Int64)
+		summary.AssigneeID = &id
+	}
+	if row.AssigneeName.Valid {
+		name := row.AssigneeName.String
+		summary.AssigneeName = &name
+	}
 
 	return summary
 }
@@ -187,6 +203,14 @@ func FilteredTaskSummaryFromRowToModel(row types.GetTaskSummariesByProjectFilter
 	}
 	if row.PriorityColor.Valid {
 		summary.PriorityColor = row.PriorityColor.String
+	}
+	if row.AssigneeID.Valid {
+		id := int(row.AssigneeID.Int64)
+		summary.AssigneeID = &id
+	}
+	if row.AssigneeName.Valid {
+		name := row.AssigneeName.String
+		summary.AssigneeName = &name
 	}
 
 	return summary
