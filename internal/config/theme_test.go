@@ -30,14 +30,7 @@ func TestThemeFileLoading(t *testing.T) {
 	}
 
 	// Set environment variable
-	if err := os.Setenv("PASO_THEME_FILE", tmpFile.Name()); err != nil {
-		t.Fatalf("Failed to set environment variable: %v", err)
-	}
-	defer func() {
-		if err := os.Unsetenv("PASO_THEME_FILE"); err != nil {
-			t.Logf("Failed to unset environment variable: %v", err)
-		}
-	}()
+	t.Setenv("PASO_THEME_FILE", tmpFile.Name())
 
 	// Load config
 	cfg, err := Load()

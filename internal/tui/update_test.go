@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/huhforms"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -96,31 +97,55 @@ func TestUpdateTaskForm_EscapeCancels(t *testing.T) {
 		t.Error("TaskForm after ESC should be nil")
 	}
 
-	// Form should be cleared
-	if m.Forms.Form.TaskForm != nil {
-		t.Error("TaskForm after ESC should be nil")
-	}
-
-	// Cmd should be nil (clean exit)
-	if cmd != nil {
-		t.Logf("Cmd after ESC = %v (expected nil for clean exit)", cmd)
+	// Cmd should be a ClearScreen command (clean exit triggers tea.ClearScreen)
+	if cmd == nil {
+		t.Error("Cmd after ESC should be non-nil (tea.ClearScreen)")
 	}
 }
 
-// TestUpdateTaskForm_EmptyTitleNoOp ensures empty title doesn't create task.
-// Edge case: Form submitted with empty title.
-// Note: This test documents expected behavior - actual validation happens in update.go:124
-func TestUpdateTaskForm_EmptyTitleNoOp(t *testing.T) {
-	// This test requires the form to actually complete, which is complex
-	// to simulate without running the full form lifecycle.
-	// Instead, we document the validation exists in update.go:
-	// if strings.TrimSpace(title) != "" { ... }
-	//
-	// The validation ensures:
-	// 1. Empty titles don't create database entries
-	// 2. Whitespace-only titles are treated as empty
-	// 3. Form exits cleanly without error
+// TestUpdateTaskForm_EmptyTitleEscNoTask verifies that cancelling a form with an empty
+// title doesn't create a task. This exercises the ESC path where the form has no changes
+// (empty title = no changes), so it exits immediately without saving.
+func TestUpdateTaskForm_EmptyTitleEscNoTask(t *testing.T) {
+	m, db := SetupTestModelWithDB(t)
+	m.NotifyChan = make(chan events.NotificationMsg, 1)
 
-	t.Log("Empty title validation exists in update.go")
-	t.Log("Validation: strings.TrimSpace(title) != \"\" before database write")
+	currentProject := m.AppState.GetCurrentProject()
+	if currentProject == nil {
+		t.Fatal("test model should have a current project")
+	}
+
+	// Count existing tasks before form interaction
+	var initialTaskCount int
+	err := db.QueryRowContext(m.Ctx, "SELECT COUNT(*) FROM tasks").Scan(&initialTaskCount)
+	if err != nil {
+		t.Fatalf("Failed to count initial tasks: %v", err)
+	}
+
+	// Enter task form mode with an empty title
+	m.UIState.Mode = state.TicketFormMode
+	title := ""
+	description := ""
+	confirm := false
+	m.Forms.Form.TaskForm = huhforms.CreateTaskForm(&title, &description, &confirm, 5)
+
+	// Press ESC to cancel (empty form = no changes = immediate exit)
+	keyMsg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEsc})
+	newModel, _ := m.Update(keyMsg)
+	m = newModel.(Model)
+
+	// Should return to NormalMode
+	if m.UIState.Mode != state.NormalMode {
+		t.Errorf("Mode = %v, want NormalMode after ESC", m.UIState.Mode)
+	}
+
+	// No task should have been created
+	var afterTaskCount int
+	err = db.QueryRowContext(m.Ctx, "SELECT COUNT(*) FROM tasks").Scan(&afterTaskCount)
+	if err != nil {
+		t.Fatalf("Failed to count tasks after ESC: %v", err)
+	}
+	if afterTaskCount != initialTaskCount {
+		t.Errorf("Task count changed from %d to %d after ESC on empty form", initialTaskCount, afterTaskCount)
+	}
 }

@@ -213,17 +213,8 @@ func TestNewServer_StaleSocketCleanup(t *testing.T) {
 }
 
 func TestNewServer_EnvVarConfiguration(t *testing.T) {
-	// Save original env vars
-	originalBroadcast := os.Getenv("PASO_DAEMON_BROADCAST_BUFFER")
-	originalClient := os.Getenv("PASO_DAEMON_CLIENT_BUFFER")
-	defer func() {
-		_ = os.Setenv("PASO_DAEMON_BROADCAST_BUFFER", originalBroadcast)
-		_ = os.Setenv("PASO_DAEMON_CLIENT_BUFFER", originalClient)
-	}()
-
-	// Set environment variables
-	_ = os.Setenv("PASO_DAEMON_BROADCAST_BUFFER", "200")
-	_ = os.Setenv("PASO_DAEMON_CLIENT_BUFFER", "20")
+	t.Setenv("PASO_DAEMON_BROADCAST_BUFFER", "200")
+	t.Setenv("PASO_DAEMON_CLIENT_BUFFER", "20")
 
 	socketPath := getTestSocketPath(t)
 	server, err := NewServer(socketPath)

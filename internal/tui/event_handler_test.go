@@ -5,301 +5,287 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
-// TestEventHandler_TaskUpdateEvent verifies that task update events trigger model state changes.
-// Edge case: Task update event received, model should reflect new task data.
-func TestEventHandler_TaskUpdateEvent(t *testing.T) {
-	m := setupTestModel(
-		[]*models.Column{{ID: 1, Name: "Todo"}},
-		map[int][]*models.TaskSummary{
-			1: {
-				{ID: 1, Title: "Original Task"},
-			},
-		},
-	)
-	m.UIState.SelectedColumn = 0
-	m.UIState.SelectedTask = 0
-
-	// Simulate a task update event
-	event := events.Event{
-		Type:       events.EventDatabaseChanged,
-		ProjectID:  0,
-		Timestamp:  time.Now(),
-		SequenceID: 1,
-	}
-
-	// Create notification channel to receive event processing
+// TestEventHandler_RefreshMsg_ReloadsData verifies that a RefreshMsg for the current project
+// triggers a data reload and the model reflects the updated database state.
+func TestEventHandler_RefreshMsg_ReloadsData(t *testing.T) {
+	m, db := SetupTestModelWithDB(t)
 	m.NotifyChan = make(chan events.NotificationMsg, 1)
+	m.SubscriptionStarted = true
 
-	// Verify mode is in normal state to receive events
-	if m.UIState.Mode != state.NormalMode {
-		t.Errorf("Mode = %v, want NormalMode for event processing", m.UIState.Mode)
-	}
+	// Verify we have a current project
+	currentProject := m.AppState.GetCurrentProject()
+	require.NotNil(t, currentProject, "test model should have a current project")
 
-	// Verify selected task indices exist
-	if m.UIState.SelectedColumn != 0 {
-		t.Error("Selected column should be 0 for task with ID 1")
-	}
-	if m.UIState.SelectedTask != 0 {
-		t.Error("Selected task should be 0 for first task in column")
-	}
-
-	_ = event // Event structure verified, would trigger data reload in real system
-}
-
-// TestEventHandler_ColumnUpdateEvent verifies that column update events update column state.
-// Edge case: Column is added/renamed/deleted, UI state must reflect changes.
-func TestEventHandler_ColumnUpdateEvent(t *testing.T) {
-	originalColumns := []*models.Column{
-		{ID: 1, Name: "Todo"},
-		{ID: 2, Name: "InProgress"},
-	}
-	m := setupTestModel(originalColumns, nil)
-	m.UIState.SelectedColumn = 1
-
-	// Verify initial state
+	// Get the first column to add a task
 	columns := m.AppState.Columns()
-	if len(columns) != 2 {
-		t.Errorf("Initial column count = %d, want 2", len(columns))
-	}
+	require.NotEmpty(t, columns, "test model should have columns")
+	columnID := columns[0].ID
 
-	if m.UIState.SelectedColumn != 1 {
-		t.Errorf("Selected column = %d, want 1", m.UIState.SelectedColumn)
-	}
+	// Add a task directly to the database (simulating an external change)
+	testutil.CreateTestTask(t, db, int(columnID), "New Task From Event")
 
-	// Simulate column update event (in real system, would trigger data reload)
-	event := events.Event{
-		Type:       events.EventDatabaseChanged,
-		ProjectID:  0,
-		Timestamp:  time.Now(),
-		SequenceID: 2,
-	}
-
-	_ = event // Event verified
-}
-
-// TestEventHandler_LabelUpdateEvent verifies that label events update label lists.
-// Edge case: Labels added/removed from project, picker should reflect changes.
-func TestEventHandler_LabelUpdateEvent(t *testing.T) {
-	m := setupTestModel(
-		[]*models.Column{{ID: 1, Name: "Todo"}},
-		nil,
-	)
-
-	// Verify label state exists
-	labels := m.AppState.Labels()
-	if labels == nil {
-		// Labels may be nil or empty, both are valid initial states
-		t.Log("Labels initially empty/nil (expected)")
-	}
-
-	// Simulate label update event
-	event := events.Event{
-		Type:       events.EventDatabaseChanged,
-		ProjectID:  0,
-		Timestamp:  time.Now(),
-		SequenceID: 3,
-	}
-
-	// Verify UI state can handle label picker mode
-	m.UIState.Mode = state.LabelPickerMode
-	if m.UIState.Mode != state.LabelPickerMode {
-		t.Error("Should transition to LabelPickerMode on label update")
-	}
-
-	_ = event // Event verified
-}
-
-// TestEventHandler_EventBatching verifies that multiple events are processed correctly.
-// Edge case: Rapid-fire events (task, column, label updates) should batch or queue.
-func TestEventHandler_EventBatching(t *testing.T) {
-	m := setupTestModel(
-		[]*models.Column{{ID: 1, Name: "Todo"}},
-		map[int][]*models.TaskSummary{
-			1: {
-				{ID: 1, Title: "Task 1"},
-			},
+	// Send a RefreshMsg through Update (broadcast event)
+	refreshMsg := RefreshMsg{
+		Event: events.Event{
+			Type:       events.EventDatabaseChanged,
+			ProjectID:  0, // broadcast
+			Timestamp:  time.Now(),
+			SequenceID: 1,
 		},
-	)
-
-	// Create buffered channel for notifications
-	m.NotifyChan = make(chan events.NotificationMsg, 10)
-
-	// Simulate batch of events with increasing sequence IDs
-	events := []events.Event{
-		{Type: events.EventDatabaseChanged, ProjectID: 0, Timestamp: time.Now(), SequenceID: 1},
-		{Type: events.EventDatabaseChanged, ProjectID: 0, Timestamp: time.Now(), SequenceID: 2},
-		{Type: events.EventDatabaseChanged, ProjectID: 0, Timestamp: time.Now(), SequenceID: 3},
 	}
+	newModel, cmd := m.Update(refreshMsg)
+	m = newModel.(Model)
 
-	// Verify all events have increasing sequence IDs
-	for i := 1; i < len(events); i++ {
-		if events[i].SequenceID <= events[i-1].SequenceID {
-			t.Error("Event sequence IDs should be increasing")
+	// After refresh, the model should have reloaded tasks including the new one
+	tasks := m.AppState.Tasks()
+	found := false
+	for _, columnTasks := range tasks {
+		for _, task := range columnTasks {
+			if task.Title == "New Task From Event" {
+				found = true
+				break
+			}
 		}
 	}
+	assert.True(t, found, "model should contain the new task after RefreshMsg reload")
 
-	// Verify model can process events in order
-	currentMode := m.UIState.Mode
-	if currentMode != state.NormalMode {
-		t.Errorf("Mode = %v, want NormalMode for batched events", currentMode)
-	}
+	// RefreshMsg should return a non-nil cmd (resubscribe command)
+	// When EventChan is nil, subscribeToEvents returns nil
+	_ = cmd
 }
 
-// TestEventHandler_OutOfOrderEvents verifies handling of out-of-order events.
-// Edge case: Events arrive out of order (network reordering or concurrency).
-func TestEventHandler_OutOfOrderEvents(t *testing.T) {
-	m := setupTestModel(
-		[]*models.Column{{ID: 1, Name: "Todo"}},
-		map[int][]*models.TaskSummary{
-			1: {
-				{ID: 1, Title: "Task 1"},
-			},
+// TestEventHandler_RefreshMsg_SpecificProject verifies that a RefreshMsg with the
+// current project's ID triggers a reload.
+func TestEventHandler_RefreshMsg_SpecificProject(t *testing.T) {
+	m, db := SetupTestModelWithDB(t)
+	m.NotifyChan = make(chan events.NotificationMsg, 1)
+	m.SubscriptionStarted = true
+
+	currentProject := m.AppState.GetCurrentProject()
+	require.NotNil(t, currentProject)
+
+	columns := m.AppState.Columns()
+	require.NotEmpty(t, columns)
+	columnID := columns[0].ID
+
+	testutil.CreateTestTask(t, db, int(columnID), "Project-Specific Task")
+
+	// Send RefreshMsg targeting this specific project
+	refreshMsg := RefreshMsg{
+		Event: events.Event{
+			Type:       events.EventDatabaseChanged,
+			ProjectID:  currentProject.ID,
+			Timestamp:  time.Now(),
+			SequenceID: 1,
 		},
-	)
-
-	// Simulate out-of-order events
-	outOfOrderEvents := []events.Event{
-		{Type: events.EventDatabaseChanged, ProjectID: 0, Timestamp: time.Now(), SequenceID: 3},
-		{Type: events.EventDatabaseChanged, ProjectID: 0, Timestamp: time.Now(), SequenceID: 1},
-		{Type: events.EventDatabaseChanged, ProjectID: 0, Timestamp: time.Now(), SequenceID: 2},
 	}
+	newModel, _ := m.Update(refreshMsg)
+	m = newModel.(Model)
 
-	// Verify sequence IDs are not in order
-	isOrdered := true
-	for i := 1; i < len(outOfOrderEvents); i++ {
-		if outOfOrderEvents[i].SequenceID < outOfOrderEvents[i-1].SequenceID {
-			isOrdered = false
-			break
+	tasks := m.AppState.Tasks()
+	found := false
+	for _, columnTasks := range tasks {
+		for _, task := range columnTasks {
+			if task.Title == "Project-Specific Task" {
+				found = true
+			}
 		}
 	}
-	if isOrdered {
-		t.Fatal("Test setup: events should be out of order")
+	assert.True(t, found, "model should reload when RefreshMsg targets the current project")
+}
+
+// TestEventHandler_RefreshMsg_IgnoresOtherProject verifies that a RefreshMsg for a
+// different project does not trigger a reload of the current project's data.
+func TestEventHandler_RefreshMsg_IgnoresOtherProject(t *testing.T) {
+	m, db := SetupTestModelWithDB(t)
+	m.NotifyChan = make(chan events.NotificationMsg, 1)
+	m.SubscriptionStarted = true
+
+	currentProject := m.AppState.GetCurrentProject()
+	require.NotNil(t, currentProject)
+
+	columns := m.AppState.Columns()
+	require.NotEmpty(t, columns)
+	columnID := columns[0].ID
+
+	// Snapshot current task count
+	initialTasks := m.AppState.Tasks()
+	initialCount := 0
+	for _, columnTasks := range initialTasks {
+		initialCount += len(columnTasks)
 	}
 
-	// Model state should remain consistent despite out-of-order events
-	initialMode := m.UIState.Mode
-	initialColumn := m.UIState.SelectedColumn
-	initialTask := m.UIState.SelectedTask
+	// Add a task directly to DB
+	testutil.CreateTestTask(t, db, int(columnID), "Should Not Appear")
 
-	// Process events (in real system, would sort by SequenceID)
-	for range outOfOrderEvents {
-		// No-op for this test, real system would queue and sort
+	// Send RefreshMsg for a different project ID
+	refreshMsg := RefreshMsg{
+		Event: events.Event{
+			Type:       events.EventDatabaseChanged,
+			ProjectID:  99999, // different project
+			Timestamp:  time.Now(),
+			SequenceID: 1,
+		},
+	}
+	newModel, _ := m.Update(refreshMsg)
+	m = newModel.(Model)
+
+	// Task count should not have changed (no reload happened)
+	afterTasks := m.AppState.Tasks()
+	afterCount := 0
+	for _, columnTasks := range afterTasks {
+		afterCount += len(columnTasks)
+	}
+	assert.Equal(t, initialCount, afterCount, "model should not reload for a different project's RefreshMsg")
+}
+
+// TestEventHandler_NotificationMsg_AddsNotification verifies that notification messages
+// sent through Update are added to the notification state.
+func TestEventHandler_NotificationMsg_AddsNotification(t *testing.T) {
+	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
+	m.NotifyChan = make(chan events.NotificationMsg, 1)
+	m.ConnectionState = state.NewConnectionState(state.Connected)
+
+	notifMsg := events.NotificationMsg{
+		Level:   "error",
+		Message: "Something went wrong",
 	}
 
-	// Verify state is still consistent
-	if m.UIState.Mode != initialMode {
-		t.Error("Mode should not change from out-of-order events")
+	newModel, cmd := m.Update(notifMsg)
+	m = newModel.(Model)
+
+	assert.True(t, m.UI.Notification.HasAny(), "notification should be added after NotificationMsg")
+	notifications := m.UI.Notification.All()
+	require.Len(t, notifications, 1)
+	assert.Equal(t, state.LevelError, notifications[0].Level)
+	assert.Equal(t, "Something went wrong", notifications[0].Message)
+
+	// Should return a cmd to re-listen for the next notification
+	assert.NotNil(t, cmd, "handleNotificationMsg should return a re-listen command")
+}
+
+// TestEventHandler_NotificationMsg_UpdatesConnectionState verifies that specific
+// notification messages (e.g. "Connection lost") update the connection state.
+func TestEventHandler_NotificationMsg_UpdatesConnectionState(t *testing.T) {
+	tests := []struct {
+		name           string
+		message        string
+		initialStatus  state.ConnectionStatus
+		expectedStatus state.ConnectionStatus
+	}{
+		{
+			name:           "connection lost triggers reconnecting",
+			message:        "Connection lost to daemon",
+			initialStatus:  state.Connected,
+			expectedStatus: state.Reconnecting,
+		},
+		{
+			name:           "reconnected triggers connected",
+			message:        "Reconnected to daemon",
+			initialStatus:  state.Reconnecting,
+			expectedStatus: state.Connected,
+		},
+		{
+			name:           "failed to reconnect triggers disconnected",
+			message:        "Failed to reconnect after retries",
+			initialStatus:  state.Reconnecting,
+			expectedStatus: state.Disconnected,
+		},
 	}
-	if m.UIState.SelectedColumn != initialColumn {
-		t.Error("Selected column should not change from out-of-order events")
-	}
-	if m.UIState.SelectedTask != initialTask {
-		t.Error("Selected task should not change from out-of-order events")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
+			m.NotifyChan = make(chan events.NotificationMsg, 1)
+			m.ConnectionState = state.NewConnectionState(tt.initialStatus)
+
+			notifMsg := events.NotificationMsg{Level: "warning", Message: tt.message}
+			newModel, _ := m.Update(notifMsg)
+			m = newModel.(Model)
+
+			assert.Equal(t, tt.expectedStatus, m.ConnectionState.Status(),
+				"connection status should update based on notification message")
+		})
 	}
 }
 
-// TestEventHandler_ConcurrentEventProcessing verifies state consistency during event processing.
-// Edge case: Multiple state changes in sequence, state must remain consistent.
-// Note: UIState is designed for single-threaded access (bubbletea event loop), not concurrent access.
-func TestEventHandler_ConcurrentEventProcessing(t *testing.T) {
+// TestEventHandler_ConnectionMessages verifies that connection status messages
+// (ConnectionEstablishedMsg, ConnectionLostMsg, ConnectionReconnectingMsg)
+// update the model's connection state when sent through Update.
+func TestEventHandler_ConnectionMessages(t *testing.T) {
+	tests := []struct {
+		name           string
+		msg            interface{}
+		expectedStatus state.ConnectionStatus
+	}{
+		{
+			name:           "ConnectionEstablishedMsg sets Connected",
+			msg:            ConnectionEstablishedMsg{},
+			expectedStatus: state.Connected,
+		},
+		{
+			name:           "ConnectionLostMsg sets Disconnected",
+			msg:            ConnectionLostMsg{},
+			expectedStatus: state.Disconnected,
+		},
+		{
+			name:           "ConnectionReconnectingMsg sets Reconnecting",
+			msg:            ConnectionReconnectingMsg{},
+			expectedStatus: state.Reconnecting,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
+			m.NotifyChan = make(chan events.NotificationMsg, 1)
+			m.ConnectionState = state.NewConnectionState(state.Disconnected)
+			m.SubscriptionStarted = true
+
+			newModel, _ := m.Update(tt.msg)
+			m = newModel.(Model)
+
+			assert.Equal(t, tt.expectedStatus, m.ConnectionState.Status())
+		})
+	}
+}
+
+// TestEventHandler_SequentialStateUpdates verifies state consistency during sequential
+// state mutations, as happens in the bubbletea single-threaded event loop.
+func TestEventHandler_SequentialStateUpdates(t *testing.T) {
 	m := setupTestModel(
 		[]*models.Column{{ID: 1, Name: "Todo"}},
 		map[int][]*models.TaskSummary{
-			1: {
-				{ID: 1, Title: "Task 1"},
-			},
+			1: {{ID: 1, Title: "Task 1"}},
 		},
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	// Verify initial state can be read
-	initialColumn := m.UIState.SelectedColumn
-	initialTask := m.UIState.SelectedTask
-	initialMode := m.UIState.Mode
+	assert.Equal(t, 0, m.UIState.SelectedColumn)
+	assert.Equal(t, 0, m.UIState.SelectedTask)
+	assert.Equal(t, state.NormalMode, m.UIState.Mode)
 
-	if initialColumn != 0 {
-		t.Errorf("Initial selected column = %d, want 0", initialColumn)
-	}
-	if initialTask != 0 {
-		t.Errorf("Initial selected task = %d, want 0", initialTask)
-	}
-	if initialMode != state.NormalMode {
-		t.Errorf("Initial mode = %v, want NormalMode", initialMode)
-	}
-
-	// Simulate sequential state updates (as happens in bubbletea event loop)
 	m.UIState.SelectedColumn = 1
 	m.UIState.SelectedTask = 2
 	m.UIState.Mode = state.TicketFormMode
 
-	// Verify state updates are consistent
-	if m.UIState.SelectedColumn != 1 {
-		t.Errorf("Selected column = %d, want 1", m.UIState.SelectedColumn)
-	}
-	if m.UIState.SelectedTask != 2 {
-		t.Errorf("Selected task = %d, want 2", m.UIState.SelectedTask)
-	}
-	if m.UIState.Mode != state.TicketFormMode {
-		t.Errorf("Mode = %v, want TicketFormMode", m.UIState.Mode)
-	}
+	assert.Equal(t, 1, m.UIState.SelectedColumn)
+	assert.Equal(t, 2, m.UIState.SelectedTask)
+	assert.Equal(t, state.TicketFormMode, m.UIState.Mode)
 
-	// Verify context is not timing out (test completes quickly)
 	select {
 	case <-ctx.Done():
 		t.Fatal("Test timed out unexpectedly")
 	default:
-		// Test completed within timeout
-	}
-}
-
-// TestEventHandler_EventWithNilProjectID verifies handling of broadcast events.
-// Edge case: Event with ProjectID=0 (broadcast to all projects).
-func TestEventHandler_EventWithNilProjectID(t *testing.T) {
-	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
-
-	event := events.Event{
-		Type:       events.EventDatabaseChanged,
-		ProjectID:  0, // Broadcast event (applies to all projects)
-		Timestamp:  time.Now(),
-		SequenceID: 1,
-	}
-
-	// Verify event can be processed for any project
-	if m.AppState.GetCurrentProjectID() == 0 {
-		// No project selected, broadcast should still be processed
-		_ = event
-	}
-}
-
-// TestEventHandler_ConnectionStateTracking verifies connection state updates.
-// Edge case: Connection to daemon established/lost, state reflects availability.
-func TestEventHandler_ConnectionStateTracking(t *testing.T) {
-	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
-
-	// Initialize ConnectionState (normally done in InitialModel)
-	m.ConnectionState = state.NewConnectionState(state.Disconnected)
-
-	// Verify connection state can be updated
-	m.ConnectionState.SetStatus(state.Connected)
-	if m.ConnectionState.Status() != state.Connected {
-		t.Error("Connection should be marked as Connected")
-	}
-
-	m.ConnectionState.SetStatus(state.Disconnected)
-	if m.ConnectionState.Status() != state.Disconnected {
-		t.Error("Connection should be marked as Disconnected")
-	}
-
-	// Verify reconnecting status
-	m.ConnectionState.SetStatus(state.Reconnecting)
-	if m.ConnectionState.Status() != state.Reconnecting {
-		t.Error("Connection should be marked as Reconnecting")
 	}
 }

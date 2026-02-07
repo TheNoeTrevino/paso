@@ -291,12 +291,7 @@ func TestNewClient_Success(t *testing.T) {
 }
 
 func TestNewClient_CustomDebounce(t *testing.T) {
-	// Save original env var
-	originalDebounce := os.Getenv("PASO_EVENT_DEBOUNCE_MS")
-	defer func() { _ = os.Setenv("PASO_EVENT_DEBOUNCE_MS", originalDebounce) }()
-
-	// Set custom debounce
-	_ = os.Setenv("PASO_EVENT_DEBOUNCE_MS", "250")
+	t.Setenv("PASO_EVENT_DEBOUNCE_MS", "250")
 
 	socketPath := filepath.Join(t.TempDir(), "paso.sock")
 	client, err := NewClient(socketPath)
@@ -610,9 +605,7 @@ func TestSendEvent_Batching(t *testing.T) {
 	defer func() { _ = listener.Close() }()
 
 	// Set short debounce for testing
-	originalDebounce := os.Getenv("PASO_EVENT_DEBOUNCE_MS")
-	_ = os.Setenv("PASO_EVENT_DEBOUNCE_MS", "50")
-	defer func() { _ = os.Setenv("PASO_EVENT_DEBOUNCE_MS", originalDebounce) }()
+	t.Setenv("PASO_EVENT_DEBOUNCE_MS", "50")
 
 	client, err := NewClient(socketPath)
 	if err != nil {
@@ -1274,9 +1267,7 @@ func TestSendEvent_BackpressureQueueRecovery(t *testing.T) {
 	defer func() { _ = listener.Close() }()
 
 	// Use a very short debounce to consume events quickly
-	originalDebounce := os.Getenv("PASO_EVENT_DEBOUNCE_MS")
-	_ = os.Setenv("PASO_EVENT_DEBOUNCE_MS", "10")
-	defer func() { _ = os.Setenv("PASO_EVENT_DEBOUNCE_MS", originalDebounce) }()
+	t.Setenv("PASO_EVENT_DEBOUNCE_MS", "10")
 
 	client, err := NewClient(socketPath)
 	if err != nil {
@@ -1848,12 +1839,8 @@ ResubscribeLoop:
 // - Queued events are sent when connection is restored
 // - Debounce timing is respected (configurable via PASO_EVENT_DEBOUNCE_MS)
 func TestClient_EventBatchingDuringNetworkFailure(t *testing.T) {
-	t.Parallel()
-
-	// Set short debounce for faster testing (50ms instead of default 100ms)
-	originalDebounce := os.Getenv("PASO_EVENT_DEBOUNCE_MS")
-	_ = os.Setenv("PASO_EVENT_DEBOUNCE_MS", "50")
-	defer func() { _ = os.Setenv("PASO_EVENT_DEBOUNCE_MS", originalDebounce) }()
+	// Not parallel: t.Setenv is incompatible with t.Parallel (env vars are process-global)
+	t.Setenv("PASO_EVENT_DEBOUNCE_MS", "50")
 
 	// Setup initial mock daemon
 	socketPath, listener, messages := setupMockDaemon(t)
