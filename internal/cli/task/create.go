@@ -13,8 +13,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/handler"
+	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/models"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
+	"github.com/thenoetrevino/paso/internal/user"
 )
 
 // CreateCmd returns the task create subcommand
@@ -59,6 +61,7 @@ Examples:
 	cmd.Flags().IntP("blocked-by", "b", 0, "Task ID that blocks this task")
 	cmd.Flags().IntP("blocks", "B", 0, "Task ID that is blocked by this task")
 	cmd.Flags().StringP("column", "c", "", "Column name (defaults to first column)")
+	cmd.Flags().StringP("assignee", "a", "", "Assignee name (defaults to active assignee)")
 
 	// Agent-friendly flags (REQUIRED on all commands)
 	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
@@ -81,6 +84,7 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 	taskBlockedBy := args.GetInt("blocked-by", 0)
 	taskBlocks := args.GetInt("blocks", 0)
 	taskColumn := args.GetString("column", "")
+	taskAssignee := args.GetString("assignee", "")
 
 	// Initialize CLI first (uses injected instance from context if in test mode)
 	cliInstance, err := cli.GetCLIFromContext(ctx)
@@ -145,6 +149,27 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		return nil, err
 	}
 
+	// Resolve assignee: use flag value, fall back to active assignee from config
+	var assigneeID int
+	assigneeName := taskAssignee
+	if assigneeName == "" {
+		cfg, err := config.Load()
+		if err == nil {
+			assigneeName = cfg.GetActiveAssignee()
+		}
+		if assigneeName == "" {
+			assigneeName = user.GetCurrentUsername()
+		}
+	}
+	if assigneeName != "" {
+		assignee, err := cliInstance.App.AssigneeService.GetOrCreate(ctx, assigneeName)
+		if err != nil {
+			slog.Warn("failed to resolve assignee", "assignee", assigneeName, "error", err)
+		} else {
+			assigneeID = assignee.ID
+		}
+	}
+
 	// Create task with all parameters
 	// Position set to DefaultTaskPosition to append to end (will be adjusted if needed)
 	req := taskservice.CreateTaskRequest{
@@ -154,6 +179,7 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		Position:    models.DefaultTaskPosition,
 		PriorityID:  priorityID,
 		TypeID:      typeID,
+		AssigneeID:  assigneeID,
 	}
 
 	// Add parent relationship if specified
