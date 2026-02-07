@@ -44,3 +44,10 @@ func CreateTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
 	t.Helper()
 	return testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columnID, title)
 }
+
+// CreateTestLabel wraps testutil.CreateTestLabel for CLI tests
+// Creates a test label and returns its ID
+func CreateTestLabel(t *testing.T, db *sql.DB, projectID int, name, color string) int {
+	t.Helper()
+	return testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, name, color)
+}
