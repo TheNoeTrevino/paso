@@ -758,15 +758,7 @@ func TestMoveTaskToNextColumn(t *testing.T) {
 	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved to col2
-	var columnID int
-	err = db.QueryRowContext(ctx, "SELECT column_id FROM tasks WHERE id = ?", task.ID).Scan(&columnID)
-	if err != nil {
-		t.Fatalf("Failed to query task: %v", err)
-	}
-
-	if columnID != col2ID {
-		t.Errorf("Expected task in column %d, got %d", col2ID, columnID)
-	}
+	testutil.AssertTaskInColumn(t, db, task.ID, col2ID)
 }
 
 func TestMoveTaskToNextColumn_LastColumn(t *testing.T) {
@@ -842,15 +834,7 @@ func TestMoveTaskToPrevColumn(t *testing.T) {
 	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved to col1
-	var columnID int
-	err = db.QueryRowContext(ctx, "SELECT column_id FROM tasks WHERE id = ?", task.ID).Scan(&columnID)
-	if err != nil {
-		t.Fatalf("Failed to query task: %v", err)
-	}
-
-	if columnID != col1ID {
-		t.Errorf("Expected task in column %d, got %d", col1ID, columnID)
-	}
+	testutil.AssertTaskInColumn(t, db, task.ID, col1ID)
 }
 
 func TestMoveTaskToPrevColumn_FirstColumn(t *testing.T) {
@@ -915,15 +899,7 @@ func TestMoveTaskToColumn(t *testing.T) {
 	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved
-	var columnID int
-	err = db.QueryRowContext(ctx, "SELECT column_id FROM tasks WHERE id = ?", task.ID).Scan(&columnID)
-	if err != nil {
-		t.Fatalf("Failed to query task: %v", err)
-	}
-
-	if columnID != col2ID {
-		t.Errorf("Expected task in column %d, got %d", col2ID, columnID)
-	}
+	testutil.AssertTaskInColumn(t, db, task.ID, col2ID)
 }
 
 func TestMoveTaskToColumn_InvalidColumnID(t *testing.T) {
@@ -1793,15 +1769,7 @@ func TestMoveTaskToReadyColumn(t *testing.T) {
 	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved to ready column
-	var columnID int
-	err = db.QueryRowContext(ctx, "SELECT column_id FROM tasks WHERE id = ?", task.ID).Scan(&columnID)
-	if err != nil {
-		t.Fatalf("Failed to query task: %v", err)
-	}
-
-	if columnID != readyColID {
-		t.Errorf("Expected task in ready column %d, got %d", readyColID, columnID)
-	}
+	testutil.AssertTaskInColumn(t, db, task.ID, readyColID)
 }
 
 func TestMoveTaskToReadyColumn_InvalidTaskID(t *testing.T) {
@@ -1939,15 +1907,7 @@ func TestMoveTaskToCompletedColumn(t *testing.T) {
 	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved to completed column
-	var columnID int
-	err = db.QueryRowContext(ctx, "SELECT column_id FROM tasks WHERE id = ?", task.ID).Scan(&columnID)
-	if err != nil {
-		t.Fatalf("Failed to query task: %v", err)
-	}
-
-	if columnID != completedColID {
-		t.Errorf("Expected task in completed column %d, got %d", completedColID, columnID)
-	}
+	testutil.AssertTaskInColumn(t, db, task.ID, completedColID)
 }
 
 func TestMoveTaskToCompletedColumn_InvalidTaskID(t *testing.T) {
@@ -2095,30 +2055,11 @@ func TestMoveTaskToCompletedColumn_MultipleTasksInProject(t *testing.T) {
 	}
 
 	// Verify task2 is in completed column
-	var col2 int
-	// TODO: this should be a function (if there is not already one). we repeat this code a lot
-	if err := db.QueryRowContext(ctx, "SELECT column_id FROM tasks WHERE id = ?", task2.ID).Scan(&col2); err != nil {
-		t.Fatalf("Failed to query task2 column: %v", err)
-	}
-	if col2 != completedColID {
-		t.Errorf("Expected task2 in completed column, got column %d", col2)
-	}
+	testutil.AssertTaskInColumn(t, db, task2.ID, completedColID)
 
 	// Verify other tasks are unchanged
-	var col1, col3 int
-	if err := db.QueryRowContext(ctx, "SELECT column_id FROM tasks WHERE id = ?", task1.ID).Scan(&col1); err != nil {
-		t.Fatalf("Failed to query task1 column: %v", err)
-	}
-	if err := db.QueryRowContext(ctx, "SELECT column_id FROM tasks WHERE id = ?", task3.ID).Scan(&col3); err != nil {
-		t.Fatalf("Failed to query task3 column: %v", err)
-	}
-
-	if col1 != todoColID {
-		t.Errorf("Expected task1 in todo column, got column %d", col1)
-	}
-	if col3 != todoColID {
-		t.Errorf("Expected task3 in todo column, got column %d", col3)
-	}
+	testutil.AssertTaskInColumn(t, db, task1.ID, todoColID)
+	testutil.AssertTaskInColumn(t, db, task3.ID, todoColID)
 }
 
 func TestMoveTaskToReadyColumn_MultipleTasksInProject(t *testing.T) {
@@ -2157,29 +2098,11 @@ func TestMoveTaskToReadyColumn_MultipleTasksInProject(t *testing.T) {
 	}
 
 	// Verify task2 is in ready column
-	var col2 int
-	if err := db.QueryRowContext(ctx, "SELECT column_id FROM tasks WHERE id = ?", task2.ID).Scan(&col2); err != nil {
-		t.Fatalf("Failed to query task2 column: %v", err)
-	}
-	if col2 != readyColID {
-		t.Errorf("Expected task2 in ready column, got column %d", col2)
-	}
+	testutil.AssertTaskInColumn(t, db, task2.ID, readyColID)
 
 	// Verify other tasks are unchanged
-	var col1, col3 int
-	if err := db.QueryRowContext(ctx, "SELECT column_id FROM tasks WHERE id = ?", task1.ID).Scan(&col1); err != nil {
-		t.Fatalf("Failed to query task1 column: %v", err)
-	}
-	if err := db.QueryRowContext(ctx, "SELECT column_id FROM tasks WHERE id = ?", task3.ID).Scan(&col3); err != nil {
-		t.Fatalf("Failed to query task3 column: %v", err)
-	}
-
-	if col1 != todoColID {
-		t.Errorf("Expected task1 in todo column, got column %d", col1)
-	}
-	if col3 != todoColID {
-		t.Errorf("Expected task3 in todo column, got column %d", col3)
-	}
+	testutil.AssertTaskInColumn(t, db, task1.ID, todoColID)
+	testutil.AssertTaskInColumn(t, db, task3.ID, todoColID)
 }
 
 func TestGetTaskActivities_RetrievesBothCommentsAndEvents(t *testing.T) {

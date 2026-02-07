@@ -163,3 +163,90 @@ func CreateTestAssignee(tb testing.TB, db *sql.DB, name string) int {
 	assigneeID, _ := result.LastInsertId()
 	return int(assigneeID)
 }
+
+// GetTaskColumnID retrieves the column_id for a task by its ID
+func GetTaskColumnID(tb testing.TB, db *sql.DB, taskID int) int {
+	tb.Helper()
+	var columnID int
+	err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
+	if err != nil {
+		tb.Fatalf("Failed to query task column_id for task %d: %v", taskID, err)
+	}
+	return columnID
+}
+
+// GetTaskPosition retrieves the position for a task by its ID
+func GetTaskPosition(tb testing.TB, db *sql.DB, taskID int) int {
+	tb.Helper()
+	var position int
+	err := db.QueryRowContext(context.Background(), "SELECT position FROM tasks WHERE id = ?", taskID).Scan(&position)
+	if err != nil {
+		tb.Fatalf("Failed to query task position for task %d: %v", taskID, err)
+	}
+	return position
+}
+
+// AssertTaskInColumn verifies a task is in the expected column, failing the test if not
+func AssertTaskInColumn(tb testing.TB, db *sql.DB, taskID, expectedColumnID int) {
+	tb.Helper()
+	actualColumnID := GetTaskColumnID(tb, db, taskID)
+	if actualColumnID != expectedColumnID {
+		tb.Errorf("Expected task %d in column %d, got column %d", taskID, expectedColumnID, actualColumnID)
+	}
+}
+
+// AssertTaskLabelCount verifies the number of labels associated with a task
+func AssertTaskLabelCount(tb testing.TB, db *sql.DB, taskID, expectedCount int) {
+	tb.Helper()
+	var count int
+	err := db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM task_labels WHERE task_id = ?", taskID).Scan(&count)
+	if err != nil {
+		tb.Fatalf("Failed to query label count for task %d: %v", taskID, err)
+	}
+	if count != expectedCount {
+		tb.Errorf("Expected task %d to have %d labels, got %d", taskID, expectedCount, count)
+	}
+}
+
+// AssertRelationExists verifies that a specific relation exists in the database
+func AssertRelationExists(tb testing.TB, db *sql.DB, taskID, relatedTaskID int, relationType string) {
+	tb.Helper()
+	var exists bool
+	err := db.QueryRowContext(context.Background(),
+		"SELECT EXISTS(SELECT 1 FROM task_relations WHERE task_id = ? AND related_task_id = ? AND relation_type = ?)",
+		taskID, relatedTaskID, relationType).Scan(&exists)
+	if err != nil {
+		tb.Fatalf("Failed to check relation existence: %v", err)
+	}
+	if !exists {
+		tb.Errorf("Expected relation (task=%d, related=%d, type=%s) to exist", taskID, relatedTaskID, relationType)
+	}
+}
+
+// AssertRelationNotExists verifies that a specific relation does NOT exist in the database
+func AssertRelationNotExists(tb testing.TB, db *sql.DB, taskID, relatedTaskID int, relationType string) {
+	tb.Helper()
+	var exists bool
+	err := db.QueryRowContext(context.Background(),
+		"SELECT EXISTS(SELECT 1 FROM task_relations WHERE task_id = ? AND related_task_id = ? AND relation_type = ?)",
+		taskID, relatedTaskID, relationType).Scan(&exists)
+	if err != nil {
+		tb.Fatalf("Failed to check relation existence: %v", err)
+	}
+	if exists {
+		tb.Errorf("Expected relation (task=%d, related=%d, type=%s) to NOT exist", taskID, relatedTaskID, relationType)
+	}
+}
+
+// AssertTaskAssigneeCount verifies the number of assignees associated with a task
+func AssertTaskAssigneeCount(tb testing.TB, db *sql.DB, taskID, expectedCount int) {
+	tb.Helper()
+	var count int
+	err := db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM task_assignees WHERE task_id = ?", taskID).Scan(&count)
+	if err != nil {
+		tb.Fatalf("Failed to query assignee count for task %d: %v", taskID, err)
+	}
+	if count != expectedCount {
+		tb.Errorf("Expected task %d to have %d assignees, got %d", taskID, expectedCount, count)
+	}
+}

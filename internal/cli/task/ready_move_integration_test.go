@@ -55,10 +55,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("Task %d moved to 'Todo'", taskID))
 
 		// Verify task moved to ready column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, taskID)
 		assert.Equal(t, todoColumnID, columnID)
 	})
 
@@ -76,10 +73,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("Task %d moved to 'Todo'", taskID))
 
 		// Verify task moved to ready column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, taskID)
 		assert.Equal(t, todoColumnID, columnID)
 	})
 
@@ -99,10 +93,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("%d\n", taskID), output)
 
 		// Verify task moved to ready column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, taskID)
 		assert.Equal(t, todoColumnID, columnID)
 	})
 
@@ -131,10 +122,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		assert.Equal(t, "Todo", result["to_column"])
 
 		// Verify task moved to ready column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, taskID)
 		assert.Equal(t, todoColumnID, columnID)
 	})
 
@@ -160,10 +148,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		assert.Equal(t, "Todo", result["to_column"])
 
 		// Verify task moved to ready column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, taskID)
 		assert.Equal(t, todoColumnID, columnID)
 	})
 
@@ -186,10 +171,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("%d", taskID))
 
 		// Verify task is still in ready column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, taskID)
 		assert.Equal(t, todoColumnID, columnID)
 	})
 
@@ -211,10 +193,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("%d", taskID))
 
 		// Verify task is still in ready column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, taskID)
 		assert.Equal(t, todoColumnID, columnID)
 	})
 
@@ -281,10 +260,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("Task %d moved to 'Todo'", taskID))
 
 		// Verify task moved to ready column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, taskID)
 		assert.Equal(t, todoColumnID, columnID)
 
 		// Verify labels are still attached
@@ -316,10 +292,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("Task %d moved to 'Todo'", parentTaskID))
 
 		// Verify task moved to ready column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", parentTaskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, parentTaskID)
 		assert.Equal(t, todoColumnID, columnID)
 
 		// Verify relationship is still intact
@@ -349,10 +322,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Verify all tasks moved to ready column
 		for _, taskID := range []int{taskID1, taskID2, taskID3} {
-			var columnID int
-			err = db.QueryRowContext(ctx,
-				"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-			assert.NoError(t, err)
+			columnID := testutil.GetTaskColumnID(t, db, taskID)
 			assert.Equal(t, todoColumnID, columnID, "Task %d should be in ready column", taskID)
 		}
 	})
@@ -378,10 +348,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("Task %d moved to 'Todo'", blockedTaskID))
 
 		// Verify task moved to ready column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", blockedTaskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, blockedTaskID)
 		assert.Equal(t, todoColumnID, columnID)
 
 		// Verify blocking relationship is still intact
@@ -417,10 +384,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("Task %d moved to 'Todo'", taskID))
 
 		// Verify task moved to ready column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, taskID)
 		assert.Equal(t, todoColumnID, columnID)
 
 		// Verify comments are still attached
