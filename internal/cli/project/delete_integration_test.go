@@ -1,0 +1,85 @@
+package project
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/thenoetrevino/paso/internal/testutil/cli"
+)
+
+func TestDeleteProject_Positive(t *testing.T) {
+	db, app := cli.SetupCLITest(t)
+	ctx := context.Background()
+
+	t.Run("Delete project with force flag", func(t *testing.T) {
+		projectID := cli.CreateTestProject(t, db, "Force Delete Project")
+		cmd := DeleteCmd()
+
+		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--id", fmt.Sprintf("%d", projectID),
+			"--force",
+		})
+
+		assert.NoError(t, err)
+		assert.Contains(t, output, "deleted successfully")
+
+		var count int
+		err = db.QueryRowContext(ctx,
+			"SELECT COUNT(*) FROM projects WHERE id = ?", projectID).Scan(&count)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("Delete project with quiet flag", func(t *testing.T) {
+		projectID := cli.CreateTestProject(t, db, "Quiet Delete Project")
+		cmd := DeleteCmd()
+
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--id", fmt.Sprintf("%d", projectID),
+			"--quiet",
+		})
+
+		assert.NoError(t, err)
+
+		var count int
+		err = db.QueryRowContext(ctx,
+			"SELECT COUNT(*) FROM projects WHERE id = ?", projectID).Scan(&count)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("Delete project with JSON output", func(t *testing.T) {
+		projectID := cli.CreateTestProject(t, db, "JSON Delete Project")
+		cmd := DeleteCmd()
+
+		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--id", fmt.Sprintf("%d", projectID),
+			"--json",
+			"--force",
+		})
+
+		assert.NoError(t, err)
+
+		var result map[string]any
+		err = json.Unmarshal([]byte(output), &result)
+		assert.NoError(t, err)
+		assert.True(t, result["success"].(bool))
+		assert.Equal(t, float64(projectID), result["project_id"].(float64))
+	})
+}
+
+func TestDeleteProject_Negative(t *testing.T) {
+	_, app := cli.SetupCLITest(t)
+
+	t.Run("Invalid project ID format", func(t *testing.T) {
+		cmd := DeleteCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--id", "not-a-number",
+			"--force",
+		})
+		assert.Error(t, err)
+	})
+}
