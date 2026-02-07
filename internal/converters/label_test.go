@@ -3,6 +3,8 @@ package converters
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/database/types"
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -173,25 +175,11 @@ func TestLabelToModel(t *testing.T) {
 
 			result := LabelToModel(tt.input)
 
-			if result == nil {
-				t.Fatal("Expected non-nil result")
-			}
-
-			if result.ID != tt.expected.ID {
-				t.Errorf("Expected ID %d, got %d", tt.expected.ID, result.ID)
-			}
-
-			if result.Name != tt.expected.Name {
-				t.Errorf("Expected Name %q, got %q", tt.expected.Name, result.Name)
-			}
-
-			if result.Color != tt.expected.Color {
-				t.Errorf("Expected Color %q, got %q", tt.expected.Color, result.Color)
-			}
-
-			if result.ProjectID != tt.expected.ProjectID {
-				t.Errorf("Expected ProjectID %d, got %d", tt.expected.ProjectID, result.ProjectID)
-			}
+			require.NotNil(t, result)
+			assert.Equal(t, tt.expected.ID, result.ID)
+			assert.Equal(t, tt.expected.Name, result.Name)
+			assert.Equal(t, tt.expected.Color, result.Color)
+			assert.Equal(t, tt.expected.ProjectID, result.ProjectID)
 		})
 	}
 }
@@ -252,13 +240,8 @@ func TestLabelsToModels(t *testing.T) {
 
 			result := LabelsToModels(tt.input)
 
-			if result == nil {
-				t.Fatal("Expected non-nil result")
-			}
-
-			if len(result) != tt.expectedCount {
-				t.Errorf("Expected %d labels, got %d", tt.expectedCount, len(result))
-			}
+			require.NotNil(t, result)
+			assert.Len(t, result, tt.expectedCount)
 
 			// Verify each label was converted correctly
 			for i, label := range result {
@@ -267,18 +250,10 @@ func TestLabelsToModels(t *testing.T) {
 				}
 
 				expected := tt.input[i]
-				if label.ID != int(expected.ID) {
-					t.Errorf("Label %d: Expected ID %d, got %d", i, expected.ID, label.ID)
-				}
-				if label.Name != expected.Name {
-					t.Errorf("Label %d: Expected Name %q, got %q", i, expected.Name, label.Name)
-				}
-				if label.Color != expected.Color {
-					t.Errorf("Label %d: Expected Color %q, got %q", i, expected.Color, label.Color)
-				}
-				if label.ProjectID != int(expected.ProjectID) {
-					t.Errorf("Label %d: Expected ProjectID %d, got %d", i, expected.ProjectID, label.ProjectID)
-				}
+				assert.Equal(t, int(expected.ID), label.ID)
+				assert.Equal(t, expected.Name, label.Name)
+				assert.Equal(t, expected.Color, label.Color)
+				assert.Equal(t, int(expected.ProjectID), label.ProjectID)
 			}
 		})
 	}
@@ -289,13 +264,8 @@ func TestLabelsToModels_NilSlice(t *testing.T) {
 
 	result := LabelsToModels(nil)
 
-	if result == nil {
-		t.Fatal("Expected non-nil result for nil input")
-	}
-
-	if len(result) != 0 {
-		t.Errorf("Expected empty slice for nil input, got length %d", len(result))
-	}
+	require.NotNil(t, result)
+	assert.Len(t, result, 0)
 }
 
 func TestLabelsToModels_PreservesOrder(t *testing.T) {
@@ -311,16 +281,12 @@ func TestLabelsToModels_PreservesOrder(t *testing.T) {
 
 	result := LabelsToModels(input)
 
-	if len(result) != len(input) {
-		t.Fatalf("Expected %d labels, got %d", len(input), len(result))
-	}
+	require.Len(t, result, len(input))
 
 	// Verify order is preserved
 	expectedIDs := []int{5, 3, 1, 4, 2}
 	for i, label := range result {
-		if label.ID != expectedIDs[i] {
-			t.Errorf("Position %d: Expected ID %d, got %d", i, expectedIDs[i], label.ID)
-		}
+		assert.Equal(t, expectedIDs[i], label.ID)
 	}
 }
 
@@ -337,15 +303,11 @@ func TestLabelToModel_TypeConversion(t *testing.T) {
 
 	result := LabelToModel(input)
 
-	if result == nil {
-		t.Fatal("Expected non-nil result")
-	}
+	require.NotNil(t, result)
 
 	// This test verifies the type conversion happens without panic
 	// The actual values may overflow on 32-bit systems, but that's expected behavior
-	if result.ID == 0 && input.ID != 0 {
-		t.Error("ID conversion resulted in zero when input was non-zero")
-	}
+	assert.False(t, result.ID == 0 && input.ID != 0)
 }
 
 func BenchmarkLabelToModel(b *testing.B) {
