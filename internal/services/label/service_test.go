@@ -3,10 +3,10 @@ package label
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/testutil"
@@ -24,13 +24,9 @@ func newTestService(t *testing.T, db *sql.DB) Service {
 func createTestProject(t *testing.T, db *sql.DB) int {
 	t.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name, description) VALUES (?, ?)", "Test Project", "Test Description")
-	if err != nil {
-		t.Fatalf("Failed to create test project: %v", err)
-	}
+	require.NoError(t, err)
 	id, err := result.LastInsertId()
-	if err != nil {
-		t.Fatalf("Failed to get project ID: %v", err)
-	}
+	require.NoError(t, err)
 	return int(id)
 }
 
@@ -39,20 +35,14 @@ func createTestTask(t *testing.T, db *sql.DB, projectID int) int {
 	t.Helper()
 	// First create a column for the task
 	columnResult, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Default")
-	if err != nil {
-		t.Fatalf("Failed to create test column: %v", err)
-	}
+	require.NoError(t, err)
 	columnID, _ := columnResult.LastInsertId()
 
 	// Create task in that column
 	result, err := db.ExecContext(context.Background(), "INSERT INTO tasks (column_id, title, description, position) VALUES (?, ?, ?, ?)", columnID, "Test Task", "Test Description", 0)
-	if err != nil {
-		t.Fatalf("Failed to create test task: %v", err)
-	}
+	require.NoError(t, err)
 	id, err := result.LastInsertId()
-	if err != nil {
-		t.Fatalf("Failed to get task ID: %v", err)
-	}
+	require.NoError(t, err)
 	return int(id)
 }
 
@@ -60,9 +50,7 @@ func createTestTask(t *testing.T, db *sql.DB, projectID int) int {
 func attachLabelToTask(t *testing.T, db *sql.DB, taskID, labelID int) {
 	t.Helper()
 	_, err := db.ExecContext(context.Background(), "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID)
-	if err != nil {
-		t.Fatalf("Failed to attach label to task: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestCreateLabel(t *testing.T) {
@@ -80,29 +68,17 @@ func TestCreateLabel(t *testing.T) {
 	}
 
 	result, err := svc.CreateLabel(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if result == nil {
-		t.Fatal("Expected label result, got nil")
-	}
+	require.NotNil(t, result)
 
-	if result.Name != "Bug" {
-		t.Errorf("Expected name 'Bug', got '%s'", result.Name)
-	}
+	assert.Equal(t, "Bug", result.Name)
 
-	if result.Color != "#FF5733" {
-		t.Errorf("Expected color '#FF5733', got '%s'", result.Color)
-	}
+	assert.Equal(t, "#FF5733", result.Color)
 
-	if result.ProjectID != projectID {
-		t.Errorf("Expected project ID %d, got %d", projectID, result.ProjectID)
-	}
+	assert.Equal(t, projectID, result.ProjectID)
 
-	if result.ID == 0 {
-		t.Error("Expected label ID to be set")
-	}
+	assert.NotZero(t, result.ID)
 }
 
 func TestCreateLabel_Validation(t *testing.T) {
@@ -170,13 +146,14 @@ func TestCreateLabel_Validation(t *testing.T) {
 
 			_, err := svc.CreateLabel(context.Background(), req)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateLabel() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 
-			if tt.errType != nil && !errors.Is(err, tt.errType) {
-				t.Errorf("CreateLabel() error = %v, want %v", err, tt.errType)
+			if tt.errType != nil {
+				assert.ErrorIs(t, err, tt.errType)
 			}
 		})
 	}
@@ -213,13 +190,9 @@ func TestCreateLabel_InvalidColor(t *testing.T) {
 
 			_, err := svc.CreateLabel(context.Background(), req)
 
-			if err == nil {
-				t.Fatalf("Expected validation error for color %q", tc.color)
-			}
+			require.Error(t, err)
 
-			if !errors.Is(err, ErrInvalidColor) {
-				t.Errorf("Expected ErrInvalidColor, got %v", err)
-			}
+			assert.ErrorIs(t, err, ErrInvalidColor)
 		})
 	}
 }
@@ -239,13 +212,9 @@ func TestCreateLabel_InvalidProjectID(t *testing.T) {
 
 	_, err := svc.CreateLabel(context.Background(), req)
 
-	if err == nil {
-		t.Fatal("Expected validation error for invalid project ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidProjectID) {
-		t.Errorf("Expected ErrInvalidProjectID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidProjectID)
 }
 
 func TestGetLabelsByProject(t *testing.T) {
@@ -263,35 +232,23 @@ func TestGetLabelsByProject(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label 1: %v", err)
-	}
+	require.NoError(t, err)
 
 	_, err = svc.CreateLabel(ctx, CreateLabelRequest{
 		ProjectID: projectID,
 		Name:      "Feature",
 		Color:     "#33FF57",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label 2: %v", err)
-	}
+	require.NoError(t, err)
 
 	results, err := svc.GetLabelsByProject(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(results) != 2 {
-		t.Fatalf("Expected 2 labels, got %d", len(results))
-	}
+	require.Len(t, results, 2)
 
-	if results[0].Name != "Bug" {
-		t.Errorf("Expected first label name 'Bug', got '%s'", results[0].Name)
-	}
+	assert.Equal(t, "Bug", results[0].Name)
 
-	if results[1].Name != "Feature" {
-		t.Errorf("Expected second label name 'Feature', got '%s'", results[1].Name)
-	}
+	assert.Equal(t, "Feature", results[1].Name)
 }
 
 func TestGetLabelsByProject_Empty(t *testing.T) {
@@ -303,13 +260,9 @@ func TestGetLabelsByProject_Empty(t *testing.T) {
 	svc := newTestService(t, db)
 
 	results, err := svc.GetLabelsByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(results) != 0 {
-		t.Errorf("Expected 0 labels, got %d", len(results))
-	}
+	assert.Len(t, results, 0)
 }
 
 func TestGetLabelsByProject_InvalidProjectID(t *testing.T) {
@@ -321,13 +274,9 @@ func TestGetLabelsByProject_InvalidProjectID(t *testing.T) {
 
 	_, err := svc.GetLabelsByProject(context.Background(), 0)
 
-	if err == nil {
-		t.Fatal("Expected error for invalid project ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidProjectID) {
-		t.Errorf("Expected ErrInvalidProjectID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidProjectID)
 }
 
 func TestGetLabelsForTask(t *testing.T) {
@@ -346,30 +295,22 @@ func TestGetLabelsForTask(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label 1: %v", err)
-	}
+	require.NoError(t, err)
 
 	label2, err := svc.CreateLabel(ctx, CreateLabelRequest{
 		ProjectID: projectID,
 		Name:      "Critical",
 		Color:     "#FF0000",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label 2: %v", err)
-	}
+	require.NoError(t, err)
 
 	attachLabelToTask(t, db, taskID, label1.ID)
 	attachLabelToTask(t, db, taskID, label2.ID)
 
 	results, err := svc.GetLabelsForTask(ctx, taskID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(results) != 2 {
-		t.Fatalf("Expected 2 labels, got %d", len(results))
-	}
+	require.Len(t, results, 2)
 
 	// Check that both labels are present (order may vary)
 	labelNames := map[string]bool{}
@@ -377,13 +318,9 @@ func TestGetLabelsForTask(t *testing.T) {
 		labelNames[label.Name] = true
 	}
 
-	if !labelNames["Bug"] {
-		t.Error("Expected to find 'Bug' label")
-	}
+	assert.True(t, labelNames["Bug"])
 
-	if !labelNames["Critical"] {
-		t.Error("Expected to find 'Critical' label")
-	}
+	assert.True(t, labelNames["Critical"])
 }
 
 func TestGetLabelsForTask_Empty(t *testing.T) {
@@ -396,13 +333,9 @@ func TestGetLabelsForTask_Empty(t *testing.T) {
 	svc := newTestService(t, db)
 
 	results, err := svc.GetLabelsForTask(context.Background(), taskID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(results) != 0 {
-		t.Errorf("Expected 0 labels, got %d", len(results))
-	}
+	assert.Len(t, results, 0)
 }
 
 func TestGetLabelsForTask_InvalidTaskID(t *testing.T) {
@@ -414,13 +347,9 @@ func TestGetLabelsForTask_InvalidTaskID(t *testing.T) {
 
 	_, err := svc.GetLabelsForTask(context.Background(), 0)
 
-	if err == nil {
-		t.Fatal("Expected error for invalid task ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidTaskID) {
-		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidTaskID)
 }
 
 func TestUpdateLabel(t *testing.T) {
@@ -438,9 +367,7 @@ func TestUpdateLabel(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label: %v", err)
-	}
+	require.NoError(t, err)
 
 	newName := "Critical Bug"
 	newColor := "#FF0000"
@@ -451,27 +378,17 @@ func TestUpdateLabel(t *testing.T) {
 	}
 
 	err = svc.UpdateLabel(ctx, req)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify update
 	labels, err := svc.GetLabelsByProject(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to get labels: %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(labels) != 1 {
-		t.Fatalf("Expected 1 label, got %d", len(labels))
-	}
+	require.Len(t, labels, 1)
 
-	if labels[0].Name != "Critical Bug" {
-		t.Errorf("Expected name 'Critical Bug', got '%s'", labels[0].Name)
-	}
+	assert.Equal(t, "Critical Bug", labels[0].Name)
 
-	if labels[0].Color != "#FF0000" {
-		t.Errorf("Expected color '#FF0000', got '%s'", labels[0].Color)
-	}
+	assert.Equal(t, "#FF0000", labels[0].Color)
 }
 
 func TestUpdateLabel_OnlyName(t *testing.T) {
@@ -489,9 +406,7 @@ func TestUpdateLabel_OnlyName(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label: %v", err)
-	}
+	require.NoError(t, err)
 
 	newName := "Updated Bug"
 	req := UpdateLabelRequest{
@@ -500,23 +415,15 @@ func TestUpdateLabel_OnlyName(t *testing.T) {
 	}
 
 	err = svc.UpdateLabel(ctx, req)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify update - color should remain unchanged
 	labels, err := svc.GetLabelsByProject(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to get labels: %v", err)
-	}
+	require.NoError(t, err)
 
-	if labels[0].Name != "Updated Bug" {
-		t.Errorf("Expected name 'Updated Bug', got '%s'", labels[0].Name)
-	}
+	assert.Equal(t, "Updated Bug", labels[0].Name)
 
-	if labels[0].Color != "#FF5733" {
-		t.Errorf("Expected color to remain '#FF5733', got '%s'", labels[0].Color)
-	}
+	assert.Equal(t, "#FF5733", labels[0].Color)
 }
 
 func TestUpdateLabel_Validation(t *testing.T) {
@@ -589,13 +496,14 @@ func TestUpdateLabel_Validation(t *testing.T) {
 
 			err := svc.UpdateLabel(context.Background(), req)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("UpdateLabel() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 
-			if tt.errType != nil && !errors.Is(err, tt.errType) {
-				t.Errorf("UpdateLabel() error = %v, want %v", err, tt.errType)
+			if tt.errType != nil {
+				assert.ErrorIs(t, err, tt.errType)
 			}
 		})
 	}
@@ -621,24 +529,16 @@ func TestDeleteLabel(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label: %v", err)
-	}
+	require.NoError(t, err)
 
 	err = svc.DeleteLabel(ctx, created.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify label is deleted
 	labels, err := svc.GetLabelsByProject(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to get labels: %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(labels) != 0 {
-		t.Errorf("Expected 0 labels after deletion, got %d", len(labels))
-	}
+	assert.Len(t, labels, 0)
 }
 
 func TestDeleteLabel_Validation(t *testing.T) {
@@ -666,13 +566,14 @@ func TestDeleteLabel_Validation(t *testing.T) {
 			svc := newTestService(t, db)
 			err := svc.DeleteLabel(context.Background(), tt.labelID)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("DeleteLabel() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 
-			if tt.errType != nil && !errors.Is(err, tt.errType) {
-				t.Errorf("DeleteLabel() error = %v, want %v", err, tt.errType)
+			if tt.errType != nil {
+				assert.ErrorIs(t, err, tt.errType)
 			}
 		})
 	}
@@ -694,35 +595,23 @@ func TestDeleteLabel_CascadeToTaskLabels(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label: %v", err)
-	}
+	require.NoError(t, err)
 
 	attachLabelToTask(t, db, taskID, created.ID)
 
 	// Verify label is attached
 	taskLabels, err := svc.GetLabelsForTask(ctx, taskID)
-	if err != nil {
-		t.Fatalf("Failed to get task labels: %v", err)
-	}
-	if len(taskLabels) != 1 {
-		t.Fatalf("Expected 1 task label before deletion, got %d", len(taskLabels))
-	}
+	require.NoError(t, err)
+	require.Len(t, taskLabels, 1)
 
 	// Delete the label
 	err = svc.DeleteLabel(ctx, created.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify task_labels entry is also deleted (cascade)
 	taskLabels, err = svc.GetLabelsForTask(ctx, taskID)
-	if err != nil {
-		t.Fatalf("Failed to get task labels after deletion: %v", err)
-	}
-	if len(taskLabels) != 0 {
-		t.Errorf("Expected 0 task labels after cascade delete, got %d", len(taskLabels))
-	}
+	require.NoError(t, err)
+	assert.Len(t, taskLabels, 0)
 }
 
 func TestCreateLabel_InvalidLabelID_Errors(t *testing.T) {
@@ -774,14 +663,10 @@ func TestCreateLabel_InvalidLabelID_Errors(t *testing.T) {
 			_, err := svc.CreateLabel(context.Background(), req)
 
 			if tt.wantErr != nil {
-				if !errors.Is(err, tt.wantErr) {
-					t.Errorf("CreateLabel() error = %v, want %v", err, tt.wantErr)
-				}
+				assert.ErrorIs(t, err, tt.wantErr)
 			} else {
 				// For non-existent project, we expect some error (likely foreign key constraint)
-				if err == nil {
-					t.Error("CreateLabel() expected error for non-existent project ID, got nil")
-				}
+				assert.Error(t, err)
 			}
 		})
 	}
@@ -802,9 +687,7 @@ func TestCreateLabel_DuplicateNames(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create first label: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Try to create second label with same name
 	_, err = svc.CreateLabel(ctx, CreateLabelRequest{
@@ -814,15 +697,11 @@ func TestCreateLabel_DuplicateNames(t *testing.T) {
 	})
 
 	// Database has UNIQUE(name, project_id) constraint, should return error
-	if err == nil {
-		t.Fatal("Expected error when creating duplicate label, but got nil")
-	}
+	require.Error(t, err)
 
 	// Verify the error message mentions the constraint or duplicate
 	errMsg := err.Error()
-	if !strings.Contains(errMsg, "label creation error") && !strings.Contains(errMsg, "already exists") {
-		t.Errorf("Expected error about duplicate label, got: %v", err)
-	}
+	assert.True(t, strings.Contains(errMsg, "label creation error") || strings.Contains(errMsg, "already exists"))
 }
 
 func TestCreateLabel_DuplicateNames_DifferentProjects(t *testing.T) {
@@ -841,9 +720,7 @@ func TestCreateLabel_DuplicateNames_DifferentProjects(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label in first project: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Create label with same name in different project (should succeed)
 	_, err = svc.CreateLabel(ctx, CreateLabelRequest{
@@ -851,9 +728,7 @@ func TestCreateLabel_DuplicateNames_DifferentProjects(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#00FF00",
 	})
-	if err != nil {
-		t.Errorf("CreateLabel() in different project should succeed, got error: %v", err)
-	}
+	assert.NoError(t, err)
 }
 
 func TestCreateLabel_SpecialCharacters(t *testing.T) {
@@ -866,12 +741,12 @@ func TestCreateLabel_SpecialCharacters(t *testing.T) {
 	}{
 		{
 			name:      "unicode characters",
-			labelName: "バグ",
+			labelName: "\u30d0\u30b0",
 			shouldErr: false,
 		},
 		{
 			name:      "emoji",
-			labelName: "🐛 Bug",
+			labelName: "\U0001f41b Bug",
 			shouldErr: false,
 		},
 		{
@@ -881,7 +756,7 @@ func TestCreateLabel_SpecialCharacters(t *testing.T) {
 		},
 		{
 			name:      "mixed unicode and emoji",
-			labelName: "🚀 新機能",
+			labelName: "\U0001f680 \u65b0\u6a5f\u80fd",
 			shouldErr: false,
 		},
 		{
@@ -913,14 +788,13 @@ func TestCreateLabel_SpecialCharacters(t *testing.T) {
 
 			result, err := svc.CreateLabel(context.Background(), req)
 
-			if tc.shouldErr && err == nil {
-				t.Error("CreateLabel() expected error, got nil")
+			if tc.shouldErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
-			if !tc.shouldErr && err != nil {
-				t.Errorf("CreateLabel() expected no error, got %v", err)
-			}
-			if !tc.shouldErr && result != nil && result.Name != tc.labelName {
-				t.Errorf("CreateLabel() name = %q, want %q", result.Name, tc.labelName)
+			if !tc.shouldErr && result != nil {
+				assert.Equal(t, tc.labelName, result.Name)
 			}
 		})
 	}
@@ -935,13 +809,9 @@ func TestGetLabelsByProject_NegativeProjectID(t *testing.T) {
 
 	_, err := svc.GetLabelsByProject(context.Background(), -1)
 
-	if err == nil {
-		t.Fatal("GetLabelsByProject() expected error for negative project ID, got nil")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidProjectID) {
-		t.Errorf("GetLabelsByProject() error = %v, want %v", err, ErrInvalidProjectID)
-	}
+	assert.ErrorIs(t, err, ErrInvalidProjectID)
 }
 
 func TestGetLabelsByProject_NonExistentProject(t *testing.T) {
@@ -953,13 +823,9 @@ func TestGetLabelsByProject_NonExistentProject(t *testing.T) {
 
 	// Query non-existent project (should return empty list, not error)
 	labels, err := svc.GetLabelsByProject(context.Background(), 999999)
-	if err != nil {
-		t.Errorf("GetLabelsByProject() for non-existent project should not error, got %v", err)
-	}
+	assert.NoError(t, err)
 
-	if len(labels) != 0 {
-		t.Errorf("GetLabelsByProject() for non-existent project should return empty list, got %d labels", len(labels))
-	}
+	assert.Len(t, labels, 0)
 }
 
 func TestGetLabelsForTask_NegativeTaskID(t *testing.T) {
@@ -971,13 +837,9 @@ func TestGetLabelsForTask_NegativeTaskID(t *testing.T) {
 
 	_, err := svc.GetLabelsForTask(context.Background(), -1)
 
-	if err == nil {
-		t.Fatal("GetLabelsForTask() expected error for negative task ID, got nil")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidTaskID) {
-		t.Errorf("GetLabelsForTask() error = %v, want %v", err, ErrInvalidTaskID)
-	}
+	assert.ErrorIs(t, err, ErrInvalidTaskID)
 }
 
 func TestGetLabelsForTask_NonExistentTask(t *testing.T) {
@@ -989,13 +851,9 @@ func TestGetLabelsForTask_NonExistentTask(t *testing.T) {
 
 	// Query non-existent task (should return empty list, not error)
 	labels, err := svc.GetLabelsForTask(context.Background(), 999999)
-	if err != nil {
-		t.Errorf("GetLabelsForTask() for non-existent task should not error, got %v", err)
-	}
+	assert.NoError(t, err)
 
-	if len(labels) != 0 {
-		t.Errorf("GetLabelsForTask() for non-existent task should return empty list, got %d labels", len(labels))
-	}
+	assert.Len(t, labels, 0)
 }
 
 func TestUpdateLabel_InvalidLabelID_Errors(t *testing.T) {
@@ -1037,9 +895,7 @@ func TestUpdateLabel_InvalidLabelID_Errors(t *testing.T) {
 
 			err := svc.UpdateLabel(context.Background(), req)
 
-			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("UpdateLabel() error = %v, want %v", err, tt.wantErr)
-			}
+			assert.ErrorIs(t, err, tt.wantErr)
 		})
 	}
 }
@@ -1058,13 +914,9 @@ func TestUpdateLabel_NonExistentLabel(t *testing.T) {
 
 	err := svc.UpdateLabel(context.Background(), req)
 
-	if err == nil {
-		t.Fatal("UpdateLabel() expected error for non-existent label, got nil")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrLabelNotFound) {
-		t.Errorf("UpdateLabel() error = %v, want %v", err, ErrLabelNotFound)
-	}
+	assert.ErrorIs(t, err, ErrLabelNotFound)
 }
 
 func TestUpdateLabel_NameTooLong(t *testing.T) {
@@ -1082,9 +934,7 @@ func TestUpdateLabel_NameTooLong(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Try to update with too long name
 	longName := ""
@@ -1099,13 +949,9 @@ func TestUpdateLabel_NameTooLong(t *testing.T) {
 
 	err = svc.UpdateLabel(ctx, req)
 
-	if err == nil {
-		t.Fatal("UpdateLabel() expected error for name too long, got nil")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrNameTooLong) {
-		t.Errorf("UpdateLabel() error = %v, want %v", err, ErrNameTooLong)
-	}
+	assert.ErrorIs(t, err, ErrNameTooLong)
 }
 
 func TestUpdateLabel_InvalidColorFormats(t *testing.T) {
@@ -1123,9 +969,7 @@ func TestUpdateLabel_InvalidColorFormats(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label: %v", err)
-	}
+	require.NoError(t, err)
 
 	testCases := []struct {
 		name  string
@@ -1151,13 +995,9 @@ func TestUpdateLabel_InvalidColorFormats(t *testing.T) {
 
 			err := svc.UpdateLabel(ctx, req)
 
-			if err == nil {
-				t.Errorf("UpdateLabel() expected error for color %q, got nil", tc.color)
-			}
+			assert.Error(t, err)
 
-			if !errors.Is(err, ErrInvalidColor) {
-				t.Errorf("UpdateLabel() error = %v, want %v", err, ErrInvalidColor)
-			}
+			assert.ErrorIs(t, err, ErrInvalidColor)
 		})
 	}
 }
@@ -1177,9 +1017,7 @@ func TestUpdateLabel_NoFieldsToUpdate(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Update with no fields (should be no-op but succeed)
 	req := UpdateLabelRequest{
@@ -1187,27 +1025,17 @@ func TestUpdateLabel_NoFieldsToUpdate(t *testing.T) {
 	}
 
 	err = svc.UpdateLabel(ctx, req)
-	if err != nil {
-		t.Errorf("UpdateLabel() with no fields should succeed, got error: %v", err)
-	}
+	assert.NoError(t, err)
 
 	// Verify nothing changed
 	labels, err := svc.GetLabelsByProject(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to get labels: %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(labels) != 1 {
-		t.Fatalf("Expected 1 label, got %d", len(labels))
-	}
+	require.Len(t, labels, 1)
 
-	if labels[0].Name != "Bug" {
-		t.Errorf("Expected name to remain 'Bug', got '%s'", labels[0].Name)
-	}
+	assert.Equal(t, "Bug", labels[0].Name)
 
-	if labels[0].Color != "#FF5733" {
-		t.Errorf("Expected color to remain '#FF5733', got '%s'", labels[0].Color)
-	}
+	assert.Equal(t, "#FF5733", labels[0].Color)
 }
 
 func TestDeleteLabel_InvalidLabelID_Errors(t *testing.T) {
@@ -1240,9 +1068,7 @@ func TestDeleteLabel_InvalidLabelID_Errors(t *testing.T) {
 
 			err := svc.DeleteLabel(context.Background(), tt.labelID)
 
-			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("DeleteLabel() error = %v, want %v", err, tt.wantErr)
-			}
+			assert.ErrorIs(t, err, tt.wantErr)
 		})
 	}
 }
@@ -1256,9 +1082,7 @@ func TestDeleteLabel_NonExistentLabel(t *testing.T) {
 
 	// Try to delete non-existent label (should succeed as per service implementation)
 	err := svc.DeleteLabel(context.Background(), 999999)
-	if err != nil {
-		t.Errorf("DeleteLabel() for non-existent label should succeed (idempotent), got error: %v", err)
-	}
+	assert.NoError(t, err)
 }
 
 func TestDeleteLabel_AlreadyDeleted(t *testing.T) {
@@ -1276,21 +1100,15 @@ func TestDeleteLabel_AlreadyDeleted(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Delete the label once
 	err = svc.DeleteLabel(ctx, created.ID)
-	if err != nil {
-		t.Fatalf("Failed to delete label: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Delete the same label again (should succeed as per idempotent design)
 	err = svc.DeleteLabel(ctx, created.ID)
-	if err != nil {
-		t.Errorf("DeleteLabel() second time should succeed (idempotent), got error: %v", err)
-	}
+	assert.NoError(t, err)
 }
 
 func TestCreateLabel_BoundaryValues(t *testing.T) {
@@ -1336,15 +1154,11 @@ func TestCreateLabel_BoundaryValues(t *testing.T) {
 			result, err := svc.CreateLabel(context.Background(), req)
 
 			if tc.wantErr != nil {
-				if err != tc.wantErr {
-					t.Errorf("CreateLabel() error = %v, want %v", err, tc.wantErr)
-				}
+				assert.ErrorIs(t, err, tc.wantErr)
 			} else {
-				if err != nil {
-					t.Errorf("CreateLabel() unexpected error: %v", err)
-				}
-				if result != nil && result.Name != tc.labelName {
-					t.Errorf("CreateLabel() name = %q, want %q", result.Name, tc.labelName)
+				assert.NoError(t, err)
+				if result != nil {
+					assert.Equal(t, tc.labelName, result.Name)
 				}
 			}
 		})
@@ -1384,18 +1198,11 @@ func TestCreateLabel_ValidColorFormats(t *testing.T) {
 			result, err := svc.CreateLabel(context.Background(), req)
 
 			if tc.valid {
-				if err != nil {
-					t.Errorf("CreateLabel() unexpected error for valid color %q: %v", tc.color, err)
-				}
-				if result == nil {
-					t.Errorf("CreateLabel() expected result, got nil")
-				} else if result.Color != tc.color {
-					t.Errorf("CreateLabel() color = %q, want %q", result.Color, tc.color)
-				}
+				assert.NoError(t, err)
+				require.NotNil(t, result)
+				assert.Equal(t, tc.color, result.Color)
 			} else {
-				if err == nil {
-					t.Errorf("CreateLabel() expected error for invalid color %q, got nil", tc.color)
-				}
+				assert.Error(t, err)
 			}
 		})
 	}
@@ -1416,21 +1223,15 @@ func TestUpdateLabel_DuplicateNameInProject(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create first label: %v", err)
-	}
-	if label1.ID == 0 {
-		t.Fatal("Expected label1 to have valid ID")
-	}
+	require.NoError(t, err)
+	require.NotZero(t, label1.ID)
 
 	label2, err := svc.CreateLabel(ctx, CreateLabelRequest{
 		ProjectID: projectID,
 		Name:      "Feature",
 		Color:     "#00FF00",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create second label: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Try to update label2 to have the same name as label1
 	newName := "Bug"
@@ -1442,12 +1243,8 @@ func TestUpdateLabel_DuplicateNameInProject(t *testing.T) {
 	err = svc.UpdateLabel(ctx, req)
 
 	// Should return error due to unique constraint on (name, project_id)
-	if err == nil {
-		t.Fatal("Expected error when updating label to duplicate name")
-	}
-	if !strings.Contains(err.Error(), "already exists") {
-		t.Errorf("Expected 'already exists' in error message, got: %v", err)
-	}
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "already exists")
 }
 
 func TestUpdateLabel_DuplicateName_DifferentProjects(t *testing.T) {
@@ -1467,9 +1264,7 @@ func TestUpdateLabel_DuplicateName_DifferentProjects(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label in project1: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Create label "Feature" in project2
 	label2, err := svc.CreateLabel(ctx, CreateLabelRequest{
@@ -1477,9 +1272,7 @@ func TestUpdateLabel_DuplicateName_DifferentProjects(t *testing.T) {
 		Name:      "Feature",
 		Color:     "#00FF00",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label in project2: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Update label2 to "Bug" - should succeed since it's in a different project
 	newName := "Bug"
@@ -1489,21 +1282,13 @@ func TestUpdateLabel_DuplicateName_DifferentProjects(t *testing.T) {
 	}
 
 	err = svc.UpdateLabel(ctx, req)
-	if err != nil {
-		t.Fatalf("Should allow duplicate name in different project, got error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify the update
 	labels, err := svc.GetLabelsByProject(ctx, project2ID)
-	if err != nil {
-		t.Fatalf("Failed to get labels: %v", err)
-	}
-	if len(labels) != 1 {
-		t.Fatalf("Expected 1 label in project2, got %d", len(labels))
-	}
-	if labels[0].Name != "Bug" {
-		t.Errorf("Expected name 'Bug', got '%s'", labels[0].Name)
-	}
+	require.NoError(t, err)
+	require.Len(t, labels, 1)
+	assert.Equal(t, "Bug", labels[0].Name)
 }
 
 func TestUpdateLabel_SameNameNoChange(t *testing.T) {
@@ -1521,9 +1306,7 @@ func TestUpdateLabel_SameNameNoChange(t *testing.T) {
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create label: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Update label to its own name (should succeed - not a duplicate)
 	sameName := "Bug"
@@ -1533,9 +1316,7 @@ func TestUpdateLabel_SameNameNoChange(t *testing.T) {
 	}
 
 	err = svc.UpdateLabel(ctx, req)
-	if err != nil {
-		t.Fatalf("Should allow updating label to its own name, got error: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestUpdateLabel_CaseVariation(t *testing.T) {
@@ -1553,9 +1334,7 @@ func TestUpdateLabel_CaseVariation(t *testing.T) {
 		Name:      "bug",
 		Color:     "#FF5733",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create first label: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Create label "Feature"
 	label2, err := svc.CreateLabel(ctx, CreateLabelRequest{
@@ -1563,9 +1342,7 @@ func TestUpdateLabel_CaseVariation(t *testing.T) {
 		Name:      "Feature",
 		Color:     "#00FF00",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create second label: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Try to update to "BUG" (uppercase)
 	// Note: SQLite UNIQUE constraint is case-sensitive by default
@@ -1578,24 +1355,16 @@ func TestUpdateLabel_CaseVariation(t *testing.T) {
 
 	err = svc.UpdateLabel(ctx, req)
 	// Should succeed - SQLite treats "bug" and "BUG" as different
-	if err != nil {
-		t.Fatalf("Should allow case variation (SQLite is case-sensitive), got error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify we now have both "bug" and "BUG"
 	labels, err := svc.GetLabelsByProject(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to get labels: %v", err)
-	}
-	if len(labels) != 2 {
-		t.Fatalf("Expected 2 labels, got %d", len(labels))
-	}
+	require.NoError(t, err)
+	require.Len(t, labels, 2)
 
 	names := make(map[string]bool)
 	for _, l := range labels {
 		names[l.Name] = true
 	}
-	if !names["bug"] || !names["BUG"] {
-		t.Errorf("Expected both 'bug' and 'BUG', got: %v", names)
-	}
+	assert.True(t, names["bug"] && names["BUG"])
 }

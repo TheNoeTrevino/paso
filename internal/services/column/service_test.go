@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/testutil"
@@ -24,13 +25,9 @@ func newTestService(t *testing.T, db *sql.DB) Service {
 func createTestProject(t *testing.T, db *sql.DB) int {
 	t.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name, description) VALUES (?, ?)", "Test Project", "Test Description")
-	if err != nil {
-		t.Fatalf("Failed to create test project: %v", err)
-	}
+	require.NoError(t, err, "Failed to create test project")
 	id, err := result.LastInsertId()
-	if err != nil {
-		t.Fatalf("Failed to get project ID: %v", err)
-	}
+	require.NoError(t, err, "Failed to get project ID")
 	return int(id)
 }
 
@@ -39,13 +36,9 @@ func createTestTask(t *testing.T, db *sql.DB, columnID int) int {
 	t.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO tasks (column_id, title, description, position) VALUES (?, ?, ?, ?)",
 		columnID, "Test Task", "Test Description", 0)
-	if err != nil {
-		t.Fatalf("Failed to create test task: %v", err)
-	}
+	require.NoError(t, err, "Failed to create test task")
 	id, err := result.LastInsertId()
-	if err != nil {
-		t.Fatalf("Failed to get task ID: %v", err)
-	}
+	require.NoError(t, err, "Failed to get task ID")
 	return int(id)
 }
 
@@ -63,34 +56,20 @@ func TestCreateColumn(t *testing.T) {
 	}
 
 	result, err := svc.CreateColumn(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if result == nil {
-		t.Fatal("Expected column result, got nil")
-	}
+	require.NotNil(t, result)
 
-	if result.Name != "To Do" {
-		t.Errorf("Expected name 'To Do', got '%s'", result.Name)
-	}
+	assert.Equal(t, "To Do", result.Name)
 
-	if result.ProjectID != projectID {
-		t.Errorf("Expected project ID %d, got %d", projectID, result.ProjectID)
-	}
+	assert.Equal(t, projectID, result.ProjectID)
 
-	if result.ID == 0 {
-		t.Error("Expected column ID to be set")
-	}
+	assert.NotZero(t, result.ID)
 
 	// First column should have nil prev and next
-	if result.PrevID != nil {
-		t.Errorf("Expected prev_id nil for first column, got %v", result.PrevID)
-	}
+	assert.Nil(t, result.PrevID)
 
-	if result.NextID != nil {
-		t.Errorf("Expected next_id nil for first column, got %v", result.NextID)
-	}
+	assert.Nil(t, result.NextID)
 }
 
 func TestCreateColumn_Validation(t *testing.T) {
@@ -153,13 +132,14 @@ func TestCreateColumn_Validation(t *testing.T) {
 
 			_, err := svc.CreateColumn(context.Background(), req)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateColumn() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 
-			if tt.errType != nil && !errors.Is(err, tt.errType) {
-				t.Errorf("CreateColumn() error = %v, want %v", err, tt.errType)
+			if tt.errType != nil {
+				assert.ErrorIs(t, err, tt.errType)
 			}
 		})
 	}
@@ -179,63 +159,45 @@ func TestCreateColumn_LinkedList(t *testing.T) {
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 1")
 
 	// Create second column (should append to end)
 	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "In Progress",
 		ProjectID: projectID,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 2")
 
 	// Create third column (should append to end)
 	col3, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "Done",
 		ProjectID: projectID,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 3: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 3")
 
 	// Verify linked list structure: col1 <-> col2 <-> col3
 
 	// Get updated column 1
 	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
-	if err != nil {
-		t.Fatalf("Failed to get column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to get column 1")
 
-	if col1Updated.PrevID != nil {
-		t.Errorf("Expected col1 prev_id nil, got %v", col1Updated.PrevID)
-	}
-	if col1Updated.NextID == nil || *col1Updated.NextID != col2.ID {
-		t.Errorf("Expected col1 next_id %d, got %v", col2.ID, col1Updated.NextID)
-	}
+	assert.Nil(t, col1Updated.PrevID)
+	require.NotNil(t, col1Updated.NextID)
+	assert.Equal(t, col2.ID, *col1Updated.NextID)
 
 	// Get updated column 2
 	col2Updated, err := svc.GetColumnByID(ctx, col2.ID)
-	if err != nil {
-		t.Fatalf("Failed to get column 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to get column 2")
 
-	if col2Updated.PrevID == nil || *col2Updated.PrevID != col1.ID {
-		t.Errorf("Expected col2 prev_id %d, got %v", col1.ID, col2Updated.PrevID)
-	}
-	if col2Updated.NextID == nil || *col2Updated.NextID != col3.ID {
-		t.Errorf("Expected col2 next_id %d, got %v", col3.ID, col2Updated.NextID)
-	}
+	require.NotNil(t, col2Updated.PrevID)
+	assert.Equal(t, col1.ID, *col2Updated.PrevID)
+	require.NotNil(t, col2Updated.NextID)
+	assert.Equal(t, col3.ID, *col2Updated.NextID)
 
 	// Column 3
-	if col3.PrevID == nil || *col3.PrevID != col2.ID {
-		t.Errorf("Expected col3 prev_id %d, got %v", col2.ID, col3.PrevID)
-	}
-	if col3.NextID != nil {
-		t.Errorf("Expected col3 next_id nil, got %v", col3.NextID)
-	}
+	require.NotNil(t, col3.PrevID)
+	assert.Equal(t, col2.ID, *col3.PrevID)
+	assert.Nil(t, col3.NextID)
 }
 
 func TestCreateColumn_InsertAfter(t *testing.T) {
@@ -252,17 +214,13 @@ func TestCreateColumn_InsertAfter(t *testing.T) {
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 1")
 
 	col3, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "Done",
 		ProjectID: projectID,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 3: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 3")
 
 	// Insert column 2 after column 1
 	afterID := col1.ID
@@ -271,9 +229,7 @@ func TestCreateColumn_InsertAfter(t *testing.T) {
 		ProjectID: projectID,
 		AfterID:   &afterID,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 2 after column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 2 after column 1")
 
 	// Verify linked list: col1 <-> col2 <-> col3
 
@@ -282,20 +238,16 @@ func TestCreateColumn_InsertAfter(t *testing.T) {
 	col2Updated, _ := svc.GetColumnByID(ctx, col2.ID)
 	col3Updated, _ := svc.GetColumnByID(ctx, col3.ID)
 
-	if col1Updated.NextID == nil || *col1Updated.NextID != col2.ID {
-		t.Errorf("Expected col1 next_id %d, got %v", col2.ID, col1Updated.NextID)
-	}
+	require.NotNil(t, col1Updated.NextID)
+	assert.Equal(t, col2.ID, *col1Updated.NextID)
 
-	if col2Updated.PrevID == nil || *col2Updated.PrevID != col1.ID {
-		t.Errorf("Expected col2 prev_id %d, got %v", col1.ID, col2Updated.PrevID)
-	}
-	if col2Updated.NextID == nil || *col2Updated.NextID != col3.ID {
-		t.Errorf("Expected col2 next_id %d, got %v", col3.ID, col2Updated.NextID)
-	}
+	require.NotNil(t, col2Updated.PrevID)
+	assert.Equal(t, col1.ID, *col2Updated.PrevID)
+	require.NotNil(t, col2Updated.NextID)
+	assert.Equal(t, col3.ID, *col2Updated.NextID)
 
-	if col3Updated.PrevID == nil || *col3Updated.PrevID != col2.ID {
-		t.Errorf("Expected col3 prev_id %d, got %v", col2.ID, col3Updated.PrevID)
-	}
+	require.NotNil(t, col3Updated.PrevID)
+	assert.Equal(t, col2.ID, *col3Updated.PrevID)
 }
 
 func TestGetColumnsByProject(t *testing.T) {
@@ -312,34 +264,22 @@ func TestGetColumnsByProject(t *testing.T) {
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 1")
 
 	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "Done",
 		ProjectID: projectID,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 2")
 
 	results, err := svc.GetColumnsByProject(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(results) != 2 {
-		t.Fatalf("Expected 2 columns, got %d", len(results))
-	}
+	require.Len(t, results, 2)
 
-	if results[0].Name != "To Do" {
-		t.Errorf("Expected first column name 'To Do', got '%s'", results[0].Name)
-	}
+	assert.Equal(t, "To Do", results[0].Name)
 
-	if results[1].Name != "Done" {
-		t.Errorf("Expected second column name 'Done', got '%s'", results[1].Name)
-	}
+	assert.Equal(t, "Done", results[1].Name)
 }
 
 func TestGetColumnsByProject_Empty(t *testing.T) {
@@ -351,13 +291,9 @@ func TestGetColumnsByProject_Empty(t *testing.T) {
 	svc := newTestService(t, db)
 
 	results, err := svc.GetColumnsByProject(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(results) != 0 {
-		t.Errorf("Expected 0 columns, got %d", len(results))
-	}
+	assert.Len(t, results, 0)
 }
 
 func TestGetColumnsByProject_InvalidProjectID(t *testing.T) {
@@ -369,13 +305,9 @@ func TestGetColumnsByProject_InvalidProjectID(t *testing.T) {
 
 	_, err := svc.GetColumnsByProject(context.Background(), 0)
 
-	if err == nil {
-		t.Fatal("Expected error for invalid project ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidProjectID) {
-		t.Errorf("Expected ErrInvalidProjectID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidProjectID)
 }
 
 func TestGetColumnByID(t *testing.T) {
@@ -391,22 +323,14 @@ func TestGetColumnByID(t *testing.T) {
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column")
 
 	result, err := svc.GetColumnByID(ctx, created.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if result.ID != created.ID {
-		t.Errorf("Expected ID %d, got %d", created.ID, result.ID)
-	}
+	assert.Equal(t, created.ID, result.ID)
 
-	if result.Name != "To Do" {
-		t.Errorf("Expected name 'To Do', got '%s'", result.Name)
-	}
+	assert.Equal(t, "To Do", result.Name)
 }
 
 func TestGetColumnByID_NotFound(t *testing.T) {
@@ -418,13 +342,9 @@ func TestGetColumnByID_NotFound(t *testing.T) {
 
 	_, err := svc.GetColumnByID(context.Background(), 999)
 
-	if err == nil {
-		t.Fatal("Expected error for non-existent column")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, sql.ErrNoRows) {
-		t.Errorf("Expected sql.ErrNoRows, got %v", err)
-	}
+	assert.ErrorIs(t, err, sql.ErrNoRows)
 }
 
 func TestGetColumnByID_InvalidID(t *testing.T) {
@@ -436,13 +356,9 @@ func TestGetColumnByID_InvalidID(t *testing.T) {
 
 	_, err := svc.GetColumnByID(context.Background(), 0)
 
-	if err == nil {
-		t.Fatal("Expected error for invalid ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidColumnID) {
-		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidColumnID)
 }
 
 func TestUpdateColumnName(t *testing.T) {
@@ -458,24 +374,16 @@ func TestUpdateColumnName(t *testing.T) {
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column")
 
 	err = svc.UpdateColumnName(ctx, created.ID, "Backlog")
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify update
 	updated, err := svc.GetColumnByID(ctx, created.ID)
-	if err != nil {
-		t.Fatalf("Failed to get updated column: %v", err)
-	}
+	require.NoError(t, err, "Failed to get updated column")
 
-	if updated.Name != "Backlog" {
-		t.Errorf("Expected name 'Backlog', got '%s'", updated.Name)
-	}
+	assert.Equal(t, "Backlog", updated.Name)
 }
 
 func TestUpdateColumnName_Validation(t *testing.T) {
@@ -525,13 +433,14 @@ func TestUpdateColumnName_Validation(t *testing.T) {
 			svc := newTestService(t, db)
 			err := svc.UpdateColumnName(context.Background(), columnID, tt.newName)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("UpdateColumnName() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 
-			if tt.errType != nil && !errors.Is(err, tt.errType) {
-				t.Errorf("UpdateColumnName() error = %v, want %v", err, tt.errType)
+			if tt.errType != nil {
+				assert.ErrorIs(t, err, tt.errType)
 			}
 		})
 	}
@@ -550,20 +459,14 @@ func TestDeleteColumn(t *testing.T) {
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column")
 
 	err = svc.DeleteColumn(ctx, created.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify column is deleted
 	_, err = svc.GetColumnByID(ctx, created.ID)
-	if !errors.Is(err, sql.ErrNoRows) {
-		t.Errorf("Expected sql.ErrNoRows after deletion, got %v", err)
-	}
+	assert.ErrorIs(t, err, sql.ErrNoRows)
 }
 
 func TestDeleteColumn_Validation(t *testing.T) {
@@ -611,13 +514,14 @@ func TestDeleteColumn_Validation(t *testing.T) {
 			svc := newTestService(t, db)
 			err := svc.DeleteColumn(context.Background(), columnID)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("DeleteColumn() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 
-			if tt.errType != nil && !errors.Is(err, tt.errType) {
-				t.Errorf("DeleteColumn() error = %v, want %v", err, tt.errType)
+			if tt.errType != nil {
+				assert.ErrorIs(t, err, tt.errType)
 			}
 		})
 	}
@@ -650,22 +554,18 @@ func TestDeleteColumn_LinkedListIntegrity(t *testing.T) {
 
 	// Delete middle column (col2)
 	err := svc.DeleteColumn(ctx, col2.ID)
-	if err != nil {
-		t.Fatalf("Failed to delete column 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to delete column 2")
 
 	// Verify linked list is repaired: col1 <-> col3
 
 	col1Updated, _ := svc.GetColumnByID(ctx, col1.ID)
 	col3Updated, _ := svc.GetColumnByID(ctx, col3.ID)
 
-	if col1Updated.NextID == nil || *col1Updated.NextID != col3.ID {
-		t.Errorf("Expected col1 next_id %d after deletion, got %v", col3.ID, col1Updated.NextID)
-	}
+	require.NotNil(t, col1Updated.NextID)
+	assert.Equal(t, col3.ID, *col1Updated.NextID)
 
-	if col3Updated.PrevID == nil || *col3Updated.PrevID != col1.ID {
-		t.Errorf("Expected col3 prev_id %d after deletion, got %v", col1.ID, col3Updated.PrevID)
-	}
+	require.NotNil(t, col3Updated.PrevID)
+	assert.Equal(t, col1.ID, *col3Updated.PrevID)
 }
 
 func TestCreateColumn_WithHoldsReadyTasks(t *testing.T) {
@@ -683,13 +583,9 @@ func TestCreateColumn_WithHoldsReadyTasks(t *testing.T) {
 	}
 
 	result, err := svc.CreateColumn(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if !result.HoldsReadyTasks {
-		t.Error("Expected HoldsReadyTasks to be true")
-	}
+	assert.True(t, result.HoldsReadyTasks)
 }
 
 func TestCreateColumn_HoldsReadyTasks_ClearsPrevious(t *testing.T) {
@@ -707,13 +603,9 @@ func TestCreateColumn_HoldsReadyTasks_ClearsPrevious(t *testing.T) {
 		ProjectID:       projectID,
 		HoldsReadyTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 1")
 
-	if !col1.HoldsReadyTasks {
-		t.Fatal("Expected col1 to hold ready tasks")
-	}
+	require.True(t, col1.HoldsReadyTasks)
 
 	// Create second column with HoldsReadyTasks = true
 	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
@@ -721,23 +613,15 @@ func TestCreateColumn_HoldsReadyTasks_ClearsPrevious(t *testing.T) {
 		ProjectID:       projectID,
 		HoldsReadyTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 2")
 
-	if !col2.HoldsReadyTasks {
-		t.Error("Expected col2 to hold ready tasks")
-	}
+	assert.True(t, col2.HoldsReadyTasks)
 
 	// Verify col1 is no longer the ready column
 	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
-	if err != nil {
-		t.Fatalf("Failed to get updated col1: %v", err)
-	}
+	require.NoError(t, err, "Failed to get updated col1")
 
-	if col1Updated.HoldsReadyTasks {
-		t.Error("Expected col1 to no longer hold ready tasks")
-	}
+	assert.False(t, col1Updated.HoldsReadyTasks)
 }
 
 func TestSetHoldsReadyTasks_Success(t *testing.T) {
@@ -755,28 +639,20 @@ func TestSetHoldsReadyTasks_Success(t *testing.T) {
 		ProjectID:       projectID,
 		HoldsReadyTasks: false,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 1")
 
 	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:            "Done",
 		ProjectID:       projectID,
 		HoldsReadyTasks: false,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 2")
 
 	// Set col1 as ready
 	updated, err := svc.SetHoldsReadyTasks(ctx, col1.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if !updated.HoldsReadyTasks {
-		t.Error("Expected column to hold ready tasks after SetHoldsReadyTasks")
-	}
+	assert.True(t, updated.HoldsReadyTasks)
 }
 
 func TestSetHoldsReadyTasks_TransfersFromPrevious(t *testing.T) {
@@ -794,9 +670,7 @@ func TestSetHoldsReadyTasks_TransfersFromPrevious(t *testing.T) {
 		ProjectID:       projectID,
 		HoldsReadyTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 1")
 
 	// Create col2 as not ready
 	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
@@ -804,41 +678,26 @@ func TestSetHoldsReadyTasks_TransfersFromPrevious(t *testing.T) {
 		ProjectID:       projectID,
 		HoldsReadyTasks: false,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 2")
 
 	// Attempt to set col2 as ready - should fail because col1 already holds ready tasks
 	_, err = svc.SetHoldsReadyTasks(ctx, col2.ID)
-	if err == nil {
-		t.Fatal("Expected error when setting ready tasks on col2 while col1 is ready, got nil")
-	}
+	require.Error(t, err)
 
 	// Verify error message includes the existing column info
-	expectedErrorSubstring := "To Do"
-	if !strings.Contains(err.Error(), expectedErrorSubstring) {
-		t.Errorf("Expected error to contain '%s', got: %v", expectedErrorSubstring, err)
-	}
+	assert.ErrorContains(t, err, "To Do")
 
 	// Verify col1 still holds ready tasks
 	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
-	if err != nil {
-		t.Fatalf("Failed to get col1: %v", err)
-	}
+	require.NoError(t, err, "Failed to get col1")
 
-	if !col1Updated.HoldsReadyTasks {
-		t.Error("Expected col1 to still hold ready tasks")
-	}
+	assert.True(t, col1Updated.HoldsReadyTasks)
 
 	// Verify col2 does not hold ready tasks
 	col2Updated, err := svc.GetColumnByID(ctx, col2.ID)
-	if err != nil {
-		t.Fatalf("Failed to get col2: %v", err)
-	}
+	require.NoError(t, err, "Failed to get col2")
 
-	if col2Updated.HoldsReadyTasks {
-		t.Error("Expected col2 to not hold ready tasks")
-	}
+	assert.False(t, col2Updated.HoldsReadyTasks)
 }
 
 func TestGetColumnByID_IncludesHoldsReadyTasks(t *testing.T) {
@@ -856,19 +715,13 @@ func TestGetColumnByID_IncludesHoldsReadyTasks(t *testing.T) {
 		ProjectID:       projectID,
 		HoldsReadyTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column")
 
 	// Fetch via GetColumnByID
 	result, err := svc.GetColumnByID(ctx, created.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if !result.HoldsReadyTasks {
-		t.Error("Expected HoldsReadyTasks to be true")
-	}
+	assert.True(t, result.HoldsReadyTasks)
 }
 
 func TestGetColumnsByProject_IncludesHoldsReadyTasks(t *testing.T) {
@@ -886,37 +739,29 @@ func TestGetColumnsByProject_IncludesHoldsReadyTasks(t *testing.T) {
 		ProjectID:       projectID,
 		HoldsReadyTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create ready column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create ready column")
 
 	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:            "Done",
 		ProjectID:       projectID,
 		HoldsReadyTasks: false,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create non-ready column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create non-ready column")
 
 	// Fetch all columns
 	results, err := svc.GetColumnsByProject(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(results) != 2 {
-		t.Fatalf("Expected 2 columns, got %d", len(results))
-	}
+	require.Len(t, results, 2)
 
 	// Verify first column (To Do) is ready
-	if results[0].Name == "To Do" && !results[0].HoldsReadyTasks {
-		t.Error("Expected 'To Do' column to hold ready tasks")
+	if results[0].Name == "To Do" {
+		assert.True(t, results[0].HoldsReadyTasks)
 	}
 
 	// Verify second column (Done) is not ready
-	if results[1].Name == "Done" && results[1].HoldsReadyTasks {
-		t.Error("Expected 'Done' column to not hold ready tasks")
+	if results[1].Name == "Done" {
+		assert.False(t, results[1].HoldsReadyTasks)
 	}
 }
 
@@ -929,13 +774,9 @@ func TestSetHoldsReadyTasks_InvalidColumnID(t *testing.T) {
 
 	_, err := svc.SetHoldsReadyTasks(context.Background(), 0)
 
-	if err == nil {
-		t.Fatal("Expected error for invalid column ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidColumnID) {
-		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidColumnID)
 }
 
 func TestSetHoldsReadyTasks_ColumnNotFound(t *testing.T) {
@@ -947,14 +788,10 @@ func TestSetHoldsReadyTasks_ColumnNotFound(t *testing.T) {
 
 	_, err := svc.SetHoldsReadyTasks(context.Background(), 999)
 
-	if err == nil {
-		t.Fatal("Expected error for non-existent column")
-	}
+	require.Error(t, err)
 
 	// Should get a wrapped sql.ErrNoRows
-	if !errors.Is(err, sql.ErrNoRows) && !contains(err.Error(), "no rows") {
-		t.Errorf("Expected sql.ErrNoRows or wrapped error, got %v", err)
-	}
+	assert.True(t, errors.Is(err, sql.ErrNoRows) || contains(err.Error(), "no rows"))
 }
 
 func TestCreateColumn_OnlyOneReadyPerProject(t *testing.T) {
@@ -970,22 +807,16 @@ func TestCreateColumn_OnlyOneReadyPerProject(t *testing.T) {
 	_, err := db.ExecContext(ctx,
 		"INSERT INTO columns (name, project_id, holds_ready_tasks) VALUES (?, ?, ?)",
 		"To Do", projectID, true)
-	if err != nil {
-		t.Fatalf("Failed to insert first ready column: %v", err)
-	}
+	require.NoError(t, err, "Failed to insert first ready column")
 
 	_, err = db.ExecContext(ctx,
 		"INSERT INTO columns (name, project_id, holds_ready_tasks) VALUES (?, ?, ?)",
 		"Review", projectID, true)
 
-	if err == nil {
-		t.Fatal("Expected database constraint violation for duplicate ready columns")
-	}
+	require.Error(t, err)
 
 	// Should get a constraint violation error
-	if !contains(err.Error(), "UNIQUE") && !contains(err.Error(), "constraint") {
-		t.Errorf("Expected UNIQUE constraint violation, got %v", err)
-	}
+	assert.True(t, contains(err.Error(), "UNIQUE") || contains(err.Error(), "constraint"))
 }
 
 // Helper function to check if error message contains substring
@@ -1012,13 +843,9 @@ func TestGetColumnByID_NegativeID(t *testing.T) {
 
 	_, err := svc.GetColumnByID(context.Background(), -1)
 
-	if err == nil {
-		t.Fatal("Expected error for negative ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidColumnID) {
-		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidColumnID)
 }
 
 func TestGetColumnsByProject_NegativeProjectID(t *testing.T) {
@@ -1030,13 +857,9 @@ func TestGetColumnsByProject_NegativeProjectID(t *testing.T) {
 
 	_, err := svc.GetColumnsByProject(context.Background(), -1)
 
-	if err == nil {
-		t.Fatal("Expected error for negative project ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidProjectID) {
-		t.Errorf("Expected ErrInvalidProjectID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidProjectID)
 }
 
 func TestGetColumnsByProject_NonExistentProject(t *testing.T) {
@@ -1048,13 +871,9 @@ func TestGetColumnsByProject_NonExistentProject(t *testing.T) {
 
 	// Non-existent project should return empty list, not error
 	results, err := svc.GetColumnsByProject(context.Background(), 999999)
-	if err != nil {
-		t.Fatalf("Expected no error for non-existent project, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(results) != 0 {
-		t.Errorf("Expected 0 columns for non-existent project, got %d", len(results))
-	}
+	assert.Len(t, results, 0)
 }
 
 func TestUpdateColumnName_NegativeID(t *testing.T) {
@@ -1066,13 +885,9 @@ func TestUpdateColumnName_NegativeID(t *testing.T) {
 
 	err := svc.UpdateColumnName(context.Background(), -1, "New Name")
 
-	if err == nil {
-		t.Fatal("Expected error for negative ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidColumnID) {
-		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidColumnID)
 }
 
 func TestUpdateColumnName_NonExistentColumn(t *testing.T) {
@@ -1084,13 +899,9 @@ func TestUpdateColumnName_NonExistentColumn(t *testing.T) {
 
 	err := svc.UpdateColumnName(context.Background(), 999999, "New Name")
 
-	if err == nil {
-		t.Fatal("Expected error for non-existent column")
-	}
+	require.Error(t, err)
 
-	if !contains(err.Error(), "failed to get column") {
-		t.Errorf("Expected error about failed to get column, got %v", err)
-	}
+	assert.ErrorContains(t, err, "failed to get column")
 }
 
 func TestUpdateColumnName_NameTooLong(t *testing.T) {
@@ -1105,22 +916,16 @@ func TestUpdateColumnName_NameTooLong(t *testing.T) {
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column")
 
 	// Create a name that's 51 characters long
 	longName := strings.Repeat("a", 51)
 
 	err = svc.UpdateColumnName(context.Background(), created.ID, longName)
 
-	if err == nil {
-		t.Fatal("Expected error for name too long")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrNameTooLong) {
-		t.Errorf("Expected ErrNameTooLong, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrNameTooLong)
 }
 
 func TestDeleteColumn_NegativeID(t *testing.T) {
@@ -1132,13 +937,9 @@ func TestDeleteColumn_NegativeID(t *testing.T) {
 
 	err := svc.DeleteColumn(context.Background(), -1)
 
-	if err == nil {
-		t.Fatal("Expected error for negative ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidColumnID) {
-		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidColumnID)
 }
 
 func TestDeleteColumn_NonExistentColumn(t *testing.T) {
@@ -1150,13 +951,9 @@ func TestDeleteColumn_NonExistentColumn(t *testing.T) {
 
 	err := svc.DeleteColumn(context.Background(), 999999)
 
-	if err == nil {
-		t.Fatal("Expected error for non-existent column")
-	}
+	require.Error(t, err)
 
-	if !contains(err.Error(), "failed to get column info") {
-		t.Errorf("Expected error about failed to get column info, got %v", err)
-	}
+	assert.ErrorContains(t, err, "failed to get column info")
 }
 
 func TestCreateColumn_InvalidAfterID(t *testing.T) {
@@ -1211,13 +1008,14 @@ func TestCreateColumn_InvalidAfterID(t *testing.T) {
 				AfterID:   &tt.afterID,
 			})
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateColumn() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 
-			if tt.errType != nil && !errors.Is(err, tt.errType) {
-				t.Errorf("CreateColumn() error = %v, want %v", err, tt.errType)
+			if tt.errType != nil {
+				assert.ErrorIs(t, err, tt.errType)
 			}
 		})
 	}
@@ -1240,9 +1038,7 @@ func TestCreateColumn_AfterColumnFromDifferentProject(t *testing.T) {
 		Name:      "Column 1",
 		ProjectID: projectID1,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 1")
 
 	// Try to create column in project 2 after column from project 1
 	// This should succeed because the service doesn't validate project matching
@@ -1252,19 +1048,13 @@ func TestCreateColumn_AfterColumnFromDifferentProject(t *testing.T) {
 		ProjectID: projectID2,
 		AfterID:   &afterID,
 	})
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify the column was created successfully
-	if col2 == nil {
-		t.Fatal("Expected column to be created")
-	}
+	require.NotNil(t, col2)
 
 	// The column should be in project 2
-	if col2.ProjectID != projectID2 {
-		t.Errorf("Expected column project ID %d, got %d", projectID2, col2.ProjectID)
-	}
+	assert.Equal(t, projectID2, col2.ProjectID)
 }
 
 func TestDeleteColumn_FirstColumn(t *testing.T) {
@@ -1294,26 +1084,20 @@ func TestDeleteColumn_FirstColumn(t *testing.T) {
 
 	// Delete first column (col1)
 	err := svc.DeleteColumn(ctx, col1.ID)
-	if err != nil {
-		t.Fatalf("Failed to delete column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to delete column 1")
 
 	// Verify linked list is repaired: col2 <-> col3
 
 	col2Updated, _ := svc.GetColumnByID(ctx, col2.ID)
 	col3Updated, _ := svc.GetColumnByID(ctx, col3.ID)
 
-	if col2Updated.PrevID != nil {
-		t.Errorf("Expected col2 prev_id nil after deletion, got %v", col2Updated.PrevID)
-	}
+	assert.Nil(t, col2Updated.PrevID)
 
-	if col2Updated.NextID == nil || *col2Updated.NextID != col3.ID {
-		t.Errorf("Expected col2 next_id %d after deletion, got %v", col3.ID, col2Updated.NextID)
-	}
+	require.NotNil(t, col2Updated.NextID)
+	assert.Equal(t, col3.ID, *col2Updated.NextID)
 
-	if col3Updated.PrevID == nil || *col3Updated.PrevID != col2.ID {
-		t.Errorf("Expected col3 prev_id %d after deletion, got %v", col2.ID, col3Updated.PrevID)
-	}
+	require.NotNil(t, col3Updated.PrevID)
+	assert.Equal(t, col2.ID, *col3Updated.PrevID)
 }
 
 func TestDeleteColumn_LastColumn(t *testing.T) {
@@ -1343,26 +1127,20 @@ func TestDeleteColumn_LastColumn(t *testing.T) {
 
 	// Delete last column (col3)
 	err := svc.DeleteColumn(ctx, col3.ID)
-	if err != nil {
-		t.Fatalf("Failed to delete column 3: %v", err)
-	}
+	require.NoError(t, err, "Failed to delete column 3")
 
 	// Verify linked list is repaired: col1 <-> col2
 
 	col1Updated, _ := svc.GetColumnByID(ctx, col1.ID)
 	col2Updated, _ := svc.GetColumnByID(ctx, col2.ID)
 
-	if col1Updated.NextID == nil || *col1Updated.NextID != col2.ID {
-		t.Errorf("Expected col1 next_id %d after deletion, got %v", col2.ID, col1Updated.NextID)
-	}
+	require.NotNil(t, col1Updated.NextID)
+	assert.Equal(t, col2.ID, *col1Updated.NextID)
 
-	if col2Updated.PrevID == nil || *col2Updated.PrevID != col1.ID {
-		t.Errorf("Expected col2 prev_id %d after deletion, got %v", col1.ID, col2Updated.PrevID)
-	}
+	require.NotNil(t, col2Updated.PrevID)
+	assert.Equal(t, col1.ID, *col2Updated.PrevID)
 
-	if col2Updated.NextID != nil {
-		t.Errorf("Expected col2 next_id nil after deletion, got %v", col2Updated.NextID)
-	}
+	assert.Nil(t, col2Updated.NextID)
 }
 
 func TestDeleteColumn_OnlyColumn(t *testing.T) {
@@ -1382,19 +1160,13 @@ func TestDeleteColumn_OnlyColumn(t *testing.T) {
 
 	// Delete it
 	err := svc.DeleteColumn(ctx, col.ID)
-	if err != nil {
-		t.Fatalf("Failed to delete only column: %v", err)
-	}
+	require.NoError(t, err, "Failed to delete only column")
 
 	// Verify project has no columns
 	columns, err := svc.GetColumnsByProject(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to get columns: %v", err)
-	}
+	require.NoError(t, err, "Failed to get columns")
 
-	if len(columns) != 0 {
-		t.Errorf("Expected 0 columns after deletion, got %d", len(columns))
-	}
+	assert.Len(t, columns, 0)
 }
 
 func TestSetHoldsReadyTasks_NegativeColumnID(t *testing.T) {
@@ -1406,13 +1178,9 @@ func TestSetHoldsReadyTasks_NegativeColumnID(t *testing.T) {
 
 	_, err := svc.SetHoldsReadyTasks(context.Background(), -1)
 
-	if err == nil {
-		t.Fatal("Expected error for negative column ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidColumnID) {
-		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidColumnID)
 }
 
 func TestCreateColumn_MultipleReadyColumns_DifferentProjects(t *testing.T) {
@@ -1433,13 +1201,9 @@ func TestCreateColumn_MultipleReadyColumns_DifferentProjects(t *testing.T) {
 		ProjectID:       projectID1,
 		HoldsReadyTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create ready column in project 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create ready column in project 1")
 
-	if !col1.HoldsReadyTasks {
-		t.Fatal("Expected col1 to hold ready tasks")
-	}
+	require.True(t, col1.HoldsReadyTasks)
 
 	// Create ready column in project 2 - should succeed
 	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
@@ -1447,25 +1211,17 @@ func TestCreateColumn_MultipleReadyColumns_DifferentProjects(t *testing.T) {
 		ProjectID:       projectID2,
 		HoldsReadyTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create ready column in project 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create ready column in project 2")
 
-	if !col2.HoldsReadyTasks {
-		t.Fatal("Expected col2 to hold ready tasks")
-	}
+	require.True(t, col2.HoldsReadyTasks)
 
 	// Verify both columns are still ready
 	col1Check, _ := svc.GetColumnByID(ctx, col1.ID)
 	col2Check, _ := svc.GetColumnByID(ctx, col2.ID)
 
-	if !col1Check.HoldsReadyTasks {
-		t.Error("Expected col1 to still hold ready tasks")
-	}
+	assert.True(t, col1Check.HoldsReadyTasks)
 
-	if !col2Check.HoldsReadyTasks {
-		t.Error("Expected col2 to still hold ready tasks")
-	}
+	assert.True(t, col2Check.HoldsReadyTasks)
 }
 
 func TestSetHoldsCompletedTasks_NegativeColumnID(t *testing.T) {
@@ -1477,13 +1233,9 @@ func TestSetHoldsCompletedTasks_NegativeColumnID(t *testing.T) {
 
 	_, err := svc.SetHoldsCompletedTasks(context.Background(), -1, false)
 
-	if err == nil {
-		t.Fatal("Expected error for negative column ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidColumnID) {
-		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidColumnID)
 }
 
 func TestCreateColumn_MultipleCompletedColumns_DifferentProjects(t *testing.T) {
@@ -1504,13 +1256,9 @@ func TestCreateColumn_MultipleCompletedColumns_DifferentProjects(t *testing.T) {
 		ProjectID:           projectID1,
 		HoldsCompletedTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create completed column in project 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create completed column in project 1")
 
-	if !col1.HoldsCompletedTasks {
-		t.Fatal("Expected col1 to hold completed tasks")
-	}
+	require.True(t, col1.HoldsCompletedTasks)
 
 	// Create completed column in project 2 - should succeed
 	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
@@ -1518,25 +1266,17 @@ func TestCreateColumn_MultipleCompletedColumns_DifferentProjects(t *testing.T) {
 		ProjectID:           projectID2,
 		HoldsCompletedTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create completed column in project 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create completed column in project 2")
 
-	if !col2.HoldsCompletedTasks {
-		t.Fatal("Expected col2 to hold completed tasks")
-	}
+	require.True(t, col2.HoldsCompletedTasks)
 
 	// Verify both columns are still completed
 	col1Check, _ := svc.GetColumnByID(ctx, col1.ID)
 	col2Check, _ := svc.GetColumnByID(ctx, col2.ID)
 
-	if !col1Check.HoldsCompletedTasks {
-		t.Error("Expected col1 to still hold completed tasks")
-	}
+	assert.True(t, col1Check.HoldsCompletedTasks)
 
-	if !col2Check.HoldsCompletedTasks {
-		t.Error("Expected col2 to still hold completed tasks")
-	}
+	assert.True(t, col2Check.HoldsCompletedTasks)
 }
 
 func TestCreateColumn_WithHoldsInProgressTasks(t *testing.T) {
@@ -1554,13 +1294,9 @@ func TestCreateColumn_WithHoldsInProgressTasks(t *testing.T) {
 	}
 
 	result, err := svc.CreateColumn(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if !result.HoldsInProgressTasks {
-		t.Error("Expected HoldsInProgressTasks to be true")
-	}
+	assert.True(t, result.HoldsInProgressTasks)
 }
 
 func TestCreateColumn_HoldsInProgressTasks_ClearsPrevious(t *testing.T) {
@@ -1578,13 +1314,9 @@ func TestCreateColumn_HoldsInProgressTasks_ClearsPrevious(t *testing.T) {
 		ProjectID:            projectID,
 		HoldsInProgressTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 1")
 
-	if !col1.HoldsInProgressTasks {
-		t.Fatal("Expected col1 to hold in-progress tasks")
-	}
+	require.True(t, col1.HoldsInProgressTasks)
 
 	// Create second column with HoldsInProgressTasks = true
 	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
@@ -1592,23 +1324,15 @@ func TestCreateColumn_HoldsInProgressTasks_ClearsPrevious(t *testing.T) {
 		ProjectID:            projectID,
 		HoldsInProgressTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 2")
 
-	if !col2.HoldsInProgressTasks {
-		t.Error("Expected col2 to hold in-progress tasks")
-	}
+	assert.True(t, col2.HoldsInProgressTasks)
 
 	// Verify col1 is no longer the in-progress column
 	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
-	if err != nil {
-		t.Fatalf("Failed to get updated col1: %v", err)
-	}
+	require.NoError(t, err, "Failed to get updated col1")
 
-	if col1Updated.HoldsInProgressTasks {
-		t.Error("Expected col1 to no longer hold in-progress tasks")
-	}
+	assert.False(t, col1Updated.HoldsInProgressTasks)
 }
 
 func TestSetHoldsInProgressTasks_Success(t *testing.T) {
@@ -1626,28 +1350,20 @@ func TestSetHoldsInProgressTasks_Success(t *testing.T) {
 		ProjectID:            projectID,
 		HoldsInProgressTasks: false,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 1")
 
 	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                 "Done",
 		ProjectID:            projectID,
 		HoldsInProgressTasks: false,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 2")
 
 	// Set col1 as in-progress
 	updated, err := svc.SetHoldsInProgressTasks(ctx, col1.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if !updated.HoldsInProgressTasks {
-		t.Error("Expected column to hold in-progress tasks after SetHoldsInProgressTasks")
-	}
+	assert.True(t, updated.HoldsInProgressTasks)
 }
 
 func TestSetHoldsInProgressTasks_FailsWhenExists(t *testing.T) {
@@ -1665,9 +1381,7 @@ func TestSetHoldsInProgressTasks_FailsWhenExists(t *testing.T) {
 		ProjectID:            projectID,
 		HoldsInProgressTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 1")
 
 	// Create col2 as not in-progress
 	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
@@ -1675,41 +1389,26 @@ func TestSetHoldsInProgressTasks_FailsWhenExists(t *testing.T) {
 		ProjectID:            projectID,
 		HoldsInProgressTasks: false,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 2")
 
 	// Attempt to set col2 as in-progress - should fail
 	_, err = svc.SetHoldsInProgressTasks(ctx, col2.ID)
-	if err == nil {
-		t.Fatal("Expected error when setting in-progress tasks on col2 while col1 is in-progress")
-	}
+	require.Error(t, err)
 
 	// Verify error message includes the existing column info
-	expectedErrorSubstring := "In Progress"
-	if !strings.Contains(err.Error(), expectedErrorSubstring) {
-		t.Errorf("Expected error to contain '%s', got: %v", expectedErrorSubstring, err)
-	}
+	assert.ErrorContains(t, err, "In Progress")
 
 	// Verify col1 still holds in-progress tasks
 	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
-	if err != nil {
-		t.Fatalf("Failed to get col1: %v", err)
-	}
+	require.NoError(t, err, "Failed to get col1")
 
-	if !col1Updated.HoldsInProgressTasks {
-		t.Error("Expected col1 to still hold in-progress tasks")
-	}
+	assert.True(t, col1Updated.HoldsInProgressTasks)
 
 	// Verify col2 does not hold in-progress tasks
 	col2Updated, err := svc.GetColumnByID(ctx, col2.ID)
-	if err != nil {
-		t.Fatalf("Failed to get col2: %v", err)
-	}
+	require.NoError(t, err, "Failed to get col2")
 
-	if col2Updated.HoldsInProgressTasks {
-		t.Error("Expected col2 to not hold in-progress tasks")
-	}
+	assert.False(t, col2Updated.HoldsInProgressTasks)
 }
 
 func TestSetHoldsInProgressTasks_InvalidColumnID(t *testing.T) {
@@ -1721,13 +1420,9 @@ func TestSetHoldsInProgressTasks_InvalidColumnID(t *testing.T) {
 
 	_, err := svc.SetHoldsInProgressTasks(context.Background(), 0)
 
-	if err == nil {
-		t.Fatal("Expected error for invalid column ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidColumnID) {
-		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidColumnID)
 }
 
 func TestSetHoldsInProgressTasks_NegativeColumnID(t *testing.T) {
@@ -1739,13 +1434,9 @@ func TestSetHoldsInProgressTasks_NegativeColumnID(t *testing.T) {
 
 	_, err := svc.SetHoldsInProgressTasks(context.Background(), -1)
 
-	if err == nil {
-		t.Fatal("Expected error for negative column ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidColumnID) {
-		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidColumnID)
 }
 
 func TestSetHoldsInProgressTasks_ColumnNotFound(t *testing.T) {
@@ -1757,14 +1448,10 @@ func TestSetHoldsInProgressTasks_ColumnNotFound(t *testing.T) {
 
 	_, err := svc.SetHoldsInProgressTasks(context.Background(), 999)
 
-	if err == nil {
-		t.Fatal("Expected error for non-existent column")
-	}
+	require.Error(t, err)
 
 	// Should get a wrapped sql.ErrNoRows
-	if !errors.Is(err, sql.ErrNoRows) && !contains(err.Error(), "no rows") {
-		t.Errorf("Expected sql.ErrNoRows or wrapped error, got %v", err)
-	}
+	assert.True(t, errors.Is(err, sql.ErrNoRows) || contains(err.Error(), "no rows"))
 }
 
 func TestGetColumnByID_IncludesHoldsInProgressTasks(t *testing.T) {
@@ -1782,19 +1469,13 @@ func TestGetColumnByID_IncludesHoldsInProgressTasks(t *testing.T) {
 		ProjectID:            projectID,
 		HoldsInProgressTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column")
 
 	// Fetch via GetColumnByID
 	result, err := svc.GetColumnByID(ctx, created.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if !result.HoldsInProgressTasks {
-		t.Error("Expected HoldsInProgressTasks to be true")
-	}
+	assert.True(t, result.HoldsInProgressTasks)
 }
 
 func TestGetColumnsByProject_IncludesHoldsInProgressTasks(t *testing.T) {
@@ -1812,37 +1493,29 @@ func TestGetColumnsByProject_IncludesHoldsInProgressTasks(t *testing.T) {
 		ProjectID:            projectID,
 		HoldsInProgressTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create in-progress column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create in-progress column")
 
 	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                 "Done",
 		ProjectID:            projectID,
 		HoldsInProgressTasks: false,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create non-in-progress column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create non-in-progress column")
 
 	// Fetch all columns
 	results, err := svc.GetColumnsByProject(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(results) != 2 {
-		t.Fatalf("Expected 2 columns, got %d", len(results))
-	}
+	require.Len(t, results, 2)
 
 	// Verify first column (In Progress) is in-progress
-	if results[0].Name == "In Progress" && !results[0].HoldsInProgressTasks {
-		t.Error("Expected 'In Progress' column to hold in-progress tasks")
+	if results[0].Name == "In Progress" {
+		assert.True(t, results[0].HoldsInProgressTasks)
 	}
 
 	// Verify second column (Done) is not in-progress
-	if results[1].Name == "Done" && results[1].HoldsInProgressTasks {
-		t.Error("Expected 'Done' column to not hold in-progress tasks")
+	if results[1].Name == "Done" {
+		assert.False(t, results[1].HoldsInProgressTasks)
 	}
 }
 
@@ -1864,13 +1537,9 @@ func TestCreateColumn_MultipleInProgressColumns_DifferentProjects(t *testing.T) 
 		ProjectID:            projectID1,
 		HoldsInProgressTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create in-progress column in project 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create in-progress column in project 1")
 
-	if !col1.HoldsInProgressTasks {
-		t.Fatal("Expected col1 to hold in-progress tasks")
-	}
+	require.True(t, col1.HoldsInProgressTasks)
 
 	// Create in-progress column in project 2 - should succeed
 	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
@@ -1878,25 +1547,17 @@ func TestCreateColumn_MultipleInProgressColumns_DifferentProjects(t *testing.T) 
 		ProjectID:            projectID2,
 		HoldsInProgressTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create in-progress column in project 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create in-progress column in project 2")
 
-	if !col2.HoldsInProgressTasks {
-		t.Fatal("Expected col2 to hold in-progress tasks")
-	}
+	require.True(t, col2.HoldsInProgressTasks)
 
 	// Verify both columns are still in-progress
 	col1Check, _ := svc.GetColumnByID(ctx, col1.ID)
 	col2Check, _ := svc.GetColumnByID(ctx, col2.ID)
 
-	if !col1Check.HoldsInProgressTasks {
-		t.Error("Expected col1 to still hold in-progress tasks")
-	}
+	assert.True(t, col1Check.HoldsInProgressTasks)
 
-	if !col2Check.HoldsInProgressTasks {
-		t.Error("Expected col2 to still hold in-progress tasks")
-	}
+	assert.True(t, col2Check.HoldsInProgressTasks)
 }
 
 func TestCreateColumn_NameExactly50Characters(t *testing.T) {
@@ -1916,13 +1577,9 @@ func TestCreateColumn_NameExactly50Characters(t *testing.T) {
 	}
 
 	result, err := svc.CreateColumn(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Expected no error for 50-character name, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if result.Name != name50 {
-		t.Errorf("Expected name '%s', got '%s'", name50, result.Name)
-	}
+	assert.Equal(t, name50, result.Name)
 }
 
 func TestCreateColumn_NonExistentProject(t *testing.T) {
@@ -1938,14 +1595,10 @@ func TestCreateColumn_NonExistentProject(t *testing.T) {
 		ProjectID: 999999,
 	})
 
-	if err == nil {
-		t.Fatal("Expected error when creating column in non-existent project")
-	}
+	require.Error(t, err)
 
 	// Error should be related to foreign key constraint
-	if !contains(err.Error(), "failed to create column") {
-		t.Errorf("Expected error about failed to create column, got %v", err)
-	}
+	assert.True(t, contains(err.Error(), "failed to create column"))
 }
 
 func TestUpdateColumnName_Exact50Characters(t *testing.T) {
@@ -1961,27 +1614,19 @@ func TestUpdateColumnName_Exact50Characters(t *testing.T) {
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column")
 
 	// Create a name that's exactly 50 characters
 	name50 := strings.Repeat("a", 50)
 
 	err = svc.UpdateColumnName(ctx, created.ID, name50)
-	if err != nil {
-		t.Fatalf("Expected no error for 50-character name, got %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify update
 	updated, err := svc.GetColumnByID(ctx, created.ID)
-	if err != nil {
-		t.Fatalf("Failed to get updated column: %v", err)
-	}
+	require.NoError(t, err, "Failed to get updated column")
 
-	if updated.Name != name50 {
-		t.Errorf("Expected name '%s', got '%s'", name50, updated.Name)
-	}
+	assert.Equal(t, name50, updated.Name)
 }
 
 func TestCreateColumn_AllSpecialFlagsTrue(t *testing.T) {
@@ -2002,22 +1647,14 @@ func TestCreateColumn_AllSpecialFlagsTrue(t *testing.T) {
 	}
 
 	result, err := svc.CreateColumn(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify all flags are set
-	if !result.HoldsReadyTasks {
-		t.Error("Expected HoldsReadyTasks to be true")
-	}
+	assert.True(t, result.HoldsReadyTasks)
 
-	if !result.HoldsCompletedTasks {
-		t.Error("Expected HoldsCompletedTasks to be true")
-	}
+	assert.True(t, result.HoldsCompletedTasks)
 
-	if !result.HoldsInProgressTasks {
-		t.Error("Expected HoldsInProgressTasks to be true")
-	}
+	assert.True(t, result.HoldsInProgressTasks)
 }
 
 func TestCreateColumn_ProjectIDMaxInt(t *testing.T) {
@@ -2033,14 +1670,10 @@ func TestCreateColumn_ProjectIDMaxInt(t *testing.T) {
 		ProjectID: 2147483647, // max int32
 	})
 
-	if err == nil {
-		t.Fatal("Expected error for non-existent project with max int ID")
-	}
+	require.Error(t, err)
 
 	// Error should be related to foreign key constraint
-	if !contains(err.Error(), "failed to create column") {
-		t.Errorf("Expected error about failed to create column, got %v", err)
-	}
+	assert.True(t, contains(err.Error(), "failed to create column"))
 }
 
 func TestCreateColumn_WithHoldsCompletedTasks(t *testing.T) {
@@ -2058,13 +1691,9 @@ func TestCreateColumn_WithHoldsCompletedTasks(t *testing.T) {
 	}
 
 	result, err := svc.CreateColumn(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if !result.HoldsCompletedTasks {
-		t.Error("Expected HoldsCompletedTasks to be true")
-	}
+	assert.True(t, result.HoldsCompletedTasks)
 }
 
 func TestCreateColumn_HoldsCompletedTasks_FailsWhenExists(t *testing.T) {
@@ -2082,13 +1711,9 @@ func TestCreateColumn_HoldsCompletedTasks_FailsWhenExists(t *testing.T) {
 		ProjectID:           projectID,
 		HoldsCompletedTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 1")
 
-	if !col1.HoldsCompletedTasks {
-		t.Fatal("Expected col1 to hold completed tasks")
-	}
+	require.True(t, col1.HoldsCompletedTasks)
 
 	// Create second column with HoldsCompletedTasks = true (should fail)
 	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
@@ -2097,13 +1722,9 @@ func TestCreateColumn_HoldsCompletedTasks_FailsWhenExists(t *testing.T) {
 		HoldsCompletedTasks: true,
 	})
 
-	if err == nil {
-		t.Fatal("Expected error when creating second completed column")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrCompletedColumnExists) && !contains(err.Error(), "completed column already exists") {
-		t.Errorf("Expected ErrCompletedColumnExists, got %v", err)
-	}
+	assert.True(t, errors.Is(err, ErrCompletedColumnExists) || contains(err.Error(), "completed column already exists"))
 }
 
 func TestSetHoldsCompletedTasks_Success(t *testing.T) {
@@ -2121,28 +1742,20 @@ func TestSetHoldsCompletedTasks_Success(t *testing.T) {
 		ProjectID:           projectID,
 		HoldsCompletedTasks: false,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 1")
 
 	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Archive",
 		ProjectID:           projectID,
 		HoldsCompletedTasks: false,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 2")
 
 	// Set col1 as completed
 	updated, err := svc.SetHoldsCompletedTasks(ctx, col1.ID, false)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if !updated.HoldsCompletedTasks {
-		t.Error("Expected column to hold completed tasks after SetHoldsCompletedTasks")
-	}
+	assert.True(t, updated.HoldsCompletedTasks)
 }
 
 func TestSetHoldsCompletedTasks_FailsWhenExistsWithoutForce(t *testing.T) {
@@ -2160,9 +1773,7 @@ func TestSetHoldsCompletedTasks_FailsWhenExistsWithoutForce(t *testing.T) {
 		ProjectID:           projectID,
 		HoldsCompletedTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 1")
 
 	// Create col2 as not completed
 	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
@@ -2170,30 +1781,20 @@ func TestSetHoldsCompletedTasks_FailsWhenExistsWithoutForce(t *testing.T) {
 		ProjectID:           projectID,
 		HoldsCompletedTasks: false,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 2")
 
 	// Try to set col2 as completed without force (should fail)
 	_, err = svc.SetHoldsCompletedTasks(ctx, col2.ID, false)
 
-	if err == nil {
-		t.Fatal("Expected error when setting completed without force")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrCompletedColumnExists) && !contains(err.Error(), "completed column already exists") {
-		t.Errorf("Expected ErrCompletedColumnExists, got %v", err)
-	}
+	assert.True(t, errors.Is(err, ErrCompletedColumnExists) || contains(err.Error(), "completed column already exists"))
 
 	// Verify col1 is still completed
 	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
-	if err != nil {
-		t.Fatalf("Failed to get col1: %v", err)
-	}
+	require.NoError(t, err, "Failed to get col1")
 
-	if !col1Updated.HoldsCompletedTasks {
-		t.Error("Expected col1 to still hold completed tasks")
-	}
+	assert.True(t, col1Updated.HoldsCompletedTasks)
 }
 
 func TestSetHoldsCompletedTasks_SucceedsWithForce(t *testing.T) {
@@ -2211,9 +1812,7 @@ func TestSetHoldsCompletedTasks_SucceedsWithForce(t *testing.T) {
 		ProjectID:           projectID,
 		HoldsCompletedTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 1: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 1")
 
 	// Create col2 as not completed
 	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
@@ -2221,29 +1820,19 @@ func TestSetHoldsCompletedTasks_SucceedsWithForce(t *testing.T) {
 		ProjectID:           projectID,
 		HoldsCompletedTasks: false,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column 2: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column 2")
 
 	// Set col2 as completed with force (should succeed)
 	updated, err := svc.SetHoldsCompletedTasks(ctx, col2.ID, true)
-	if err != nil {
-		t.Fatalf("Expected no error with force flag, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if !updated.HoldsCompletedTasks {
-		t.Error("Expected col2 to hold completed tasks")
-	}
+	assert.True(t, updated.HoldsCompletedTasks)
 
 	// Verify col1 is no longer completed
 	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
-	if err != nil {
-		t.Fatalf("Failed to get col1: %v", err)
-	}
+	require.NoError(t, err, "Failed to get col1")
 
-	if col1Updated.HoldsCompletedTasks {
-		t.Error("Expected col1 to no longer hold completed tasks")
-	}
+	assert.False(t, col1Updated.HoldsCompletedTasks)
 }
 
 func TestGetColumnByID_IncludesHoldsCompletedTasks(t *testing.T) {
@@ -2261,19 +1850,13 @@ func TestGetColumnByID_IncludesHoldsCompletedTasks(t *testing.T) {
 		ProjectID:           projectID,
 		HoldsCompletedTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create column")
 
 	// Fetch via GetColumnByID
 	result, err := svc.GetColumnByID(ctx, created.ID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if !result.HoldsCompletedTasks {
-		t.Error("Expected HoldsCompletedTasks to be true")
-	}
+	assert.True(t, result.HoldsCompletedTasks)
 }
 
 func TestGetColumnsByProject_IncludesHoldsCompletedTasks(t *testing.T) {
@@ -2291,37 +1874,29 @@ func TestGetColumnsByProject_IncludesHoldsCompletedTasks(t *testing.T) {
 		ProjectID:           projectID,
 		HoldsCompletedTasks: true,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create completed column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create completed column")
 
 	_, err = svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:                "Todo",
 		ProjectID:           projectID,
 		HoldsCompletedTasks: false,
 	})
-	if err != nil {
-		t.Fatalf("Failed to create non-completed column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create non-completed column")
 
 	// Fetch all columns
 	results, err := svc.GetColumnsByProject(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(results) != 2 {
-		t.Fatalf("Expected 2 columns, got %d", len(results))
-	}
+	require.Len(t, results, 2)
 
 	// Verify first column (Done) is completed
-	if results[0].Name == "Done" && !results[0].HoldsCompletedTasks {
-		t.Error("Expected 'Done' column to hold completed tasks")
+	if results[0].Name == "Done" {
+		assert.True(t, results[0].HoldsCompletedTasks)
 	}
 
 	// Verify second column (Todo) is not completed
-	if results[1].Name == "Todo" && results[1].HoldsCompletedTasks {
-		t.Error("Expected 'Todo' column to not hold completed tasks")
+	if results[1].Name == "Todo" {
+		assert.False(t, results[1].HoldsCompletedTasks)
 	}
 }
 
@@ -2334,13 +1909,9 @@ func TestSetHoldsCompletedTasks_InvalidColumnID(t *testing.T) {
 
 	_, err := svc.SetHoldsCompletedTasks(context.Background(), 0, false)
 
-	if err == nil {
-		t.Fatal("Expected error for invalid column ID")
-	}
+	require.Error(t, err)
 
-	if !errors.Is(err, ErrInvalidColumnID) {
-		t.Errorf("Expected ErrInvalidColumnID, got %v", err)
-	}
+	assert.ErrorIs(t, err, ErrInvalidColumnID)
 }
 
 func TestSetHoldsCompletedTasks_ColumnNotFound(t *testing.T) {
@@ -2352,14 +1923,10 @@ func TestSetHoldsCompletedTasks_ColumnNotFound(t *testing.T) {
 
 	_, err := svc.SetHoldsCompletedTasks(context.Background(), 999, false)
 
-	if err == nil {
-		t.Fatal("Expected error for non-existent column")
-	}
+	require.Error(t, err)
 
 	// Should get a wrapped sql.ErrNoRows
-	if !errors.Is(err, sql.ErrNoRows) && !contains(err.Error(), "no rows") {
-		t.Errorf("Expected sql.ErrNoRows or wrapped error, got %v", err)
-	}
+	assert.True(t, errors.Is(err, sql.ErrNoRows) || contains(err.Error(), "no rows"))
 }
 
 func TestCreateColumn_OnlyOneCompletedPerProject(t *testing.T) {
@@ -2375,20 +1942,14 @@ func TestCreateColumn_OnlyOneCompletedPerProject(t *testing.T) {
 	_, err := db.ExecContext(ctx,
 		"INSERT INTO columns (name, project_id, holds_completed_tasks) VALUES (?, ?, ?)",
 		"Done", projectID, true)
-	if err != nil {
-		t.Fatalf("Failed to insert first completed column: %v", err)
-	}
+	require.NoError(t, err, "Failed to insert first completed column")
 
 	_, err = db.ExecContext(ctx,
 		"INSERT INTO columns (name, project_id, holds_completed_tasks) VALUES (?, ?, ?)",
 		"Archive", projectID, true)
 
-	if err == nil {
-		t.Fatal("Expected database constraint violation for duplicate completed columns")
-	}
+	require.Error(t, err)
 
 	// Should get a constraint violation error
-	if !contains(err.Error(), "UNIQUE") && !contains(err.Error(), "constraint") {
-		t.Errorf("Expected UNIQUE constraint violation, got %v", err)
-	}
+	assert.True(t, contains(err.Error(), "UNIQUE") || contains(err.Error(), "constraint"))
 }
