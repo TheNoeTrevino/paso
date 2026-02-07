@@ -10,6 +10,8 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/events"
 
 	_ "modernc.org/sqlite"
@@ -105,15 +107,11 @@ func createTestProject(t *testing.T, db *sql.DB, name string) int {
 	t.Helper()
 	ctx := context.Background()
 	result, err := db.ExecContext(ctx, "INSERT INTO projects (name) VALUES (?)", name)
-	if err != nil {
-		t.Fatalf("Failed to create test project: %v", err)
-	}
+	require.NoError(t, err)
 	projectID, _ := result.LastInsertId()
 
 	_, err = db.ExecContext(ctx, "INSERT INTO project_counters (project_id) VALUES (?)", projectID)
-	if err != nil {
-		t.Fatalf("Failed to create project counter: %v", err)
-	}
+	require.NoError(t, err)
 
 	return int(projectID)
 }
@@ -130,18 +128,13 @@ func TestWithTx_Success_Commit(t *testing.T) {
 		_, err := tx.ExecContext(ctx, "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Test Column")
 		return err
 	})
-	if err != nil {
-		t.Fatalf("Expected transaction to succeed, got error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify column was created (transaction committed)
 	var count int
-	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM columns WHERE name = ?", "Test Column").Scan(&count); err != nil {
-		t.Fatalf("Failed to scan count: %v", err)
-	}
-	if count != 1 {
-		t.Errorf("Expected 1 column, got %d", count)
-	}
+	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM columns WHERE name = ?", "Test Column").Scan(&count)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
 }
 
 func TestWithTx_Error_Rollback(t *testing.T) {
@@ -162,18 +155,13 @@ func TestWithTx_Error_Rollback(t *testing.T) {
 		return expectedErr
 	})
 
-	if err != expectedErr {
-		t.Fatalf("Expected error %v, got %v", expectedErr, err)
-	}
+	require.Equal(t, expectedErr, err)
 
 	// Verify column was NOT created (transaction rolled back)
 	var count int
-	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM columns WHERE name = ?", "Test Column").Scan(&count); err != nil {
-		t.Fatalf("Failed to scan count: %v", err)
-	}
-	if count != 0 {
-		t.Errorf("Expected 0 columns (rollback), got %d", count)
-	}
+	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM columns WHERE name = ?", "Test Column").Scan(&count)
+	require.NoError(t, err)
+	assert.Equal(t, 0, count)
 }
 
 func TestWithTx_Error_BeginFails(t *testing.T) {
@@ -186,48 +174,36 @@ func TestWithTx_Error_BeginFails(t *testing.T) {
 		return nil
 	})
 
-	if err == nil {
-		t.Fatal("Expected error when beginning transaction on closed DB, got nil")
-	}
+	require.Error(t, err)
 }
 
 func TestNullInt64ToPtr_Valid(t *testing.T) {
 	nv := sql.NullInt64{Int64: 42, Valid: true}
 	result := nullInt64ToPtr(nv)
 
-	if result == nil {
-		t.Fatal("Expected non-nil pointer, got nil")
-	}
-	if *result != 42 {
-		t.Errorf("Expected 42, got %d", *result)
-	}
+	require.NotNil(t, result)
+	assert.Equal(t, 42, *result)
 }
 
 func TestNullInt64ToPtr_Null(t *testing.T) {
 	nv := sql.NullInt64{Int64: 0, Valid: false}
 	result := nullInt64ToPtr(nv)
 
-	if result != nil {
-		t.Errorf("Expected nil for SQL NULL, got %v", result)
-	}
+	assert.Nil(t, result)
 }
 
 func TestNullStringToString_Valid(t *testing.T) {
 	ns := sql.NullString{String: "test string", Valid: true}
 	result := NullStringToString(ns)
 
-	if result != "test string" {
-		t.Errorf("Expected 'test string', got '%s'", result)
-	}
+	assert.Equal(t, "test string", result)
 }
 
 func TestNullStringToString_Null(t *testing.T) {
 	ns := sql.NullString{String: "", Valid: false}
 	result := NullStringToString(ns)
 
-	if result != "" {
-		t.Errorf("Expected empty string for SQL NULL, got '%s'", result)
-	}
+	assert.Equal(t, "", result)
 }
 
 func TestNullTimeToTime_Valid(t *testing.T) {
@@ -235,60 +211,44 @@ func TestNullTimeToTime_Valid(t *testing.T) {
 	nt := sql.NullTime{Time: now, Valid: true}
 	result := NullTimeToTime(nt)
 
-	if !result.Equal(now) {
-		t.Errorf("Expected %v, got %v", now, result)
-	}
+	assert.True(t, result.Equal(now))
 }
 
 func TestNullTimeToTime_Null(t *testing.T) {
 	nt := sql.NullTime{Time: time.Time{}, Valid: false}
 	result := NullTimeToTime(nt)
 
-	if !result.IsZero() {
-		t.Errorf("Expected zero time for SQL NULL, got %v", result)
-	}
+	assert.True(t, result.IsZero())
 }
 
 func TestAnyToIntPtr_Int64(t *testing.T) {
 	var val any = int64(123)
 	result := AnyToIntPtr(val)
 
-	if result == nil {
-		t.Fatal("Expected non-nil pointer, got nil")
-	}
-	if *result != 123 {
-		t.Errorf("Expected 123, got %d", *result)
-	}
+	require.NotNil(t, result)
+	assert.Equal(t, 123, *result)
 }
 
 func TestAnyToIntPtr_Int(t *testing.T) {
 	var val any = int(456)
 	result := AnyToIntPtr(val)
 
-	if result == nil {
-		t.Fatal("Expected non-nil pointer, got nil")
-	}
-	if *result != 456 {
-		t.Errorf("Expected 456, got %d", *result)
-	}
+	require.NotNil(t, result)
+	assert.Equal(t, 456, *result)
 }
 
 func TestAnyToIntPtr_Nil(t *testing.T) {
 	var val any = nil
 	result := AnyToIntPtr(val)
 
-	if result != nil {
-		t.Errorf("Expected nil for nil interface, got %v", result)
-	}
+	assert.Nil(t, result)
 }
 
 func TestAnyToIntPtr_InvalidType(t *testing.T) {
 	var val any = "not an int"
 	result := AnyToIntPtr(val)
 
-	if result != nil {
-		t.Errorf("Expected nil for invalid type, got %v", result)
-	}
+	assert.Nil(t, result)
 }
 
 type mockEventPublisher struct {
@@ -318,17 +278,11 @@ func TestSendEvent_WithClient(t *testing.T) {
 
 	sendEvent(mock, projectID)
 
-	if len(mock.sentEvents) != 1 {
-		t.Fatalf("Expected 1 event to be sent, got %d", len(mock.sentEvents))
-	}
+	require.Len(t, mock.sentEvents, 1)
 
 	event := mock.sentEvents[0]
-	if event.Type != events.EventDatabaseChanged {
-		t.Errorf("Expected event type %s, got %s", events.EventDatabaseChanged, event.Type)
-	}
-	if event.ProjectID != projectID {
-		t.Errorf("Expected project ID %d, got %d", projectID, event.ProjectID)
-	}
+	assert.Equal(t, events.EventDatabaseChanged, event.Type)
+	assert.Equal(t, projectID, event.ProjectID)
 }
 
 func TestSendEvent_NilClient(t *testing.T) {

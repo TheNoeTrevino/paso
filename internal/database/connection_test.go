@@ -6,6 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	_ "modernc.org/sqlite"
 )
 
@@ -16,18 +19,12 @@ func TestConnection_SQLite(t *testing.T) {
 
 	// Create the file
 	f, err := os.Create(dbPath)
-	if err != nil {
-		t.Fatalf("failed to create test db file: %v", err)
-	}
-	if err := f.Close(); err != nil {
-		t.Fatalf("failed to close test db file: %v", err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
 
 	// Test connection to SQLite database
 	err = TestConnection(dbPath, SQLite)
-	if err != nil {
-		t.Errorf("SQLite connection test failed: %v", err)
-	}
+	assert.NoError(t, err)
 }
 
 func TestConnection_SQLite_NonExistent(t *testing.T) {
@@ -36,14 +33,11 @@ func TestConnection_SQLite_NonExistent(t *testing.T) {
 	dbPath := filepath.Join(tmpDir, "nonexistent.db")
 
 	err := TestConnection(dbPath, SQLite)
-	if err != nil {
-		t.Errorf("SQLite connection to non-existent file should succeed (creates file): %v", err)
-	}
+	assert.NoError(t, err)
 
 	// Verify file was created
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		t.Error("SQLite connection should have created the database file")
-	}
+	_, err = os.Stat(dbPath)
+	assert.False(t, os.IsNotExist(err))
 }
 
 func TestConnection_PostgreSQL_Invalid(t *testing.T) {
@@ -51,20 +45,14 @@ func TestConnection_PostgreSQL_Invalid(t *testing.T) {
 	connStr := "host=invalid.invalid port=5432 user=test password=test dbname=test"
 
 	err := TestConnection(connStr, PostgreSQL)
-	if err == nil {
-		t.Error("PostgreSQL connection to invalid host should fail")
-	}
+	assert.Error(t, err)
 }
 
 func TestConnection_UnsupportedType(t *testing.T) {
 	// Test with unsupported database type
 	err := TestConnection("dummy", DatabaseType("unsupported"))
-	if err == nil {
-		t.Error("Connection with unsupported database type should fail")
-	}
-	if err != nil && !strings.Contains(err.Error(), "unsupported database type") {
-		t.Errorf("Expected 'unsupported database type' error, got: %v", err)
-	}
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "unsupported database type")
 }
 
 func TestConnection_PasswordSanitization(t *testing.T) {
@@ -73,19 +61,13 @@ func TestConnection_PasswordSanitization(t *testing.T) {
 	invalidConnStr := "postgres://user:secret123@nonexistent-host:5432/db"
 	err := TestConnection(invalidConnStr, PostgreSQL)
 
-	if err == nil {
-		t.Fatal("Expected error for connection to nonexistent host")
-	}
+	require.Error(t, err)
 
 	// Error message should not contain the password
-	if strings.Contains(err.Error(), "secret123") {
-		t.Errorf("Error message contains password 'secret123': %v", err)
-	}
+	assert.False(t, strings.Contains(err.Error(), "secret123"))
 
 	// Error message should contain sanitized version
-	if !strings.Contains(err.Error(), "***") {
-		t.Errorf("Error message should contain sanitized password (***): %v", err)
-	}
+	assert.Contains(t, err.Error(), "***")
 }
 
 func TestSanitizeConnectionString(t *testing.T) {
@@ -149,9 +131,7 @@ func TestSanitizeConnectionString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := sanitizeConnectionString(tt.input)
-			if result != tt.expected {
-				t.Errorf("sanitizeConnectionString() = %q, want %q", result, tt.expected)
-			}
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -208,18 +188,11 @@ func TestParseConnectionString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := ParseConnectionString(tt.input)
 			if tt.wantError {
-				if err == nil {
-					t.Errorf("ParseConnectionString() expected error containing %q, got nil", tt.errorMsg)
-				} else if !strings.Contains(err.Error(), tt.errorMsg) {
-					t.Errorf("ParseConnectionString() error = %q, want substring %q", err.Error(), tt.errorMsg)
-				}
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.errorMsg)
 			} else {
-				if err != nil {
-					t.Errorf("ParseConnectionString() unexpected error: %v", err)
-				}
-				if result == "" {
-					t.Error("ParseConnectionString() returned empty string for valid input")
-				}
+				require.NoError(t, err)
+				assert.NotEmpty(t, result)
 			}
 		})
 	}
@@ -313,23 +286,18 @@ func TestParseURLConnectionString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := parseURLConnectionString(tt.input)
 			if tt.wantError {
-				if err == nil {
-					t.Errorf("parseURLConnectionString() expected error containing %q, got nil", tt.errorMsg)
-				} else if !strings.Contains(err.Error(), tt.errorMsg) {
-					t.Errorf("parseURLConnectionString() error = %q, want substring %q", err.Error(), tt.errorMsg)
-				}
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.errorMsg)
 			} else {
-				if err != nil {
-					t.Errorf("parseURLConnectionString() unexpected error: %v", err)
-				}
+				require.NoError(t, err)
 				// For query params, just check that the main parts are present
 				// Order may vary for query params
 				if strings.Contains(tt.want, "application_name") {
-					if !strings.Contains(result, "host=") || !strings.Contains(result, "dbname=") || !strings.Contains(result, "application_name=paso") {
-						t.Errorf("parseURLConnectionString() = %q, want to contain basic params + application_name from %q", result, tt.want)
-					}
-				} else if result != tt.want {
-					t.Errorf("parseURLConnectionString() = %q, want %q", result, tt.want)
+					assert.Contains(t, result, "host=")
+					assert.Contains(t, result, "dbname=")
+					assert.Contains(t, result, "application_name=paso")
+				} else {
+					assert.Equal(t, tt.want, result)
 				}
 			}
 		})
@@ -419,18 +387,11 @@ func TestParseKeyValueConnectionString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := parseKeyValueConnectionString(tt.input)
 			if tt.wantError {
-				if err == nil {
-					t.Errorf("parseKeyValueConnectionString() expected error containing %q, got nil", tt.errorMsg)
-				} else if !strings.Contains(err.Error(), tt.errorMsg) {
-					t.Errorf("parseKeyValueConnectionString() error = %q, want substring %q", err.Error(), tt.errorMsg)
-				}
+				require.Error(t, err)
+				assert.ErrorContains(t, err, tt.errorMsg)
 			} else {
-				if err != nil {
-					t.Errorf("parseKeyValueConnectionString() unexpected error: %v", err)
-				}
-				if result != tt.want {
-					t.Errorf("parseKeyValueConnectionString() = %q, want %q", result, tt.want)
-				}
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, result)
 			}
 		})
 	}
