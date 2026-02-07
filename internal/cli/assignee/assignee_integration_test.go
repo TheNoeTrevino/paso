@@ -33,12 +33,12 @@ func TestCreateAssignee_Positive(t *testing.T) {
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--name", "bob", "--json"})
 		assert.NoError(t, err)
 
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 		assert.True(t, result["success"].(bool))
 
-		data := result["data"].(map[string]interface{})
+		data := result["data"].(map[string]any)
 		assert.Equal(t, "bob", data["Name"])
 		assert.Greater(t, data["ID"].(float64), 0.0)
 	})
@@ -106,12 +106,12 @@ func TestListAssignees_Empty(t *testing.T) {
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--json"})
 		assert.NoError(t, err)
 
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 		assert.True(t, result["success"].(bool))
 
-		assignees := result["assignees"].([]interface{})
+		assignees := result["assignees"].([]any)
 		assert.Empty(t, assignees)
 	})
 
@@ -147,18 +147,18 @@ func TestListAssignees_Populated(t *testing.T) {
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--json"})
 		assert.NoError(t, err)
 
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 		assert.True(t, result["success"].(bool))
 
-		assignees := result["assignees"].([]interface{})
+		assignees := result["assignees"].([]any)
 		assert.Len(t, assignees, 3)
 
 		// Check that all names are present
 		names := make([]string, 0)
 		for _, a := range assignees {
-			assignee := a.(map[string]interface{})
+			assignee := a.(map[string]any)
 			names = append(names, assignee["name"].(string))
 		}
 		assert.Contains(t, names, "alice")
@@ -194,7 +194,7 @@ func TestDeleteAssignee_Positive(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		var result map[string]interface{}
+		var result map[string]any
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 		assert.True(t, result["success"].(bool))
