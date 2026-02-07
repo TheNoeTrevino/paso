@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -297,7 +298,5 @@ func TestTaskForm_CharacterInput(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify form is still in task form mode
-	if m.UIState.Mode != state.TicketFormMode {
-		t.Errorf("Expected TicketFormMode after input, got %v", m.UIState.Mode)
-	}
+	assert.Equal(t, state.TicketFormMode, m.UIState.Mode)
 }

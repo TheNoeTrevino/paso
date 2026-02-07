@@ -125,9 +125,7 @@ func setupEmptyProject(t *testing.T, db *sql.DB) Model {
 
 	// Load project data
 	_, err := appContainer.ProjectService.GetProjectByID(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to get project: %v", err)
-	}
+	require.NoError(t, err, "Failed to get project")
 
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err)
@@ -295,9 +293,7 @@ func setupNoProjects(t *testing.T, db *sql.DB) Model {
 	appContainer := createAppContainer(t, db)
 
 	cfg, err := config.Load()
-	if err != nil {
-		t.Fatalf("Failed to load config: %v", err)
-	}
+	require.NoError(t, err, "Failed to load config")
 
 	m := InitialModel(ctx, appContainer, cfg, nil, db)
 

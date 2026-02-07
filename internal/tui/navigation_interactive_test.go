@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -288,9 +289,7 @@ func TestNavigation_MultipleNavigationSequence(t *testing.T) {
 		}
 
 		// Verify all commands were processed
-		if m.UIState.Mode != state.NormalMode {
-			t.Errorf("Expected NormalMode after navigation sequence, got %v", m.UIState.Mode)
-		}
+		assert.Equal(t, state.NormalMode, m.UIState.Mode)
 	}
 }
 

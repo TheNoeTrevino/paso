@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -16,14 +17,10 @@ func TestModeTransition_NormalToForm(t *testing.T) {
 	// Simulate mode transition to TicketFormMode
 	m.UIState.Mode = state.TicketFormMode
 
-	if m.UIState.Mode != state.TicketFormMode {
-		t.Errorf("Mode after transition = %v, want TicketFormMode", m.UIState.Mode)
-	}
+	assert.Equal(t, state.TicketFormMode, m.UIState.Mode)
 
 	// Verify mode can be tracked back
-	if m.UIState.Mode == state.NormalMode {
-		t.Error("Mode should have changed from NormalMode")
-	}
+	assert.NotEqual(t, state.NormalMode, m.UIState.Mode, "Mode should have changed from NormalMode")
 }
 
 // TestModeTransition_FormToNormal verifies mode transitions from form modes back to NormalMode.
@@ -33,16 +30,12 @@ func TestModeTransition_FormToNormal(t *testing.T) {
 
 	// Start in form mode
 	m.UIState.Mode = state.TicketFormMode
-	if m.UIState.Mode != state.TicketFormMode {
-		t.Fatal("Failed to set mode to TicketFormMode")
-	}
+	assert.Equal(t, state.TicketFormMode, m.UIState.Mode, "Failed to set mode to TicketFormMode")
 
 	// Transition back to normal
 	m.UIState.Mode = state.NormalMode
 
-	if m.UIState.Mode != state.NormalMode {
-		t.Errorf("Mode after transition = %v, want NormalMode", m.UIState.Mode)
-	}
+	assert.Equal(t, state.NormalMode, m.UIState.Mode)
 }
 
 // TestModeTransition_MultipleTransitions verifies sequential mode changes work correctly.
@@ -63,9 +56,7 @@ func TestModeTransition_MultipleTransitions(t *testing.T) {
 
 	for _, mode := range modes {
 		m.UIState.Mode = mode
-		if m.UIState.Mode != mode {
-			t.Errorf("Mode after transition = %v, want %v", m.UIState.Mode, mode)
-		}
+		assert.Equal(t, mode, m.UIState.Mode)
 	}
 }
 
@@ -92,9 +83,7 @@ func TestSelectedColumn_BoundaryConditions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m.UIState.SelectedColumn = tt.selection
-			if m.UIState.SelectedColumn != tt.want {
-				t.Errorf("SelectedColumn = %d, want %d", m.UIState.SelectedColumn, tt.want)
-			}
+			assert.Equal(t, tt.want, m.UIState.SelectedColumn)
 		})
 	}
 }
@@ -128,9 +117,7 @@ func TestSelectedTask_UpdatesCorrectly(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m.UIState.SelectedTask = tt.selection
-			if m.UIState.SelectedTask != tt.want {
-				t.Errorf("SelectedTask = %d, want %d", m.UIState.SelectedTask, tt.want)
-			}
+			assert.Equal(t, tt.want, m.UIState.SelectedTask)
 		})
 	}
 }
@@ -155,15 +142,11 @@ func TestCursorPosition_AtEnd(t *testing.T) {
 
 	// Position at last column
 	m.UIState.SelectedColumn = len(columns) - 1
-	if m.UIState.SelectedColumn != 1 {
-		t.Errorf("SelectedColumn at end = %d, want 1", m.UIState.SelectedColumn)
-	}
+	assert.Equal(t, 1, m.UIState.SelectedColumn)
 
 	// Position at last task in last column
 	m.UIState.SelectedTask = len(tasks[2]) - 1
-	if m.UIState.SelectedTask != 0 {
-		t.Errorf("SelectedTask at end = %d, want 0", m.UIState.SelectedTask)
-	}
+	assert.Equal(t, 0, m.UIState.SelectedTask)
 }
 
 // TestEmptyState_HandlesEmptyColumns verifies behavior with no columns.
@@ -172,15 +155,11 @@ func TestEmptyState_HandlesEmptyColumns(t *testing.T) {
 	m := setupTestModel([]*models.Column{}, nil)
 
 	// Should default to valid state even with no columns
-	if m.UIState.SelectedColumn != 0 {
-		t.Errorf("SelectedColumn with no columns = %d, want 0", m.UIState.SelectedColumn)
-	}
+	assert.Equal(t, 0, m.UIState.SelectedColumn)
 
 	// Should handle mode transitions in empty state
 	m.UIState.Mode = state.AddColumnFormMode
-	if m.UIState.Mode != state.AddColumnFormMode {
-		t.Error("Should transition to AddColumnFormMode in empty state")
-	}
+	assert.Equal(t, state.AddColumnFormMode, m.UIState.Mode, "Should transition to AddColumnFormMode in empty state")
 }
 
 // TestEmptyState_HandlesEmptyTasks verifies behavior when selected column has no tasks.
@@ -201,15 +180,11 @@ func TestEmptyState_HandlesEmptyTasks(t *testing.T) {
 
 	// Select task in empty column
 	m.UIState.SelectedTask = 0
-	if m.UIState.SelectedTask != 0 {
-		t.Errorf("SelectedTask in empty column = %d, want 0", m.UIState.SelectedTask)
-	}
+	assert.Equal(t, 0, m.UIState.SelectedTask)
 
 	// Mode should still work in empty column
 	m.UIState.Mode = state.TicketFormMode
-	if m.UIState.Mode != state.TicketFormMode {
-		t.Error("Should allow mode transitions in empty column")
-	}
+	assert.Equal(t, state.TicketFormMode, m.UIState.Mode, "Should allow mode transitions in empty column")
 }
 
 // TestStateIndependence_ColumnAndTaskSelection verifies column and task selection are independent.
@@ -228,14 +203,10 @@ func TestStateIndependence_ColumnAndTaskSelection(t *testing.T) {
 	m.UIState.SelectedColumn = 1
 
 	// Task selection should remain unchanged (value stays 5, even if out of bounds)
-	if m.UIState.SelectedTask != 5 {
-		t.Errorf("SelectedTask after column change = %d, want 5 (unchanged value)", m.UIState.SelectedTask)
-	}
+	assert.Equal(t, 5, m.UIState.SelectedTask)
 
 	// Column should have changed
-	if m.UIState.SelectedColumn != 1 {
-		t.Errorf("SelectedColumn = %d, want 1", m.UIState.SelectedColumn)
-	}
+	assert.Equal(t, 1, m.UIState.SelectedColumn)
 }
 
 // TestViewportState_CalculatesCorrectly verifies viewport calculations for column visibility.
@@ -267,15 +238,11 @@ func TestViewportState_CalculatesCorrectly(t *testing.T) {
 			m.UIState.SetWidth(tt.width)
 			viewportSize := m.UIState.ViewportSize()
 
-			if viewportSize < tt.minCols || viewportSize > tt.maxCols {
-				t.Errorf("ViewportSize for width %d = %d, want between %d-%d",
-					tt.width, viewportSize, tt.minCols, tt.maxCols)
-			}
+			assert.GreaterOrEqual(t, viewportSize, tt.minCols, "ViewportSize for width %d should be >= %d", tt.width, tt.minCols)
+			assert.LessOrEqual(t, viewportSize, tt.maxCols, "ViewportSize for width %d should be <= %d", tt.width, tt.maxCols)
 
 			// Viewport should always show at least 3 columns (minimum enforced)
-			if viewportSize < 3 {
-				t.Error("ViewportSize should be at least 3")
-			}
+			assert.GreaterOrEqual(t, viewportSize, 3, "ViewportSize should be at least 3")
 		})
 	}
 }
@@ -298,9 +265,7 @@ func TestModeUsesLayers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run("Mode", func(t *testing.T) {
 			usesLayers := tt.mode.UsesLayers()
-			if usesLayers != tt.wantLayers {
-				t.Errorf("Mode %v UsesLayers = %v, want %v", tt.mode, usesLayers, tt.wantLayers)
-			}
+			assert.Equal(t, tt.wantLayers, usesLayers)
 		})
 	}
 }

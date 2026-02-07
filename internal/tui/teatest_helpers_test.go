@@ -45,15 +45,11 @@ func SetupTestModelWithDB(t *testing.T) (Model, *sql.DB) {
 	ctx := context.Background()
 	projectID := testutil.CreateTestProject(t, db, "Test Project")
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to get columns: %v", err)
-	}
+	require.NoError(t, err, "Failed to get columns")
 
 	// Create initial model
 	cfg, err := config.Load()
-	if err != nil {
-		t.Fatalf("Failed to load config: %v", err)
-	}
+	require.NoError(t, err, "Failed to load config")
 	m := InitialModel(ctx, appContainer, cfg, nil, db)
 
 	// Set up initial state with project data
@@ -98,7 +94,5 @@ func TypeStringToModel(m *Model, s string) *Model {
 // Note: Bubbletea model updates are synchronous, so this checks immediately
 func WaitForModeChange(t *testing.T, m *Model, expectedMode state.Mode, timeout time.Duration) {
 	t.Helper()
-	if m.UIState.Mode != expectedMode {
-		t.Fatalf("Expected mode %v, got %v", expectedMode, m.UIState.Mode)
-	}
+	require.Equal(t, expectedMode, m.UIState.Mode)
 }

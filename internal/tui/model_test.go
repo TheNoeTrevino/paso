@@ -6,6 +6,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/config"
 	testutilcli "github.com/thenoetrevino/paso/internal/testutil/cli"
 )
@@ -26,9 +28,7 @@ func TestModelInitialization(t *testing.T) {
 	// Create model with InitialModel which loads data from database
 	model := InitialModel(ctx, app, cfg, nil, db)
 
-	if model.App == nil {
-		t.Fatal("Model should have app initialized")
-	}
+	require.NotNil(t, model.App, "Model should have app initialized")
 }
 
 // TestModelImplementsTeaModel verifies Model implements tea.Model interface
@@ -54,9 +54,7 @@ func TestModelImplementsTeaModel(t *testing.T) {
 
 	// Verify View generates output
 	view := model.View()
-	if view.Content == "" {
-		t.Error("View should generate non-empty output")
-	}
+	assert.NotEmpty(t, view.Content, "View should generate non-empty output")
 }
 
 // TestModelViewGeneratesOutput verifies model rendering produces output
@@ -88,8 +86,6 @@ func TestModelViewGeneratesOutput(t *testing.T) {
 	for _, size := range sizes {
 		model.Update(tea.WindowSizeMsg{Width: size.width, Height: size.height})
 		view := model.View()
-		if view.Content == "" {
-			t.Errorf("View should generate output for size %dx%d", size.width, size.height)
-		}
+		assert.NotEmpty(t, view.Content, "View should generate output for size %dx%d", size.width, size.height)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -54,9 +55,7 @@ func TestLabelPicker_NavigationAndSelection(t *testing.T) {
 	// Verify model was updated successfully
 	if m.UIState.Mode == state.LabelPickerMode {
 		// If we're still in picker mode, that's valid for multiple selection
-		if len(m.Pickers.Label.Items) == 0 {
-			t.Error("Expected labels in picker state")
-		}
+		assert.NotEmpty(t, m.Pickers.Label.Items, "Expected labels in picker state")
 	}
 }
 
@@ -92,9 +91,7 @@ func TestLabelPicker_FilteringAndBackspace(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify we're back to showing labels in the picker
-	if m.UIState.Mode != state.LabelPickerMode {
-		t.Errorf("Expected mode LabelPickerMode, got %v", m.UIState.Mode)
-	}
+	assert.Equal(t, state.LabelPickerMode, m.UIState.Mode)
 }
 
 // TestLabelPicker_MultiSelectToggle tests space key to toggle selection
@@ -367,7 +364,5 @@ func TestPriorityPicker_UpDownNavigation(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify navigation works
-	if m.UIState.Mode != state.PriorityPickerMode {
-		t.Errorf("Expected to still be in PriorityPickerMode, got %v", m.UIState.Mode)
-	}
+	assert.Equal(t, state.PriorityPickerMode, m.UIState.Mode)
 }

@@ -2,9 +2,10 @@ package tui
 
 import (
 	"context"
-	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -44,14 +45,10 @@ func TestHandleNavigateLeft_FirstColumn(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should not move left
-	if m.UIState.SelectedColumn != 0 {
-		t.Errorf("SelectedColumn after navigate left from 0 = %d, want 0", m.UIState.SelectedColumn)
-	}
+	assert.Equal(t, 0, m.UIState.SelectedColumn)
 
 	// Task selection should remain unchanged (only resets when actually moving)
-	if m.UIState.SelectedTask != 5 {
-		t.Errorf("SelectedTask after no-op navigate left = %d, want 5 (unchanged)", m.UIState.SelectedTask)
-	}
+	assert.Equal(t, 5, m.UIState.SelectedTask)
 }
 
 // TestHandleNavigateRight_LastColumn ensures right navigation at last column is safe.
@@ -70,14 +67,10 @@ func TestHandleNavigateRight_LastColumn(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should not move right
-	if m.UIState.SelectedColumn != 2 {
-		t.Errorf("SelectedColumn after navigate right from last = %d, want 2", m.UIState.SelectedColumn)
-	}
+	assert.Equal(t, 2, m.UIState.SelectedColumn)
 
 	// Task selection should remain unchanged
-	if m.UIState.SelectedTask != 3 {
-		t.Errorf("SelectedTask after no-op navigate right = %d, want 3 (unchanged)", m.UIState.SelectedTask)
-	}
+	assert.Equal(t, 3, m.UIState.SelectedTask)
 }
 
 // TestHandleNavigateUp_FirstTask ensures up navigation at task 0 is safe.
@@ -90,9 +83,7 @@ func TestHandleNavigateUp_FirstTask(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should not move up
-	if m.UIState.SelectedTask != 0 {
-		t.Errorf("SelectedTask after navigate up from 0 = %d, want 0", m.UIState.SelectedTask)
-	}
+	assert.Equal(t, 0, m.UIState.SelectedTask)
 }
 
 // TestHandleNavigateDown_LastTask ensures down navigation at final task is safe.
@@ -114,9 +105,7 @@ func TestHandleNavigateDown_LastTask(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should not move down
-	if m.UIState.SelectedTask != 2 {
-		t.Errorf("SelectedTask after navigate down from last = %d, want 2", m.UIState.SelectedTask)
-	}
+	assert.Equal(t, 2, m.UIState.SelectedTask)
 }
 
 // TestHandleNavigateRight_ResetsTaskSelection ensures column change resets task to 0.
@@ -134,14 +123,10 @@ func TestHandleNavigateRight_ResetsTaskSelection(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should move to column 1
-	if m.UIState.SelectedColumn != 1 {
-		t.Errorf("SelectedColumn after navigate right = %d, want 1", m.UIState.SelectedColumn)
-	}
+	assert.Equal(t, 1, m.UIState.SelectedColumn)
 
 	// Task selection should reset to 0
-	if m.UIState.SelectedTask != 0 {
-		t.Errorf("SelectedTask after navigate right = %d, want 0 (reset)", m.UIState.SelectedTask)
-	}
+	assert.Equal(t, 0, m.UIState.SelectedTask)
 }
 
 // TestHandleAddTask_NoColumns ensures add task with no columns shows error.
@@ -153,20 +138,15 @@ func TestHandleAddTask_NoColumns(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should set notification
-	if !m.UI.Notification.HasAny() {
-		t.Error("handleAddTask with no columns should set notification, but HasAny() = false")
-	}
+	assert.True(t, m.UI.Notification.HasAny(), "handleAddTask with no columns should set notification, but HasAny() = false")
 
 	expectedError := "Cannot add task: No columns exist"
 	notifications := m.UI.Notification.All()
-	if len(notifications) == 0 || !strings.Contains(notifications[0].Message, expectedError) {
-		t.Errorf("Notification message = %q, want to contain %q", notifications[0].Message, expectedError)
-	}
+	require.NotEmpty(t, notifications)
+	assert.Contains(t, notifications[0].Message, expectedError)
 
 	// Should not change mode
-	if m.UIState.Mode != state.NormalMode {
-		t.Errorf("Mode after add task with no columns = %v, want NormalMode", m.UIState.Mode)
-	}
+	assert.Equal(t, state.NormalMode, m.UIState.Mode)
 }
 
 // TestHandleEditTask_NoTask ensures edit task with no task selected shows error.
@@ -182,20 +162,15 @@ func TestHandleEditTask_NoTask(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should set notification (getCurrentTask returns nil, so notification is set)
-	if !m.UI.Notification.HasAny() {
-		t.Error("handleEditTask with no task should set notification, but HasAny() = false")
-	}
+	assert.True(t, m.UI.Notification.HasAny(), "handleEditTask with no task should set notification, but HasAny() = false")
 
 	expectedError := "No task selected to edit"
 	notifications := m.UI.Notification.All()
-	if len(notifications) == 0 || notifications[0].Message != expectedError {
-		t.Errorf("Notification message = %q, want %q", notifications[0].Message, expectedError)
-	}
+	require.NotEmpty(t, notifications)
+	assert.Equal(t, expectedError, notifications[0].Message)
 
 	// Should not change mode
-	if m.UIState.Mode != state.NormalMode {
-		t.Errorf("Mode after edit with no task = %v, want NormalMode", m.UIState.Mode)
-	}
+	assert.Equal(t, state.NormalMode, m.UIState.Mode)
 }
 
 // TestHandleDeleteTask_NoTask ensures delete task with no task selected shows error.
@@ -209,20 +184,15 @@ func TestHandleDeleteTask_NoTask(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should set notification
-	if !m.UI.Notification.HasAny() {
-		t.Error("handleDeleteTask with no task should set notification, but HasAny() = false")
-	}
+	assert.True(t, m.UI.Notification.HasAny(), "handleDeleteTask with no task should set notification, but HasAny() = false")
 
 	expectedError := "No task selected to delete"
 	notifications := m.UI.Notification.All()
-	if len(notifications) == 0 || notifications[0].Message != expectedError {
-		t.Errorf("Notification message = %q, want %q", notifications[0].Message, expectedError)
-	}
+	require.NotEmpty(t, notifications)
+	assert.Equal(t, expectedError, notifications[0].Message)
 
 	// Should not enter delete confirm mode
-	if m.UIState.Mode != state.NormalMode {
-		t.Errorf("Mode after delete with no task = %v, want NormalMode", m.UIState.Mode)
-	}
+	assert.Equal(t, state.NormalMode, m.UIState.Mode)
 }
 
 // TestHandleScrollRight_SelectionFollows ensures scroll pushes selection into view.
@@ -245,19 +215,13 @@ func TestHandleScrollRight_SelectionFollows(t *testing.T) {
 	m = newModel.(Model)
 
 	// Viewport should have scrolled
-	if m.UIState.ViewportOffset != 1 {
-		t.Errorf("ViewportOffset after scroll right = %d, want 1", m.UIState.ViewportOffset)
-	}
+	assert.Equal(t, 1, m.UIState.ViewportOffset)
 
 	// Selection should follow viewport (adjust to 1, the new leftmost visible column)
-	if m.UIState.SelectedColumn != 1 {
-		t.Errorf("SelectedColumn after scroll right = %d, want 1 (adjusted to viewport)", m.UIState.SelectedColumn)
-	}
+	assert.Equal(t, 1, m.UIState.SelectedColumn)
 
 	// Task should reset to 0 when selection changes
-	if m.UIState.SelectedTask != 0 {
-		t.Errorf("SelectedTask after scroll adjustment = %d, want 0", m.UIState.SelectedTask)
-	}
+	assert.Equal(t, 0, m.UIState.SelectedTask)
 }
 
 // TestHandleNavigateUp_MovesUp ensures up navigation moves from task 1 to task 0.
@@ -279,9 +243,7 @@ func TestHandleNavigateUp_MovesUp(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should move up to task 0
-	if m.UIState.SelectedTask != 0 {
-		t.Errorf("SelectedTask after navigate up = %d, want 0", m.UIState.SelectedTask)
-	}
+	assert.Equal(t, 0, m.UIState.SelectedTask)
 }
 
 // TestHandleNavigateDown_MovesDown ensures down navigation moves from task 0 to task 1.
@@ -303,9 +265,7 @@ func TestHandleNavigateDown_MovesDown(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should move down to task 1
-	if m.UIState.SelectedTask != 1 {
-		t.Errorf("SelectedTask after navigate down = %d, want 1", m.UIState.SelectedTask)
-	}
+	assert.Equal(t, 1, m.UIState.SelectedTask)
 }
 
 // TestHandleNavigateLeft_MovesLeft ensures left navigation moves from column 1 to column 0.
@@ -323,14 +283,10 @@ func TestHandleNavigateLeft_MovesLeft(t *testing.T) {
 	m = newModel.(Model)
 
 	// Should move to column 0
-	if m.UIState.SelectedColumn != 0 {
-		t.Errorf("SelectedColumn after navigate left = %d, want 0", m.UIState.SelectedColumn)
-	}
+	assert.Equal(t, 0, m.UIState.SelectedColumn)
 
 	// Task selection should reset to 0
-	if m.UIState.SelectedTask != 0 {
-		t.Errorf("SelectedTask after navigate left = %d, want 0 (reset)", m.UIState.SelectedTask)
-	}
+	assert.Equal(t, 0, m.UIState.SelectedTask)
 }
 
 // TestHandleScrollRight_AtRightmostView_NoOp ensures scroll right at rightmost view is safe.
@@ -350,14 +306,10 @@ func TestHandleScrollRight_AtRightmostView_NoOp(t *testing.T) {
 	m = newModel.(Model)
 
 	// Viewport should not have scrolled
-	if m.UIState.ViewportOffset != 1 {
-		t.Errorf("ViewportOffset after scroll right at rightmost = %d, want 1 (no change)", m.UIState.ViewportOffset)
-	}
+	assert.Equal(t, 1, m.UIState.ViewportOffset)
 
 	// Should set notification
-	if !m.UI.Notification.HasAny() {
-		t.Error("handleScrollRight at rightmost should set notification, but HasAny() = false")
-	}
+	assert.True(t, m.UI.Notification.HasAny(), "handleScrollRight at rightmost should set notification, but HasAny() = false")
 }
 
 // TestHandleScrollLeft_MovesLeft ensures scroll left moves viewport offset.
@@ -378,9 +330,7 @@ func TestHandleScrollLeft_MovesLeft(t *testing.T) {
 	m = newModel.(Model)
 
 	// Viewport should have scrolled left
-	if m.UIState.ViewportOffset != 0 {
-		t.Errorf("ViewportOffset after scroll left = %d, want 0", m.UIState.ViewportOffset)
-	}
+	assert.Equal(t, 0, m.UIState.ViewportOffset)
 }
 
 // TestHandleScrollLeft_AtLeftmostView_NoOp ensures scroll left at leftmost view is safe.
@@ -400,12 +350,8 @@ func TestHandleScrollLeft_AtLeftmostView_NoOp(t *testing.T) {
 	m = newModel.(Model)
 
 	// Viewport should not have scrolled
-	if m.UIState.ViewportOffset != 0 {
-		t.Errorf("ViewportOffset after scroll left at leftmost = %d, want 0 (no change)", m.UIState.ViewportOffset)
-	}
+	assert.Equal(t, 0, m.UIState.ViewportOffset)
 
 	// Should set notification
-	if !m.UI.Notification.HasAny() {
-		t.Error("handleScrollLeft at leftmost should set notification, but HasAny() = false")
-	}
+	assert.True(t, m.UI.Notification.HasAny(), "handleScrollLeft at leftmost should set notification, but HasAny() = false")
 }

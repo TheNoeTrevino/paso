@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -20,9 +21,7 @@ func TestConnection_InitialConnectedState(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify connection state is now connected
-	if m.ConnectionState.Status() != state.Connected {
-		t.Errorf("Expected status to be Connected, got %v", m.ConnectionState.Status())
-	}
+	assert.Equal(t, state.Connected, m.ConnectionState.Status())
 
 	// Verify model can handle messages while connected
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyRight})
@@ -31,9 +30,7 @@ func TestConnection_InitialConnectedState(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify model still maintains connected state
-	if m.ConnectionState.Status() != state.Connected {
-		t.Errorf("Expected to remain Connected after update, got %v", m.ConnectionState.Status())
-	}
+	assert.Equal(t, state.Connected, m.ConnectionState.Status())
 }
 
 // TestConnection_DisconnectNotification tests disconnect event handling
@@ -45,18 +42,14 @@ func TestConnection_DisconnectNotification(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify state is connected
-	if m.ConnectionState.Status() != state.Connected {
-		t.Errorf("Expected status to be Connected, got %v", m.ConnectionState.Status())
-	}
+	assert.Equal(t, state.Connected, m.ConnectionState.Status())
 
 	// Simulate disconnect event by setting status to disconnected
 	m.ConnectionState.SetStatus(state.Disconnected)
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify state changed to disconnected
-	if m.ConnectionState.Status() != state.Disconnected {
-		t.Errorf("Expected status to be Disconnected, got %v", m.ConnectionState.Status())
-	}
+	assert.Equal(t, state.Disconnected, m.ConnectionState.Status())
 
 	// Send a key message while disconnected
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
@@ -65,9 +58,7 @@ func TestConnection_DisconnectNotification(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify model continues to process messages gracefully
-	if m.ConnectionState.Status() != state.Disconnected {
-		t.Errorf("Expected to remain Disconnected, got %v", m.ConnectionState.Status())
-	}
+	assert.Equal(t, state.Disconnected, m.ConnectionState.Status())
 }
 
 // TestConnection_ReconnectingState tests reconnecting status display
@@ -79,18 +70,14 @@ func TestConnection_ReconnectingState(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify state is connected
-	if m.ConnectionState.Status() != state.Connected {
-		t.Errorf("Expected initial status to be Connected, got %v", m.ConnectionState.Status())
-	}
+	assert.Equal(t, state.Connected, m.ConnectionState.Status())
 
 	// Transition to reconnecting state (connection lost but trying to restore)
 	m.ConnectionState.SetStatus(state.Reconnecting)
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify state changed to reconnecting
-	if m.ConnectionState.Status() != state.Reconnecting {
-		t.Errorf("Expected status to be Reconnecting, got %v", m.ConnectionState.Status())
-	}
+	assert.Equal(t, state.Reconnecting, m.ConnectionState.Status())
 
 	// Send navigation message while reconnecting
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyUp})
@@ -99,9 +86,7 @@ func TestConnection_ReconnectingState(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify model handles messages during reconnecting state
-	if m.ConnectionState.Status() != state.Reconnecting {
-		t.Errorf("Expected to remain in Reconnecting state, got %v", m.ConnectionState.Status())
-	}
+	assert.Equal(t, state.Reconnecting, m.ConnectionState.Status())
 }
 
 // TestConnection_SuccessfulReconnect tests transition back to connected
@@ -112,36 +97,28 @@ func TestConnection_SuccessfulReconnect(t *testing.T) {
 	m.ConnectionState.SetStatus(state.Connected)
 	time.Sleep(10 * time.Millisecond)
 
-	if m.ConnectionState.Status() != state.Connected {
-		t.Errorf("Expected initial status to be Connected, got %v", m.ConnectionState.Status())
-	}
+	assert.Equal(t, state.Connected, m.ConnectionState.Status())
 
 	// Simulate disconnect
 	m.ConnectionState.SetStatus(state.Disconnected)
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify disconnected state
-	if m.ConnectionState.Status() != state.Disconnected {
-		t.Errorf("Expected status to be Disconnected, got %v", m.ConnectionState.Status())
-	}
+	assert.Equal(t, state.Disconnected, m.ConnectionState.Status())
 
 	// Transition to reconnecting
 	m.ConnectionState.SetStatus(state.Reconnecting)
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify reconnecting state
-	if m.ConnectionState.Status() != state.Reconnecting {
-		t.Errorf("Expected status to be Reconnecting, got %v", m.ConnectionState.Status())
-	}
+	assert.Equal(t, state.Reconnecting, m.ConnectionState.Status())
 
 	// Reconnect successfully
 	m.ConnectionState.SetStatus(state.Connected)
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify back to connected state
-	if m.ConnectionState.Status() != state.Connected {
-		t.Errorf("Expected status to be Connected after reconnect, got %v", m.ConnectionState.Status())
-	}
+	assert.Equal(t, state.Connected, m.ConnectionState.Status())
 }
 
 // TestConnection_TaskOpsWhileDisconnected tests graceful degradation when offline
@@ -153,9 +130,7 @@ func TestConnection_TaskOpsWhileDisconnected(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify disconnected
-	if m.ConnectionState.Status() != state.Disconnected {
-		t.Errorf("Expected status to be Disconnected, got %v", m.ConnectionState.Status())
-	}
+	assert.Equal(t, state.Disconnected, m.ConnectionState.Status())
 
 	// Try to navigate while disconnected
 	m.UIState.Mode = state.NormalMode
@@ -165,9 +140,7 @@ func TestConnection_TaskOpsWhileDisconnected(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify mode is still normal (no interruption)
-	if m.UIState.Mode != state.NormalMode {
-		t.Errorf("Expected NormalMode while disconnected, got %v", m.UIState.Mode)
-	}
+	assert.Equal(t, state.NormalMode, m.UIState.Mode)
 
 	// Try another navigation operation
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
@@ -176,7 +149,5 @@ func TestConnection_TaskOpsWhileDisconnected(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify model remains functional
-	if m.ConnectionState.Status() != state.Disconnected {
-		t.Errorf("Expected to remain Disconnected, got %v", m.ConnectionState.Status())
-	}
+	assert.Equal(t, state.Disconnected, m.ConnectionState.Status())
 }

@@ -285,7 +285,7 @@ func TestEventHandler_SequentialStateUpdates(t *testing.T) {
 
 	select {
 	case <-ctx.Done():
-		t.Fatal("Test timed out unexpectedly")
+		require.Fail(t, "Test timed out unexpectedly")
 	default:
 	}
 }
