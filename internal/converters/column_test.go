@@ -624,11 +624,3 @@ func intPtrEqual(a, b *int) bool {
 	}
 	return *a == *b
 }
-
-// ptrToString converts a pointer to a string representation for error messages
-func ptrToString(p *int) string {
-	if p == nil {
-		return "nil"
-	}
-	return string(rune(*p + '0'))
-}
