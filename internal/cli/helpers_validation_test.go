@@ -44,9 +44,7 @@ func TestValidateColorHex_Invalid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.description, func(t *testing.T) {
 			err := ValidateColorHex(tt.color)
-			if err == nil {
-				t.Errorf("Expected %s to be invalid (%s), but got no error", tt.color, tt.description)
-			}
+			assert.Error(t, err)
 		})
 	}
 }
@@ -73,9 +71,7 @@ func TestParsePriority_Valid(t *testing.T) {
 		t.Run(tt.input, func(t *testing.T) {
 			result, err := ParsePriority(tt.input)
 			assert.NoError(t, err, "ParsePriority should not return error for: %s", tt.input)
-			if result != tt.expected {
-				t.Errorf("Expected %d for '%s', got %d", tt.expected, tt.input, result)
-			}
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -94,9 +90,7 @@ func TestParsePriority_Invalid(t *testing.T) {
 	for _, input := range tests {
 		t.Run(input, func(t *testing.T) {
 			_, err := ParsePriority(input)
-			if err == nil {
-				t.Errorf("Expected error for invalid priority '%s', got nil", input)
-			}
+			assert.Error(t, err)
 		})
 	}
 }
@@ -118,9 +112,7 @@ func TestParseTaskType_Valid(t *testing.T) {
 		t.Run(tt.input, func(t *testing.T) {
 			result, err := ParseTaskType(tt.input)
 			assert.NoError(t, err, "ParseTaskType should not return error for: %s", tt.input)
-			if result != tt.expected {
-				t.Errorf("Expected %d for '%s', got %d", tt.expected, tt.input, result)
-			}
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -139,9 +131,7 @@ func TestParseTaskType_Invalid(t *testing.T) {
 	for _, input := range tests {
 		t.Run(input, func(t *testing.T) {
 			_, err := ParseTaskType(input)
-			if err == nil {
-				t.Errorf("Expected error for invalid type '%s', got nil", input)
-			}
+			assert.Error(t, err)
 		})
 	}
 }

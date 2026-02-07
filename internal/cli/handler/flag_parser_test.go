@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/cli"
 )
 
@@ -76,18 +78,13 @@ func TestParseTaskID(t *testing.T) {
 			result, err := parser.ParseTaskID("id")
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error containing '%s', got nil", tt.errMsg)
-				} else if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
-					t.Errorf("expected error containing '%s', got '%s'", tt.errMsg, err.Error())
+				assert.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
 				}
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %v", err)
-				}
-				if result != tt.flagValue {
-					t.Errorf("expected %d, got %d", tt.flagValue, result)
-				}
+				assert.NoError(t, err)
+				assert.Equal(t, tt.flagValue, result)
 			}
 		})
 	}
@@ -140,18 +137,13 @@ func TestParseColumnID(t *testing.T) {
 			result, err := parser.ParseColumnID("column-id")
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error containing '%s', got nil", tt.errMsg)
-				} else if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
-					t.Errorf("expected error containing '%s', got '%s'", tt.errMsg, err.Error())
+				assert.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
 				}
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %v", err)
-				}
-				if result != tt.flagValue {
-					t.Errorf("expected %d, got %d", tt.flagValue, result)
-				}
+				assert.NoError(t, err)
+				assert.Equal(t, tt.flagValue, result)
 			}
 		})
 	}
@@ -204,18 +196,13 @@ func TestParseLabelID(t *testing.T) {
 			result, err := parser.ParseLabelID("label-id")
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error containing '%s', got nil", tt.errMsg)
-				} else if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
-					t.Errorf("expected error containing '%s', got '%s'", tt.errMsg, err.Error())
+				assert.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
 				}
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %v", err)
-				}
-				if result != tt.flagValue {
-					t.Errorf("expected %d, got %d", tt.flagValue, result)
-				}
+				assert.NoError(t, err)
+				assert.Equal(t, tt.flagValue, result)
 			}
 		})
 	}
@@ -284,18 +271,13 @@ func TestParseString(t *testing.T) {
 			result, err := parser.ParseString("name")
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error containing '%s', got nil", tt.errMsg)
-				} else if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
-					t.Errorf("expected error containing '%s', got '%s'", tt.errMsg, err.Error())
+				assert.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
 				}
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %v", err)
-				}
-				if result != tt.wantValue {
-					t.Errorf("expected '%s', got '%s'", tt.wantValue, result)
-				}
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantValue, result)
 			}
 		})
 	}
@@ -345,16 +327,10 @@ func TestParseStringOptional(t *testing.T) {
 			result, err := parser.ParseStringOptional("description")
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error, got nil")
-				}
+				assert.Error(t, err)
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %v", err)
-				}
-				if result != tt.wantValue {
-					t.Errorf("expected '%s', got '%s'", tt.wantValue, result)
-				}
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantValue, result)
 			}
 		})
 	}
@@ -412,18 +388,13 @@ func TestParseInt(t *testing.T) {
 			result, err := parser.ParseInt("count")
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error containing '%s', got nil", tt.errMsg)
-				} else if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
-					t.Errorf("expected error containing '%s', got '%s'", tt.errMsg, err.Error())
+				assert.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
 				}
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %v", err)
-				}
-				if result != tt.flagValue {
-					t.Errorf("expected %d, got %d", tt.flagValue, result)
-				}
+				assert.NoError(t, err)
+				assert.Equal(t, tt.flagValue, result)
 			}
 		})
 	}
@@ -472,16 +443,10 @@ func TestParseIntOptional(t *testing.T) {
 			result, err := parser.ParseIntOptional("offset")
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error, got nil")
-				}
+				assert.Error(t, err)
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %v", err)
-				}
-				if result != tt.wantValue {
-					t.Errorf("expected %d, got %d", tt.wantValue, result)
-				}
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantValue, result)
 			}
 		})
 	}
@@ -524,16 +489,10 @@ func TestParseBool(t *testing.T) {
 			result, err := parser.ParseBool("enabled")
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error, got nil")
-				}
+				assert.Error(t, err)
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %v", err)
-				}
-				if result != tt.wantValue {
-					t.Errorf("expected %v, got %v", tt.wantValue, result)
-				}
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantValue, result)
 			}
 		})
 	}
@@ -632,18 +591,13 @@ func TestParseColor(t *testing.T) {
 			result, err := parser.ParseColor("color")
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error containing '%s', got nil", tt.errMsg)
-				} else if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
-					t.Errorf("expected error containing '%s', got '%s'", tt.errMsg, err.Error())
+				assert.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
 				}
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %v", err)
-				}
-				if result != tt.wantValue {
-					t.Errorf("expected '%s', got '%s'", tt.wantValue, result)
-				}
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantValue, result)
 			}
 		})
 	}
@@ -709,19 +663,11 @@ func TestOutputFormats(t *testing.T) {
 			jsonOutput, quietMode, err := parser.OutputFormats()
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error, got nil")
-				}
+				assert.Error(t, err)
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %v", err)
-				}
-				if jsonOutput != tt.wantJSON {
-					t.Errorf("expected json=%v, got %v", tt.wantJSON, jsonOutput)
-				}
-				if quietMode != tt.wantQuiet {
-					t.Errorf("expected quiet=%v, got %v", tt.wantQuiet, quietMode)
-				}
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantJSON, jsonOutput)
+				assert.Equal(t, tt.wantQuiet, quietMode)
 			}
 		})
 	}
@@ -776,15 +722,10 @@ func TestOutputFormats_MissingFlags(t *testing.T) {
 			_, _, err := parser.OutputFormats()
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("expected error containing '%s', got nil", tt.errContains)
-				} else if !contains(err.Error(), tt.errContains) {
-					t.Errorf("expected error containing '%s', got '%s'", tt.errContains, err.Error())
-				}
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errContains)
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %v", err)
-				}
+				assert.NoError(t, err)
 			}
 		})
 	}
@@ -800,17 +741,9 @@ func TestNewFlagParser(t *testing.T) {
 
 	parser := NewFlagParser(cmd, formatter)
 
-	if parser == nil {
-		t.Fatal("expected non-nil parser")
-	}
-
-	if parser.cmd != cmd {
-		t.Error("parser cmd field not set correctly")
-	}
-
-	if parser.formatter != formatter {
-		t.Error("parser formatter field not set correctly")
-	}
+	require.NotNil(t, parser)
+	assert.Equal(t, cmd, parser.cmd)
+	assert.Equal(t, formatter, parser.formatter)
 }
 
 // Edge Case Tests
@@ -823,9 +756,7 @@ func TestParseString_NonExistentFlag(t *testing.T) {
 
 	_, err := parser.ParseString("non-existent")
 
-	if err == nil {
-		t.Error("expected error for non-existent flag, got nil")
-	}
+	assert.Error(t, err)
 }
 
 func TestParseInt_NonExistentFlag(t *testing.T) {
@@ -836,9 +767,7 @@ func TestParseInt_NonExistentFlag(t *testing.T) {
 
 	_, err := parser.ParseInt("non-existent")
 
-	if err == nil {
-		t.Error("expected error for non-existent flag, got nil")
-	}
+	assert.Error(t, err)
 }
 
 func TestParseBool_NonExistentFlag(t *testing.T) {
@@ -849,24 +778,5 @@ func TestParseBool_NonExistentFlag(t *testing.T) {
 
 	_, err := parser.ParseBool("non-existent")
 
-	if err == nil {
-		t.Error("expected error for non-existent flag, got nil")
-	}
-}
-
-// Utility Functions
-
-// contains checks if a string contains a substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > 0 && len(substr) > 0 && containsHelper(s, substr)))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
+	assert.Error(t, err)
 }

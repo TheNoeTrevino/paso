@@ -3,6 +3,7 @@ package project
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -178,12 +179,10 @@ func TestMarkBlockingChains(t *testing.T) {
 			// Check results recursively
 			checkNode := func(node *models.TaskTreeNode) {
 				expected, exists := tt.expected[node.ID]
-				if !exists {
-					t.Errorf("Node ID %d not found in expected results", node.ID)
-					return
-				}
-				if node.InBlockingPath != expected {
-					t.Errorf("Node ID %d: expected InBlockingPath=%v, got %v",
+				assert.True(t, exists, "Node ID %d not found in expected results", node.ID)
+				if exists {
+					assert.Equal(t, expected, node.InBlockingPath,
+						"Node ID %d: expected InBlockingPath=%v, got %v",
 						node.ID, expected, node.InBlockingPath)
 				}
 			}
@@ -213,12 +212,8 @@ func TestMarkBlockingChainsEmptyTree(t *testing.T) {
 
 	result := markBlockingChains(node)
 
-	if result {
-		t.Errorf("Expected markBlockingChains to return false for non-blocking solo task, got true")
-	}
-	if node.InBlockingPath {
-		t.Errorf("Expected InBlockingPath to be false for non-blocking solo task, got true")
-	}
+	assert.False(t, result)
+	assert.False(t, node.InBlockingPath)
 }
 
 func TestMarkBlockingChainsSelfBlocking(t *testing.T) {
@@ -233,10 +228,6 @@ func TestMarkBlockingChainsSelfBlocking(t *testing.T) {
 
 	result := markBlockingChains(node)
 
-	if !result {
-		t.Errorf("Expected markBlockingChains to return true for self-blocking task, got false")
-	}
-	if !node.InBlockingPath {
-		t.Errorf("Expected InBlockingPath to be true for self-blocking task, got false")
-	}
+	assert.True(t, result)
+	assert.True(t, node.InBlockingPath)
 }

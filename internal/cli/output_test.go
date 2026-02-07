@@ -48,63 +48,43 @@ func TestOutputFormatter_Success_JSON(t *testing.T) {
 			name: "map data",
 			data: map[string]any{"test": "value", "number": float64(42)},
 			validate: func(t *testing.T, result map[string]any) {
-				if !result["success"].(bool) {
-					t.Error("Expected success to be true")
-				}
+				assert.True(t, result["success"].(bool))
 				dataMap := result["data"].(map[string]any)
-				if dataMap["test"] != "value" {
-					t.Errorf("Expected data.test to be 'value', got %v", dataMap["test"])
-				}
+				assert.Equal(t, "value", dataMap["test"])
 			},
 		},
 		{
 			name: "struct with ID",
 			data: mockDataWithID{ID: 123, Name: "Test"},
 			validate: func(t *testing.T, result map[string]any) {
-				if !result["success"].(bool) {
-					t.Error("Expected success to be true")
-				}
+				assert.True(t, result["success"].(bool))
 				dataMap := result["data"].(map[string]any)
-				if dataMap["Name"] != "Test" {
-					t.Errorf("Expected data.Name to be 'Test', got %v", dataMap["Name"])
-				}
+				assert.Equal(t, "Test", dataMap["Name"])
 			},
 		},
 		{
 			name: "string data",
 			data: "simple string",
 			validate: func(t *testing.T, result map[string]any) {
-				if !result["success"].(bool) {
-					t.Error("Expected success to be true")
-				}
-				if result["data"] != "simple string" {
-					t.Errorf("Expected data to be 'simple string', got %v", result["data"])
-				}
+				assert.True(t, result["success"].(bool))
+				assert.Equal(t, "simple string", result["data"])
 			},
 		},
 		{
 			name: "integer data",
 			data: 42,
 			validate: func(t *testing.T, result map[string]any) {
-				if !result["success"].(bool) {
-					t.Error("Expected success to be true")
-				}
+				assert.True(t, result["success"].(bool))
 				// JSON unmarshals numbers as float64
-				if result["data"].(float64) != 42 {
-					t.Errorf("Expected data to be 42, got %v", result["data"])
-				}
+				assert.Equal(t, float64(42), result["data"].(float64))
 			},
 		},
 		{
 			name: "nil data",
 			data: nil,
 			validate: func(t *testing.T, result map[string]any) {
-				if !result["success"].(bool) {
-					t.Error("Expected success to be true")
-				}
-				if result["data"] != nil {
-					t.Errorf("Expected data to be nil, got %v", result["data"])
-				}
+				assert.True(t, result["success"].(bool))
+				assert.Nil(t, result["data"])
 			},
 		},
 	}
@@ -198,9 +178,7 @@ func TestOutputFormatter_Success_Quiet_WithID(t *testing.T) {
 			_, _ = buf.ReadFrom(r)
 			output := strings.TrimSpace(buf.String())
 
-			if output != tt.wantOutput {
-				t.Errorf("Expected output '%s', got '%s'", tt.wantOutput, output)
-			}
+			assert.Equal(t, tt.wantOutput, output)
 		})
 	}
 }
@@ -255,9 +233,7 @@ func TestOutputFormatter_Success_Quiet_WithoutID(t *testing.T) {
 			output := buf.String()
 
 			// Should fall through to pretty print when no GetID method
-			if !strings.Contains(output, tt.shouldContain) {
-				t.Errorf("Expected output to contain '%s', got '%s'", tt.shouldContain, output)
-			}
+			assert.Contains(t, output, tt.shouldContain)
 		})
 	}
 }
@@ -312,9 +288,7 @@ func TestOutputFormatter_Success_HumanReadable(t *testing.T) {
 			_, _ = buf.ReadFrom(r)
 			output := buf.String()
 
-			if !strings.Contains(output, tt.shouldContain) {
-				t.Errorf("Expected output to contain '%s', got '%s'", tt.shouldContain, output)
-			}
+			assert.Contains(t, output, tt.shouldContain)
 		})
 	}
 }
@@ -373,22 +347,15 @@ func TestOutputFormatter_Error_JSON(t *testing.T) {
 			var result map[string]any
 			require.NoError(t, json.Unmarshal([]byte(output), &result), "Failed to parse JSON output")
 
-			if result["success"].(bool) {
-				t.Error("Expected success to be false")
-			}
+			assert.False(t, result["success"].(bool))
 
 			errorData := result["error"].(map[string]any)
-			if errorData["code"] != tt.code {
-				t.Errorf("Expected error code '%s', got '%s'", tt.code, errorData["code"])
-			}
-			if errorData["message"] != tt.message {
-				t.Errorf("Expected message '%s', got '%s'", tt.message, errorData["message"])
-			}
+			assert.Equal(t, tt.code, errorData["code"])
+			assert.Equal(t, tt.message, errorData["message"])
 
 			// Verify no suggestion field when using Error() method
-			if _, hasSuggestion := errorData["suggestion"]; hasSuggestion {
-				t.Error("Expected no suggestion field in Error() output")
-			}
+			_, hasSuggestion := errorData["suggestion"]
+			assert.False(t, hasSuggestion)
 		})
 	}
 }
@@ -414,9 +381,7 @@ func TestOutputFormatter_Error_Quiet(t *testing.T) {
 	output := buf.String()
 
 	// Quiet mode should suppress error output
-	if output != "" {
-		t.Errorf("Expected no output in quiet mode, got '%s'", output)
-	}
+	assert.Empty(t, output)
 }
 
 // Error Method Tests - Human-Readable Mode
@@ -464,16 +429,10 @@ func TestOutputFormatter_Error_HumanReadable(t *testing.T) {
 			_, _ = buf.ReadFrom(r)
 			output := buf.String()
 
-			if !strings.Contains(output, tt.message) {
-				t.Errorf("Expected output to contain error message '%s', got '%s'", tt.message, output)
-			}
-			if !strings.Contains(output, "Error:") {
-				t.Errorf("Expected output to contain 'Error:', got '%s'", output)
-			}
+			assert.Contains(t, output, tt.message)
+			assert.Contains(t, output, "Error:")
 			// Should NOT contain suggestion
-			if strings.Contains(output, "Suggestion:") {
-				t.Errorf("Expected no suggestion in Error() output, got '%s'", output)
-			}
+			assert.NotContains(t, output, "Suggestion:")
 		})
 	}
 }
@@ -535,26 +494,17 @@ func TestOutputFormatter_ErrorWithSuggestion_JSON(t *testing.T) {
 			var result map[string]any
 			require.NoError(t, json.Unmarshal([]byte(output), &result), "Failed to parse JSON output")
 
-			if result["success"].(bool) {
-				t.Error("Expected success to be false")
-			}
+			assert.False(t, result["success"].(bool))
 
 			errorData := result["error"].(map[string]any)
-			if errorData["code"] != tt.code {
-				t.Errorf("Expected error code '%s', got '%s'", tt.code, errorData["code"])
-			}
-			if errorData["message"] != tt.message {
-				t.Errorf("Expected message '%s', got '%s'", tt.message, errorData["message"])
-			}
+			assert.Equal(t, tt.code, errorData["code"])
+			assert.Equal(t, tt.message, errorData["message"])
 
 			if tt.hasSuggest {
-				if errorData["suggestion"] != tt.suggestion {
-					t.Errorf("Expected suggestion '%s', got '%v'", tt.suggestion, errorData["suggestion"])
-				}
+				assert.Equal(t, tt.suggestion, errorData["suggestion"])
 			} else {
-				if _, exists := errorData["suggestion"]; exists {
-					t.Error("Expected no suggestion field when suggestion is empty")
-				}
+				_, exists := errorData["suggestion"]
+				assert.False(t, exists)
 			}
 		})
 	}
@@ -598,9 +548,7 @@ func TestOutputFormatter_ErrorWithSuggestion_Quiet(t *testing.T) {
 			output := buf.String()
 
 			// Quiet mode should suppress error output
-			if output != "" {
-				t.Errorf("Expected no output in quiet mode, got '%s'", output)
-			}
+			assert.Empty(t, output)
 		})
 	}
 }
@@ -669,13 +617,11 @@ func TestOutputFormatter_ErrorWithSuggestion_HumanReadable(t *testing.T) {
 			output := buf.String()
 
 			for _, expected := range tt.shouldContain {
-				if !strings.Contains(output, expected) {
-					t.Errorf("Expected output to contain '%s', got '%s'", expected, output)
-				}
+				assert.Contains(t, output, expected)
 			}
 
-			if tt.shouldNotContain != "" && strings.Contains(output, tt.shouldNotContain) {
-				t.Errorf("Expected output to NOT contain '%s', got '%s'", tt.shouldNotContain, output)
+			if tt.shouldNotContain != "" {
+				assert.NotContains(t, output, tt.shouldNotContain)
 			}
 		})
 	}
@@ -705,9 +651,7 @@ func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 		output := strings.TrimSpace(buf.String())
 
 		// Should output just the ID, not JSON
-		if output != "42" {
-			t.Errorf("Expected output '42' when Quiet=true with GetID(), got: %s", output)
-		}
+		assert.Equal(t, "42", output)
 	})
 
 	// When Quiet is true but data has no GetID(), it falls through to JSON
@@ -820,7 +764,6 @@ func TestOutputFormatter_ErrorCallsErrorWithSuggestion(t *testing.T) {
 
 	errorData := result["error"].(map[string]any)
 	// Verify no suggestion field is present
-	if _, exists := errorData["suggestion"]; exists {
-		t.Error("Expected no suggestion field when calling Error()")
-	}
+	_, exists := errorData["suggestion"]
+	assert.False(t, exists)
 }

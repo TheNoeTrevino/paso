@@ -23,9 +23,7 @@ func TestGetProjectID_FlagSet(t *testing.T) {
 	// Test getting the project ID
 	projectID, err := GetProjectID(cmd)
 	assert.NoError(t, err, "GetProjectID should not return error")
-	if projectID != 42 {
-		t.Errorf("Expected project ID 42, got %d", projectID)
-	}
+	assert.Equal(t, 42, projectID)
 }
 
 func TestGetProjectID_NeitherSet(t *testing.T) {
@@ -38,13 +36,8 @@ func TestGetProjectID_NeitherSet(t *testing.T) {
 
 	// Test that we get an error
 	_, err := GetProjectID(cmd)
-	if err == nil {
-		t.Error("Expected error when flag not set and not in git repo, got nil")
-	}
+	require.Error(t, err)
 
 	// Check error message
-	expectedMsg := "no project specified: use --project flag or create a project associated with this branch"
-	if err.Error() != expectedMsg {
-		t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
-	}
+	assert.Equal(t, "no project specified: use --project flag or create a project associated with this branch", err.Error())
 }

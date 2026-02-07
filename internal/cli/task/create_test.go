@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	testutilcli "github.com/thenoetrevino/paso/internal/testutil/cli"
 )
@@ -18,9 +20,7 @@ func TestCreateTaskCommand(t *testing.T) {
 
 	// Validate that project exists in database
 	_, err := app.ProjectService.GetProjectByID(context.Background(), projectID)
-	if err != nil {
-		t.Fatalf("Project creation failed - GetProjectByID returned error: %v (projectID=%d)", err, projectID)
-	}
+	require.NoError(t, err, "Project creation failed - GetProjectByID returned error (projectID=%d)", projectID)
 	t.Logf("Setup successful: projectID=%d, columnID=%d", projectID, columnID)
 
 	tests := []struct {
@@ -35,12 +35,8 @@ func TestCreateTaskCommand(t *testing.T) {
 			shouldErr: false,
 			checkFunc: func(t *testing.T, output string) {
 				taskID, err := strconv.Atoi(strings.TrimSpace(output))
-				if err != nil {
-					t.Fatalf("Expected numeric task ID, got: %s", output)
-				}
-				if taskID <= 0 {
-					t.Errorf("Expected positive task ID, got: %d", taskID)
-				}
+				require.NoError(t, err, "Expected numeric task ID, got: %s", output)
+				assert.Positive(t, taskID)
 			},
 		},
 		{
@@ -55,11 +51,10 @@ func TestCreateTaskCommand(t *testing.T) {
 			cmd := CreateCmd()
 			output, err := testutilcli.ExecuteCLICommand(t, app, cmd, tt.args)
 
-			if tt.shouldErr && err == nil {
-				t.Errorf("Expected error but got none")
-			}
-			if !tt.shouldErr && err != nil {
-				t.Errorf("Unexpected error: %v, output: %s", err, output)
+			if tt.shouldErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
 
 			if !tt.shouldErr && tt.checkFunc != nil {

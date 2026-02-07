@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	testutilcli "github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
@@ -24,12 +26,8 @@ func TestCreateProjectCommand(t *testing.T) {
 			shouldErr: false,
 			checkFunc: func(t *testing.T, output string) {
 				projectID, err := strconv.Atoi(strings.TrimSpace(output))
-				if err != nil {
-					t.Fatalf("Expected numeric project ID, got: %s", output)
-				}
-				if projectID <= 0 {
-					t.Errorf("Expected positive project ID, got: %d", projectID)
-				}
+				require.NoError(t, err, "Expected numeric project ID, got: %s", output)
+				assert.Positive(t, projectID)
 			},
 		},
 		{
@@ -44,11 +42,10 @@ func TestCreateProjectCommand(t *testing.T) {
 			cmd := CreateCmd()
 			output, err := testutilcli.ExecuteCLICommand(t, app, cmd, tt.args)
 
-			if tt.shouldErr && err == nil {
-				t.Errorf("Expected error but got none")
-			}
-			if !tt.shouldErr && err != nil {
-				t.Errorf("Unexpected error: %v, output: %s", err, output)
+			if tt.shouldErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
 
 			if !tt.shouldErr && tt.checkFunc != nil {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -266,14 +265,12 @@ func TestDeleteColumnIntegration_Negative(t *testing.T) {
 		// The cobra library will report that "invalid" is not a valid int
 		cmd := DeleteCmd()
 
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "invalid",
 			"--quiet",
 		})
 
 		// Error should occur during flag parsing
 		assert.Error(t, err, "Should error on invalid column ID format")
-		// Output may contain the error message about invalid integer
-		assert.True(t, err != nil || strings.Contains(output, "invalid"), "Should indicate invalid input")
 	})
 }

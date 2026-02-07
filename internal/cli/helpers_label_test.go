@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	testutilcli "github.com/thenoetrevino/paso/internal/testutil/cli"
@@ -28,18 +29,10 @@ func TestGetLabelByID_Found(t *testing.T) {
 	label, err := GetLabelByID(ctx, cliInstance, labelID)
 	require.NoError(t, err, "Should find label successfully")
 
-	if label.ID != labelID {
-		t.Errorf("Expected label ID %d, got %d", labelID, label.ID)
-	}
-	if label.Name != "Bug" {
-		t.Errorf("Expected label name 'Bug', got '%s'", label.Name)
-	}
-	if label.Color != "#FF0000" {
-		t.Errorf("Expected label color '#FF0000', got '%s'", label.Color)
-	}
-	if label.ProjectID != projectID {
-		t.Errorf("Expected project ID %d, got %d", projectID, label.ProjectID)
-	}
+	assert.Equal(t, labelID, label.ID)
+	assert.Equal(t, "Bug", label.Name)
+	assert.Equal(t, "#FF0000", label.Color)
+	assert.Equal(t, projectID, label.ProjectID)
 }
 
 func TestGetLabelByID_Found_MultipleProjects(t *testing.T) {
@@ -64,12 +57,8 @@ func TestGetLabelByID_Found_MultipleProjects(t *testing.T) {
 	label, err := GetLabelByID(ctx, cliInstance, label2ID)
 	require.NoError(t, err, "Should find label successfully")
 
-	if label.Name != "Label 2" {
-		t.Errorf("Expected label name 'Label 2', got '%s'", label.Name)
-	}
-	if label.ProjectID != project2ID {
-		t.Errorf("Expected project ID %d, got %d", project2ID, label.ProjectID)
-	}
+	assert.Equal(t, "Label 2", label.Name)
+	assert.Equal(t, project2ID, label.ProjectID)
 }
 
 func TestGetLabelByID_NotFound(t *testing.T) {
@@ -85,15 +74,10 @@ func TestGetLabelByID_NotFound(t *testing.T) {
 
 	// Try to find non-existent label
 	_, err := GetLabelByID(ctx, cliInstance, 9999)
-	if err == nil {
-		t.Fatal("Expected error for non-existent label, got nil")
-	}
+	require.Error(t, err)
 
 	// Check error message
-	expectedMsg := "label 9999 not found"
-	if err.Error() != expectedMsg {
-		t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
-	}
+	assert.Equal(t, "label 9999 not found", err.Error())
 }
 
 func TestGetLabelByID_EmptyDatabase(t *testing.T) {
@@ -109,7 +93,5 @@ func TestGetLabelByID_EmptyDatabase(t *testing.T) {
 
 	// Try to find label in empty database
 	_, err := GetLabelByID(ctx, cliInstance, 1)
-	if err == nil {
-		t.Fatal("Expected error for label in empty database, got nil")
-	}
+	require.Error(t, err)
 }

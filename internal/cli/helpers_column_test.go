@@ -32,8 +32,8 @@ func TestFindColumnByName_Found(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			col, err := FindColumnByName(columns, tt.searchName)
 			assert.NoError(t, err, "FindColumnByName should not return error for: %s", tt.searchName)
-			if col != nil && col.ID != tt.expectedID {
-				t.Errorf("Expected column ID %d, got %d", tt.expectedID, col.ID)
+			if col != nil {
+				assert.Equal(t, tt.expectedID, col.ID)
 			}
 		})
 	}
@@ -57,9 +57,7 @@ func TestFindColumnByName_NotFound(t *testing.T) {
 	for _, searchName := range tests {
 		t.Run(searchName, func(t *testing.T) {
 			_, err := FindColumnByName(columns, searchName)
-			if err == nil {
-				t.Errorf("Expected error for '%s', got nil", searchName)
-			}
+			assert.Error(t, err)
 		})
 	}
 }
@@ -68,9 +66,7 @@ func TestFindColumnByName_EmptyList(t *testing.T) {
 	columns := []*models.Column{}
 
 	_, err := FindColumnByName(columns, "Todo")
-	if err == nil {
-		t.Error("Expected error for empty column list, got nil")
-	}
+	assert.Error(t, err)
 }
 
 func TestFormatAvailableColumns(t *testing.T) {
@@ -105,9 +101,7 @@ func TestFormatAvailableColumns(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := FormatAvailableColumns(tt.columns)
-			if result != tt.expected {
-				t.Errorf("Expected '%s', got '%s'", tt.expected, result)
-			}
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -133,9 +127,7 @@ func TestGetCurrentColumnName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := GetCurrentColumnName(columns, tt.columnID)
-			if result != tt.expected {
-				t.Errorf("Expected '%s', got '%s'", tt.expected, result)
-			}
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -144,7 +136,5 @@ func TestGetCurrentColumnName_EmptyList(t *testing.T) {
 	columns := []*models.Column{}
 
 	result := GetCurrentColumnName(columns, 1)
-	if result != "Unknown" {
-		t.Errorf("Expected 'Unknown' for empty list, got '%s'", result)
-	}
+	assert.Equal(t, "Unknown", result)
 }
