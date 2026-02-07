@@ -7,6 +7,8 @@ on:
     paths:
       - "*.go"
       - "internal/**/*.go"
+      - "cmd/**/*.go"
+      - "tests/**/*"
       - "go.mod"
       - "go.sum"
       - ".github/workflows/tests.yml"
@@ -16,6 +18,8 @@ on:
     paths:
       - "*.go"
       - "internal/**/*.go"
+      - "cmd/**/*.go"
+      - "tests/**/*"
       - "go.mod"
       - "go.sum"
       - ".github/workflows/tests.yml"
@@ -61,10 +65,17 @@ jobs:
           echo "✓ Tests passed"
           go tool cover -func=coverage.out > coverage.txt
 
+      - name: Run Benchmarks (smoke test)
+        run: go test -bench=. -benchtime=1x -run=^$ ./...
+
       - name: Check coverage threshold
         run: |
           echo "Checking coverage threshold..."
           COVERAGE=$(tail -1 coverage.txt | grep -oE '[0-9]+\.[0-9]+%' | sed 's/%//')
+          if [ -z "$COVERAGE" ]; then
+            echo "Failed to parse coverage from coverage.txt"
+            exit 1
+          fi
           THRESHOLD=25.0
           echo "Current coverage: ${COVERAGE}%"
           echo "Required threshold: ${THRESHOLD}%"
