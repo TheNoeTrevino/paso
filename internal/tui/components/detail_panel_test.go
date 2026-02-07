@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/config/colors"
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -95,9 +97,7 @@ func TestTruncateString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got := truncateString(tt.input, tt.maxLen)
-			if got != tt.want {
-				t.Errorf("truncateString(%q, %d) = %q, want %q", tt.input, tt.maxLen, got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -107,13 +107,8 @@ func TestRenderDetailPanel_NilTask(t *testing.T) {
 
 	result := RenderDetailPanel(nil, 80, 40)
 
-	if result == "" {
-		t.Fatal("RenderDetailPanel(nil) should not return empty string")
-	}
-
-	if !strings.Contains(result, "Select a task to view details") {
-		t.Error("RenderDetailPanel(nil) should contain empty state message")
-	}
+	require.NotEmpty(t, result)
+	assert.Contains(t, result, "Select a task to view details")
 }
 
 func TestRenderDetailPanel_MinimalTask(t *testing.T) {
@@ -131,29 +126,11 @@ func TestRenderDetailPanel_MinimalTask(t *testing.T) {
 
 	result := RenderDetailPanel(task, 80, 40)
 
-	if result == "" {
-		t.Fatal("RenderDetailPanel should not return empty string")
-	}
-
-	// Should contain ticket number
-	if !strings.Contains(result, "PROJ-42") {
-		t.Error("Should contain ticket number PROJ-42")
-	}
-
-	// Should contain title
-	if !strings.Contains(result, "Test Task") {
-		t.Error("Should contain task title")
-	}
-
-	// Should contain status
-	if !strings.Contains(result, "Status") {
-		t.Error("Should contain Status label")
-	}
-
-	// Should contain footer
-	if !strings.Contains(result, "Press Enter to view/edit") {
-		t.Error("Should contain footer hint")
-	}
+	require.NotEmpty(t, result)
+	assert.Contains(t, result, "PROJ-42")
+	assert.Contains(t, result, "Test Task")
+	assert.Contains(t, result, "Status")
+	assert.Contains(t, result, "Press Enter to view/edit")
 }
 
 func TestRenderDetailPanel_FullTask(t *testing.T) {
@@ -206,67 +183,19 @@ func TestRenderDetailPanel_FullTask(t *testing.T) {
 
 	result := RenderDetailPanel(task, 100, 50)
 
-	if result == "" {
-		t.Fatal("RenderDetailPanel should not return empty string")
-	}
-
-	// Should contain ticket number
-	if !strings.Contains(result, "TEST-123") {
-		t.Error("Should contain ticket number")
-	}
-
-	// Should contain title
-	if !strings.Contains(result, "Full Feature Task") {
-		t.Error("Should contain task title")
-	}
-
-	// Should contain type
-	if !strings.Contains(result, "Type") {
-		t.Error("Should contain Type label")
-	}
-
-	// Should contain priority
-	if !strings.Contains(result, "Priority") {
-		t.Error("Should contain Priority label")
-	}
-
-	// Should contain blocked indicator
-	if !strings.Contains(result, "BLOCKED") {
-		t.Error("Should contain BLOCKED indicator")
-	}
-
-	// Should contain labels section
-	if !strings.Contains(result, "Labels") {
-		t.Error("Should contain Labels section")
-	}
-
-	// Should contain description section
-	if !strings.Contains(result, "Description") {
-		t.Error("Should contain Description section")
-	}
-
-	// Should contain relations section
-	if !strings.Contains(result, "Relations") {
-		t.Error("Should contain Relations section")
-	}
-
-	// Should contain comments section
-	if !strings.Contains(result, "Comments") {
-		t.Error("Should contain Comments section")
-	}
-
-	// Should show comment count (2 comments)
-	if !strings.Contains(result, "2 comments") {
-		t.Error("Should show correct comment count")
-	}
-
-	// Should contain timestamps section
-	if !strings.Contains(result, "Created") {
-		t.Error("Should contain Created timestamp")
-	}
-	if !strings.Contains(result, "Updated") {
-		t.Error("Should contain Updated timestamp")
-	}
+	require.NotEmpty(t, result)
+	assert.Contains(t, result, "TEST-123")
+	assert.Contains(t, result, "Full Feature Task")
+	assert.Contains(t, result, "Type")
+	assert.Contains(t, result, "Priority")
+	assert.Contains(t, result, "BLOCKED")
+	assert.Contains(t, result, "Labels")
+	assert.Contains(t, result, "Description")
+	assert.Contains(t, result, "Relations")
+	assert.Contains(t, result, "Comments")
+	assert.Contains(t, result, "2 comments")
+	assert.Contains(t, result, "Created")
+	assert.Contains(t, result, "Updated")
 }
 
 func TestRenderDetailPanel_WithoutOptionalSections(t *testing.T) {
@@ -285,19 +214,10 @@ func TestRenderDetailPanel_WithoutOptionalSections(t *testing.T) {
 
 	result := RenderDetailPanel(task, 80, 40)
 
-	// Should NOT contain optional sections
-	if strings.Contains(result, "Labels") {
-		t.Error("Should not contain Labels section when no labels")
-	}
-	if strings.Contains(result, "Description") {
-		t.Error("Should not contain Description section when no description")
-	}
-	if strings.Contains(result, "Relations") {
-		t.Error("Should not contain Relations section when no relations")
-	}
-	if strings.Contains(result, "Comments") {
-		t.Error("Should not contain Comments section when no comments")
-	}
+	assert.NotContains(t, result, "Labels")
+	assert.NotContains(t, result, "Description")
+	assert.NotContains(t, result, "Relations")
+	assert.NotContains(t, result, "Comments")
 }
 
 func TestRenderDetailPanel_SingleComment(t *testing.T) {
@@ -318,10 +238,7 @@ func TestRenderDetailPanel_SingleComment(t *testing.T) {
 
 	result := RenderDetailPanel(task, 80, 40)
 
-	// Should show singular "comment" not "comments"
-	if !strings.Contains(result, "1 comment)") {
-		t.Error("Should show singular 'comment' for single comment")
-	}
+	assert.Contains(t, result, "1 comment)")
 }
 
 func TestRenderDetailPanel_LongDescription(t *testing.T) {
@@ -343,10 +260,7 @@ func TestRenderDetailPanel_LongDescription(t *testing.T) {
 
 	result := RenderDetailPanel(task, 80, 60)
 
-	// Should contain ellipsis indicating truncation
-	if !strings.Contains(result, "...") {
-		t.Error("Long description should be truncated with ellipsis")
-	}
+	assert.Contains(t, result, "...")
 }
 
 func TestRenderDetailPanel_LongCommentPreview(t *testing.T) {
@@ -370,15 +284,8 @@ func TestRenderDetailPanel_LongCommentPreview(t *testing.T) {
 
 	result := RenderDetailPanel(task, 100, 50)
 
-	// Should truncate the comment preview
-	if !strings.Contains(result, "...") {
-		t.Error("Long comment should be truncated with ellipsis")
-	}
-
-	// Should not contain the full message
-	if strings.Contains(result, longMessage) {
-		t.Error("Should not contain full long comment message")
-	}
+	assert.Contains(t, result, "...")
+	assert.NotContains(t, result, longMessage)
 }
 
 func TestRenderDetailPanelLoading(t *testing.T) {
@@ -400,13 +307,8 @@ func TestRenderDetailPanelLoading(t *testing.T) {
 			t.Parallel()
 			result := RenderDetailPanelLoading(80, 40, tt.spinnerFrame)
 
-			if result == "" {
-				t.Fatal("RenderDetailPanelLoading should not return empty string")
-			}
-
-			if !strings.Contains(result, "Loading task details") {
-				t.Error("Should contain loading message")
-			}
+			require.NotEmpty(t, result)
+			assert.Contains(t, result, "Loading task details")
 		})
 	}
 }
@@ -427,14 +329,8 @@ func TestRenderDetailPanel_NarrowWidth(t *testing.T) {
 	// Very narrow width
 	result := RenderDetailPanel(task, 50, 30)
 
-	if result == "" {
-		t.Fatal("RenderDetailPanel should handle narrow width")
-	}
-
-	// Should still contain essential elements
-	if !strings.Contains(result, "PROJECT-999") {
-		t.Error("Should contain ticket number even in narrow panel")
-	}
+	require.NotEmpty(t, result)
+	assert.Contains(t, result, "PROJECT-999")
 }
 
 func TestRenderDetailPanel_VerySmallDimensions(t *testing.T) {
@@ -453,10 +349,7 @@ func TestRenderDetailPanel_VerySmallDimensions(t *testing.T) {
 	// Minimum viable dimensions
 	result := RenderDetailPanel(task, 20, 10)
 
-	// Should not panic and should return something
-	if result == "" {
-		t.Fatal("RenderDetailPanel should handle very small dimensions")
-	}
+	require.NotEmpty(t, result)
 }
 
 func TestRenderDetailPanel_RelationsWithBlockingParent(t *testing.T) {
@@ -485,15 +378,8 @@ func TestRenderDetailPanel_RelationsWithBlockingParent(t *testing.T) {
 
 	result := RenderDetailPanel(task, 100, 50)
 
-	// Should contain relations section
-	if !strings.Contains(result, "Relations") {
-		t.Error("Should contain Relations section")
-	}
-
-	// Should contain parent arrow
-	if !strings.Contains(result, "↑") {
-		t.Error("Should contain upward arrow for parent relations")
-	}
+	assert.Contains(t, result, "Relations")
+	assert.Contains(t, result, "↑")
 }
 
 func TestRenderDetailPanel_RelationsWithChild(t *testing.T) {
@@ -522,10 +408,7 @@ func TestRenderDetailPanel_RelationsWithChild(t *testing.T) {
 
 	result := RenderDetailPanel(task, 100, 50)
 
-	// Should contain downward arrow for child relations
-	if !strings.Contains(result, "↓") {
-		t.Error("Should contain downward arrow for child relations")
-	}
+	assert.Contains(t, result, "↓")
 }
 
 func TestRenderDetailPanel_MultipleLabels(t *testing.T) {
@@ -550,16 +433,11 @@ func TestRenderDetailPanel_MultipleLabels(t *testing.T) {
 
 	result := RenderDetailPanel(task, 100, 50)
 
-	// Should contain Labels section
-	if !strings.Contains(result, "Labels") {
-		t.Error("Should contain Labels section")
-	}
+	assert.Contains(t, result, "Labels")
 
 	// Each label should be rendered (checking for label names)
 	for _, label := range task.Labels {
-		if !strings.Contains(result, label.Name) {
-			t.Errorf("Should contain label name %q", label.Name)
-		}
+		assert.Contains(t, result, label.Name)
 	}
 }
 
@@ -581,13 +459,8 @@ func TestRenderDetailPanel_Timestamps(t *testing.T) {
 
 	result := RenderDetailPanel(task, 100, 50)
 
-	// Should contain formatted timestamps
-	if !strings.Contains(result, "Mar 15, 2024") {
-		t.Error("Should contain formatted created date")
-	}
-	if !strings.Contains(result, "Jun 20, 2024") {
-		t.Error("Should contain formatted updated date")
-	}
+	assert.Contains(t, result, "Mar 15, 2024")
+	assert.Contains(t, result, "Jun 20, 2024")
 }
 
 func TestRenderDetailPanel_NotBlocked(t *testing.T) {
@@ -606,10 +479,7 @@ func TestRenderDetailPanel_NotBlocked(t *testing.T) {
 
 	result := RenderDetailPanel(task, 100, 50)
 
-	// Should NOT contain BLOCKED indicator
-	if strings.Contains(result, "BLOCKED") {
-		t.Error("Should not contain BLOCKED indicator when task is not blocked")
-	}
+	assert.NotContains(t, result, "BLOCKED")
 }
 
 func TestRenderDetailPanel_WithTypeOnly(t *testing.T) {
@@ -628,13 +498,8 @@ func TestRenderDetailPanel_WithTypeOnly(t *testing.T) {
 
 	result := RenderDetailPanel(task, 100, 50)
 
-	// Should contain type
-	if !strings.Contains(result, "Type") {
-		t.Error("Should contain Type label")
-	}
-	if !strings.Contains(result, "Bug") {
-		t.Error("Should contain type description")
-	}
+	assert.Contains(t, result, "Type")
+	assert.Contains(t, result, "Bug")
 }
 
 func TestRenderDetailPanel_WithPriorityOnly(t *testing.T) {
@@ -654,11 +519,6 @@ func TestRenderDetailPanel_WithPriorityOnly(t *testing.T) {
 
 	result := RenderDetailPanel(task, 100, 50)
 
-	// Should contain priority
-	if !strings.Contains(result, "Priority") {
-		t.Error("Should contain Priority label")
-	}
-	if !strings.Contains(result, "Critical") {
-		t.Error("Should contain priority description")
-	}
+	assert.Contains(t, result, "Priority")
+	assert.Contains(t, result, "Critical")
 }
