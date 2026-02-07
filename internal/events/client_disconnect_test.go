@@ -246,10 +246,14 @@ func TestClient_ReconnectsAfterDaemonRestart(t *testing.T) {
 	assert.NotNil(t, encoderAfterReconnect)
 	assert.NotNil(t, decoderAfterReconnect)
 
-	// Verify these are NEW instances (reconnect creates new connection/encoder/decoder)
-	assert.NotEqual(t, connBeforeStop, connAfterReconnect)
-	assert.NotEqual(t, encoderBeforeStop, encoderAfterReconnect)
-	assert.NotEqual(t, decoderBeforeStop, decoderAfterReconnect)
+	// Verify these are NEW instances (reconnect creates new connection/encoder/decoder).
+	// Use pointer/identity comparison instead of assert.NotEqual, which calls
+	// reflect.DeepEqual and walks the net.Conn's internal poll.FD atomic fields,
+	// racing with the listen goroutine that is concurrently reading from the old
+	// connection.
+	assert.True(t, connBeforeStop != connAfterReconnect, "conn should be a new instance after reconnect")
+	assert.True(t, encoderBeforeStop != encoderAfterReconnect, "encoder should be a new instance after reconnect")
+	assert.True(t, decoderBeforeStop != decoderAfterReconnect, "decoder should be a new instance after reconnect")
 	t.Logf("Encoder and decoder recreated after reconnection")
 
 	// Verify connection is functional - try subscribing to a different project

@@ -6,6 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	"github.com/pressly/goose/v3"
 	"github.com/thenoetrevino/paso/internal/database/types"
@@ -21,6 +22,12 @@ type (
 //go:embed migrations_sqlite/*.sql migrations_postgres/*.sql
 var embedMigrations embed.FS
 
+// gooseMu serializes access to goose's package-level global state (SetBaseFS,
+// SetDialect). This is only relevant when parallel tests each call
+// applyMigrations on their own in-memory DB; production code calls it once
+// during startup.
+var gooseMu sync.Mutex
+
 // RunMigrationsOnly applies goose schema migrations without seeding default data.
 // This is intended for test setup where tests need a clean schema without seed data.
 func RunMigrationsOnly(db *sql.DB, dbType DatabaseType) error {
@@ -29,6 +36,9 @@ func RunMigrationsOnly(db *sql.DB, dbType DatabaseType) error {
 
 // applyMigrations runs goose migrations for the appropriate database type
 func applyMigrations(db *sql.DB, dbType DatabaseType) error {
+	gooseMu.Lock()
+	defer gooseMu.Unlock()
+
 	goose.SetBaseFS(embedMigrations)
 
 	switch dbType {
