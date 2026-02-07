@@ -16,16 +16,15 @@ import (
 func TestLinkTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+
+	ctx := context.Background()
 
 	// Create test project with default columns (Todo, In Progress, Done)
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	// Get the default "Todo" column ID
 	var columnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 		projectID).Scan(&columnID)
 	require.NoError(t, err)
@@ -49,7 +48,7 @@ func TestLinkTask_Positive(t *testing.T) {
 
 		// Verify relationship in database
 		var relationType int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT relation_type_id FROM task_subtasks WHERE parent_id = ? AND child_id = ?",
 			parentID, childID).Scan(&relationType)
 		require.NoError(t, err)
@@ -76,7 +75,7 @@ func TestLinkTask_Positive(t *testing.T) {
 
 		// Verify relationship in database
 		var relationType int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT relation_type_id FROM task_subtasks WHERE parent_id = ? AND child_id = ?",
 			blockedID, blockerID).Scan(&relationType)
 		require.NoError(t, err)
@@ -103,7 +102,7 @@ func TestLinkTask_Positive(t *testing.T) {
 
 		// Verify relationship in database
 		var relationType int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT relation_type_id FROM task_subtasks WHERE parent_id = ? AND child_id = ?",
 			task1ID, task2ID).Scan(&relationType)
 		require.NoError(t, err)
@@ -211,7 +210,7 @@ func TestLinkTask_Positive(t *testing.T) {
 
 		// Verify relationship was created
 		var relationType int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT relation_type_id FROM task_subtasks WHERE parent_id = ? AND child_id = ?",
 			parentID, childID).Scan(&relationType)
 		require.NoError(t, err)
@@ -252,7 +251,7 @@ func TestLinkTask_Positive(t *testing.T) {
 
 		// Verify all three relationships exist
 		var count int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_subtasks WHERE parent_id = ?",
 			parentID).Scan(&count)
 		require.NoError(t, err)
@@ -284,7 +283,7 @@ func TestLinkTask_Positive(t *testing.T) {
 
 		// Verify both relationships exist
 		var count int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_subtasks WHERE child_id = ?",
 			childID).Scan(&count)
 		require.NoError(t, err)
@@ -297,12 +296,12 @@ func TestLinkTask_Positive(t *testing.T) {
 		childID := cli.CreateTestTask(t, db, columnID, "Child with Metadata")
 
 		// Set metadata on both tasks
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET description = ?, priority_id = 4, type_id = 2 WHERE id = ?",
 			"Parent description", parentID)
 		require.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET description = ?, priority_id = 5, type_id = 3 WHERE id = ?",
 			"Child description", childID)
 		require.NoError(t, err)
@@ -319,7 +318,7 @@ func TestLinkTask_Positive(t *testing.T) {
 		// Verify parent metadata unchanged
 		var parentTitle, parentDesc string
 		var parentPriority, parentType int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT title, description, priority_id, type_id FROM tasks WHERE id = ?",
 			parentID).Scan(&parentTitle, &parentDesc, &parentPriority, &parentType)
 		require.NoError(t, err)
@@ -331,7 +330,7 @@ func TestLinkTask_Positive(t *testing.T) {
 		// Verify child metadata unchanged
 		var childTitle, childDesc string
 		var childPriority, childType int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT title, description, priority_id, type_id FROM tasks WHERE id = ?",
 			childID).Scan(&childTitle, &childDesc, &childPriority, &childType)
 		require.NoError(t, err)
@@ -361,7 +360,7 @@ func TestLinkTask_Positive(t *testing.T) {
 
 		// Verify relationship exists
 		var relationType int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT relation_type_id FROM task_subtasks WHERE parent_id = ? AND child_id = ?",
 			parentID, childID).Scan(&relationType)
 		require.NoError(t, err)
@@ -406,21 +405,21 @@ func TestLinkTask_Positive(t *testing.T) {
 
 		// Verify all relationships with correct types
 		var normalType int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT relation_type_id FROM task_subtasks WHERE parent_id = ? AND child_id = ?",
 			parentID, childNormalID).Scan(&normalType)
 		require.NoError(t, err)
 		assert.Equal(t, 1, normalType)
 
 		var blockerType int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT relation_type_id FROM task_subtasks WHERE parent_id = ? AND child_id = ?",
 			parentID, blockerID).Scan(&blockerType)
 		require.NoError(t, err)
 		assert.Equal(t, 2, blockerType)
 
 		var relatedType int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT relation_type_id FROM task_subtasks WHERE parent_id = ? AND child_id = ?",
 			parentID, relatedID).Scan(&relatedType)
 		require.NoError(t, err)
@@ -431,16 +430,15 @@ func TestLinkTask_Positive(t *testing.T) {
 func TestLinkTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+
+	ctx := context.Background()
 
 	// Create test project
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	// Get the default "Todo" column ID
 	var columnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 		projectID).Scan(&columnID)
 	require.NoError(t, err)
@@ -642,7 +640,7 @@ func TestLinkTask_Negative(t *testing.T) {
 
 		// Verify only one relationship exists
 		var count int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_subtasks WHERE parent_id = ? AND child_id = ?",
 			parentID, childID).Scan(&count)
 		require.NoError(t, err)

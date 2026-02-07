@@ -22,7 +22,6 @@ func TestCreateTask_EmitsTaskCreatedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -57,7 +56,6 @@ func TestMoveTaskToColumn_EmitsTaskMovedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -93,7 +91,6 @@ func TestMoveTaskToNextColumn_EmitsTaskMovedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -102,13 +99,14 @@ func TestMoveTaskToNextColumn_EmitsTaskMovedEvent(t *testing.T) {
 	col1ID := createTestColumn(t, db, projectID, "Todo")
 	col2ID := createTestColumn(t, db, projectID, "In Progress")
 
-	_, err := db.ExecContext(context.Background(), "UPDATE columns SET next_id = ? WHERE id = ?", col2ID, col1ID)
+	ctx := context.Background()
+	_, err := db.ExecContext(ctx, "UPDATE columns SET next_id = ? WHERE id = ?", col2ID, col1ID)
 	require.NoError(t, err)
 
 	taskID := createTestTask(t, db, col1ID, "Test Task")
 	mock.Reset()
 
-	err = svc.MoveTaskToNextColumn(context.Background(), taskID)
+	err = svc.MoveTaskToNextColumn(ctx, taskID)
 	require.NoError(t, err)
 
 	require.True(t, mock.HasCall("CreateTaskMovedEvent", taskID))
@@ -119,7 +117,6 @@ func TestMoveTaskToPrevColumn_EmitsTaskMovedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -128,13 +125,14 @@ func TestMoveTaskToPrevColumn_EmitsTaskMovedEvent(t *testing.T) {
 	col1ID := createTestColumn(t, db, projectID, "Todo")
 	col2ID := createTestColumn(t, db, projectID, "In Progress")
 
-	_, err := db.ExecContext(context.Background(), "UPDATE columns SET prev_id = ? WHERE id = ?", col1ID, col2ID)
+	ctx := context.Background()
+	_, err := db.ExecContext(ctx, "UPDATE columns SET prev_id = ? WHERE id = ?", col1ID, col2ID)
 	require.NoError(t, err)
 
 	taskID := createTestTask(t, db, col2ID, "Test Task")
 	mock.Reset()
 
-	err = svc.MoveTaskToPrevColumn(context.Background(), taskID)
+	err = svc.MoveTaskToPrevColumn(ctx, taskID)
 	require.NoError(t, err)
 
 	require.True(t, mock.HasCall("CreateTaskMovedEvent", taskID))
@@ -145,7 +143,6 @@ func TestMoveTaskToReadyColumn_EmitsTaskMovedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -168,7 +165,6 @@ func TestMoveTaskToCompletedColumn_EmitsTaskMovedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -191,7 +187,6 @@ func TestAddParentRelation_EmitsTaskAssociatedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -199,14 +194,15 @@ func TestAddParentRelation_EmitsTaskAssociatedEvent(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "Todo")
 
-	task1, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	ctx := context.Background()
+	task1, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Parent Task",
 		ColumnID: columnID,
 		Position: 0,
 	})
 	require.NoError(t, err)
 
-	task2, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	task2, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Child Task",
 		ColumnID: columnID,
 		Position: 1,
@@ -215,7 +211,7 @@ func TestAddParentRelation_EmitsTaskAssociatedEvent(t *testing.T) {
 
 	mock.Reset()
 
-	err = svc.AddParentRelation(context.Background(), task2.ID, task1.ID, 1)
+	err = svc.AddParentRelation(ctx, task2.ID, task1.ID, 1)
 	require.NoError(t, err)
 
 	require.True(t, mock.HasCall("CreateTaskAssociatedEvent", task2.ID),
@@ -238,7 +234,6 @@ func TestAddChildRelation_EmitsTaskAssociatedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -246,14 +241,15 @@ func TestAddChildRelation_EmitsTaskAssociatedEvent(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "Todo")
 
-	task1, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	ctx := context.Background()
+	task1, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Parent Task",
 		ColumnID: columnID,
 		Position: 0,
 	})
 	require.NoError(t, err)
 
-	task2, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	task2, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Child Task",
 		ColumnID: columnID,
 		Position: 1,
@@ -262,7 +258,7 @@ func TestAddChildRelation_EmitsTaskAssociatedEvent(t *testing.T) {
 
 	mock.Reset()
 
-	err = svc.AddChildRelation(context.Background(), task1.ID, task2.ID, 1)
+	err = svc.AddChildRelation(ctx, task1.ID, task2.ID, 1)
 	require.NoError(t, err)
 
 	require.True(t, mock.HasCall("CreateTaskAssociatedEvent", task1.ID),
@@ -285,7 +281,6 @@ func TestRemoveParentRelation_EmitsTaskDisassociatedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -293,14 +288,15 @@ func TestRemoveParentRelation_EmitsTaskDisassociatedEvent(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "Todo")
 
-	task1, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	ctx := context.Background()
+	task1, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Parent Task",
 		ColumnID: columnID,
 		Position: 0,
 	})
 	require.NoError(t, err)
 
-	task2, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	task2, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:     "Child Task",
 		ColumnID:  columnID,
 		Position:  1,
@@ -310,7 +306,7 @@ func TestRemoveParentRelation_EmitsTaskDisassociatedEvent(t *testing.T) {
 
 	mock.Reset()
 
-	err = svc.RemoveParentRelation(context.Background(), task2.ID, task1.ID)
+	err = svc.RemoveParentRelation(ctx, task2.ID, task1.ID)
 	require.NoError(t, err)
 
 	require.True(t, mock.HasCall("CreateTaskDisassociatedEvent", task2.ID),
@@ -333,7 +329,6 @@ func TestRemoveChildRelation_EmitsTaskDisassociatedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -341,26 +336,27 @@ func TestRemoveChildRelation_EmitsTaskDisassociatedEvent(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "Todo")
 
-	task1, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	ctx := context.Background()
+	task1, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Parent Task",
 		ColumnID: columnID,
 		Position: 0,
 	})
 	require.NoError(t, err)
 
-	task2, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	task2, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Child Task",
 		ColumnID: columnID,
 		Position: 1,
 	})
 	require.NoError(t, err)
 
-	err = svc.AddChildRelation(context.Background(), task1.ID, task2.ID, 1)
+	err = svc.AddChildRelation(ctx, task1.ID, task2.ID, 1)
 	require.NoError(t, err)
 
 	mock.Reset()
 
-	err = svc.RemoveChildRelation(context.Background(), task1.ID, task2.ID)
+	err = svc.RemoveChildRelation(ctx, task1.ID, task2.ID)
 	require.NoError(t, err)
 
 	require.True(t, mock.HasCall("CreateTaskDisassociatedEvent", task1.ID),
@@ -383,7 +379,6 @@ func TestAttachLabel_EmitsLabelAddedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -392,7 +387,8 @@ func TestAttachLabel_EmitsLabelAddedEvent(t *testing.T) {
 	columnID := createTestColumn(t, db, projectID, "Todo")
 	labelID := createTestLabel(t, db, projectID, "bug")
 
-	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	ctx := context.Background()
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Test Task",
 		ColumnID: columnID,
 	})
@@ -400,7 +396,7 @@ func TestAttachLabel_EmitsLabelAddedEvent(t *testing.T) {
 
 	mock.Reset()
 
-	err = svc.AttachLabel(context.Background(), task.ID, labelID)
+	err = svc.AttachLabel(ctx, task.ID, labelID)
 	require.NoError(t, err)
 
 	require.True(t, mock.HasCall("CreateLabelAddedEvent", task.ID),
@@ -423,7 +419,6 @@ func TestDetachLabel_EmitsLabelRemovedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -432,7 +427,8 @@ func TestDetachLabel_EmitsLabelRemovedEvent(t *testing.T) {
 	columnID := createTestColumn(t, db, projectID, "Todo")
 	labelID := createTestLabel(t, db, projectID, "bug")
 
-	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	ctx := context.Background()
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Test Task",
 		ColumnID: columnID,
 		LabelIDs: []int{labelID},
@@ -441,7 +437,7 @@ func TestDetachLabel_EmitsLabelRemovedEvent(t *testing.T) {
 
 	mock.Reset()
 
-	err = svc.DetachLabel(context.Background(), task.ID, labelID)
+	err = svc.DetachLabel(ctx, task.ID, labelID)
 	require.NoError(t, err)
 
 	require.True(t, mock.HasCall("CreateLabelRemovedEvent", task.ID),
@@ -464,7 +460,6 @@ func TestUpdateTask_EmitsPriorityChangedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -472,7 +467,8 @@ func TestUpdateTask_EmitsPriorityChangedEvent(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "Todo")
 
-	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	ctx := context.Background()
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:      "Test Task",
 		ColumnID:   columnID,
 		PriorityID: 3, // medium
@@ -482,7 +478,7 @@ func TestUpdateTask_EmitsPriorityChangedEvent(t *testing.T) {
 	mock.Reset()
 
 	newPriority := 4 // high
-	err = svc.UpdateTask(context.Background(), UpdateTaskRequest{
+	err = svc.UpdateTask(ctx, UpdateTaskRequest{
 		TaskID:     task.ID,
 		PriorityID: &newPriority,
 	})
@@ -509,7 +505,6 @@ func TestUpdateTask_EmitsTypeChangedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -517,7 +512,8 @@ func TestUpdateTask_EmitsTypeChangedEvent(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "Todo")
 
-	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	ctx := context.Background()
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Test Task",
 		ColumnID: columnID,
 		TypeID:   1, // task
@@ -527,7 +523,7 @@ func TestUpdateTask_EmitsTypeChangedEvent(t *testing.T) {
 	mock.Reset()
 
 	newType := 3 // bug
-	err = svc.UpdateTask(context.Background(), UpdateTaskRequest{
+	err = svc.UpdateTask(ctx, UpdateTaskRequest{
 		TaskID: task.ID,
 		TypeID: &newType,
 	})
@@ -554,7 +550,6 @@ func TestUpdateTask_NoEventWhenPriorityUnchanged(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -562,7 +557,8 @@ func TestUpdateTask_NoEventWhenPriorityUnchanged(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "Todo")
 
-	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	ctx := context.Background()
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:      "Test Task",
 		ColumnID:   columnID,
 		PriorityID: 3, // medium
@@ -572,7 +568,7 @@ func TestUpdateTask_NoEventWhenPriorityUnchanged(t *testing.T) {
 	mock.Reset()
 
 	samePriority := 3 // same as before
-	err = svc.UpdateTask(context.Background(), UpdateTaskRequest{
+	err = svc.UpdateTask(ctx, UpdateTaskRequest{
 		TaskID:     task.ID,
 		PriorityID: &samePriority,
 	})
@@ -586,7 +582,6 @@ func TestUpdateTask_NoEventWhenTypeUnchanged(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -594,7 +589,8 @@ func TestUpdateTask_NoEventWhenTypeUnchanged(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "Todo")
 
-	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	ctx := context.Background()
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Test Task",
 		ColumnID: columnID,
 		TypeID:   1, // task
@@ -604,7 +600,7 @@ func TestUpdateTask_NoEventWhenTypeUnchanged(t *testing.T) {
 	mock.Reset()
 
 	sameType := 1 // same as before
-	err = svc.UpdateTask(context.Background(), UpdateTaskRequest{
+	err = svc.UpdateTask(ctx, UpdateTaskRequest{
 		TaskID: task.ID,
 		TypeID: &sameType,
 	})
@@ -618,7 +614,6 @@ func TestUpdateTask_EmitsBothPriorityAndTypeChangedEvents(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -626,7 +621,8 @@ func TestUpdateTask_EmitsBothPriorityAndTypeChangedEvents(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "Todo")
 
-	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	ctx := context.Background()
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:      "Test Task",
 		ColumnID:   columnID,
 		PriorityID: 3, // medium
@@ -638,7 +634,7 @@ func TestUpdateTask_EmitsBothPriorityAndTypeChangedEvents(t *testing.T) {
 
 	newPriority := 4 // high
 	newType := 3     // bug
-	err = svc.UpdateTask(context.Background(), UpdateTaskRequest{
+	err = svc.UpdateTask(ctx, UpdateTaskRequest{
 		TaskID:     task.ID,
 		PriorityID: &newPriority,
 		TypeID:     &newType,
@@ -655,7 +651,6 @@ func TestCreateTask_WithLabels_OnlyEmitsTaskCreatedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -685,7 +680,6 @@ func TestCreateTask_WithParents_OnlyEmitsTaskCreatedEvent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -693,14 +687,15 @@ func TestCreateTask_WithParents_OnlyEmitsTaskCreatedEvent(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "Todo")
 
-	parent1, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	ctx := context.Background()
+	parent1, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Parent 1",
 		ColumnID: columnID,
 		Position: 0,
 	})
 	require.NoError(t, err)
 
-	parent2, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	parent2, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Parent 2",
 		ColumnID: columnID,
 		Position: 1,
@@ -709,7 +704,7 @@ func TestCreateTask_WithParents_OnlyEmitsTaskCreatedEvent(t *testing.T) {
 
 	mock.Reset()
 
-	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:     "Child Task",
 		ColumnID:  columnID,
 		Position:  2,
@@ -730,7 +725,6 @@ func TestNoEventService_NoEventsEmitted(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	svc, err := NewService(db, database.SQLite, nil, nil)
 	require.NoError(t, err)
@@ -750,7 +744,6 @@ func TestMoveTask_SameColumn_NoEventEmitted(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -758,7 +751,8 @@ func TestMoveTask_SameColumn_NoEventEmitted(t *testing.T) {
 	projectID := createTestProject(t, db)
 	columnID := createTestColumn(t, db, projectID, "Todo")
 
-	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	ctx := context.Background()
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Test Task",
 		ColumnID: columnID,
 	})
@@ -766,7 +760,7 @@ func TestMoveTask_SameColumn_NoEventEmitted(t *testing.T) {
 
 	mock.Reset()
 
-	err = svc.MoveTaskToColumn(context.Background(), task.ID, columnID)
+	err = svc.MoveTaskToColumn(ctx, task.ID, columnID)
 
 	if err == nil {
 		require.Equal(t, 0, mock.CallCount("CreateTaskMovedEvent"),
@@ -778,7 +772,6 @@ func TestEventServiceError_DoesNotBreakOperation(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	mock.CreateTaskCreatedEventErr = context.DeadlineExceeded
@@ -799,7 +792,6 @@ func TestMultipleMoveOperations_EmitCorrectEvents(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.SetupTestDB(t)
-	defer func() { _ = db.Close() }()
 
 	mock := taskevent.NewMockService()
 	svc := newTestServiceWithMock(t, db, mock)
@@ -809,7 +801,8 @@ func TestMultipleMoveOperations_EmitCorrectEvents(t *testing.T) {
 	col2ID := createTestColumn(t, db, projectID, "In Progress")
 	col3ID := createTestColumn(t, db, projectID, "Done")
 
-	task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
+	ctx := context.Background()
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Test Task",
 		ColumnID: col1ID,
 	})
@@ -817,10 +810,10 @@ func TestMultipleMoveOperations_EmitCorrectEvents(t *testing.T) {
 
 	mock.Reset()
 
-	err = svc.MoveTaskToColumn(context.Background(), task.ID, col2ID)
+	err = svc.MoveTaskToColumn(ctx, task.ID, col2ID)
 	require.NoError(t, err)
 
-	err = svc.MoveTaskToColumn(context.Background(), task.ID, col3ID)
+	err = svc.MoveTaskToColumn(ctx, task.ID, col3ID)
 	require.NoError(t, err)
 
 	require.Equal(t, 2, mock.CallCount("CreateTaskMovedEvent"),

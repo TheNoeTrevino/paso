@@ -17,8 +17,8 @@ type ContextKey string
 const TestAppKey ContextKey = "testApp"
 
 // CaptureOutput captures stdout during function execution
-func CaptureOutput(t *testing.T, fn func()) string {
-	t.Helper()
+func CaptureOutput(tb testing.TB, fn func()) string {
+	tb.Helper()
 
 	// Save original stdout
 	oldStdout := os.Stdout
@@ -26,7 +26,7 @@ func CaptureOutput(t *testing.T, fn func()) string {
 	// Create pipe to capture output
 	r, w, err := os.Pipe()
 	if err != nil {
-		t.Fatalf("Failed to create pipe: %v", err)
+		tb.Fatalf("Failed to create pipe: %v", err)
 	}
 
 	// Replace stdout with pipe writer
@@ -52,23 +52,29 @@ func CaptureOutput(t *testing.T, fn func()) string {
 }
 
 // SetupTestDB creates an in-memory database with full schema
-func SetupTestDB(t *testing.T) *sql.DB {
-	t.Helper()
+func SetupTestDB(tb testing.TB) *sql.DB {
+	tb.Helper()
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
+		tb.Fatalf("Failed to create test database: %v", err)
 	}
 
 	// Enable foreign key constraints
 	_, err = db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
 	if err != nil {
-		t.Fatalf("Failed to enable foreign keys: %v", err)
+		tb.Fatalf("Failed to enable foreign keys: %v", err)
 	}
 
 	// Run migrations inline
 	if err := createTestSchema(db); err != nil {
-		t.Fatalf("Failed to create schema: %v", err)
+		tb.Fatalf("Failed to create schema: %v", err)
 	}
+
+	tb.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			tb.Logf("failed to close test db: %v", err)
+		}
+	})
 
 	return db
 }
@@ -266,48 +272,48 @@ func createTestSchema(db *sql.DB) error {
 }
 
 // CreateTestProject creates a test project with default columns (Todo, In Progress, Done)
-func CreateTestProject(t *testing.T, db *sql.DB, name string) int {
-	t.Helper()
+func CreateTestProject(tb testing.TB, db *sql.DB, name string) int {
+	tb.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name, description) VALUES (?, ?)", name, "Test description")
 	if err != nil {
-		t.Fatalf("Failed to create test project: %v", err)
+		tb.Fatalf("Failed to create test project: %v", err)
 	}
 
 	// Initialize project counter
 	projectID, _ := result.LastInsertId()
 	_, err = db.ExecContext(context.Background(), "INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)", projectID)
 	if err != nil {
-		t.Fatalf("Failed to initialize project counter: %v", err)
+		tb.Fatalf("Failed to initialize project counter: %v", err)
 	}
 
 	// Create default columns
-	CreateTestColumn(t, db, int(projectID), "Todo")
-	CreateTestColumn(t, db, int(projectID), "In Progress")
-	CreateTestColumn(t, db, int(projectID), "Done")
+	CreateTestColumn(tb, db, int(projectID), "Todo")
+	CreateTestColumn(tb, db, int(projectID), "In Progress")
+	CreateTestColumn(tb, db, int(projectID), "Done")
 
 	return int(projectID)
 }
 
 // CreateTestColumn creates a test column and returns its ID
-func CreateTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
-	t.Helper()
+func CreateTestColumn(tb testing.TB, db *sql.DB, projectID int, name string) int {
+	tb.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, name)
 	if err != nil {
-		t.Fatalf("Failed to create test column: %v", err)
+		tb.Fatalf("Failed to create test column: %v", err)
 	}
 	columnID, _ := result.LastInsertId()
 	return int(columnID)
 }
 
 // CreateTestTask creates a test task and returns its ID
-func CreateTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
-	t.Helper()
+func CreateTestTask(tb testing.TB, db *sql.DB, columnID int, title string) int {
+	tb.Helper()
 	// Get the next position for this column
 	var maxPosition int
 	err := db.QueryRowContext(context.Background(),
 		"SELECT COALESCE(MAX(position), -1) FROM tasks WHERE column_id = ?", columnID).Scan(&maxPosition)
 	if err != nil && err != sql.ErrNoRows {
-		t.Fatalf("Failed to get max position: %v", err)
+		tb.Fatalf("Failed to get max position: %v", err)
 	}
 
 	nextPosition := maxPosition + 1
@@ -315,7 +321,7 @@ func CreateTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
 		"INSERT INTO tasks (column_id, title, position, type_id, priority_id) VALUES (?, ?, ?, 1, 3)",
 		columnID, title, nextPosition)
 	if err != nil {
-		t.Fatalf("Failed to create test task: %v", err)
+		tb.Fatalf("Failed to create test task: %v", err)
 	}
 	taskID, _ := result.LastInsertId()
 	return int(taskID)
@@ -327,22 +333,22 @@ func CreateTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
 // dynamically loads them. For now, they are only available by importing testutil/cli directly.
 
 // CreateTestLabel creates a test label and returns its ID
-func CreateTestLabel(t *testing.T, db *sql.DB, projectID int, name, color string) int {
-	t.Helper()
+func CreateTestLabel(tb testing.TB, db *sql.DB, projectID int, name, color string) int {
+	tb.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)", projectID, name, color)
 	if err != nil {
-		t.Fatalf("Failed to create test label: %v", err)
+		tb.Fatalf("Failed to create test label: %v", err)
 	}
 	labelID, _ := result.LastInsertId()
 	return int(labelID)
 }
 
 // CreateTestAssignee creates a test assignee and returns its ID
-func CreateTestAssignee(t *testing.T, db *sql.DB, name string) int {
-	t.Helper()
+func CreateTestAssignee(tb testing.TB, db *sql.DB, name string) int {
+	tb.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO assignees (name) VALUES (?)", name)
 	if err != nil {
-		t.Fatalf("Failed to create test assignee: %v", err)
+		tb.Fatalf("Failed to create test assignee: %v", err)
 	}
 	assigneeID, _ := result.LastInsertId()
 	return int(assigneeID)

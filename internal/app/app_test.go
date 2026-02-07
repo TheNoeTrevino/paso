@@ -1,32 +1,14 @@
 package app
 
 import (
-	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	_ "modernc.org/sqlite"
+	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
-func setupTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	_, err = db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
-	if err != nil {
-		t.Fatalf("Failed to enable foreign keys: %v", err)
-	}
-
-	return db
-}
-
 func TestNew(t *testing.T) {
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	// Create app with no options (defaults)
 	app, err := New(db)
@@ -54,8 +36,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	app, err := New(db)
 	require.NoError(t, err, "failed to create app")

@@ -14,16 +14,15 @@ import (
 func TestShowTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+
+	ctx := context.Background()
 
 	// Create test project
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	// Get the default "Todo" column ID
 	var todoColumnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'",
 		projectID).Scan(&todoColumnID)
 	assert.NoError(t, err)
@@ -31,13 +30,13 @@ func TestShowTask_Positive(t *testing.T) {
 	t.Run("Show task with ID flag", func(t *testing.T) {
 		// Create a task with description
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Test Task")
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET description = ? WHERE id = ?",
 			"Test Description", taskID)
 		assert.NoError(t, err)
 
 		// Assign ticket number
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 1 WHERE id = ?", taskID)
 		assert.NoError(t, err)
 
@@ -57,7 +56,7 @@ func TestShowTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Another Task")
 
 		// Assign ticket number
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 2 WHERE id = ?", taskID)
 		assert.NoError(t, err)
 
@@ -90,7 +89,7 @@ func TestShowTask_Positive(t *testing.T) {
 
 	t.Run("Show task in JSON mode", func(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "JSON Task")
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET description = ?, ticket_number = 3 WHERE id = ?",
 			"JSON Description", taskID)
 		assert.NoError(t, err)
@@ -120,7 +119,7 @@ func TestShowTask_Positive(t *testing.T) {
 
 	t.Run("Show task with labels", func(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task with Labels")
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 4 WHERE id = ?", taskID)
 		assert.NoError(t, err)
 
@@ -129,10 +128,10 @@ func TestShowTask_Positive(t *testing.T) {
 		labelID2 := testutil.CreateTestLabel(t, db, projectID, "urgent", "#F97316")
 
 		// Attach labels to task
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID1)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID2)
 		assert.NoError(t, err)
 
@@ -152,18 +151,18 @@ func TestShowTask_Positive(t *testing.T) {
 	t.Run("Show task with parent relationship", func(t *testing.T) {
 		// Create parent task
 		parentID := cli.CreateTestTask(t, db, todoColumnID, "Parent Task")
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 5 WHERE id = ?", parentID)
 		assert.NoError(t, err)
 
 		// Create child task
 		childID := cli.CreateTestTask(t, db, todoColumnID, "Child Task")
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 6 WHERE id = ?", childID)
 		assert.NoError(t, err)
 
 		// Create relationship (parent-child, non-blocking)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
 			parentID, childID)
 		assert.NoError(t, err)
@@ -184,18 +183,18 @@ func TestShowTask_Positive(t *testing.T) {
 	t.Run("Show task with blocking relationship", func(t *testing.T) {
 		// Create blocker task
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "Blocker Task")
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 7 WHERE id = ?", blockerID)
 		assert.NoError(t, err)
 
 		// Create blocked task
 		blockedID := cli.CreateTestTask(t, db, todoColumnID, "Blocked Task")
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 8 WHERE id = ?", blockedID)
 		assert.NoError(t, err)
 
 		// Create blocking relationship (relation_type_id = 2 for blocking)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 2)",
 			blockedID, blockerID)
 		assert.NoError(t, err)
@@ -218,7 +217,7 @@ func TestShowTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Full Metadata Task")
 
 		// Update with all metadata fields
-		_, err := db.ExecContext(context.Background(), `
+		_, err := db.ExecContext(ctx, `
 			UPDATE tasks 
 			SET description = ?, 
 			    ticket_number = ?,
@@ -252,7 +251,7 @@ func TestShowTask_Positive(t *testing.T) {
 
 	t.Run("Show task in JSON mode with complete structure", func(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Complete JSON Task")
-		_, err := db.ExecContext(context.Background(), `
+		_, err := db.ExecContext(ctx, `
 			UPDATE tasks 
 			SET description = ?, 
 			    ticket_number = ?,
@@ -264,7 +263,7 @@ func TestShowTask_Positive(t *testing.T) {
 
 		// Add a label
 		labelID := testutil.CreateTestLabel(t, db, projectID, "feature", "#3B82F6")
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID)
 		assert.NoError(t, err)
 
@@ -319,7 +318,7 @@ func TestShowTask_Positive(t *testing.T) {
 It spans multiple lines.
 Each line should be properly displayed.`
 
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET description = ?, ticket_number = 11 WHERE id = ?",
 			multiLineDesc, taskID)
 		assert.NoError(t, err)
@@ -343,10 +342,10 @@ Each line should be properly displayed.`
 		task2ID := cli.CreateTestTask(t, db, todoColumnID, "Position Task 2")
 
 		// Assign ticket numbers
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 12 WHERE id = ?", task1ID)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 13 WHERE id = ?", task2ID)
 		assert.NoError(t, err)
 
@@ -371,7 +370,7 @@ Each line should be properly displayed.`
 
 	t.Run("Show task with empty description", func(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "No Description Task")
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 14 WHERE id = ?", taskID)
 		assert.NoError(t, err)
 
@@ -395,24 +394,24 @@ Each line should be properly displayed.`
 		childTaskID := cli.CreateTestTask(t, db, todoColumnID, "Child of Middle")
 
 		// Assign ticket numbers
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 15 WHERE id = ?", middleTaskID)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 16 WHERE id = ?", parentTaskID)
 		assert.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE tasks SET ticket_number = 17 WHERE id = ?", childTaskID)
 		assert.NoError(t, err)
 
 		// Middle task is child of parentTask
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
 			parentTaskID, middleTaskID)
 		assert.NoError(t, err)
 
 		// childTask is child of middleTask
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
 			middleTaskID, childTaskID)
 		assert.NoError(t, err)

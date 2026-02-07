@@ -12,9 +12,8 @@ import (
 func TestCreateTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+
+	ctx := context.Background()
 
 	// Create test project
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -35,7 +34,7 @@ func TestCreateTask_Positive(t *testing.T) {
 
 		// Verify task exists in DB
 		var title string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT title FROM tasks WHERE id = ?", taskIDStr).Scan(&title)
 		assert.NoError(t, err)
 		assert.Equal(t, "Simple Task", title)
@@ -69,7 +68,7 @@ func TestCreateTask_Positive(t *testing.T) {
 		var title, description, priority, taskType string
 		var dbColumnID int
 
-		err = db.QueryRowContext(context.Background(), `
+		err = db.QueryRowContext(ctx, `
 			SELECT t.title, t.description, p.description, ty.description, t.column_id
 			FROM tasks t
 			JOIN priorities p ON t.priority_id = p.id

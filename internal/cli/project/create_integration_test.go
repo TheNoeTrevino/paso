@@ -4,21 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
 func TestCreateProject_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		err := db.Close()
-		assert.NoError(t, err)
-	}()
+	ctx := context.Background()
 
 	t.Run("Create project with title only", func(t *testing.T) {
 		cmd := CreateCmd()
@@ -35,7 +32,7 @@ func TestCreateProject_Positive(t *testing.T) {
 
 		// Verify project exists in DB
 		var name string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT name FROM projects WHERE id = ?", projectIDStr).Scan(&name)
 		assert.NoError(t, err)
 		assert.Equal(t, "New Project", name)
@@ -55,7 +52,7 @@ func TestCreateProject_Positive(t *testing.T) {
 		projectIDStr := strings.TrimSpace(output)
 
 		var name, description string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT name, description FROM projects WHERE id = ?", projectIDStr).Scan(&name, &description)
 		assert.NoError(t, err)
 		assert.Equal(t, "Detailed Project", name)
@@ -75,7 +72,7 @@ func TestCreateProject_Positive(t *testing.T) {
 		projectIDStr := strings.TrimSpace(output)
 
 		// Verify default columns exist
-		rows, err := db.QueryContext(context.Background(),
+		rows, err := db.QueryContext(ctx,
 			"SELECT name FROM columns WHERE project_id = ? ORDER BY id", projectIDStr)
 		assert.NoError(t, err)
 		defer func() {
@@ -100,20 +97,12 @@ func TestCreateProject_Positive(t *testing.T) {
 	})
 }
 
-// ============================================================================
-// GIT BRANCH ASSOCIATION TESTS (TDD RED PHASE)
-// ============================================================================
-
 func TestCreateProject_InGitRepo(t *testing.T) {
 	// This test should be run in a git repository
 	// It verifies that creating a project in a git repo associates it with the current branch
 
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		err := db.Close()
-		assert.NoError(t, err)
-	}()
 
 	t.Run("Create project in git repo associates with branch", func(t *testing.T) {
 		// This test will fail until git detection is implemented
@@ -152,24 +141,13 @@ func TestCreateProject_OutsideGitRepo(t *testing.T) {
 
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		err := db.Close()
-		assert.NoError(t, err)
-	}()
 
 	t.Run("Create project outside git repo has no branch", func(t *testing.T) {
 		// Create a temporary directory that is NOT a git repo
 		tmpDir := t.TempDir()
 
 		// Change to that directory
-		originalDir, err := os.Getwd()
-		assert.NoError(t, err)
-		defer func() {
-			err := os.Chdir(originalDir)
-			assert.NoError(t, err)
-		}()
-		err = os.Chdir(tmpDir)
-		assert.NoError(t, err)
+		testutil.ChdirTemp(t, tmpDir)
 
 		cmd := CreateCmd()
 
@@ -199,21 +177,18 @@ func TestCreateProject_BranchAlreadyAssociated(t *testing.T) {
 
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		err := db.Close()
-		assert.NoError(t, err)
-	}()
+	ctx := context.Background()
 
 	t.Run("Warn when branch already associated", func(t *testing.T) {
 		// First, manually create a project with a git branch
-		result, err := db.ExecContext(context.Background(),
+		result, err := db.ExecContext(ctx,
 			"INSERT INTO projects (name, description, git_branch) VALUES (?, ?, ?)",
 			"First Project", "First", "feature/existing-branch")
 		assert.NoError(t, err)
 		firstID, _ := result.LastInsertId()
 
 		// Create default columns for the first project
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO columns (project_id, name) VALUES (?, 'Todo'), (?, 'In Progress'), (?, 'Done')",
 			firstID, firstID, firstID)
 		assert.NoError(t, err)
@@ -245,7 +220,7 @@ func TestCreateProject_BranchAlreadyAssociated(t *testing.T) {
 
 		// Verify second project has no git_branch
 		var gitBranch sql.NullString
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT git_branch FROM projects WHERE id = ?", projectIDStr).Scan(&gitBranch)
 		assert.NoError(t, err)
 		// Second project should NOT have the branch (conflict detected)
@@ -259,10 +234,6 @@ func TestCreateProject_MultipleProjectsNoBranch(t *testing.T) {
 
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		err := db.Close()
-		assert.NoError(t, err)
-	}()
 
 	t.Run("Multiple projects without branches allowed", func(t *testing.T) {
 		// Create multiple projects outside git repos
@@ -304,10 +275,7 @@ func TestCreateProject_DifferentBranches(t *testing.T) {
 
 	// Setup test DB and App
 	db, _ := cli.SetupCLITest(t)
-	defer func() {
-		err := db.Close()
-		assert.NoError(t, err)
-	}()
+	ctx := context.Background()
 
 	t.Run("Projects on different branches allowed", func(t *testing.T) {
 		// Manually create projects on different branches
@@ -320,7 +288,7 @@ func TestCreateProject_DifferentBranches(t *testing.T) {
 		}
 
 		for i, branch := range branches {
-			result, err := db.ExecContext(context.Background(),
+			result, err := db.ExecContext(ctx,
 				"INSERT INTO projects (name, description, git_branch) VALUES (?, ?, ?)",
 				fmt.Sprintf("Project %d", i), "Description", branch)
 			assert.NoError(t, err)
@@ -328,14 +296,14 @@ func TestCreateProject_DifferentBranches(t *testing.T) {
 			projectID, _ := result.LastInsertId()
 
 			// Create default columns
-			_, err = db.ExecContext(context.Background(),
+			_, err = db.ExecContext(ctx,
 				"INSERT INTO columns (project_id, name) VALUES (?, 'Todo'), (?, 'In Progress'), (?, 'Done')",
 				projectID, projectID, projectID)
 			assert.NoError(t, err)
 		}
 
 		// Verify all projects have unique branches
-		rows, err := db.QueryContext(context.Background(),
+		rows, err := db.QueryContext(ctx,
 			"SELECT git_branch FROM projects WHERE git_branch IS NOT NULL ORDER BY id")
 		assert.NoError(t, err)
 		defer func() { _ = rows.Close() }()
@@ -359,14 +327,11 @@ func TestCreateProject_GitBranchWithSlashes(t *testing.T) {
 
 	// Setup test DB and App
 	db, _ := cli.SetupCLITest(t)
-	defer func() {
-		err := db.Close()
-		assert.NoError(t, err)
-	}()
+	ctx := context.Background()
 
 	t.Run("Branch names with slashes", func(t *testing.T) {
 		// Manually create a project with a branch containing slashes
-		result, err := db.ExecContext(context.Background(),
+		result, err := db.ExecContext(ctx,
 			"INSERT INTO projects (name, description, git_branch) VALUES (?, ?, ?)",
 			"Test Project", "Description", "feature/auth/user-login")
 		assert.NoError(t, err)
@@ -375,7 +340,7 @@ func TestCreateProject_GitBranchWithSlashes(t *testing.T) {
 
 		// Verify branch was stored correctly
 		var gitBranch string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT git_branch FROM projects WHERE id = ?", projectID).Scan(&gitBranch)
 		assert.NoError(t, err)
 		assert.Equal(t, "feature/auth/user-login", gitBranch)

@@ -55,15 +55,15 @@ func (c PostgresTestConfig) ConnectionString() string {
 //   - PG_USER (default: postgres)
 //   - PG_PASSWORD (default: postgres)
 //   - PG_DATABASE (default: paso_test)
-func SetupPostgresTestDB(t *testing.T) *sql.DB {
-	t.Helper()
+func SetupPostgresTestDB(tb testing.TB) *sql.DB {
+	tb.Helper()
 
 	config := DefaultPostgresTestConfig()
 
 	// Try to connect to PostgreSQL
 	db, err := sql.Open("postgres", config.ConnectionString())
 	if err != nil {
-		t.Skipf("PostgreSQL not available at %s:%s - skipping PostgreSQL tests. "+
+		tb.Skipf("PostgreSQL not available at %s:%s - skipping PostgreSQL tests. "+
 			"Set PG_HOST, PG_PORT, PG_USER, PG_PASSWORD, PG_DATABASE environment variables or use defaults",
 			config.Host, config.Port)
 		return nil
@@ -74,7 +74,7 @@ func SetupPostgresTestDB(t *testing.T) *sql.DB {
 	defer cancel()
 
 	if err := db.PingContext(ctx); err != nil {
-		t.Skipf("PostgreSQL connection failed: %v. "+
+		tb.Skipf("PostgreSQL connection failed: %v. "+
 			"Ensure PostgreSQL is running at %s:%s with user=%s, password=%s, database=%s",
 			err, config.Host, config.Port, config.User, config.Password, config.Database)
 		return nil
@@ -82,11 +82,11 @@ func SetupPostgresTestDB(t *testing.T) *sql.DB {
 
 	// Create schema
 	if err := createPostgresTestSchema(ctx, db); err != nil {
-		t.Fatalf("Failed to create PostgreSQL schema: %v", err)
+		tb.Fatalf("Failed to create PostgreSQL schema: %v", err)
 	}
 
 	// Register cleanup
-	t.Cleanup(func() {
+	tb.Cleanup(func() {
 		// Clean up test data but keep database for next test
 		cleanupPostgresTestData(db)
 		_ = db.Close()

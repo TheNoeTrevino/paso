@@ -13,29 +13,28 @@ import (
 func TestDoneTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+
+	ctx := context.Background()
 
 	// Create test project with columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	// Get the default columns created by CreateTestProject
 	var todoColumnID, inProgressColumnID, doneColumnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'", projectID).Scan(&todoColumnID)
 	assert.NoError(t, err)
 
-	err = db.QueryRowContext(context.Background(),
+	err = db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'In Progress'", projectID).Scan(&inProgressColumnID)
 	assert.NoError(t, err)
 
-	err = db.QueryRowContext(context.Background(),
+	err = db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Done'", projectID).Scan(&doneColumnID)
 	assert.NoError(t, err)
 
 	// Mark "Done" column as completed column
-	_, err = db.ExecContext(context.Background(),
+	_, err = db.ExecContext(ctx,
 		"UPDATE columns SET holds_completed_tasks = true WHERE id = ?", doneColumnID)
 	assert.NoError(t, err)
 
@@ -55,7 +54,7 @@ func TestDoneTask_Positive(t *testing.T) {
 
 		// Verify task moved to done column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, doneColumnID, columnID)
@@ -78,7 +77,7 @@ func TestDoneTask_Positive(t *testing.T) {
 
 		// Verify task moved to done column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, doneColumnID, columnID)
@@ -110,7 +109,7 @@ func TestDoneTask_Positive(t *testing.T) {
 
 		// Verify task moved to done column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, doneColumnID, columnID)
@@ -139,7 +138,7 @@ func TestDoneTask_Positive(t *testing.T) {
 
 		// Verify task moved to done column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, doneColumnID, columnID)
@@ -165,7 +164,7 @@ func TestDoneTask_Positive(t *testing.T) {
 
 		// Verify task is still in done column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, doneColumnID, columnID)
@@ -190,7 +189,7 @@ func TestDoneTask_Positive(t *testing.T) {
 		// Verify all tasks moved to done column
 		for _, taskID := range []int{taskID1, taskID2, taskID3} {
 			var columnID int
-			err = db.QueryRowContext(context.Background(),
+			err = db.QueryRowContext(ctx,
 				"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 			assert.NoError(t, err)
 			assert.Equal(t, doneColumnID, columnID, "Task %d should be in Done column", taskID)
@@ -201,15 +200,14 @@ func TestDoneTask_Positive(t *testing.T) {
 func TestDoneTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+
+	ctx := context.Background()
 
 	// Create test project with columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	var todoColumnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'", projectID).Scan(&todoColumnID)
 	assert.NoError(t, err)
 
@@ -221,11 +219,11 @@ func TestDoneTask_Negative(t *testing.T) {
 	t.Run("Invalid task ID - non-numeric", func(t *testing.T) {
 		// Mark done column for this test so we don't hit the os.Exit() path
 		var doneColumnID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT id FROM columns WHERE project_id = ? AND name = 'Done'", projectID).Scan(&doneColumnID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"UPDATE columns SET holds_completed_tasks = true WHERE id = ?", doneColumnID)
 		assert.NoError(t, err)
 

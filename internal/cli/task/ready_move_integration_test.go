@@ -15,29 +15,28 @@ import (
 func TestReadyMoveTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+
+	ctx := context.Background()
 
 	// Create test project with columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	// Get the default columns created by CreateTestProject
 	var todoColumnID, inProgressColumnID, doneColumnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'", projectID).Scan(&todoColumnID)
 	require.NoError(t, err)
 
-	err = db.QueryRowContext(context.Background(),
+	err = db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'In Progress'", projectID).Scan(&inProgressColumnID)
 	require.NoError(t, err)
 
-	err = db.QueryRowContext(context.Background(),
+	err = db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Done'", projectID).Scan(&doneColumnID)
 	require.NoError(t, err)
 
 	// Mark "Todo" column as ready column (holds_ready_tasks = true)
-	_, err = db.ExecContext(context.Background(),
+	_, err = db.ExecContext(ctx,
 		"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", todoColumnID)
 	require.NoError(t, err)
 
@@ -57,7 +56,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Verify task moved to ready column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, todoColumnID, columnID)
@@ -78,7 +77,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Verify task moved to ready column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, todoColumnID, columnID)
@@ -101,7 +100,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Verify task moved to ready column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, todoColumnID, columnID)
@@ -133,7 +132,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Verify task moved to ready column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, todoColumnID, columnID)
@@ -162,7 +161,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Verify task moved to ready column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, todoColumnID, columnID)
@@ -188,7 +187,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Verify task is still in ready column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, todoColumnID, columnID)
@@ -213,7 +212,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Verify task is still in ready column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, todoColumnID, columnID)
@@ -224,7 +223,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, doneColumnID, "Task with Metadata")
 
 		description := "This task has a detailed description"
-		_, err := db.ExecContext(context.Background(), `
+		_, err := db.ExecContext(ctx, `
 			UPDATE tasks 
 			SET description = ?, 
 			    ticket_number = ?,
@@ -246,7 +245,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		var columnID int
 		var savedDescription string
 		var ticketNumber, typeID, priorityID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id, description, ticket_number, type_id, priority_id FROM tasks WHERE id = ?",
 			taskID).Scan(&columnID, &savedDescription, &ticketNumber, &typeID, &priorityID)
 		assert.NoError(t, err)
@@ -265,10 +264,10 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		labelID1 := testutil.CreateTestLabel(t, db, projectID, "bug", "#EF4444")
 		labelID2 := testutil.CreateTestLabel(t, db, projectID, "urgent", "#F97316")
 
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID1)
 		require.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID2)
 		require.NoError(t, err)
 
@@ -283,14 +282,14 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Verify task moved to ready column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, todoColumnID, columnID)
 
 		// Verify labels are still attached
 		var labelCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_labels WHERE task_id = ?", taskID).Scan(&labelCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, labelCount)
@@ -302,7 +301,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		childTaskID := cli.CreateTestTask(t, db, inProgressColumnID, "Child Task")
 
 		// Create relationship (relation_type_id = 1 for parent-child)
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
 			parentTaskID, childTaskID)
 		require.NoError(t, err)
@@ -318,14 +317,14 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Verify task moved to ready column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", parentTaskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, todoColumnID, columnID)
 
 		// Verify relationship is still intact
 		var relationCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_subtasks WHERE parent_id = ? AND child_id = ?",
 			parentTaskID, childTaskID).Scan(&relationCount)
 		assert.NoError(t, err)
@@ -351,7 +350,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		// Verify all tasks moved to ready column
 		for _, taskID := range []int{taskID1, taskID2, taskID3} {
 			var columnID int
-			err = db.QueryRowContext(context.Background(),
+			err = db.QueryRowContext(ctx,
 				"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 			assert.NoError(t, err)
 			assert.Equal(t, todoColumnID, columnID, "Task %d should be in ready column", taskID)
@@ -364,7 +363,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		blockedTaskID := cli.CreateTestTask(t, db, inProgressColumnID, "Blocked Task")
 
 		// Create blocking relationship (relation_type_id = 2 for blocking)
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 2)",
 			blockedTaskID, blockerTaskID)
 		require.NoError(t, err)
@@ -380,14 +379,14 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Verify task moved to ready column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", blockedTaskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, todoColumnID, columnID)
 
 		// Verify blocking relationship is still intact
 		var relationCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_subtasks WHERE parent_id = ? AND child_id = ? AND relation_type_id = 2",
 			blockedTaskID, blockerTaskID).Scan(&relationCount)
 		assert.NoError(t, err)
@@ -399,11 +398,11 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, doneColumnID, "Task With Comments")
 
 		// Add comments
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"INSERT INTO task_comments (task_id, content, author) VALUES (?, ?, ?)",
 			taskID, "First comment", "user1")
 		require.NoError(t, err)
-		_, err = db.ExecContext(context.Background(),
+		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_comments (task_id, content, author) VALUES (?, ?, ?)",
 			taskID, "Second comment", "user2")
 		require.NoError(t, err)
@@ -419,14 +418,14 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Verify task moved to ready column
 		var columnID int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
 		assert.NoError(t, err)
 		assert.Equal(t, todoColumnID, columnID)
 
 		// Verify comments are still attached
 		var commentCount int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM task_comments WHERE task_id = ?", taskID).Scan(&commentCount)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, commentCount)
@@ -438,7 +437,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Get initial position
 		var initialPosition int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"SELECT position FROM tasks WHERE id = ?", taskID).Scan(&initialPosition)
 		assert.NoError(t, err)
 
@@ -452,7 +451,7 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 
 		// Get new position (should be at the end of the ready column)
 		var newPosition int
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT position FROM tasks WHERE id = ?", taskID).Scan(&newPosition)
 		assert.NoError(t, err)
 
@@ -466,24 +465,23 @@ func TestReadyMoveTask_Positive(t *testing.T) {
 func TestReadyMoveTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+
+	ctx := context.Background()
 
 	// Create test project with columns
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	var todoColumnID, inProgressColumnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'", projectID).Scan(&todoColumnID)
 	require.NoError(t, err)
 
-	err = db.QueryRowContext(context.Background(),
+	err = db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? AND name = 'In Progress'", projectID).Scan(&inProgressColumnID)
 	require.NoError(t, err)
 
 	// Mark "Todo" column as ready column for positive tests
-	_, err = db.ExecContext(context.Background(),
+	_, err = db.ExecContext(ctx,
 		"UPDATE columns SET holds_ready_tasks = true WHERE id = ?", todoColumnID)
 	require.NoError(t, err)
 
@@ -534,7 +532,7 @@ func TestReadyMoveTask_Negative(t *testing.T) {
 		newColumnID := cli.CreateTestColumn(t, db, newProjectID, "Regular Column")
 
 		// Ensure no columns are marked as ready
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = false WHERE project_id = ?", newProjectID)
 		require.NoError(t, err)
 

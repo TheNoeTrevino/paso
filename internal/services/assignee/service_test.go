@@ -11,7 +11,6 @@ import (
 
 func TestGetOrCreate(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	svc, err := NewService(db, database.SQLite)
 	if err != nil {
@@ -41,7 +40,6 @@ func TestGetOrCreate(t *testing.T) {
 
 func TestGetOrCreateConcurrent(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	// SQLite in-memory DBs are per-connection; limit to one connection so all
 	// goroutines share the same schema and data.

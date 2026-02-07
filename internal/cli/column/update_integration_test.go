@@ -14,9 +14,7 @@ import (
 func TestUpdateColumn_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cliutil.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+	ctx := context.Background()
 
 	// Create test project - this creates default columns (Todo, In Progress, Done)
 	projectID := cliutil.CreateTestProject(t, db, "Test Project")
@@ -37,7 +35,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 
 		// Verify in DB
 		var name string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT name FROM columns WHERE id = ?", testColumnID).Scan(&name)
 		assert.NoError(t, err)
 		assert.Equal(t, "Updated Name", name)
@@ -59,7 +57,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 
 		// Verify in DB
 		var holdsReadyTasks bool
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT holds_ready_tasks FROM columns WHERE id = ?", testColumnID).Scan(&holdsReadyTasks)
 		assert.NoError(t, err)
 		assert.True(t, holdsReadyTasks)
@@ -82,7 +80,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 
 		// Verify in DB
 		var holdsCompletedTasks bool
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT holds_completed_tasks FROM columns WHERE id = ?", testColumnID).Scan(&holdsCompletedTasks)
 		assert.NoError(t, err)
 		assert.True(t, holdsCompletedTasks)
@@ -104,7 +102,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 
 		// Verify in DB
 		var holdsInProgressTasks bool
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT holds_in_progress_tasks FROM columns WHERE id = ?", testColumnID).Scan(&holdsInProgressTasks)
 		assert.NoError(t, err)
 		assert.True(t, holdsInProgressTasks)
@@ -129,7 +127,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		// Verify in DB
 		var name string
 		var holdsInProgressTasks bool
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT name, holds_in_progress_tasks FROM columns WHERE id = ?", testColumnID).Scan(&name, &holdsInProgressTasks)
 		assert.NoError(t, err)
 		assert.Equal(t, "Updated Name", name)
@@ -155,7 +153,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		// Verify in DB
 		var name string
 		var holdsCompletedTasks bool
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT name, holds_completed_tasks FROM columns WHERE id = ?", testColumnID).Scan(&name, &holdsCompletedTasks)
 		assert.NoError(t, err)
 		assert.Equal(t, "Completed Column", name)
@@ -246,7 +244,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		// Verify all fields
 		var name string
 		var holdsInProgressTasks bool
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT name, holds_in_progress_tasks FROM columns WHERE id = ?", testColumnID).Scan(&name, &holdsInProgressTasks)
 		assert.NoError(t, err)
 		assert.Equal(t, "Only Name Changed", name)
@@ -303,7 +301,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 
 		// Verify final state
 		var name string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT name FROM columns WHERE id = ?", testColumnID).Scan(&name)
 		assert.NoError(t, err)
 		assert.Equal(t, "Third Name", name)
@@ -313,9 +311,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 func TestUpdateColumn_EdgeCases(t *testing.T) {
 	// Setup test DB and App
 	db, app := cliutil.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+	ctx := context.Background()
 
 	// Create test project
 	projectID := cliutil.CreateTestProject(t, db, "Test Project")
@@ -336,7 +332,7 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 
 		// Verify name is still the same
 		var name string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT name FROM columns WHERE id = ?", testColumnID).Scan(&name)
 		assert.NoError(t, err)
 		assert.Equal(t, "Original Name", name)
@@ -359,7 +355,7 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 
 		// Verify name with special characters is preserved
 		var name string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT name FROM columns WHERE id = ?", testColumnID).Scan(&name)
 		assert.NoError(t, err)
 		assert.Equal(t, specialName, name)
@@ -382,7 +378,7 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 
 		// Verify unicode name is preserved
 		var name string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT name FROM columns WHERE id = ?", testColumnID).Scan(&name)
 		assert.NoError(t, err)
 		assert.Equal(t, unicodeName, name)
@@ -406,7 +402,7 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 
 		// Verify long name is preserved
 		var name string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT name FROM columns WHERE id = ?", testColumnID).Scan(&name)
 		assert.NoError(t, err)
 		assert.Equal(t, longName, name)
@@ -427,7 +423,7 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 
 		// Verify ready flag is true
 		var holdsReadyTasks bool
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT holds_ready_tasks FROM columns WHERE id = ?", testColumnID).Scan(&holdsReadyTasks)
 		assert.NoError(t, err)
 		assert.True(t, holdsReadyTasks)
@@ -451,7 +447,7 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 		// Verify both changes
 		var name string
 		var holdsInProgressTasks bool
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT name, holds_in_progress_tasks FROM columns WHERE id = ?", testColumnID).Scan(&name, &holdsInProgressTasks)
 		assert.NoError(t, err)
 		assert.Equal(t, "In Progress Column", name)

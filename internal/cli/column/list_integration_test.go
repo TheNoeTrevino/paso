@@ -4,32 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
-
-// stripANSI removes ANSI escape codes from a string
-func stripANSI(str string) string {
-	ansiRegex := regexp.MustCompile(`\x1b\[[0-9;]*m`)
-	return ansiRegex.ReplaceAllString(str, "")
-}
 
 func TestListColumns_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+	ctx := context.Background()
 
 	// Create test project
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	// Set flags on default columns for testing
-	_, err := db.ExecContext(context.Background(), `
+	_, err := db.ExecContext(ctx, `
 		UPDATE columns
 		SET holds_ready_tasks = 1
 		WHERE project_id = ? AND name = 'Todo'`, projectID)
@@ -37,7 +29,7 @@ func TestListColumns_Positive(t *testing.T) {
 		t.Fatalf("Failed to set holds_ready_tasks flag: %v", err)
 	}
 
-	_, err = db.ExecContext(context.Background(), `
+	_, err = db.ExecContext(ctx, `
 		UPDATE columns
 		SET holds_in_progress_tasks = 1
 		WHERE project_id = ? AND name = 'In Progress'`, projectID)
@@ -45,7 +37,7 @@ func TestListColumns_Positive(t *testing.T) {
 		t.Fatalf("Failed to set holds_in_progress_tasks flag: %v", err)
 	}
 
-	_, err = db.ExecContext(context.Background(), `
+	_, err = db.ExecContext(ctx, `
 		UPDATE columns
 		SET holds_completed_tasks = 1
 		WHERE project_id = ? AND name = 'Done'`, projectID)
@@ -63,7 +55,7 @@ func TestListColumns_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Strip ANSI codes for easier assertions
-		cleanOutput := stripANSI(output)
+		cleanOutput := testutil.StripANSI(output)
 
 		// Verify table headers are present
 		assert.Contains(t, cleanOutput, "ID")
@@ -141,7 +133,7 @@ func TestListColumns_Positive(t *testing.T) {
 		// Create a project with no columns (we need to manually create one without default columns)
 		// Since CreateTestProject creates default columns, we create a project directly
 		var emptyProjectID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"INSERT INTO projects (name) VALUES (?) RETURNING id",
 			"Empty Project").Scan(&emptyProjectID)
 		assert.NoError(t, err)
@@ -159,7 +151,7 @@ func TestListColumns_Positive(t *testing.T) {
 	t.Run("List columns and verify sorting by position", func(t *testing.T) {
 		// Create a project with custom columns in specific order
 		var customProjectID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"INSERT INTO projects (name) VALUES (?) RETURNING id",
 			"Ordered Project").Scan(&customProjectID)
 		assert.NoError(t, err)
@@ -178,7 +170,7 @@ func TestListColumns_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Strip ANSI codes for easier assertions
-		cleanOutput := stripANSI(output)
+		cleanOutput := testutil.StripANSI(output)
 
 		// Verify columns appear in order in the table
 		firstPos := strings.Index(cleanOutput, "First")
@@ -200,14 +192,14 @@ func TestListColumns_Positive(t *testing.T) {
 	t.Run("List columns with column flags set", func(t *testing.T) {
 		// Create a project and modify column flags
 		var flagProjectID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"INSERT INTO projects (name) VALUES (?) RETURNING id",
 			"Flag Project").Scan(&flagProjectID)
 		assert.NoError(t, err)
 
 		// Create a column and set flags
 		flagColumnID := cli.CreateTestColumn(t, db, flagProjectID, "Custom")
-		_, err = db.ExecContext(context.Background(), `
+		_, err = db.ExecContext(ctx, `
 			UPDATE columns
 			SET holds_ready_tasks = 1, holds_in_progress_tasks = 1
 			WHERE id = ?`,
@@ -229,7 +221,7 @@ func TestListColumns_Positive(t *testing.T) {
 	t.Run("List columns in JSON mode with complete structure", func(t *testing.T) {
 		// Create a project with multiple columns
 		var jsonProjectID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"INSERT INTO projects (name) VALUES (?) RETURNING id",
 			"JSON Project").Scan(&jsonProjectID)
 		assert.NoError(t, err)
@@ -239,14 +231,14 @@ func TestListColumns_Positive(t *testing.T) {
 		column2ID := cli.CreateTestColumn(t, db, jsonProjectID, "Active")
 
 		// Set flags on columns
-		_, err = db.ExecContext(context.Background(), `
+		_, err = db.ExecContext(ctx, `
 			UPDATE columns
 			SET holds_ready_tasks = 1
 			WHERE id = ?`,
 			column1ID)
 		assert.NoError(t, err)
 
-		_, err = db.ExecContext(context.Background(), `
+		_, err = db.ExecContext(ctx, `
 			UPDATE columns
 			SET holds_in_progress_tasks = 1
 			WHERE id = ?`,
@@ -291,7 +283,7 @@ func TestListColumns_Positive(t *testing.T) {
 	t.Run("List columns with multiple projects", func(t *testing.T) {
 		// Create another project
 		var projectID2 int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"INSERT INTO projects (name) VALUES (?) RETURNING id",
 			"Second Project").Scan(&projectID2)
 		assert.NoError(t, err)
@@ -310,7 +302,7 @@ func TestListColumns_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Strip ANSI codes for easier assertions
-		cleanOutput := stripANSI(output)
+		cleanOutput := testutil.StripANSI(output)
 
 		// Verify second project's columns appear in table
 		assert.Contains(t, cleanOutput, "Custom1")
@@ -347,10 +339,7 @@ func TestListColumns_Positive(t *testing.T) {
 
 func TestListColumns_Errors(t *testing.T) {
 	// Setup test DB and App
-	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+	_, app := cli.SetupCLITest(t)
 
 	t.Run("Invalid project ID error handling", func(t *testing.T) {
 		cmd := ListCmd()
@@ -388,13 +377,11 @@ func TestListColumns_Errors(t *testing.T) {
 func TestListColumns_EdgeCases(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+	ctx := context.Background()
 
 	t.Run("List columns with special characters in names", func(t *testing.T) {
 		var projectID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"INSERT INTO projects (name) VALUES (?) RETURNING id",
 			"Special Project").Scan(&projectID)
 		assert.NoError(t, err)
@@ -418,7 +405,7 @@ func TestListColumns_EdgeCases(t *testing.T) {
 
 	t.Run("List columns with long names", func(t *testing.T) {
 		var projectID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"INSERT INTO projects (name) VALUES (?) RETURNING id",
 			"Long Names Project").Scan(&projectID)
 		assert.NoError(t, err)
@@ -438,7 +425,7 @@ func TestListColumns_EdgeCases(t *testing.T) {
 
 	t.Run("List columns preserves insertion order", func(t *testing.T) {
 		var projectID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"INSERT INTO projects (name) VALUES (?) RETURNING id",
 			"Order Project").Scan(&projectID)
 		assert.NoError(t, err)
@@ -477,7 +464,7 @@ func TestListColumns_EdgeCases(t *testing.T) {
 	t.Run("List columns with no flags formatting", func(t *testing.T) {
 		// Create a project with columns that have no flags set
 		var projectID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"INSERT INTO projects (name) VALUES (?) RETURNING id",
 			"No Flags Project").Scan(&projectID)
 		assert.NoError(t, err)
@@ -500,7 +487,7 @@ func TestListColumns_EdgeCases(t *testing.T) {
 
 	t.Run("List columns quiet mode with single column", func(t *testing.T) {
 		var projectID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"INSERT INTO projects (name) VALUES (?) RETURNING id",
 			"Single Column Project").Scan(&projectID)
 		assert.NoError(t, err)
@@ -523,7 +510,7 @@ func TestListColumns_EdgeCases(t *testing.T) {
 
 	t.Run("List columns JSON output with empty project", func(t *testing.T) {
 		var projectID int
-		err := db.QueryRowContext(context.Background(),
+		err := db.QueryRowContext(ctx,
 			"INSERT INTO projects (name) VALUES (?) RETURNING id",
 			"Empty JSON Project").Scan(&projectID)
 		assert.NoError(t, err)

@@ -10,11 +10,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-)
 
-// ============================================================================
-// Integration Test Helpers
-// ============================================================================
+	"github.com/thenoetrevino/paso/internal/testutil"
+)
 
 // setupGitRepo creates a temporary git repository for testing
 func setupGitRepo(t *testing.T) string {
@@ -112,10 +110,6 @@ func detachHead(t *testing.T, repoDir string) {
 	require.NoError(t, err, "Failed to detach HEAD")
 }
 
-// ============================================================================
-// DetectGitInfo Integration Tests
-// ============================================================================
-
 func TestDetectGitInfo_NormalRepo(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -125,14 +119,7 @@ func TestDetectGitInfo_NormalRepo(t *testing.T) {
 	createCommit(t, repoDir, "Initial commit")
 
 	// Change to repo directory
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() {
-		err := os.Chdir(originalDir)
-		assert.NoError(t, err)
-	}()
-	err = os.Chdir(repoDir)
-	require.NoError(t, err)
+	testutil.ChdirTemp(t, repoDir)
 
 	// Test DetectGitInfo
 	ctx := context.Background()
@@ -157,14 +144,7 @@ func TestDetectGitInfo_FeatureBranch(t *testing.T) {
 	createBranch(t, repoDir, "feature/my-awesome-feature")
 
 	// Change to repo directory
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() {
-		err := os.Chdir(originalDir)
-		assert.NoError(t, err)
-	}()
-	err = os.Chdir(repoDir)
-	require.NoError(t, err)
+	testutil.ChdirTemp(t, repoDir)
 
 	ctx := context.Background()
 	info := DetectGitInfo(ctx)
@@ -185,14 +165,7 @@ func TestDetectGitInfo_DetachedHead(t *testing.T) {
 	detachHead(t, repoDir)
 
 	// Change to repo directory
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() {
-		err := os.Chdir(originalDir)
-		assert.NoError(t, err)
-	}()
-	err = os.Chdir(repoDir)
-	require.NoError(t, err)
+	testutil.ChdirTemp(t, repoDir)
 
 	ctx := context.Background()
 	info := DetectGitInfo(ctx)
@@ -212,14 +185,7 @@ func TestDetectGitInfo_EmptyRepo(t *testing.T) {
 	// Don't create any commits
 
 	// Change to repo directory
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() {
-		err := os.Chdir(originalDir)
-		assert.NoError(t, err)
-	}()
-	err = os.Chdir(repoDir)
-	require.NoError(t, err)
+	testutil.ChdirTemp(t, repoDir)
 
 	ctx := context.Background()
 	info := DetectGitInfo(ctx)
@@ -240,14 +206,7 @@ func TestDetectGitInfo_NotARepo(t *testing.T) {
 	// Don't initialize git in this directory
 
 	// Change to non-repo directory
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() {
-		err := os.Chdir(originalDir)
-		assert.NoError(t, err)
-	}()
-	err = os.Chdir(tmpDir)
-	require.NoError(t, err)
+	testutil.ChdirTemp(t, tmpDir)
 
 	ctx := context.Background()
 	info := DetectGitInfo(ctx)
@@ -273,14 +232,7 @@ func TestDetectGitInfo_BareRepository(t *testing.T) {
 	require.NoError(t, err, "Failed to initialize bare repository")
 
 	// Change to bare repo directory
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() {
-		err := os.Chdir(originalDir)
-		assert.NoError(t, err)
-	}()
-	err = os.Chdir(tmpDir)
-	require.NoError(t, err)
+	testutil.ChdirTemp(t, tmpDir)
 
 	info := DetectGitInfo(ctx)
 
@@ -299,14 +251,7 @@ func TestDetectGitInfo_Timeout(t *testing.T) {
 	createCommit(t, repoDir, "Initial commit")
 
 	// Change to repo directory
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() {
-		err := os.Chdir(originalDir)
-		assert.NoError(t, err)
-	}()
-	err = os.Chdir(repoDir)
-	require.NoError(t, err)
+	testutil.ChdirTemp(t, repoDir)
 
 	// Create a context with very short timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
@@ -345,14 +290,7 @@ func TestDetectGitInfo_BranchWithSpecialChars(t *testing.T) {
 			createBranch(t, repoDir, branchName)
 
 			// Change to repo directory
-			originalDir, err := os.Getwd()
-			require.NoError(t, err)
-			defer func() {
-				err := os.Chdir(originalDir)
-				assert.NoError(t, err)
-			}()
-			err = os.Chdir(repoDir)
-			require.NoError(t, err)
+			testutil.ChdirTemp(t, repoDir)
 
 			ctx := context.Background()
 			info := DetectGitInfo(ctx)
@@ -381,14 +319,7 @@ func TestDetectGitInfo_Subdirectory(t *testing.T) {
 	require.NoError(t, err, "Failed to create subdirectory")
 
 	// Change to subdirectory
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() {
-		err := os.Chdir(originalDir)
-		assert.NoError(t, err)
-	}()
-	err = os.Chdir(subDir)
-	require.NoError(t, err)
+	testutil.ChdirTemp(t, subDir)
 
 	ctx := context.Background()
 	info := DetectGitInfo(ctx)
@@ -422,30 +353,17 @@ func TestDetectGitInfo_MultipleWorktrees(t *testing.T) {
 	}
 
 	// Test from main repo
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() {
-		err := os.Chdir(originalDir)
-		assert.NoError(t, err)
-	}()
-
-	err = os.Chdir(repoDir)
-	require.NoError(t, err)
+	testutil.ChdirTemp(t, repoDir)
 
 	infoMain := DetectGitInfo(ctx)
 	assert.Equal(t, "main", infoMain.CurrentBranch, "Should detect main branch in main repo")
 
 	// Test from worktree
-	err = os.Chdir(worktreeDir)
-	require.NoError(t, err)
+	testutil.ChdirTemp(t, worktreeDir)
 
 	infoWorktree := DetectGitInfo(ctx)
 	assert.Equal(t, "feature/branch1", infoWorktree.CurrentBranch, "Should detect feature branch in worktree")
 }
-
-// ============================================================================
-// Edge Cases and Error Handling
-// ============================================================================
 
 func TestDetectGitInfo_VeryLongBranchName(t *testing.T) {
 	if testing.Short() {
@@ -463,14 +381,7 @@ func TestDetectGitInfo_VeryLongBranchName(t *testing.T) {
 
 	createBranch(t, repoDir, longBranchName)
 
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() {
-		err := os.Chdir(originalDir)
-		assert.NoError(t, err)
-	}()
-	err = os.Chdir(repoDir)
-	require.NoError(t, err)
+	testutil.ChdirTemp(t, repoDir)
 
 	ctx := context.Background()
 	info := DetectGitInfo(ctx)
@@ -495,14 +406,7 @@ func TestDetectGitInfo_CorruptedRepo(t *testing.T) {
 	err := os.Remove(headPath)
 	require.NoError(t, err, "Failed to corrupt repository")
 
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer func() {
-		err := os.Chdir(originalDir)
-		assert.NoError(t, err)
-	}()
-	err = os.Chdir(repoDir)
-	require.NoError(t, err)
+	testutil.ChdirTemp(t, repoDir)
 
 	ctx := context.Background()
 	info := DetectGitInfo(ctx)

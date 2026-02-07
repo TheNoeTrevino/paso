@@ -10,7 +10,6 @@ import (
 
 func TestDeleteAssigneeSetNullBehavior(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	ctx := context.Background()
 

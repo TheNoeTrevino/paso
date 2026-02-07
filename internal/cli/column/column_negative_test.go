@@ -6,17 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
 // TestCreateColumn_MissingFlags tests error cases for the create command with missing required flags
 func TestCreateColumn_MissingFlags(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		err := db.Close()
-		assert.NoError(t, err)
-	}()
 
 	// Create test project
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -94,10 +89,6 @@ func TestCreateColumn_MissingFlags(t *testing.T) {
 // TestUpdateColumn_MissingFlags tests error cases for the update command
 func TestUpdateColumn_MissingFlags(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		err := db.Close()
-		assert.NoError(t, err)
-	}()
 
 	// Create test project and column
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -169,11 +160,7 @@ func TestUpdateColumn_MissingFlags(t *testing.T) {
 
 // TestListColumn_MissingFlags tests error cases for the list command
 func TestListColumn_MissingFlags(t *testing.T) {
-	db, app := cli.SetupCLITest(t)
-	defer func() {
-		err := db.Close()
-		assert.NoError(t, err)
-	}()
+	_, app := cli.SetupCLITest(t)
 
 	// Test missing --project flag
 	t.Run("missing --project flag", func(t *testing.T) {
@@ -223,11 +210,7 @@ func TestListColumn_MissingFlags(t *testing.T) {
 
 // TestDeleteColumn_MissingFlags tests error cases for the delete command
 func TestDeleteColumn_MissingFlags(t *testing.T) {
-	db, app := cli.SetupCLITest(t)
-	defer func() {
-		err := db.Close()
-		assert.NoError(t, err)
-	}()
+	_, app := cli.SetupCLITest(t)
 
 	// Test missing --id flag
 	t.Run("missing --id flag", func(t *testing.T) {
@@ -298,10 +281,6 @@ func TestDeleteColumn_MissingFlags(t *testing.T) {
 // (only special columns like ready, completed, in-progress have uniqueness constraints)
 func TestCreateColumn_DuplicateName(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		err := db.Close()
-		assert.NoError(t, err)
-	}()
 
 	// Create test project
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -340,10 +319,6 @@ func TestCreateColumn_DuplicateName(t *testing.T) {
 // TestUpdateColumn_InvalidTransition tests invalid flag transitions
 func TestUpdateColumn_InvalidTransition(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		err := db.Close()
-		assert.NoError(t, err)
-	}()
 
 	// Create test project and column
 	projectID := cli.CreateTestProject(t, db, "Test Project")
@@ -377,11 +352,7 @@ func TestUpdateColumn_InvalidTransition(t *testing.T) {
 
 // TestCreateColumn_ProjectValidation tests project validation during creation
 func TestCreateColumn_ProjectValidation(t *testing.T) {
-	db, app := cli.SetupCLITest(t)
-	defer func() {
-		err := db.Close()
-		assert.NoError(t, err)
-	}()
+	_, app := cli.SetupCLITest(t)
 
 	tests := []struct {
 		name      string

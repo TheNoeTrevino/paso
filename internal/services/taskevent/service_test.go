@@ -10,16 +10,18 @@ import (
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
-func setupTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-	return testutil.SetupTestDB(t)
-}
-
 func newTestService(t *testing.T, db *sql.DB) Service {
 	t.Helper()
 	svc, err := NewService(db, database.SQLite)
 	require.NoError(t, err, "failed to create test service")
 	return svc
+}
+
+func newTestQuerier(t *testing.T, db *sql.DB) database.Querier {
+	t.Helper()
+	q, err := database.NewQuerier(db, database.SQLite)
+	require.NoError(t, err, "failed to create test querier")
+	return q
 }
 
 func createTestProject(t *testing.T, db *sql.DB) int {
@@ -83,19 +85,17 @@ func createTestTaskWithProjectSetup(t *testing.T, db *sql.DB) int {
 func TestCreateTaskCreatedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
+	queries := newTestQuerier(t, db)
+	ctx := context.Background()
 
-	queries, err := database.NewQuerier(db, database.SQLite)
+	err := svc.CreateTaskCreatedEvent(ctx, queries, taskID, "My New Task", "testuser")
 	require.NoError(t, err)
 
-	err = svc.CreateTaskCreatedEvent(context.Background(), queries, taskID, "My New Task", "testuser")
-	require.NoError(t, err)
-
-	events, err := svc.GetEventsByTask(context.Background(), taskID)
+	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	require.Equal(t, "Task created: My New Task", events[0].Content)
@@ -105,19 +105,17 @@ func TestCreateTaskCreatedEvent(t *testing.T) {
 func TestCreateTaskMovedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
+	queries := newTestQuerier(t, db)
+	ctx := context.Background()
 
-	queries, err := database.NewQuerier(db, database.SQLite)
+	err := svc.CreateTaskMovedEvent(ctx, queries, taskID, "Todo", "In Progress", "testuser")
 	require.NoError(t, err)
 
-	err = svc.CreateTaskMovedEvent(context.Background(), queries, taskID, "Todo", "In Progress", "testuser")
-	require.NoError(t, err)
-
-	events, err := svc.GetEventsByTask(context.Background(), taskID)
+	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	require.Equal(t, "Moved from 'Todo' to 'In Progress'", events[0].Content)
@@ -126,19 +124,17 @@ func TestCreateTaskMovedEvent(t *testing.T) {
 func TestCreateTaskAssociatedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
+	queries := newTestQuerier(t, db)
+	ctx := context.Background()
 
-	queries, err := database.NewQuerier(db, database.SQLite)
+	err := svc.CreateTaskAssociatedEvent(ctx, queries, taskID, 42, "Other Task", "Blocked By", "testuser")
 	require.NoError(t, err)
 
-	err = svc.CreateTaskAssociatedEvent(context.Background(), queries, taskID, 42, "Other Task", "Blocked By", "testuser")
-	require.NoError(t, err)
-
-	events, err := svc.GetEventsByTask(context.Background(), taskID)
+	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	require.Equal(t, "Associated to task #42 (Other Task) as: Blocked By", events[0].Content)
@@ -147,19 +143,17 @@ func TestCreateTaskAssociatedEvent(t *testing.T) {
 func TestCreateTaskDisassociatedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
+	queries := newTestQuerier(t, db)
+	ctx := context.Background()
 
-	queries, err := database.NewQuerier(db, database.SQLite)
+	err := svc.CreateTaskDisassociatedEvent(ctx, queries, taskID, 42, "testuser")
 	require.NoError(t, err)
 
-	err = svc.CreateTaskDisassociatedEvent(context.Background(), queries, taskID, 42, "testuser")
-	require.NoError(t, err)
-
-	events, err := svc.GetEventsByTask(context.Background(), taskID)
+	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	require.Equal(t, "Removed association to task #42", events[0].Content)
@@ -168,19 +162,17 @@ func TestCreateTaskDisassociatedEvent(t *testing.T) {
 func TestCreateLabelAddedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
+	queries := newTestQuerier(t, db)
+	ctx := context.Background()
 
-	queries, err := database.NewQuerier(db, database.SQLite)
+	err := svc.CreateLabelAddedEvent(ctx, queries, taskID, "urgent", "testuser")
 	require.NoError(t, err)
 
-	err = svc.CreateLabelAddedEvent(context.Background(), queries, taskID, "urgent", "testuser")
-	require.NoError(t, err)
-
-	events, err := svc.GetEventsByTask(context.Background(), taskID)
+	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	require.Equal(t, "Added label: urgent", events[0].Content)
@@ -189,19 +181,17 @@ func TestCreateLabelAddedEvent(t *testing.T) {
 func TestCreateLabelRemovedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
+	queries := newTestQuerier(t, db)
+	ctx := context.Background()
 
-	queries, err := database.NewQuerier(db, database.SQLite)
+	err := svc.CreateLabelRemovedEvent(ctx, queries, taskID, "urgent", "testuser")
 	require.NoError(t, err)
 
-	err = svc.CreateLabelRemovedEvent(context.Background(), queries, taskID, "urgent", "testuser")
-	require.NoError(t, err)
-
-	events, err := svc.GetEventsByTask(context.Background(), taskID)
+	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	require.Equal(t, "Removed label: urgent", events[0].Content)
@@ -210,19 +200,17 @@ func TestCreateLabelRemovedEvent(t *testing.T) {
 func TestCreatePriorityChangedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
+	queries := newTestQuerier(t, db)
+	ctx := context.Background()
 
-	queries, err := database.NewQuerier(db, database.SQLite)
+	err := svc.CreatePriorityChangedEvent(ctx, queries, taskID, "medium", "high", "testuser")
 	require.NoError(t, err)
 
-	err = svc.CreatePriorityChangedEvent(context.Background(), queries, taskID, "medium", "high", "testuser")
-	require.NoError(t, err)
-
-	events, err := svc.GetEventsByTask(context.Background(), taskID)
+	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	require.Equal(t, "Changed priority from 'medium' to 'high'", events[0].Content)
@@ -231,19 +219,17 @@ func TestCreatePriorityChangedEvent(t *testing.T) {
 func TestCreateTypeChangedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
+	queries := newTestQuerier(t, db)
+	ctx := context.Background()
 
-	queries, err := database.NewQuerier(db, database.SQLite)
+	err := svc.CreateTypeChangedEvent(ctx, queries, taskID, "task", "bug", "testuser")
 	require.NoError(t, err)
 
-	err = svc.CreateTypeChangedEvent(context.Background(), queries, taskID, "task", "bug", "testuser")
-	require.NoError(t, err)
-
-	events, err := svc.GetEventsByTask(context.Background(), taskID)
+	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	require.Equal(t, "Changed type from 'task' to 'bug'", events[0].Content)
@@ -252,20 +238,18 @@ func TestCreateTypeChangedEvent(t *testing.T) {
 func TestGetEventsByTask_MultipleEvents(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
+	queries := newTestQuerier(t, db)
+	ctx := context.Background()
 
-	queries, err := database.NewQuerier(db, database.SQLite)
-	require.NoError(t, err)
+	_ = svc.CreateTaskCreatedEvent(ctx, queries, taskID, "Task", "user1")
+	_ = svc.CreateLabelAddedEvent(ctx, queries, taskID, "urgent", "user2")
+	_ = svc.CreateTaskMovedEvent(ctx, queries, taskID, "Todo", "Done", "user3")
 
-	_ = svc.CreateTaskCreatedEvent(context.Background(), queries, taskID, "Task", "user1")
-	_ = svc.CreateLabelAddedEvent(context.Background(), queries, taskID, "urgent", "user2")
-	_ = svc.CreateTaskMovedEvent(context.Background(), queries, taskID, "Todo", "Done", "user3")
-
-	events, err := svc.GetEventsByTask(context.Background(), taskID)
+	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
 	require.Len(t, events, 3)
 
@@ -297,8 +281,7 @@ func TestGetEventsByTask_MultipleEvents(t *testing.T) {
 func TestGetEventsByTask_EmptyList(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -311,151 +294,134 @@ func TestGetEventsByTask_EmptyList(t *testing.T) {
 func TestGetEventsByTask_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
-	_, err := svc.GetEventsByTask(context.Background(), 0)
+	_, err := svc.GetEventsByTask(ctx, 0)
 	require.ErrorIs(t, err, ErrInvalidTaskID)
 
-	_, err = svc.GetEventsByTask(context.Background(), -1)
+	_, err = svc.GetEventsByTask(ctx, -1)
 	require.ErrorIs(t, err, ErrInvalidTaskID)
 }
 
 func TestCreateEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
-	queries, err := database.NewQuerier(db, database.SQLite)
-	require.NoError(t, err)
+	queries := newTestQuerier(t, db)
+	ctx := context.Background()
 
-	err = svc.CreateTaskCreatedEvent(context.Background(), queries, 0, "Task", "user")
+	err := svc.CreateTaskCreatedEvent(ctx, queries, 0, "Task", "user")
 	require.ErrorIs(t, err, ErrInvalidTaskID)
 
-	err = svc.CreateTaskCreatedEvent(context.Background(), queries, -1, "Task", "user")
+	err = svc.CreateTaskCreatedEvent(ctx, queries, -1, "Task", "user")
 	require.ErrorIs(t, err, ErrInvalidTaskID)
 }
 
 func TestCreateTaskMovedEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
-	queries, err := database.NewQuerier(db, database.SQLite)
-	require.NoError(t, err)
+	queries := newTestQuerier(t, db)
 
-	err = svc.CreateTaskMovedEvent(context.Background(), queries, 0, "Todo", "Done", "user")
+	err := svc.CreateTaskMovedEvent(context.Background(), queries, 0, "Todo", "Done", "user")
 	require.ErrorIs(t, err, ErrInvalidTaskID)
 }
 
 func TestCreateTaskAssociatedEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
-	queries, err := database.NewQuerier(db, database.SQLite)
-	require.NoError(t, err)
+	queries := newTestQuerier(t, db)
 
-	err = svc.CreateTaskAssociatedEvent(context.Background(), queries, 0, 42, "Other", "Blocked By", "user")
+	err := svc.CreateTaskAssociatedEvent(context.Background(), queries, 0, 42, "Other", "Blocked By", "user")
 	require.ErrorIs(t, err, ErrInvalidTaskID)
 }
 
 func TestCreateTaskDisassociatedEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
-	queries, err := database.NewQuerier(db, database.SQLite)
-	require.NoError(t, err)
+	queries := newTestQuerier(t, db)
 
-	err = svc.CreateTaskDisassociatedEvent(context.Background(), queries, 0, 42, "user")
+	err := svc.CreateTaskDisassociatedEvent(context.Background(), queries, 0, 42, "user")
 	require.ErrorIs(t, err, ErrInvalidTaskID)
 }
 
 func TestCreateLabelAddedEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
-	queries, err := database.NewQuerier(db, database.SQLite)
-	require.NoError(t, err)
+	queries := newTestQuerier(t, db)
 
-	err = svc.CreateLabelAddedEvent(context.Background(), queries, 0, "urgent", "user")
+	err := svc.CreateLabelAddedEvent(context.Background(), queries, 0, "urgent", "user")
 	require.ErrorIs(t, err, ErrInvalidTaskID)
 }
 
 func TestCreateLabelRemovedEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
-	queries, err := database.NewQuerier(db, database.SQLite)
-	require.NoError(t, err)
+	queries := newTestQuerier(t, db)
 
-	err = svc.CreateLabelRemovedEvent(context.Background(), queries, 0, "urgent", "user")
+	err := svc.CreateLabelRemovedEvent(context.Background(), queries, 0, "urgent", "user")
 	require.ErrorIs(t, err, ErrInvalidTaskID)
 }
 
 func TestCreatePriorityChangedEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
-	queries, err := database.NewQuerier(db, database.SQLite)
-	require.NoError(t, err)
+	queries := newTestQuerier(t, db)
 
-	err = svc.CreatePriorityChangedEvent(context.Background(), queries, 0, "medium", "high", "user")
+	err := svc.CreatePriorityChangedEvent(context.Background(), queries, 0, "medium", "high", "user")
 	require.ErrorIs(t, err, ErrInvalidTaskID)
 }
 
 func TestCreateTypeChangedEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
-	queries, err := database.NewQuerier(db, database.SQLite)
-	require.NoError(t, err)
+	queries := newTestQuerier(t, db)
 
-	err = svc.CreateTypeChangedEvent(context.Background(), queries, 0, "task", "bug", "user")
+	err := svc.CreateTypeChangedEvent(context.Background(), queries, 0, "task", "bug", "user")
 	require.ErrorIs(t, err, ErrInvalidTaskID)
 }
 
 func TestEventAuthorPreserved(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
-
-	queries, err := database.NewQuerier(db, database.SQLite)
-	require.NoError(t, err)
+	queries := newTestQuerier(t, db)
+	ctx := context.Background()
 
 	// Create events with different authors
-	_ = svc.CreateTaskCreatedEvent(context.Background(), queries, taskID, "Task", "alice")
-	_ = svc.CreateLabelAddedEvent(context.Background(), queries, taskID, "urgent", "bob")
-	_ = svc.CreateTaskMovedEvent(context.Background(), queries, taskID, "Todo", "Done", "charlie")
+	_ = svc.CreateTaskCreatedEvent(ctx, queries, taskID, "Task", "alice")
+	_ = svc.CreateLabelAddedEvent(ctx, queries, taskID, "urgent", "bob")
+	_ = svc.CreateTaskMovedEvent(ctx, queries, taskID, "Todo", "Done", "charlie")
 
-	events, err := svc.GetEventsByTask(context.Background(), taskID)
+	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
 	require.Len(t, events, 3)
 
@@ -472,19 +438,17 @@ func TestEventAuthorPreserved(t *testing.T) {
 func TestEventTimestampSet(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
+	queries := newTestQuerier(t, db)
+	ctx := context.Background()
 
-	queries, err := database.NewQuerier(db, database.SQLite)
+	err := svc.CreateTaskCreatedEvent(ctx, queries, taskID, "Task", "testuser")
 	require.NoError(t, err)
 
-	err = svc.CreateTaskCreatedEvent(context.Background(), queries, taskID, "Task", "testuser")
-	require.NoError(t, err)
-
-	events, err := svc.GetEventsByTask(context.Background(), taskID)
+	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 
@@ -495,19 +459,17 @@ func TestEventTimestampSet(t *testing.T) {
 func TestEventTaskIDPreserved(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
+	queries := newTestQuerier(t, db)
+	ctx := context.Background()
 
-	queries, err := database.NewQuerier(db, database.SQLite)
+	err := svc.CreateTaskCreatedEvent(ctx, queries, taskID, "Task", "testuser")
 	require.NoError(t, err)
 
-	err = svc.CreateTaskCreatedEvent(context.Background(), queries, taskID, "Task", "testuser")
-	require.NoError(t, err)
-
-	events, err := svc.GetEventsByTask(context.Background(), taskID)
+	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	require.Equal(t, taskID, events[0].TaskID)
@@ -516,19 +478,17 @@ func TestEventTaskIDPreserved(t *testing.T) {
 func TestEventIDAssigned(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
+	queries := newTestQuerier(t, db)
+	ctx := context.Background()
 
-	queries, err := database.NewQuerier(db, database.SQLite)
+	err := svc.CreateTaskCreatedEvent(ctx, queries, taskID, "Task", "testuser")
 	require.NoError(t, err)
 
-	err = svc.CreateTaskCreatedEvent(context.Background(), queries, taskID, "Task", "testuser")
-	require.NoError(t, err)
-
-	events, err := svc.GetEventsByTask(context.Background(), taskID)
+	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	require.Greater(t, events[0].ID, 0, "Event ID should be assigned")
@@ -537,10 +497,10 @@ func TestEventIDAssigned(t *testing.T) {
 func TestGetEventsByTask_OnlyReturnsEventsForSpecificTask(t *testing.T) {
 	t.Parallel()
 
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	svc := newTestService(t, db)
+	ctx := context.Background()
 
 	// Create two tasks
 	projectID := createTestProject(t, db)
@@ -548,16 +508,15 @@ func TestGetEventsByTask_OnlyReturnsEventsForSpecificTask(t *testing.T) {
 	taskID1 := createTestTask(t, db, columnID, "Task 1")
 	taskID2 := createTestTask(t, db, columnID, "Task 2")
 
-	queries, err := database.NewQuerier(db, database.SQLite)
-	require.NoError(t, err)
+	queries := newTestQuerier(t, db)
 
 	// Create events for both tasks
-	_ = svc.CreateTaskCreatedEvent(context.Background(), queries, taskID1, "Task 1", "user1")
-	_ = svc.CreateTaskCreatedEvent(context.Background(), queries, taskID2, "Task 2", "user2")
-	_ = svc.CreateLabelAddedEvent(context.Background(), queries, taskID1, "urgent", "user1")
+	_ = svc.CreateTaskCreatedEvent(ctx, queries, taskID1, "Task 1", "user1")
+	_ = svc.CreateTaskCreatedEvent(ctx, queries, taskID2, "Task 2", "user2")
+	_ = svc.CreateLabelAddedEvent(ctx, queries, taskID1, "urgent", "user1")
 
 	// Get events for task 1 only
-	events, err := svc.GetEventsByTask(context.Background(), taskID1)
+	events, err := svc.GetEventsByTask(ctx, taskID1)
 	require.NoError(t, err)
 	require.Len(t, events, 2)
 
@@ -567,7 +526,7 @@ func TestGetEventsByTask_OnlyReturnsEventsForSpecificTask(t *testing.T) {
 	}
 
 	// Get events for task 2 only
-	events, err = svc.GetEventsByTask(context.Background(), taskID2)
+	events, err = svc.GetEventsByTask(ctx, taskID2)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	require.Equal(t, taskID2, events[0].TaskID)

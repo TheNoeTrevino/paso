@@ -15,16 +15,15 @@ import (
 func TestUpdateTask_Positive(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
+
+	ctx := context.Background()
 
 	// Create test project - this creates default columns (Todo, In Progress, Done)
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	// Get the first column ID (Todo column) to use for creating tasks
 	var columnID int
-	err := db.QueryRowContext(context.Background(),
+	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? ORDER BY id LIMIT 1", projectID).Scan(&columnID)
 	if err != nil {
 		t.Fatalf("Failed to get column ID: %v", err)
@@ -35,7 +34,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, columnID, "Original Title")
 
 		// First add a description so we can verify it doesn't change
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET description = ? WHERE id = ?", "Original Description", taskID)
 		assert.NoError(t, err)
 
@@ -52,7 +51,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 
 		// Verify in DB
 		var title, description string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT title, description FROM tasks WHERE id = ?", taskID).Scan(&title, &description)
 		assert.NoError(t, err)
 		assert.Equal(t, "Updated Title", title)
@@ -76,7 +75,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 
 		// Verify in DB
 		var title, description string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT title, description FROM tasks WHERE id = ?", taskID).Scan(&title, &description)
 		assert.NoError(t, err)
 		assert.Equal(t, "Original Title", title) // unchanged
@@ -100,7 +99,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 
 		// Verify in DB
 		var priority string
-		err = db.QueryRowContext(context.Background(), `
+		err = db.QueryRowContext(ctx, `
 			SELECT p.description
 			FROM tasks t
 			JOIN priorities p ON t.priority_id = p.id
@@ -125,7 +124,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 
 		// Verify in DB
 		var priority string
-		err = db.QueryRowContext(context.Background(), `
+		err = db.QueryRowContext(ctx, `
 			SELECT p.description
 			FROM tasks t
 			JOIN priorities p ON t.priority_id = p.id
@@ -150,7 +149,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 
 		// Verify in DB
 		var priority string
-		err = db.QueryRowContext(context.Background(), `
+		err = db.QueryRowContext(ctx, `
 			SELECT p.description
 			FROM tasks t
 			JOIN priorities p ON t.priority_id = p.id
@@ -175,7 +174,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 
 		// Verify in DB
 		var priority string
-		err = db.QueryRowContext(context.Background(), `
+		err = db.QueryRowContext(ctx, `
 			SELECT p.description
 			FROM tasks t
 			JOIN priorities p ON t.priority_id = p.id
@@ -200,7 +199,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 
 		// Verify in DB
 		var priority string
-		err = db.QueryRowContext(context.Background(), `
+		err = db.QueryRowContext(ctx, `
 			SELECT p.description
 			FROM tasks t
 			JOIN priorities p ON t.priority_id = p.id
@@ -228,7 +227,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 
 		// Verify all fields updated in DB
 		var title, description, priority string
-		err = db.QueryRowContext(context.Background(), `
+		err = db.QueryRowContext(ctx, `
 			SELECT t.title, t.description, p.description
 			FROM tasks t
 			JOIN priorities p ON t.priority_id = p.id
@@ -306,7 +305,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, columnID, "Original Title")
 
 		// Set initial description
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET description = ? WHERE id = ?", "Original Description", taskID)
 		assert.NoError(t, err)
 
@@ -330,7 +329,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 
 		// Verify all fields
 		var title, description, priority string
-		err = db.QueryRowContext(context.Background(), `
+		err = db.QueryRowContext(ctx, `
 			SELECT t.title, t.description, p.description
 			FROM tasks t
 			JOIN priorities p ON t.priority_id = p.id
@@ -346,7 +345,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, columnID, "Task Title")
 
 		// Set initial description
-		_, err := db.ExecContext(context.Background(),
+		_, err := db.ExecContext(ctx,
 			"UPDATE tasks SET description = ? WHERE id = ?", "Has Description", taskID)
 		assert.NoError(t, err)
 
@@ -363,7 +362,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 
 		// Verify description is now empty
 		var description sql.NullString
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT description FROM tasks WHERE id = ?", taskID).Scan(&description)
 		assert.NoError(t, err)
 		assert.Equal(t, "", description.String)
@@ -393,7 +392,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 
 		// Verify both are updated
 		var title, description string
-		err = db.QueryRowContext(context.Background(),
+		err = db.QueryRowContext(ctx,
 			"SELECT title, description FROM tasks WHERE id = ?", taskID).Scan(&title, &description)
 		assert.NoError(t, err)
 		assert.Equal(t, "Updated Title", title)
@@ -404,9 +403,6 @@ func TestUpdateTask_Positive(t *testing.T) {
 func TestUpdateTask_Negative(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
-	defer func() {
-		_ = db.Close()
-	}()
 
 	// Create test project
 	_ = cli.CreateTestProject(t, db, "Test Project")

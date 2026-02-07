@@ -8,71 +8,21 @@ import (
 	"time"
 
 	"github.com/thenoetrevino/paso/internal/events"
+	"github.com/thenoetrevino/paso/internal/testutil"
 
 	_ "modernc.org/sqlite"
 )
 
-// ============================================================================
-// Local Test Helpers (to avoid import cycle with testutil)
-// ============================================================================
-
-func setupTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	_, err = db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON")
-	if err != nil {
-		t.Fatalf("Failed to enable foreign keys: %v", err)
-	}
-
-	if err := createTestSchema(db); err != nil {
-		t.Fatalf("Failed to create schema: %v", err)
-	}
-
-	return db
-}
-
-func createTestSchema(db *sql.DB) error {
-	schema := `
-	CREATE TABLE IF NOT EXISTS projects (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		description TEXT,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
-
-	CREATE TABLE IF NOT EXISTS project_counters (
-		project_id INTEGER PRIMARY KEY,
-		next_ticket_number INTEGER DEFAULT 1,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-	);
-
-	CREATE TABLE IF NOT EXISTS columns (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		project_id INTEGER NOT NULL,
-		name TEXT NOT NULL,
-		prev_id INTEGER,
-		next_id INTEGER,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-	);
-	`
-	_, err := db.ExecContext(context.Background(), schema)
-	return err
-}
-
 func createTestProject(t *testing.T, db *sql.DB, name string) int {
 	t.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name) VALUES (?)", name)
+	ctx := context.Background()
+	result, err := db.ExecContext(ctx, "INSERT INTO projects (name) VALUES (?)", name)
 	if err != nil {
 		t.Fatalf("Failed to create test project: %v", err)
 	}
 	projectID, _ := result.LastInsertId()
 
-	_, err = db.ExecContext(context.Background(), "INSERT INTO project_counters (project_id) VALUES (?)", projectID)
+	_, err = db.ExecContext(ctx, "INSERT INTO project_counters (project_id) VALUES (?)", projectID)
 	if err != nil {
 		t.Fatalf("Failed to create project counter: %v", err)
 	}
@@ -80,13 +30,8 @@ func createTestProject(t *testing.T, db *sql.DB, name string) int {
 	return int(projectID)
 }
 
-// ============================================================================
-// Transaction Helper Tests
-// ============================================================================
-
 func TestWithTx_Success_Commit(t *testing.T) {
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	ctx := context.Background()
 	projectID := createTestProject(t, db, "Test Project")
@@ -94,7 +39,7 @@ func TestWithTx_Success_Commit(t *testing.T) {
 	// Execute transaction that should commit
 	err := WithTx(ctx, db, func(tx *sql.Tx) error {
 		// Insert a column within transaction
-		_, err := tx.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Test Column")
+		_, err := tx.ExecContext(ctx, "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Test Column")
 		return err
 	})
 	if err != nil {
@@ -103,7 +48,7 @@ func TestWithTx_Success_Commit(t *testing.T) {
 
 	// Verify column was created (transaction committed)
 	var count int
-	if err := db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM columns WHERE name = ?", "Test Column").Scan(&count); err != nil {
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM columns WHERE name = ?", "Test Column").Scan(&count); err != nil {
 		t.Fatalf("Failed to scan count: %v", err)
 	}
 	if count != 1 {
@@ -112,8 +57,7 @@ func TestWithTx_Success_Commit(t *testing.T) {
 }
 
 func TestWithTx_Error_Rollback(t *testing.T) {
-	db := setupTestDB(t)
-	defer func() { _ = db.Close() }()
+	db := testutil.SetupTestDB(t)
 
 	ctx := context.Background()
 	projectID := createTestProject(t, db, "Test Project")
@@ -122,7 +66,7 @@ func TestWithTx_Error_Rollback(t *testing.T) {
 	expectedErr := errors.New("intentional error")
 	err := WithTx(ctx, db, func(tx *sql.Tx) error {
 		// Insert a column within transaction
-		_, err := tx.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Test Column")
+		_, err := tx.ExecContext(ctx, "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Test Column")
 		if err != nil {
 			return err
 		}
@@ -136,7 +80,7 @@ func TestWithTx_Error_Rollback(t *testing.T) {
 
 	// Verify column was NOT created (transaction rolled back)
 	var count int
-	if err := db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM columns WHERE name = ?", "Test Column").Scan(&count); err != nil {
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM columns WHERE name = ?", "Test Column").Scan(&count); err != nil {
 		t.Fatalf("Failed to scan count: %v", err)
 	}
 	if count != 0 {
@@ -146,7 +90,7 @@ func TestWithTx_Error_Rollback(t *testing.T) {
 
 func TestWithTx_Error_BeginFails(t *testing.T) {
 	// Create a closed database to trigger begin error
-	db := setupTestDB(t)
+	db := testutil.SetupTestDB(t)
 	_ = db.Close()
 
 	ctx := context.Background()
@@ -158,10 +102,6 @@ func TestWithTx_Error_BeginFails(t *testing.T) {
 		t.Fatal("Expected error when beginning transaction on closed DB, got nil")
 	}
 }
-
-// ============================================================================
-// Null Conversion Tests
-// ============================================================================
 
 func TestNullInt64ToPtr_Valid(t *testing.T) {
 	nv := sql.NullInt64{Int64: 42, Valid: true}
@@ -262,10 +202,6 @@ func TestAnyToIntPtr_InvalidType(t *testing.T) {
 		t.Errorf("Expected nil for invalid type, got %v", result)
 	}
 }
-
-// ============================================================================
-// Event Sending Tests
-// ============================================================================
 
 type mockEventPublisher struct {
 	sentEvents []events.Event

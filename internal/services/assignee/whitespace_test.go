@@ -10,7 +10,6 @@ import (
 
 func TestCreateTrimsWhitespace(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	svc, err := NewService(db, database.SQLite)
 	if err != nil {
@@ -46,7 +45,6 @@ func TestCreateTrimsWhitespace(t *testing.T) {
 
 func TestGetByNameTrimsWhitespace(t *testing.T) {
 	db := testutil.SetupTestDB(t)
-	defer db.Close()
 
 	svc, err := NewService(db, database.SQLite)
 	if err != nil {
