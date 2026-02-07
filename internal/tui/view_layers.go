@@ -680,6 +680,26 @@ func (m Model) renderPriorityPickerLayer() *lipgloss.Layer {
 	})
 }
 
+// renderAssigneePickerLayer renders the assignee picker modal as a layer
+func (m Model) renderAssigneePickerLayer() *lipgloss.Layer {
+	return m.createPickerLayer(pickerLayerConfig{
+		dimensionStrategy: fixedPickerDimensions{
+			width:  layers.PickerAssigneeWidth,
+			height: layers.PickerAssigneeHeight,
+		},
+		contentRenderer: func(width, height int) string {
+			return renderers.RenderAssigneePicker(
+				m.Pickers.Assignee.Assignees(),
+				m.Pickers.Assignee.SelectedID(),
+				m.Pickers.Assignee.Cursor(),
+				true, // showClearOpt
+				width-layers.PickerBorderPaddingWidth,
+			)
+		},
+		boxStyle: components.LabelPickerBoxStyle,
+	})
+}
+
 // renderTypePickerLayer renders the type picker modal as a layer
 func (m Model) renderTypePickerLayer() *lipgloss.Layer {
 	return m.createPickerLayer(pickerLayerConfig{

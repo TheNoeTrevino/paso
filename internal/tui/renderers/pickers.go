@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
@@ -551,6 +552,69 @@ func RenderRelationTypePicker(
 	}
 
 	// Help text
+	content.WriteString("\n")
+	content.WriteString(dimStyle.Render(components.PickerFooterSelectConfirm) + "\n")
+
+	return content.String()
+}
+
+// RenderAssigneePicker renders the assignee picker popup
+func RenderAssigneePicker(
+	assignees []*models.Assignee,
+	selectedID int,
+	cursorIdx int,
+	showClearOpt bool,
+	width int,
+) string {
+	var content strings.Builder
+
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Highlight))
+	content.WriteString(titleStyle.Render("Assignee") + "\n\n")
+
+	normalStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
+	selectedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight)).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+
+	content.WriteString("Select assignee:\n\n")
+
+	itemIdx := 0
+
+	if showClearOpt {
+		indicator := "( )"
+		if selectedID == 0 {
+			indicator = "(•)"
+		}
+		line := indicator + " " + dimStyle.Render("(clear assignee)")
+		if cursorIdx == itemIdx {
+			content.WriteString(selectedStyle.Render("> "+line) + "\n")
+		} else {
+			content.WriteString(normalStyle.Render("  "+line) + "\n")
+		}
+		itemIdx++
+	}
+
+	for _, assignee := range assignees {
+		indicator := "( )"
+		if assignee.ID == selectedID {
+			indicator = "(•)"
+		}
+
+		assigneeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight))
+		name := assigneeStyle.Render("@" + assignee.Name)
+		line := indicator + " " + name
+
+		if cursorIdx == itemIdx {
+			content.WriteString(selectedStyle.Render("> "+line) + "\n")
+		} else {
+			content.WriteString(normalStyle.Render("  "+line) + "\n")
+		}
+		itemIdx++
+	}
+
+	if len(assignees) == 0 && !showClearOpt {
+		content.WriteString(dimStyle.Render("  No assignees available") + "\n")
+	}
+
 	content.WriteString("\n")
 	content.WriteString(dimStyle.Render(components.PickerFooterSelectConfirm) + "\n")
 

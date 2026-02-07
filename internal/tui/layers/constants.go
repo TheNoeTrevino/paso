@@ -32,6 +32,9 @@ const (
 	PickerRelationTypeWidth  = 45 // wider for longer option descriptions
 	PickerRelationTypeHeight = 11 // 3 options + chrome. WARN: might need to be dynamic
 
+	PickerAssigneeWidth  = 40
+	PickerAssigneeHeight = 14 // dynamic content + chrome
+
 	PickerStatusWidth           = 40 // height is dynamic based on column count
 	PickerStatusChromeHeight    = 6  // title, spacing, footer
 	PickerColorDefaultItemCount = 10

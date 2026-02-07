@@ -461,6 +461,13 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		case "ctrl+a":
+			// Open assignee picker
+			if m.initAssigneePickerForForm() {
+				m.UIState.Mode = state.AssigneePickerMode
+			}
+			return m, nil
+
 		case "ctrl+h":
 			// Open task form help menu
 			m.UIState.Mode = state.TaskFormHelpMode

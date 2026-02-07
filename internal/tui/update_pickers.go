@@ -742,6 +742,81 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// updateAssigneePicker handles keyboard input in the assignee picker mode.
+// This function processes navigation (up/down) and selection, including a "clear" option.
+func (m Model) updateAssigneePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	switch keyMsg.String() {
+	case "esc":
+		m.UIState.Mode = m.Pickers.Assignee.ReturnMode
+		m.Pickers.Assignee.Reset()
+		return m, nil
+
+	case "up", "k":
+		m.Pickers.Assignee.MoveUp()
+		return m, nil
+
+	case "down", "j":
+		m.Pickers.Assignee.MoveDown()
+		return m, nil
+
+	case "enter":
+		if m.Pickers.Assignee.IsClearSelected() {
+			// Clear assignee
+			if m.Forms.Form.EditingTaskID != 0 {
+				ctx, cancel := m.DBContext()
+				defer cancel()
+
+				err := m.App.TaskService.UpdateTaskAssignee(ctx, m.Forms.Form.EditingTaskID, nil)
+				if err != nil {
+					slog.Error("failed to clear task assignee", "error", err)
+					m.UI.Notification.Add(state.LevelError, "Failed to clear assignee")
+				} else {
+					m.Forms.Form.FormAssigneeID = 0
+					m.Forms.Form.FormAssigneeName = ""
+					m.UI.Notification.Add(state.LevelInfo, "Assignee cleared")
+					m.reloadCurrentColumnTasks()
+				}
+			} else {
+				m.Forms.Form.FormAssigneeID = 0
+				m.Forms.Form.FormAssigneeName = ""
+				m.UI.Notification.Add(state.LevelInfo, "Assignee cleared")
+			}
+		} else if selected := m.Pickers.Assignee.SelectedAssignee(); selected != nil {
+			if m.Forms.Form.EditingTaskID != 0 {
+				ctx, cancel := m.DBContext()
+				defer cancel()
+
+				assigneeID := selected.ID
+				err := m.App.TaskService.UpdateTaskAssignee(ctx, m.Forms.Form.EditingTaskID, &assigneeID)
+				if err != nil {
+					slog.Error("failed to update task assignee", "error", err)
+					m.UI.Notification.Add(state.LevelError, "Failed to update assignee")
+				} else {
+					m.Forms.Form.FormAssigneeID = selected.ID
+					m.Forms.Form.FormAssigneeName = selected.Name
+					m.UI.Notification.Add(state.LevelInfo, "Assignee set to @"+selected.Name)
+					m.reloadCurrentColumnTasks()
+				}
+			} else {
+				m.Forms.Form.FormAssigneeID = selected.ID
+				m.Forms.Form.FormAssigneeName = selected.Name
+				m.UI.Notification.Add(state.LevelInfo, "Assignee set to @"+selected.Name)
+			}
+			m.Pickers.Assignee.SetSelectedID(selected.ID)
+		}
+
+		m.UIState.Mode = m.Pickers.Assignee.ReturnMode
+		return m, nil
+	}
+
+	return m, nil
+}
+
 // updateRelationTypePicker handles keyboard input in the relation type picker mode
 func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	keyMsg, ok := msg.(tea.KeyMsg)

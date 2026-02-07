@@ -35,6 +35,7 @@ const (
 	CommentsViewMode                       // Dedicated comments list view for a task
 	SearchMode                             // Vim-style search mode (/)
 	StatusPickerMode                       // Status picker popup for list view
+	AssigneePickerMode                     // Assignee picker popup
 	TaskFormHelpMode                       // Help screen for task form shortcuts
 	DatabaseSelectMode                     // Selecting from existing database connections
 	DatabaseCreateMode                     // Creating a new database connection (huh form)
@@ -68,6 +69,7 @@ func (m Mode) UsesLayers() bool {
 		TypePickerMode,
 		RelationTypePickerMode,
 		StatusPickerMode,
+		AssigneePickerMode,
 		DiscardConfirmMode,
 		NormalMode,
 		SearchMode,
