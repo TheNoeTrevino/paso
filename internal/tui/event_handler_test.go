@@ -30,7 +30,7 @@ func TestEventHandler_RefreshMsg_ReloadsData(t *testing.T) {
 	columnID := columns[0].ID
 
 	// Add a task directly to the database (simulating an external change)
-	testutil.CreateTestTask(t, db, int(columnID), "New Task From Event")
+	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), int(columnID), "New Task From Event")
 
 	// Send a RefreshMsg through Update (broadcast event)
 	refreshMsg := RefreshMsg{
@@ -76,7 +76,7 @@ func TestEventHandler_RefreshMsg_SpecificProject(t *testing.T) {
 	require.NotEmpty(t, columns)
 	columnID := columns[0].ID
 
-	testutil.CreateTestTask(t, db, int(columnID), "Project-Specific Task")
+	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), int(columnID), "Project-Specific Task")
 
 	// Send RefreshMsg targeting this specific project
 	refreshMsg := RefreshMsg{
@@ -124,7 +124,7 @@ func TestEventHandler_RefreshMsg_IgnoresOtherProject(t *testing.T) {
 	}
 
 	// Add a task directly to DB
-	testutil.CreateTestTask(t, db, int(columnID), "Should Not Appear")
+	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), int(columnID), "Should Not Appear")
 
 	// Send RefreshMsg for a different project ID
 	refreshMsg := RefreshMsg{

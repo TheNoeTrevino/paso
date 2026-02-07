@@ -669,7 +669,7 @@ func TestMoveTaskToNextColumn(t *testing.T) {
 	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved to col2
-	testutil.AssertTaskInColumn(t, db, task.ID, col2ID)
+	testutil.AssertTaskInColumn(t, db, testutil.SQLiteDialect(), task.ID, col2ID)
 }
 
 func TestMoveTaskToNextColumn_LastColumn(t *testing.T) {
@@ -739,7 +739,7 @@ func TestMoveTaskToPrevColumn(t *testing.T) {
 	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved to col1
-	testutil.AssertTaskInColumn(t, db, task.ID, col1ID)
+	testutil.AssertTaskInColumn(t, db, testutil.SQLiteDialect(), task.ID, col1ID)
 }
 
 func TestMoveTaskToPrevColumn_FirstColumn(t *testing.T) {
@@ -802,7 +802,7 @@ func TestMoveTaskToColumn(t *testing.T) {
 	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved
-	testutil.AssertTaskInColumn(t, db, task.ID, col2ID)
+	testutil.AssertTaskInColumn(t, db, testutil.SQLiteDialect(), task.ID, col2ID)
 }
 
 func TestMoveTaskToColumn_InvalidColumnID(t *testing.T) {
@@ -1572,7 +1572,7 @@ func TestMoveTaskToReadyColumn(t *testing.T) {
 	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved to ready column
-	testutil.AssertTaskInColumn(t, db, task.ID, readyColID)
+	testutil.AssertTaskInColumn(t, db, testutil.SQLiteDialect(), task.ID, readyColID)
 }
 
 func TestMoveTaskToReadyColumn_InvalidTaskID(t *testing.T) {
@@ -1688,7 +1688,7 @@ func TestMoveTaskToCompletedColumn(t *testing.T) {
 	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved to completed column
-	testutil.AssertTaskInColumn(t, db, task.ID, completedColID)
+	testutil.AssertTaskInColumn(t, db, testutil.SQLiteDialect(), task.ID, completedColID)
 }
 
 func TestMoveTaskToCompletedColumn_InvalidTaskID(t *testing.T) {
@@ -1817,11 +1817,11 @@ func TestMoveTaskToCompletedColumn_MultipleTasksInProject(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify task2 is in completed column
-	testutil.AssertTaskInColumn(t, db, task2.ID, completedColID)
+	testutil.AssertTaskInColumn(t, db, testutil.SQLiteDialect(), task2.ID, completedColID)
 
 	// Verify other tasks are unchanged
-	testutil.AssertTaskInColumn(t, db, task1.ID, todoColID)
-	testutil.AssertTaskInColumn(t, db, task3.ID, todoColID)
+	testutil.AssertTaskInColumn(t, db, testutil.SQLiteDialect(), task1.ID, todoColID)
+	testutil.AssertTaskInColumn(t, db, testutil.SQLiteDialect(), task3.ID, todoColID)
 }
 
 func TestMoveTaskToReadyColumn_MultipleTasksInProject(t *testing.T) {
@@ -1861,11 +1861,11 @@ func TestMoveTaskToReadyColumn_MultipleTasksInProject(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify task2 is in ready column
-	testutil.AssertTaskInColumn(t, db, task2.ID, readyColID)
+	testutil.AssertTaskInColumn(t, db, testutil.SQLiteDialect(), task2.ID, readyColID)
 
 	// Verify other tasks are unchanged
-	testutil.AssertTaskInColumn(t, db, task1.ID, todoColID)
-	testutil.AssertTaskInColumn(t, db, task3.ID, todoColID)
+	testutil.AssertTaskInColumn(t, db, testutil.SQLiteDialect(), task1.ID, todoColID)
+	testutil.AssertTaskInColumn(t, db, testutil.SQLiteDialect(), task3.ID, todoColID)
 }
 
 func TestGetTaskActivities_RetrievesBothCommentsAndEvents(t *testing.T) {

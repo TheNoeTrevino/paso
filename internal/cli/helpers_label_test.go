@@ -16,8 +16,8 @@ func TestGetLabelByID_Found(t *testing.T) {
 	ctx := context.Background()
 
 	// Create test data
-	projectID := testutil.CreateTestProject(t, db, "Test Project")
-	labelID := testutil.CreateTestLabel(t, db, projectID, "Bug", "#FF0000")
+	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Test Project")
+	labelID := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "Bug", "#FF0000")
 
 	// Create CLI instance
 	cliInstance := &CLI{
@@ -41,11 +41,11 @@ func TestGetLabelByID_Found_MultipleProjects(t *testing.T) {
 	ctx := context.Background()
 
 	// Create multiple projects with labels
-	project1ID := testutil.CreateTestProject(t, db, "Project 1")
-	testutil.CreateTestLabel(t, db, project1ID, "Label 1", "#FF0000")
+	project1ID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Project 1")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), project1ID, "Label 1", "#FF0000")
 
-	project2ID := testutil.CreateTestProject(t, db, "Project 2")
-	label2ID := testutil.CreateTestLabel(t, db, project2ID, "Label 2", "#00FF00")
+	project2ID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Project 2")
+	label2ID := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), project2ID, "Label 2", "#00FF00")
 
 	// Create CLI instance
 	cliInstance := &CLI{

@@ -19,9 +19,9 @@ func TestLabelPicker_NavigationAndSelection(t *testing.T) {
 	// Create test labels
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	testutil.CreateTestLabel(t, db, projectID, "bug", "#FF0000")
-	testutil.CreateTestLabel(t, db, projectID, "feature", "#00FF00")
-	testutil.CreateTestLabel(t, db, projectID, "docs", "#0000FF")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "bug", "#FF0000")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "feature", "#00FF00")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "docs", "#0000FF")
 
 	// Reload labels
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
@@ -66,9 +66,9 @@ func TestLabelPicker_FilteringAndBackspace(t *testing.T) {
 	// Create labels
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	testutil.CreateTestLabel(t, db, projectID, "bug", "#FF0000")
-	testutil.CreateTestLabel(t, db, projectID, "backend", "#00FF00")
-	testutil.CreateTestLabel(t, db, projectID, "frontend", "#0000FF")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "bug", "#FF0000")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "backend", "#00FF00")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "frontend", "#0000FF")
 
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to load labels for test setup")
@@ -101,8 +101,8 @@ func TestLabelPicker_MultiSelectToggle(t *testing.T) {
 	// Create labels
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	testutil.CreateTestLabel(t, db, projectID, "bug", "#FF0000")
-	testutil.CreateTestLabel(t, db, projectID, "feature", "#00FF00")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "bug", "#FF0000")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "feature", "#00FF00")
 
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to load labels for test setup")
@@ -199,7 +199,7 @@ func TestParentPicker_SearchAndSelect(t *testing.T) {
 		t.Skip("No columns available for testing")
 	}
 
-	testutil.CreateTestTask(t, db, columns[0].ID, "Parent Task")
+	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Parent Task")
 
 	// Reload tasks
 	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
@@ -238,7 +238,7 @@ func TestChildPicker_SearchAndSelect(t *testing.T) {
 		t.Skip("No columns available for testing")
 	}
 
-	testutil.CreateTestTask(t, db, columns[0].ID, "Child Task")
+	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Child Task")
 
 	// Reload tasks
 	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
@@ -323,7 +323,7 @@ func TestLabelPicker_EscapeExitsMode(t *testing.T) {
 	// Create labels
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	testutil.CreateTestLabel(t, db, projectID, "test", "#FFFFFF")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "test", "#FFFFFF")
 
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to load labels for test setup")

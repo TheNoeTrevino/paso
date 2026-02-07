@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"fmt"
 	"io"
 	"os"
 	"testing"
@@ -82,59 +83,72 @@ func SetupTestDB(tb testing.TB) *sql.DB {
 }
 
 // CreateTestProject creates a test project with default columns (Todo, In Progress, Done)
-func CreateTestProject(tb testing.TB, db *sql.DB, name string) int {
+func CreateTestProject(tb testing.TB, db *sql.DB, d Dialect, name string) int {
 	tb.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name, description) VALUES (?, ?)", name, "Test description")
+	ctx := context.Background()
+	query := fmt.Sprintf(
+		"INSERT INTO projects (name, description) VALUES (%s, %s)",
+		d.Placeholder(1), d.Placeholder(2))
+	projectID, err := d.InsertReturningID(ctx, db, query, name, "Test description")
 	if err != nil {
 		tb.Fatalf("Failed to create test project: %v", err)
 	}
 
 	// Initialize project counter
-	projectID, _ := result.LastInsertId()
-	_, err = db.ExecContext(context.Background(), "INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)", projectID)
+	counterQuery := fmt.Sprintf(
+		"INSERT INTO project_counters (project_id, next_ticket_number) VALUES (%s, 1)",
+		d.Placeholder(1))
+	_, err = db.ExecContext(ctx, counterQuery, projectID)
 	if err != nil {
 		tb.Fatalf("Failed to initialize project counter: %v", err)
 	}
 
 	// Create default columns
-	CreateTestColumn(tb, db, int(projectID), "Todo")
-	CreateTestColumn(tb, db, int(projectID), "In Progress")
-	CreateTestColumn(tb, db, int(projectID), "Done")
+	CreateTestColumn(tb, db, d, projectID, "Todo")
+	CreateTestColumn(tb, db, d, projectID, "In Progress")
+	CreateTestColumn(tb, db, d, projectID, "Done")
 
-	return int(projectID)
+	return projectID
 }
 
 // CreateTestColumn creates a test column and returns its ID
-func CreateTestColumn(tb testing.TB, db *sql.DB, projectID int, name string) int {
+func CreateTestColumn(tb testing.TB, db *sql.DB, d Dialect, projectID int, name string) int {
 	tb.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, name)
+	ctx := context.Background()
+	query := fmt.Sprintf(
+		"INSERT INTO columns (project_id, name) VALUES (%s, %s)",
+		d.Placeholder(1), d.Placeholder(2))
+	columnID, err := d.InsertReturningID(ctx, db, query, projectID, name)
 	if err != nil {
 		tb.Fatalf("Failed to create test column: %v", err)
 	}
-	columnID, _ := result.LastInsertId()
-	return int(columnID)
+	return columnID
 }
 
 // CreateTestTask creates a test task and returns its ID
-func CreateTestTask(tb testing.TB, db *sql.DB, columnID int, title string) int {
+func CreateTestTask(tb testing.TB, db *sql.DB, d Dialect, columnID int, title string) int {
 	tb.Helper()
+	ctx := context.Background()
+
 	// Get the next position for this column
 	var maxPosition int
-	err := db.QueryRowContext(context.Background(),
-		"SELECT COALESCE(MAX(position), -1) FROM tasks WHERE column_id = ?", columnID).Scan(&maxPosition)
+	posQuery := fmt.Sprintf(
+		"SELECT COALESCE(MAX(position), -1) FROM tasks WHERE column_id = %s",
+		d.Placeholder(1))
+	err := db.QueryRowContext(ctx, posQuery, columnID).Scan(&maxPosition)
 	if err != nil && err != sql.ErrNoRows {
 		tb.Fatalf("Failed to get max position: %v", err)
 	}
 
 	nextPosition := maxPosition + 1
-	result, err := db.ExecContext(context.Background(),
-		"INSERT INTO tasks (column_id, title, position, type_id, priority_id) VALUES (?, ?, ?, 1, 3)",
-		columnID, title, nextPosition)
+	query := fmt.Sprintf(
+		"INSERT INTO tasks (column_id, title, position, type_id, priority_id) VALUES (%s, %s, %s, 1, 3)",
+		d.Placeholder(1), d.Placeholder(2), d.Placeholder(3))
+	taskID, err := d.InsertReturningID(ctx, db, query, columnID, title, nextPosition)
 	if err != nil {
 		tb.Fatalf("Failed to create test task: %v", err)
 	}
-	taskID, _ := result.LastInsertId()
-	return int(taskID)
+	return taskID
 }
 
 // Note: SetupCLITest and ExecuteCLICommand are re-exported from testutil/cli package
@@ -143,32 +157,39 @@ func CreateTestTask(tb testing.TB, db *sql.DB, columnID int, title string) int {
 // dynamically loads them. For now, they are only available by importing testutil/cli directly.
 
 // CreateTestLabel creates a test label and returns its ID
-func CreateTestLabel(tb testing.TB, db *sql.DB, projectID int, name, color string) int {
+func CreateTestLabel(tb testing.TB, db *sql.DB, d Dialect, projectID int, name, color string) int {
 	tb.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)", projectID, name, color)
+	ctx := context.Background()
+	query := fmt.Sprintf(
+		"INSERT INTO labels (project_id, name, color) VALUES (%s, %s, %s)",
+		d.Placeholder(1), d.Placeholder(2), d.Placeholder(3))
+	labelID, err := d.InsertReturningID(ctx, db, query, projectID, name, color)
 	if err != nil {
 		tb.Fatalf("Failed to create test label: %v", err)
 	}
-	labelID, _ := result.LastInsertId()
-	return int(labelID)
+	return labelID
 }
 
 // CreateTestAssignee creates a test assignee and returns its ID
-func CreateTestAssignee(tb testing.TB, db *sql.DB, name string) int {
+func CreateTestAssignee(tb testing.TB, db *sql.DB, d Dialect, name string) int {
 	tb.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO assignees (name) VALUES (?)", name)
+	ctx := context.Background()
+	query := fmt.Sprintf(
+		"INSERT INTO assignees (name) VALUES (%s)",
+		d.Placeholder(1))
+	assigneeID, err := d.InsertReturningID(ctx, db, query, name)
 	if err != nil {
 		tb.Fatalf("Failed to create test assignee: %v", err)
 	}
-	assigneeID, _ := result.LastInsertId()
-	return int(assigneeID)
+	return assigneeID
 }
 
 // GetTaskColumnID retrieves the column_id for a task by its ID
-func GetTaskColumnID(tb testing.TB, db *sql.DB, taskID int) int {
+func GetTaskColumnID(tb testing.TB, db *sql.DB, d Dialect, taskID int) int {
 	tb.Helper()
+	query := fmt.Sprintf("SELECT column_id FROM tasks WHERE id = %s", d.Placeholder(1))
 	var columnID int
-	err := db.QueryRowContext(context.Background(), "SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
+	err := db.QueryRowContext(context.Background(), query, taskID).Scan(&columnID)
 	if err != nil {
 		tb.Fatalf("Failed to query task column_id for task %d: %v", taskID, err)
 	}
@@ -176,10 +197,11 @@ func GetTaskColumnID(tb testing.TB, db *sql.DB, taskID int) int {
 }
 
 // GetTaskPosition retrieves the position for a task by its ID
-func GetTaskPosition(tb testing.TB, db *sql.DB, taskID int) int {
+func GetTaskPosition(tb testing.TB, db *sql.DB, d Dialect, taskID int) int {
 	tb.Helper()
+	query := fmt.Sprintf("SELECT position FROM tasks WHERE id = %s", d.Placeholder(1))
 	var position int
-	err := db.QueryRowContext(context.Background(), "SELECT position FROM tasks WHERE id = ?", taskID).Scan(&position)
+	err := db.QueryRowContext(context.Background(), query, taskID).Scan(&position)
 	if err != nil {
 		tb.Fatalf("Failed to query task position for task %d: %v", taskID, err)
 	}
@@ -187,19 +209,20 @@ func GetTaskPosition(tb testing.TB, db *sql.DB, taskID int) int {
 }
 
 // AssertTaskInColumn verifies a task is in the expected column, failing the test if not
-func AssertTaskInColumn(tb testing.TB, db *sql.DB, taskID, expectedColumnID int) {
+func AssertTaskInColumn(tb testing.TB, db *sql.DB, d Dialect, taskID, expectedColumnID int) {
 	tb.Helper()
-	actualColumnID := GetTaskColumnID(tb, db, taskID)
+	actualColumnID := GetTaskColumnID(tb, db, d, taskID)
 	if actualColumnID != expectedColumnID {
 		tb.Errorf("Expected task %d in column %d, got column %d", taskID, expectedColumnID, actualColumnID)
 	}
 }
 
 // AssertTaskLabelCount verifies the number of labels associated with a task
-func AssertTaskLabelCount(tb testing.TB, db *sql.DB, taskID, expectedCount int) {
+func AssertTaskLabelCount(tb testing.TB, db *sql.DB, d Dialect, taskID, expectedCount int) {
 	tb.Helper()
+	query := fmt.Sprintf("SELECT COUNT(*) FROM task_labels WHERE task_id = %s", d.Placeholder(1))
 	var count int
-	err := db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM task_labels WHERE task_id = ?", taskID).Scan(&count)
+	err := db.QueryRowContext(context.Background(), query, taskID).Scan(&count)
 	if err != nil {
 		tb.Fatalf("Failed to query label count for task %d: %v", taskID, err)
 	}
@@ -209,11 +232,13 @@ func AssertTaskLabelCount(tb testing.TB, db *sql.DB, taskID, expectedCount int) 
 }
 
 // AssertRelationExists verifies that a specific relation exists in the database
-func AssertRelationExists(tb testing.TB, db *sql.DB, taskID, relatedTaskID int, relationType string) {
+func AssertRelationExists(tb testing.TB, db *sql.DB, d Dialect, taskID, relatedTaskID int, relationType string) {
 	tb.Helper()
+	query := fmt.Sprintf(
+		"SELECT EXISTS(SELECT 1 FROM task_relations WHERE task_id = %s AND related_task_id = %s AND relation_type = %s)",
+		d.Placeholder(1), d.Placeholder(2), d.Placeholder(3))
 	var exists bool
-	err := db.QueryRowContext(context.Background(),
-		"SELECT EXISTS(SELECT 1 FROM task_relations WHERE task_id = ? AND related_task_id = ? AND relation_type = ?)",
+	err := db.QueryRowContext(context.Background(), query,
 		taskID, relatedTaskID, relationType).Scan(&exists)
 	if err != nil {
 		tb.Fatalf("Failed to check relation existence: %v", err)
@@ -224,11 +249,13 @@ func AssertRelationExists(tb testing.TB, db *sql.DB, taskID, relatedTaskID int, 
 }
 
 // AssertRelationNotExists verifies that a specific relation does NOT exist in the database
-func AssertRelationNotExists(tb testing.TB, db *sql.DB, taskID, relatedTaskID int, relationType string) {
+func AssertRelationNotExists(tb testing.TB, db *sql.DB, d Dialect, taskID, relatedTaskID int, relationType string) {
 	tb.Helper()
+	query := fmt.Sprintf(
+		"SELECT EXISTS(SELECT 1 FROM task_relations WHERE task_id = %s AND related_task_id = %s AND relation_type = %s)",
+		d.Placeholder(1), d.Placeholder(2), d.Placeholder(3))
 	var exists bool
-	err := db.QueryRowContext(context.Background(),
-		"SELECT EXISTS(SELECT 1 FROM task_relations WHERE task_id = ? AND related_task_id = ? AND relation_type = ?)",
+	err := db.QueryRowContext(context.Background(), query,
 		taskID, relatedTaskID, relationType).Scan(&exists)
 	if err != nil {
 		tb.Fatalf("Failed to check relation existence: %v", err)
@@ -239,10 +266,11 @@ func AssertRelationNotExists(tb testing.TB, db *sql.DB, taskID, relatedTaskID in
 }
 
 // AssertTaskAssigneeCount verifies the number of assignees associated with a task
-func AssertTaskAssigneeCount(tb testing.TB, db *sql.DB, taskID, expectedCount int) {
+func AssertTaskAssigneeCount(tb testing.TB, db *sql.DB, d Dialect, taskID, expectedCount int) {
 	tb.Helper()
+	query := fmt.Sprintf("SELECT COUNT(*) FROM task_assignees WHERE task_id = %s", d.Placeholder(1))
 	var count int
-	err := db.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM task_assignees WHERE task_id = ?", taskID).Scan(&count)
+	err := db.QueryRowContext(context.Background(), query, taskID).Scan(&count)
 	if err != nil {
 		tb.Fatalf("Failed to query assignee count for task %d: %v", taskID, err)
 	}

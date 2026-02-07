@@ -54,7 +54,7 @@ func TestHandleNextProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a second project so we have 2 projects to switch between
-	project2ID := testutil.CreateTestProject(t, db, "Second Project")
+	project2ID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Second Project")
 
 	// Load both projects into the model
 	projects, err := m.App.ProjectService.GetAllProjects(ctx)
@@ -70,7 +70,7 @@ func TestHandleNextProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 
 	// Create a task in the first column of the second project
 	firstColID := columns2[0].ID
-	taskID := testutil.CreateTestTask(t, db, firstColID, "Task in Project 2")
+	taskID := testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), firstColID, "Task in Project 2")
 
 	// Set terminal width to enable detail panel
 	m.UIState.SetWidth(detailPanelVisibleWidth)
@@ -145,10 +145,10 @@ func TestHandlePrevProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 	cols1, err := m.App.ColumnService.GetColumnsByProject(ctx, project1ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, cols1)
-	testutil.CreateTestTask(t, db, cols1[0].ID, "Task in Project 1")
+	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), cols1[0].ID, "Task in Project 1")
 
 	// Create a second project so we have 2 projects to switch between
-	project2ID := testutil.CreateTestProject(t, db, "Second Project")
+	project2ID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Second Project")
 
 	// Load both projects into the model
 	projects, err := m.App.ProjectService.GetAllProjects(ctx)
@@ -164,7 +164,7 @@ func TestHandlePrevProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 
 	// Create a task in the first column of the second project so there's something to prefetch
 	firstColID := columns2[0].ID
-	testutil.CreateTestTask(t, db, firstColID, "Task in Project 2")
+	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), firstColID, "Task in Project 2")
 
 	// Set terminal width to enable detail panel
 	m.UIState.SetWidth(detailPanelVisibleWidth)
@@ -287,8 +287,8 @@ func TestProjectSwitch_MultipleProjectsRoundTrip(t *testing.T) {
 	project1ID := project1[0].ID
 
 	// Create two more projects (total of 3)
-	project2ID := testutil.CreateTestProject(t, db, "Project Two")
-	project3ID := testutil.CreateTestProject(t, db, "Project Three")
+	project2ID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Project Two")
+	project3ID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Project Three")
 
 	// Load all projects
 	projects, err := m.App.ProjectService.GetAllProjects(ctx)
@@ -302,13 +302,13 @@ func TestProjectSwitch_MultipleProjectsRoundTrip(t *testing.T) {
 	cols2, _ := m.App.ColumnService.GetColumnsByProject(ctx, project2ID)
 	cols3, _ := m.App.ColumnService.GetColumnsByProject(ctx, project3ID)
 	if len(cols1) > 0 {
-		testutil.CreateTestTask(t, db, cols1[0].ID, "Task in Project 1")
+		testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), cols1[0].ID, "Task in Project 1")
 	}
 	if len(cols2) > 0 {
-		testutil.CreateTestTask(t, db, cols2[0].ID, "Task in Project 2")
+		testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), cols2[0].ID, "Task in Project 2")
 	}
 	if len(cols3) > 0 {
-		testutil.CreateTestTask(t, db, cols3[0].ID, "Task in Project 3")
+		testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), cols3[0].ID, "Task in Project 3")
 	}
 
 	// Set terminal width to enable detail panel

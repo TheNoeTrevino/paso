@@ -372,8 +372,8 @@ func TestBlockedTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Create and attach labels
-		labelID1 := testutil.CreateTestLabel(t, db, projectID, "blocked", "#EF4444")
-		labelID2 := testutil.CreateTestLabel(t, db, projectID, "urgent", "#F97316")
+		labelID1 := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "blocked", "#EF4444")
+		labelID2 := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "urgent", "#F97316")
 
 		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", blockedID, labelID1)

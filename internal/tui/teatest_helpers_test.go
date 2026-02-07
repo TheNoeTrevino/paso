@@ -43,7 +43,7 @@ func SetupTestModelWithDB(t *testing.T) (Model, *sql.DB) {
 
 	// Create test project and columns
 	ctx := context.Background()
-	projectID := testutil.CreateTestProject(t, db, "Test Project")
+	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Test Project")
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to get columns")
 

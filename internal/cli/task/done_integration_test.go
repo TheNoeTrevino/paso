@@ -54,7 +54,7 @@ func TestDoneTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("Task %d moved to 'Done'", taskID))
 
 		// Verify task moved to done column
-		columnID := testutil.GetTaskColumnID(t, db, taskID)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, doneColumnID, columnID)
 	})
 
@@ -74,7 +74,7 @@ func TestDoneTask_Positive(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("%d\n", taskID), output)
 
 		// Verify task moved to done column
-		columnID := testutil.GetTaskColumnID(t, db, taskID)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, doneColumnID, columnID)
 	})
 
@@ -103,7 +103,7 @@ func TestDoneTask_Positive(t *testing.T) {
 		assert.Equal(t, "Done", result["to_column"])
 
 		// Verify task moved to done column
-		columnID := testutil.GetTaskColumnID(t, db, taskID)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, doneColumnID, columnID)
 	})
 
@@ -129,7 +129,7 @@ func TestDoneTask_Positive(t *testing.T) {
 		assert.Equal(t, "Done", result["to_column"])
 
 		// Verify task moved to done column
-		columnID := testutil.GetTaskColumnID(t, db, taskID)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, doneColumnID, columnID)
 	})
 
@@ -152,7 +152,7 @@ func TestDoneTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("%d", taskID))
 
 		// Verify task is still in done column
-		columnID := testutil.GetTaskColumnID(t, db, taskID)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, doneColumnID, columnID)
 	})
 
@@ -174,7 +174,7 @@ func TestDoneTask_Positive(t *testing.T) {
 
 		// Verify all tasks moved to done column
 		for _, taskID := range []int{taskID1, taskID2, taskID3} {
-			columnID := testutil.GetTaskColumnID(t, db, taskID)
+			columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 			assert.Equal(t, doneColumnID, columnID, "Task %d should be in Done column", taskID)
 		}
 	})

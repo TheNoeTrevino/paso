@@ -28,19 +28,19 @@ func SetupCLITest(tb testing.TB) (*sql.DB, *app.App) {
 // Creates a test project with default columns (Todo, In Progress, Done)
 func CreateTestProject(t *testing.T, db *sql.DB, name string) int {
 	t.Helper()
-	return testutil.CreateTestProject(t, db, name)
+	return testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), name)
 }
 
 // CreateTestColumn wraps testutil.CreateTestColumn for CLI tests
 // Creates a test column and returns its ID
 func CreateTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
 	t.Helper()
-	return testutil.CreateTestColumn(t, db, projectID, name)
+	return testutil.CreateTestColumn(t, db, testutil.SQLiteDialect(), projectID, name)
 }
 
 // CreateTestTask wraps testutil.CreateTestTask for CLI tests
 // Creates a test task and returns its ID
 func CreateTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
 	t.Helper()
-	return testutil.CreateTestTask(t, db, columnID, title)
+	return testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columnID, title)
 }

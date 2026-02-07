@@ -212,7 +212,7 @@ func TestCommentForm_Creation(t *testing.T) {
 	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to load columns for test setup")
 	if len(columns) > 0 {
-		taskID := testutil.CreateTestTask(t, db, columns[0].ID, "Task to comment on")
+		taskID := testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Task to comment on")
 
 		// Enter comment form mode
 		m.UIState.Mode = state.CommentFormMode

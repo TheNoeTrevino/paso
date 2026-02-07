@@ -16,7 +16,7 @@ func TestDeleteAssigneeSetNullBehavior(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a project and column for the task
-	projectID := testutil.CreateTestProject(t, db, "test-project")
+	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "test-project")
 	// CreateTestProject creates 3 columns, get the first one
 	var columnID int
 	err := db.QueryRowContext(ctx, "SELECT id FROM columns WHERE project_id = ? LIMIT 1", projectID).Scan(&columnID)
@@ -29,7 +29,7 @@ func TestDeleteAssigneeSetNullBehavior(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a task assigned to this assignee
-	taskID := testutil.CreateTestTask(t, db, columnID, "test-task")
+	taskID := testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columnID, "test-task")
 	_, err = db.ExecContext(ctx, "UPDATE tasks SET assignee_id = ? WHERE id = ?", assigneeID, taskID)
 	require.NoError(t, err)
 

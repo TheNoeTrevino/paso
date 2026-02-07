@@ -127,9 +127,9 @@ func TestListAssignees_Populated(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
 
 	// Pre-populate with assignees
-	testutil.CreateTestAssignee(t, db, "alice")
-	testutil.CreateTestAssignee(t, db, "bob")
-	testutil.CreateTestAssignee(t, db, "charlie")
+	testutil.CreateTestAssignee(t, db, testutil.SQLiteDialect(), "alice")
+	testutil.CreateTestAssignee(t, db, testutil.SQLiteDialect(), "bob")
+	testutil.CreateTestAssignee(t, db, testutil.SQLiteDialect(), "charlie")
 
 	t.Run("default output table", func(t *testing.T) {
 		cmd := ListCmd()
@@ -184,7 +184,7 @@ func TestDeleteAssignee_Positive(t *testing.T) {
 
 	t.Run("delete with force and json", func(t *testing.T) {
 		// Create assignee to delete
-		id := testutil.CreateTestAssignee(t, db, "to-delete")
+		id := testutil.CreateTestAssignee(t, db, testutil.SQLiteDialect(), "to-delete")
 
 		cmd := DeleteCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -208,7 +208,7 @@ func TestDeleteAssignee_Positive(t *testing.T) {
 	})
 
 	t.Run("delete with force and quiet", func(t *testing.T) {
-		id := testutil.CreateTestAssignee(t, db, "quiet-delete")
+		id := testutil.CreateTestAssignee(t, db, testutil.SQLiteDialect(), "quiet-delete")
 
 		cmd := DeleteCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -227,7 +227,7 @@ func TestDeleteAssignee_Positive(t *testing.T) {
 	})
 
 	t.Run("delete with force default output", func(t *testing.T) {
-		id := testutil.CreateTestAssignee(t, db, "default-delete")
+		id := testutil.CreateTestAssignee(t, db, testutil.SQLiteDialect(), "default-delete")
 
 		cmd := DeleteCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{

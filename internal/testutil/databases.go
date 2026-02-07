@@ -17,6 +17,7 @@ const (
 type DatabaseTestCase struct {
 	Name     string
 	DBType   DatabaseType
+	Dialect  Dialect
 	SetupDB  func(tb testing.TB) *sql.DB
 	TearDown func(db *sql.DB)
 }
@@ -28,6 +29,7 @@ func AllDatabases() []DatabaseTestCase {
 		{
 			Name:    "SQLite",
 			DBType:  SQLiteType,
+			Dialect: SQLiteDialect(),
 			SetupDB: SetupTestDB,
 			TearDown: func(db *sql.DB) {
 				_ = db.Close()
@@ -40,6 +42,7 @@ func AllDatabases() []DatabaseTestCase {
 	cases = append(cases, DatabaseTestCase{
 		Name:    "PostgreSQL",
 		DBType:  PostgreSQLType,
+		Dialect: PostgresDialect(),
 		SetupDB: SetupPostgresTestDB,
 		TearDown: func(db *sql.DB) {
 			if db != nil {
@@ -58,6 +61,7 @@ func SqliteDatabasesOnly() []DatabaseTestCase {
 		{
 			Name:    "SQLite",
 			DBType:  SQLiteType,
+			Dialect: SQLiteDialect(),
 			SetupDB: SetupTestDB,
 			TearDown: func(db *sql.DB) {
 				_ = db.Close()
@@ -73,6 +77,7 @@ func PostgresqlDatabasesOnly() []DatabaseTestCase {
 		{
 			Name:    "PostgreSQL",
 			DBType:  PostgreSQLType,
+			Dialect: PostgresDialect(),
 			SetupDB: SetupPostgresTestDB,
 			TearDown: func(db *sql.DB) {
 				if db != nil {
@@ -87,15 +92,13 @@ func PostgresqlDatabasesOnly() []DatabaseTestCase {
 // Example:
 //
 //	func TestCreateLabel(t *testing.T) {
-//	    testutil.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, dbType string) {
+//	    testutil.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d testutil.Dialect) {
 //	        // Your test code here
 //	        label, err := svc.CreateLabel(ctx, req)
 //	        require.NoError(t, err)
 //	    })
 //	}
-//
-// The dbType will be either testutil.SQLiteType or testutil.PostgreSQLType
-func RunDatabaseTests(t *testing.T, testFunc func(t *testing.T, db *sql.DB, dbType DatabaseType)) {
+func RunDatabaseTests(t *testing.T, testFunc func(t *testing.T, db *sql.DB, d Dialect)) {
 	for _, tc := range AllDatabases() {
 		t.Run(tc.Name, func(t *testing.T) {
 			db := tc.SetupDB(t)
@@ -105,7 +108,7 @@ func RunDatabaseTests(t *testing.T, testFunc func(t *testing.T, db *sql.DB, dbTy
 			}
 			defer tc.TearDown(db)
 
-			testFunc(t, db, tc.DBType)
+			testFunc(t, db, tc.Dialect)
 		})
 	}
 }
@@ -115,20 +118,20 @@ func RunDatabaseTests(t *testing.T, testFunc func(t *testing.T, db *sql.DB, dbTy
 //
 //	func TestCreateLabel(t *testing.T) {
 //	    testutil.RunDatabaseTestsWithSetup(t,
-//	        func(t *testing.T, db *sql.DB, dbType string) {
+//	        func(t *testing.T, db *sql.DB, d testutil.Dialect) any {
 //	            // Setup for this database type
-//	            projectID := testutil.CreateTestProject(t, db, "Test Project")
+//	            projectID := testutil.CreateTestProject(t, db, d, "Test Project")
 //	            return projectID
 //	        },
-//	        func(t *testing.T, db *sql.DB, dbType string, setupData any) {
+//	        func(t *testing.T, db *sql.DB, d testutil.Dialect, setupData any) {
 //	            // Test function using setupData
 //	        },
 //	    )
 //	}
 func RunDatabaseTestsWithSetup(
 	t *testing.T,
-	setupFunc func(t *testing.T, db *sql.DB, dbType DatabaseType) any,
-	testFunc func(t *testing.T, db *sql.DB, dbType DatabaseType, setupData any),
+	setupFunc func(t *testing.T, db *sql.DB, d Dialect) any,
+	testFunc func(t *testing.T, db *sql.DB, d Dialect, setupData any),
 ) {
 	for _, tc := range AllDatabases() {
 		t.Run(tc.Name, func(t *testing.T) {
@@ -139,8 +142,8 @@ func RunDatabaseTestsWithSetup(
 			}
 			defer tc.TearDown(db)
 
-			setupData := setupFunc(t, db, tc.DBType)
-			testFunc(t, db, tc.DBType, setupData)
+			setupData := setupFunc(t, db, tc.Dialect)
+			testFunc(t, db, tc.Dialect, setupData)
 		})
 	}
 }
