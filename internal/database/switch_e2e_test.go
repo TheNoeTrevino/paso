@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/database/types"
-	"github.com/thenoetrevino/paso/internal/testutil"
 )
 
 // ============================================================================
@@ -22,7 +21,7 @@ func TestSwitchDatabaseWithDataIntegrity(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup SQLite database with test data
-	sqliteDB := testutil.SetupTestDB(t)
+	sqliteDB := setupTestDB(t)
 	defer func() { _ = sqliteDB.Close() }()
 
 	sqliteQueries, err := NewQuerier(sqliteDB, SQLite)
@@ -32,7 +31,7 @@ func TestSwitchDatabaseWithDataIntegrity(t *testing.T) {
 	testProject := createTestProjectWithData(t, ctx, sqliteQueries)
 
 	// Setup PostgreSQL database (skip if not available)
-	postgresDB := testutil.SetupPostgresTestDB(t)
+	postgresDB := setupPostgresTestDB(t)
 	if postgresDB == nil {
 		t.Skip("PostgreSQL not available for E2E testing")
 	}

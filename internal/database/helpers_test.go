@@ -4,14 +4,102 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
+	_ "github.com/lib/pq"
 	"github.com/thenoetrevino/paso/internal/events"
-	"github.com/thenoetrevino/paso/internal/testutil"
 
 	_ "modernc.org/sqlite"
 )
+
+// setupTestDB creates an in-memory SQLite database with production migrations applied.
+// This is a local helper to avoid importing testutil (which would create an import cycle).
+func setupTestDB(tb testing.TB) *sql.DB {
+	tb.Helper()
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		tb.Fatalf("Failed to create test database: %v", err)
+	}
+	if _, err := db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON"); err != nil {
+		tb.Fatalf("Failed to enable foreign keys: %v", err)
+	}
+	if err := applyMigrations(db, SQLite); err != nil {
+		tb.Fatalf("Failed to run migrations: %v", err)
+	}
+	tb.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			tb.Logf("failed to close test db: %v", err)
+		}
+	})
+	return db
+}
+
+// setupPostgresTestDB connects to a PostgreSQL test database and applies production migrations.
+// Returns nil if PostgreSQL is not available (the caller should skip).
+func setupPostgresTestDB(tb testing.TB) *sql.DB {
+	tb.Helper()
+
+	host := getTestEnv("PG_HOST", "localhost")
+	port := getTestEnv("PG_PORT", "5432")
+	user := getTestEnv("PG_USER", "postgres")
+	password := getTestEnv("PG_PASSWORD", "postgres")
+	dbname := getTestEnv("PG_DATABASE", "paso_test")
+
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port, dbname)
+
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		tb.Skipf("PostgreSQL not available: %v", err)
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		tb.Skipf("PostgreSQL connection failed: %v", err)
+		return nil
+	}
+
+	// Drop all tables and goose state for a clean slate
+	drops := `
+	drop table if exists task_events cascade;
+	drop table if exists task_comments cascade;
+	drop table if exists task_labels cascade;
+	drop table if exists task_subtasks cascade;
+	drop table if exists tasks cascade;
+	drop table if exists assignees cascade;
+	drop table if exists labels cascade;
+	drop table if exists columns cascade;
+	drop table if exists project_counters cascade;
+	drop table if exists projects cascade;
+	drop table if exists relation_types cascade;
+	drop table if exists priorities cascade;
+	drop table if exists types cascade;
+	drop table if exists goose_db_version cascade;
+	`
+	_, _ = db.ExecContext(ctx, drops)
+
+	if err := applyMigrations(db, PostgreSQL); err != nil {
+		tb.Fatalf("Failed to run PostgreSQL migrations: %v", err)
+	}
+
+	tb.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	return db
+}
+
+func getTestEnv(key, defaultValue string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultValue
+}
 
 func createTestProject(t *testing.T, db *sql.DB, name string) int {
 	t.Helper()
@@ -31,7 +119,7 @@ func createTestProject(t *testing.T, db *sql.DB, name string) int {
 }
 
 func TestWithTx_Success_Commit(t *testing.T) {
-	db := testutil.SetupTestDB(t)
+	db := setupTestDB(t)
 
 	ctx := context.Background()
 	projectID := createTestProject(t, db, "Test Project")
@@ -57,7 +145,7 @@ func TestWithTx_Success_Commit(t *testing.T) {
 }
 
 func TestWithTx_Error_Rollback(t *testing.T) {
-	db := testutil.SetupTestDB(t)
+	db := setupTestDB(t)
 
 	ctx := context.Background()
 	projectID := createTestProject(t, db, "Test Project")
@@ -90,7 +178,7 @@ func TestWithTx_Error_Rollback(t *testing.T) {
 
 func TestWithTx_Error_BeginFails(t *testing.T) {
 	// Create a closed database to trigger begin error
-	db := testutil.SetupTestDB(t)
+	db := setupTestDB(t)
 	_ = db.Close()
 
 	ctx := context.Background()
