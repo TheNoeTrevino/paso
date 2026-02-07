@@ -7,10 +7,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// ============================================================================
-// TEST CASES - LabelToModel
-// ============================================================================
-
 func TestLabelToModel(t *testing.T) {
 	t.Parallel()
 
@@ -200,10 +196,6 @@ func TestLabelToModel(t *testing.T) {
 	}
 }
 
-// ============================================================================
-// TEST CASES - LabelsToModels
-// ============================================================================
-
 func TestLabelsToModels(t *testing.T) {
 	t.Parallel()
 
@@ -332,10 +324,6 @@ func TestLabelsToModels_PreservesOrder(t *testing.T) {
 	}
 }
 
-// ============================================================================
-// TEST CASES - Type Conversion
-// ============================================================================
-
 func TestLabelToModel_TypeConversion(t *testing.T) {
 	t.Parallel()
 
@@ -359,10 +347,6 @@ func TestLabelToModel_TypeConversion(t *testing.T) {
 		t.Error("ID conversion resulted in zero when input was non-zero")
 	}
 }
-
-// ============================================================================
-// BENCHMARK TESTS
-// ============================================================================
 
 func BenchmarkLabelToModel(b *testing.B) {
 	label := types.Label{

@@ -10,11 +10,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/database/types"
 )
 
-// ============================================================================
-// Database Switching E2E Tests
-// Tests data persistence when switching between SQLite and PostgreSQL
-// ============================================================================
-
 // TestSwitchDatabaseWithDataIntegrity verifies that data persists when
 // switching between SQLite and PostgreSQL configurations
 func TestSwitchDatabaseWithDataIntegrity(t *testing.T) {

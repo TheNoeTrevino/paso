@@ -6,10 +6,6 @@ import (
 	"time"
 )
 
-// ============================================================================
-// Basic Metrics Tests
-// ============================================================================
-
 func TestNewMetrics(t *testing.T) {
 	m := NewMetrics()
 
@@ -191,10 +187,6 @@ func TestGetSnapshot(t *testing.T) {
 
 	t.Logf("✓ Snapshot captured correctly: %+v", snapshot)
 }
-
-// ============================================================================
-// Concurrency Tests (Race Detector)
-// ============================================================================
 
 func TestMetricsConcurrency_AllOperations(t *testing.T) {
 	m := NewMetrics()

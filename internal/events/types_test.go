@@ -5,10 +5,6 @@ import (
 	"time"
 )
 
-// ============================================================================
-// Constants Tests
-// ============================================================================
-
 func TestProtocolVersion(t *testing.T) {
 	if ProtocolVersion != 1 {
 		t.Errorf("Expected ProtocolVersion to be 1, got %d", ProtocolVersion)
@@ -31,10 +27,6 @@ func TestEventTypes(t *testing.T) {
 		}
 	}
 }
-
-// ============================================================================
-// Struct Tests
-// ============================================================================
 
 func TestEvent_Creation(t *testing.T) {
 	now := time.Now()

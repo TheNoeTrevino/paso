@@ -8,10 +8,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// ============================================================================
-// TEST CASES - ColumnToModel
-// ============================================================================
-
 func TestColumnToModel(t *testing.T) {
 	t.Parallel()
 
@@ -264,10 +260,6 @@ func TestColumnToModel(t *testing.T) {
 	}
 }
 
-// ============================================================================
-// TEST CASES - ColumnFromIDRowToModel
-// ============================================================================
-
 func TestColumnFromIDRowToModel(t *testing.T) {
 	t.Parallel()
 
@@ -381,10 +373,6 @@ func TestColumnFromIDRowToModel(t *testing.T) {
 		})
 	}
 }
-
-// ============================================================================
-// TEST CASES - ColumnsFromRowsToModels
-// ============================================================================
 
 func TestColumnsFromRowsToModels(t *testing.T) {
 	t.Parallel()
@@ -672,10 +660,6 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 		})
 	}
 }
-
-// ============================================================================
-// TEST HELPERS
-// ============================================================================
 
 // intPtr returns a pointer to an int value
 func intPtr(i int) *int {
