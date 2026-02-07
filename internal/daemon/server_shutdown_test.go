@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/events"
 )
 
@@ -19,14 +21,11 @@ func TestShutdown_GracefulClose(t *testing.T) {
 	logServerState(t, server, "before shutdown")
 
 	// Shutdown server
-	if err := server.Shutdown(); err != nil {
-		t.Errorf("Expected Shutdown to succeed, got error: %v", err)
-	}
+	assert.NoError(t, server.Shutdown())
 
 	// Verify socket file removed
-	if _, err := os.Stat(socketPath); !os.IsNotExist(err) {
-		t.Error("Expected socket file to be removed after shutdown")
-	}
+	_, err := os.Stat(socketPath)
+	assert.True(t, os.IsNotExist(err))
 
 	// Verify clients are disconnected (their connections should be closed)
 	// Try to send event - should fail
@@ -35,25 +34,19 @@ func TestShutdown_GracefulClose(t *testing.T) {
 		t.Logf("Note: Event queued after shutdown (might be flushed before close)")
 	}
 
-	t.Logf("✓ Server shutdown gracefully")
+	t.Logf("Server shutdown gracefully")
 }
 
 func TestShutdown_Idempotent(t *testing.T) {
 	socketPath := getTestSocketPath(t)
 	server, err := NewServer(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create server: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Shutdown once
-	if err := server.Shutdown(); err != nil {
-		t.Errorf("First shutdown failed: %v", err)
-	}
+	assert.NoError(t, server.Shutdown())
 
 	// Shutdown again - should not panic or error
-	if err := server.Shutdown(); err != nil {
-		t.Errorf("Second shutdown should be idempotent, got error: %v", err)
-	}
+	assert.NoError(t, server.Shutdown())
 
-	t.Logf("✓ Shutdown is idempotent")
+	t.Logf("Shutdown is idempotent")
 }

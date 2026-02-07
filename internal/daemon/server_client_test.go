@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/events"
 )
 
@@ -21,21 +22,20 @@ func TestClientConnection_Single(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify connection is still active by checking if we can write
-	if err := encoder.Encode(events.Message{Version: events.ProtocolVersion, Type: "ping"}); err != nil {
-		t.Fatalf("Expected connection to be active, got error: %v", err)
-	}
+	err := encoder.Encode(events.Message{Version: events.ProtocolVersion, Type: "ping"})
+	require.NoError(t, err)
 
 	// Try to read with a short deadline - we expect timeout (no response expected for ping from client)
 	_ = conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	decoder := json.NewDecoder(conn)
 	var msg events.Message
-	err := decoder.Decode(&msg)
+	err = decoder.Decode(&msg)
 	if err == nil {
 		// Unexpectedly got a message
 		t.Logf("Note: Received unexpected message type: %s", msg.Type)
 	}
 
-	t.Logf("✓ Client connected successfully")
+	t.Logf("Client connected successfully")
 }
 
 func TestClientConnection_Multiple(t *testing.T) {
@@ -52,7 +52,7 @@ func TestClientConnection_Multiple(t *testing.T) {
 	// Give server time to process all connections
 	time.Sleep(100 * time.Millisecond)
 
-	t.Logf("✓ Successfully connected %d clients", numClients)
+	t.Logf("Successfully connected %d clients", numClients)
 	logServerState(t, server, "after multiple connections")
 }
 
@@ -75,5 +75,5 @@ func TestClientDisconnection(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	logServerState(t, server, "after disconnection")
-	t.Logf("✓ Client disconnected and cleaned up")
+	t.Logf("Client disconnected and cleaned up")
 }

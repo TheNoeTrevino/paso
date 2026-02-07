@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/events"
 )
 
@@ -23,9 +24,7 @@ func setupTestDaemon(t *testing.T) (*Server, string) {
 	socketPath := getTestSocketPath(t)
 
 	server, err := NewServer(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create test daemon: %v", err)
-	}
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		_ = server.Shutdown()
@@ -46,7 +45,7 @@ func setupTestDaemon(t *testing.T) (*Server, string) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	t.Fatal("Timeout waiting for daemon socket")
+	require.Fail(t, "Timeout waiting for daemon socket")
 	return nil, ""
 }
 
@@ -54,9 +53,7 @@ func connectRawClient(t *testing.T, socketPath string) (net.Conn, *json.Encoder,
 	t.Helper()
 
 	conn, err := (&net.Dialer{}).DialContext(context.Background(), "unix", socketPath)
-	if err != nil {
-		t.Fatalf("Failed to dial: %v", err)
-	}
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		_ = conn.Close()
@@ -72,21 +69,18 @@ func sendSubscribeMessage(t *testing.T, encoder *json.Encoder, projectID int) {
 		Type:      "subscribe",
 		Subscribe: &events.SubscribeMessage{ProjectID: projectID},
 	}
-	if err := encoder.Encode(msg); err != nil {
-		t.Fatalf("Failed to send subscribe: %v", err)
-	}
+	err := encoder.Encode(msg)
+	require.NoError(t, err)
 }
 
 func waitForEvent(t *testing.T, ch <-chan events.Event, timeout time.Duration) events.Event {
 	t.Helper()
 	select {
 	case event, ok := <-ch:
-		if !ok {
-			t.Fatal("Channel closed")
-		}
+		require.True(t, ok, "Channel closed")
 		return event
 	case <-time.After(timeout):
-		t.Fatalf("Timeout waiting for event")
+		require.Fail(t, "Timeout waiting for event")
 		return events.Event{}
 	}
 }
@@ -95,7 +89,7 @@ func waitForNoEvent(t *testing.T, ch <-chan events.Event, timeout time.Duration)
 	t.Helper()
 	select {
 	case event := <-ch:
-		t.Fatalf("Unexpected event: %+v", event)
+		require.Fail(t, "Unexpected event", "%+v", event)
 	case <-time.After(timeout):
 		// Success
 	}
@@ -104,9 +98,7 @@ func waitForNoEvent(t *testing.T, ch <-chan events.Event, timeout time.Duration)
 func setupTestClient(t *testing.T, socketPath string) *events.Client {
 	t.Helper()
 	client, err := events.NewClient(socketPath)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		_ = client.Close()
@@ -115,9 +107,8 @@ func setupTestClient(t *testing.T, socketPath string) *events.Client {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	if err := client.Connect(ctx); err != nil {
-		t.Fatalf("Failed to connect: %v", err)
-	}
+	err = client.Connect(ctx)
+	require.NoError(t, err)
 
 	return client
 }
@@ -145,7 +136,7 @@ func waitForSubscriptions(t *testing.T, server *Server, count int) {
 		case <-ch:
 			received++
 		case <-timeout:
-			t.Fatalf("Timeout waiting for subscriptions: expected %d, got %d", count, received)
+			require.Fail(t, "Timeout waiting for subscriptions", "expected %d, got %d", count, received)
 		}
 	}
 
