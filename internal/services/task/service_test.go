@@ -159,7 +159,7 @@ func TestCreateTask_Validation(t *testing.T) {
 				return
 			}
 
-			if tt.errType != nil && err != tt.errType {
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
 				t.Errorf("CreateTask() error = %v, want %v", err, tt.errType)
 			}
 		})
@@ -271,7 +271,7 @@ func TestGetTaskDetail_InvalidID(t *testing.T) {
 		t.Fatal("Expected error for invalid ID")
 	}
 
-	if err != ErrInvalidTaskID {
+	if !errors.Is(err, ErrInvalidTaskID) {
 		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
 	}
 }
@@ -429,7 +429,7 @@ func TestUpdateTask_Validation(t *testing.T) {
 				return
 			}
 
-			if tt.errType != nil && err != tt.errType {
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
 				t.Errorf("UpdateTask() error = %v, want %v", err, tt.errType)
 			}
 		})
@@ -485,7 +485,7 @@ func TestDeleteTask_InvalidID(t *testing.T) {
 		t.Fatal("Expected error for invalid ID")
 	}
 
-	if err != ErrInvalidTaskID {
+	if !errors.Is(err, ErrInvalidTaskID) {
 		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
 	}
 }
@@ -1145,23 +1145,26 @@ func TestGetTaskSummariesByProjectFiltered(t *testing.T) {
 	ctx := context.Background()
 
 	// Create tasks with different titles
-	_, _ = svc.CreateTask(ctx, CreateTaskRequest{
+	_, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Fix bug in login",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
-	_, _ = svc.CreateTask(ctx, CreateTaskRequest{
+	_, err = svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Add new feature",
 		ColumnID: columnID,
 		Position: 1,
 	})
+	require.NoError(t, err)
 
-	_, _ = svc.CreateTask(ctx, CreateTaskRequest{
+	_, err = svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Fix bug in signup",
 		ColumnID: columnID,
 		Position: 2,
 	})
+	require.NoError(t, err)
 
 	// Filter by "bug"
 	results, err := svc.GetTaskSummariesByProjectFiltered(ctx, projectID, "bug")
@@ -1189,11 +1192,12 @@ func TestGetTaskSummariesByProjectFiltered_NoResults(t *testing.T) {
 	ctx := context.Background()
 
 	// Create task
-	_, _ = svc.CreateTask(ctx, CreateTaskRequest{
+	_, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Test Task",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
 	// Filter by non-existent term
 	results, err := svc.GetTaskSummariesByProjectFiltered(ctx, projectID, "nonexistent")
@@ -1221,17 +1225,19 @@ func TestGetTaskSummariesByProjectFiltered_EmptyQuery(t *testing.T) {
 	ctx := context.Background()
 
 	// Create tasks
-	_, _ = svc.CreateTask(ctx, CreateTaskRequest{
+	_, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 1",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
-	_, _ = svc.CreateTask(ctx, CreateTaskRequest{
+	_, err = svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 2",
 		ColumnID: columnID,
 		Position: 1,
 	})
+	require.NoError(t, err)
 
 	// Filter with empty query (should return all)
 	results, err := svc.GetTaskSummariesByProjectFiltered(ctx, projectID, "")
@@ -1259,17 +1265,19 @@ func TestGetTaskReferencesForProject(t *testing.T) {
 	ctx := context.Background()
 
 	// Create tasks
-	_, _ = svc.CreateTask(ctx, CreateTaskRequest{
+	_, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 1",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
-	_, _ = svc.CreateTask(ctx, CreateTaskRequest{
+	_, err = svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 2",
 		ColumnID: columnID,
 		Position: 1,
 	})
+	require.NoError(t, err)
 
 	// Get task references
 	refs, err := svc.GetTaskReferencesForProject(ctx, projectID)
@@ -1555,15 +1563,18 @@ func TestGetTaskTreeByProject_CircularDependency(t *testing.T) {
 	taskC := createTestTask(t, db, columnID, "Task C")
 
 	// A -> B -> C -> A (circular)
-	_, _ = db.ExecContext(ctx,
+	_, err := db.ExecContext(ctx,
 		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
 		taskA, taskB)
-	_, _ = db.ExecContext(ctx,
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx,
 		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
 		taskB, taskC)
-	_, _ = db.ExecContext(ctx,
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx,
 		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
 		taskC, taskA)
+	require.NoError(t, err)
 
 	// Get tree - should handle circular dependency gracefully
 	tree, err := svc.GetTaskTreeByProject(ctx, projectID)
@@ -1686,9 +1697,12 @@ func TestGetTaskTreeByProject_SortedByTicketNumber(t *testing.T) {
 	task3 := createTestTask(t, db, columnID, "Task 3")
 
 	// Set ticket numbers (in database they auto-increment, but let's verify sorting)
-	_, _ = db.ExecContext(ctx, "UPDATE tasks SET ticket_number = 3 WHERE id = ?", task1)
-	_, _ = db.ExecContext(ctx, "UPDATE tasks SET ticket_number = 1 WHERE id = ?", task2)
-	_, _ = db.ExecContext(ctx, "UPDATE tasks SET ticket_number = 2 WHERE id = ?", task3)
+	_, err := db.ExecContext(ctx, "UPDATE tasks SET ticket_number = 3 WHERE id = ?", task1)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, "UPDATE tasks SET ticket_number = 1 WHERE id = ?", task2)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, "UPDATE tasks SET ticket_number = 2 WHERE id = ?", task3)
+	require.NoError(t, err)
 
 	// Get tree
 	tree, err := svc.GetTaskTreeByProject(ctx, projectID)
@@ -1728,12 +1742,14 @@ func TestGetTaskTreeByProject_MultipleRootsWithChildren(t *testing.T) {
 	child2 := createTestTask(t, db, columnID, "Child 2")
 
 	// Link them
-	_, _ = db.ExecContext(ctx,
+	_, err := db.ExecContext(ctx,
 		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
 		root1, child1)
-	_, _ = db.ExecContext(ctx,
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx,
 		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, 1)",
 		root2, child2)
+	require.NoError(t, err)
 
 	// Get tree
 	tree, err := svc.GetTaskTreeByProject(ctx, projectID)
@@ -2406,7 +2422,7 @@ func TestGetTaskActivities_InvalidTaskID(t *testing.T) {
 		t.Fatal("Expected error for invalid task ID")
 	}
 
-	if err != ErrInvalidTaskID {
+	if !errors.Is(err, ErrInvalidTaskID) {
 		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
 	}
 }
@@ -2425,7 +2441,7 @@ func TestGetTaskActivities_NegativeTaskID(t *testing.T) {
 		t.Fatal("Expected error for negative task ID")
 	}
 
-	if err != ErrInvalidTaskID {
+	if !errors.Is(err, ErrInvalidTaskID) {
 		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
 	}
 }
@@ -2704,7 +2720,7 @@ func TestCreateComment_Validation(t *testing.T) {
 				return
 			}
 
-			if tt.errType != nil && err != tt.errType {
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
 				t.Errorf("CreateComment() error = %v, want %v", err, tt.errType)
 			}
 		})
@@ -2824,7 +2840,7 @@ func TestUpdateComment_Validation(t *testing.T) {
 				return
 			}
 
-			if tt.errType != nil && err != tt.errType {
+			if tt.errType != nil && !errors.Is(err, tt.errType) {
 				t.Errorf("UpdateComment() error = %v, want %v", err, tt.errType)
 			}
 		})
@@ -2872,7 +2888,7 @@ func TestDeleteComment_InvalidID(t *testing.T) {
 		t.Fatal("Expected validation error for invalid comment ID")
 	}
 
-	if err != ErrInvalidCommentID {
+	if !errors.Is(err, ErrInvalidCommentID) {
 		t.Errorf("Expected ErrInvalidCommentID, got %v", err)
 	}
 }
@@ -2890,7 +2906,7 @@ func TestDeleteComment_NonExistentComment(t *testing.T) {
 		t.Fatal("Expected error for non-existent comment")
 	}
 
-	if err != ErrCommentNotFound {
+	if !errors.Is(err, ErrCommentNotFound) {
 		t.Errorf("Expected ErrCommentNotFound, got %v", err)
 	}
 }
@@ -2961,7 +2977,7 @@ func TestGetCommentsByTask_InvalidTaskID(t *testing.T) {
 		t.Fatal("Expected validation error for invalid task ID")
 	}
 
-	if err != ErrInvalidTaskID {
+	if !errors.Is(err, ErrInvalidTaskID) {
 		t.Errorf("Expected ErrInvalidTaskID, got %v", err)
 	}
 }
@@ -3360,9 +3376,12 @@ func TestGetTaskTreeByProject_MultipleRoots(t *testing.T) {
 	task3 := createTestTask(t, db, columnID, "Root 3")
 
 	// Set ticket numbers to establish deterministic order
-	_, _ = db.ExecContext(ctx, "UPDATE tasks SET ticket_number = 1 WHERE id = ?", task1)
-	_, _ = db.ExecContext(ctx, "UPDATE tasks SET ticket_number = 2 WHERE id = ?", task2)
-	_, _ = db.ExecContext(ctx, "UPDATE tasks SET ticket_number = 3 WHERE id = ?", task3)
+	_, err := db.ExecContext(ctx, "UPDATE tasks SET ticket_number = 1 WHERE id = ?", task1)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, "UPDATE tasks SET ticket_number = 2 WHERE id = ?", task2)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, "UPDATE tasks SET ticket_number = 3 WHERE id = ?", task3)
+	require.NoError(t, err)
 
 	// Get tree
 	nodes, err := svc.GetTaskTreeByProject(ctx, projectID)
@@ -3708,32 +3727,36 @@ func TestRemoveParentRelation_RestructuresTree(t *testing.T) {
 	ctx := context.Background()
 
 	// Create three tasks
-	task1, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task1, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task A",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
-	task2, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task2, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task B",
 		ColumnID: columnID,
 		Position: 1,
 	})
+	require.NoError(t, err)
 
-	task3, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task3, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task C",
 		ColumnID: columnID,
 		Position: 2,
 	})
+	require.NoError(t, err)
 
 	// Create chain: A -> B -> C
-	err := svc.AddChildRelation(ctx, task1.ID, task2.ID, 1)
-	assert.NoError(t, err)
+	err = svc.AddChildRelation(ctx, task1.ID, task2.ID, 1)
+	require.NoError(t, err)
 	err = svc.AddChildRelation(ctx, task2.ID, task3.ID, 1)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify structure
-	nodes, _ := svc.GetTaskTreeByProject(ctx, projectID)
+	nodes, err := svc.GetTaskTreeByProject(ctx, projectID)
+	require.NoError(t, err)
 	if len(nodes) != 1 {
 		t.Fatalf("Expected 1 root, got %d", len(nodes))
 	}

@@ -144,7 +144,7 @@ func TestGetAllProjects(t *testing.T) {
 	require.NoError(t, err, "Failed to create project 2")
 
 	results, err := svc.GetAllProjects(ctx)
-	assert.NoError(t, err, "Failed to get all projects")
+	require.NoError(t, err, "Failed to get all projects")
 
 	if len(results) != 2 {
 		t.Fatalf("Expected 2 projects, got %d", len(results))
@@ -168,7 +168,7 @@ func TestGetAllProjects_Empty(t *testing.T) {
 
 	results, err := svc.GetAllProjects(context.Background())
 
-	assert.NoError(t, err, "Failed to get all projects")
+	require.NoError(t, err, "Failed to get all projects")
 
 	if len(results) != 0 {
 		t.Errorf("Expected 0 projects, got %d", len(results))
@@ -191,7 +191,7 @@ func TestGetProjectByID(t *testing.T) {
 	require.NoError(t, err, "Failed to create project")
 
 	result, err := svc.GetProjectByID(ctx, created.ID)
-	assert.NoError(t, err, "Failed to get project by ID")
+	require.NoError(t, err, "Failed to get project by ID")
 
 	if result.ID != created.ID {
 		t.Errorf("Expected ID %d, got %d", created.ID, result.ID)
@@ -264,7 +264,7 @@ func TestUpdateProject(t *testing.T) {
 	}
 
 	err = svc.UpdateProject(ctx, req)
-	assert.NoError(t, err, "Failed to update project")
+	require.NoError(t, err, "Failed to update project")
 
 	// Verify update
 	updated, err := svc.GetProjectByID(ctx, created.ID)
@@ -352,7 +352,7 @@ func TestDeleteProject(t *testing.T) {
 
 	// Delete should succeed since project has no tasks (columns don't matter)
 	err = svc.DeleteProject(ctx, created.ID, false)
-	assert.NoError(t, err, "Failed to delete project")
+	require.NoError(t, err, "Failed to delete project")
 
 	// Verify project is deleted
 	_, err = svc.GetProjectByID(ctx, created.ID)
@@ -425,7 +425,7 @@ func TestDeleteProject_WithTasksForce(t *testing.T) {
 
 	// This should succeed because force=true
 	err = svc.DeleteProject(ctx, created.ID, true)
-	assert.NoError(t, err, "Failed to delete project with force=true")
+	require.NoError(t, err, "Failed to delete project with force=true")
 
 	// Verify project is deleted
 	_, err = svc.GetProjectByID(ctx, created.ID)
@@ -469,7 +469,7 @@ func TestGetTaskCount(t *testing.T) {
 
 	// Initially should have 0 tasks
 	count, err := svc.GetTaskCount(ctx, created.ID)
-	assert.NoError(t, err, "Failed to get task count")
+	require.NoError(t, err, "Failed to get task count")
 
 	if count != 0 {
 		t.Errorf("Expected count 0, got %d", count)
@@ -816,7 +816,7 @@ func TestDeleteProject_NonExistentProject(t *testing.T) {
 	// Deleting a non-existent project should succeed (idempotent operation)
 	err := svc.DeleteProject(context.Background(), 999999, false)
 
-	assert.NoError(t, err, "Expected no error when deleting non-existent project (idempotent)")
+	require.NoError(t, err, "Expected no error when deleting non-existent project (idempotent)")
 }
 
 // TestGetTaskCount_ErrorCases tests various error scenarios for GetTaskCount
@@ -881,7 +881,7 @@ func TestGetTaskCount_NonExistentProject(t *testing.T) {
 	// Getting task count for non-existent project should return 0
 	count, err := svc.GetTaskCount(context.Background(), 999999)
 
-	assert.NoError(t, err, "Expected no error for non-existent project")
+	require.NoError(t, err, "Expected no error for non-existent project")
 
 	if count != 0 {
 		t.Errorf("Expected count 0 for non-existent project, got %d", count)
@@ -952,7 +952,7 @@ func TestGetProjectByGitBranch_Found(t *testing.T) {
 
 	// Find project by git branch
 	project, err := svc.GetProjectByGitBranch(ctx, "feature/my-feature")
-	assert.NoError(t, err, "Should find project by git branch")
+	require.NoError(t, err, "Should find project by git branch")
 	require.NotNil(t, project, "Project should not be nil")
 
 	assert.Equal(t, created.ID, project.ID, "Should return the correct project")
@@ -978,7 +978,7 @@ func TestGetProjectByGitBranch_NotFound(t *testing.T) {
 
 	// Try to find project by non-existent branch
 	project, err := svc.GetProjectByGitBranch(ctx, "feature/non-existent")
-	assert.NoError(t, err, "Should not return error for not found (nil is valid)")
+	require.NoError(t, err, "Should not return error for not found (nil is valid)")
 	assert.Nil(t, project, "Project should be nil when not found")
 }
 
@@ -992,7 +992,7 @@ func TestGetProjectByGitBranch_EmptyBranch(t *testing.T) {
 
 	// Try to find project with empty branch name
 	project, err := svc.GetProjectByGitBranch(context.Background(), "")
-	assert.NoError(t, err, "Should not error on empty branch")
+	require.NoError(t, err, "Should not error on empty branch")
 	assert.Nil(t, project, "Should return nil for empty branch")
 }
 
@@ -1028,7 +1028,7 @@ func TestGetProjectByGitBranch_MultipleProjectsOneWithBranch(t *testing.T) {
 
 	// Find the specific project
 	project, err := svc.GetProjectByGitBranch(ctx, "feature/target")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, project)
 	assert.Equal(t, proj2.ID, project.ID, "Should return the correct project")
 	assert.Equal(t, "feature/target", project.GitBranch)
@@ -1058,7 +1058,7 @@ func TestCreateProject_WithGitBranch(t *testing.T) {
 
 	// Verify project can be retrieved by git branch
 	found, err := svc.GetProjectByGitBranch(ctx, "feature/my-feature")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, found)
 	assert.Equal(t, result.ID, found.ID)
 }
@@ -1256,7 +1256,7 @@ func TestUpdateProject_SetGitBranch(t *testing.T) {
 		ID:        created.ID,
 		GitBranch: &newBranch,
 	})
-	assert.NoError(t, err, "Should be able to set git branch on update")
+	require.NoError(t, err, "Should be able to set git branch on update")
 
 	// Verify update
 	updated, err := svc.GetProjectByID(ctx, created.ID)
@@ -1265,7 +1265,7 @@ func TestUpdateProject_SetGitBranch(t *testing.T) {
 
 	// Verify can be found by branch
 	found, err := svc.GetProjectByGitBranch(ctx, "feature/new-branch")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, found)
 	assert.Equal(t, created.ID, found.ID)
 }
@@ -1293,7 +1293,7 @@ func TestUpdateProject_ClearGitBranch(t *testing.T) {
 		ID:        created.ID,
 		GitBranch: &emptyBranch,
 	})
-	assert.NoError(t, err, "Should be able to clear git branch")
+	require.NoError(t, err, "Should be able to clear git branch")
 
 	// Verify update
 	updated, err := svc.GetProjectByID(ctx, created.ID)
@@ -1302,7 +1302,7 @@ func TestUpdateProject_ClearGitBranch(t *testing.T) {
 
 	// Verify cannot be found by old branch
 	found, err := svc.GetProjectByGitBranch(ctx, "feature/to-clear")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, found, "Should not find project by old branch")
 }
 
@@ -1329,7 +1329,7 @@ func TestUpdateProject_ChangeGitBranch(t *testing.T) {
 		ID:        created.ID,
 		GitBranch: &newBranch,
 	})
-	assert.NoError(t, err, "Should be able to change git branch")
+	require.NoError(t, err, "Should be able to change git branch")
 
 	// Verify update
 	updated, err := svc.GetProjectByID(ctx, created.ID)
@@ -1338,12 +1338,12 @@ func TestUpdateProject_ChangeGitBranch(t *testing.T) {
 
 	// Verify old branch doesn't work
 	found, err := svc.GetProjectByGitBranch(ctx, "feature/old-branch")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, found, "Should not find by old branch")
 
 	// Verify new branch works
 	found, err = svc.GetProjectByGitBranch(ctx, "feature/new-branch")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, found)
 	assert.Equal(t, created.ID, found.ID)
 }
@@ -1418,7 +1418,7 @@ func TestUpdateProject_SameGitBranchNoChange(t *testing.T) {
 		ID:        created.ID,
 		GitBranch: &sameBranch,
 	})
-	assert.NoError(t, err, "Should succeed when updating to same branch")
+	require.NoError(t, err, "Should succeed when updating to same branch")
 
 	// Verify branch unchanged
 	updated, err := svc.GetProjectByID(ctx, created.ID)
