@@ -170,6 +170,10 @@ func (s *service) UpdateLabel(ctx context.Context, req UpdateLabelRequest) error
 		Name:  name,
 		Color: color,
 	}); err != nil {
+		// Check for unique constraint violation
+		if isUniqueConstraintError(err) {
+			return fmt.Errorf("failed to update label: label with name '%s' already exists in this project", name)
+		}
 		return fmt.Errorf("failed to update label: %w", err)
 	}
 

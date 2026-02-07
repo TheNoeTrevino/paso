@@ -1441,9 +1441,161 @@ func TestUpdateLabel_DuplicateNameInProject(t *testing.T) {
 
 	err = svc.UpdateLabel(ctx, req)
 
-	// Note: This test documents current behavior. If unique constraint exists in DB,
-	// it should fail. Currently allows duplicates.
+	// Should return error due to unique constraint on (name, project_id)
 	if err == nil {
-		t.Skip("Database schema allows duplicate label names within same project")
+		t.Fatal("Expected error when updating label to duplicate name")
+	}
+	if !strings.Contains(err.Error(), "already exists") {
+		t.Errorf("Expected 'already exists' in error message, got: %v", err)
+	}
+}
+
+func TestUpdateLabel_DuplicateName_DifferentProjects(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupTestDB(t)
+	svc := newTestService(t, db)
+	ctx := context.Background()
+
+	// Create two projects
+	project1ID := createTestProject(t, db)
+	project2ID := createTestProject(t, db)
+
+	// Create label "Bug" in project1
+	_, err := svc.CreateLabel(ctx, CreateLabelRequest{
+		ProjectID: project1ID,
+		Name:      "Bug",
+		Color:     "#FF5733",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create label in project1: %v", err)
+	}
+
+	// Create label "Feature" in project2
+	label2, err := svc.CreateLabel(ctx, CreateLabelRequest{
+		ProjectID: project2ID,
+		Name:      "Feature",
+		Color:     "#00FF00",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create label in project2: %v", err)
+	}
+
+	// Update label2 to "Bug" - should succeed since it's in a different project
+	newName := "Bug"
+	req := UpdateLabelRequest{
+		ID:   label2.ID,
+		Name: &newName,
+	}
+
+	err = svc.UpdateLabel(ctx, req)
+	if err != nil {
+		t.Fatalf("Should allow duplicate name in different project, got error: %v", err)
+	}
+
+	// Verify the update
+	labels, err := svc.GetLabelsByProject(ctx, project2ID)
+	if err != nil {
+		t.Fatalf("Failed to get labels: %v", err)
+	}
+	if len(labels) != 1 {
+		t.Fatalf("Expected 1 label in project2, got %d", len(labels))
+	}
+	if labels[0].Name != "Bug" {
+		t.Errorf("Expected name 'Bug', got '%s'", labels[0].Name)
+	}
+}
+
+func TestUpdateLabel_SameNameNoChange(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupTestDB(t)
+	svc := newTestService(t, db)
+	ctx := context.Background()
+
+	projectID := createTestProject(t, db)
+
+	// Create label
+	label, err := svc.CreateLabel(ctx, CreateLabelRequest{
+		ProjectID: projectID,
+		Name:      "Bug",
+		Color:     "#FF5733",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create label: %v", err)
+	}
+
+	// Update label to its own name (should succeed - not a duplicate)
+	sameName := "Bug"
+	req := UpdateLabelRequest{
+		ID:   label.ID,
+		Name: &sameName,
+	}
+
+	err = svc.UpdateLabel(ctx, req)
+	if err != nil {
+		t.Fatalf("Should allow updating label to its own name, got error: %v", err)
+	}
+}
+
+func TestUpdateLabel_CaseVariation(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.SetupTestDB(t)
+	svc := newTestService(t, db)
+	ctx := context.Background()
+
+	projectID := createTestProject(t, db)
+
+	// Create label "bug" (lowercase)
+	_, err := svc.CreateLabel(ctx, CreateLabelRequest{
+		ProjectID: projectID,
+		Name:      "bug",
+		Color:     "#FF5733",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create first label: %v", err)
+	}
+
+	// Create label "Feature"
+	label2, err := svc.CreateLabel(ctx, CreateLabelRequest{
+		ProjectID: projectID,
+		Name:      "Feature",
+		Color:     "#00FF00",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create second label: %v", err)
+	}
+
+	// Try to update to "BUG" (uppercase)
+	// Note: SQLite UNIQUE constraint is case-sensitive by default
+	// So "bug" and "BUG" are treated as different values
+	newName := "BUG"
+	req := UpdateLabelRequest{
+		ID:   label2.ID,
+		Name: &newName,
+	}
+
+	err = svc.UpdateLabel(ctx, req)
+	// Should succeed - SQLite treats "bug" and "BUG" as different
+	if err != nil {
+		t.Fatalf("Should allow case variation (SQLite is case-sensitive), got error: %v", err)
+	}
+
+	// Verify we now have both "bug" and "BUG"
+	labels, err := svc.GetLabelsByProject(ctx, projectID)
+	if err != nil {
+		t.Fatalf("Failed to get labels: %v", err)
+	}
+	if len(labels) != 2 {
+		t.Fatalf("Expected 2 labels, got %d", len(labels))
+	}
+
+	names := make(map[string]bool)
+	for _, l := range labels {
+		names[l.Name] = true
+	}
+	if !names["bug"] || !names["BUG"] {
+		t.Errorf("Expected both 'bug' and 'BUG', got: %v", names)
 	}
 }
