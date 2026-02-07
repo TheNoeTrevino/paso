@@ -33,7 +33,7 @@ func TestSubscription_Switching(t *testing.T) {
 	if err := client.Subscribe(1); err != nil {
 		t.Fatalf("Failed to subscribe to project 1: %v", err)
 	}
-	time.Sleep(50 * time.Millisecond) // Allow subscription to register
+	waitForSubscriptions(t, server, 1)
 
 	// Publish event for project 1 - should receive
 	event1 := events.Event{
@@ -68,7 +68,7 @@ func TestSubscription_Switching(t *testing.T) {
 	if err := client.Subscribe(2); err != nil {
 		t.Fatalf("Failed to subscribe to project 2: %v", err)
 	}
-	time.Sleep(50 * time.Millisecond) // Allow subscription to register
+	waitForSubscriptions(t, server, 1)
 
 	// Publish event for project 2 - should NOW receive
 	event3 := events.Event{
@@ -120,7 +120,6 @@ func TestSubscription_ProjectZeroHandling(t *testing.T) {
 	if err := client1.Subscribe(1); err != nil {
 		t.Fatalf("Failed to subscribe client1 to project 1: %v", err)
 	}
-	time.Sleep(50 * time.Millisecond)
 
 	// Create client subscribed to project 2
 	client2 := setupTestClient(t, socketPath)
@@ -133,7 +132,8 @@ func TestSubscription_ProjectZeroHandling(t *testing.T) {
 	if err := client2.Subscribe(2); err != nil {
 		t.Fatalf("Failed to subscribe client2 to project 2: %v", err)
 	}
-	time.Sleep(50 * time.Millisecond)
+
+	waitForSubscriptions(t, server, 2)
 
 	// Publish event with ProjectID=0 (broadcast to all)
 	broadcastEvent := events.Event{

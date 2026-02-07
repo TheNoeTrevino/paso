@@ -128,3 +128,26 @@ func logServerState(t *testing.T, server *Server, label string) {
 	t.Logf("  Server: %p", server)
 	t.Logf("========================")
 }
+
+func waitForSubscriptions(t *testing.T, server *Server, count int) {
+	t.Helper()
+
+	ch := make(chan int, count)
+	server.OnSubscribe = func(projectID int) {
+		ch <- projectID
+	}
+
+	timeout := time.After(2 * time.Second)
+	received := 0
+
+	for received < count {
+		select {
+		case <-ch:
+			received++
+		case <-timeout:
+			t.Fatalf("Timeout waiting for subscriptions: expected %d, got %d", count, received)
+		}
+	}
+
+	server.OnSubscribe = nil
+}

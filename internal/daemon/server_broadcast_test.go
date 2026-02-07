@@ -14,19 +14,17 @@ func TestBroadcast_SingleClient(t *testing.T) {
 	// Connect client using event client
 	client := setupTestClient(t, socketPath)
 
-	// Subscribe to project 1
-	if err := client.Subscribe(1); err != nil {
-		t.Fatalf("Failed to subscribe: %v", err)
-	}
-
 	// Start listening for events
 	eventChan, err := client.Listen(context.Background())
 	if err != nil {
 		t.Fatalf("Failed to listen: %v", err)
 	}
 
-	// Give client time to fully establish subscription
-	time.Sleep(100 * time.Millisecond)
+	// Subscribe to project 1 and wait for subscription to register
+	if err := client.Subscribe(1); err != nil {
+		t.Fatalf("Failed to subscribe: %v", err)
+	}
+	waitForSubscriptions(t, server, 1)
 
 	// Broadcast an event
 	testEvent := events.Event{
@@ -64,20 +62,20 @@ func TestBroadcast_MultipleClients(t *testing.T) {
 	for i := 0; i < numClients; i++ {
 		client := setupTestClient(t, socketPath)
 
-		// Subscribe all to project 1
-		if err := client.Subscribe(1); err != nil {
-			t.Fatalf("Client %d failed to subscribe: %v", i, err)
-		}
-
 		eventChan, err := client.Listen(context.Background())
 		if err != nil {
 			t.Fatalf("Client %d failed to listen: %v", i, err)
 		}
 		eventChans = append(eventChans, eventChan)
+
+		// Subscribe all to project 1
+		if err := client.Subscribe(1); err != nil {
+			t.Fatalf("Client %d failed to subscribe: %v", i, err)
+		}
 	}
 
-	// Give clients time to subscribe
-	time.Sleep(100 * time.Millisecond)
+	// Wait for all subscriptions to register
+	waitForSubscriptions(t, server, numClients)
 
 	// Broadcast event
 	testEvent := events.Event{
@@ -105,19 +103,19 @@ func TestBroadcast_SubscriptionFiltering(t *testing.T) {
 
 	// Client A subscribes to project 1
 	clientA := setupTestClient(t, socketPath)
+	eventChanA, _ := clientA.Listen(context.Background())
 	if err := clientA.Subscribe(1); err != nil {
 		t.Fatalf("ClientA failed to subscribe: %v", err)
 	}
-	eventChanA, _ := clientA.Listen(context.Background())
+	waitForSubscriptions(t, server, 1)
 
 	// Client B subscribes to project 2
 	clientB := setupTestClient(t, socketPath)
+	eventChanB, _ := clientB.Listen(context.Background())
 	if err := clientB.Subscribe(2); err != nil {
 		t.Fatalf("ClientB failed to subscribe: %v", err)
 	}
-	eventChanB, _ := clientB.Listen(context.Background())
-
-	time.Sleep(100 * time.Millisecond)
+	waitForSubscriptions(t, server, 1)
 
 	// Broadcast event for project 1
 	testEvent := events.Event{
@@ -147,20 +145,19 @@ func TestBroadcast_AllProjects(t *testing.T) {
 
 	// Client A subscribes to project 1
 	clientA := setupTestClient(t, socketPath)
+	eventChanA, _ := clientA.Listen(context.Background())
 	if err := clientA.Subscribe(1); err != nil {
 		t.Fatalf("ClientA failed to subscribe: %v", err)
 	}
-	eventChanA, _ := clientA.Listen(context.Background())
+	waitForSubscriptions(t, server, 1)
 
 	// Client B subscribes to project 2
 	clientB := setupTestClient(t, socketPath)
+	eventChanB, _ := clientB.Listen(context.Background())
 	if err := clientB.Subscribe(2); err != nil {
 		t.Fatalf("ClientB failed to subscribe: %v", err)
 	}
-	eventChanB, _ := clientB.Listen(context.Background())
-
-	// Give clients more time to fully establish subscriptions
-	time.Sleep(200 * time.Millisecond)
+	waitForSubscriptions(t, server, 1)
 
 	// Broadcast event for all projects (projectID = 0)
 	testEvent := events.Event{
@@ -191,12 +188,12 @@ func TestBroadcast_SequenceNumbers(t *testing.T) {
 	server, socketPath := setupTestDaemon(t)
 
 	client := setupTestClient(t, socketPath)
+	eventChan, _ := client.Listen(context.Background())
 	if err := client.Subscribe(1); err != nil {
 		t.Fatalf("Failed to subscribe: %v", err)
 	}
-	eventChan, _ := client.Listen(context.Background())
 
-	time.Sleep(50 * time.Millisecond)
+	waitForSubscriptions(t, server, 1)
 
 	// Send 10 events
 	numEvents := 10

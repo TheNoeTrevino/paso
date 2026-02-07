@@ -39,6 +39,7 @@ type Server struct {
 	sequenceCounter  atomic.Int64
 	clientBufferSize int // Configurable client send queue size
 	shutdownOnce     sync.Once
+	OnSubscribe      func(projectID int) // Test-only callback hook for subscription events
 }
 
 // getEnvInt reads an integer from an environment variable, returning defaultVal if not set or invalid
@@ -259,6 +260,10 @@ func (s *Server) handleClient(c *client) {
 				c.subscription = *msg.Subscribe
 				c.mu.Unlock()
 				slog.Info("client subscribed to project", "projectID", msg.Subscribe.ProjectID)
+
+				if s.OnSubscribe != nil {
+					s.OnSubscribe(msg.Subscribe.ProjectID)
+				}
 			}
 
 		case "pong":
