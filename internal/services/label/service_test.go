@@ -36,7 +36,8 @@ func createTestTask(t *testing.T, db *sql.DB, projectID int) int {
 	// First create a column for the task
 	columnResult, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Default")
 	require.NoError(t, err)
-	columnID, _ := columnResult.LastInsertId()
+	columnID, err := columnResult.LastInsertId()
+	require.NoError(t, err)
 
 	// Create task in that column
 	result, err := db.ExecContext(context.Background(), "INSERT INTO tasks (column_id, title, description, position) VALUES (?, ?, ?, ?)", columnID, "Test Task", "Test Description", 0)
@@ -106,15 +107,9 @@ func TestCreateLabel_Validation(t *testing.T) {
 			setupFn: func(db *sql.DB) int {
 				return createTestProject(t, db)
 			},
-			labelName: func() string {
-				name := ""
-				for range 51 {
-					name += "a"
-				}
-				return name
-			}(),
-			wantErr: true,
-			errType: ErrNameTooLong,
+			labelName: strings.Repeat("a", 51),
+			wantErr:   true,
+			errType:   ErrNameTooLong,
 		},
 		{
 			name:      "invalid project ID",
@@ -444,11 +439,12 @@ func TestUpdateLabel_Validation(t *testing.T) {
 			errType: ErrEmptyName,
 			setupFn: func(db *sql.DB) int {
 				projectID := createTestProject(t, db)
-				label, _ := newTestService(t, db).CreateLabel(context.Background(), CreateLabelRequest{
+				label, err := newTestService(t, db).CreateLabel(context.Background(), CreateLabelRequest{
 					ProjectID: projectID,
 					Name:      "Bug",
 					Color:     "#FF5733",
 				})
+				require.NoError(t, err)
 				return label.ID
 			},
 		},
@@ -459,11 +455,12 @@ func TestUpdateLabel_Validation(t *testing.T) {
 			errType:  ErrInvalidColor,
 			setupFn: func(db *sql.DB) int {
 				projectID := createTestProject(t, db)
-				label, _ := newTestService(t, db).CreateLabel(context.Background(), CreateLabelRequest{
+				label, err := newTestService(t, db).CreateLabel(context.Background(), CreateLabelRequest{
 					ProjectID: projectID,
 					Name:      "Bug",
 					Color:     "#FF5733",
 				})
+				require.NoError(t, err)
 				return label.ID
 			},
 		},
@@ -937,10 +934,7 @@ func TestUpdateLabel_NameTooLong(t *testing.T) {
 	require.NoError(t, err)
 
 	// Try to update with too long name
-	longName := ""
-	for i := 0; i < 51; i++ {
-		longName += "a"
-	}
+	longName := strings.Repeat("a", 51)
 
 	req := UpdateLabelRequest{
 		ID:   created.ID,

@@ -122,7 +122,7 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 	t.Run("Delete column cannot delete if it contains tasks", func(t *testing.T) {
 		// Create a new column and add a task to it
 		columnID := cli.CreateTestColumn(t, db, projectID, "CannotDelete")
-		_ = cli.CreateTestTask(t, db, columnID, "Task in Column")
+		cli.CreateTestTask(t, db, columnID, "Task in Column")
 
 		cmd := DeleteCmd()
 

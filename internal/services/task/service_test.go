@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -78,12 +79,8 @@ func TestCreateTask_Validation(t *testing.T) {
 			name: "title too long",
 			args: args{
 				setupFn: func(db *sql.DB, _ int) CreateTaskRequest {
-					longTitle := ""
-					for i := 0; i < 256; i++ {
-						longTitle += "a"
-					}
 					return CreateTaskRequest{
-						Title:    longTitle,
+						Title:    strings.Repeat("a", 256),
 						ColumnID: 1,
 						Position: 0,
 					}
@@ -332,11 +329,12 @@ func TestUpdateTask_Validation(t *testing.T) {
 			setupFn: func(db *sql.DB) int {
 				projectID := createTestProject(t, db)
 				columnID := createTestColumn(t, db, projectID, "To Do")
-				task, _ := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
+				task, err := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Old Title",
 					ColumnID: columnID,
 					Position: 0,
 				})
+				require.NoError(t, err)
 				return task.ID
 			},
 		},
@@ -500,20 +498,22 @@ func TestAddParentRelation(t *testing.T) {
 	ctx := context.Background()
 
 	// Create two tasks
-	task1, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task1, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Parent Task",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
-	task2, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task2, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Child Task",
 		ColumnID: columnID,
 		Position: 1,
 	})
+	require.NoError(t, err)
 
 	// Add parent relation (task1 is parent of task2)
-	err := svc.AddParentRelation(ctx, task2.ID, task1.ID, 1)
+	err = svc.AddParentRelation(ctx, task2.ID, task1.ID, 1)
 	require.NoError(t, err, "Operation failed")
 
 	// Verify relationship exists
@@ -535,20 +535,22 @@ func TestAddChildRelation(t *testing.T) {
 	ctx := context.Background()
 
 	// Create two tasks
-	task1, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task1, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Parent Task",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
-	task2, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task2, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Child Task",
 		ColumnID: columnID,
 		Position: 1,
 	})
+	require.NoError(t, err)
 
 	// Add child relation (task2 is child of task1)
-	err := svc.AddChildRelation(ctx, task1.ID, task2.ID, 1)
+	err = svc.AddChildRelation(ctx, task1.ID, task2.ID, 1)
 	require.NoError(t, err, "Operation failed")
 
 	// Verify relationship exists
@@ -570,21 +572,23 @@ func TestRemoveParentRelation(t *testing.T) {
 	ctx := context.Background()
 
 	// Create two tasks with relationship
-	task1, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task1, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Parent Task",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
-	task2, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task2, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:     "Child Task",
 		ColumnID:  columnID,
 		Position:  1,
 		ParentIDs: []int{task1.ID},
 	})
+	require.NoError(t, err)
 
 	// Remove parent relation
-	err := svc.RemoveParentRelation(ctx, task2.ID, task1.ID)
+	err = svc.RemoveParentRelation(ctx, task2.ID, task1.ID)
 	require.NoError(t, err, "Operation failed")
 
 	// Verify relationship is removed
@@ -606,20 +610,22 @@ func TestRemoveChildRelation(t *testing.T) {
 	ctx := context.Background()
 
 	// Create two tasks with child relationship
-	task1, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task1, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Parent Task",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
-	task2, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task2, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Child Task",
 		ColumnID: columnID,
 		Position: 1,
 	})
+	require.NoError(t, err)
 
 	// Add child relation (task2 is child of task1)
-	err := svc.AddChildRelation(ctx, task1.ID, task2.ID, 1)
+	err = svc.AddChildRelation(ctx, task1.ID, task2.ID, 1)
 	require.NoError(t, err)
 
 	// Remove child relation
@@ -651,11 +657,12 @@ func TestMoveTaskToNextColumn(t *testing.T) {
 	svc := newTestService(t, db)
 
 	// Create task in first column
-	task, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Test Task",
 		ColumnID: col1ID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
 	// Move to next column
 	err = svc.MoveTaskToNextColumn(ctx, task.ID)
@@ -676,14 +683,15 @@ func TestMoveTaskToNextColumn_LastColumn(t *testing.T) {
 	ctx := context.Background()
 
 	// Create task in last column (no next_id)
-	task, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Test Task",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
 	// Try to move to next column (should fail)
-	err := svc.MoveTaskToNextColumn(ctx, task.ID)
+	err = svc.MoveTaskToNextColumn(ctx, task.ID)
 
 	require.Error(t, err)
 }
@@ -719,11 +727,12 @@ func TestMoveTaskToPrevColumn(t *testing.T) {
 	svc := newTestService(t, db)
 
 	// Create task in second column
-	task, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Test Task",
 		ColumnID: col2ID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
 	// Move to previous column
 	err = svc.MoveTaskToPrevColumn(ctx, task.ID)
@@ -744,14 +753,15 @@ func TestMoveTaskToPrevColumn_FirstColumn(t *testing.T) {
 	ctx := context.Background()
 
 	// Create task in first column (no prev_id)
-	task, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Test Task",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
 	// Try to move to previous column (should fail)
-	err := svc.MoveTaskToPrevColumn(ctx, task.ID)
+	err = svc.MoveTaskToPrevColumn(ctx, task.ID)
 
 	require.Error(t, err)
 }
@@ -780,14 +790,15 @@ func TestMoveTaskToColumn(t *testing.T) {
 	ctx := context.Background()
 
 	// Create task in first column
-	task, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Test Task",
 		ColumnID: col1ID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
 	// Move to specific column
-	err := svc.MoveTaskToColumn(ctx, task.ID, col2ID)
+	err = svc.MoveTaskToColumn(ctx, task.ID, col2ID)
 	require.NoError(t, err, "Operation failed")
 
 	// Verify task moved
@@ -805,14 +816,15 @@ func TestMoveTaskToColumn_InvalidColumnID(t *testing.T) {
 	ctx := context.Background()
 
 	// Create task
-	task, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Test Task",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
 	// Try to move to invalid column
-	err := svc.MoveTaskToColumn(ctx, task.ID, 999)
+	err = svc.MoveTaskToColumn(ctx, task.ID, 999)
 
 	require.Error(t, err)
 }
@@ -843,20 +855,22 @@ func TestMoveTaskUp(t *testing.T) {
 	ctx := context.Background()
 
 	// Create two tasks
-	task1, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task1, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 1",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
-	task2, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task2, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 2",
 		ColumnID: columnID,
 		Position: 1,
 	})
+	require.NoError(t, err)
 
 	// Move task2 up (should swap positions with task1)
-	err := svc.MoveTaskUp(ctx, task2.ID)
+	err = svc.MoveTaskUp(ctx, task2.ID)
 	require.NoError(t, err, "Operation failed")
 
 	// Verify positions swapped
@@ -881,14 +895,15 @@ func TestMoveTaskUp_FirstPosition(t *testing.T) {
 	ctx := context.Background()
 
 	// Create task at first position
-	task, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 1",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
 	// Try to move up (should fail - no task above)
-	err := svc.MoveTaskUp(ctx, task.ID)
+	err = svc.MoveTaskUp(ctx, task.ID)
 
 	require.Error(t, err)
 }
@@ -916,20 +931,22 @@ func TestMoveTaskDown(t *testing.T) {
 	ctx := context.Background()
 
 	// Create two tasks
-	task1, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task1, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 1",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
-	task2, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task2, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 2",
 		ColumnID: columnID,
 		Position: 1,
 	})
+	require.NoError(t, err)
 
 	// Move task1 down (should swap positions with task2)
-	err := svc.MoveTaskDown(ctx, task1.ID)
+	err = svc.MoveTaskDown(ctx, task1.ID)
 	require.NoError(t, err, "Operation failed")
 
 	// Verify positions swapped
@@ -954,14 +971,15 @@ func TestMoveTaskDown_LastPosition(t *testing.T) {
 	ctx := context.Background()
 
 	// Create task at last position
-	task, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 1",
 		ColumnID: columnID,
 		Position: 0,
 	})
+	require.NoError(t, err)
 
 	// Try to move down (should fail - no task below)
-	err := svc.MoveTaskDown(ctx, task.ID)
+	err = svc.MoveTaskDown(ctx, task.ID)
 
 	require.Error(t, err)
 }
@@ -1775,24 +1793,27 @@ func TestMoveTaskToCompletedColumn_MultipleTasksInProject(t *testing.T) {
 	ctx := context.Background()
 
 	// Create multiple tasks in different columns
-	task1, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task1, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 1",
 		ColumnID: todoColID,
 		Position: 0,
 	})
-	task2, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	require.NoError(t, err)
+	task2, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 2",
 		ColumnID: inProgressColID,
 		Position: 0,
 	})
-	task3, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	require.NoError(t, err)
+	task3, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 3",
 		ColumnID: todoColID,
 		Position: 1,
 	})
+	require.NoError(t, err)
 
 	// Move task2 to completed
-	err := svc.MoveTaskToCompletedColumn(ctx, task2.ID)
+	err = svc.MoveTaskToCompletedColumn(ctx, task2.ID)
 	require.NoError(t, err)
 
 	// Verify task2 is in completed column
@@ -1816,24 +1837,27 @@ func TestMoveTaskToReadyColumn_MultipleTasksInProject(t *testing.T) {
 	ctx := context.Background()
 
 	// Create multiple tasks in different columns
-	task1, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	task1, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 1",
 		ColumnID: todoColID,
 		Position: 0,
 	})
-	task2, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	require.NoError(t, err)
+	task2, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 2",
 		ColumnID: inProgressColID,
 		Position: 0,
 	})
-	task3, _ := svc.CreateTask(ctx, CreateTaskRequest{
+	require.NoError(t, err)
+	task3, err := svc.CreateTask(ctx, CreateTaskRequest{
 		Title:    "Task 3",
 		ColumnID: todoColID,
 		Position: 1,
 	})
+	require.NoError(t, err)
 
 	// Move task2 to ready
-	err := svc.MoveTaskToReadyColumn(ctx, task2.ID)
+	err = svc.MoveTaskToReadyColumn(ctx, task2.ID)
 	require.NoError(t, err)
 
 	// Verify task2 is in ready column
@@ -2255,13 +2279,7 @@ func TestCreateComment_Validation(t *testing.T) {
 				columnID := createTestColumn(t, db, projectID, "To Do")
 				return createTestTask(t, db, columnID, "Test Task")
 			},
-			message: func() string {
-				msg := ""
-				for i := 0; i < 1001; i++ {
-					msg += "a"
-				}
-				return msg
-			}(),
+			message: strings.Repeat("a", 1001),
 			author:  "testuser",
 			wantErr: true,
 			errType: ErrCommentMessageTooLong,
@@ -2376,13 +2394,7 @@ func TestUpdateComment_Validation(t *testing.T) {
 				taskID := createTestTask(t, db, columnID, "Test Task")
 				return createTestComment(t, db, taskID, "Original message", "testuser")
 			},
-			message: func() string {
-				msg := ""
-				for i := 0; i < 1001; i++ {
-					msg += "a"
-				}
-				return msg
-			}(),
+			message: strings.Repeat("a", 1001),
 			wantErr: true,
 			errType: ErrCommentMessageTooLong,
 		},
@@ -3178,7 +3190,8 @@ func TestRemoveParentRelation_RestructuresTree(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Now A and B should both be roots
-	nodes, _ = svc.GetTaskTreeByProject(ctx, projectID)
+	nodes, err = svc.GetTaskTreeByProject(ctx, projectID)
+	require.NoError(t, err)
 	assert.Len(t, nodes, 2)
 }
 
@@ -3447,15 +3460,13 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 			setupFn: func(db *sql.DB) UpdateTaskRequest {
 				projectID := createTestProject(t, db)
 				columnID := createTestColumn(t, db, projectID, "To Do")
-				task, _ := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
+				task, err := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Old Title",
 					ColumnID: columnID,
 					Position: 0,
 				})
-				longTitle := ""
-				for i := 0; i < 256; i++ {
-					longTitle += "a"
-				}
+				require.NoError(t, err)
+				longTitle := strings.Repeat("a", 256)
 				return UpdateTaskRequest{
 					TaskID: task.ID,
 					Title:  &longTitle,
@@ -3469,11 +3480,12 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 			setupFn: func(db *sql.DB) UpdateTaskRequest {
 				projectID := createTestProject(t, db)
 				columnID := createTestColumn(t, db, projectID, "To Do")
-				task, _ := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
+				task, err := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
 					Position: 0,
 				})
+				require.NoError(t, err)
 				priority := 999
 				return UpdateTaskRequest{
 					TaskID:     task.ID,
@@ -3487,11 +3499,12 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 			setupFn: func(db *sql.DB) UpdateTaskRequest {
 				projectID := createTestProject(t, db)
 				columnID := createTestColumn(t, db, projectID, "To Do")
-				task, _ := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
+				task, err := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
 					Position: 0,
 				})
+				require.NoError(t, err)
 				typeID := 999
 				return UpdateTaskRequest{
 					TaskID: task.ID,
@@ -3505,11 +3518,12 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 			setupFn: func(db *sql.DB) UpdateTaskRequest {
 				projectID := createTestProject(t, db)
 				columnID := createTestColumn(t, db, projectID, "To Do")
-				task, _ := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
+				task, err := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
 					Position: 0,
 				})
+				require.NoError(t, err)
 				title := "   "
 				return UpdateTaskRequest{
 					TaskID: task.ID,
@@ -3671,12 +3685,13 @@ func TestAttachLabel_ErrorPaths(t *testing.T) {
 				columnID := createTestColumn(t, db, projectID, "To Do")
 				labelID := createTestLabel(t, db, projectID, "Bug")
 				svc := newTestService(t, db)
-				task, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+				task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
 					Position: 0,
 					LabelIDs: []int{labelID},
 				})
+				require.NoError(t, err)
 				return task.ID, labelID
 			},
 			wantErr: false, // May succeed or may error - database dependent
@@ -3893,17 +3908,19 @@ func TestAddParentRelation_ErrorPaths(t *testing.T) {
 				projectID := createTestProject(t, db)
 				columnID := createTestColumn(t, db, projectID, "To Do")
 				svc := newTestService(t, db)
-				parent, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+				parent, err := svc.CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Parent",
 					ColumnID: columnID,
 					Position: 0,
 				})
-				child, _ := svc.CreateTask(context.Background(), CreateTaskRequest{
+				require.NoError(t, err)
+				child, err := svc.CreateTask(context.Background(), CreateTaskRequest{
 					Title:     "Child",
 					ColumnID:  columnID,
 					Position:  1,
 					ParentIDs: []int{parent.ID},
 				})
+				require.NoError(t, err)
 				return child.ID, parent.ID
 			},
 			wantErr: false, // May succeed or may error - database dependent
@@ -4441,10 +4458,7 @@ func TestComment_BoundaryConditions(t *testing.T) {
 	svc := newTestService(t, db)
 
 	// Test exactly at max length (1000 chars)
-	maxMessage := ""
-	for i := 0; i < 1000; i++ {
-		maxMessage += "a"
-	}
+	maxMessage := strings.Repeat("a", 1000)
 
 	req := CreateCommentRequest{
 		TaskID:  taskID,
@@ -4471,10 +4485,7 @@ func TestCreateTask_MaxLengthTitle(t *testing.T) {
 	svc := newTestService(t, db)
 
 	// Test exactly at max length (255 chars)
-	maxTitle := ""
-	for i := 0; i < 255; i++ {
-		maxTitle += "a"
-	}
+	maxTitle := strings.Repeat("a", 255)
 
 	req := CreateTaskRequest{
 		Title:    maxTitle,
@@ -4505,7 +4516,8 @@ func createTestProject(t *testing.T, db *sql.DB) int {
 	require.NoError(t, err, "Failed to create test project")
 
 	// Initialize project counter
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	require.NoError(t, err)
 	_, err = db.ExecContext(context.Background(), "INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)", id)
 	require.NoError(t, err, "Failed to initialize project counter")
 
@@ -4517,7 +4529,8 @@ func createTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int 
 	t.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name, holds_ready_tasks) VALUES (?, ?, ?)", projectID, name, false)
 	require.NoError(t, err, "Failed to create test column")
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	require.NoError(t, err)
 	return int(id)
 }
 
@@ -4526,7 +4539,8 @@ func createTestReadyColumn(t *testing.T, db *sql.DB, projectID int, name string)
 	t.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name, holds_ready_tasks) VALUES (?, ?, ?)", projectID, name, true)
 	require.NoError(t, err, "Failed to create test ready column")
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	require.NoError(t, err)
 	return int(id)
 }
 
@@ -4535,7 +4549,8 @@ func createTestCompletedColumn(t *testing.T, db *sql.DB, projectID int, name str
 	t.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name, holds_completed_tasks) VALUES (?, ?, ?)", projectID, name, true)
 	require.NoError(t, err, "Failed to create test completed column")
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	require.NoError(t, err)
 	return int(id)
 }
 
@@ -4560,7 +4575,8 @@ func createTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
 		"INSERT INTO tasks (column_id, title, position, type_id, priority_id) VALUES (?, ?, ?, 1, 3)",
 		columnID, title, nextPos)
 	require.NoError(t, err, "Failed to create test task")
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	require.NoError(t, err)
 	return int(id)
 }
 
@@ -4569,7 +4585,8 @@ func createTestLabel(t *testing.T, db *sql.DB, projectID int, name string) int {
 	t.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)", projectID, name, "#FF5733")
 	require.NoError(t, err, "Failed to create test label")
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	require.NoError(t, err)
 	return int(id)
 }
 
@@ -4580,6 +4597,7 @@ func createTestComment(t *testing.T, db *sql.DB, taskID int, message, author str
 		"INSERT INTO task_comments (task_id, content, author) VALUES (?, ?, ?)",
 		taskID, message, author)
 	require.NoError(t, err, "Failed to create test comment")
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	require.NoError(t, err)
 	return int(id)
 }

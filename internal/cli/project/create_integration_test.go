@@ -326,6 +326,16 @@ func TestCreateProject_DifferentBranches(t *testing.T) {
 	})
 }
 
+func TestCreateProject_Negative(t *testing.T) {
+	_, app := cli.SetupCLITest(t)
+
+	t.Run("Create project missing title returns error", func(t *testing.T) {
+		cmd := CreateCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
+		assert.Error(t, err)
+	})
+}
+
 func TestCreateProject_GitBranchWithSlashes(t *testing.T) {
 	// This test verifies that branch names with slashes (like feature/my-feature) work correctly
 

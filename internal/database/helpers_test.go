@@ -83,7 +83,9 @@ func setupPostgresTestDB(tb testing.TB) *sql.DB {
 	drop table if exists types cascade;
 	drop table if exists goose_db_version cascade;
 	`
-	_, _ = db.ExecContext(ctx, drops)
+	if _, err := db.ExecContext(ctx, drops); err != nil {
+		tb.Logf("warning: failed to drop tables during cleanup: %v", err)
+	}
 
 	if err := applyMigrations(db, PostgreSQL); err != nil {
 		tb.Fatalf("Failed to run PostgreSQL migrations: %v", err)
@@ -108,7 +110,10 @@ func createTestProject(t *testing.T, db *sql.DB, name string) int {
 	ctx := context.Background()
 	result, err := db.ExecContext(ctx, "INSERT INTO projects (name) VALUES (?)", name)
 	require.NoError(t, err)
-	projectID, _ := result.LastInsertId()
+	projectID, err := result.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_, err = db.ExecContext(ctx, "INSERT INTO project_counters (project_id) VALUES (?)", projectID)
 	require.NoError(t, err)

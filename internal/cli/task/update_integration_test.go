@@ -404,7 +404,7 @@ func TestUpdateTask_Negative(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
 
 	// Create test project
-	_ = cli.CreateTestProject(t, db, "Test Project")
+	cli.CreateTestProject(t, db, "Test Project")
 
 	t.Run("Error with non-existent task ID", func(t *testing.T) {
 		cmd := UpdateCmd()

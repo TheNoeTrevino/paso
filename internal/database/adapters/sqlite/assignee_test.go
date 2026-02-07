@@ -25,7 +25,8 @@ func TestDeleteAssigneeSetNullBehavior(t *testing.T) {
 	// Create an assignee
 	result, err := db.ExecContext(ctx, "INSERT INTO assignees (name) VALUES (?)", "test-user")
 	require.NoError(t, err)
-	assigneeID, _ := result.LastInsertId()
+	assigneeID, err := result.LastInsertId()
+	require.NoError(t, err)
 
 	// Create a task assigned to this assignee
 	taskID := testutil.CreateTestTask(t, db, columnID, "test-task")

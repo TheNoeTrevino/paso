@@ -18,7 +18,7 @@ func TestModelInitialization(t *testing.T) {
 	defer cancel()
 
 	db, app := testutilcli.SetupCLITest(t)
-	_ = testutilcli.CreateTestProject(t, db, "Test Project")
+	testutilcli.CreateTestProject(t, db, "Test Project")
 
 	cfg := &config.Config{
 		ColorScheme: config.DefaultColorScheme(),
@@ -37,7 +37,7 @@ func TestModelImplementsTeaModel(t *testing.T) {
 	defer cancel()
 
 	db, app := testutilcli.SetupCLITest(t)
-	_ = testutilcli.CreateTestProject(t, db, "Test Project")
+	testutilcli.CreateTestProject(t, db, "Test Project")
 
 	cfg := &config.Config{
 		ColorScheme: config.DefaultColorScheme(),
@@ -64,7 +64,7 @@ func TestModelViewGeneratesOutput(t *testing.T) {
 
 	db, app := testutilcli.SetupCLITest(t)
 	projectID := testutilcli.CreateTestProject(t, db, "Test Project")
-	_ = testutilcli.CreateTestColumn(t, db, projectID, "Todo")
+	testutilcli.CreateTestColumn(t, db, projectID, "Todo")
 
 	cfg := &config.Config{
 		ColorScheme: config.DefaultColorScheme(),

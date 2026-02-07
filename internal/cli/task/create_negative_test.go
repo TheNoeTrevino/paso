@@ -31,4 +31,19 @@ func TestCreateTask_Negative(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "column 'NonExistentColumn' not found")
 	})
+
+	// Create a column so we can test missing title with valid project/column
+	cli.CreateTestColumn(t, db, projectID, "Todo")
+
+	t.Run("Create task missing title", func(t *testing.T) {
+		cmd := CreateCmd()
+
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--project", fmt.Sprintf("%d", projectID),
+			"--column", "Todo",
+		})
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "title")
+	})
 }

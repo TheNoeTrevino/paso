@@ -204,13 +204,13 @@ func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) Model {
 
 	// Create multiple tasks per column
 	for i := range 5 {
-		_ = testutil.CreateTestTask(t, db, columns[0].ID, "Task "+string(rune(65+i)))
+		testutil.CreateTestTask(t, db, columns[0].ID, "Task "+string(rune(65+i)))
 	}
 	for i := range 3 {
-		_ = testutil.CreateTestTask(t, db, columns[1].ID, "In Progress Task "+string(rune(65+i)))
+		testutil.CreateTestTask(t, db, columns[1].ID, "In Progress Task "+string(rune(65+i)))
 	}
 	for i := range 2 {
-		_ = testutil.CreateTestTask(t, db, columns[2].ID, "Done Task "+string(rune(65+i)))
+		testutil.CreateTestTask(t, db, columns[2].ID, "Done Task "+string(rune(65+i)))
 	}
 
 	tasks, err := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)

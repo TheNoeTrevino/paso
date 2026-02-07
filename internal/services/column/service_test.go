@@ -94,13 +94,7 @@ func TestCreateColumn_Validation(t *testing.T) {
 			setupFn: func(db *sql.DB) int {
 				return createTestProject(t, db)
 			},
-			colName: func() string {
-				name := ""
-				for range 51 {
-					name += "a"
-				}
-				return name
-			}(),
+			colName: strings.Repeat("a", 51),
 			wantErr: true,
 			errType: ErrNameTooLong,
 		},
@@ -234,9 +228,12 @@ func TestCreateColumn_InsertAfter(t *testing.T) {
 	// Verify linked list: col1 <-> col2 <-> col3
 
 	// Get updated columns
-	col1Updated, _ := svc.GetColumnByID(ctx, col1.ID)
-	col2Updated, _ := svc.GetColumnByID(ctx, col2.ID)
-	col3Updated, _ := svc.GetColumnByID(ctx, col3.ID)
+	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
+	require.NoError(t, err)
+	col2Updated, err := svc.GetColumnByID(ctx, col2.ID)
+	require.NoError(t, err)
+	col3Updated, err := svc.GetColumnByID(ctx, col3.ID)
+	require.NoError(t, err)
 
 	require.NotNil(t, col1Updated.NextID)
 	assert.Equal(t, col2.ID, *col1Updated.NextID)
@@ -403,10 +400,11 @@ func TestUpdateColumnName_Validation(t *testing.T) {
 			errType: ErrEmptyName,
 			setupFn: func(db *sql.DB) int {
 				projectID := createTestProject(t, db)
-				col, _ := newTestService(t, db).CreateColumn(context.Background(), CreateColumnRequest{
+				col, err := newTestService(t, db).CreateColumn(context.Background(), CreateColumnRequest{
 					Name:      "To Do",
 					ProjectID: projectID,
 				})
+				require.NoError(t, err)
 				return col.ID
 			},
 		},
@@ -490,10 +488,11 @@ func TestDeleteColumn_Validation(t *testing.T) {
 			errType: ErrColumnHasTasks,
 			setupFn: func(db *sql.DB) int {
 				projectID := createTestProject(t, db)
-				col, _ := newTestService(t, db).CreateColumn(context.Background(), CreateColumnRequest{
+				col, err := newTestService(t, db).CreateColumn(context.Background(), CreateColumnRequest{
 					Name:      "To Do",
 					ProjectID: projectID,
 				})
+				require.NoError(t, err)
 				createTestTask(t, db, col.ID)
 				return col.ID
 			},
@@ -537,29 +536,34 @@ func TestDeleteColumn_LinkedListIntegrity(t *testing.T) {
 	ctx := context.Background()
 
 	// Create three columns: col1 <-> col2 <-> col3
-	col1, _ := svc.CreateColumn(ctx, CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
+	require.NoError(t, err)
 
-	col2, _ := svc.CreateColumn(ctx, CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "In Progress",
 		ProjectID: projectID,
 	})
+	require.NoError(t, err)
 
-	col3, _ := svc.CreateColumn(ctx, CreateColumnRequest{
+	col3, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "Done",
 		ProjectID: projectID,
 	})
+	require.NoError(t, err)
 
 	// Delete middle column (col2)
-	err := svc.DeleteColumn(ctx, col2.ID)
+	err = svc.DeleteColumn(ctx, col2.ID)
 	require.NoError(t, err, "Failed to delete column 2")
 
 	// Verify linked list is repaired: col1 <-> col3
 
-	col1Updated, _ := svc.GetColumnByID(ctx, col1.ID)
-	col3Updated, _ := svc.GetColumnByID(ctx, col3.ID)
+	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
+	require.NoError(t, err)
+	col3Updated, err := svc.GetColumnByID(ctx, col3.ID)
+	require.NoError(t, err)
 
 	require.NotNil(t, col1Updated.NextID)
 	assert.Equal(t, col3.ID, *col1Updated.NextID)
@@ -791,7 +795,7 @@ func TestSetHoldsReadyTasks_ColumnNotFound(t *testing.T) {
 	require.Error(t, err)
 
 	// Should get a wrapped sql.ErrNoRows
-	assert.True(t, errors.Is(err, sql.ErrNoRows) || contains(err.Error(), "no rows"))
+	assert.True(t, errors.Is(err, sql.ErrNoRows) || strings.Contains(err.Error(), "no rows"))
 }
 
 func TestCreateColumn_OnlyOneReadyPerProject(t *testing.T) {
@@ -816,22 +820,7 @@ func TestCreateColumn_OnlyOneReadyPerProject(t *testing.T) {
 	require.Error(t, err)
 
 	// Should get a constraint violation error
-	assert.True(t, contains(err.Error(), "UNIQUE") || contains(err.Error(), "constraint"))
-}
-
-// Helper function to check if error message contains substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) &&
-		(hasSubstring(s, substr)))
-}
-
-func hasSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
+	assert.True(t, strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "constraint"))
 }
 
 func TestGetColumnByID_NegativeID(t *testing.T) {
@@ -1067,29 +1056,34 @@ func TestDeleteColumn_FirstColumn(t *testing.T) {
 	ctx := context.Background()
 
 	// Create three columns: col1 <-> col2 <-> col3
-	col1, _ := svc.CreateColumn(ctx, CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
+	require.NoError(t, err)
 
-	col2, _ := svc.CreateColumn(ctx, CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "In Progress",
 		ProjectID: projectID,
 	})
+	require.NoError(t, err)
 
-	col3, _ := svc.CreateColumn(ctx, CreateColumnRequest{
+	col3, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "Done",
 		ProjectID: projectID,
 	})
+	require.NoError(t, err)
 
 	// Delete first column (col1)
-	err := svc.DeleteColumn(ctx, col1.ID)
+	err = svc.DeleteColumn(ctx, col1.ID)
 	require.NoError(t, err, "Failed to delete column 1")
 
 	// Verify linked list is repaired: col2 <-> col3
 
-	col2Updated, _ := svc.GetColumnByID(ctx, col2.ID)
-	col3Updated, _ := svc.GetColumnByID(ctx, col3.ID)
+	col2Updated, err := svc.GetColumnByID(ctx, col2.ID)
+	require.NoError(t, err)
+	col3Updated, err := svc.GetColumnByID(ctx, col3.ID)
+	require.NoError(t, err)
 
 	assert.Nil(t, col2Updated.PrevID)
 
@@ -1110,29 +1104,34 @@ func TestDeleteColumn_LastColumn(t *testing.T) {
 	ctx := context.Background()
 
 	// Create three columns: col1 <-> col2 <-> col3
-	col1, _ := svc.CreateColumn(ctx, CreateColumnRequest{
+	col1, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
+	require.NoError(t, err)
 
-	col2, _ := svc.CreateColumn(ctx, CreateColumnRequest{
+	col2, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "In Progress",
 		ProjectID: projectID,
 	})
+	require.NoError(t, err)
 
-	col3, _ := svc.CreateColumn(ctx, CreateColumnRequest{
+	col3, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "Done",
 		ProjectID: projectID,
 	})
+	require.NoError(t, err)
 
 	// Delete last column (col3)
-	err := svc.DeleteColumn(ctx, col3.ID)
+	err = svc.DeleteColumn(ctx, col3.ID)
 	require.NoError(t, err, "Failed to delete column 3")
 
 	// Verify linked list is repaired: col1 <-> col2
 
-	col1Updated, _ := svc.GetColumnByID(ctx, col1.ID)
-	col2Updated, _ := svc.GetColumnByID(ctx, col2.ID)
+	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
+	require.NoError(t, err)
+	col2Updated, err := svc.GetColumnByID(ctx, col2.ID)
+	require.NoError(t, err)
 
 	require.NotNil(t, col1Updated.NextID)
 	assert.Equal(t, col2.ID, *col1Updated.NextID)
@@ -1153,13 +1152,14 @@ func TestDeleteColumn_OnlyColumn(t *testing.T) {
 	ctx := context.Background()
 
 	// Create single column
-	col, _ := svc.CreateColumn(ctx, CreateColumnRequest{
+	col, err := svc.CreateColumn(ctx, CreateColumnRequest{
 		Name:      "To Do",
 		ProjectID: projectID,
 	})
+	require.NoError(t, err)
 
 	// Delete it
-	err := svc.DeleteColumn(ctx, col.ID)
+	err = svc.DeleteColumn(ctx, col.ID)
 	require.NoError(t, err, "Failed to delete only column")
 
 	// Verify project has no columns
@@ -1216,8 +1216,10 @@ func TestCreateColumn_MultipleReadyColumns_DifferentProjects(t *testing.T) {
 	require.True(t, col2.HoldsReadyTasks)
 
 	// Verify both columns are still ready
-	col1Check, _ := svc.GetColumnByID(ctx, col1.ID)
-	col2Check, _ := svc.GetColumnByID(ctx, col2.ID)
+	col1Check, err := svc.GetColumnByID(ctx, col1.ID)
+	require.NoError(t, err)
+	col2Check, err := svc.GetColumnByID(ctx, col2.ID)
+	require.NoError(t, err)
 
 	assert.True(t, col1Check.HoldsReadyTasks)
 
@@ -1271,8 +1273,10 @@ func TestCreateColumn_MultipleCompletedColumns_DifferentProjects(t *testing.T) {
 	require.True(t, col2.HoldsCompletedTasks)
 
 	// Verify both columns are still completed
-	col1Check, _ := svc.GetColumnByID(ctx, col1.ID)
-	col2Check, _ := svc.GetColumnByID(ctx, col2.ID)
+	col1Check, err := svc.GetColumnByID(ctx, col1.ID)
+	require.NoError(t, err)
+	col2Check, err := svc.GetColumnByID(ctx, col2.ID)
+	require.NoError(t, err)
 
 	assert.True(t, col1Check.HoldsCompletedTasks)
 
@@ -1451,7 +1455,7 @@ func TestSetHoldsInProgressTasks_ColumnNotFound(t *testing.T) {
 	require.Error(t, err)
 
 	// Should get a wrapped sql.ErrNoRows
-	assert.True(t, errors.Is(err, sql.ErrNoRows) || contains(err.Error(), "no rows"))
+	assert.True(t, errors.Is(err, sql.ErrNoRows) || strings.Contains(err.Error(), "no rows"))
 }
 
 func TestGetColumnByID_IncludesHoldsInProgressTasks(t *testing.T) {
@@ -1552,8 +1556,10 @@ func TestCreateColumn_MultipleInProgressColumns_DifferentProjects(t *testing.T) 
 	require.True(t, col2.HoldsInProgressTasks)
 
 	// Verify both columns are still in-progress
-	col1Check, _ := svc.GetColumnByID(ctx, col1.ID)
-	col2Check, _ := svc.GetColumnByID(ctx, col2.ID)
+	col1Check, err := svc.GetColumnByID(ctx, col1.ID)
+	require.NoError(t, err)
+	col2Check, err := svc.GetColumnByID(ctx, col2.ID)
+	require.NoError(t, err)
 
 	assert.True(t, col1Check.HoldsInProgressTasks)
 
@@ -1598,7 +1604,7 @@ func TestCreateColumn_NonExistentProject(t *testing.T) {
 	require.Error(t, err)
 
 	// Error should be related to foreign key constraint
-	assert.True(t, contains(err.Error(), "failed to create column"))
+	assert.True(t, strings.Contains(err.Error(), "failed to create column"))
 }
 
 func TestUpdateColumnName_Exact50Characters(t *testing.T) {
@@ -1673,7 +1679,7 @@ func TestCreateColumn_ProjectIDMaxInt(t *testing.T) {
 	require.Error(t, err)
 
 	// Error should be related to foreign key constraint
-	assert.True(t, contains(err.Error(), "failed to create column"))
+	assert.True(t, strings.Contains(err.Error(), "failed to create column"))
 }
 
 func TestCreateColumn_WithHoldsCompletedTasks(t *testing.T) {
@@ -1724,7 +1730,7 @@ func TestCreateColumn_HoldsCompletedTasks_FailsWhenExists(t *testing.T) {
 
 	require.Error(t, err)
 
-	assert.True(t, errors.Is(err, ErrCompletedColumnExists) || contains(err.Error(), "completed column already exists"))
+	assert.True(t, errors.Is(err, ErrCompletedColumnExists) || strings.Contains(err.Error(), "completed column already exists"))
 }
 
 func TestSetHoldsCompletedTasks_Success(t *testing.T) {
@@ -1788,7 +1794,7 @@ func TestSetHoldsCompletedTasks_FailsWhenExistsWithoutForce(t *testing.T) {
 
 	require.Error(t, err)
 
-	assert.True(t, errors.Is(err, ErrCompletedColumnExists) || contains(err.Error(), "completed column already exists"))
+	assert.True(t, errors.Is(err, ErrCompletedColumnExists) || strings.Contains(err.Error(), "completed column already exists"))
 
 	// Verify col1 is still completed
 	col1Updated, err := svc.GetColumnByID(ctx, col1.ID)
@@ -1926,7 +1932,7 @@ func TestSetHoldsCompletedTasks_ColumnNotFound(t *testing.T) {
 	require.Error(t, err)
 
 	// Should get a wrapped sql.ErrNoRows
-	assert.True(t, errors.Is(err, sql.ErrNoRows) || contains(err.Error(), "no rows"))
+	assert.True(t, errors.Is(err, sql.ErrNoRows) || strings.Contains(err.Error(), "no rows"))
 }
 
 func TestCreateColumn_OnlyOneCompletedPerProject(t *testing.T) {
@@ -1951,5 +1957,5 @@ func TestCreateColumn_OnlyOneCompletedPerProject(t *testing.T) {
 	require.Error(t, err)
 
 	// Should get a constraint violation error
-	assert.True(t, contains(err.Error(), "UNIQUE") || contains(err.Error(), "constraint"))
+	assert.True(t, strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "constraint"))
 }

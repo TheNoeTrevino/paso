@@ -74,8 +74,8 @@ func TestBlockedTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Create tasks but no blocking relationships
-		_ = cli.CreateTestTask(t, db, emptyTodoColumnID, "Regular Task 1")
-		_ = cli.CreateTestTask(t, db, emptyTodoColumnID, "Regular Task 2")
+		cli.CreateTestTask(t, db, emptyTodoColumnID, "Regular Task 1")
+		cli.CreateTestTask(t, db, emptyTodoColumnID, "Regular Task 2")
 
 		blockedCmd := BlockedCmd()
 		output, err := cli.ExecuteCLICommand(t, app, blockedCmd,
