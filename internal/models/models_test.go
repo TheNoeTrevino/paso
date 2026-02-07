@@ -2,6 +2,8 @@ package models
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPriority_Creation(t *testing.T) {
@@ -11,15 +13,9 @@ func TestPriority_Creation(t *testing.T) {
 		Color:       "#FF0000",
 	}
 
-	if p.ID != 4 {
-		t.Errorf("Expected ID 4, got %d", p.ID)
-	}
-	if p.Description != "high" {
-		t.Errorf("Expected description 'high', got '%s'", p.Description)
-	}
-	if p.Color != "#FF0000" {
-		t.Errorf("Expected color '#FF0000', got '%s'", p.Color)
-	}
+	assert.Equal(t, 4, p.ID)
+	assert.Equal(t, "high", p.Description)
+	assert.Equal(t, "#FF0000", p.Color)
 }
 
 func TestType_Creation(t *testing.T) {
@@ -28,12 +24,8 @@ func TestType_Creation(t *testing.T) {
 		Description: "feature",
 	}
 
-	if typ.ID != 2 {
-		t.Errorf("Expected ID 2, got %d", typ.ID)
-	}
-	if typ.Description != "feature" {
-		t.Errorf("Expected description 'feature', got '%s'", typ.Description)
-	}
+	assert.Equal(t, 2, typ.ID)
+	assert.Equal(t, "feature", typ.Description)
 }
 
 func TestRelationType_Creation(t *testing.T) {
@@ -45,21 +37,11 @@ func TestRelationType_Creation(t *testing.T) {
 		IsBlocking: true,
 	}
 
-	if rt.ID != 2 {
-		t.Errorf("Expected ID 2, got %d", rt.ID)
-	}
-	if rt.PToCLabel != "Blocked By" {
-		t.Errorf("Expected PToCLabel 'Blocked By', got '%s'", rt.PToCLabel)
-	}
-	if rt.CToPLabel != "Blocker" {
-		t.Errorf("Expected CToPLabel 'Blocker', got '%s'", rt.CToPLabel)
-	}
-	if rt.Color != "#EF4444" {
-		t.Errorf("Expected color '#EF4444', got '%s'", rt.Color)
-	}
-	if !rt.IsBlocking {
-		t.Error("Expected IsBlocking to be true")
-	}
+	assert.Equal(t, 2, rt.ID)
+	assert.Equal(t, "Blocked By", rt.PToCLabel)
+	assert.Equal(t, "Blocker", rt.CToPLabel)
+	assert.Equal(t, "#EF4444", rt.Color)
+	assert.True(t, rt.IsBlocking)
 }
 
 func TestRelationType_NonBlocking(t *testing.T) {
@@ -71,7 +53,5 @@ func TestRelationType_NonBlocking(t *testing.T) {
 		IsBlocking: false,
 	}
 
-	if rt.IsBlocking {
-		t.Error("Expected IsBlocking to be false")
-	}
+	assert.False(t, rt.IsBlocking)
 }

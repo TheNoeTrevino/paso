@@ -27,15 +27,11 @@ func newTestQuerier(t *testing.T, db *sql.DB) database.Querier {
 func createTestProject(t *testing.T, db *sql.DB) int {
 	t.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name, description) VALUES (?, ?)", "Test Project", "Description")
-	if err != nil {
-		t.Fatalf("Failed to create test project: %v", err)
-	}
+	require.NoError(t, err)
 
 	id, _ := result.LastInsertId()
 	_, err = db.ExecContext(context.Background(), "INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)", id)
-	if err != nil {
-		t.Fatalf("Failed to initialize project counter: %v", err)
-	}
+	require.NoError(t, err)
 
 	return int(id)
 }
@@ -43,9 +39,7 @@ func createTestProject(t *testing.T, db *sql.DB) int {
 func createTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
 	t.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name, holds_ready_tasks) VALUES (?, ?, ?)", projectID, name, false)
-	if err != nil {
-		t.Fatalf("Failed to create test column: %v", err)
-	}
+	require.NoError(t, err)
 	id, _ := result.LastInsertId()
 	return int(id)
 }
@@ -57,7 +51,7 @@ func createTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
 	err := db.QueryRowContext(context.Background(),
 		"SELECT MAX(position) FROM tasks WHERE column_id = ?", columnID).Scan(&maxPos)
 	if err != nil && err != sql.ErrNoRows {
-		t.Fatalf("Failed to get max position: %v", err)
+		require.NoError(t, err)
 	}
 
 	nextPos := 0
@@ -68,9 +62,7 @@ func createTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
 	result, err := db.ExecContext(context.Background(),
 		"INSERT INTO tasks (column_id, title, position, type_id, priority_id) VALUES (?, ?, ?, 1, 3)",
 		columnID, title, nextPos)
-	if err != nil {
-		t.Fatalf("Failed to create test task: %v", err)
-	}
+	require.NoError(t, err)
 	id, _ := result.LastInsertId()
 	return int(id)
 }
