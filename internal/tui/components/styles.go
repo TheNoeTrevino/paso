@@ -67,9 +67,6 @@ var (
 	// EditInputBoxStyle defines the base style for edit dialogs (blue border)
 	EditInputBoxStyle lipgloss.Style
 
-	// EllipsisStyle defines the style for ellipses in truncated text
-	EllipsisStyle lipgloss.Style
-
 	// DeleteConfirmBoxStyle defines the base style for deletion confirmations (red border)
 	DeleteConfirmBoxStyle lipgloss.Style
 
@@ -219,9 +216,6 @@ func InitStyles(colors colors.ColorScheme) {
 
 	StatusBarSearchStyle = lipgloss.NewStyle().
 		Background(lipgloss.Color(colors.Background))
-
-	EllipsisStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Subtle))
 
 	StatusBarTipStyle = lipgloss.NewStyle().
 		Background(lipgloss.Color(colors.Background)).
