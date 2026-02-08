@@ -13,7 +13,7 @@ func TestRenderTaskCardLabels_NoLabels(t *testing.T) {
 	t.Parallel()
 
 	bg := "#333333"
-	result := renderTaskCardLabels(nil, bg, 30)
+	result := renderTaskCardLabels(nil, bg, 27)
 
 	assert.Contains(t, result, "no labels")
 }
@@ -27,7 +27,7 @@ func TestRenderTaskCardLabels_AllFit(t *testing.T) {
 		{Name: "fix", Color: "#00FF00"},
 	}
 
-	result := renderTaskCardLabels(labels, bg, 40)
+	result := renderTaskCardLabels(labels, bg, 37)
 
 	assert.Contains(t, result, "bug")
 	assert.Contains(t, result, "fix")
@@ -45,8 +45,8 @@ func TestRenderTaskCardLabels_Overflow(t *testing.T) {
 		{Name: "help wanted", Color: "#FFFF00"},
 	}
 
-	// Use a narrow width that can't fit all labels
-	result := renderTaskCardLabels(labels, bg, 20)
+	// Use a narrow maxWidth that can't fit all labels
+	result := renderTaskCardLabels(labels, bg, 17)
 
 	assert.Contains(t, result, "...")
 	// At least one label should render
@@ -67,16 +67,15 @@ func TestRenderTaskCardLabels_NeverExceedsWidth(t *testing.T) {
 		{Name: "good first issue", Color: "#7057FF"},
 	}
 
-	widths := []int{10, 15, 20, 25, 30, 35, 40}
-	for _, cardWidth := range widths {
-		result := renderTaskCardLabels(labels, bg, cardWidth)
+	widths := []int{7, 12, 17, 22, 27, 32, 37}
+	for _, maxWidth := range widths {
+		result := renderTaskCardLabels(labels, bg, maxWidth)
 		// Strip the leading newline+space that the function prepends
 		line := strings.TrimPrefix(result, "\n ")
 		renderedWidth := lipgloss.Width(line)
-		maxAllowed := cardWidth - 3 // safetyBuffer = 3
-		assert.LessOrEqual(t, renderedWidth, maxAllowed,
-			"label line width %d exceeded max %d at cardWidth=%d",
-			renderedWidth, maxAllowed, cardWidth)
+		assert.LessOrEqual(t, renderedWidth, maxWidth,
+			"label line width %d exceeded max %d",
+			renderedWidth, maxWidth)
 	}
 }
 
@@ -93,15 +92,14 @@ func TestRenderTaskSummaryMetadata_NeverExceedsWidth(t *testing.T) {
 		IsBlocked:           true,
 	}
 
-	widths := []int{15, 20, 25, 30, 35, 40, 50}
-	for _, cardWidth := range widths {
-		result := renderTaskSummaryMetadata(task, bg, cardWidth)
+	widths := []int{12, 17, 22, 27, 32, 37, 47}
+	for _, maxWidth := range widths {
+		result := renderTaskSummaryMetadata(task, bg, maxWidth)
 		line := strings.TrimPrefix(result, "\n ")
 		renderedWidth := lipgloss.Width(line)
-		maxAllowed := cardWidth - 3 // safetyBuffer = 3
-		assert.LessOrEqual(t, renderedWidth, maxAllowed,
-			"metadata line width %d exceeded max %d at cardWidth=%d",
-			renderedWidth, maxAllowed, cardWidth)
+		assert.LessOrEqual(t, renderedWidth, maxWidth,
+			"metadata line width %d exceeded max %d",
+			renderedWidth, maxWidth)
 	}
 }
 
@@ -117,7 +115,7 @@ func TestRenderTaskSummaryMetadata_LongAssigneeTruncated(t *testing.T) {
 		AssigneeName:        &longAssignee,
 	}
 
-	result := renderTaskSummaryMetadata(task, bg, 25)
+	result := renderTaskSummaryMetadata(task, bg, 22)
 
 	assert.Contains(t, result, "...")
 	assert.NotContains(t, result, longAssignee)
@@ -135,8 +133,8 @@ func TestRenderTaskSummaryMetadata_AllFitWideCard(t *testing.T) {
 		AssigneeName:        &assignee,
 	}
 
-	// 80 char wide card should fit everything
-	result := renderTaskSummaryMetadata(task, bg, 80)
+	// Wide enough to fit everything
+	result := renderTaskSummaryMetadata(task, bg, 77)
 
 	assert.Contains(t, result, "task")
 	assert.Contains(t, result, "high")
@@ -182,16 +180,10 @@ func TestRenderTaskCardLabels_ShowsPartialLastLabel(t *testing.T) {
 		{Name: "help wanted", Color: "#FFFF00"},
 	}
 
-	// Width that allows partial "help wanted" to show
-	// "bug duplicate enhancement help wa..." needs to be truncated
+	// maxWidth=30 allows partial "help wanted" to show
 	// Full: "bug duplicate enhancement help wanted" = 3+1+9+1+11+1+11 = 37
-	// Available after safetyBuffer (3): cardWidth - 3 = maxWidth
-	// Set cardWidth=33, maxWidth=30
-	// "bug duplicate enhancement help..." = 3+1+9+1+11+1+4+3 = 33 (doesn't fit in 30)
-	// "bug duplicate enhancement hel..." = 3+1+9+1+11+1+3+3 = 32 (doesn't fit in 30)
-	// "bug duplicate enhancement he..." = 3+1+9+1+11+1+2+3 = 31 (doesn't fit in 30)
 	// "bug duplicate enhancement h..." = 3+1+9+1+11+1+1+3 = 30 (fits!)
-	result := renderTaskCardLabels(labels, bg, 33)
+	result := renderTaskCardLabels(labels, bg, 30)
 
 	assert.Contains(t, result, "bug")
 	assert.Contains(t, result, "duplicate")
@@ -214,10 +206,10 @@ func TestRenderTaskSummaryMetadata_ShowsPartialAssignee(t *testing.T) {
 		AssigneeName:        &longAssignee,
 	}
 
-	// Width that allows partial assignee
-	// "task ∙ critical ∙ @noet" = 4+3+8+3+5 = 23
+	// maxWidth=26 allows partial assignee
+	// "task | critical | @noet" = 4+3+8+3+5 = 23
 	// With ellipsis: 23+3 = 26
-	result := renderTaskSummaryMetadata(task, bg, 29)
+	result := renderTaskSummaryMetadata(task, bg, 26)
 
 	assert.Contains(t, result, "task")
 	assert.Contains(t, result, "critical")
@@ -236,21 +228,20 @@ func TestRenderTaskCardLabels_CharacterLevelTruncation(t *testing.T) {
 		{Name: "enhancement", Color: "#0000FF"},
 	}
 
-	// Test various widths to ensure character-level truncation works
-	// Full: "bug enhancement" = 3+1+11 = 15, maxWidth after buffer = cardWidth-3
-	// So cardWidth=18 gives maxWidth=15, which fits exactly
+	// Test various maxWidths to ensure character-level truncation works
+	// Full: "bug enhancement" = 3+1+11 = 15
 	testCases := []struct {
 		width                int
 		shouldContainBug     bool
 		shouldContainPartial bool
 		partialText          string
 	}{
-		// cardWidth=16, maxWidth=13: "bug enhanc..." = 3+1+6+3 = 13
-		{width: 16, shouldContainBug: true, shouldContainPartial: true, partialText: "enhanc"},
-		// cardWidth=14, maxWidth=11: "bug enha..." = 3+1+4+3 = 11
-		{width: 14, shouldContainBug: true, shouldContainPartial: true, partialText: "enha"},
-		// cardWidth=11, maxWidth=8: "bug en..." = 3+1+2+3 = 9 (doesn't fit), "bug e..." = 3+1+1+3 = 8
-		{width: 11, shouldContainBug: true, shouldContainPartial: true, partialText: "e"},
+		// maxWidth=13: "bug enhanc..." = 3+1+6+3 = 13
+		{width: 13, shouldContainBug: true, shouldContainPartial: true, partialText: "enhanc"},
+		// maxWidth=11: "bug enha..." = 3+1+4+3 = 11
+		{width: 11, shouldContainBug: true, shouldContainPartial: true, partialText: "enha"},
+		// maxWidth=8: "bug e..." = 3+1+1+3 = 8
+		{width: 8, shouldContainBug: true, shouldContainPartial: true, partialText: "e"},
 	}
 
 	for _, tc := range testCases {
@@ -279,27 +270,27 @@ func TestRenderTaskSummaryMetadata_CharacterLevelTruncation(t *testing.T) {
 		IsBlocked:           true,
 	}
 
-	// Test various widths
+	// Test various maxWidths
 	testCases := []struct {
-		width             int
+		maxWidth          int
 		shouldContainTask bool
 		shouldContainCrit bool
 	}{
 		// Wide enough for task + critical + partial assignee
-		{width: 35, shouldContainTask: true, shouldContainCrit: true},
+		{maxWidth: 32, shouldContainTask: true, shouldContainCrit: true},
 		// Only task + critical
-		{width: 25, shouldContainTask: true, shouldContainCrit: true},
+		{maxWidth: 22, shouldContainTask: true, shouldContainCrit: true},
 	}
 
 	for _, tc := range testCases {
-		result := renderTaskSummaryMetadata(task, bg, tc.width)
+		result := renderTaskSummaryMetadata(task, bg, tc.maxWidth)
 		if tc.shouldContainTask {
-			assert.Contains(t, result, "task", "width=%d should show 'task'", tc.width)
+			assert.Contains(t, result, "task", "maxWidth=%d should show 'task'", tc.maxWidth)
 		}
 		if tc.shouldContainCrit {
-			assert.Contains(t, result, "critical", "width=%d should show 'critical'", tc.width)
+			assert.Contains(t, result, "critical", "maxWidth=%d should show 'critical'", tc.maxWidth)
 		}
-		assert.Contains(t, result, "...", "width=%d should show ellipsis", tc.width)
+		assert.Contains(t, result, "...", "maxWidth=%d should show ellipsis", tc.maxWidth)
 	}
 }
 
@@ -311,7 +302,7 @@ func TestRenderTaskSummaryTitle_NoTruncation(t *testing.T) {
 		Title: "Short task",
 	}
 
-	result := renderTaskSummaryTitle(task, bg, 50)
+	result := renderTaskSummaryTitle(task, bg, 47)
 
 	assert.Contains(t, result, "Short task")
 	assert.NotContains(t, result, "...")
@@ -325,7 +316,7 @@ func TestRenderTaskSummaryTitle_Truncation(t *testing.T) {
 		Title: "This is a very long task title that should be truncated",
 	}
 
-	result := renderTaskSummaryTitle(task, bg, 20)
+	result := renderTaskSummaryTitle(task, bg, 17)
 
 	assert.Contains(t, result, "...")
 	assert.NotContains(t, result, "This is a very long task title that should be truncated")
@@ -340,18 +331,18 @@ func TestRenderTaskSummaryTitle_CharacterLevelTruncation(t *testing.T) {
 	}
 
 	testCases := []struct {
-		width         int
+		maxWidth      int
 		shouldContain string
 	}{
-		{width: 20, shouldContain: "Implement fe"},
-		{width: 15, shouldContain: "Implement"},
-		{width: 10, shouldContain: "Impl"},
+		{maxWidth: 17, shouldContain: "Implement feat"},
+		{maxWidth: 12, shouldContain: "Implement"},
+		{maxWidth: 7, shouldContain: "Impl"},
 	}
 
 	for _, tc := range testCases {
-		result := renderTaskSummaryTitle(task, bg, tc.width)
-		assert.Contains(t, result, tc.shouldContain, "width=%d should show partial '%s'", tc.width, tc.shouldContain)
-		assert.Contains(t, result, "...", "width=%d should show ellipsis", tc.width)
+		result := renderTaskSummaryTitle(task, bg, tc.maxWidth)
+		assert.Contains(t, result, tc.shouldContain, "maxWidth=%d should show partial '%s'", tc.maxWidth, tc.shouldContain)
+		assert.Contains(t, result, "...", "maxWidth=%d should show ellipsis", tc.maxWidth)
 	}
 }
 
@@ -363,15 +354,14 @@ func TestRenderTaskSummaryTitle_NeverExceedsWidth(t *testing.T) {
 		Title: "This is a very long task title that needs to be truncated at various widths to ensure it never exceeds the card width",
 	}
 
-	widths := []int{10, 15, 20, 25, 30, 35, 40, 50}
-	for _, cardWidth := range widths {
-		result := renderTaskSummaryTitle(task, bg, cardWidth)
+	widths := []int{7, 12, 17, 22, 27, 32, 37, 47}
+	for _, maxWidth := range widths {
+		result := renderTaskSummaryTitle(task, bg, maxWidth)
 		line := strings.TrimPrefix(result, " ")
 		renderedWidth := lipgloss.Width(line)
-		maxAllowed := cardWidth - 3
-		assert.LessOrEqual(t, renderedWidth, maxAllowed,
-			"title line width %d exceeded max %d at cardWidth=%d",
-			renderedWidth, maxAllowed, cardWidth)
+		assert.LessOrEqual(t, renderedWidth, maxWidth,
+			"title line width %d exceeded max %d",
+			renderedWidth, maxWidth)
 	}
 }
 
@@ -383,7 +373,7 @@ func TestRenderTaskSummaryTitle_EmptyTitle(t *testing.T) {
 		Title: "",
 	}
 
-	result := renderTaskSummaryTitle(task, bg, 30)
+	result := renderTaskSummaryTitle(task, bg, 27)
 
 	assert.NotContains(t, result, "...")
 }

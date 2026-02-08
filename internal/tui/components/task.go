@@ -27,9 +27,10 @@ func RenderTask(task *models.TaskSummary, selected bool, width int) string {
 		bg = theme.TaskBg
 	}
 
-	title := renderTaskSummaryTitle(task, bg, width)
-	metadataLine := renderTaskSummaryMetadata(task, bg, width)
-	labelChips := renderTaskCardLabels(task.Labels, bg, width)
+	maxWidth := width - taskCardSafetyBuffer
+	title := renderTaskSummaryTitle(task, bg, maxWidth)
+	metadataLine := renderTaskSummaryMetadata(task, bg, maxWidth)
+	labelChips := renderTaskCardLabels(task.Labels, bg, maxWidth)
 	content := title + metadataLine + labelChips
 
 	style := TaskStyle.
@@ -42,17 +43,13 @@ func RenderTask(task *models.TaskSummary, selected bool, width int) string {
 }
 
 // renderTaskSummaryTitle renders the task title, truncating with "..." if needed.
-func renderTaskSummaryTitle(task *models.TaskSummary, bg string, cardWidth int) string {
-	maxWidth := cardWidth - taskCardSafetyBuffer
-
+func renderTaskSummaryTitle(task *models.TaskSummary, bg string, maxWidth int) string {
 	segment := text.NewStyledSegment(task.Title, TaskTitleStyle, bg)
 	return " " + text.TruncateSegments([]text.Segment{segment}, "", maxWidth, bg)
 }
 
 // renderTaskCardLabels renders labels as colored chips, truncating with "..." if needed.
-func renderTaskCardLabels(labels []*models.Label, bg string, cardWidth int) string {
-	maxWidth := cardWidth - taskCardSafetyBuffer
-
+func renderTaskCardLabels(labels []*models.Label, bg string, maxWidth int) string {
 	if len(labels) == 0 {
 		emptyStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(theme.Subtle)).
@@ -73,10 +70,8 @@ func renderTaskCardLabels(labels []*models.Label, bg string, cardWidth int) stri
 }
 
 // renderTaskSummaryMetadata renders type, priority, assignee and blocked on the same line, separated by |.
-// Truncates with "..." if the total width exceeds the card width.
-func renderTaskSummaryMetadata(task *models.TaskSummary, bg string, cardWidth int) string {
-	maxWidth := cardWidth - taskCardSafetyBuffer
-
+// Truncates with "..." if the total width exceeds the max width.
+func renderTaskSummaryMetadata(task *models.TaskSummary, bg string, maxWidth int) string {
 	var segments []text.Segment
 
 	// Type
