@@ -1,10 +1,9 @@
 package components
 
 import (
-	"strings"
-
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/tui/text"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
@@ -29,7 +28,7 @@ func RenderTask(task *models.TaskSummary, selected bool, width int) string {
 	}
 
 	title := renderTaskSummaryTitle(task, bg, width)
-	metadataLine := renderTaskSummaryMetadata(task, bg)
+	metadataLine := renderTaskSummaryMetadata(task, bg, width)
 	labelChips := renderTaskCardLabels(task.Labels, bg, width)
 	content := title + metadataLine + labelChips
 
@@ -43,45 +42,16 @@ func RenderTask(task *models.TaskSummary, selected bool, width int) string {
 }
 
 // renderTaskSummaryTitle renders the task title, truncating with "..." if needed.
-// Uses lipgloss.Width() for measurement to match Lipgloss's word-wrap behavior.
 func renderTaskSummaryTitle(task *models.TaskSummary, bg string, cardWidth int) string {
-	// Safety buffer accounts for measurement discrepancies between
-	// lipgloss.Width() and Lipgloss's internal word-wrap calculations
-	const safetyBuffer = 2
-	maxWidth := cardWidth - safetyBuffer
+	maxWidth := cardWidth - taskCardSafetyBuffer
 
-	title := task.Title
-	styledEllipsis := EllipsisStyle.
-		Background(lipgloss.Color(bg)).
-		Render("...")
-
-	// Check if title fits without truncation
-	candidate := TaskTitleStyle.Render(" " + title)
-	if lipgloss.Width(candidate) <= maxWidth {
-		return candidate
-	}
-
-	// Truncate progressively until the rendered output fits
-	runes := []rune(title)
-	for len(runes) > 0 {
-		runes = runes[:len(runes)-1]
-		truncated := string(runes)
-		candidate = TaskTitleStyle.Render(" " + truncated + styledEllipsis)
-		if lipgloss.Width(candidate) <= maxWidth {
-			return candidate
-		}
-	}
-
-	return TaskTitleStyle.Render(" " + styledEllipsis)
+	segment := text.NewStyledSegment(task.Title, TaskTitleStyle, bg)
+	return " " + text.TruncateSegments([]text.Segment{segment}, "", maxWidth, bg)
 }
 
 // renderTaskCardLabels renders labels as colored chips, truncating with "..." if needed.
-// Uses lipgloss.Width() for measurement to match Lipgloss's word-wrap behavior.
 func renderTaskCardLabels(labels []*models.Label, bg string, cardWidth int) string {
-	const leadingSpace = 1
-	const ellipsisWidth = 3
-
-	maxWidth := cardWidth - leadingSpace
+	maxWidth := cardWidth - taskCardSafetyBuffer
 
 	if len(labels) == 0 {
 		emptyStyle := lipgloss.NewStyle().
@@ -91,92 +61,54 @@ func renderTaskCardLabels(labels []*models.Label, bg string, cardWidth int) stri
 		return "\n " + emptyStyle.Render("no labels")
 	}
 
-	spacer := lipgloss.NewStyle().Background(lipgloss.Color(bg)).Render(" ")
+	spacer := " "
 
-	// Calculate total width of all labels joined by spaces
-	totalWidth := 0
+	segments := make([]text.Segment, len(labels))
 	for i, label := range labels {
-		if i > 0 {
-			totalWidth += 1 // space separator
-		}
-		totalWidth += lipgloss.Width(label.Name)
+		labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(label.Color))
+		segments[i] = text.NewStyledSegment(label.Name, labelStyle, bg)
 	}
 
-	// If all labels fit, render them all
-	if totalWidth <= maxWidth {
-		var chips []string
-		for _, label := range labels {
-			chips = append(chips, RenderLabelChip(label, bg))
-		}
-		return "\n " + strings.Join(chips, spacer)
-	}
-
-	// Otherwise, add labels until we'd exceed the limit, then append ellipsis
-	var chips []string
-	currentWidth := 0
-
-	for i, label := range labels {
-		labelWidth := lipgloss.Width(label.Name)
-		nextWidth := currentWidth + labelWidth
-		if i > 0 {
-			nextWidth += 1 // space separator
-		}
-
-		// Check if adding this label + ellipsis would exceed limit
-		if nextWidth+ellipsisWidth > maxWidth {
-			break
-		}
-
-		chips = append(chips, RenderLabelChip(label, bg))
-		currentWidth = nextWidth
-	}
-
-	result := strings.Join(chips, spacer)
-	result += EllipsisStyle.Background(lipgloss.Color(bg)).Render("...")
-
-	return "\n " + result
+	return "\n " + text.TruncateSegments(segments, spacer, maxWidth, bg)
 }
 
-// renderTaskSummaryMetadata Renders type, priority, assignee and blocked on the same line, separated by │
-func renderTaskSummaryMetadata(task *models.TaskSummary, bg string) string {
-	var typeDisplay string
-	var priorityDisplay string
+// renderTaskSummaryMetadata renders type, priority, assignee and blocked on the same line, separated by |.
+// Truncates with "..." if the total width exceeds the card width.
+func renderTaskSummaryMetadata(task *models.TaskSummary, bg string, cardWidth int) string {
+	maxWidth := cardWidth - taskCardSafetyBuffer
 
+	var segments []text.Segment
+
+	// Type
 	if task.TypeDescription != "" {
-		typeDisplay = SubtleStyle.Render(task.TypeDescription)
+		segments = append(segments, text.NewStyledSegment(task.TypeDescription, SubtleStyle, bg))
 	} else {
-		typeDisplay = SubtleStyle.Italic(true).Render("no type")
+		segments = append(segments, text.NewStyledSegment("no type", SubtleStyle.Italic(true), bg))
 	}
 
-	priorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(task.PriorityColor)).Background(lipgloss.Color(bg))
+	// Priority
 	if task.PriorityDescription != "" && task.PriorityColor != "" {
-		priorityDisplay = priorityStyle.Render(task.PriorityDescription)
+		prioStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(task.PriorityColor))
+		segments = append(segments, text.NewStyledSegment(task.PriorityDescription, prioStyle, bg))
 	} else {
-		priorityStyle = priorityStyle.
+		noPrioStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(theme.Subtle)).
 			Italic(true)
-		priorityDisplay = priorityStyle.Render("no priority")
+		segments = append(segments, text.NewStyledSegment("no priority", noPrioStyle, bg))
 	}
 
-	separatorStyle := SubtleStyle.Background(lipgloss.Color(bg))
-	separator := separatorStyle.Render(" │ ")
-
-	result := typeDisplay + separator + priorityDisplay
-
+	// Assignee
 	if task.AssigneeName != nil {
-		assigneeStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(theme.Highlight)).
-			Background(lipgloss.Color(bg))
-		result += separator + assigneeStyle.Render("@"+*task.AssigneeName)
+		assigneeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight))
+		segments = append(segments, text.NewStyledSegment("@"+*task.AssigneeName, assigneeStyle, bg))
 	}
 
+	// Blocked badge
 	if task.IsBlocked {
-		blockedDisplay := BlockedStyle.
-			Background(lipgloss.Color(bg)).
-			Render("blocked")
-
-		result += separator + blockedDisplay
+		segments = append(segments, text.NewStyledSegment("blocked", BlockedStyle, bg))
 	}
 
-	return "\n " + result
+	separator := " │ "
+
+	return "\n " + text.TruncateSegments(segments, separator, maxWidth, bg)
 }
