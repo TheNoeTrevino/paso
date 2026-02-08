@@ -3,6 +3,7 @@ package helpers
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/commands"
 )
@@ -15,10 +16,7 @@ func TestGetAdjacentTaskIDs_EmptyColumns(t *testing.T) {
 		0,
 	)
 
-	want := commands.AdjacentTasks{}
-	if result != want {
-		t.Errorf("GetAdjacentTaskIDs with empty columns = %+v, want zero-value struct", result)
-	}
+	assert.Equal(t, commands.AdjacentTasks{}, result)
 }
 
 func TestGetAdjacentTaskIDs_NilColumns(t *testing.T) {
@@ -29,10 +27,7 @@ func TestGetAdjacentTaskIDs_NilColumns(t *testing.T) {
 		0,
 	)
 
-	want := commands.AdjacentTasks{}
-	if result != want {
-		t.Errorf("GetAdjacentTaskIDs with nil columns = %+v, want zero-value struct", result)
-	}
+	assert.Equal(t, commands.AdjacentTasks{}, result)
 }
 
 func TestGetAdjacentTaskIDs_SingleColumnNoTasks(t *testing.T) {
@@ -43,9 +38,7 @@ func TestGetAdjacentTaskIDs_SingleColumnNoTasks(t *testing.T) {
 
 	result := GetAdjacentTaskIDs(columns, tasks, 0, 0)
 
-	if result.Current != 0 {
-		t.Errorf("Current = %d, want 0 (no tasks in column)", result.Current)
-	}
+	assert.Equal(t, 0, result.Current)
 }
 
 func TestGetAdjacentTaskIDs_SelectedColumnOutOfBounds(t *testing.T) {
@@ -70,10 +63,7 @@ func TestGetAdjacentTaskIDs_SelectedColumnOutOfBounds(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := GetAdjacentTaskIDs(columns, tasks, tt.selectedCol, 0)
-			want := commands.AdjacentTasks{}
-			if result != want {
-				t.Errorf("GetAdjacentTaskIDs with selectedCol=%d = %+v, want zero-value struct", tt.selectedCol, result)
-			}
+			assert.Equal(t, commands.AdjacentTasks{}, result)
 		})
 	}
 }
@@ -99,10 +89,7 @@ func TestGetAdjacentTaskIDs_SelectedTaskOutOfBounds(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := GetAdjacentTaskIDs(columns, tasks, 0, tt.selectedTask)
-			want := commands.AdjacentTasks{}
-			if result != want {
-				t.Errorf("GetAdjacentTaskIDs with selectedTask=%d = %+v, want zero-value struct", tt.selectedTask, result)
-			}
+			assert.Equal(t, commands.AdjacentTasks{}, result)
 		})
 	}
 }
@@ -115,21 +102,11 @@ func TestGetAdjacentTaskIDs_SingleColumnSingleTask(t *testing.T) {
 
 	result := GetAdjacentTaskIDs(columns, tasks, 0, 0)
 
-	if result.Current != 42 {
-		t.Errorf("Current = %d, want 42", result.Current)
-	}
-	if result.Above != 0 {
-		t.Errorf("Above = %d, want 0 (no task above)", result.Above)
-	}
-	if result.Below != 0 {
-		t.Errorf("Below = %d, want 0 (no task below)", result.Below)
-	}
-	if result.Left != 0 {
-		t.Errorf("Left = %d, want 0 (no column to left)", result.Left)
-	}
-	if result.Right != 0 {
-		t.Errorf("Right = %d, want 0 (no column to right)", result.Right)
-	}
+	assert.Equal(t, 42, result.Current)
+	assert.Equal(t, 0, result.Above)
+	assert.Equal(t, 0, result.Below)
+	assert.Equal(t, 0, result.Left)
+	assert.Equal(t, 0, result.Right)
 }
 
 func TestGetAdjacentTaskIDs_AtFirstColumn(t *testing.T) {
@@ -146,15 +123,9 @@ func TestGetAdjacentTaskIDs_AtFirstColumn(t *testing.T) {
 
 	result := GetAdjacentTaskIDs(columns, tasks, 0, 0)
 
-	if result.Left != 0 {
-		t.Errorf("Left at first column = %d, want 0", result.Left)
-	}
-	if result.Right != 20 {
-		t.Errorf("Right at first column = %d, want 20", result.Right)
-	}
-	if result.Current != 10 {
-		t.Errorf("Current = %d, want 10", result.Current)
-	}
+	assert.Equal(t, 0, result.Left)
+	assert.Equal(t, 20, result.Right)
+	assert.Equal(t, 10, result.Current)
 }
 
 func TestGetAdjacentTaskIDs_AtLastColumn(t *testing.T) {
@@ -171,15 +142,9 @@ func TestGetAdjacentTaskIDs_AtLastColumn(t *testing.T) {
 
 	result := GetAdjacentTaskIDs(columns, tasks, 2, 0)
 
-	if result.Right != 0 {
-		t.Errorf("Right at last column = %d, want 0", result.Right)
-	}
-	if result.Left != 20 {
-		t.Errorf("Left at last column = %d, want 20", result.Left)
-	}
-	if result.Current != 30 {
-		t.Errorf("Current = %d, want 30", result.Current)
-	}
+	assert.Equal(t, 0, result.Right)
+	assert.Equal(t, 20, result.Left)
+	assert.Equal(t, 30, result.Current)
 }
 
 func TestGetAdjacentTaskIDs_AtFirstTaskInColumn(t *testing.T) {
@@ -194,15 +159,9 @@ func TestGetAdjacentTaskIDs_AtFirstTaskInColumn(t *testing.T) {
 
 	result := GetAdjacentTaskIDs(columns, tasks, 0, 0)
 
-	if result.Above != 0 {
-		t.Errorf("Above at first task = %d, want 0", result.Above)
-	}
-	if result.Below != 20 {
-		t.Errorf("Below at first task = %d, want 20", result.Below)
-	}
-	if result.Current != 10 {
-		t.Errorf("Current = %d, want 10", result.Current)
-	}
+	assert.Equal(t, 0, result.Above)
+	assert.Equal(t, 20, result.Below)
+	assert.Equal(t, 10, result.Current)
 }
 
 func TestGetAdjacentTaskIDs_AtLastTaskInColumn(t *testing.T) {
@@ -217,15 +176,9 @@ func TestGetAdjacentTaskIDs_AtLastTaskInColumn(t *testing.T) {
 
 	result := GetAdjacentTaskIDs(columns, tasks, 0, 2)
 
-	if result.Below != 0 {
-		t.Errorf("Below at last task = %d, want 0", result.Below)
-	}
-	if result.Above != 20 {
-		t.Errorf("Above at last task = %d, want 20", result.Above)
-	}
-	if result.Current != 30 {
-		t.Errorf("Current = %d, want 30", result.Current)
-	}
+	assert.Equal(t, 0, result.Below)
+	assert.Equal(t, 20, result.Above)
+	assert.Equal(t, 30, result.Current)
 }
 
 func TestGetAdjacentTaskIDs_MiddlePosition(t *testing.T) {
@@ -246,21 +199,11 @@ func TestGetAdjacentTaskIDs_MiddlePosition(t *testing.T) {
 
 	result := GetAdjacentTaskIDs(columns, tasks, 1, 1)
 
-	if result.Current != 21 {
-		t.Errorf("Current = %d, want 21", result.Current)
-	}
-	if result.Above != 20 {
-		t.Errorf("Above = %d, want 20", result.Above)
-	}
-	if result.Below != 22 {
-		t.Errorf("Below = %d, want 22", result.Below)
-	}
-	if result.Left != 10 {
-		t.Errorf("Left = %d, want 10", result.Left)
-	}
-	if result.Right != 30 {
-		t.Errorf("Right = %d, want 30", result.Right)
-	}
+	assert.Equal(t, 21, result.Current)
+	assert.Equal(t, 20, result.Above)
+	assert.Equal(t, 22, result.Below)
+	assert.Equal(t, 10, result.Left)
+	assert.Equal(t, 30, result.Right)
 }
 
 func TestGetAdjacentTaskIDs_LeftColumnEmpty(t *testing.T) {
@@ -275,12 +218,8 @@ func TestGetAdjacentTaskIDs_LeftColumnEmpty(t *testing.T) {
 
 	result := GetAdjacentTaskIDs(columns, tasks, 1, 0)
 
-	if result.Left != 0 {
-		t.Errorf("Left with empty left column = %d, want 0", result.Left)
-	}
-	if result.Current != 20 {
-		t.Errorf("Current = %d, want 20", result.Current)
-	}
+	assert.Equal(t, 0, result.Left)
+	assert.Equal(t, 20, result.Current)
 }
 
 func TestGetAdjacentTaskIDs_RightColumnEmpty(t *testing.T) {
@@ -295,12 +234,8 @@ func TestGetAdjacentTaskIDs_RightColumnEmpty(t *testing.T) {
 
 	result := GetAdjacentTaskIDs(columns, tasks, 0, 0)
 
-	if result.Right != 0 {
-		t.Errorf("Right with empty right column = %d, want 0", result.Right)
-	}
-	if result.Current != 10 {
-		t.Errorf("Current = %d, want 10", result.Current)
-	}
+	assert.Equal(t, 0, result.Right)
+	assert.Equal(t, 10, result.Current)
 }
 
 func TestGetAdjacentTaskIDs_AdjacentColumnIndexClamping(t *testing.T) {
@@ -319,9 +254,7 @@ func TestGetAdjacentTaskIDs_AdjacentColumnIndexClamping(t *testing.T) {
 
 	result := GetAdjacentTaskIDs(columns, tasks, 0, 2)
 
-	if result.Right != 20 {
-		t.Errorf("Right (index clamped) = %d, want 20 (first task in shorter column)", result.Right)
-	}
+	assert.Equal(t, 20, result.Right)
 }
 
 func TestGetAdjacentTaskIDs_AdjacentColumnPreservesIndex(t *testing.T) {
@@ -343,9 +276,7 @@ func TestGetAdjacentTaskIDs_AdjacentColumnPreservesIndex(t *testing.T) {
 
 	result := GetAdjacentTaskIDs(columns, tasks, 0, 1)
 
-	if result.Right != 21 {
-		t.Errorf("Right (same index preserved) = %d, want 21 (same index in right column)", result.Right)
-	}
+	assert.Equal(t, 21, result.Right)
 }
 
 func TestGetAdjacentTaskIDs_NilTasksMap(t *testing.T) {
@@ -353,10 +284,7 @@ func TestGetAdjacentTaskIDs_NilTasksMap(t *testing.T) {
 
 	result := GetAdjacentTaskIDs(columns, nil, 0, 0)
 
-	want := commands.AdjacentTasks{}
-	if result != want {
-		t.Errorf("GetAdjacentTaskIDs with nil tasks map = %+v, want zero-value struct", result)
-	}
+	assert.Equal(t, commands.AdjacentTasks{}, result)
 }
 
 func TestGetAdjacentTaskIDs_MissingColumnInTasksMap(t *testing.T) {
@@ -365,7 +293,5 @@ func TestGetAdjacentTaskIDs_MissingColumnInTasksMap(t *testing.T) {
 
 	result := GetAdjacentTaskIDs(columns, tasks, 0, 0)
 
-	if result.Current != 0 {
-		t.Errorf("Current with missing column in tasks map = %d, want 0", result.Current)
-	}
+	assert.Equal(t, 0, result.Current)
 }

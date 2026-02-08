@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/git"
 )
 
 // ProjectCmd returns the project parent command
@@ -48,8 +47,22 @@ func runProject(cmd *cobra.Command, args []string) error {
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
+	// Initialize CLI first so we can use the injectable git detector
+	cliInstance, err := cli.GetCLIFromContext(ctx)
+	if err != nil {
+		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
+			slog.Error("failed to format error message", "error", fmtErr)
+		}
+		return err
+	}
+	defer func() {
+		if err := cliInstance.Close(); err != nil {
+			slog.Error("failed to close CLI", "error", err)
+		}
+	}()
+
 	// Detect git info
-	gitInfo := git.DetectGitInfo(ctx)
+	gitInfo := cliInstance.App.GitDetector.DetectGitInfo(ctx)
 
 	if !gitInfo.IsRepo {
 		if jsonOutput {
@@ -74,20 +87,6 @@ func runProject(cmd *cobra.Command, args []string) error {
 		fmt.Fprintln(os.Stderr, "error: cannot determine current branch (detached HEAD)")
 		return fmt.Errorf("cannot determine current branch (detached HEAD)")
 	}
-
-	// Initialize CLI
-	cliInstance, err := cli.GetCLIFromContext(ctx)
-	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
-	}
-	defer func() {
-		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to close CLI", "error", err)
-		}
-	}()
 
 	// Find project by git branch
 	project, err := cliInstance.App.ProjectService.GetProjectByGitBranch(ctx, gitInfo.CurrentBranch)

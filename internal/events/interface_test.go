@@ -2,6 +2,8 @@ package events
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TestEventPublisherNilCheck verifies that nil checks work correctly with the interface
@@ -9,9 +11,7 @@ func TestEventPublisherNilCheck(t *testing.T) {
 	var publisher EventPublisher
 
 	// Should be nil
-	if publisher != nil {
-		t.Error("Expected nil EventPublisher to be nil")
-	}
+	assert.Nil(t, publisher)
 
 	// Test with nil concrete type - interface holding nil pointer is not nil itself
 	// Methods should handle nil receiver

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
@@ -19,52 +21,44 @@ func TestCreateColumn_MissingFlags(t *testing.T) {
 	// Test missing --name flag
 	t.Run("missing --name flag", func(t *testing.T) {
 		cmd := CreateCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--project", fmt.Sprintf("%d", projectID),
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 
 	// Test missing --project flag
 	t.Run("missing --project flag", func(t *testing.T) {
 		cmd := CreateCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--name", "Test Column",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 
 	// Test invalid project ID
 	t.Run("invalid project ID", func(t *testing.T) {
 		cmd := CreateCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--name", "Test Column",
 			"--project", "99999",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 
 	// Test invalid --after column ID
 	t.Run("invalid --after column ID", func(t *testing.T) {
 		cmd := CreateCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--name", "Test Column",
 			"--project", fmt.Sprintf("%d", projectID),
 			"--after", "99999",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 
 	// Test after column from different project
@@ -74,15 +68,13 @@ func TestCreateColumn_MissingFlags(t *testing.T) {
 		otherColumnID := cli.CreateTestColumn(t, db, otherProjectID, "Other Column")
 
 		cmd := CreateCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--name", "Test Column",
 			"--project", fmt.Sprintf("%d", projectID),
 			"--after", fmt.Sprintf("%d", otherColumnID),
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 }
 
@@ -97,64 +89,54 @@ func TestUpdateColumn_MissingFlags(t *testing.T) {
 	// Test missing --id flag
 	t.Run("missing --id flag", func(t *testing.T) {
 		cmd := UpdateCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--name", "Updated Name",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 
 	// Test non-existent column ID
 	t.Run("non-existent column ID", func(t *testing.T) {
 		cmd := UpdateCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "99999",
 			"--name", "Updated Name",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 
 	// Test no update flags provided
 	t.Run("no update flags provided", func(t *testing.T) {
 		cmd := UpdateCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", strconv.Itoa(columnID),
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 
 	// Test invalid --id value format
 	t.Run("invalid --id value format", func(t *testing.T) {
 		cmd := UpdateCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "invalid",
 			"--name", "Updated Name",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 
 	// Test zero column ID
 	t.Run("zero column ID", func(t *testing.T) {
 		cmd := UpdateCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "0",
 			"--name", "Updated Name",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 }
 
@@ -165,46 +147,38 @@ func TestListColumn_MissingFlags(t *testing.T) {
 	// Test missing --project flag
 	t.Run("missing --project flag", func(t *testing.T) {
 		cmd := ListCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--quiet"})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--quiet"})
+		assert.Error(t, err)
 	})
 
 	// Test invalid project ID
 	t.Run("invalid project ID", func(t *testing.T) {
 		cmd := ListCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--project", "99999",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 
 	// Test invalid --project value format
 	t.Run("invalid --project value format", func(t *testing.T) {
 		cmd := ListCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--project", "invalid",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 
 	// Test negative project ID
 	t.Run("negative project ID", func(t *testing.T) {
 		cmd := ListCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--project", "-1",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 }
 
@@ -215,65 +189,55 @@ func TestDeleteColumn_MissingFlags(t *testing.T) {
 	// Test missing --id flag
 	t.Run("missing --id flag", func(t *testing.T) {
 		cmd := DeleteCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--force",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 
 	// Test non-existent column ID
 	t.Run("non-existent column ID", func(t *testing.T) {
 		cmd := DeleteCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "99999",
 			"--force",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 
 	// Test invalid --id value format
 	t.Run("invalid --id value format", func(t *testing.T) {
 		cmd := DeleteCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "invalid",
 			"--force",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 
 	// Test zero column ID
 	t.Run("zero column ID", func(t *testing.T) {
 		cmd := DeleteCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "0",
 			"--force",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 
 	// Test negative column ID
 	t.Run("negative column ID", func(t *testing.T) {
 		cmd := DeleteCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "-1",
 			"--force",
 			"--quiet",
 		})
-		if err == nil {
-			t.Errorf("Expected error but got none; output: %s", output)
-		}
+		assert.Error(t, err)
 	})
 }
 
@@ -293,9 +257,7 @@ func TestCreateColumn_DuplicateName(t *testing.T) {
 		"--project", fmt.Sprintf("%d", projectID),
 		"--quiet",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create first column: %v", err)
-	}
+	require.NoError(t, err, "Failed to create first column")
 
 	// Attempt to create a second column with the same name (should succeed)
 	secondCmd := CreateCmd()
@@ -305,15 +267,11 @@ func TestCreateColumn_DuplicateName(t *testing.T) {
 		"--quiet",
 	})
 
-	if err != nil {
-		t.Errorf("Creating duplicate column name should be allowed, but got error: %v", err)
-	}
+	assert.NoError(t, err, "Creating duplicate column name should be allowed")
 	// Parse IDs from quiet output
 	id1 := strings.TrimSpace(output1)
 	id2 := strings.TrimSpace(output2)
-	if id1 == id2 {
-		t.Errorf("Duplicate columns should have different IDs, got same ID: %s", id1)
-	}
+	assert.NotEqual(t, id1, id2, "Duplicate columns should have different IDs")
 }
 
 // TestUpdateColumn_InvalidTransition tests invalid flag transitions
@@ -331,23 +289,19 @@ func TestUpdateColumn_InvalidTransition(t *testing.T) {
 		"--completed",
 		"--quiet",
 	})
-	if err != nil {
-		t.Fatalf("Failed to set column as completed: %v", err)
-	}
+	require.NoError(t, err, "Failed to set column as completed")
 
 	// Create another column and attempt to set it as completed (should fail without --force)
 	otherColumnID := cli.CreateTestColumn(t, db, projectID, "Other Column")
 	secondCmd := UpdateCmd()
-	output, err := cli.ExecuteCLICommand(t, app, secondCmd, []string{
+	_, err = cli.ExecuteCLICommand(t, app, secondCmd, []string{
 		"--id", strconv.Itoa(otherColumnID),
 		"--completed",
 		"--quiet",
 	})
 
 	// Should get an error about completed column already existing
-	if err == nil {
-		t.Errorf("Expected error when setting second completed column without --force, but got none; output: %s", output)
-	}
+	assert.Error(t, err, "Expected error when setting second completed column without --force")
 }
 
 // TestCreateColumn_ProjectValidation tests project validation during creation
@@ -379,17 +333,16 @@ func TestCreateColumn_ProjectValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := CreateCmd()
-			output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 				"--name", "Test Column",
 				"--project", fmt.Sprintf("%d", tt.projectID),
 				"--quiet",
 			})
 
-			if tt.expectErr && err == nil {
-				t.Errorf("Expected error but got none; output: %s", output)
-			}
-			if !tt.expectErr && err != nil {
-				t.Errorf("Unexpected error: %v; output: %s", err, output)
+			if tt.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}

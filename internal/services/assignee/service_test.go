@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
@@ -13,29 +15,19 @@ func TestGetOrCreate(t *testing.T) {
 	db := testutil.SetupTestDB(t)
 
 	svc, err := NewService(db, database.SQLite)
-	if err != nil {
-		t.Fatalf("failed to create service: %v", err)
-	}
+	require.NoError(t, err)
 
 	ctx := context.Background()
 
 	// First call should create
 	a1, err := svc.GetOrCreate(ctx, "alice")
-	if err != nil {
-		t.Fatalf("first GetOrCreate failed: %v", err)
-	}
-	if a1.Name != "alice" {
-		t.Errorf("expected name 'alice', got '%s'", a1.Name)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "alice", a1.Name)
 
 	// Second call should return existing
 	a2, err := svc.GetOrCreate(ctx, "alice")
-	if err != nil {
-		t.Fatalf("second GetOrCreate failed: %v", err)
-	}
-	if a2.ID != a1.ID {
-		t.Errorf("expected same ID %d, got %d", a1.ID, a2.ID)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, a1.ID, a2.ID)
 }
 
 func TestGetOrCreateConcurrent(t *testing.T) {
@@ -46,9 +38,7 @@ func TestGetOrCreateConcurrent(t *testing.T) {
 	db.SetMaxOpenConns(1)
 
 	svc, err := NewService(db, database.SQLite)
-	if err != nil {
-		t.Fatalf("failed to create service: %v", err)
-	}
+	require.NoError(t, err)
 
 	const goroutines = 10
 	const name = "concurrent-test-user"
@@ -75,7 +65,7 @@ func TestGetOrCreateConcurrent(t *testing.T) {
 	close(errors)
 
 	for err := range errors {
-		t.Errorf("GetOrCreate returned error: %v", err)
+		assert.NoError(t, err, "GetOrCreate returned error: %v", err)
 	}
 
 	var firstID int
@@ -86,12 +76,8 @@ func TestGetOrCreateConcurrent(t *testing.T) {
 			first = false
 			continue
 		}
-		if id != firstID {
-			t.Errorf("got different IDs: %d and %d", firstID, id)
-		}
+		assert.Equal(t, firstID, id)
 	}
 
-	if first {
-		t.Fatal("no results received")
-	}
+	require.False(t, first, "no results received")
 }

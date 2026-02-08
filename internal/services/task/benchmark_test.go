@@ -29,7 +29,10 @@ func createBenchmarkProject(b *testing.B, db *sql.DB) int {
 	}
 
 	// Initialize project counter
-	projectID, _ := result.LastInsertId()
+	projectID, err := result.LastInsertId()
+	if err != nil {
+		b.Fatal(err)
+	}
 	_, err = db.ExecContext(context.Background(), "INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)", projectID)
 	if err != nil {
 		b.Fatalf("Failed to initialize project counter: %v", err)
@@ -62,7 +65,10 @@ func createBenchmarkTask(b *testing.B, db *sql.DB, columnID int, title string, l
 		b.Fatalf("Failed to create benchmark task: %v", err)
 	}
 
-	taskID, _ := result.LastInsertId()
+	taskID, err := result.LastInsertId()
+	if err != nil {
+		b.Fatal(err)
+	}
 	taskIDInt := int(taskID)
 
 	// Attach labels if provided
@@ -85,7 +91,10 @@ func createBenchmarkLabel(b *testing.B, db *sql.DB, projectID int, name, color s
 	if err != nil {
 		b.Fatalf("Failed to create benchmark label: %v", err)
 	}
-	labelID, _ := result.LastInsertId()
+	labelID, err := result.LastInsertId()
+	if err != nil {
+		b.Fatal(err)
+	}
 	return int(labelID)
 }
 
@@ -98,7 +107,10 @@ func createInProgressColumn(b *testing.B, db *sql.DB, projectID int) int {
 	if err != nil {
 		b.Fatalf("Failed to create in-progress column: %v", err)
 	}
-	columnID, _ := result.LastInsertId()
+	columnID, err := result.LastInsertId()
+	if err != nil {
+		b.Fatal(err)
+	}
 	return int(columnID)
 }
 
@@ -111,7 +123,10 @@ func createReadyColumn(b *testing.B, db *sql.DB, projectID int) int {
 	if err != nil {
 		b.Fatalf("Failed to create ready column: %v", err)
 	}
-	columnID, _ := result.LastInsertId()
+	columnID, err := result.LastInsertId()
+	if err != nil {
+		b.Fatal(err)
+	}
 	return int(columnID)
 }
 
@@ -239,8 +254,11 @@ func BenchmarkGetTaskSummariesByProject(b *testing.B) {
 		colName := "Column " + string(rune('A'+i))
 		columns[i] = createBenchmarkColumn(b, db, projectID)
 		// Name the column (update via direct SQL since we don't have updateColumn)
-		_, _ = db.ExecContext(context.Background(),
+		_, err := db.ExecContext(context.Background(),
 			"UPDATE columns SET name = ? WHERE id = ?", colName, columns[i])
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 
 	// Create labels
@@ -443,8 +461,11 @@ func BenchmarkDetachLabel(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		labelID := createBenchmarkLabel(b, db, projectID, "label_"+string(rune(i)), "#FF00FF")
 		labels[i] = labelID
-		_, _ = db.ExecContext(context.Background(),
+		_, err := db.ExecContext(context.Background(),
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 
 	service := newBenchmarkService(b, db)
@@ -604,6 +625,9 @@ func createBenchmarkColumn(b *testing.B, db *sql.DB, projectID int) int {
 	if err != nil {
 		b.Fatalf("Failed to create benchmark column: %v", err)
 	}
-	columnID, _ := result.LastInsertId()
+	columnID, err := result.LastInsertId()
+	if err != nil {
+		b.Fatal(err)
+	}
 	return int(columnID)
 }

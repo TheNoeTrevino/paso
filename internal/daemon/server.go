@@ -39,6 +39,8 @@ type Server struct {
 	sequenceCounter  atomic.Int64
 	clientBufferSize int // Configurable client send queue size
 	shutdownOnce     sync.Once
+	OnSubscribe      func(projectID int) // Test-only callback hook for subscription events
+	onSubscribeMu    sync.RWMutex
 }
 
 // getEnvInt reads an integer from an environment variable, returning defaultVal if not set or invalid
@@ -259,6 +261,8 @@ func (s *Server) handleClient(c *client) {
 				c.subscription = *msg.Subscribe
 				c.mu.Unlock()
 				slog.Info("client subscribed to project", "projectID", msg.Subscribe.ProjectID)
+
+				s.callOnSubscribe(msg.Subscribe.ProjectID)
 			}
 
 		case "pong":
@@ -430,5 +434,15 @@ func (s *Server) sendToClient(c *client, msg events.Message) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// callOnSubscribe safely invokes the OnSubscribe callback under a read lock.
+func (s *Server) callOnSubscribe(projectID int) {
+	s.onSubscribeMu.RLock()
+	fn := s.OnSubscribe
+	s.onSubscribeMu.RUnlock()
+	if fn != nil {
+		fn(projectID)
 	}
 }

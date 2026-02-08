@@ -74,8 +74,8 @@ func TestBlockedTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Create tasks but no blocking relationships
-		_ = cli.CreateTestTask(t, db, emptyTodoColumnID, "Regular Task 1")
-		_ = cli.CreateTestTask(t, db, emptyTodoColumnID, "Regular Task 2")
+		cli.CreateTestTask(t, db, emptyTodoColumnID, "Regular Task 1")
+		cli.CreateTestTask(t, db, emptyTodoColumnID, "Regular Task 2")
 
 		blockedCmd := BlockedCmd()
 		output, err := cli.ExecuteCLICommand(t, app, blockedCmd,
@@ -372,8 +372,8 @@ func TestBlockedTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Create and attach labels
-		labelID1 := testutil.CreateTestLabel(t, db, projectID, "blocked", "#EF4444")
-		labelID2 := testutil.CreateTestLabel(t, db, projectID, "urgent", "#F97316")
+		labelID1 := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "blocked", "#EF4444")
+		labelID2 := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "urgent", "#F97316")
 
 		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", blockedID, labelID1)

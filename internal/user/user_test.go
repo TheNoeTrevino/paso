@@ -2,6 +2,8 @@ package user
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetCurrentUsername(t *testing.T) {
@@ -28,9 +30,7 @@ func TestGetCurrentUsername(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			username := GetCurrentUsername()
-			if !tt.validate(username) {
-				t.Errorf("GetCurrentUsername() validation failed, got %q", username)
-			}
+			assert.True(t, tt.validate(username))
 		})
 	}
 }
@@ -39,13 +39,9 @@ func TestGetCurrentUsernameFallback(t *testing.T) {
 	// This test verifies that the function always returns something
 	username := GetCurrentUsername()
 
-	if username == "" {
-		t.Error("GetCurrentUsername() should never return an empty string")
-	}
+	assert.NotEmpty(t, username)
 
 	// Verify it returns one of the expected values
 	// (actual username, USER env var, or "unknown")
-	if username == "" {
-		t.Error("GetCurrentUsername() returned empty string, should have returned fallback")
-	}
+	assert.NotEmpty(t, username)
 }

@@ -4,68 +4,38 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDefaultKeyMappings(t *testing.T) {
 	defaults := DefaultKeyMappings()
 
 	// Test a few key bindings
-	if defaults.Quit != "q" {
-		t.Errorf("Default Quit key = %s, want q", defaults.Quit)
-	}
-	if defaults.AddTask != "a" {
-		t.Errorf("Default AddTask key = %s, want a", defaults.AddTask)
-	}
-	if defaults.ViewTask != " " {
-		t.Errorf("Default ViewTask key = %s, want space", defaults.ViewTask)
-	}
+	assert.Equal(t, "q", defaults.Quit)
+	assert.Equal(t, "a", defaults.AddTask)
+	assert.Equal(t, " ", defaults.ViewTask)
 }
 
 func TestLoadConfigWithoutFile(t *testing.T) {
-	// Save original env
-	origXDG := os.Getenv("XDG_CONFIG_HOME")
-	defer func() {
-		if err := os.Setenv("XDG_CONFIG_HOME", origXDG); err != nil {
-			t.Logf("Failed to restore XDG_CONFIG_HOME: %v", err)
-		}
-	}()
-
 	// Set to a temp dir that doesn't have a config
-	tempDir := t.TempDir()
-	if err := os.Setenv("XDG_CONFIG_HOME", tempDir); err != nil {
-		t.Fatalf("Failed to set XDG_CONFIG_HOME: %v", err)
-	}
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	cfg, err := Load()
-	if err != nil {
-		t.Fatalf("Load() without config file failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Should return default config
-	if cfg.KeyMappings.Quit != "q" {
-		t.Errorf("Loaded config Quit key = %s, want q (default)", cfg.KeyMappings.Quit)
-	}
+	assert.Equal(t, "q", cfg.KeyMappings.Quit)
 }
 
 func TestLoadConfigWithFile(t *testing.T) {
-	// Save original env
-	origXDG := os.Getenv("XDG_CONFIG_HOME")
-	defer func() {
-		if err := os.Setenv("XDG_CONFIG_HOME", origXDG); err != nil {
-			t.Logf("Failed to restore XDG_CONFIG_HOME: %v", err)
-		}
-	}()
-
 	// Create temp dir with config
 	tempDir := t.TempDir()
-	if err := os.Setenv("XDG_CONFIG_HOME", tempDir); err != nil {
-		t.Fatalf("Failed to set XDG_CONFIG_HOME: %v", err)
-	}
+	t.Setenv("XDG_CONFIG_HOME", tempDir)
 
 	configDir := filepath.Join(tempDir, "paso")
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		t.Fatalf("Failed to create config dir: %v", err)
-	}
+	require.NoError(t, os.MkdirAll(configDir, 0755))
 
 	// Write custom config
 	configContent := `key_mappings:
@@ -74,46 +44,24 @@ func TestLoadConfigWithFile(t *testing.T) {
   view_task: "v"
 `
 	configPath := filepath.Join(configDir, "config.yaml")
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
-		t.Fatalf("Failed to write config: %v", err)
-	}
+	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0644))
 
 	cfg, err := Load()
-	if err != nil {
-		t.Fatalf("Load() with config file failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Should load custom values
-	if cfg.KeyMappings.Quit != "x" {
-		t.Errorf("Loaded Quit key = %s, want x", cfg.KeyMappings.Quit)
-	}
-	if cfg.KeyMappings.AddTask != "n" {
-		t.Errorf("Loaded AddTask key = %s, want n", cfg.KeyMappings.AddTask)
-	}
-	if cfg.KeyMappings.ViewTask != "v" {
-		t.Errorf("Loaded ViewTask key = %s, want v", cfg.KeyMappings.ViewTask)
-	}
+	assert.Equal(t, "x", cfg.KeyMappings.Quit)
+	assert.Equal(t, "n", cfg.KeyMappings.AddTask)
+	assert.Equal(t, "v", cfg.KeyMappings.ViewTask)
 
 	// Unspecified values should use defaults
-	if cfg.KeyMappings.EditTask != "e" {
-		t.Errorf("Loaded EditTask key = %s, want e (default)", cfg.KeyMappings.EditTask)
-	}
+	assert.Equal(t, "e", cfg.KeyMappings.EditTask)
 }
 
 func TestSaveConfig(t *testing.T) {
-	// Save original env
-	origXDG := os.Getenv("XDG_CONFIG_HOME")
-	defer func() {
-		if err := os.Setenv("XDG_CONFIG_HOME", origXDG); err != nil {
-			t.Logf("Failed to restore XDG_CONFIG_HOME: %v", err)
-		}
-	}()
-
 	// Create temp dir
 	tempDir := t.TempDir()
-	if err := os.Setenv("XDG_CONFIG_HOME", tempDir); err != nil {
-		t.Fatalf("Failed to set XDG_CONFIG_HOME: %v", err)
-	}
+	t.Setenv("XDG_CONFIG_HOME", tempDir)
 
 	cfg := &Config{
 		KeyMappings: KeyMappings{
@@ -127,27 +75,18 @@ func TestSaveConfig(t *testing.T) {
 	cfg.applyDefaults()
 
 	// Save config
-	if err := cfg.Save(); err != nil {
-		t.Fatalf("Save() failed: %v", err)
-	}
+	require.NoError(t, cfg.Save())
 
 	// Verify file exists
 	configPath := filepath.Join(tempDir, "paso", "config.yaml")
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		t.Fatalf("Config file not created at %s", configPath)
-	}
+	_, err := os.Stat(configPath)
+	require.False(t, os.IsNotExist(err))
 
 	// Load it back
 	cfg2, err := Load()
-	if err != nil {
-		t.Fatalf("Load() after Save() failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Verify values match
-	if cfg2.KeyMappings.Quit != "x" {
-		t.Errorf("Reloaded Quit key = %s, want x", cfg2.KeyMappings.Quit)
-	}
-	if cfg2.KeyMappings.AddTask != "n" {
-		t.Errorf("Reloaded AddTask key = %s, want n", cfg2.KeyMappings.AddTask)
-	}
+	assert.Equal(t, "x", cfg2.KeyMappings.Quit)
+	assert.Equal(t, "n", cfg2.KeyMappings.AddTask)
 }

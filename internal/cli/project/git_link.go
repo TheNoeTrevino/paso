@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/git"
 	projectsvc "github.com/thenoetrevino/paso/internal/services/project"
 )
 
@@ -57,8 +56,22 @@ func runGitLink(cmd *cobra.Command, args []string) error {
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
+	// Initialize CLI first so we can use the injectable git detector
+	cliInstance, err := cli.GetCLIFromContext(ctx)
+	if err != nil {
+		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
+			slog.Error("failed to format error message", "error", fmtErr)
+		}
+		return err
+	}
+	defer func() {
+		if err := cliInstance.Close(); err != nil {
+			slog.Error("failed to close CLI", "error", err)
+		}
+	}()
+
 	// Detect git info for defaults
-	gitInfo := git.DetectGitInfo(ctx)
+	gitInfo := cliInstance.App.GitDetector.DetectGitInfo(ctx)
 
 	// Resolve branch name
 	if branchName == "" {
@@ -72,20 +85,6 @@ func runGitLink(cmd *cobra.Command, args []string) error {
 		}
 		branchName = gitInfo.CurrentBranch
 	}
-
-	// Initialize CLI
-	cliInstance, err := cli.GetCLIFromContext(ctx)
-	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
-	}
-	defer func() {
-		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to close CLI", "error", err)
-		}
-	}()
 
 	// Resolve project ID
 	if projectID == 0 {

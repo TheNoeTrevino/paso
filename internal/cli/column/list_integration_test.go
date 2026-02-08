@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
@@ -25,25 +26,19 @@ func TestListColumns_Positive(t *testing.T) {
 		UPDATE columns
 		SET holds_ready_tasks = 1
 		WHERE project_id = ? AND name = 'Todo'`, projectID)
-	if err != nil {
-		t.Fatalf("Failed to set holds_ready_tasks flag: %v", err)
-	}
+	require.NoError(t, err)
 
 	_, err = db.ExecContext(ctx, `
 		UPDATE columns
 		SET holds_in_progress_tasks = 1
 		WHERE project_id = ? AND name = 'In Progress'`, projectID)
-	if err != nil {
-		t.Fatalf("Failed to set holds_in_progress_tasks flag: %v", err)
-	}
+	require.NoError(t, err)
 
 	_, err = db.ExecContext(ctx, `
 		UPDATE columns
 		SET holds_completed_tasks = 1
 		WHERE project_id = ? AND name = 'Done'`, projectID)
-	if err != nil {
-		t.Fatalf("Failed to set holds_completed_tasks flag: %v", err)
-	}
+	require.NoError(t, err)
 
 	t.Run("List columns with project flag", func(t *testing.T) {
 		cmd := ListCmd()
@@ -121,7 +116,7 @@ func TestListColumns_Positive(t *testing.T) {
 
 		// In quiet mode, output should be just IDs, one per line
 		lines := strings.Split(strings.TrimSpace(output), "\n")
-		assert.Equal(t, 3, len(lines))
+		assert.Len(t, lines, 3)
 
 		// Each line should be a numeric ID
 		for _, line := range lines {

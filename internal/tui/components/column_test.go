@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -37,9 +39,7 @@ func TestRenderColumnHeader(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := renderColumnHeader(tt.column, tt.taskCount)
-			if !strings.Contains(result, tt.wantText) {
-				t.Errorf("renderColumnHeader() = %q, want to contain %q", result, tt.wantText)
-			}
+			assert.Contains(t, result, tt.wantText)
 		})
 	}
 }
@@ -47,25 +47,15 @@ func TestRenderColumnHeader(t *testing.T) {
 func TestRenderScrollIndicator_Show(t *testing.T) {
 	result := renderScrollIndicator(true, "▲ more above")
 
-	if !strings.Contains(result, "▲") {
-		t.Errorf("renderScrollIndicator(true, ...) = %q, want to contain ▲", result)
-	}
-
-	if !strings.Contains(result, "more above") {
-		t.Errorf("renderScrollIndicator(true, ...) = %q, want to contain 'more above'", result)
-	}
-
-	if !strings.HasSuffix(result, "\n") {
-		t.Errorf("renderScrollIndicator(true, ...) should end with newline")
-	}
+	assert.Contains(t, result, "▲")
+	assert.Contains(t, result, "more above")
+	assert.True(t, strings.HasSuffix(result, "\n"))
 }
 
 func TestRenderScrollIndicator_Hide(t *testing.T) {
 	result := renderScrollIndicator(false, "▲ more above")
 
-	if result != "\n" {
-		t.Errorf("renderScrollIndicator(false, ...) = %q, want single newline", result)
-	}
+	assert.Equal(t, "\n", result)
 }
 
 func TestRenderEmptyColumnContent_Structure(t *testing.T) {
@@ -73,21 +63,11 @@ func TestRenderEmptyColumnContent_Structure(t *testing.T) {
 
 	result := renderEmptyColumnContent(header)
 
-	// Should contain the header
-	if !strings.Contains(result, header) {
-		t.Errorf("renderEmptyColumnContent() should contain header %q", header)
-	}
+	assert.Contains(t, result, header)
+	assert.Contains(t, result, "No tasks")
 
-	// Should contain "No tasks" message
-	if !strings.Contains(result, "No tasks") {
-		t.Error("renderEmptyColumnContent() should contain 'No tasks' message")
-	}
-
-	// Should have proper spacing
 	lines := strings.Split(result, "\n")
-	if len(lines) < 3 {
-		t.Errorf("renderEmptyColumnContent() should have at least 3 lines, got %d", len(lines))
-	}
+	require.GreaterOrEqual(t, len(lines), 3)
 }
 
 func TestRenderEmptyColumnContent_PaddingCalculation(t *testing.T) {
@@ -105,19 +85,11 @@ func TestRenderEmptyColumnContent_PaddingCalculation(t *testing.T) {
 			result := renderEmptyColumnContent("Header")
 			lines := strings.Split(result, "\n")
 
-			// Should have content (not crash or return empty string)
-			if len(lines) == 0 {
-				t.Error("renderEmptyColumnContent() returned empty content")
-			}
+			require.NotEmpty(t, lines)
 
-			// Should contain the expected elements
 			content := strings.Join(lines, "\n")
-			if !strings.Contains(content, "Header") {
-				t.Error("Missing header in output")
-			}
-			if !strings.Contains(content, "No tasks") {
-				t.Error("Missing 'No tasks' message in output")
-			}
+			assert.Contains(t, content, "Header")
+			assert.Contains(t, content, "No tasks")
 		})
 	}
 }
@@ -128,21 +100,13 @@ func TestApplyColumnStyle_Selection(t *testing.T) {
 
 	// Test with selection
 	selected := applyColumnStyle(content, true, 30, width)
-	if selected == "" {
-		t.Error("applyColumnStyle(true) returned empty string")
-	}
-	if !strings.Contains(selected, content) {
-		t.Error("applyColumnStyle(true) should contain original content")
-	}
+	assert.NotEmpty(t, selected)
+	assert.Contains(t, selected, content)
 
 	// Test without selection
 	notSelected := applyColumnStyle(content, false, 30, width)
-	if notSelected == "" {
-		t.Error("applyColumnStyle(false) returned empty string")
-	}
-	if !strings.Contains(notSelected, content) {
-		t.Error("applyColumnStyle(false) should contain original content")
-	}
+	assert.NotEmpty(t, notSelected)
+	assert.Contains(t, notSelected, content)
 }
 
 func TestApplyColumnStyle_Height(t *testing.T) {
@@ -151,15 +115,11 @@ func TestApplyColumnStyle_Height(t *testing.T) {
 
 	// Test with height
 	withHeight := applyColumnStyle(content, false, 30, width)
-	if withHeight == "" {
-		t.Error("applyColumnStyle() with height returned empty string")
-	}
+	assert.NotEmpty(t, withHeight)
 
 	// Test with auto height (0)
 	autoHeight := applyColumnStyle(content, false, 0, width)
-	if autoHeight == "" {
-		t.Error("applyColumnStyle() with auto height returned empty string")
-	}
+	assert.NotEmpty(t, autoHeight)
 }
 
 func TestRenderColumnWithTasksContent_VisibleTaskCalculation(t *testing.T) {
@@ -179,20 +139,9 @@ func TestRenderColumnWithTasksContent_VisibleTaskCalculation(t *testing.T) {
 
 	result := renderColumnWithTasksContent(header, tasks, false, -1, height, scrollOffset, taskCardWidth)
 
-	// Should contain header
-	if !strings.Contains(result, header) {
-		t.Error("renderColumnWithTasksContent() should contain header")
-	}
-
-	// Should have content
-	if result == "" {
-		t.Error("renderColumnWithTasksContent() returned empty string")
-	}
-
-	// Should have newlines (structure)
-	if !strings.Contains(result, "\n") {
-		t.Error("renderColumnWithTasksContent() should have line breaks")
-	}
+	assert.Contains(t, result, header)
+	assert.NotEmpty(t, result)
+	assert.Contains(t, result, "\n")
 }
 
 func TestRenderColumnWithTasksContent_ScrollIndicators(t *testing.T) {
@@ -210,13 +159,11 @@ func TestRenderColumnWithTasksContent_ScrollIndicators(t *testing.T) {
 
 	// Test scrolled down (should show top indicator)
 	scrolledDown := renderColumnWithTasksContent(header, tasks, false, -1, height, 5, taskCardWidth)
-	if !strings.Contains(scrolledDown, "▲") {
-		t.Error("Should show top indicator when scrolled down")
-	}
+	assert.Contains(t, scrolledDown, "▲")
 
 	// Test at top (should not show top indicator in indicator line)
 	atTop := renderColumnWithTasksContent(header, tasks, false, -1, height, 0, taskCardWidth)
-	// The ▲ should not appear since we're at the top
+	// The upward arrow should not appear since we're at the top
 	lines := strings.Split(atTop, "\n")
 	hasTopIndicator := false
 	for _, line := range lines[:5] { // Check first few lines
@@ -225,7 +172,5 @@ func TestRenderColumnWithTasksContent_ScrollIndicators(t *testing.T) {
 			break
 		}
 	}
-	if hasTopIndicator {
-		t.Error("Should not show top indicator when at top of list")
-	}
+	assert.False(t, hasTopIndicator)
 }

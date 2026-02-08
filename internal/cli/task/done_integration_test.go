@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
@@ -53,10 +54,7 @@ func TestDoneTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("Task %d moved to 'Done'", taskID))
 
 		// Verify task moved to done column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, doneColumnID, columnID)
 	})
 
@@ -76,10 +74,7 @@ func TestDoneTask_Positive(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("%d\n", taskID), output)
 
 		// Verify task moved to done column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, doneColumnID, columnID)
 	})
 
@@ -108,10 +103,7 @@ func TestDoneTask_Positive(t *testing.T) {
 		assert.Equal(t, "Done", result["to_column"])
 
 		// Verify task moved to done column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, doneColumnID, columnID)
 	})
 
@@ -137,10 +129,7 @@ func TestDoneTask_Positive(t *testing.T) {
 		assert.Equal(t, "Done", result["to_column"])
 
 		// Verify task moved to done column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, doneColumnID, columnID)
 	})
 
@@ -163,10 +152,7 @@ func TestDoneTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("%d", taskID))
 
 		// Verify task is still in done column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, doneColumnID, columnID)
 	})
 
@@ -188,10 +174,7 @@ func TestDoneTask_Positive(t *testing.T) {
 
 		// Verify all tasks moved to done column
 		for _, taskID := range []int{taskID1, taskID2, taskID3} {
-			var columnID int
-			err = db.QueryRowContext(ctx,
-				"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-			assert.NoError(t, err)
+			columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 			assert.Equal(t, doneColumnID, columnID, "Task %d should be in Done column", taskID)
 		}
 	})

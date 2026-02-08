@@ -55,10 +55,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("Task %d moved to 'In Progress'", taskID))
 
 		// Verify task moved to in-progress column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, inProgressColumnID, columnID)
 	})
 
@@ -83,10 +80,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("%d\n", taskID), output)
 
 		// Verify task moved to in-progress column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, inProgressColumnID, columnID)
 	})
 
@@ -120,10 +114,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		assert.Equal(t, "In Progress", result["to_column"])
 
 		// Verify task moved to in-progress column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, inProgressColumnID, columnID)
 	})
 
@@ -317,10 +308,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 
 		// Verify all tasks moved to in-progress column
 		for _, taskID := range []int{taskID1, taskID2, taskID3} {
-			var columnID int
-			err = db.QueryRowContext(ctx,
-				"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-			assert.NoError(t, err)
+			columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 			assert.Equal(t, inProgressColumnID, columnID)
 		}
 	})
@@ -415,8 +403,8 @@ func TestInProgressTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Create and attach labels
-		labelID1 := testutil.CreateTestLabel(t, db, projectID, "bug", "#EF4444")
-		labelID2 := testutil.CreateTestLabel(t, db, projectID, "urgent", "#F97316")
+		labelID1 := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "bug", "#EF4444")
+		labelID2 := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "urgent", "#F97316")
 
 		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID1)
@@ -435,10 +423,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("Task %d moved to 'In Progress'", taskID))
 
 		// Verify task moved to in-progress column
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, inProgressColumnID, columnID)
 
 		// Verify labels are still attached
@@ -471,10 +456,7 @@ func TestInProgressTask_Positive(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("Task %d moved to 'In Progress'", taskID))
 
 		// Verify task moved from Done to In Progress
-		var columnID int
-		err = db.QueryRowContext(ctx,
-			"SELECT column_id FROM tasks WHERE id = ?", taskID).Scan(&columnID)
-		assert.NoError(t, err)
+		columnID := testutil.GetTaskColumnID(t, db, testutil.SQLiteDialect(), taskID)
 		assert.Equal(t, inProgressColumnID, columnID)
 	})
 

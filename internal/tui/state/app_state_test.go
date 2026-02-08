@@ -3,6 +3,8 @@ package state
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -18,9 +20,7 @@ func TestGetCurrentProject_EmptyProjects(t *testing.T) {
 	)
 
 	got := state.GetCurrentProject()
-	if got != nil {
-		t.Errorf("GetCurrentProject() with empty projects = %v, want nil", got)
-	}
+	assert.Nil(t, got)
 }
 
 // TestGetCurrentProject_InvalidIndex ensures project access with out-of-bounds index returns nil.
@@ -34,25 +34,18 @@ func TestGetCurrentProject_InvalidIndex(t *testing.T) {
 	// Test with index beyond slice length
 	state := NewAppState(projects, 5, nil, nil, nil)
 	got := state.GetCurrentProject()
-	if got != nil {
-		t.Errorf("GetCurrentProject() with index=5 (out of bounds) = %v, want nil", got)
-	}
+	assert.Nil(t, got, "GetCurrentProject() with index=5 (out of bounds)")
 
 	// Test with negative index
 	state.SetSelectedProject(-1)
 	got = state.GetCurrentProject()
-	if got != nil {
-		t.Errorf("GetCurrentProject() with index=-1 = %v, want nil", got)
-	}
+	assert.Nil(t, got, "GetCurrentProject() with index=-1")
 
 	// Test with valid index for comparison
 	state.SetSelectedProject(1)
 	got = state.GetCurrentProject()
-	if got == nil {
-		t.Error("GetCurrentProject() with valid index=1 = nil, want non-nil")
-	} else if got.ID != 2 {
-		t.Errorf("GetCurrentProject() with index=1, got project ID %d, want 2", got.ID)
-	}
+	require.NotNil(t, got, "GetCurrentProject() with valid index=1 = nil, want non-nil")
+	assert.Equal(t, 2, got.ID)
 }
 
 // TestGetCurrentProjectID_NilProject ensures project ID returns 0 when no project selected.
@@ -62,17 +55,13 @@ func TestGetCurrentProjectID_NilProject(t *testing.T) {
 	state := NewAppState([]*models.Project{}, 0, nil, nil, nil)
 
 	got := state.GetCurrentProjectID()
-	if got != 0 {
-		t.Errorf("GetCurrentProjectID() with nil project = %d, want 0", got)
-	}
+	assert.Equal(t, 0, got)
 
 	// Valid project for comparison
 	projects := []*models.Project{{ID: 42, Name: "Test Project"}}
 	state = NewAppState(projects, 0, nil, nil, nil)
 	got = state.GetCurrentProjectID()
-	if got != 42 {
-		t.Errorf("GetCurrentProjectID() with valid project = %d, want 42", got)
-	}
+	assert.Equal(t, 42, got)
 }
 
 // TestNewAppState_NilTasks ensures constructor initializes nil tasks map to empty map.
@@ -83,22 +72,16 @@ func TestNewAppState_NilTasks(t *testing.T) {
 
 	// Accessing the tasks map should not panic
 	tasks := state.Tasks()
-	if tasks == nil {
-		t.Error("NewAppState() with nil tasks map resulted in nil map, want initialized empty map")
-	}
+	require.NotNil(t, tasks, "NewAppState() with nil tasks map resulted in nil map, want initialized empty map")
 
 	// Should be able to write to the map without panic
 	tasks[1] = []*models.TaskSummary{{ID: 1, Title: "Test Task"}}
-	if len(tasks) != 1 {
-		t.Errorf("Writing to tasks map failed, got length %d, want 1", len(tasks))
-	}
+	assert.Len(t, tasks, 1)
 
 	// SetTasks should also handle nil
 	state.SetTasks(nil)
 	tasks = state.Tasks()
-	if tasks == nil {
-		t.Error("SetTasks(nil) resulted in nil map, want initialized empty map")
-	}
+	assert.NotNil(t, tasks, "SetTasks(nil) resulted in nil map, want initialized empty map")
 }
 
 // TestGetColumnByID_ValidColumn ensures O(1) column lookup works correctly.
@@ -114,15 +97,9 @@ func TestGetColumnByID_ValidColumn(t *testing.T) {
 
 	// Test valid lookups
 	col := state.GetColumnByID(2)
-	if col == nil {
-		t.Fatal("GetColumnByID(2) = nil, want non-nil")
-	}
-	if col.ID != 2 {
-		t.Errorf("GetColumnByID(2) returned column with ID=%d, want 2", col.ID)
-	}
-	if col.Name != "In Progress" {
-		t.Errorf("GetColumnByID(2) returned column with Name=%s, want 'In Progress'", col.Name)
-	}
+	require.NotNil(t, col, "GetColumnByID(2) = nil, want non-nil")
+	assert.Equal(t, 2, col.ID)
+	assert.Equal(t, "In Progress", col.Name)
 }
 
 // TestGetColumnByID_InvalidColumn ensures lookup for non-existent column returns nil.
@@ -137,9 +114,7 @@ func TestGetColumnByID_InvalidColumn(t *testing.T) {
 
 	// Test invalid lookup
 	col := state.GetColumnByID(999)
-	if col != nil {
-		t.Errorf("GetColumnByID(999) = %v, want nil", col)
-	}
+	assert.Nil(t, col)
 }
 
 // TestGetColumnByID_EmptyColumns ensures lookup with no columns returns nil.
@@ -148,9 +123,7 @@ func TestGetColumnByID_EmptyColumns(t *testing.T) {
 	state := NewAppState(nil, 0, []*models.Column{}, nil, nil)
 
 	col := state.GetColumnByID(1)
-	if col != nil {
-		t.Errorf("GetColumnByID(1) with empty columns = %v, want nil", col)
-	}
+	assert.Nil(t, col)
 }
 
 // TestSetColumns_UpdatesMap ensures SetColumns rebuilds the columnByID map.
@@ -163,9 +136,8 @@ func TestSetColumns_UpdatesMap(t *testing.T) {
 
 	// Verify initial state
 	col := state.GetColumnByID(1)
-	if col == nil || col.Name != "Original" {
-		t.Fatal("Initial column lookup failed")
-	}
+	require.NotNil(t, col, "Initial column lookup failed")
+	require.Equal(t, "Original", col.Name, "Initial column lookup failed")
 
 	// Update columns
 	newColumns := []*models.Column{
@@ -176,18 +148,14 @@ func TestSetColumns_UpdatesMap(t *testing.T) {
 
 	// Old column should no longer be found
 	col = state.GetColumnByID(1)
-	if col != nil {
-		t.Error("GetColumnByID(1) after SetColumns should return nil, map not updated")
-	}
+	assert.Nil(t, col, "GetColumnByID(1) after SetColumns should return nil, map not updated")
 
 	// New columns should be found
 	col = state.GetColumnByID(2)
-	if col == nil || col.Name != "Updated" {
-		t.Error("GetColumnByID(2) after SetColumns failed, map not rebuilt")
-	}
+	require.NotNil(t, col, "GetColumnByID(2) after SetColumns failed, map not rebuilt")
+	assert.Equal(t, "Updated", col.Name)
 
 	col = state.GetColumnByID(3)
-	if col == nil || col.Name != "New" {
-		t.Error("GetColumnByID(3) after SetColumns failed, map not rebuilt")
-	}
+	require.NotNil(t, col, "GetColumnByID(3) after SetColumns failed, map not rebuilt")
+	assert.Equal(t, "New", col.Name)
 }

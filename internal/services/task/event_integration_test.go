@@ -18,6 +18,17 @@ func newTestServiceWithMock(t *testing.T, db *sql.DB, mock *taskevent.MockServic
 	return svc
 }
 
+func findEventCall(t *testing.T, mock *taskevent.MockService, method string, taskID int) *taskevent.EventCall {
+	t.Helper()
+	calls := mock.GetCalls()
+	for i := range calls {
+		if calls[i].Method == method && calls[i].TaskID == taskID {
+			return &calls[i]
+		}
+	}
+	return nil
+}
+
 func TestCreateTask_EmitsTaskCreatedEvent(t *testing.T) {
 	t.Parallel()
 
@@ -40,14 +51,7 @@ func TestCreateTask_EmitsTaskCreatedEvent(t *testing.T) {
 		"Expected CreateTaskCreatedEvent to be called for task %d", task.ID)
 	require.Equal(t, 1, mock.CallCount("CreateTaskCreatedEvent"))
 
-	calls := mock.GetCalls()
-	var createCall *taskevent.EventCall
-	for i := range calls {
-		if calls[i].Method == "CreateTaskCreatedEvent" && calls[i].TaskID == task.ID {
-			createCall = &calls[i]
-			break
-		}
-	}
+	createCall := findEventCall(t, mock, "CreateTaskCreatedEvent", task.ID)
 	require.NotNil(t, createCall)
 	require.Equal(t, "Test Task", createCall.Args["title"])
 }
@@ -74,14 +78,7 @@ func TestMoveTaskToColumn_EmitsTaskMovedEvent(t *testing.T) {
 		"Expected CreateTaskMovedEvent to be called for task %d", taskID)
 	require.Equal(t, 1, mock.CallCount("CreateTaskMovedEvent"))
 
-	calls := mock.GetCalls()
-	var moveCall *taskevent.EventCall
-	for i := range calls {
-		if calls[i].Method == "CreateTaskMovedEvent" && calls[i].TaskID == taskID {
-			moveCall = &calls[i]
-			break
-		}
-	}
+	moveCall := findEventCall(t, mock, "CreateTaskMovedEvent", taskID)
 	require.NotNil(t, moveCall)
 	require.Equal(t, "Todo", moveCall.Args["fromColumn"])
 	require.Equal(t, "Done", moveCall.Args["toColumn"])
@@ -218,14 +215,7 @@ func TestAddParentRelation_EmitsTaskAssociatedEvent(t *testing.T) {
 		"Expected CreateTaskAssociatedEvent to be called for task %d", task2.ID)
 	require.Equal(t, 1, mock.CallCount("CreateTaskAssociatedEvent"))
 
-	calls := mock.GetCalls()
-	var assocCall *taskevent.EventCall
-	for i := range calls {
-		if calls[i].Method == "CreateTaskAssociatedEvent" && calls[i].TaskID == task2.ID {
-			assocCall = &calls[i]
-			break
-		}
-	}
+	assocCall := findEventCall(t, mock, "CreateTaskAssociatedEvent", task2.ID)
 	require.NotNil(t, assocCall)
 	require.Equal(t, task1.ID, assocCall.Args["relatedTaskID"])
 }
@@ -265,14 +255,7 @@ func TestAddChildRelation_EmitsTaskAssociatedEvent(t *testing.T) {
 		"Expected CreateTaskAssociatedEvent to be called for task %d", task1.ID)
 	require.Equal(t, 1, mock.CallCount("CreateTaskAssociatedEvent"))
 
-	calls := mock.GetCalls()
-	var assocCall *taskevent.EventCall
-	for i := range calls {
-		if calls[i].Method == "CreateTaskAssociatedEvent" && calls[i].TaskID == task1.ID {
-			assocCall = &calls[i]
-			break
-		}
-	}
+	assocCall := findEventCall(t, mock, "CreateTaskAssociatedEvent", task1.ID)
 	require.NotNil(t, assocCall)
 	require.Equal(t, task2.ID, assocCall.Args["relatedTaskID"])
 }
@@ -313,14 +296,7 @@ func TestRemoveParentRelation_EmitsTaskDisassociatedEvent(t *testing.T) {
 		"Expected CreateTaskDisassociatedEvent to be called for task %d", task2.ID)
 	require.Equal(t, 1, mock.CallCount("CreateTaskDisassociatedEvent"))
 
-	calls := mock.GetCalls()
-	var disassocCall *taskevent.EventCall
-	for i := range calls {
-		if calls[i].Method == "CreateTaskDisassociatedEvent" && calls[i].TaskID == task2.ID {
-			disassocCall = &calls[i]
-			break
-		}
-	}
+	disassocCall := findEventCall(t, mock, "CreateTaskDisassociatedEvent", task2.ID)
 	require.NotNil(t, disassocCall)
 	require.Equal(t, task1.ID, disassocCall.Args["relatedTaskID"])
 }
@@ -363,14 +339,7 @@ func TestRemoveChildRelation_EmitsTaskDisassociatedEvent(t *testing.T) {
 		"Expected CreateTaskDisassociatedEvent to be called for task %d", task1.ID)
 	require.Equal(t, 1, mock.CallCount("CreateTaskDisassociatedEvent"))
 
-	calls := mock.GetCalls()
-	var disassocCall *taskevent.EventCall
-	for i := range calls {
-		if calls[i].Method == "CreateTaskDisassociatedEvent" && calls[i].TaskID == task1.ID {
-			disassocCall = &calls[i]
-			break
-		}
-	}
+	disassocCall := findEventCall(t, mock, "CreateTaskDisassociatedEvent", task1.ID)
 	require.NotNil(t, disassocCall)
 	require.Equal(t, task2.ID, disassocCall.Args["relatedTaskID"])
 }
@@ -403,14 +372,7 @@ func TestAttachLabel_EmitsLabelAddedEvent(t *testing.T) {
 		"Expected CreateLabelAddedEvent to be called for task %d", task.ID)
 	require.Equal(t, 1, mock.CallCount("CreateLabelAddedEvent"))
 
-	calls := mock.GetCalls()
-	var labelCall *taskevent.EventCall
-	for i := range calls {
-		if calls[i].Method == "CreateLabelAddedEvent" && calls[i].TaskID == task.ID {
-			labelCall = &calls[i]
-			break
-		}
-	}
+	labelCall := findEventCall(t, mock, "CreateLabelAddedEvent", task.ID)
 	require.NotNil(t, labelCall)
 	require.Equal(t, "bug", labelCall.Args["labelName"])
 }
@@ -444,14 +406,7 @@ func TestDetachLabel_EmitsLabelRemovedEvent(t *testing.T) {
 		"Expected CreateLabelRemovedEvent to be called for task %d", task.ID)
 	require.Equal(t, 1, mock.CallCount("CreateLabelRemovedEvent"))
 
-	calls := mock.GetCalls()
-	var labelCall *taskevent.EventCall
-	for i := range calls {
-		if calls[i].Method == "CreateLabelRemovedEvent" && calls[i].TaskID == task.ID {
-			labelCall = &calls[i]
-			break
-		}
-	}
+	labelCall := findEventCall(t, mock, "CreateLabelRemovedEvent", task.ID)
 	require.NotNil(t, labelCall)
 	require.Equal(t, "bug", labelCall.Args["labelName"])
 }
@@ -488,14 +443,7 @@ func TestUpdateTask_EmitsPriorityChangedEvent(t *testing.T) {
 		"Expected CreatePriorityChangedEvent to be called for task %d", task.ID)
 	require.Equal(t, 1, mock.CallCount("CreatePriorityChangedEvent"))
 
-	calls := mock.GetCalls()
-	var priorityCall *taskevent.EventCall
-	for i := range calls {
-		if calls[i].Method == "CreatePriorityChangedEvent" && calls[i].TaskID == task.ID {
-			priorityCall = &calls[i]
-			break
-		}
-	}
+	priorityCall := findEventCall(t, mock, "CreatePriorityChangedEvent", task.ID)
 	require.NotNil(t, priorityCall)
 	require.Equal(t, "medium", priorityCall.Args["oldPriority"])
 	require.Equal(t, "high", priorityCall.Args["newPriority"])
@@ -533,14 +481,7 @@ func TestUpdateTask_EmitsTypeChangedEvent(t *testing.T) {
 		"Expected CreateTypeChangedEvent to be called for task %d", task.ID)
 	require.Equal(t, 1, mock.CallCount("CreateTypeChangedEvent"))
 
-	calls := mock.GetCalls()
-	var typeCall *taskevent.EventCall
-	for i := range calls {
-		if calls[i].Method == "CreateTypeChangedEvent" && calls[i].TaskID == task.ID {
-			typeCall = &calls[i]
-			break
-		}
-	}
+	typeCall := findEventCall(t, mock, "CreateTypeChangedEvent", task.ID)
 	require.NotNil(t, typeCall)
 	require.Equal(t, "task", typeCall.Args["oldType"])
 	require.Equal(t, "bug", typeCall.Args["newType"])

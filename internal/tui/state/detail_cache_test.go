@@ -3,6 +3,8 @@ package state
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -30,9 +32,7 @@ func TestNewTaskDetailCache_DefaultSize(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cache := NewTaskDetailCache(tt.maxSize)
-			if cache.maxSize != tt.wantSize {
-				t.Errorf("NewTaskDetailCache(%d).maxSize = %d, want %d", tt.maxSize, cache.maxSize, tt.wantSize)
-			}
+			assert.Equal(t, tt.wantSize, cache.maxSize)
 		})
 	}
 }
@@ -87,22 +87,16 @@ func TestSet_LRUEvictionOrder(t *testing.T) {
 
 			// Verify evicted IDs are NOT in cache
 			for _, id := range tt.wantEvictedIDs {
-				if cache.Has(id) {
-					t.Errorf("ID %d should have been evicted but is still in cache", id)
-				}
+				assert.False(t, cache.Has(id), "ID %d should have been evicted but is still in cache", id)
 			}
 
 			// Verify expected IDs ARE in cache
 			for _, id := range tt.wantCachedIDs {
-				if !cache.Has(id) {
-					t.Errorf("ID %d should be in cache but was not found", id)
-				}
+				assert.True(t, cache.Has(id), "ID %d should be in cache but was not found", id)
 			}
 
 			// Verify cache size doesn't exceed maxSize
-			if len(cache.CachedIDs()) > tt.maxSize {
-				t.Errorf("Cache size %d exceeds maxSize %d", len(cache.CachedIDs()), tt.maxSize)
-			}
+			assert.LessOrEqual(t, len(cache.CachedIDs()), tt.maxSize)
 		})
 	}
 }
@@ -119,34 +113,22 @@ func TestGet_UpdatesLRUPosition(t *testing.T) {
 
 	// Access A (ID 1), which should move it to most recently used
 	detail, found := cache.Get(1)
-	if !found {
-		t.Fatal("Get(1) should find entry A")
-	}
-	if detail.ID != 1 {
-		t.Errorf("Get(1) returned wrong detail, got ID=%d", detail.ID)
-	}
+	require.True(t, found, "Get(1) should find entry A")
+	assert.Equal(t, 1, detail.ID)
 
 	// Now order should be: B(2), C(3), A(1) - with B as oldest
 	// Add D (ID 4), which should evict B (the oldest untouched)
 	cache.Set(4, makeTestDetail(4))
 
 	// Verify B was evicted (not A)
-	if cache.Has(2) {
-		t.Error("B (ID 2) should have been evicted but is still in cache")
-	}
+	assert.False(t, cache.Has(2), "B (ID 2) should have been evicted but is still in cache")
 
 	// Verify A is still in cache (it was accessed recently)
-	if !cache.Has(1) {
-		t.Error("A (ID 1) should still be in cache after Get() updated its LRU position")
-	}
+	assert.True(t, cache.Has(1), "A (ID 1) should still be in cache after Get() updated its LRU position")
 
 	// Verify C and D are in cache
-	if !cache.Has(3) {
-		t.Error("C (ID 3) should be in cache")
-	}
-	if !cache.Has(4) {
-		t.Error("D (ID 4) should be in cache")
-	}
+	assert.True(t, cache.Has(3), "C (ID 3) should be in cache")
+	assert.True(t, cache.Has(4), "D (ID 4) should be in cache")
 }
 
 // TestGet_UpdatesLRUPosition_MultipleAccesses tests multiple Get() calls affecting eviction order.
@@ -167,23 +149,13 @@ func TestGet_UpdatesLRUPosition_MultipleAccesses(t *testing.T) {
 	cache.Set(5, makeTestDetail(5))
 
 	// C and B should be evicted
-	if cache.Has(3) {
-		t.Error("C (ID 3) should have been evicted first")
-	}
-	if cache.Has(2) {
-		t.Error("B (ID 2) should have been evicted second")
-	}
+	assert.False(t, cache.Has(3), "C (ID 3) should have been evicted first")
+	assert.False(t, cache.Has(2), "B (ID 2) should have been evicted second")
 
 	// A, D, E should remain
-	if !cache.Has(1) {
-		t.Error("A (ID 1) should still be in cache")
-	}
-	if !cache.Has(4) {
-		t.Error("D (ID 4) should be in cache")
-	}
-	if !cache.Has(5) {
-		t.Error("E (ID 5) should be in cache")
-	}
+	assert.True(t, cache.Has(1), "A (ID 1) should still be in cache")
+	assert.True(t, cache.Has(4), "D (ID 4) should be in cache")
+	assert.True(t, cache.Has(5), "E (ID 5) should be in cache")
 }
 
 // TestSet_NilDetail ensures setting nil detail is a no-op.
@@ -198,20 +170,14 @@ func TestSet_NilDetail(t *testing.T) {
 	cache.Set(2, nil)
 
 	// Verify nil was not added
-	if cache.Has(2) {
-		t.Error("Set(2, nil) should not add entry to cache")
-	}
+	assert.False(t, cache.Has(2), "Set(2, nil) should not add entry to cache")
 
 	// Verify original entry is still there
-	if !cache.Has(1) {
-		t.Error("Original entry (ID 1) should still be in cache")
-	}
+	assert.True(t, cache.Has(1), "Original entry (ID 1) should still be in cache")
 
 	// Verify cache size
 	ids := cache.CachedIDs()
-	if len(ids) != 1 {
-		t.Errorf("CachedIDs() length = %d, want 1", len(ids))
-	}
+	assert.Len(t, ids, 1)
 }
 
 // TestSet_UpdateExisting ensures updating existing entry refreshes LRU position.
@@ -234,18 +200,12 @@ func TestSet_UpdateExisting(t *testing.T) {
 	cache.Set(4, makeTestDetail(4))
 
 	// Verify B was evicted
-	if cache.Has(2) {
-		t.Error("B (ID 2) should have been evicted")
-	}
+	assert.False(t, cache.Has(2), "B (ID 2) should have been evicted")
 
 	// Verify A has updated value
 	detail, found := cache.Get(1)
-	if !found {
-		t.Fatal("A (ID 1) should still be in cache")
-	}
-	if detail.Title != "Updated Task" {
-		t.Errorf("Updated detail title = %q, want %q", detail.Title, "Updated Task")
-	}
+	require.True(t, found, "A (ID 1) should still be in cache")
+	assert.Equal(t, "Updated Task", detail.Title)
 }
 
 // TestInvalidate_NonExistentID ensures Invalidate on non-existent ID is safe (no panic).
@@ -261,12 +221,8 @@ func TestInvalidate_NonExistentID(t *testing.T) {
 	cache.Invalidate(999)
 
 	// Verify existing entries are unaffected
-	if !cache.Has(1) {
-		t.Error("ID 1 should still be in cache after invalidating non-existent ID")
-	}
-	if !cache.Has(2) {
-		t.Error("ID 2 should still be in cache after invalidating non-existent ID")
-	}
+	assert.True(t, cache.Has(1), "ID 1 should still be in cache after invalidating non-existent ID")
+	assert.True(t, cache.Has(2), "ID 2 should still be in cache after invalidating non-existent ID")
 }
 
 // TestInvalidate_EmptyCache ensures Invalidate on empty cache is safe.
@@ -278,9 +234,7 @@ func TestInvalidate_EmptyCache(t *testing.T) {
 
 	// Verify cache is still empty
 	ids := cache.CachedIDs()
-	if len(ids) != 0 {
-		t.Errorf("CachedIDs() on empty cache after Invalidate = %v, want empty", ids)
-	}
+	assert.Len(t, ids, 0)
 }
 
 // TestCachedIDs_EmptyCache ensures CachedIDs returns empty slice on empty cache.
@@ -289,12 +243,8 @@ func TestCachedIDs_EmptyCache(t *testing.T) {
 
 	ids := cache.CachedIDs()
 
-	if ids == nil {
-		t.Error("CachedIDs() should return non-nil empty slice, not nil")
-	}
-	if len(ids) != 0 {
-		t.Errorf("CachedIDs() on empty cache = %v, want empty slice", ids)
-	}
+	require.NotNil(t, ids, "CachedIDs() should return non-nil empty slice, not nil")
+	assert.Len(t, ids, 0)
 }
 
 // TestCachedIDs_ReturnsCopy ensures returned slice is a copy that can be safely modified.
@@ -310,9 +260,7 @@ func TestCachedIDs_ReturnsCopy(t *testing.T) {
 
 	// Verify internal state is unaffected
 	internalIDs := cache.CachedIDs()
-	if internalIDs[0] == 999 {
-		t.Error("CachedIDs() should return a copy, not the internal slice")
-	}
+	assert.NotEqual(t, 999, internalIDs[0], "CachedIDs() should return a copy, not the internal slice")
 }
 
 // TestSetBatch_EmptyMap ensures SetBatch with empty map is safe.
@@ -326,14 +274,10 @@ func TestSetBatch_EmptyMap(t *testing.T) {
 	cache.SetBatch(map[int]*models.TaskDetail{})
 
 	// Verify existing entry is unaffected
-	if !cache.Has(1) {
-		t.Error("Existing entry should be unaffected by empty SetBatch")
-	}
+	assert.True(t, cache.Has(1), "Existing entry should be unaffected by empty SetBatch")
 
 	ids := cache.CachedIDs()
-	if len(ids) != 1 {
-		t.Errorf("CachedIDs() length after empty SetBatch = %d, want 1", len(ids))
-	}
+	assert.Len(t, ids, 1)
 }
 
 // TestSetBatch_NilMap ensures SetBatch with nil map is safe.
@@ -344,9 +288,7 @@ func TestSetBatch_NilMap(t *testing.T) {
 	// SetBatch with nil map (should be no-op, range over nil map is safe in Go)
 	cache.SetBatch(nil)
 
-	if !cache.Has(1) {
-		t.Error("Existing entry should be unaffected by nil SetBatch")
-	}
+	assert.True(t, cache.Has(1), "Existing entry should be unaffected by nil SetBatch")
 }
 
 // TestGet_NonExistentID ensures Get on non-existent ID returns nil, false.
@@ -356,12 +298,8 @@ func TestGet_NonExistentID(t *testing.T) {
 
 	detail, found := cache.Get(999)
 
-	if found {
-		t.Error("Get(999) should return false for non-existent ID")
-	}
-	if detail != nil {
-		t.Error("Get(999) should return nil detail for non-existent ID")
-	}
+	assert.False(t, found, "Get(999) should return false for non-existent ID")
+	assert.Nil(t, detail, "Get(999) should return nil detail for non-existent ID")
 }
 
 // TestGet_EmptyCache ensures Get on empty cache returns nil, false.
@@ -370,21 +308,15 @@ func TestGet_EmptyCache(t *testing.T) {
 
 	detail, found := cache.Get(1)
 
-	if found {
-		t.Error("Get(1) on empty cache should return false")
-	}
-	if detail != nil {
-		t.Error("Get(1) on empty cache should return nil")
-	}
+	assert.False(t, found, "Get(1) on empty cache should return false")
+	assert.Nil(t, detail, "Get(1) on empty cache should return nil")
 }
 
 // TestHas_EmptyCache ensures Has on empty cache returns false.
 func TestHas_EmptyCache(t *testing.T) {
 	cache := NewTaskDetailCache(3)
 
-	if cache.Has(1) {
-		t.Error("Has(1) on empty cache should return false")
-	}
+	assert.False(t, cache.Has(1), "Has(1) on empty cache should return false")
 }
 
 // TestClear_EmptyCache ensures Clear on empty cache is safe.
@@ -395,9 +327,7 @@ func TestClear_EmptyCache(t *testing.T) {
 	cache.Clear()
 
 	ids := cache.CachedIDs()
-	if len(ids) != 0 {
-		t.Errorf("CachedIDs() after Clear on empty cache = %v, want empty", ids)
-	}
+	assert.Len(t, ids, 0)
 }
 
 // TestClear_WithEntries ensures Clear removes all entries.
@@ -409,14 +339,10 @@ func TestClear_WithEntries(t *testing.T) {
 
 	cache.Clear()
 
-	if cache.Has(1) || cache.Has(2) || cache.Has(3) {
-		t.Error("Clear() should remove all entries")
-	}
+	assert.False(t, cache.Has(1) || cache.Has(2) || cache.Has(3), "Clear() should remove all entries")
 
 	ids := cache.CachedIDs()
-	if len(ids) != 0 {
-		t.Errorf("CachedIDs() after Clear = %v, want empty", ids)
-	}
+	assert.Len(t, ids, 0)
 }
 
 // TestInvalidate_RemovesFromOrder ensures Invalidate properly removes from LRU order.
@@ -432,9 +358,7 @@ func TestInvalidate_RemovesFromOrder(t *testing.T) {
 	cache.Invalidate(2)
 
 	// Verify B is removed
-	if cache.Has(2) {
-		t.Error("B (ID 2) should be removed after Invalidate")
-	}
+	assert.False(t, cache.Has(2), "B (ID 2) should be removed after Invalidate")
 
 	// Add D and E (should evict A first, then C - not cause issues due to removed B)
 	cache.Set(4, makeTestDetail(4))
@@ -442,17 +366,11 @@ func TestInvalidate_RemovesFromOrder(t *testing.T) {
 	cache.Set(6, makeTestDetail(6))
 
 	// A and C should be evicted (B was already removed)
-	if cache.Has(1) {
-		t.Error("A (ID 1) should have been evicted")
-	}
-	if cache.Has(3) {
-		t.Error("C (ID 3) should have been evicted")
-	}
+	assert.False(t, cache.Has(1), "A (ID 1) should have been evicted")
+	assert.False(t, cache.Has(3), "C (ID 3) should have been evicted")
 
 	// D, E, F should remain
-	if !cache.Has(4) || !cache.Has(5) || !cache.Has(6) {
-		t.Error("D, E, F should all be in cache")
-	}
+	assert.True(t, cache.Has(4) && cache.Has(5) && cache.Has(6), "D, E, F should all be in cache")
 }
 
 // TestCachedIDs_PreservesLRUOrder ensures CachedIDs returns IDs in LRU order (oldest first).
@@ -471,13 +389,9 @@ func TestCachedIDs_PreservesLRUOrder(t *testing.T) {
 	ids := cache.CachedIDs()
 
 	expected := []int{2, 3, 1}
-	if len(ids) != len(expected) {
-		t.Fatalf("CachedIDs() length = %d, want %d", len(ids), len(expected))
-	}
+	require.Len(t, ids, len(expected))
 
 	for i, id := range ids {
-		if id != expected[i] {
-			t.Errorf("CachedIDs()[%d] = %d, want %d", i, id, expected[i])
-		}
+		assert.Equal(t, expected[i], id, "CachedIDs()[%d]", i)
 	}
 }

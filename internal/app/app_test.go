@@ -3,6 +3,7 @@ package app
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil"
 )
@@ -14,25 +15,15 @@ func TestNew(t *testing.T) {
 	app, err := New(db)
 	require.NoError(t, err, "failed to create app")
 
-	if app == nil {
-		t.Fatal("Expected app to be created, got nil")
-	}
+	require.NotNil(t, app)
 
-	if app.TaskService == nil {
-		t.Error("Expected TaskService to be initialized")
-	}
+	assert.NotNil(t, app.TaskService)
 
-	if app.ProjectService == nil {
-		t.Error("Expected ProjectService to be initialized")
-	}
+	assert.NotNil(t, app.ProjectService)
 
-	if app.ColumnService == nil {
-		t.Error("Expected ColumnService to be initialized")
-	}
+	assert.NotNil(t, app.ColumnService)
 
-	if app.LabelService == nil {
-		t.Error("Expected LabelService to be initialized")
-	}
+	assert.NotNil(t, app.LabelService)
 }
 
 func TestClose(t *testing.T) {
@@ -42,7 +33,5 @@ func TestClose(t *testing.T) {
 	require.NoError(t, err, "failed to create app")
 
 	err = app.Close()
-	if err != nil {
-		t.Errorf("Expected Close to succeed, got error: %v", err)
-	}
+	assert.NoError(t, err)
 }

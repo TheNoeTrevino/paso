@@ -4,6 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // SnapshotHelper manages snapshot file operations for TUI testing
@@ -28,17 +31,15 @@ func (sh *SnapshotHelper) Compare(name, output string) {
 	sh.t.Helper()
 
 	// Ensure snapshot directory exists
-	if err := os.MkdirAll(sh.snapshotDir, 0755); err != nil {
-		sh.t.Fatalf("Failed to create snapshot directory: %v", err)
-	}
+	err := os.MkdirAll(sh.snapshotDir, 0755)
+	require.NoError(sh.t, err, "Failed to create snapshot directory")
 
 	snapshotPath := filepath.Join(sh.snapshotDir, name+".golden")
 
 	if sh.updateMode {
 		// Write/update golden file
-		if err := os.WriteFile(snapshotPath, []byte(output), 0644); err != nil {
-			sh.t.Fatalf("Failed to write snapshot file: %v", err)
-		}
+		err := os.WriteFile(snapshotPath, []byte(output), 0644)
+		require.NoError(sh.t, err, "Failed to write snapshot file")
 		sh.t.Logf("Updated snapshot: %s", snapshotPath)
 		return
 	}
@@ -49,33 +50,27 @@ func (sh *SnapshotHelper) Compare(name, output string) {
 		if os.IsNotExist(err) {
 			sh.t.Logf("Snapshot file does not exist, creating: %s\nRun UPDATE_SNAPSHOTS=1 to create/update", snapshotPath)
 			// Write initial snapshot for first run
-			if err := os.WriteFile(snapshotPath, []byte(output), 0644); err != nil {
-				sh.t.Fatalf("Failed to write initial snapshot: %v", err)
-			}
+			err := os.WriteFile(snapshotPath, []byte(output), 0644)
+			require.NoError(sh.t, err, "Failed to write initial snapshot")
 			return
 		}
-		sh.t.Fatalf("Failed to read snapshot file: %v", err)
+		require.NoError(sh.t, err, "Failed to read snapshot file")
 	}
 
 	// Compare output
-	if string(golden) != output {
-		sh.t.Errorf("Snapshot mismatch for %s\n\nExpected:\n%s\n\nGot:\n%s\n\nRun UPDATE_SNAPSHOTS=1 to update",
-			name, string(golden), output)
-	}
+	assert.Equal(sh.t, string(golden), output, "Snapshot mismatch for %s\n\nRun UPDATE_SNAPSHOTS=1 to update", name)
 }
 
 // WriteSnapshot writes a snapshot file directly
 func (sh *SnapshotHelper) WriteSnapshot(name, content string) {
 	sh.t.Helper()
 
-	if err := os.MkdirAll(sh.snapshotDir, 0755); err != nil {
-		sh.t.Fatalf("Failed to create snapshot directory: %v", err)
-	}
+	err := os.MkdirAll(sh.snapshotDir, 0755)
+	require.NoError(sh.t, err, "Failed to create snapshot directory")
 
 	snapshotPath := filepath.Join(sh.snapshotDir, name+".golden")
-	if err := os.WriteFile(snapshotPath, []byte(content), 0644); err != nil {
-		sh.t.Fatalf("Failed to write snapshot: %v", err)
-	}
+	err = os.WriteFile(snapshotPath, []byte(content), 0644)
+	require.NoError(sh.t, err, "Failed to write snapshot")
 }
 
 // ReadSnapshot reads an existing snapshot file

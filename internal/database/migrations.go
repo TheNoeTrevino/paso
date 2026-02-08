@@ -6,6 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	"github.com/pressly/goose/v3"
 	"github.com/thenoetrevino/paso/internal/database/types"
@@ -21,46 +22,56 @@ type (
 //go:embed migrations_sqlite/*.sql migrations_postgres/*.sql
 var embedMigrations embed.FS
 
-// runMigrations runs goose migrations for the appropriate database type and seeds default data
-func runMigrations(ctx context.Context, db *sql.DB, dbType DatabaseType) error {
-	slog.Debug("setting up goose migration filesystem")
+// gooseMu serializes access to goose's package-level global state (SetBaseFS,
+// SetDialect). This is only relevant when parallel tests each call
+// applyMigrations on their own in-memory DB; production code calls it once
+// during startup.
+var gooseMu sync.Mutex
+
+// RunMigrationsOnly applies goose schema migrations without seeding default data.
+// This is intended for test setup where tests need a clean schema without seed data.
+func RunMigrationsOnly(db *sql.DB, dbType DatabaseType) error {
+	return applyMigrations(db, dbType)
+}
+
+// applyMigrations runs goose migrations for the appropriate database type
+func applyMigrations(db *sql.DB, dbType DatabaseType) error {
+	gooseMu.Lock()
+	defer gooseMu.Unlock()
+
 	goose.SetBaseFS(embedMigrations)
 
 	switch dbType {
 	case SQLite:
-		slog.Debug("setting goose dialect to sqlite3")
 		if err := goose.SetDialect("sqlite3"); err != nil {
-			slog.Error("failed to set goose dialect for SQLite", "error", err)
 			return fmt.Errorf("failed to set goose dialect: %w", err)
 		}
-
-		slog.Info("running SQLite migrations from migrations_sqlite/ directory")
 		if err := goose.Up(db, "migrations_sqlite"); err != nil {
-			slog.Error("SQLite migrations failed", "error", err)
 			return fmt.Errorf("failed to run goose migrations: %w", err)
 		}
-		slog.Info("SQLite migrations completed successfully")
-
 	case PostgreSQL:
-		slog.Debug("setting goose dialect to postgres")
 		if err := goose.SetDialect("postgres"); err != nil {
-			slog.Error("failed to set goose dialect for PostgreSQL", "error", err)
 			return fmt.Errorf("failed to set goose dialect: %w", err)
 		}
-
-		// Use PostgreSQL-specific migrations directory for proper schema compatibility
-		slog.Info("running PostgreSQL migrations from migrations_postgres/ directory")
 		if err := goose.Up(db, "migrations_postgres"); err != nil {
-			slog.Error("PostgreSQL migrations failed", "error", err)
 			return fmt.Errorf("failed to run goose migrations: %w", err)
 		}
-		slog.Info("PostgreSQL migrations completed successfully")
-
 	default:
 		return fmt.Errorf("unknown database type: %s", dbType)
 	}
 
-	// Seed default data after migrations
+	return nil
+}
+
+// runMigrations runs goose migrations for the appropriate database type and seeds default data
+func runMigrations(ctx context.Context, db *sql.DB, dbType DatabaseType) error {
+	slog.Info("running database migrations", "type", dbType)
+	if err := applyMigrations(db, dbType); err != nil {
+		slog.Error("migrations failed", "error", err)
+		return err
+	}
+	slog.Info("migrations completed successfully")
+
 	slog.Info("seeding default data")
 	if err := seedDefaultData(ctx, db, dbType); err != nil {
 		slog.Error("failed to seed default data", "error", err)

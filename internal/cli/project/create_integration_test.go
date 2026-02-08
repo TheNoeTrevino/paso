@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
@@ -98,15 +98,20 @@ func TestCreateProject_Positive(t *testing.T) {
 }
 
 func TestCreateProject_InGitRepo(t *testing.T) {
-	// This test should be run in a git repository
-	// It verifies that creating a project in a git repo associates it with the current branch
+	// This test verifies that creating a project in a git repo associates it with the current branch
 
-	// Setup test DB and App
-	db, app := cli.SetupCLITest(t)
+	// Setup test DB and App with mock git detector
+	db, app, mockGit := cli.SetupCLITestWithGit(t)
 
 	t.Run("Create project in git repo associates with branch", func(t *testing.T) {
-		// This test will fail until git detection is implemented
-		// It assumes DetectGitInfo() will be called during project creation
+		// Configure mock: simulate being in a git repo on branch "feature/test-branch"
+		mockGit.Info = git.GitInfo{
+			IsRepo:        true,
+			CurrentBranch: "feature/test-branch",
+			IsDetached:    false,
+			HasCommits:    true,
+		}
+		mockGit.Branches["feature/test-branch"] = true
 
 		cmd := CreateCmd()
 
@@ -128,10 +133,8 @@ func TestCreateProject_InGitRepo(t *testing.T) {
 			"SELECT name, git_branch FROM projects WHERE id = ?", projectIDStr).Scan(&name, &gitBranch)
 		assert.NoError(t, err)
 		assert.Equal(t, "Git Project", name)
-
-		// The git branch should be set (if we're in a git repo)
-		// If not in a git repo, it should be NULL
-		t.Logf("Git branch: valid=%v, value='%s'", gitBranch.Valid, gitBranch.String)
+		assert.True(t, gitBranch.Valid, "Git branch should be set")
+		assert.Equal(t, "feature/test-branch", gitBranch.String)
 	})
 }
 
@@ -139,15 +142,14 @@ func TestCreateProject_OutsideGitRepo(t *testing.T) {
 	// This test verifies that creating a project outside a git repo works fine
 	// and doesn't associate with any branch
 
-	// Setup test DB and App
-	db, app := cli.SetupCLITest(t)
+	// Setup test DB and App with mock git detector
+	db, app, mockGit := cli.SetupCLITestWithGit(t)
 
 	t.Run("Create project outside git repo has no branch", func(t *testing.T) {
-		// Create a temporary directory that is NOT a git repo
-		tmpDir := t.TempDir()
-
-		// Change to that directory
-		testutil.ChdirTemp(t, tmpDir)
+		// Configure mock: simulate NOT being in a git repo
+		mockGit.Info = git.GitInfo{
+			IsRepo: false,
+		}
 
 		cmd := CreateCmd()
 
@@ -175,12 +177,22 @@ func TestCreateProject_BranchAlreadyAssociated(t *testing.T) {
 	// This test verifies the warning when creating a project on a branch
 	// that already has an associated project
 
-	// Setup test DB and App
-	db, app := cli.SetupCLITest(t)
+	// Setup test DB and App with mock git detector
+	db, app, mockGit := cli.SetupCLITestWithGit(t)
 	ctx := context.Background()
 
 	t.Run("Warn when branch already associated", func(t *testing.T) {
-		// First, manually create a project with a git branch
+		// Configure mock: we are on branch "feature/existing-branch" in a git repo
+		mockGit.Info = git.GitInfo{
+			IsRepo:        true,
+			CurrentBranch: "feature/existing-branch",
+			IsDetached:    false,
+			HasCommits:    true,
+		}
+		mockGit.Branches["feature/existing-branch"] = true
+
+		// First, create a project that owns this branch via direct DB insert
+		// (bypassing the service to avoid the mock interfering with setup)
 		result, err := db.ExecContext(ctx,
 			"INSERT INTO projects (name, description, git_branch) VALUES (?, ?, ?)",
 			"First Project", "First", "feature/existing-branch")
@@ -193,39 +205,35 @@ func TestCreateProject_BranchAlreadyAssociated(t *testing.T) {
 			firstID, firstID, firstID)
 		assert.NoError(t, err)
 
-		// Now try to create another project on the same branch
-		// This should warn and skip the association
+		// Initialize project counter for the first project
+		_, err = db.ExecContext(ctx,
+			"INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)",
+			firstID)
+		assert.NoError(t, err)
+
+		// Now try to create another project.
+		// The CLI will detect we are on "feature/existing-branch" (via mock),
+		// attempt to create with that branch, get ErrGitBranchAlreadyAssociated,
+		// and retry without the branch.
 		cmd := CreateCmd()
-
-		// We need to simulate being on "feature/existing-branch"
-		// This test will fail until git detection is implemented
-		// For now, we can only test the service layer logic
-
-		// The CLI should:
-		// 1. Detect git branch "feature/existing-branch"
-		// 2. Call GetProjectByGitBranch()
-		// 3. Find existing project
-		// 4. Print warning
-		// 5. Create new project WITHOUT git_branch
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--title", "Second Project",
 			"--quiet",
 		})
 
-		// Should succeed (just skip the association)
+		// Should succeed (retries without branch association)
 		assert.NoError(t, err)
 
 		projectIDStr := strings.TrimSpace(output)
+		assert.Regexp(t, `^\d+$`, projectIDStr)
 
-		// Verify second project has no git_branch
+		// Verify second project has no git_branch (conflict was detected, branch skipped)
 		var gitBranch sql.NullString
 		err = db.QueryRowContext(ctx,
 			"SELECT git_branch FROM projects WHERE id = ?", projectIDStr).Scan(&gitBranch)
 		assert.NoError(t, err)
-		// Second project should NOT have the branch (conflict detected)
-		// This behavior depends on implementation
-		t.Logf("Second project git_branch: valid=%v, value='%s'", gitBranch.Valid, gitBranch.String)
+		assert.False(t, gitBranch.Valid, "Second project should not have a branch when conflict detected")
 	})
 }
 
@@ -293,7 +301,8 @@ func TestCreateProject_DifferentBranches(t *testing.T) {
 				fmt.Sprintf("Project %d", i), "Description", branch)
 			assert.NoError(t, err)
 
-			projectID, _ := result.LastInsertId()
+			projectID, err := result.LastInsertId()
+			assert.NoError(t, err)
 
 			// Create default columns
 			_, err = db.ExecContext(ctx,
@@ -322,6 +331,16 @@ func TestCreateProject_DifferentBranches(t *testing.T) {
 	})
 }
 
+func TestCreateProject_Negative(t *testing.T) {
+	_, app := cli.SetupCLITest(t)
+
+	t.Run("Create project missing title returns error", func(t *testing.T) {
+		cmd := CreateCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
+		assert.Error(t, err)
+	})
+}
+
 func TestCreateProject_GitBranchWithSlashes(t *testing.T) {
 	// This test verifies that branch names with slashes (like feature/my-feature) work correctly
 
@@ -336,7 +355,8 @@ func TestCreateProject_GitBranchWithSlashes(t *testing.T) {
 			"Test Project", "Description", "feature/auth/user-login")
 		assert.NoError(t, err)
 
-		projectID, _ := result.LastInsertId()
+		projectID, err := result.LastInsertId()
+		assert.NoError(t, err)
 
 		// Verify branch was stored correctly
 		var gitBranch string

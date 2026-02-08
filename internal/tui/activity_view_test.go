@@ -664,7 +664,7 @@ func TestActivityView_DataLoading_WithRealDB(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, columns)
 
-	taskID := testutil.CreateTestTask(t, db, columns[0].ID, "Test Task")
+	taskID := testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Test Task")
 
 	_, err = db.ExecContext(ctx, `
 		INSERT INTO task_comments (task_id, content, author) 

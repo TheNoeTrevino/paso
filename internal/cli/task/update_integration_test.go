@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
@@ -25,9 +26,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 	var columnID int
 	err := db.QueryRowContext(ctx,
 		"SELECT id FROM columns WHERE project_id = ? ORDER BY id LIMIT 1", projectID).Scan(&columnID)
-	if err != nil {
-		t.Fatalf("Failed to get column ID: %v", err)
-	}
+	require.NoError(t, err)
 
 	t.Run("Update title only", func(t *testing.T) {
 		// Create a task first
@@ -405,7 +404,7 @@ func TestUpdateTask_Negative(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
 
 	// Create test project
-	_ = cli.CreateTestProject(t, db, "Test Project")
+	cli.CreateTestProject(t, db, "Test Project")
 
 	t.Run("Error with non-existent task ID", func(t *testing.T) {
 		cmd := UpdateCmd()

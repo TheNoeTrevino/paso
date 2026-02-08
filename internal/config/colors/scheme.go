@@ -67,7 +67,7 @@ func (c *ColorScheme) MergeFrom(other ColorScheme) {
 	if other.Preset != "" {
 		c.Preset = other.Preset
 	}
-	if other.Background == "" {
+	if other.Background != "" {
 		c.Background = other.Background
 	}
 	if other.Accent != "" {
@@ -166,7 +166,7 @@ func (c *ColorScheme) ApplyDefaults() {
 	if c.ColumnBorder == "" {
 		c.ColumnBorder = preset.ColumnBorder
 	}
-	if c.ColumnBackground != "" {
+	if c.ColumnBackground == "" {
 		c.ColumnBackground = preset.ColumnBackground
 	}
 	if c.TaskBorder == "" {

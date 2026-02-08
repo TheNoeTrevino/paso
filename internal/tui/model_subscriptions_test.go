@@ -2,6 +2,9 @@ package tui
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestSwitchToProject_UpdatesSubscription verifies that switching to a
@@ -19,16 +22,12 @@ func TestSwitchToProject_UpdatesSubscription(t *testing.T) {
 	m.EventClient = mockClient
 
 	// Verify we have 3 projects
-	if len(m.AppState.Projects()) != 3 {
-		t.Fatalf("Expected 3 projects, got %d", len(m.AppState.Projects()))
-	}
+	require.Len(t, m.AppState.Projects(), 3)
 
 	// Project IDs are 1, 2, 3 (as created by createTestProjects)
 
 	// Initially on project 0 (index 0, which is project ID 1)
-	if m.AppState.SelectedProject() != 0 {
-		t.Fatalf("Expected initial selected project index 0, got %d", m.AppState.SelectedProject())
-	}
+	require.Equal(t, 0, m.AppState.SelectedProject())
 
 	// Simulate switching to project 1 (index 1, which is project ID 2)
 	// NOTE: switchToProject is called by handleNextProject/handlePrevProject
@@ -43,66 +42,46 @@ func TestSwitchToProject_UpdatesSubscription(t *testing.T) {
 	t.Logf("Testing direct subscription calls...")
 
 	// Subscribe to project 1
-	if err := m.EventClient.Subscribe(1); err != nil {
-		t.Fatalf("Failed to subscribe to project 1: %v", err)
-	}
+	err := m.EventClient.Subscribe(1)
+	require.NoError(t, err)
 
 	// Verify subscription was recorded
 	history := mockClient.getSubscriptionHistory()
-	if len(history) != 1 {
-		t.Fatalf("Expected 1 subscription call, got %d", len(history))
-	}
-	if history[0] != 1 {
-		t.Errorf("Expected first subscription to project 1, got %d", history[0])
-	}
-	t.Logf("✓ Subscribe to project 1 recorded")
+	require.Len(t, history, 1)
+	assert.Equal(t, 1, history[0])
+	t.Logf("Subscribe to project 1 recorded")
 
 	// Subscribe to project 2
-	if err := m.EventClient.Subscribe(2); err != nil {
-		t.Fatalf("Failed to subscribe to project 2: %v", err)
-	}
+	err = m.EventClient.Subscribe(2)
+	require.NoError(t, err)
 
 	// Verify second subscription was recorded
 	history = mockClient.getSubscriptionHistory()
-	if len(history) != 2 {
-		t.Fatalf("Expected 2 subscription calls, got %d", len(history))
-	}
-	if history[1] != 2 {
-		t.Errorf("Expected second subscription to project 2, got %d", history[1])
-	}
-	t.Logf("✓ Subscribe to project 2 recorded")
+	require.Len(t, history, 2)
+	assert.Equal(t, 2, history[1])
+	t.Logf("Subscribe to project 2 recorded")
 
 	// Verify current subscription is project 2
-	if mockClient.getCurrentSubscription() != 2 {
-		t.Errorf("Expected current subscription to be project 2, got %d", mockClient.getCurrentSubscription())
-	}
+	assert.Equal(t, 2, mockClient.getCurrentSubscription())
 
 	// Subscribe to project 3, then back to project 1
-	if err := m.EventClient.Subscribe(3); err != nil {
-		t.Fatalf("Failed to subscribe to project 3: %v", err)
-	}
-	if err := m.EventClient.Subscribe(1); err != nil {
-		t.Fatalf("Failed to subscribe to project 1 again: %v", err)
-	}
+	err = m.EventClient.Subscribe(3)
+	require.NoError(t, err)
+	err = m.EventClient.Subscribe(1)
+	require.NoError(t, err)
 
 	// Verify full history: [1, 2, 3, 1]
 	history = mockClient.getSubscriptionHistory()
 	expectedHistory := []int{1, 2, 3, 1}
-	if len(history) != len(expectedHistory) {
-		t.Fatalf("Expected %d subscription calls, got %d", len(expectedHistory), len(history))
-	}
+	require.Len(t, history, len(expectedHistory))
 	for i, expected := range expectedHistory {
-		if history[i] != expected {
-			t.Errorf("Subscription %d: expected project %d, got %d", i, expected, history[i])
-		}
+		assert.Equal(t, expected, history[i], "Subscription %d", i)
 	}
-	t.Logf("✓ Multiple subscription changes recorded: %v", history)
+	t.Logf("Multiple subscription changes recorded: %v", history)
 
 	// Verify current subscription is project 1 (navigated back)
-	if mockClient.getCurrentSubscription() != 1 {
-		t.Errorf("Expected current subscription to be project 1, got %d", mockClient.getCurrentSubscription())
-	}
-	t.Logf("✓ Current subscription correctly tracks last Subscribe call")
+	assert.Equal(t, 1, mockClient.getCurrentSubscription())
+	t.Logf("Current subscription correctly tracks last Subscribe call")
 }
 
 // TestRefreshMsg_HandlesProjectZero verifies that the RefreshMsg handler
@@ -146,14 +125,12 @@ func TestRefreshMsg_HandlesProjectZero(t *testing.T) {
 			// if msg.ProjectID == 0 || msg.ProjectID == project.ID
 			shouldAccept := tc.msgProjectID == 0 || tc.msgProjectID == currentProjectID
 
-			if shouldAccept != tc.shouldAccept {
-				t.Errorf("Expected shouldAccept=%v, got %v", tc.shouldAccept, shouldAccept)
-			}
+			assert.Equal(t, tc.shouldAccept, shouldAccept)
 
 			if shouldAccept {
-				t.Logf("✓ RefreshMsg with ProjectID=%d would be accepted", tc.msgProjectID)
+				t.Logf("RefreshMsg with ProjectID=%d would be accepted", tc.msgProjectID)
 			} else {
-				t.Logf("✓ RefreshMsg with ProjectID=%d would be ignored", tc.msgProjectID)
+				t.Logf("RefreshMsg with ProjectID=%d would be ignored", tc.msgProjectID)
 			}
 		})
 	}
@@ -172,11 +149,8 @@ func TestRefreshMsg_IgnoresWrongProject(t *testing.T) {
 	// Test the condition from the handler
 	shouldAccept := msgProjectID == 0 || msgProjectID == currentProjectID
 
-	if shouldAccept {
-		t.Errorf("Expected to ignore event for project %d when on project %d", msgProjectID, currentProjectID)
-	} else {
-		t.Logf("✓ Correctly ignores RefreshMsg for project %d when on project %d", msgProjectID, currentProjectID)
-	}
+	assert.False(t, shouldAccept, "Expected to ignore event for project %d when on project %d", msgProjectID, currentProjectID)
+	t.Logf("Correctly ignores RefreshMsg for project %d when on project %d", msgProjectID, currentProjectID)
 
 	// Test more cases
 	testCases := []struct {
@@ -195,11 +169,8 @@ func TestRefreshMsg_IgnoresWrongProject(t *testing.T) {
 		shouldAccept := tc.msgProject == 0 || tc.msgProject == tc.currentProject
 		shouldIgnore := !shouldAccept
 
-		if shouldIgnore != tc.shouldIgnore {
-			t.Errorf("Project %d, msg %d: expected ignore=%v, got %v",
-				tc.currentProject, tc.msgProject, tc.shouldIgnore, shouldIgnore)
-		}
+		assert.Equal(t, tc.shouldIgnore, shouldIgnore, "Project %d, msg %d", tc.currentProject, tc.msgProject)
 	}
 
-	t.Logf("✓ All project filtering cases work correctly")
+	t.Logf("All project filtering cases work correctly")
 }

@@ -133,23 +133,6 @@ func ConnectRawClient(t *testing.T, socketPath string) (net.Conn, *json.Encoder,
 	return conn, encoder, decoder
 }
 
-// WaitForClientCount waits for the daemon to have the expected number of clients.
-// Returns true if the count matches within the timeout, false otherwise.
-// Note: Since Server doesn't expose metrics, we test indirectly by attempting connections.
-func WaitForClientCount(t *testing.T, server *daemon.Server, expected int, timeout time.Duration) bool {
-	t.Helper()
-
-	// For now, we verify client connections through observable behavior
-	// The server will accept connections and we can verify by attempting to communicate
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
-	}
-
-	// Give server time to process connections
-	return true
-}
-
 // WaitForEvent waits for an event on a channel with timeout.
 // Returns the event if received, or fails the test on timeout.
 func WaitForEvent(t *testing.T, ch <-chan events.Event, timeout time.Duration) events.Event {

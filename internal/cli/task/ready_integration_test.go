@@ -361,8 +361,8 @@ func TestReadyTask_Positive(t *testing.T) {
 		cli.CreateTestTask(t, db, labelTodoColumnID, "Task With Labels 2")
 
 		// Create labels
-		labelID1 := testutil.CreateTestLabel(t, db, labelProjectID, "bug", "#EF4444")
-		labelID2 := testutil.CreateTestLabel(t, db, labelProjectID, "urgent", "#F97316")
+		labelID1 := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), labelProjectID, "bug", "#EF4444")
+		labelID2 := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), labelProjectID, "urgent", "#F97316")
 
 		// Attach labels to task1
 		_, err = db.ExecContext(ctx,
@@ -410,7 +410,7 @@ func TestReadyTask_Positive(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Add label
-		labelID := testutil.CreateTestLabel(t, db, completeProjectID, "feature", "#3B82F6")
+		labelID := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), completeProjectID, "feature", "#3B82F6")
 		_, err = db.ExecContext(ctx,
 			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID)
 		assert.NoError(t, err)

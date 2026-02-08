@@ -4,13 +4,11 @@ import (
 	"math"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/database/types"
 	"github.com/thenoetrevino/paso/internal/models"
 )
-
-// ============================================================================
-// TEST CASES - ColumnToModel
-// ============================================================================
 
 func TestColumnToModel(t *testing.T) {
 	t.Parallel()
@@ -235,38 +233,17 @@ func TestColumnToModel(t *testing.T) {
 
 			result := ColumnToModel(tt.input)
 
-			// Verify all fields
-			if result.ID != tt.expected.ID {
-				t.Errorf("ID: got %d, want %d", result.ID, tt.expected.ID)
-			}
-			if result.Name != tt.expected.Name {
-				t.Errorf("Name: got %q, want %q", result.Name, tt.expected.Name)
-			}
-			if result.ProjectID != tt.expected.ProjectID {
-				t.Errorf("ProjectID: got %d, want %d", result.ProjectID, tt.expected.ProjectID)
-			}
-			if !intPtrEqual(result.PrevID, tt.expected.PrevID) {
-				t.Errorf("PrevID: got %v, want %v", ptrToString(result.PrevID), ptrToString(tt.expected.PrevID))
-			}
-			if !intPtrEqual(result.NextID, tt.expected.NextID) {
-				t.Errorf("NextID: got %v, want %v", ptrToString(result.NextID), ptrToString(tt.expected.NextID))
-			}
-			if result.HoldsReadyTasks != tt.expected.HoldsReadyTasks {
-				t.Errorf("HoldsReadyTasks: got %v, want %v", result.HoldsReadyTasks, tt.expected.HoldsReadyTasks)
-			}
-			if result.HoldsCompletedTasks != tt.expected.HoldsCompletedTasks {
-				t.Errorf("HoldsCompletedTasks: got %v, want %v", result.HoldsCompletedTasks, tt.expected.HoldsCompletedTasks)
-			}
-			if result.HoldsInProgressTasks != tt.expected.HoldsInProgressTasks {
-				t.Errorf("HoldsInProgressTasks: got %v, want %v", result.HoldsInProgressTasks, tt.expected.HoldsInProgressTasks)
-			}
+			assert.Equal(t, tt.expected.ID, result.ID)
+			assert.Equal(t, tt.expected.Name, result.Name)
+			assert.Equal(t, tt.expected.ProjectID, result.ProjectID)
+			assert.True(t, intPtrEqual(result.PrevID, tt.expected.PrevID))
+			assert.True(t, intPtrEqual(result.NextID, tt.expected.NextID))
+			assert.Equal(t, tt.expected.HoldsReadyTasks, result.HoldsReadyTasks)
+			assert.Equal(t, tt.expected.HoldsCompletedTasks, result.HoldsCompletedTasks)
+			assert.Equal(t, tt.expected.HoldsInProgressTasks, result.HoldsInProgressTasks)
 		})
 	}
 }
-
-// ============================================================================
-// TEST CASES - ColumnFromIDRowToModel
-// ============================================================================
 
 func TestColumnFromIDRowToModel(t *testing.T) {
 	t.Parallel()
@@ -353,38 +330,17 @@ func TestColumnFromIDRowToModel(t *testing.T) {
 
 			result := ColumnFromIDRowToModel(tt.input)
 
-			// Verify all fields
-			if result.ID != tt.expected.ID {
-				t.Errorf("ID: got %d, want %d", result.ID, tt.expected.ID)
-			}
-			if result.Name != tt.expected.Name {
-				t.Errorf("Name: got %q, want %q", result.Name, tt.expected.Name)
-			}
-			if result.ProjectID != tt.expected.ProjectID {
-				t.Errorf("ProjectID: got %d, want %d", result.ProjectID, tt.expected.ProjectID)
-			}
-			if !intPtrEqual(result.PrevID, tt.expected.PrevID) {
-				t.Errorf("PrevID: got %v, want %v", ptrToString(result.PrevID), ptrToString(tt.expected.PrevID))
-			}
-			if !intPtrEqual(result.NextID, tt.expected.NextID) {
-				t.Errorf("NextID: got %v, want %v", ptrToString(result.NextID), ptrToString(tt.expected.NextID))
-			}
-			if result.HoldsReadyTasks != tt.expected.HoldsReadyTasks {
-				t.Errorf("HoldsReadyTasks: got %v, want %v", result.HoldsReadyTasks, tt.expected.HoldsReadyTasks)
-			}
-			if result.HoldsCompletedTasks != tt.expected.HoldsCompletedTasks {
-				t.Errorf("HoldsCompletedTasks: got %v, want %v", result.HoldsCompletedTasks, tt.expected.HoldsCompletedTasks)
-			}
-			if result.HoldsInProgressTasks != tt.expected.HoldsInProgressTasks {
-				t.Errorf("HoldsInProgressTasks: got %v, want %v", result.HoldsInProgressTasks, tt.expected.HoldsInProgressTasks)
-			}
+			assert.Equal(t, tt.expected.ID, result.ID)
+			assert.Equal(t, tt.expected.Name, result.Name)
+			assert.Equal(t, tt.expected.ProjectID, result.ProjectID)
+			assert.True(t, intPtrEqual(result.PrevID, tt.expected.PrevID))
+			assert.True(t, intPtrEqual(result.NextID, tt.expected.NextID))
+			assert.Equal(t, tt.expected.HoldsReadyTasks, result.HoldsReadyTasks)
+			assert.Equal(t, tt.expected.HoldsCompletedTasks, result.HoldsCompletedTasks)
+			assert.Equal(t, tt.expected.HoldsInProgressTasks, result.HoldsInProgressTasks)
 		})
 	}
 }
-
-// ============================================================================
-// TEST CASES - ColumnsFromRowsToModels
-// ============================================================================
 
 func TestColumnsFromRowsToModels(t *testing.T) {
 	t.Parallel()
@@ -635,47 +591,23 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 
 			result := ColumnsFromRowsToModels(tt.input)
 
-			// Verify length
-			if len(result) != len(tt.expected) {
-				t.Fatalf("Length: got %d, want %d", len(result), len(tt.expected))
-			}
+			require.Len(t, result, len(tt.expected))
 
-			// Verify each column
 			for i, expected := range tt.expected {
 				got := result[i]
 
-				if got.ID != expected.ID {
-					t.Errorf("Column %d - ID: got %d, want %d", i, got.ID, expected.ID)
-				}
-				if got.Name != expected.Name {
-					t.Errorf("Column %d - Name: got %q, want %q", i, got.Name, expected.Name)
-				}
-				if got.ProjectID != expected.ProjectID {
-					t.Errorf("Column %d - ProjectID: got %d, want %d", i, got.ProjectID, expected.ProjectID)
-				}
-				if !intPtrEqual(got.PrevID, expected.PrevID) {
-					t.Errorf("Column %d - PrevID: got %v, want %v", i, ptrToString(got.PrevID), ptrToString(expected.PrevID))
-				}
-				if !intPtrEqual(got.NextID, expected.NextID) {
-					t.Errorf("Column %d - NextID: got %v, want %v", i, ptrToString(got.NextID), ptrToString(expected.NextID))
-				}
-				if got.HoldsReadyTasks != expected.HoldsReadyTasks {
-					t.Errorf("Column %d - HoldsReadyTasks: got %v, want %v", i, got.HoldsReadyTasks, expected.HoldsReadyTasks)
-				}
-				if got.HoldsCompletedTasks != expected.HoldsCompletedTasks {
-					t.Errorf("Column %d - HoldsCompletedTasks: got %v, want %v", i, got.HoldsCompletedTasks, expected.HoldsCompletedTasks)
-				}
-				if got.HoldsInProgressTasks != expected.HoldsInProgressTasks {
-					t.Errorf("Column %d - HoldsInProgressTasks: got %v, want %v", i, got.HoldsInProgressTasks, expected.HoldsInProgressTasks)
-				}
+				assert.Equal(t, expected.ID, got.ID)
+				assert.Equal(t, expected.Name, got.Name)
+				assert.Equal(t, expected.ProjectID, got.ProjectID)
+				assert.True(t, intPtrEqual(got.PrevID, expected.PrevID))
+				assert.True(t, intPtrEqual(got.NextID, expected.NextID))
+				assert.Equal(t, expected.HoldsReadyTasks, got.HoldsReadyTasks)
+				assert.Equal(t, expected.HoldsCompletedTasks, got.HoldsCompletedTasks)
+				assert.Equal(t, expected.HoldsInProgressTasks, got.HoldsInProgressTasks)
 			}
 		})
 	}
 }
-
-// ============================================================================
-// TEST HELPERS
-// ============================================================================
 
 // intPtr returns a pointer to an int value
 func intPtr(i int) *int {
@@ -691,12 +623,4 @@ func intPtrEqual(a, b *int) bool {
 		return false
 	}
 	return *a == *b
-}
-
-// ptrToString converts a pointer to a string representation for error messages
-func ptrToString(p *int) string {
-	if p == nil {
-		return "nil"
-	}
-	return string(rune(*p + '0'))
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -123,7 +122,7 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 	t.Run("Delete column cannot delete if it contains tasks", func(t *testing.T) {
 		// Create a new column and add a task to it
 		columnID := cli.CreateTestColumn(t, db, projectID, "CannotDelete")
-		_ = cli.CreateTestTask(t, db, columnID, "Task in Column")
+		cli.CreateTestTask(t, db, columnID, "Task in Column")
 
 		cmd := DeleteCmd()
 
@@ -266,14 +265,12 @@ func TestDeleteColumnIntegration_Negative(t *testing.T) {
 		// The cobra library will report that "invalid" is not a valid int
 		cmd := DeleteCmd()
 
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "invalid",
 			"--quiet",
 		})
 
 		// Error should occur during flag parsing
 		assert.Error(t, err, "Should error on invalid column ID format")
-		// Output may contain the error message about invalid integer
-		assert.True(t, err != nil || strings.Contains(output, "invalid"), "Should indicate invalid input")
 	})
 }

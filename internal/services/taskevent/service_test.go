@@ -27,15 +27,12 @@ func newTestQuerier(t *testing.T, db *sql.DB) database.Querier {
 func createTestProject(t *testing.T, db *sql.DB) int {
 	t.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name, description) VALUES (?, ?)", "Test Project", "Description")
-	if err != nil {
-		t.Fatalf("Failed to create test project: %v", err)
-	}
+	require.NoError(t, err)
 
-	id, _ := result.LastInsertId()
+	id, err := result.LastInsertId()
+	require.NoError(t, err)
 	_, err = db.ExecContext(context.Background(), "INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)", id)
-	if err != nil {
-		t.Fatalf("Failed to initialize project counter: %v", err)
-	}
+	require.NoError(t, err)
 
 	return int(id)
 }
@@ -43,10 +40,9 @@ func createTestProject(t *testing.T, db *sql.DB) int {
 func createTestColumn(t *testing.T, db *sql.DB, projectID int, name string) int {
 	t.Helper()
 	result, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name, holds_ready_tasks) VALUES (?, ?, ?)", projectID, name, false)
-	if err != nil {
-		t.Fatalf("Failed to create test column: %v", err)
-	}
-	id, _ := result.LastInsertId()
+	require.NoError(t, err)
+	id, err := result.LastInsertId()
+	require.NoError(t, err)
 	return int(id)
 }
 
@@ -57,7 +53,7 @@ func createTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
 	err := db.QueryRowContext(context.Background(),
 		"SELECT MAX(position) FROM tasks WHERE column_id = ?", columnID).Scan(&maxPos)
 	if err != nil && err != sql.ErrNoRows {
-		t.Fatalf("Failed to get max position: %v", err)
+		require.NoError(t, err)
 	}
 
 	nextPos := 0
@@ -68,10 +64,9 @@ func createTestTask(t *testing.T, db *sql.DB, columnID int, title string) int {
 	result, err := db.ExecContext(context.Background(),
 		"INSERT INTO tasks (column_id, title, position, type_id, priority_id) VALUES (?, ?, ?, 1, 3)",
 		columnID, title, nextPos)
-	if err != nil {
-		t.Fatalf("Failed to create test task: %v", err)
-	}
-	id, _ := result.LastInsertId()
+	require.NoError(t, err)
+	id, err := result.LastInsertId()
+	require.NoError(t, err)
 	return int(id)
 }
 
@@ -245,9 +240,12 @@ func TestGetEventsByTask_MultipleEvents(t *testing.T) {
 	queries := newTestQuerier(t, db)
 	ctx := context.Background()
 
-	_ = svc.CreateTaskCreatedEvent(ctx, queries, taskID, "Task", "user1")
-	_ = svc.CreateLabelAddedEvent(ctx, queries, taskID, "urgent", "user2")
-	_ = svc.CreateTaskMovedEvent(ctx, queries, taskID, "Todo", "Done", "user3")
+	err := svc.CreateTaskCreatedEvent(ctx, queries, taskID, "Task", "user1")
+	require.NoError(t, err)
+	err = svc.CreateLabelAddedEvent(ctx, queries, taskID, "urgent", "user2")
+	require.NoError(t, err)
+	err = svc.CreateTaskMovedEvent(ctx, queries, taskID, "Todo", "Done", "user3")
+	require.NoError(t, err)
 
 	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
@@ -417,9 +415,12 @@ func TestEventAuthorPreserved(t *testing.T) {
 	ctx := context.Background()
 
 	// Create events with different authors
-	_ = svc.CreateTaskCreatedEvent(ctx, queries, taskID, "Task", "alice")
-	_ = svc.CreateLabelAddedEvent(ctx, queries, taskID, "urgent", "bob")
-	_ = svc.CreateTaskMovedEvent(ctx, queries, taskID, "Todo", "Done", "charlie")
+	err := svc.CreateTaskCreatedEvent(ctx, queries, taskID, "Task", "alice")
+	require.NoError(t, err)
+	err = svc.CreateLabelAddedEvent(ctx, queries, taskID, "urgent", "bob")
+	require.NoError(t, err)
+	err = svc.CreateTaskMovedEvent(ctx, queries, taskID, "Todo", "Done", "charlie")
+	require.NoError(t, err)
 
 	events, err := svc.GetEventsByTask(ctx, taskID)
 	require.NoError(t, err)
@@ -511,9 +512,12 @@ func TestGetEventsByTask_OnlyReturnsEventsForSpecificTask(t *testing.T) {
 	queries := newTestQuerier(t, db)
 
 	// Create events for both tasks
-	_ = svc.CreateTaskCreatedEvent(ctx, queries, taskID1, "Task 1", "user1")
-	_ = svc.CreateTaskCreatedEvent(ctx, queries, taskID2, "Task 2", "user2")
-	_ = svc.CreateLabelAddedEvent(ctx, queries, taskID1, "urgent", "user1")
+	err := svc.CreateTaskCreatedEvent(ctx, queries, taskID1, "Task 1", "user1")
+	require.NoError(t, err)
+	err = svc.CreateTaskCreatedEvent(ctx, queries, taskID2, "Task 2", "user2")
+	require.NoError(t, err)
+	err = svc.CreateLabelAddedEvent(ctx, queries, taskID1, "urgent", "user1")
+	require.NoError(t, err)
 
 	// Get events for task 1 only
 	events, err := svc.GetEventsByTask(ctx, taskID1)

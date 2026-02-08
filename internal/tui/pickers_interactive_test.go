@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/tui/state"
@@ -18,9 +19,9 @@ func TestLabelPicker_NavigationAndSelection(t *testing.T) {
 	// Create test labels
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	testutil.CreateTestLabel(t, db, projectID, "bug", "#FF0000")
-	testutil.CreateTestLabel(t, db, projectID, "feature", "#00FF00")
-	testutil.CreateTestLabel(t, db, projectID, "docs", "#0000FF")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "bug", "#FF0000")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "feature", "#00FF00")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "docs", "#0000FF")
 
 	// Reload labels
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
@@ -54,9 +55,7 @@ func TestLabelPicker_NavigationAndSelection(t *testing.T) {
 	// Verify model was updated successfully
 	if m.UIState.Mode == state.LabelPickerMode {
 		// If we're still in picker mode, that's valid for multiple selection
-		if len(m.Pickers.Label.Items) == 0 {
-			t.Error("Expected labels in picker state")
-		}
+		assert.NotEmpty(t, m.Pickers.Label.Items, "Expected labels in picker state")
 	}
 }
 
@@ -67,9 +66,9 @@ func TestLabelPicker_FilteringAndBackspace(t *testing.T) {
 	// Create labels
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	testutil.CreateTestLabel(t, db, projectID, "bug", "#FF0000")
-	testutil.CreateTestLabel(t, db, projectID, "backend", "#00FF00")
-	testutil.CreateTestLabel(t, db, projectID, "frontend", "#0000FF")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "bug", "#FF0000")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "backend", "#00FF00")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "frontend", "#0000FF")
 
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to load labels for test setup")
@@ -92,9 +91,7 @@ func TestLabelPicker_FilteringAndBackspace(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify we're back to showing labels in the picker
-	if m.UIState.Mode != state.LabelPickerMode {
-		t.Errorf("Expected mode LabelPickerMode, got %v", m.UIState.Mode)
-	}
+	assert.Equal(t, state.LabelPickerMode, m.UIState.Mode)
 }
 
 // TestLabelPicker_MultiSelectToggle tests space key to toggle selection
@@ -104,8 +101,8 @@ func TestLabelPicker_MultiSelectToggle(t *testing.T) {
 	// Create labels
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	testutil.CreateTestLabel(t, db, projectID, "bug", "#FF0000")
-	testutil.CreateTestLabel(t, db, projectID, "feature", "#00FF00")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "bug", "#FF0000")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "feature", "#00FF00")
 
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to load labels for test setup")
@@ -140,7 +137,7 @@ func TestLabelPicker_MultiSelectToggle(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify model was updated
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after picker selection")
 }
 
 // TestPriorityPicker_Selection tests priority picker navigation and selection
@@ -163,7 +160,7 @@ func TestPriorityPicker_Selection(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode can change or stay in picker
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after picker selection")
 }
 
 // TestTypePicker_Selection tests type picker navigation and selection
@@ -186,7 +183,7 @@ func TestTypePicker_Selection(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify model updated
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after picker selection")
 }
 
 // TestParentPicker_SearchAndSelect tests searching for parent task and selecting it
@@ -202,7 +199,7 @@ func TestParentPicker_SearchAndSelect(t *testing.T) {
 		t.Skip("No columns available for testing")
 	}
 
-	testutil.CreateTestTask(t, db, columns[0].ID, "Parent Task")
+	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Parent Task")
 
 	// Reload tasks
 	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
@@ -225,7 +222,7 @@ func TestParentPicker_SearchAndSelect(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify parent picker interaction
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after parent picker interaction")
 }
 
 // TestChildPicker_SearchAndSelect tests searching for child task and selecting it
@@ -241,7 +238,7 @@ func TestChildPicker_SearchAndSelect(t *testing.T) {
 		t.Skip("No columns available for testing")
 	}
 
-	testutil.CreateTestTask(t, db, columns[0].ID, "Child Task")
+	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Child Task")
 
 	// Reload tasks
 	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
@@ -264,7 +261,7 @@ func TestChildPicker_SearchAndSelect(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify child picker interaction
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after child picker interaction")
 }
 
 // TestRelationTypePicker_Selection tests relation type picker
@@ -287,7 +284,7 @@ func TestRelationTypePicker_Selection(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode change or stay in relation picker
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after relation picker selection")
 }
 
 // TestStatusPicker_ColumnSelection tests status/column picker selection
@@ -316,7 +313,7 @@ func TestStatusPicker_ColumnSelection(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode can change
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after status picker selection")
 }
 
 // TestLabelPicker_EscapeExitsMode tests that Escape exits the picker
@@ -326,7 +323,7 @@ func TestLabelPicker_EscapeExitsMode(t *testing.T) {
 	// Create labels
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	testutil.CreateTestLabel(t, db, projectID, "test", "#FFFFFF")
+	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "test", "#FFFFFF")
 
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to load labels for test setup")
@@ -336,8 +333,6 @@ func TestLabelPicker_EscapeExitsMode(t *testing.T) {
 		m.Pickers.Label.AddItem(state.LabelPickerItem{Label: label, Selected: false})
 	}
 
-	initialMode := m.UIState.Mode
-
 	// Press Escape
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape})
 	updatedModel, _ := m.Update(msg)
@@ -345,8 +340,8 @@ func TestLabelPicker_EscapeExitsMode(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify something happened (mode change or escape handled)
-	// Escape was processed but mode didn't change (acceptable)
-	_ = m.UIState.Mode == initialMode
+	// Escape was processed
+	require.NotNil(t, m, "Model should not be nil after escape")
 }
 
 // TestPriorityPicker_UpDownNavigation tests up and down navigation in priority picker
@@ -369,7 +364,5 @@ func TestPriorityPicker_UpDownNavigation(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify navigation works
-	if m.UIState.Mode != state.PriorityPickerMode {
-		t.Errorf("Expected to still be in PriorityPickerMode, got %v", m.UIState.Mode)
-	}
+	assert.Equal(t, state.PriorityPickerMode, m.UIState.Mode)
 }

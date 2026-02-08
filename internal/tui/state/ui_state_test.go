@@ -2,6 +2,8 @@ package state
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TestCalculateViewportSize_ZeroWidth ensures viewport defaults to minimum (3) when terminal width is 0.
@@ -11,9 +13,7 @@ func TestCalculateViewportSize_ZeroWidth(t *testing.T) {
 	state.SetWidth(0)
 
 	got := state.ViewportSize()
-	if got != 3 {
-		t.Errorf("ViewportSize() with width=0 = %d, want 3 (minimum)", got)
-	}
+	assert.Equal(t, 3, got, "ViewportSize() with width=0, want 3 (minimum)")
 }
 
 // TestCalculateViewportSize_NarrowTerminal ensures viewport is at least 1 even with very small width.
@@ -25,9 +25,7 @@ func TestCalculateViewportSize_NarrowTerminal(t *testing.T) {
 	state.SetWidth(20)
 
 	got := state.ViewportSize()
-	if got < 1 {
-		t.Errorf("ViewportSize() with width=20 = %d, want >= 1", got)
-	}
+	assert.GreaterOrEqual(t, got, 1, "ViewportSize() with width=20, want >= 1")
 }
 
 // TestScrollViewportLeft_AtBoundary ensures scroll left at offset 0 is a no-op.
@@ -38,12 +36,8 @@ func TestScrollViewportLeft_AtBoundary(t *testing.T) {
 
 	scrolled := state.ScrollViewportLeft()
 
-	if scrolled {
-		t.Error("ScrollViewportLeft() at offset=0 returned true, want false")
-	}
-	if state.ViewportOffset != 0 {
-		t.Errorf("ViewportOffset after scroll = %d, want 0", state.ViewportOffset)
-	}
+	assert.False(t, scrolled, "ScrollViewportLeft() at offset=0 returned true, want false")
+	assert.Equal(t, 0, state.ViewportOffset)
 }
 
 // TestScrollViewportRight_AtBoundary ensures scroll right at last column is a no-op.
@@ -60,12 +54,8 @@ func TestScrollViewportRight_AtBoundary(t *testing.T) {
 	scrolled := state.ScrollViewportRight(columnsLen)
 
 	// Should not scroll since offset(2) + viewportSize(6) = 8 >= columnsLen(5)
-	if scrolled {
-		t.Error("ScrollViewportRight() at boundary returned true, want false")
-	}
-	if state.ViewportOffset != 2 {
-		t.Errorf("ViewportOffset after scroll = %d, want 2 (unchanged)", state.ViewportOffset)
-	}
+	assert.False(t, scrolled, "ScrollViewportRight() at boundary returned true, want false")
+	assert.Equal(t, 2, state.ViewportOffset)
 }
 
 // TestAdjustViewportAfterColumnRemoval_EmptyColumns ensures viewport resets when all columns deleted.
@@ -77,9 +67,7 @@ func TestAdjustViewportAfterColumnRemoval_EmptyColumns(t *testing.T) {
 	// Adjust after all columns are deleted
 	state.AdjustViewportAfterColumnRemoval(0, 0)
 
-	if state.ViewportOffset != 0 {
-		t.Errorf("ViewportOffset after removing all columns = %d, want 0", state.ViewportOffset)
-	}
+	assert.Equal(t, 0, state.ViewportOffset)
 }
 
 // TestEnsureSelectionVisible_SelectionBeyondViewport ensures viewport auto-scrolls to show selection.
@@ -97,13 +85,9 @@ func TestEnsureSelectionVisible_SelectionBeyondViewport(t *testing.T) {
 	// Viewport should adjust so column 3 is visible
 	// New offset should be: 3 - viewportSize + 1 = 3 - 3 + 1 = 1
 	expectedOffset := 1
-	if state.ViewportOffset != expectedOffset {
-		t.Errorf("ViewportOffset after EnsureSelectionVisible(3) = %d, want %d", state.ViewportOffset, expectedOffset)
-	}
+	assert.Equal(t, expectedOffset, state.ViewportOffset)
 
 	// Test left side: select column 0 when viewport is at offset 1
 	state.EnsureSelectionVisible(0)
-	if state.ViewportOffset != 0 {
-		t.Errorf("ViewportOffset after EnsureSelectionVisible(0) from offset=1 = %d, want 0", state.ViewportOffset)
-	}
+	assert.Equal(t, 0, state.ViewportOffset)
 }

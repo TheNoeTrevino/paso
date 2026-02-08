@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/database/types"
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -199,33 +201,15 @@ func TestTaskToModel(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := TaskToModel(tt.input)
 
-			if result.ID != tt.expected.ID {
-				t.Errorf("ID = %d, want %d", result.ID, tt.expected.ID)
-			}
-			if result.Title != tt.expected.Title {
-				t.Errorf("Title = %q, want %q", result.Title, tt.expected.Title)
-			}
-			if result.Description != tt.expected.Description {
-				t.Errorf("Description = %q, want %q", result.Description, tt.expected.Description)
-			}
-			if result.ColumnID != tt.expected.ColumnID {
-				t.Errorf("ColumnID = %d, want %d", result.ColumnID, tt.expected.ColumnID)
-			}
-			if result.Position != tt.expected.Position {
-				t.Errorf("Position = %d, want %d", result.Position, tt.expected.Position)
-			}
-			if result.TypeID != tt.expected.TypeID {
-				t.Errorf("TypeID = %d, want %d", result.TypeID, tt.expected.TypeID)
-			}
-			if result.PriorityID != tt.expected.PriorityID {
-				t.Errorf("PriorityID = %d, want %d", result.PriorityID, tt.expected.PriorityID)
-			}
-			if !result.CreatedAt.Equal(tt.expected.CreatedAt) {
-				t.Errorf("CreatedAt = %v, want %v", result.CreatedAt, tt.expected.CreatedAt)
-			}
-			if !result.UpdatedAt.Equal(tt.expected.UpdatedAt) {
-				t.Errorf("UpdatedAt = %v, want %v", result.UpdatedAt, tt.expected.UpdatedAt)
-			}
+			assert.Equal(t, tt.expected.ID, result.ID)
+			assert.Equal(t, tt.expected.Title, result.Title)
+			assert.Equal(t, tt.expected.Description, result.Description)
+			assert.Equal(t, tt.expected.ColumnID, result.ColumnID)
+			assert.Equal(t, tt.expected.Position, result.Position)
+			assert.Equal(t, tt.expected.TypeID, result.TypeID)
+			assert.Equal(t, tt.expected.PriorityID, result.PriorityID)
+			assert.True(t, result.CreatedAt.Equal(tt.expected.CreatedAt))
+			assert.True(t, result.UpdatedAt.Equal(tt.expected.UpdatedAt))
 		})
 	}
 }
@@ -370,35 +354,17 @@ func TestParentTasksToReferences(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ParentTasksToReferences(tt.input)
 
-			if len(result) != len(tt.expected) {
-				t.Fatalf("length = %d, want %d", len(result), len(tt.expected))
-			}
+			require.Len(t, result, len(tt.expected))
 
 			for i := range result {
-				if result[i].ID != tt.expected[i].ID {
-					t.Errorf("[%d] ID = %d, want %d", i, result[i].ID, tt.expected[i].ID)
-				}
-				if result[i].Title != tt.expected[i].Title {
-					t.Errorf("[%d] Title = %q, want %q", i, result[i].Title, tt.expected[i].Title)
-				}
-				if result[i].ProjectName != tt.expected[i].ProjectName {
-					t.Errorf("[%d] ProjectName = %q, want %q", i, result[i].ProjectName, tt.expected[i].ProjectName)
-				}
-				if result[i].RelationTypeID != tt.expected[i].RelationTypeID {
-					t.Errorf("[%d] RelationTypeID = %d, want %d", i, result[i].RelationTypeID, tt.expected[i].RelationTypeID)
-				}
-				if result[i].RelationLabel != tt.expected[i].RelationLabel {
-					t.Errorf("[%d] RelationLabel = %q, want %q", i, result[i].RelationLabel, tt.expected[i].RelationLabel)
-				}
-				if result[i].RelationColor != tt.expected[i].RelationColor {
-					t.Errorf("[%d] RelationColor = %q, want %q", i, result[i].RelationColor, tt.expected[i].RelationColor)
-				}
-				if result[i].IsBlocking != tt.expected[i].IsBlocking {
-					t.Errorf("[%d] IsBlocking = %v, want %v", i, result[i].IsBlocking, tt.expected[i].IsBlocking)
-				}
-				if result[i].TicketNumber != tt.expected[i].TicketNumber {
-					t.Errorf("[%d] TicketNumber = %d, want %d", i, result[i].TicketNumber, tt.expected[i].TicketNumber)
-				}
+				assert.Equal(t, tt.expected[i].ID, result[i].ID)
+				assert.Equal(t, tt.expected[i].Title, result[i].Title)
+				assert.Equal(t, tt.expected[i].ProjectName, result[i].ProjectName)
+				assert.Equal(t, tt.expected[i].RelationTypeID, result[i].RelationTypeID)
+				assert.Equal(t, tt.expected[i].RelationLabel, result[i].RelationLabel)
+				assert.Equal(t, tt.expected[i].RelationColor, result[i].RelationColor)
+				assert.Equal(t, tt.expected[i].IsBlocking, result[i].IsBlocking)
+				assert.Equal(t, tt.expected[i].TicketNumber, result[i].TicketNumber)
 			}
 		})
 	}
@@ -524,35 +490,17 @@ func TestChildTasksToReferences(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ChildTasksToReferences(tt.input)
 
-			if len(result) != len(tt.expected) {
-				t.Fatalf("length = %d, want %d", len(result), len(tt.expected))
-			}
+			require.Len(t, result, len(tt.expected))
 
 			for i := range result {
-				if result[i].ID != tt.expected[i].ID {
-					t.Errorf("[%d] ID = %d, want %d", i, result[i].ID, tt.expected[i].ID)
-				}
-				if result[i].Title != tt.expected[i].Title {
-					t.Errorf("[%d] Title = %q, want %q", i, result[i].Title, tt.expected[i].Title)
-				}
-				if result[i].ProjectName != tt.expected[i].ProjectName {
-					t.Errorf("[%d] ProjectName = %q, want %q", i, result[i].ProjectName, tt.expected[i].ProjectName)
-				}
-				if result[i].RelationTypeID != tt.expected[i].RelationTypeID {
-					t.Errorf("[%d] RelationTypeID = %d, want %d", i, result[i].RelationTypeID, tt.expected[i].RelationTypeID)
-				}
-				if result[i].RelationLabel != tt.expected[i].RelationLabel {
-					t.Errorf("[%d] RelationLabel = %q, want %q", i, result[i].RelationLabel, tt.expected[i].RelationLabel)
-				}
-				if result[i].RelationColor != tt.expected[i].RelationColor {
-					t.Errorf("[%d] RelationColor = %q, want %q", i, result[i].RelationColor, tt.expected[i].RelationColor)
-				}
-				if result[i].IsBlocking != tt.expected[i].IsBlocking {
-					t.Errorf("[%d] IsBlocking = %v, want %v", i, result[i].IsBlocking, tt.expected[i].IsBlocking)
-				}
-				if result[i].TicketNumber != tt.expected[i].TicketNumber {
-					t.Errorf("[%d] TicketNumber = %d, want %d", i, result[i].TicketNumber, tt.expected[i].TicketNumber)
-				}
+				assert.Equal(t, tt.expected[i].ID, result[i].ID)
+				assert.Equal(t, tt.expected[i].Title, result[i].Title)
+				assert.Equal(t, tt.expected[i].ProjectName, result[i].ProjectName)
+				assert.Equal(t, tt.expected[i].RelationTypeID, result[i].RelationTypeID)
+				assert.Equal(t, tt.expected[i].RelationLabel, result[i].RelationLabel)
+				assert.Equal(t, tt.expected[i].RelationColor, result[i].RelationColor)
+				assert.Equal(t, tt.expected[i].IsBlocking, result[i].IsBlocking)
+				assert.Equal(t, tt.expected[i].TicketNumber, result[i].TicketNumber)
 			}
 		})
 	}
@@ -656,26 +604,14 @@ func TestCommentsToModels(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := CommentsToModels(tt.input)
 
-			if len(result) != len(tt.expected) {
-				t.Fatalf("length = %d, want %d", len(result), len(tt.expected))
-			}
+			require.Len(t, result, len(tt.expected))
 
 			for i := range result {
-				if result[i].ID != tt.expected[i].ID {
-					t.Errorf("[%d] ID = %d, want %d", i, result[i].ID, tt.expected[i].ID)
-				}
-				if result[i].TaskID != tt.expected[i].TaskID {
-					t.Errorf("[%d] TaskID = %d, want %d", i, result[i].TaskID, tt.expected[i].TaskID)
-				}
-				if result[i].Message != tt.expected[i].Message {
-					t.Errorf("[%d] Message = %q, want %q", i, result[i].Message, tt.expected[i].Message)
-				}
-				if result[i].Author != tt.expected[i].Author {
-					t.Errorf("[%d] Author = %q, want %q", i, result[i].Author, tt.expected[i].Author)
-				}
-				if !result[i].CreatedAt.Equal(tt.expected[i].CreatedAt) {
-					t.Errorf("[%d] CreatedAt = %v, want %v", i, result[i].CreatedAt, tt.expected[i].CreatedAt)
-				}
+				assert.Equal(t, tt.expected[i].ID, result[i].ID)
+				assert.Equal(t, tt.expected[i].TaskID, result[i].TaskID)
+				assert.Equal(t, tt.expected[i].Message, result[i].Message)
+				assert.Equal(t, tt.expected[i].Author, result[i].Author)
+				assert.True(t, result[i].CreatedAt.Equal(tt.expected[i].CreatedAt))
 			}
 		})
 	}
@@ -797,20 +733,12 @@ func TestParseLabelsFromConcatenated(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ParseLabelsFromConcatenated(tt.ids, tt.names, tt.colors)
 
-			if len(result) != len(tt.expected) {
-				t.Fatalf("length = %d, want %d", len(result), len(tt.expected))
-			}
+			require.Len(t, result, len(tt.expected))
 
 			for i := range result {
-				if result[i].ID != tt.expected[i].ID {
-					t.Errorf("[%d] ID = %d, want %d", i, result[i].ID, tt.expected[i].ID)
-				}
-				if result[i].Name != tt.expected[i].Name {
-					t.Errorf("[%d] Name = %q, want %q", i, result[i].Name, tt.expected[i].Name)
-				}
-				if result[i].Color != tt.expected[i].Color {
-					t.Errorf("[%d] Color = %q, want %q", i, result[i].Color, tt.expected[i].Color)
-				}
+				assert.Equal(t, tt.expected[i].ID, result[i].ID)
+				assert.Equal(t, tt.expected[i].Name, result[i].Name)
+				assert.Equal(t, tt.expected[i].Color, result[i].Color)
 			}
 		})
 	}
@@ -945,43 +873,19 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := TaskSummaryFromRowToModel(tt.input)
 
-			if result.ID != tt.expected.ID {
-				t.Errorf("ID = %d, want %d", result.ID, tt.expected.ID)
-			}
-			if result.Title != tt.expected.Title {
-				t.Errorf("Title = %q, want %q", result.Title, tt.expected.Title)
-			}
-			if result.ColumnID != tt.expected.ColumnID {
-				t.Errorf("ColumnID = %d, want %d", result.ColumnID, tt.expected.ColumnID)
-			}
-			if result.Position != tt.expected.Position {
-				t.Errorf("Position = %d, want %d", result.Position, tt.expected.Position)
-			}
-			if result.IsBlocked != tt.expected.IsBlocked {
-				t.Errorf("IsBlocked = %v, want %v", result.IsBlocked, tt.expected.IsBlocked)
-			}
-			if result.TypeDescription != tt.expected.TypeDescription {
-				t.Errorf("TypeDescription = %q, want %q", result.TypeDescription, tt.expected.TypeDescription)
-			}
-			if result.PriorityDescription != tt.expected.PriorityDescription {
-				t.Errorf("PriorityDescription = %q, want %q", result.PriorityDescription, tt.expected.PriorityDescription)
-			}
-			if result.PriorityColor != tt.expected.PriorityColor {
-				t.Errorf("PriorityColor = %q, want %q", result.PriorityColor, tt.expected.PriorityColor)
-			}
-			if len(result.Labels) != len(tt.expected.Labels) {
-				t.Fatalf("Labels length = %d, want %d", len(result.Labels), len(tt.expected.Labels))
-			}
+			assert.Equal(t, tt.expected.ID, result.ID)
+			assert.Equal(t, tt.expected.Title, result.Title)
+			assert.Equal(t, tt.expected.ColumnID, result.ColumnID)
+			assert.Equal(t, tt.expected.Position, result.Position)
+			assert.Equal(t, tt.expected.IsBlocked, result.IsBlocked)
+			assert.Equal(t, tt.expected.TypeDescription, result.TypeDescription)
+			assert.Equal(t, tt.expected.PriorityDescription, result.PriorityDescription)
+			assert.Equal(t, tt.expected.PriorityColor, result.PriorityColor)
+			require.Len(t, result.Labels, len(tt.expected.Labels))
 			for i := range result.Labels {
-				if result.Labels[i].ID != tt.expected.Labels[i].ID {
-					t.Errorf("Labels[%d].ID = %d, want %d", i, result.Labels[i].ID, tt.expected.Labels[i].ID)
-				}
-				if result.Labels[i].Name != tt.expected.Labels[i].Name {
-					t.Errorf("Labels[%d].Name = %q, want %q", i, result.Labels[i].Name, tt.expected.Labels[i].Name)
-				}
-				if result.Labels[i].Color != tt.expected.Labels[i].Color {
-					t.Errorf("Labels[%d].Color = %q, want %q", i, result.Labels[i].Color, tt.expected.Labels[i].Color)
-				}
+				assert.Equal(t, tt.expected.Labels[i].ID, result.Labels[i].ID)
+				assert.Equal(t, tt.expected.Labels[i].Name, result.Labels[i].Name)
+				assert.Equal(t, tt.expected.Labels[i].Color, result.Labels[i].Color)
 			}
 		})
 	}
@@ -1057,33 +961,15 @@ func TestReadyTaskSummaryFromRowToModel(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ReadyTaskSummaryFromRowToModel(tt.input)
 
-			if result.ID != tt.expected.ID {
-				t.Errorf("ID = %d, want %d", result.ID, tt.expected.ID)
-			}
-			if result.Title != tt.expected.Title {
-				t.Errorf("Title = %q, want %q", result.Title, tt.expected.Title)
-			}
-			if result.ColumnID != tt.expected.ColumnID {
-				t.Errorf("ColumnID = %d, want %d", result.ColumnID, tt.expected.ColumnID)
-			}
-			if result.Position != tt.expected.Position {
-				t.Errorf("Position = %d, want %d", result.Position, tt.expected.Position)
-			}
-			if result.IsBlocked != tt.expected.IsBlocked {
-				t.Errorf("IsBlocked = %v, want %v", result.IsBlocked, tt.expected.IsBlocked)
-			}
-			if result.TypeDescription != tt.expected.TypeDescription {
-				t.Errorf("TypeDescription = %q, want %q", result.TypeDescription, tt.expected.TypeDescription)
-			}
-			if result.PriorityDescription != tt.expected.PriorityDescription {
-				t.Errorf("PriorityDescription = %q, want %q", result.PriorityDescription, tt.expected.PriorityDescription)
-			}
-			if result.PriorityColor != tt.expected.PriorityColor {
-				t.Errorf("PriorityColor = %q, want %q", result.PriorityColor, tt.expected.PriorityColor)
-			}
-			if len(result.Labels) != len(tt.expected.Labels) {
-				t.Fatalf("Labels length = %d, want %d", len(result.Labels), len(tt.expected.Labels))
-			}
+			assert.Equal(t, tt.expected.ID, result.ID)
+			assert.Equal(t, tt.expected.Title, result.Title)
+			assert.Equal(t, tt.expected.ColumnID, result.ColumnID)
+			assert.Equal(t, tt.expected.Position, result.Position)
+			assert.Equal(t, tt.expected.IsBlocked, result.IsBlocked)
+			assert.Equal(t, tt.expected.TypeDescription, result.TypeDescription)
+			assert.Equal(t, tt.expected.PriorityDescription, result.PriorityDescription)
+			assert.Equal(t, tt.expected.PriorityColor, result.PriorityColor)
+			require.Len(t, result.Labels, len(tt.expected.Labels))
 		})
 	}
 }
@@ -1161,33 +1047,15 @@ func TestFilteredTaskSummaryFromRowToModel(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := FilteredTaskSummaryFromRowToModel(tt.input)
 
-			if result.ID != tt.expected.ID {
-				t.Errorf("ID = %d, want %d", result.ID, tt.expected.ID)
-			}
-			if result.Title != tt.expected.Title {
-				t.Errorf("Title = %q, want %q", result.Title, tt.expected.Title)
-			}
-			if result.ColumnID != tt.expected.ColumnID {
-				t.Errorf("ColumnID = %d, want %d", result.ColumnID, tt.expected.ColumnID)
-			}
-			if result.Position != tt.expected.Position {
-				t.Errorf("Position = %d, want %d", result.Position, tt.expected.Position)
-			}
-			if result.IsBlocked != tt.expected.IsBlocked {
-				t.Errorf("IsBlocked = %v, want %v", result.IsBlocked, tt.expected.IsBlocked)
-			}
-			if result.TypeDescription != tt.expected.TypeDescription {
-				t.Errorf("TypeDescription = %q, want %q", result.TypeDescription, tt.expected.TypeDescription)
-			}
-			if result.PriorityDescription != tt.expected.PriorityDescription {
-				t.Errorf("PriorityDescription = %q, want %q", result.PriorityDescription, tt.expected.PriorityDescription)
-			}
-			if result.PriorityColor != tt.expected.PriorityColor {
-				t.Errorf("PriorityColor = %q, want %q", result.PriorityColor, tt.expected.PriorityColor)
-			}
-			if len(result.Labels) != len(tt.expected.Labels) {
-				t.Fatalf("Labels length = %d, want %d", len(result.Labels), len(tt.expected.Labels))
-			}
+			assert.Equal(t, tt.expected.ID, result.ID)
+			assert.Equal(t, tt.expected.Title, result.Title)
+			assert.Equal(t, tt.expected.ColumnID, result.ColumnID)
+			assert.Equal(t, tt.expected.Position, result.Position)
+			assert.Equal(t, tt.expected.IsBlocked, result.IsBlocked)
+			assert.Equal(t, tt.expected.TypeDescription, result.TypeDescription)
+			assert.Equal(t, tt.expected.PriorityDescription, result.PriorityDescription)
+			assert.Equal(t, tt.expected.PriorityColor, result.PriorityColor)
+			require.Len(t, result.Labels, len(tt.expected.Labels))
 		})
 	}
 }

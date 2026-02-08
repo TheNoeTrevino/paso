@@ -13,18 +13,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-// GitChecker defines the interface for checking git branch existence
-type GitChecker interface {
-	BranchExists(ctx context.Context, branchName string) (bool, error)
-}
-
-// realGitChecker implements GitChecker using the actual git package
-type realGitChecker struct{}
-
-func (r *realGitChecker) BranchExists(ctx context.Context, branchName string) (bool, error) {
-	return git.BranchExists(ctx, branchName)
-}
-
 // Service defines all project-related business operations
 type Service interface {
 	// Read operations
@@ -60,19 +48,19 @@ type service struct {
 	dbType      database.DatabaseType
 	queries     database.Querier
 	eventClient events.EventPublisher
-	gitChecker  GitChecker
+	gitDetector git.Detector
 }
 
 // NewService creates a new project service with database-agnostic queries.
-// If gitChecker is nil, a real git checker will be used.
-func NewService(db *sql.DB, dbType database.DatabaseType, eventClient events.EventPublisher, gitChecker GitChecker) (Service, error) {
+// If gitDetector is nil, a real git detector will be used.
+func NewService(db *sql.DB, dbType database.DatabaseType, eventClient events.EventPublisher, gitDetector git.Detector) (Service, error) {
 	queries, err := database.NewQuerier(db, dbType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create project service: %w", err)
 	}
 
-	if gitChecker == nil {
-		gitChecker = &realGitChecker{}
+	if gitDetector == nil {
+		gitDetector = git.RealDetector{}
 	}
 
 	return &service{
@@ -80,7 +68,7 @@ func NewService(db *sql.DB, dbType database.DatabaseType, eventClient events.Eve
 		dbType:      dbType,
 		queries:     queries,
 		eventClient: eventClient,
-		gitChecker:  gitChecker,
+		gitDetector: gitDetector,
 	}, nil
 }
 
@@ -310,7 +298,7 @@ func (s *service) DeleteProject(ctx context.Context, id int, force bool) error {
 }
 
 func (s *service) validateAndSanitizeBranch(ctx context.Context, branch string) (string, error) {
-	if err := git.ValidateBranchName(ctx, branch); err != nil {
+	if err := s.gitDetector.ValidateBranchName(ctx, branch); err != nil {
 		return "", fmt.Errorf("invalid git branch name: %w", err)
 	}
 
@@ -319,9 +307,9 @@ func (s *service) validateAndSanitizeBranch(ctx context.Context, branch string) 
 		return "", fmt.Errorf("invalid branch name: %w", err)
 	}
 
-	gitInfo := git.DetectGitInfo(ctx)
+	gitInfo := s.gitDetector.DetectGitInfo(ctx)
 	if gitInfo.IsRepo {
-		exists, err := s.gitChecker.BranchExists(ctx, sanitized)
+		exists, err := s.gitDetector.BranchExists(ctx, sanitized)
 		if err != nil {
 			return "", fmt.Errorf("failed to check branch existence: %w", err)
 		}

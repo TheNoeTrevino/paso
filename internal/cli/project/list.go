@@ -92,7 +92,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get git branch info for markers
-	gitInfo := git.DetectGitInfo(ctx)
+	gitInfo := cliInstance.App.GitDetector.DetectGitInfo(ctx)
 	branchMarkers := make(map[string]string)
 
 	if gitInfo.IsRepo {

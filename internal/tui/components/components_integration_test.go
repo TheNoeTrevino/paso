@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -70,14 +72,8 @@ func TestRenderColumnStructure(t *testing.T) {
 	// Create header
 	header := renderColumnHeader(column, len(tasks))
 
-	// Verify structure
-	if !strings.Contains(header, column.Name) {
-		t.Errorf("header should contain column name %q", column.Name)
-	}
-
-	if !strings.Contains(header, "2") {
-		t.Errorf("header should contain task count")
-	}
+	assert.Contains(t, header, column.Name)
+	assert.Contains(t, header, "2")
 }
 
 // TestRenderTaskComponent tests task rendering
@@ -168,16 +164,11 @@ func TestMultipleColumnsRendering(t *testing.T) {
 		}
 	}
 
-	// Verify column data is consistent
-	if len(columns) != 3 {
-		t.Fatal("should have 3 columns")
-	}
+	require.Len(t, columns, 3)
 
 	for _, col := range columns {
 		tasks := tasksMap[col.ID]
-		if len(tasks) != 1 {
-			t.Errorf("column %d should have 1 task", col.ID)
-		}
+		assert.Len(t, tasks, 1)
 	}
 }
 
@@ -191,15 +182,11 @@ func TestEmptyColumnRendering(t *testing.T) {
 	var tasks []*models.TaskSummary
 
 	header := renderColumnHeader(column, len(tasks))
-	if !strings.Contains(header, "(0)") {
-		t.Errorf("header should show zero task count")
-	}
+	assert.Contains(t, header, "(0)")
 
 	// Empty column content should render
 	emptyContent := renderEmptyColumnContent(header)
-	if emptyContent == "" {
-		t.Fatal("empty column content should not be empty string")
-	}
+	require.NotEmpty(t, emptyContent)
 }
 
 // TestColumnHeaderFormatting tests column header format with different task counts
@@ -221,9 +208,7 @@ func TestColumnHeaderFormatting(t *testing.T) {
 			col := &models.Column{ID: 1, Name: tt.columnName}
 			header := renderColumnHeader(col, tt.taskCount)
 
-			if !strings.Contains(header, tt.expectedRegex) {
-				t.Errorf("header %q should contain %q", header, tt.expectedRegex)
-			}
+			assert.Contains(t, header, tt.expectedRegex)
 		})
 	}
 }
@@ -245,14 +230,11 @@ func TestScrollIndicatorRendering(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := renderScrollIndicator(tt.show, tt.message)
 
-			if tt.expectText && !strings.Contains(result, tt.message) && tt.message != "" {
-				t.Errorf("expected %q to contain %q", result, tt.message)
+			if tt.expectText && tt.message != "" {
+				assert.Contains(t, result, tt.message)
 			}
 
-			// Should always end with newline
-			if !strings.HasSuffix(result, "\n") {
-				t.Error("scroll indicator should end with newline")
-			}
+			assert.True(t, strings.HasSuffix(result, "\n"))
 		})
 	}
 }
@@ -267,12 +249,8 @@ func TestLabelChipRendering(t *testing.T) {
 
 	// Labels should render without panic
 	for _, label := range labels {
-		if label.Name == "" {
-			t.Error("label should have name")
-		}
-		if label.Color == "" {
-			t.Error("label should have color")
-		}
+		assert.NotEmpty(t, label.Name)
+		assert.NotEmpty(t, label.Color)
 	}
 }
 
@@ -322,9 +300,7 @@ func TestComponentsWithUnicodeContent(t *testing.T) {
 	}
 
 	for _, task := range tasks {
-		if task.Title == "" {
-			t.Error("task title should not be empty")
-		}
+		assert.NotEmpty(t, task.Title)
 	}
 }
 
@@ -343,9 +319,7 @@ func TestComponentStylingStyling(t *testing.T) {
 		isSelected := i == selectedIdx
 		_ = isSelected // Would be used for styling in real implementation
 
-		if col.Name == "" {
-			t.Error("column should have name")
-		}
+		assert.NotEmpty(t, col.Name)
 	}
 }
 
@@ -373,9 +347,7 @@ func TestTaskCountInColumn(t *testing.T) {
 				}
 			}
 
-			if len(tasks) != tt.taskCount {
-				t.Errorf("expected %d tasks, got %d", tt.taskCount, len(tasks))
-			}
+			assert.Len(t, tasks, tt.taskCount)
 		})
 	}
 }
@@ -391,14 +363,8 @@ func TestPriorityColorMapping(t *testing.T) {
 	}
 
 	for priority, expectedColor := range priorities {
-		if expectedColor == "" {
-			t.Errorf("priority %q should have a color", priority)
-		}
-
-		// Color should be in hex format
-		if !strings.HasPrefix(expectedColor, "#") {
-			t.Errorf("color %q should start with #", expectedColor)
-		}
+		assert.NotEmpty(t, expectedColor, "priority %q should have a color", priority)
+		assert.True(t, strings.HasPrefix(expectedColor, "#"), "color %q should start with #", expectedColor)
 	}
 }
 
@@ -411,8 +377,6 @@ func TestTaskTypeIcons(t *testing.T) {
 	}
 
 	for _, typ := range types {
-		if typ == "" {
-			t.Error("task type should not be empty")
-		}
+		assert.NotEmpty(t, typ)
 	}
 }

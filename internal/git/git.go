@@ -13,6 +13,29 @@ import (
 
 var ErrEmptyBranchName = errors.New("branch name cannot be empty")
 
+// Detector abstracts git operations for testability.
+// In production, use RealDetector{}. In tests, inject a mock.
+type Detector interface {
+	DetectGitInfo(ctx context.Context) GitInfo
+	ValidateBranchName(ctx context.Context, branchName string) error
+	BranchExists(ctx context.Context, branchName string) (bool, error)
+}
+
+// RealDetector implements Detector by shelling out to real git commands.
+type RealDetector struct{}
+
+func (RealDetector) DetectGitInfo(ctx context.Context) GitInfo {
+	return DetectGitInfo(ctx)
+}
+
+func (RealDetector) ValidateBranchName(ctx context.Context, branchName string) error {
+	return ValidateBranchName(ctx, branchName)
+}
+
+func (RealDetector) BranchExists(ctx context.Context, branchName string) (bool, error) {
+	return BranchExists(ctx, branchName)
+}
+
 // CACHE DESIGN (Task #27)
 //
 // This package will implement caching for git operations to improve TUI performance.

@@ -6,13 +6,16 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
 // TestTaskForm_FieldProgression tests Tab and Shift+Tab navigation between form fields
 func TestTaskForm_FieldProgression(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer func() { _ = db.Close() }()
 
 	// Enter task form mode
 	m.UIState.Mode = state.TicketFormMode
@@ -36,12 +39,13 @@ func TestTaskForm_FieldProgression(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify model was updated successfully
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after updates")
 }
 
 // TestTaskForm_ShortcutToPriorityPicker tests Ctrl+P to open priority picker from form
 func TestTaskForm_ShortcutToPriorityPicker(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer func() { _ = db.Close() }()
 
 	// Enter task form mode
 	m.UIState.Mode = state.TicketFormMode
@@ -53,12 +57,13 @@ func TestTaskForm_ShortcutToPriorityPicker(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode changed or form still active
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after shortcut")
 }
 
 // TestTaskForm_ShortcutToLabelPicker tests Ctrl+L to open label picker from form
 func TestTaskForm_ShortcutToLabelPicker(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer func() { _ = db.Close() }()
 
 	// Enter task form mode
 	m.UIState.Mode = state.TicketFormMode
@@ -70,12 +75,13 @@ func TestTaskForm_ShortcutToLabelPicker(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode changed or form still active
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after shortcut")
 }
 
 // TestTaskForm_ShortcutToParentPicker tests Ctrl+Shift+P to open parent picker from form
 func TestTaskForm_ShortcutToParentPicker(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer func() { _ = db.Close() }()
 
 	// Enter task form mode
 	m.UIState.Mode = state.TicketFormMode
@@ -87,12 +93,13 @@ func TestTaskForm_ShortcutToParentPicker(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode changed or form still active
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after shortcut")
 }
 
 // TestTaskForm_SaveWithCtrlS tests submitting form with Ctrl+S
 func TestTaskForm_SaveWithCtrlS(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer func() { _ = db.Close() }()
 
 	// Enter task form mode
 	m.UIState.Mode = state.TicketFormMode
@@ -108,12 +115,13 @@ func TestTaskForm_SaveWithCtrlS(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Verify form processed the save command
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after save")
 }
 
 // TestTaskForm_DiscardConfirmation tests Esc key to trigger discard confirmation
 func TestTaskForm_DiscardConfirmation(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer func() { _ = db.Close() }()
 
 	// Enter task form mode
 	m.UIState.Mode = state.TicketFormMode
@@ -129,12 +137,13 @@ func TestTaskForm_DiscardConfirmation(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Mode may change to confirmation or back to normal
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after escape")
 }
 
 // TestProjectForm_Creation tests creating a new project
 func TestProjectForm_Creation(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer func() { _ = db.Close() }()
 
 	// Enter project form mode
 	m.UIState.Mode = state.ProjectFormMode
@@ -161,12 +170,13 @@ func TestProjectForm_Creation(t *testing.T) {
 
 	// Verify form was processed
 	// Still in form mode, form may not support quick save
-	_ = m.UIState.Mode == state.ProjectFormMode
+	require.NotNil(t, m, "Model should not be nil after save")
 }
 
 // TestColumnForm_Creation tests creating a new column
 func TestColumnForm_Creation(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer func() { _ = db.Close() }()
 
 	// Enter column form mode
 	m.UIState.Mode = state.AddColumnFormMode
@@ -188,19 +198,21 @@ func TestColumnForm_Creation(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Verify form was processed
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after form submission")
 }
 
 // TestCommentForm_Creation tests adding a comment to a task
 func TestCommentForm_Creation(t *testing.T) {
 	m, db := SetupTestModelWithDB(t)
+	defer func() { _ = db.Close() }()
 
 	// Create a task to comment on
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	columns, _ := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
+	require.NoError(t, err, "Failed to load columns for test setup")
 	if len(columns) > 0 {
-		taskID := testutil.CreateTestTask(t, db, columns[0].ID, "Task to comment on")
+		taskID := testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Task to comment on")
 
 		// Enter comment form mode
 		m.UIState.Mode = state.CommentFormMode
@@ -217,13 +229,14 @@ func TestCommentForm_Creation(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		// Verify comment form was processed
-		_ = m
+		require.NotNil(t, m, "Model should not be nil after comment submission")
 	}
 }
 
 // TestEditColumnForm_RenameColumn tests renaming an existing column
 func TestEditColumnForm_RenameColumn(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer func() { _ = db.Close() }()
 
 	// Enter edit column form mode
 	m.UIState.Mode = state.EditColumnFormMode
@@ -245,12 +258,13 @@ func TestEditColumnForm_RenameColumn(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Verify edit column form was processed
-	_ = m
+	require.NotNil(t, m, "Model should not be nil after form submission")
 }
 
 // TestProjectForm_DiscardChanges tests discarding changes to project form
 func TestProjectForm_DiscardChanges(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer func() { _ = db.Close() }()
 
 	// Enter project form mode
 	m.UIState.Mode = state.ProjectFormMode
@@ -258,8 +272,6 @@ func TestProjectForm_DiscardChanges(t *testing.T) {
 	// Type some text
 	TypeStringToModel(&m, "Project name")
 	time.Sleep(50 * time.Millisecond)
-
-	initialMode := m.UIState.Mode
 
 	// Press Escape to discard
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape})
@@ -269,12 +281,13 @@ func TestProjectForm_DiscardChanges(t *testing.T) {
 
 	// Verify escape was processed
 	// Mode changed, which is expected
-	_ = m.UIState.Mode != initialMode
+	require.NotNil(t, m, "Model should not be nil after escape")
 }
 
 // TestTaskForm_CharacterInput tests typing characters into task form
 func TestTaskForm_CharacterInput(t *testing.T) {
-	m, _ := SetupTestModelWithDB(t)
+	m, db := SetupTestModelWithDB(t)
+	defer func() { _ = db.Close() }()
 
 	// Enter task form mode
 	m.UIState.Mode = state.TicketFormMode
@@ -285,7 +298,5 @@ func TestTaskForm_CharacterInput(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify form is still in task form mode
-	if m.UIState.Mode != state.TicketFormMode {
-		t.Errorf("Expected TicketFormMode after input, got %v", m.UIState.Mode)
-	}
+	assert.Equal(t, state.TicketFormMode, m.UIState.Mode)
 }

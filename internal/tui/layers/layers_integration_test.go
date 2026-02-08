@@ -2,6 +2,9 @@ package layers
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestCreateCenteredLayerWithContent tests layer creation with content
@@ -42,9 +45,7 @@ func TestCreateCenteredLayerWithContent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			layer := CreateCenteredLayer(tt.content, tt.screenWidth, tt.screenHeight)
 
-			if layer == nil {
-				t.Fatal("CreateCenteredLayer should return a layer for non-empty content")
-			}
+			require.NotNil(t, layer)
 		})
 	}
 }
@@ -53,9 +54,7 @@ func TestCreateCenteredLayerWithContent(t *testing.T) {
 func TestCreateCenteredLayerWithEmptyContent(t *testing.T) {
 	layer := CreateCenteredLayer("", 120, 40)
 
-	if layer != nil {
-		t.Error("CreateCenteredLayer should return nil for empty content")
-	}
+	assert.Nil(t, layer)
 }
 
 // TestLayerPositioning tests that layers are centered correctly
@@ -66,9 +65,7 @@ func TestLayerPositioning(t *testing.T) {
 
 	layer := CreateCenteredLayer(content, screenWidth, screenHeight)
 
-	if layer == nil {
-		t.Fatal("layer should not be nil")
-	}
+	require.NotNil(t, layer)
 
 	// Layer methods are chainable, so just verify layer exists
 	// (actual positioning is tested implicitly by the function working)
@@ -82,9 +79,7 @@ func TestLayerPositioningOnSmallScreen(t *testing.T) {
 
 	layer := CreateCenteredLayer(content, screenWidth, screenHeight)
 
-	if layer == nil {
-		t.Fatal("layer should not be nil even on small screen")
-	}
+	require.NotNil(t, layer)
 }
 
 // TestCalculatePickerDimensions tests picker dimension calculation
@@ -156,21 +151,10 @@ func TestCalculatePickerDimensions(t *testing.T) {
 				tt.maxWidth,
 			)
 
-			// Width should be within bounds
-			if width < tt.minWidth {
-				t.Errorf("width %d should be >= minWidth %d", width, tt.minWidth)
-			}
-			if width > tt.maxWidth {
-				t.Errorf("width %d should be <= maxWidth %d", width, tt.maxWidth)
-			}
-
-			// Height should be reasonable
-			if height < PickerMinHeight {
-				t.Errorf("height %d should be >= minimum %d", height, PickerMinHeight)
-			}
-			if height > tt.screenHeight {
-				t.Errorf("height %d should not exceed screen height %d", height, tt.screenHeight)
-			}
+			assert.GreaterOrEqual(t, width, tt.minWidth)
+			assert.LessOrEqual(t, width, tt.maxWidth)
+			assert.GreaterOrEqual(t, height, PickerMinHeight)
+			assert.LessOrEqual(t, height, tt.screenHeight)
 		})
 	}
 }
@@ -186,13 +170,8 @@ func TestPickerDimensionsWithLargeItemCount(t *testing.T) {
 		150,
 	)
 
-	// Should be capped at max visible items
-	if pickerWidth <= 0 {
-		t.Errorf("width should be positive, got %d", pickerWidth)
-	}
-	if pickerHeight <= 0 {
-		t.Errorf("height should be positive, got %d", pickerHeight)
-	}
+	assert.Positive(t, pickerWidth)
+	assert.Positive(t, pickerHeight)
 }
 
 // TestPickerDimensionsMinimums tests that picker respects minimum dimensions
@@ -206,15 +185,8 @@ func TestPickerDimensionsMinimums(t *testing.T) {
 		50, // maxWidth
 	)
 
-	// Should respect minimum width
-	if width < 20 {
-		t.Errorf("width should respect minimum: got %d, want >= 20", width)
-	}
-
-	// Should be reasonable height
-	if height < 5 {
-		t.Errorf("height should be reasonable: got %d, want >= 5", height)
-	}
+	assert.GreaterOrEqual(t, width, 20)
+	assert.GreaterOrEqual(t, height, 5)
 }
 
 // TestPickerDimensionsMaximums tests that picker respects maximum dimensions
@@ -229,16 +201,10 @@ func TestPickerDimensionsMaximums(t *testing.T) {
 		100, // maxWidth
 	)
 
-	// Should respect maximum width
-	if pickerWidth > 100 {
-		t.Errorf("width should respect maximum: got %d, want <= 100", pickerWidth)
-	}
+	assert.LessOrEqual(t, pickerWidth, 100)
 
-	// Should not exceed screen height (max 3/4)
 	maxHeight := screenHeight * PickerMaxHeightNumerator / PickerMaxHeightDivisor
-	if pickerHeight > maxHeight {
-		t.Errorf("height should not exceed limit: got %d, want <= %d", pickerHeight, maxHeight)
-	}
+	assert.LessOrEqual(t, pickerHeight, maxHeight)
 }
 
 // TestPickerDimensionsWithAndWithoutFilter tests filter impact on dimensions
@@ -254,15 +220,8 @@ func TestPickerDimensionsWithAndWithoutFilter(t *testing.T) {
 	w2, h2 := CalculatePickerDimensions(
 		itemCount, false, screenWidth, screenHeight, minWidth, maxWidth)
 
-	// Filter adds to chrome height, so with filter should be slightly taller
-	if h1 <= h2 {
-		t.Errorf("with filter height %d should be > without filter height %d", h1, h2)
-	}
-
-	// Widths should be the same
-	if w1 != w2 {
-		t.Errorf("widths should match: with filter %d != without filter %d", w1, w2)
-	}
+	assert.Greater(t, h1, h2)
+	assert.Equal(t, w1, w2)
 }
 
 // TestPickerDimensionsConsistency tests consistency across multiple calls
@@ -296,13 +255,10 @@ func TestPickerDimensionsConsistency(t *testing.T) {
 		params.itemCount, params.hasFilter, params.screenWidth,
 		params.screenHeight, params.minWidth, params.maxWidth)
 
-	// Results should be consistent
-	if w1 != w2 || w1 != w3 {
-		t.Errorf("width should be consistent: got %d, %d, %d", w1, w2, w3)
-	}
-	if h1 != h2 || h1 != h3 {
-		t.Errorf("height should be consistent: got %d, %d, %d", h1, h2, h3)
-	}
+	assert.Equal(t, w1, w2)
+	assert.Equal(t, w1, w3)
+	assert.Equal(t, h1, h2)
+	assert.Equal(t, h1, h3)
 }
 
 // TestLayerMultipleDimensions tests layers work with various screen dimensions
@@ -319,9 +275,7 @@ func TestLayerMultipleDimensions(t *testing.T) {
 		width, height := dims[0], dims[1]
 		layer := CreateCenteredLayer("Test", width, height)
 
-		if layer == nil {
-			t.Fatalf("should create layer for %dx%d", width, height)
-		}
+		require.NotNil(t, layer)
 	}
 }
 
@@ -334,9 +288,7 @@ Line 4`
 
 	layer := CreateCenteredLayer(multilineContent, 100, 50)
 
-	if layer == nil {
-		t.Fatal("should create layer for multiline content")
-	}
+	require.NotNil(t, layer)
 
 	// Just verify it was created successfully
 }
