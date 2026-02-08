@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       issues: read
       id-token: write
 
@@ -39,18 +39,20 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Please review this pull request and provide feedback on:
+            Review this pull request and provide feedback on:
             - Code quality and best practices
+              - Guard pattern flattening, hardcore DRY violations
+              - Basically, things that would come out of the Refactoring book by Martin Fowler
             - Potential bugs or issues
             - Performance considerations
             - Security concerns
             - Test coverage
+            - Praise performance improvements for visibility. Note how they do this
+            - Following established code conventions
 
-            Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
+            Use `mcp__github_inline_comment__create_inline_comment` to post inline comments
+            on specific lines where issues are found.
+            Use `gh pr comment` for a top-level summary only if no inline issues are found.
 
-            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
-
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
+          claude_args: '--allowed-tools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"'
 

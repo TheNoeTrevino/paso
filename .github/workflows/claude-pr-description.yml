@@ -1,0 +1,73 @@
+name: Claude PR Description
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  enrich-description:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - name: Check description length
+        id: check
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          BODY_LENGTH=${#PR_BODY}
+          echo "length=$BODY_LENGTH" >> "$GITHUB_OUTPUT"
+          if [ "$BODY_LENGTH" -lt 200 ]; then
+            echo "needs_summary=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_summary=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout repository
+        if: steps.check.outputs.needs_summary == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate PR summary
+        if: steps.check.outputs.needs_summary == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Generate a concise summary of PR #${{ github.event.pull_request.number }}.
+
+            Steps:
+            1. Run `gh pr diff ${{ github.event.pull_request.number }}` to see the changes
+            2. Write a clear, concise summary (3-6 bullet points) covering:
+               - What changed and why (infer from the code)
+               - Key files/packages affected
+               - Any notable implementation details
+            3. Write ONLY the summary bullet points to a file at /tmp/pr-summary.txt
+               using your Write tool. No headers, no fences, just the bullet points.
+
+            Keep it factual. Do not editorialize.
+
+          claude_args: '--allowed-tools "Bash(gh pr diff:*),Bash(gh pr view:*),Write"'
+
+      - name: Comment summary on PR
+        if: steps.check.outputs.needs_summary == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ ! -f /tmp/pr-summary.txt ]; then
+            echo "No summary generated, skipping"
+            exit 0
+          fi
+
+          SUMMARY=$(cat /tmp/pr-summary.txt)
+
+          COMMENT="**PR Summary** _(auto-generated)_
+
+          ${SUMMARY}"
+
+          gh pr comment "$PR_NUMBER" --body "$COMMENT"
