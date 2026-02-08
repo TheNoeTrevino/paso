@@ -14,12 +14,12 @@ type Segment struct {
 }
 
 // NewStyledSegment creates a Segment with the given text, style, and background color.
+// The background is applied to the style upfront rather than deferred to each render call.
 func NewStyledSegment(text string, style lipgloss.Style, bg string) Segment {
+	s := style.Background(lipgloss.Color(bg))
 	return Segment{
-		Text: text,
-		Render: func(t string) string {
-			return style.Background(lipgloss.Color(bg)).Render(t)
-		},
+		Text:   text,
+		Render: func(t string) string { return s.Render(t) },
 	}
 }
 
@@ -138,7 +138,7 @@ func (t *segmentTruncator) tryPartialFirst() string {
 // visible segment at the character level if needed. Measures plain text widths
 // and only renders with lipgloss after determining what will fit.
 func TruncateSegments(segments []Segment, separator string, maxWidth int, bg string, subtleColor string) string {
-	if len(segments) == 0 {
+	if len(segments) == 0 || maxWidth <= 0 {
 		return ""
 	}
 
