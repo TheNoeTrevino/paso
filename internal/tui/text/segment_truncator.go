@@ -109,12 +109,11 @@ func (t *segmentTruncator) tryFitWithTruncation() string {
 		remainingWidth := t.maxWidth - width - t.sepWidth - t.ellipsisWidth
 		truncated := TruncateTextToWidth(t.segments[i].Text, remainingWidth)
 		if truncated != "" {
+			// i >= 1 is guaranteed by the loop bounds, so segments[:i] is
+			// always non-empty and renderJoined always returns content.
 			prefix := t.renderJoined(t.segments[:i])
 			partial := t.segments[i].Render(truncated)
-			if prefix != "" {
-				return prefix + t.styledSeparator + partial + t.ellipsis
-			}
-			return partial + t.ellipsis
+			return prefix + t.styledSeparator + partial + t.ellipsis
 		}
 
 		if width+t.ellipsisWidth <= t.maxWidth {
