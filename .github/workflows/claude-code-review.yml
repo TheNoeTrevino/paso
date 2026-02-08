@@ -47,8 +47,11 @@ jobs:
             - Performance considerations
             - Security concerns
             - Test coverage
-            - Praise performance improvements for visibility. Note how they do this
             - Following established code conventions
+
+            DO NOT PRAISE
+            Only mention short coming of the new code. 
+            Adding praise is simply adding noise to the review, keep things extremely focused, and digestable.
 
             Use `mcp__github_inline_comment__create_inline_comment` to post inline comments
             on specific lines where issues are found.
