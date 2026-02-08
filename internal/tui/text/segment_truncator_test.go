@@ -9,7 +9,7 @@ import (
 
 func TestTruncateSegments_EmptySlice(t *testing.T) {
 	t.Parallel()
-	result := TruncateSegments(nil, " ", 40, "#000000")
+	result := TruncateSegments(nil, " ", 40, "#000000", "#888888")
 	assert.Equal(t, "", result)
 }
 
@@ -23,7 +23,7 @@ func TestTruncateSegments_AllFit(t *testing.T) {
 	}
 	separator := " "
 	// "aaa bbb ccc" = 11 chars
-	result := TruncateSegments(segments, separator, 20, "#000000")
+	result := TruncateSegments(segments, separator, 20, "#000000", "#888888")
 
 	assert.Contains(t, result, "aaa")
 	assert.Contains(t, result, "bbb")
@@ -45,7 +45,7 @@ func TestTruncateSegments_Truncation(t *testing.T) {
 	// Each segment is 3 wide, separator is 1.
 	// "aaa bbb ccc..." = 3+1+3+1+3+3 = 14
 	// maxWidth = 14 should fit 3 segments + ellipsis
-	result := TruncateSegments(segments, separator, 14, "#000000")
+	result := TruncateSegments(segments, separator, 14, "#000000", "#888888")
 
 	assert.Contains(t, result, "aaa")
 	assert.Contains(t, result, "bbb")
@@ -65,7 +65,7 @@ func TestTruncateSegments_OnlyFirstFits(t *testing.T) {
 	}
 	separator := " "
 	// "aaa..." = 3+3 = 6
-	result := TruncateSegments(segments, separator, 6, "#000000")
+	result := TruncateSegments(segments, separator, 6, "#000000", "#888888")
 
 	assert.Contains(t, result, "aaa")
 	assert.Contains(t, result, "...")
@@ -81,7 +81,7 @@ func TestTruncateSegments_NoneCanFit(t *testing.T) {
 	}
 	separator := " "
 	// First segment alone (10) + ellipsis (3) = 13, exceeds maxWidth of 5
-	result := TruncateSegments(segments, separator, 5, "#000000")
+	result := TruncateSegments(segments, separator, 5, "#000000", "#888888")
 
 	assert.Contains(t, result, "...")
 	assert.NotContains(t, result, "aaa")
@@ -94,7 +94,7 @@ func TestTruncateSegments_SingleSegmentFits(t *testing.T) {
 	segments := []Segment{
 		{Text: "hello", Render: func(t string) string { return t }},
 	}
-	result := TruncateSegments(segments, " ", 20, "#000000")
+	result := TruncateSegments(segments, " ", 20, "#000000", "#888888")
 
 	assert.Equal(t, "hello", result)
 	assert.NotContains(t, result, "...")
@@ -106,7 +106,7 @@ func TestTruncateSegments_SingleSegmentTooWide(t *testing.T) {
 	segments := []Segment{
 		{Text: "hello world this is long", Render: func(t string) string { return t }},
 	}
-	result := TruncateSegments(segments, " ", 5, "#000000")
+	result := TruncateSegments(segments, " ", 5, "#000000", "#888888")
 
 	assert.Contains(t, result, "...")
 	// With character-level truncation, we should now see partial content
@@ -122,7 +122,7 @@ func TestTruncateSegments_ExactFit(t *testing.T) {
 	}
 	separator := " "
 	// "aa bb" = 2+1+2 = 5
-	result := TruncateSegments(segments, separator, 5, "#000000")
+	result := TruncateSegments(segments, separator, 5, "#000000", "#888888")
 
 	assert.Contains(t, result, "aa")
 	assert.Contains(t, result, "bb")
@@ -142,7 +142,7 @@ func TestTruncateSegments_WideSeparator(t *testing.T) {
 	// maxWidth 11 means third segment won't fit completely
 	// Now with character-level truncation: "aa | bb | c..." = 2+3+2+3+1+3 = 14, doesn't fit
 	// "aa | bb..." = 2+3+2+3 = 10, fits in 11
-	result := TruncateSegments(segments, separator, 11, "#000000")
+	result := TruncateSegments(segments, separator, 11, "#000000", "#888888")
 
 	assert.Contains(t, result, "aa")
 	assert.Contains(t, result, "bb")
@@ -168,7 +168,7 @@ func TestTruncateSegments_StyledSegments(t *testing.T) {
 	// "task" = 4, " | " = 3, "critical" = 8, " | " = 3, partial username
 	maxWidth := 4 + 3 + 8 + 3 + 5 + 3 // enough for "@aver..."
 
-	result := TruncateSegments(segments, separator, maxWidth, bg)
+	result := TruncateSegments(segments, separator, maxWidth, bg, "#888888")
 
 	assert.Contains(t, result, "task")
 	assert.Contains(t, result, "critical")
@@ -193,7 +193,7 @@ func TestTruncateSegments_PartialLastSegment(t *testing.T) {
 	// Set maxWidth to show partial last segment
 	maxWidth := 30
 
-	result := TruncateSegments(segments, separator, maxWidth, "#333333")
+	result := TruncateSegments(segments, separator, maxWidth, "#333333", "#888888")
 
 	assert.Contains(t, result, "bug")
 	assert.Contains(t, result, "duplicate")
@@ -217,7 +217,7 @@ func TestTruncateSegments_MetadataPartialAssignee(t *testing.T) {
 	// "task ∙ critical ∙ @noet..." should fit
 	maxWidth := 28
 
-	result := TruncateSegments(segments, separator, maxWidth, "#333333")
+	result := TruncateSegments(segments, separator, maxWidth, "#333333", "#888888")
 
 	assert.Contains(t, result, "task")
 	assert.Contains(t, result, "critical")
@@ -234,7 +234,7 @@ func TestTruncateSegments_MaxWidthEqualsEllipsisWidth(t *testing.T) {
 		{Text: "world", Render: func(t string) string { return t }},
 	}
 
-	result := TruncateSegments(segments, " ", 3, "#000000")
+	result := TruncateSegments(segments, " ", 3, "#000000", "#888888")
 
 	assert.Contains(t, result, "...")
 	assert.NotContains(t, result, "hello")
@@ -249,7 +249,7 @@ func TestTruncateSegments_EmptyTextSegments(t *testing.T) {
 		segments := []Segment{
 			{Text: "", Render: func(t string) string { return t }},
 		}
-		result := TruncateSegments(segments, " ", 20, "#000000")
+		result := TruncateSegments(segments, " ", 20, "#000000", "#888888")
 		assert.NotContains(t, result, "...")
 	})
 
@@ -260,7 +260,7 @@ func TestTruncateSegments_EmptyTextSegments(t *testing.T) {
 			{Text: "", Render: func(t string) string { return t }},
 			{Text: "bbb", Render: func(t string) string { return t }},
 		}
-		result := TruncateSegments(segments, " ", 20, "#000000")
+		result := TruncateSegments(segments, " ", 20, "#000000", "#888888")
 		assert.Contains(t, result, "aaa")
 		assert.Contains(t, result, "bbb")
 		assert.NotContains(t, result, "...")
@@ -273,7 +273,7 @@ func TestTruncateSegments_EmptyTextSegments(t *testing.T) {
 			{Text: "", Render: func(t string) string { return t }},
 			{Text: "", Render: func(t string) string { return t }},
 		}
-		result := TruncateSegments(segments, " ", 10, "#000000")
+		result := TruncateSegments(segments, " ", 10, "#000000", "#888888")
 		assert.NotContains(t, result, "...")
 	})
 }
@@ -287,25 +287,25 @@ func TestTruncateSegments_VerySmallMaxWidth(t *testing.T) {
 
 	t.Run("maxWidth zero", func(t *testing.T) {
 		t.Parallel()
-		result := TruncateSegments(segments, " ", 0, "#000000")
+		result := TruncateSegments(segments, " ", 0, "#000000", "#888888")
 		assert.Contains(t, result, "...")
 	})
 
 	t.Run("maxWidth negative", func(t *testing.T) {
 		t.Parallel()
-		result := TruncateSegments(segments, " ", -1, "#000000")
+		result := TruncateSegments(segments, " ", -1, "#000000", "#888888")
 		assert.Contains(t, result, "...")
 	})
 
 	t.Run("maxWidth 1", func(t *testing.T) {
 		t.Parallel()
-		result := TruncateSegments(segments, " ", 1, "#000000")
+		result := TruncateSegments(segments, " ", 1, "#000000", "#888888")
 		assert.Contains(t, result, "...")
 	})
 
 	t.Run("maxWidth 2", func(t *testing.T) {
 		t.Parallel()
-		result := TruncateSegments(segments, " ", 2, "#000000")
+		result := TruncateSegments(segments, " ", 2, "#000000", "#888888")
 		assert.Contains(t, result, "...")
 	})
 }

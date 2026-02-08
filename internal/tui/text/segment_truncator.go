@@ -5,7 +5,6 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
-	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
 // Segment represents a piece of content with plain text and a render function.
@@ -54,10 +53,10 @@ type segmentTruncator struct {
 	ellipsis        string
 }
 
-func newSegmentTruncator(segments []Segment, separator string, maxWidth int, bg string) segmentTruncator {
+func newSegmentTruncator(segments []Segment, separator string, maxWidth int, bg string, subtleColor string) segmentTruncator {
 	const ellipsisText = "..."
 
-	ellipsisStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+	ellipsisStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(subtleColor))
 	sepWidth := runewidth.StringWidth(separator)
 
 	n := len(segments)
@@ -77,7 +76,7 @@ func newSegmentTruncator(segments []Segment, separator string, maxWidth int, bg 
 		ellipsisWidth: runewidth.StringWidth(ellipsisText),
 		styledSeparator: lipgloss.NewStyle().
 			Background(lipgloss.Color(bg)).
-			Foreground(lipgloss.Color(theme.Subtle)).
+			Foreground(lipgloss.Color(subtleColor)).
 			Render(separator),
 		ellipsis: ellipsisStyle.Background(lipgloss.Color(bg)).Render(ellipsisText),
 	}
@@ -138,12 +137,12 @@ func (t *segmentTruncator) tryPartialFirst() string {
 // TruncateSegments joins segments with a separator, truncating the last
 // visible segment at the character level if needed. Measures plain text widths
 // and only renders with lipgloss after determining what will fit.
-func TruncateSegments(segments []Segment, separator string, maxWidth int, bg string) string {
+func TruncateSegments(segments []Segment, separator string, maxWidth int, bg string, subtleColor string) string {
 	if len(segments) == 0 {
 		return ""
 	}
 
-	t := newSegmentTruncator(segments, separator, maxWidth, bg)
+	t := newSegmentTruncator(segments, separator, maxWidth, bg, subtleColor)
 
 	if result, ok := t.tryFitAll(); ok {
 		return result

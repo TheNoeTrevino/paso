@@ -45,7 +45,7 @@ func RenderTask(task *models.TaskSummary, selected bool, width int) string {
 // renderTaskSummaryTitle renders the task title, truncating with "..." if needed.
 func renderTaskSummaryTitle(task *models.TaskSummary, bg string, maxWidth int) string {
 	segment := text.NewStyledSegment(task.Title, TaskTitleStyle, bg)
-	return " " + text.TruncateSegments([]text.Segment{segment}, "", maxWidth, bg)
+	return " " + text.TruncateSegments([]text.Segment{segment}, "", maxWidth, bg, theme.Subtle)
 }
 
 // renderTaskCardLabels renders labels as colored chips, truncating with "..." if needed.
@@ -66,7 +66,7 @@ func renderTaskCardLabels(labels []*models.Label, bg string, maxWidth int) strin
 		segments[i] = text.NewStyledSegment(label.Name, labelStyle, bg)
 	}
 
-	return "\n " + text.TruncateSegments(segments, spacer, maxWidth, bg)
+	return "\n " + text.TruncateSegments(segments, spacer, maxWidth, bg, theme.Subtle)
 }
 
 // renderTaskSummaryMetadata renders type, priority, assignee and blocked on the same line, separated by |.
@@ -105,5 +105,5 @@ func renderTaskSummaryMetadata(task *models.TaskSummary, bg string, maxWidth int
 
 	separator := " │ "
 
-	return "\n " + text.TruncateSegments(segments, separator, maxWidth, bg)
+	return "\n " + text.TruncateSegments(segments, separator, maxWidth, bg, theme.Subtle)
 }
