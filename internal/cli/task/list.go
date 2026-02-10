@@ -206,18 +206,3 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
-
-func renderLabels(labels []*models.Label) string {
-	if len(labels) == 0 {
-		return ""
-	}
-	var parts []string
-	for _, l := range labels {
-		styled := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color(l.Color)).
-			Render("[" + l.Name + "]")
-		parts = append(parts, styled)
-	}
-	return strings.Join(parts, " ")
-}
