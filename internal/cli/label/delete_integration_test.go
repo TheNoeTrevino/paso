@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	rootcli "github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
@@ -103,8 +104,16 @@ func TestDeleteLabel_Positive(t *testing.T) {
 }
 
 func TestDeleteLabel_Negative(t *testing.T) {
-	_, _ = cli.SetupCLITest(t)
+	_, app := cli.SetupCLITest(t)
 
 	t.Run("Invalid label ID format", func(t *testing.T) {
+		cmd := DeleteCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"abc",
+			"--force",
+			"--quiet",
+		})
+		cli.AssertExitError(t, err, rootcli.ExitValidation)
+		assert.Contains(t, err.Error(), "invalid ID")
 	})
 }

@@ -72,8 +72,16 @@ func TestDeleteProject_Positive(t *testing.T) {
 }
 
 func TestDeleteProject_Negative(t *testing.T) {
-	_, _ = cli.SetupCLITest(t)
+	_, app := cli.SetupCLITest(t)
 
 	t.Run("Invalid project ID format", func(t *testing.T) {
+		cmd := DeleteCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"abc",
+			"--force",
+			"--quiet",
+		})
+		cli.AssertExitError(t, err, 5)
+		assert.Contains(t, err.Error(), "invalid ID 'abc'")
 	})
 }

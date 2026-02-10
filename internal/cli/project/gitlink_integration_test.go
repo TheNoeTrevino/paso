@@ -143,9 +143,17 @@ func TestGitLink_Positive(t *testing.T) {
 }
 
 func TestGitLink_Negative(t *testing.T) {
-	_, _ = cli.SetupCLITest(t)
+	_, app := cli.SetupCLITest(t)
 
 	t.Run("Non-existent project ID", func(t *testing.T) {
+		cmd := GitLinkCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--id", "999999",
+			"--branch", "feature/test",
+			"--quiet",
+		})
+		cli.AssertExitError(t, err, 3)
+		assert.Contains(t, err.Error(), "project with ID 999999 not found")
 	})
 }
 
@@ -231,8 +239,15 @@ func TestGitUnlink_Positive(t *testing.T) {
 }
 
 func TestGitUnlink_Negative(t *testing.T) {
-	_, _ = cli.SetupCLITest(t)
+	_, app := cli.SetupCLITest(t)
 
 	t.Run("Non-existent project ID", func(t *testing.T) {
+		cmd := GitUnlinkCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--id", "999999",
+			"--quiet",
+		})
+		cli.AssertExitError(t, err, 3)
+		assert.Contains(t, err.Error(), "project with ID 999999 not found")
 	})
 }

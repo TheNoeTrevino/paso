@@ -199,8 +199,6 @@ func TestCreateColumn_ErrorCases(t *testing.T) {
 			},
 			expectedError: true,
 		},
-		// Note: "Invalid project ID" and "Invalid after column ID" tests are omitted
-		// because the command calls os.Exit() on these errors, which kills the test process.
 	}
 
 	for _, tt := range errorTests {

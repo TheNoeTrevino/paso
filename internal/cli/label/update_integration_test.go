@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	rootcli "github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
@@ -115,13 +116,29 @@ func TestUpdateLabel_Positive(t *testing.T) {
 }
 
 func TestUpdateLabel_ErrorCases(t *testing.T) {
-	_, _ = cli.SetupCLITest(t)
+	db, app := cli.SetupCLITest(t)
 
-	t.Run("Invalid color format calls os.Exit", func(t *testing.T) {
-		// This calls os.Exit via ExitValidation, which we cannot capture in-process.
-		// Skipping as it would terminate the test process.
+	t.Run("Invalid color format", func(t *testing.T) {
+		projectID := cli.CreateTestProject(t, db, "Color Test Project")
+		labelID := cli.CreateTestLabel(t, db, projectID, "color-test", "#FF0000")
+		cmd := UpdateCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			fmt.Sprintf("%d", labelID),
+			"--color", "not-a-color",
+			"--quiet",
+		})
+		cli.AssertExitError(t, err, rootcli.ExitValidation)
+		assert.Contains(t, err.Error(), "color must be in hex format")
 	})
 
 	t.Run("Invalid label ID format", func(t *testing.T) {
+		cmd := UpdateCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"invalid",
+			"--name", "test",
+			"--quiet",
+		})
+		cli.AssertExitError(t, err, rootcli.ExitValidation)
+		assert.Contains(t, err.Error(), "invalid ID")
 	})
 }
