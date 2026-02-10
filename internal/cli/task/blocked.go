@@ -58,46 +58,34 @@ func runBlocked(cmd *cobra.Command, args []string) error {
 	// Initialize CLI first
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
 	// Get project ID from flag or git branch
 	taskProject, err := cli.GetProjectIDWithCLI(cmd, cliInstance)
 	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
+		return formatter.ErrorWithSuggestion(cli.ExitUsage, "NO_PROJECT",
 			err.Error(),
-			"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
+			"Use --project flag or create a project associated with this git branch")
 	}
 
 	// Validate project exists
 	_, err = cliInstance.App.ProjectService.GetProjectByID(ctx, taskProject)
 	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("PROJECT_NOT_FOUND",
+		return formatter.ErrorWithSuggestion(cli.ExitNotFound, "PROJECT_NOT_FOUND",
 			fmt.Sprintf("project %d not found", taskProject),
-			"Use 'paso project list' to see available projects"); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+			"Use 'paso project list' to see available projects")
 	}
 
 	// Get all tasks for project (includes IsBlocked field)
 	tasksByColumn, err := cliInstance.App.TaskService.GetTaskSummariesByProject(ctx, taskProject)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "TASK_FETCH_ERROR", err.Error())
 	}
 
 	// Filter for blocked tasks (IsBlocked == true)

@@ -11,29 +11,36 @@ import (
 	"charm.land/lipgloss/v2/table"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/config"
 )
 
 // ListCmd returns the label list subcommand
 func ListCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list",
+		Use:   "list [project-id]",
 		Short: "List labels in a project",
 		Long: `List all labels in a project.
 
 Examples:
-  # Human-readable list (shorthand)
+  # Using positional argument (recommended)
+  paso label list 1
+
+  # Using shorthand flag
   paso label list -p 1
 
+  # Using git branch association
+  paso label list
+
   # JSON output for agents
-  paso label list -p 1 -j
+  paso label list 1 -j
 
   # Quiet mode (one ID per line)
-  paso label list -p 1 -q
+  paso label list 1 -q
 
   # Long-form flags also supported
   paso label list --project=1 --json
 `,
+		Args: cobra.MaximumNArgs(1),
 		RunE: runList,
 	}
 
@@ -57,44 +64,45 @@ func runList(cmd *cobra.Command, args []string) error {
 	// Initialize CLI first
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
-	// Get project ID from flag or git branch
-	labelProject, err := cli.GetProjectIDWithCLI(cmd, cliInstance)
-	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
-			err.Error(),
-			"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+	// Get project ID with precedence: positional arg > flag > git detection
+	var labelProject int
+
+	if len(args) > 0 {
+		// Priority 1: Positional argument
+		labelProject, err = strconv.Atoi(args[0])
+		if err != nil {
+			return formatter.ErrorWithSuggestion(cli.ExitUsage, "INVALID_PROJECT_ID",
+				fmt.Sprintf("Invalid project ID: %s", args[0]),
+				"Project ID must be a number")
 		}
-		os.Exit(cli.ExitUsage)
+	} else {
+		// Priority 2: Flag or git branch detection
+		labelProject, err = cli.GetProjectIDWithCLI(cmd, cliInstance)
+		if err != nil {
+			return formatter.ErrorWithSuggestion(cli.ExitUsage, "NO_PROJECT",
+				err.Error(),
+				"Specify project ID as argument, use --project flag, or associate branch with project")
+		}
 	}
 
 	// Validate project exists
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, labelProject)
 	if err != nil {
-		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", labelProject)); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+		return formatter.Error(cli.ExitNotFound, "PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", labelProject))
 	}
 
 	// Get labels
 	labels, err := cliInstance.App.LabelService.GetLabelsByProject(ctx, labelProject)
 	if err != nil {
-		if fmtErr := formatter.Error("LABEL_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "LABEL_FETCH_ERROR", err.Error())
 	}
 
 	// Output based on mode
@@ -126,25 +134,36 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fmt.Printf("Labels in project '%s':\n", project.Name)
-	fmt.Println(renderLabelTable(labels))
-	return nil
-}
+	// Load config for color scheme
+	cfg, err := config.Load()
+	if err != nil {
+		cfg = &config.Config{
+			ColorScheme: config.DefaultColorScheme(),
+		}
+	}
 
-func renderLabelTable(labels []*models.Label) string {
-	baseStyle := lipgloss.NewStyle().Padding(0, 1)
-	headerStyle := baseStyle.Bold(true).Foreground(lipgloss.Color("252"))
+	// Define colors
+	normalColor := lipgloss.Color(cfg.ColorScheme.Normal)
+	headerColor := lipgloss.Color(cfg.ColorScheme.Accent)
 
+	// Build table data and track colors per row
 	var rows [][]string
-	for _, lbl := range labels {
+	rowColors := make(map[int]string)
+
+	for i, lbl := range labels {
 		rows = append(rows, []string{
 			strconv.Itoa(lbl.ID),
 			lbl.Name,
 			lbl.Color,
 		})
+		rowColors[i] = lbl.Color
 	}
 
-	tbl := table.New().
+	// Create table with styling
+	baseStyle := lipgloss.NewStyle().Padding(0, 1)
+	headerStyle := baseStyle.Bold(true).Foreground(headerColor)
+
+	t := table.New().
 		Border(lipgloss.RoundedBorder()).
 		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("238"))).
 		Headers("ID", "NAME", "COLOR").
@@ -154,18 +173,16 @@ func renderLabelTable(labels []*models.Label) string {
 				return headerStyle
 			}
 
-			label := labels[row]
-			even := row%2 == 0
-
-			if col == 2 && label.Color != "" {
-				return baseStyle.Foreground(lipgloss.Color(label.Color))
+			// Color column (col 2) - use the label's color
+			if col == 2 {
+				return baseStyle.Foreground(lipgloss.Color(rowColors[row]))
 			}
 
-			if even {
-				return baseStyle.Foreground(lipgloss.Color("245"))
-			}
-			return baseStyle.Foreground(lipgloss.Color("252"))
+			return baseStyle.Foreground(normalColor)
 		})
 
-	return tbl.String()
+	fmt.Printf("Labels in project '%s':\n", project.Name)
+	fmt.Println(t)
+
+	return nil
 }

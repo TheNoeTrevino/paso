@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 	userutil "github.com/thenoetrevino/paso/internal/user"
 )
@@ -43,12 +45,12 @@ Examples:
 	// Required flags
 	cmd.Flags().IntP("id", "i", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("id"); err != nil {
-		slog.Error("failed to marking flag as required", "error", err)
+		slog.Error("failed to mark flag as required", "error", err)
 	}
 
 	cmd.Flags().StringP("message", "m", "", "Comment message (required, max 1000 chars)")
 	if err := cmd.MarkFlagRequired("message"); err != nil {
-		slog.Error("failed to marking flag as required", "error", err)
+		slog.Error("failed to mark flag as required", "error", err)
 	}
 
 	cmd.Flags().StringP("author", "a", "", "Comment author (defaults to current user)")
@@ -78,34 +80,25 @@ func runComment(cmd *cobra.Command, args []string) error {
 
 	// Validate message length before initializing CLI
 	if len(message) > 1000 {
-		if fmtErr := formatter.Error("MESSAGE_TOO_LONG",
-			"message exceeds 1000 character limit"); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitValidation)
+		return formatter.Error(cli.ExitValidation, "MESSAGE_TOO_LONG",
+			"message exceeds 1000 character limit")
 	}
 
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
 	// Validate task exists
 	taskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "TASK_FETCH_ERROR", err.Error())
 	}
 
 	// Create comment
@@ -115,10 +108,7 @@ func runComment(cmd *cobra.Command, args []string) error {
 		Author:  author,
 	})
 	if err != nil {
-		if fmtErr := formatter.Error("COMMENT_CREATE_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "COMMENT_CREATE_ERROR", err.Error())
 	}
 
 	// Output based on mode (JSON/Quiet/Human)
@@ -147,10 +137,13 @@ func runComment(cmd *cobra.Command, args []string) error {
 	}
 
 	// Human-readable output
-	fmt.Printf("✓ Comment added to task #%d (%s)\n", taskDetail.TicketNumber, taskDetail.Title)
-	fmt.Printf("  Project: %s\n", taskDetail.ProjectName)
-	fmt.Printf("  Message: %s\n", message)
-	fmt.Printf("  Comment ID: %d\n", comment.ID)
-
+	colors := cli.GetColorScheme()
+	details := []styles.Detail{
+		{Key: "Task", Value: fmt.Sprintf("#%d (%s)", taskDetail.TicketNumber, taskDetail.Title)},
+		{Key: "Project", Value: taskDetail.ProjectName},
+		{Key: "Message", Value: styles.TruncateString(message, 60)},
+		{Key: "Comment ID", Value: strconv.Itoa(comment.ID)},
+	}
+	fmt.Print(styles.RenderSuccessWithDetails("Comment added", details, colors))
 	return nil
 }

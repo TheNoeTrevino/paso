@@ -51,7 +51,10 @@ type createHandler struct{}
 
 // Execute implements the Handler interface
 func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (any, error) {
-	assigneeName := args.MustGetString("name")
+	assigneeName, err := args.MustGetString("name")
+	if err != nil {
+		return nil, err
+	}
 
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {

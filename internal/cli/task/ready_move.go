@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 )
 
@@ -22,6 +23,8 @@ func ReadyMoveCmd() *cobra.Command {
 
 The ready column is marked with holds_ready_tasks = true.
 Use 'paso column update -i <column_id> -r' to designate a ready column.
+
+Note: This command moves tasks to the column marked as ready (see: paso column update --ready)
 
 Examples:
   # Move task to ready column
@@ -53,7 +56,8 @@ func runReadyMove(cmd *cobra.Command, args []string) error {
 	// Parse task ID from positional argument
 	taskID, err := strconv.Atoi(args[0])
 	if err != nil {
-		return fmt.Errorf("invalid task ID: %s", args[0])
+		formatter := &cli.OutputFormatter{}
+		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid task ID '%s': must be a number", args[0]))
 	}
 
 	jsonOutput, _ := cmd.Flags().GetBool("json")
@@ -64,10 +68,7 @@ func runReadyMove(cmd *cobra.Command, args []string) error {
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -78,10 +79,7 @@ func runReadyMove(cmd *cobra.Command, args []string) error {
 	// Get task detail before move for output
 	taskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID))
 	}
 
 	currentColumnName := taskDetail.ColumnName
@@ -100,26 +98,17 @@ func runReadyMove(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		if strings.Contains(err.Error(), "no ready column configured") {
-			if fmtErr := formatter.ErrorWithSuggestion("NO_READY_COLUMN",
+			return formatter.ErrorWithSuggestion(cli.ExitValidation, "NO_READY_COLUMN",
 				"no ready column configured for this project",
-				"Use 'paso column update --id=<column_id> --ready' to designate a ready column"); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitValidation)
+				"Use 'paso column update --id=<column_id> --ready' to designate a ready column")
 		}
-		if fmtErr := formatter.Error("MOVE_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "MOVE_ERROR", err.Error())
 	}
 
 	// Get updated task detail for output
 	updatedTaskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "TASK_FETCH_ERROR", err.Error())
 	}
 
 	toColumnName := updatedTaskDetail.ColumnName
@@ -140,6 +129,8 @@ func runReadyMove(cmd *cobra.Command, args []string) error {
 	}
 
 	// Human-readable output
-	fmt.Printf("Task %d moved to '%s'\n", taskID, toColumnName)
+	colors := cli.GetColorScheme()
+	message := fmt.Sprintf("Task %d moved to '%s'", taskID, toColumnName)
+	fmt.Print(styles.RenderSuccess(message, colors))
 	return nil
 }

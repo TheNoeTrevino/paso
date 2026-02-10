@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	rootcli "github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
@@ -35,7 +36,8 @@ func TestCreateColumn_MissingFlags(t *testing.T) {
 			"--name", "Test Column",
 			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, rootcli.ExitUsage)
+		assert.Contains(t, err.Error(), "no project specified")
 	})
 
 	// Test invalid project ID
@@ -46,7 +48,8 @@ func TestCreateColumn_MissingFlags(t *testing.T) {
 			"--project", "99999",
 			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, rootcli.ExitNotFound)
+		assert.Contains(t, err.Error(), "project 99999 not found")
 	})
 
 	// Test invalid --after column ID
@@ -58,12 +61,12 @@ func TestCreateColumn_MissingFlags(t *testing.T) {
 			"--after", "99999",
 			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, rootcli.ExitNotFound)
+		assert.Contains(t, err.Error(), "column 99999 not found")
 	})
 
 	// Test after column from different project
 	t.Run("after column from different project", func(t *testing.T) {
-		// Create another project
 		otherProjectID := cli.CreateTestProject(t, db, "Other Project")
 		otherColumnID := cli.CreateTestColumn(t, db, otherProjectID, "Other Column")
 
@@ -71,23 +74,20 @@ func TestCreateColumn_MissingFlags(t *testing.T) {
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--name", "Test Column",
 			"--project", fmt.Sprintf("%d", projectID),
-			"--after", fmt.Sprintf("%d", otherColumnID),
+			"--after", strconv.Itoa(otherColumnID),
 			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, rootcli.ExitValidation)
+		assert.Contains(t, err.Error(), "does not belong to project")
 	})
 }
 
 // TestUpdateColumn_MissingFlags tests error cases for the update command
 func TestUpdateColumn_MissingFlags(t *testing.T) {
-	db, app := cli.SetupCLITest(t)
+	_, app := cli.SetupCLITest(t)
 
-	// Create test project and column
-	projectID := cli.CreateTestProject(t, db, "Test Project")
-	columnID := cli.CreateTestColumn(t, db, projectID, "Test Column")
-
-	// Test missing --id flag
-	t.Run("missing --id flag", func(t *testing.T) {
+	// Test missing ID argument
+	t.Run("missing ID argument", func(t *testing.T) {
 		cmd := UpdateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--name", "Updated Name",
@@ -100,43 +100,47 @@ func TestUpdateColumn_MissingFlags(t *testing.T) {
 	t.Run("non-existent column ID", func(t *testing.T) {
 		cmd := UpdateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", "99999",
+			"99999",
 			"--name", "Updated Name",
 			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, rootcli.ExitNotFound)
+		assert.Contains(t, err.Error(), "column 99999 not found")
 	})
 
 	// Test no update flags provided
 	t.Run("no update flags provided", func(t *testing.T) {
 		cmd := UpdateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", strconv.Itoa(columnID),
+			"1",
 			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, rootcli.ExitUsage)
+		assert.Contains(t, err.Error(), "at least one of --name, --ready, --completed, or --in-progress must be provided")
 	})
 
-	// Test invalid --id value format
-	t.Run("invalid --id value format", func(t *testing.T) {
+	// Test invalid ID value format
+	t.Run("invalid ID value format", func(t *testing.T) {
 		cmd := UpdateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", "invalid",
+			"invalid",
 			"--name", "Updated Name",
 			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, rootcli.ExitValidation)
+		assert.Contains(t, err.Error(), "invalid ID 'invalid': must be a number")
 	})
 
 	// Test zero column ID
 	t.Run("zero column ID", func(t *testing.T) {
 		cmd := UpdateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", "0",
+			"0",
 			"--name", "Updated Name",
 			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, rootcli.ExitNotFound)
+		assert.Contains(t, err.Error(), "column 0 not found")
 	})
 }
 
@@ -147,8 +151,11 @@ func TestListColumn_MissingFlags(t *testing.T) {
 	// Test missing --project flag
 	t.Run("missing --project flag", func(t *testing.T) {
 		cmd := ListCmd()
-		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--quiet"})
-		assert.Error(t, err)
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--quiet",
+		})
+		cli.AssertExitError(t, err, rootcli.ExitUsage)
+		assert.Contains(t, err.Error(), "no project specified")
 	})
 
 	// Test invalid project ID
@@ -158,7 +165,8 @@ func TestListColumn_MissingFlags(t *testing.T) {
 			"--project", "99999",
 			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, rootcli.ExitNotFound)
+		assert.Contains(t, err.Error(), "project 99999 not found")
 	})
 
 	// Test invalid --project value format
@@ -173,6 +181,7 @@ func TestListColumn_MissingFlags(t *testing.T) {
 
 	// Test negative project ID
 	t.Run("negative project ID", func(t *testing.T) {
+		// Cobra may interpret "-1" as a flag, so just assert error
 		cmd := ListCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--project", "-1",
@@ -186,8 +195,8 @@ func TestListColumn_MissingFlags(t *testing.T) {
 func TestDeleteColumn_MissingFlags(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
-	// Test missing --id flag
-	t.Run("missing --id flag", func(t *testing.T) {
+	// Test missing ID argument
+	t.Run("missing ID argument", func(t *testing.T) {
 		cmd := DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--force",
@@ -200,41 +209,41 @@ func TestDeleteColumn_MissingFlags(t *testing.T) {
 	t.Run("non-existent column ID", func(t *testing.T) {
 		cmd := DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", "99999",
-			"--force",
+			"99999",
 			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, rootcli.ExitNotFound)
+		assert.Contains(t, err.Error(), "column 99999 not found")
 	})
 
-	// Test invalid --id value format
-	t.Run("invalid --id value format", func(t *testing.T) {
+	// Test invalid ID value format
+	t.Run("invalid ID value format", func(t *testing.T) {
 		cmd := DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", "invalid",
-			"--force",
+			"invalid",
 			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, rootcli.ExitValidation)
+		assert.Contains(t, err.Error(), "invalid ID 'invalid': must be a number")
 	})
 
 	// Test zero column ID
 	t.Run("zero column ID", func(t *testing.T) {
 		cmd := DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", "0",
-			"--force",
+			"0",
 			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, rootcli.ExitNotFound)
+		assert.Contains(t, err.Error(), "column 0 not found")
 	})
 
 	// Test negative column ID
 	t.Run("negative column ID", func(t *testing.T) {
+		// Cobra may interpret "-1" as a flag, so just assert error
 		cmd := DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", "-1",
-			"--force",
+			"-1",
 			"--quiet",
 		})
 		assert.Error(t, err)
@@ -285,7 +294,7 @@ func TestUpdateColumn_InvalidTransition(t *testing.T) {
 	// Set the column as completed
 	cmd := UpdateCmd()
 	_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-		"--id", strconv.Itoa(columnID),
+		strconv.Itoa(columnID),
 		"--completed",
 		"--quiet",
 	})
@@ -295,13 +304,14 @@ func TestUpdateColumn_InvalidTransition(t *testing.T) {
 	otherColumnID := cli.CreateTestColumn(t, db, projectID, "Other Column")
 	secondCmd := UpdateCmd()
 	_, err = cli.ExecuteCLICommand(t, app, secondCmd, []string{
-		"--id", strconv.Itoa(otherColumnID),
+		strconv.Itoa(otherColumnID),
 		"--completed",
 		"--quiet",
 	})
 
 	// Should get an error about completed column already existing
 	assert.Error(t, err, "Expected error when setting second completed column without --force")
+	assert.Contains(t, err.Error(), "completed column already exists")
 }
 
 // TestCreateColumn_ProjectValidation tests project validation during creation

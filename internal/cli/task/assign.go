@@ -63,10 +63,7 @@ func runAssign(cmd *cobra.Command, args []string) error {
 
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -77,10 +74,7 @@ func runAssign(cmd *cobra.Command, args []string) error {
 	// Verify task exists
 	_, err = cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return fmt.Errorf("task %d not found", taskID)
+		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID))
 	}
 
 	if clearAssignee {
@@ -104,10 +98,7 @@ func runAssign(cmd *cobra.Command, args []string) error {
 
 	assignee, err := cliInstance.App.AssigneeService.GetOrCreate(ctx, assigneeName)
 	if err != nil {
-		if fmtErr := formatter.Error("ASSIGNEE_ERROR", fmt.Sprintf("failed to resolve assignee '%s': %s", assigneeName, err)); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "ASSIGNEE_ERROR", fmt.Sprintf("failed to resolve assignee '%s': %s", assigneeName, err))
 	}
 
 	assigneeID := &assignee.ID
@@ -119,10 +110,7 @@ func assignTask(cmd *cobra.Command, cliInstance *cli.CLI, taskID int, assigneeID
 
 	err := cliInstance.App.TaskService.UpdateTaskAssignee(ctx, taskID, assigneeID)
 	if err != nil {
-		if fmtErr := formatter.Error("ASSIGN_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "ASSIGN_ERROR", err.Error())
 	}
 
 	if quietMode {

@@ -14,7 +14,7 @@ func (s Severity) style() style {
 	switch s {
 	case Info:
 		return style{
-			icon:             "🔔",
+			icon:             "ⓘ",
 			title:            "Info",
 			foreground:       theme.InfoFg,
 			background:       theme.InfoBg,
@@ -38,7 +38,7 @@ func (s Severity) style() style {
 		}
 	default:
 		return style{
-			icon:             "🔔",
+			icon:             "ⓘ",
 			title:            "Info",
 			foreground:       theme.InfoFg,
 			background:       theme.InfoBg,

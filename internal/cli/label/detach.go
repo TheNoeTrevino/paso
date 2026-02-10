@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 )
 
 // DetachCmd returns the label detach subcommand
@@ -36,12 +37,12 @@ Examples:
 	// Required flags
 	cmd.Flags().IntP("task", "t", 0, "Task ID (required)")
 	if err := cmd.MarkFlagRequired("task"); err != nil {
-		slog.Error("failed to marking flag as required", "error", err)
+		slog.Error("failed to mark flag as required", "error", err)
 	}
 
 	cmd.Flags().IntP("label", "l", 0, "Label ID (required)")
 	if err := cmd.MarkFlagRequired("label"); err != nil {
-		slog.Error("failed to marking flag as required", "error", err)
+		slog.Error("failed to mark flag as required", "error", err)
 	}
 
 	// Agent-friendly flags
@@ -64,23 +65,17 @@ func runDetach(cmd *cobra.Command, args []string) error {
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
 	// Detach label from task (no validation needed - removing non-existent association is not an error)
 	if err := cliInstance.App.TaskService.DetachLabel(ctx, taskID, labelID); err != nil {
-		if fmtErr := formatter.Error("DETACH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "DETACH_ERROR", err.Error())
 	}
 
 	// Output success
@@ -96,6 +91,8 @@ func runDetach(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	fmt.Printf("✓ Label #%d detached from task #%d\n", labelID, taskID)
+	colors := cli.GetColorScheme()
+	message := fmt.Sprintf("Label #%d detached from task #%d", labelID, taskID)
+	fmt.Print(styles.RenderSuccess(message, colors))
 	return nil
 }

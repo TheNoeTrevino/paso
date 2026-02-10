@@ -205,7 +205,7 @@ func (m Model) renderProjectBranchConfirmLayer() *lipgloss.Layer {
 	if ctx.ExistingProject != nil {
 		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA500"))
 		message = warningStyle.Render(fmt.Sprintf(
-			"⚠️  Branch '%s' is currently linked to project '%s'.\nTransfer it to '%s'?",
+			"▲  Branch '%s' is currently linked to project '%s'.\nTransfer it to '%s'?",
 			ctx.GitBranch,
 			ctx.ExistingProject.Name,
 			ctx.ProjectName,

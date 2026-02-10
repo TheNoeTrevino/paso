@@ -5,12 +5,21 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+
+	"github.com/thenoetrevino/paso/internal/cli/styles"
+	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/config/colors"
 )
 
 // OutputFormatter handles three output modes: JSON, quiet, and human-readable
 type OutputFormatter struct {
 	JSON  bool
 	Quiet bool
+}
+
+// PrettyPrintable defines an interface for custom human-readable output formatting
+type PrettyPrintable interface {
+	PrettyPrint(colors colors.ColorScheme) string
 }
 
 // Success outputs successful operation result.
@@ -39,13 +48,15 @@ func (f *OutputFormatter) Success(data any) error {
 	return f.prettyPrint(data)
 }
 
-// Error outputs error information
-func (f *OutputFormatter) Error(code string, message string) error {
-	return f.ErrorWithSuggestion(code, message, "")
+// Error prints a styled error message and returns an *ExitErr that carries the
+// exit code back to main. Callers should simply: return formatter.Error(...)
+func (f *OutputFormatter) Error(exitCode int, code string, message string) *ExitErr {
+	return f.ErrorWithSuggestion(exitCode, code, message, "")
 }
 
-// ErrorWithSuggestion outputs error information with an optional suggestion
-func (f *OutputFormatter) ErrorWithSuggestion(code string, message string, suggestion string) error {
+// ErrorWithSuggestion prints a styled error with an optional suggestion and
+// returns an *ExitErr carrying the exit code.
+func (f *OutputFormatter) ErrorWithSuggestion(exitCode int, code string, message string, suggestion string) *ExitErr {
 	if f.JSON {
 		errData := map[string]any{
 			"code":    code,
@@ -54,31 +65,54 @@ func (f *OutputFormatter) ErrorWithSuggestion(code string, message string, sugge
 		if suggestion != "" {
 			errData["suggestion"] = suggestion
 		}
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
+		if err := json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success": false,
 			"error":   errData,
-		})
+		}); err != nil {
+			slog.Error("failed to encode JSON error", "error", err)
+		}
+		return NewExitErr(exitCode, message)
 	}
 
-	// In quiet mode, suppress error output to stderr (error will still be returned)
-	if f.Quiet {
-		return nil
+	if !f.Quiet {
+		cfg, err := config.Load()
+		if err != nil || cfg == nil {
+			cfg = &config.Config{
+				ColorScheme: config.DefaultColorScheme(),
+			}
+		}
+
+		errorMsg := styles.RenderError(message, cfg.ColorScheme)
+		fmt.Fprintf(os.Stderr, "%s\n", errorMsg)
+		if suggestion != "" {
+			fmt.Fprintf(os.Stderr, "ⓘ Suggestion: %s\n", suggestion)
+		}
 	}
 
-	// Human-readable error
-	fmt.Fprintf(os.Stderr, "❌ Error: %s\n", message)
-	if suggestion != "" {
-		fmt.Fprintf(os.Stderr, "💡 Suggestion: %s\n", suggestion)
-	}
-	return nil
+	return NewExitErr(exitCode, message)
 }
 
 // prettyPrint formats data for human-readable output
 func (f *OutputFormatter) prettyPrint(data any) error {
+	// First check if data implements PrettyPrintable for styled output
+	if pp, ok := data.(PrettyPrintable); ok {
+		cfg, err := config.Load()
+		if err != nil || cfg == nil {
+			cfg = &config.Config{
+				ColorScheme: config.DefaultColorScheme(),
+			}
+		}
+		fmt.Print(pp.PrettyPrint(cfg.ColorScheme))
+		return nil
+	}
+
+	// Fall back to String() method if available
 	if stringer, ok := data.(fmt.Stringer); ok {
 		fmt.Print(stringer.String())
 		return nil
 	}
+
+	// Last resort: raw struct dump
 	fmt.Printf("%+v\n", data)
 	return nil
 }

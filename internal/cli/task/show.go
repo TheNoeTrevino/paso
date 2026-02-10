@@ -60,37 +60,26 @@ func runShow(cmd *cobra.Command, args []string) error {
 
 	// Validate task ID
 	if taskID <= 0 {
-		if fmtErr := formatter.ErrorWithSuggestion("INVALID_TASK_ID",
+		return formatter.ErrorWithSuggestion(cli.ExitUsage, "INVALID_TASK_ID",
 			"task ID must be a positive integer",
-			"Usage: paso task show <id> or paso task show --id=<id>"); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
-		return nil
+			"Usage: paso task show <id> or paso task show --id=<id>")
 	}
 
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
 	// Get task details
 	task, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
-		return nil
+		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID))
 	}
 
 	// Output in appropriate format
@@ -117,6 +106,18 @@ func runShow(cmd *cobra.Command, args []string) error {
 }
 
 func outputJSON(task *models.TaskDetail) error {
+	// Convert comments to a serializable format
+	comments := make([]map[string]any, 0, len(task.Comments))
+	for _, c := range task.Comments {
+		comments = append(comments, map[string]any{
+			"id":         c.ID,
+			"content":    c.Message,
+			"author":     c.Author,
+			"created_at": c.CreatedAt,
+			"updated_at": c.UpdatedAt,
+		})
+	}
+
 	return json.NewEncoder(os.Stdout).Encode(map[string]any{
 		"success": true,
 		"task": map[string]any{
@@ -139,6 +140,7 @@ func outputJSON(task *models.TaskDetail) error {
 			"labels":       task.Labels,
 			"parent_tasks": task.ParentTasks,
 			"child_tasks":  task.ChildTasks,
+			"comments":     comments,
 			"created_at":   task.CreatedAt,
 			"updated_at":   task.UpdatedAt,
 		},
@@ -275,6 +277,25 @@ func outputHuman(task *models.TaskDetail, colors colors.ColorScheme) error {
 		content.WriteString("\n")
 		for _, child := range nonBlockingChildren {
 			content.WriteString("  " + styles.RenderTaskReferenceWithLabel(child) + "\n")
+		}
+	}
+
+	// Comments
+	if len(task.Comments) > 0 {
+		content.WriteString("\n")
+		header := fmt.Sprintf("Comments (%d)", len(task.Comments))
+		content.WriteString(styles.SectionStyle.Render(header))
+		content.WriteString("\n")
+		for _, comment := range task.Comments {
+			// Author and timestamp
+			timestamp := comment.CreatedAt.Format("Jan 2, 2006 3:04 PM")
+			meta := fmt.Sprintf("[%s - %s]", comment.Author, timestamp)
+			content.WriteString("  " + styles.SubtitleStyle.Render(meta) + "\n")
+			// Comment content (indented)
+			for _, line := range strings.Split(comment.Message, "\n") {
+				content.WriteString("    " + styles.ValueStyle.Render(line) + "\n")
+			}
+			content.WriteString("\n")
 		}
 	}
 

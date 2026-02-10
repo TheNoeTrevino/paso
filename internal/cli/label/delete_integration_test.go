@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	rootcli "github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
@@ -20,7 +21,7 @@ func TestDeleteLabel_Positive(t *testing.T) {
 		cmd := DeleteCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", labelID),
+			fmt.Sprintf("%d", labelID),
 			"--force",
 		})
 
@@ -39,7 +40,7 @@ func TestDeleteLabel_Positive(t *testing.T) {
 		cmd := DeleteCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", labelID),
+			fmt.Sprintf("%d", labelID),
 			"--quiet",
 		})
 
@@ -57,7 +58,7 @@ func TestDeleteLabel_Positive(t *testing.T) {
 		cmd := DeleteCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", labelID),
+			fmt.Sprintf("%d", labelID),
 			"--json",
 			"--force",
 		})
@@ -83,13 +84,13 @@ func TestDeleteLabel_Positive(t *testing.T) {
 
 		cmd := DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", labelID1),
+			fmt.Sprintf("%d", labelID1),
 			"--quiet",
 		})
 		assert.NoError(t, err)
 
 		_, err = cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", labelID2),
+			fmt.Sprintf("%d", labelID2),
 			"--quiet",
 		})
 		assert.NoError(t, err)
@@ -108,9 +109,11 @@ func TestDeleteLabel_Negative(t *testing.T) {
 	t.Run("Invalid label ID format", func(t *testing.T) {
 		cmd := DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", "not-a-number",
+			"abc",
 			"--force",
+			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, rootcli.ExitValidation)
+		assert.Contains(t, err.Error(), "invalid ID")
 	})
 }

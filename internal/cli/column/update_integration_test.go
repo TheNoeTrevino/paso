@@ -26,7 +26,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", "Updated Name",
 			"--quiet",
 		})
@@ -48,7 +48,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--ready",
 			"--quiet",
 		})
@@ -70,7 +70,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--completed",
 			"--force",
 			"--quiet",
@@ -93,7 +93,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--in-progress",
 			"--quiet",
 		})
@@ -116,7 +116,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", "Updated Name",
 			"--in-progress",
 			"--quiet",
@@ -141,7 +141,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", "Completed Column",
 			"--completed",
 			"--force",
@@ -167,7 +167,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", "Updated in Quiet Mode",
 			"--quiet",
 		})
@@ -182,7 +182,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", "Updated in JSON Mode",
 			"--json",
 		})
@@ -207,14 +207,13 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", "Updated in Normal Mode",
 		})
 
 		assert.NoError(t, err)
 		// Default mode should have success message
-		assert.Contains(t, output, "✓")
-		assert.Contains(t, output, "updated successfully")
+		assert.Contains(t, output, "Column updated successfully")
 		assert.Contains(t, output, fmt.Sprintf("%d", testColumnID))
 	})
 
@@ -226,7 +225,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		// First, enable in-progress flag
 		cmd1 := UpdateCmd()
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd1, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--in-progress",
 			"--quiet",
 		})
@@ -235,7 +234,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		// Now update only name, verify in-progress flag unchanged
 		cmd2 := UpdateCmd()
 		_, err = cliutil.ExecuteCLICommand(t, app, cmd2, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", "Only Name Changed",
 			"--quiet",
 		})
@@ -258,7 +257,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", "New Name",
 			"--json",
 		})
@@ -284,7 +283,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		// First update
 		cmd1 := UpdateCmd()
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd1, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", "Second Name",
 			"--quiet",
 		})
@@ -293,7 +292,7 @@ func TestUpdateColumn_Positive(t *testing.T) {
 		// Second update
 		cmd2 := UpdateCmd()
 		_, err = cliutil.ExecuteCLICommand(t, app, cmd2, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", "Third Name",
 			"--quiet",
 		})
@@ -323,7 +322,7 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 		cmd := UpdateCmd()
 
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", "Original Name",
 			"--quiet",
 		})
@@ -346,7 +345,7 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 
 		specialName := "Todo & Done (Special!)"
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", specialName,
 			"--quiet",
 		})
@@ -369,7 +368,7 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 
 		unicodeName := "待機中 (Waiting) 🚀"
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", unicodeName,
 			"--quiet",
 		})
@@ -393,7 +392,7 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 		// Create a long name (50 characters - the max allowed)
 		longName := strings.Repeat("A", 50)
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", longName,
 			"--quiet",
 		})
@@ -415,7 +414,7 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 		// First, enable ready flag
 		cmd1 := UpdateCmd()
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd1, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--ready",
 			"--quiet",
 		})
@@ -436,7 +435,7 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 		cmd := UpdateCmd()
 
 		_, err := cliutil.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", testColumnID),
+			fmt.Sprintf("%d", testColumnID),
 			"--name", "In Progress Column",
 			"--in-progress",
 			"--quiet",

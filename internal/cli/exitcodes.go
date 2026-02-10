@@ -32,3 +32,23 @@ const (
 	// or any case where input fails validation rules.
 	ExitValidation = 5
 )
+
+// ExitErr is an error type that carries a process exit code.
+// Commands return this instead of calling os.Exit() directly,
+// allowing deferred cleanup to run and keeping commands testable.
+type ExitErr struct {
+	Code    int
+	Message string
+}
+
+func (e *ExitErr) Error() string {
+	return e.Message
+}
+
+func (e *ExitErr) ExitCode() int {
+	return e.Code
+}
+
+func NewExitErr(code int, message string) *ExitErr {
+	return &ExitErr{Code: code, Message: message}
+}

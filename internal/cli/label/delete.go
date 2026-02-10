@@ -5,39 +5,36 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 )
 
 // DeleteCmd returns the label delete subcommand
 func DeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete",
+		Use:   "delete <id>",
 		Short: "Delete a label",
 		Long: `Delete a label by ID (requires confirmation unless --force/-f or --quiet/-q).
 
 Examples:
-  # Delete with confirmation (shorthand)
-  paso label delete -i 1
+  # Delete with confirmation
+  paso label delete 1
 
   # Skip confirmation
-  paso label delete -i 1 -f
+  paso label delete 1 -f
 
   # Quiet mode (no confirmation)
-  paso label delete -i 1 -q
+  paso label delete 1 -q
 
   # Long-form flags also supported
-  paso label delete --id=1 --force
+  paso label delete 1 --force
 `,
+		Args: cobra.ExactArgs(1),
 		RunE: runDelete,
-	}
-
-	// Required flags
-	cmd.Flags().IntP("id", "i", 0, "Label ID (required)")
-	if err := cmd.MarkFlagRequired("id"); err != nil {
-		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Optional flags
@@ -53,34 +50,33 @@ Examples:
 func runDelete(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
-	labelID, _ := cmd.Flags().GetInt("id")
 	force, _ := cmd.Flags().GetBool("force")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
+	// Parse ID from positional argument
+	labelID, err := strconv.Atoi(args[0])
+	if err != nil {
+		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0]))
+	}
+
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
 	// Get label details for confirmation
 	label, err := cli.GetLabelByID(ctx, cliInstance, labelID)
 	if err != nil {
-		if fmtErr := formatter.Error("LABEL_NOT_FOUND", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+		return formatter.Error(cli.ExitNotFound, "LABEL_NOT_FOUND", err.Error())
 	}
 
 	// Ask for confirmation unless force or quiet mode
@@ -89,7 +85,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		var response string
 		_, err := fmt.Scanln(&response)
 		if err != nil {
-			slog.Error("failed to reading user input", "error", err)
+			slog.Error("failed to read user input", "error", err)
 			fmt.Println("Cancelled (failed to read input)")
 			return nil
 		}
@@ -101,10 +97,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 
 	// Delete the label
 	if err := cliInstance.App.LabelService.DeleteLabel(ctx, labelID); err != nil {
-		if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "DELETE_ERROR", err.Error())
 	}
 
 	// Output success
@@ -119,6 +112,8 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	fmt.Printf("✓ Label %d deleted successfully\n", labelID)
+	colors := cli.GetColorScheme()
+	message := fmt.Sprintf("Label %d deleted successfully", labelID)
+	fmt.Print(styles.RenderSuccess(message, colors))
 	return nil
 }

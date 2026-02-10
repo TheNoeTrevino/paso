@@ -19,7 +19,7 @@ func TestDeleteProject_Positive(t *testing.T) {
 		cmd := DeleteCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", projectID),
+			fmt.Sprintf("%d", projectID),
 			"--force",
 		})
 
@@ -38,7 +38,7 @@ func TestDeleteProject_Positive(t *testing.T) {
 		cmd := DeleteCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", projectID),
+			fmt.Sprintf("%d", projectID),
 			"--quiet",
 		})
 
@@ -56,7 +56,7 @@ func TestDeleteProject_Positive(t *testing.T) {
 		cmd := DeleteCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", projectID),
+			fmt.Sprintf("%d", projectID),
 			"--json",
 			"--force",
 		})
@@ -77,9 +77,11 @@ func TestDeleteProject_Negative(t *testing.T) {
 	t.Run("Invalid project ID format", func(t *testing.T) {
 		cmd := DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", "not-a-number",
+			"abc",
 			"--force",
+			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, 5)
+		assert.Contains(t, err.Error(), "invalid ID 'abc'")
 	})
 }

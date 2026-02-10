@@ -612,17 +612,17 @@ func TestReadyTask_Negative(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Missing project ID - no flag and no env var", func(t *testing.T) {
-		// Note: This test case calls os.Exit() in ready.go:63 (ExitUsage)
-		// We cannot test os.Exit() calls in integration tests without special handling
-		// Skipping this test as it would terminate the test process
-		t.Skip("Skipping test that calls os.Exit() - cannot test exit behavior in integration tests")
+		cmd := ReadyCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
+		cli.AssertExitError(t, err, 2) // ExitUsage
+		assert.Contains(t, err.Error(), "no project specified")
 	})
 
 	t.Run("Invalid project ID - non-existent project", func(t *testing.T) {
-		// Note: This test case calls os.Exit() in ready.go:88 (ExitNotFound)
-		// We cannot test os.Exit() calls in integration tests without special handling
-		// Skipping this test as it would terminate the test process
-		t.Skip("Skipping test that calls os.Exit() - cannot test exit behavior in integration tests")
+		cmd := ReadyCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--project", "999999"})
+		cli.AssertExitError(t, err, 3) // ExitNotFound
+		assert.Contains(t, err.Error(), "project 999999 not found")
 	})
 
 	t.Run("Project with no ready column", func(t *testing.T) {

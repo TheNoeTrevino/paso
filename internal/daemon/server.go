@@ -367,7 +367,7 @@ func (s *Server) Shutdown() error {
 		// Close listener
 		if s.listener != nil {
 			if closeErr := s.listener.Close(); closeErr != nil {
-				slog.Error("failed to closing listener", "error", closeErr)
+				slog.Error("failed to close listener", "error", closeErr)
 			}
 		}
 
@@ -375,7 +375,7 @@ func (s *Server) Shutdown() error {
 		s.mu.Lock()
 		for c := range s.clients {
 			if closeErr := c.conn.Close(); closeErr != nil {
-				slog.Error("failed to closing client connection", "error", closeErr)
+				slog.Error("failed to close client connection", "error", closeErr)
 			}
 			c.closeOnce.Do(func() {
 				close(c.send)
@@ -416,7 +416,7 @@ func (s *Server) removeClient(c *client) {
 	s.mu.Unlock()
 
 	if err := c.conn.Close(); err != nil {
-		slog.Error("failed to closing client connection", "error", err)
+		slog.Error("failed to close client connection", "error", err)
 	}
 	c.closeOnce.Do(func() {
 		close(c.send)

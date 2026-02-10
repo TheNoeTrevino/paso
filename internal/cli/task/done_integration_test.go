@@ -181,43 +181,12 @@ func TestDoneTask_Positive(t *testing.T) {
 }
 
 func TestDoneTask_Negative(t *testing.T) {
-	// Setup test DB and App
-	db, app := cli.SetupCLITest(t)
-
-	ctx := context.Background()
-
-	// Create test project with columns
-	projectID := cli.CreateTestProject(t, db, "Test Project")
-
-	var todoColumnID int
-	err := db.QueryRowContext(ctx,
-		"SELECT id FROM columns WHERE project_id = ? AND name = 'Todo'", projectID).Scan(&todoColumnID)
-	assert.NoError(t, err)
-
-	// Note: Tests for "No completed column configured", "Invalid task ID", and "Task does not exist"
-	// are not included here because they cause the command to call os.Exit(), which terminates
-	// the test process. These error cases should be tested in unit tests of the service layer
-	// or by capturing the exit code in a subprocess test.
+	_, app := cli.SetupCLITest(t)
 
 	t.Run("Invalid task ID - non-numeric", func(t *testing.T) {
-		// Mark done column for this test so we don't hit the os.Exit() path
-		var doneColumnID int
-		err := db.QueryRowContext(ctx,
-			"SELECT id FROM columns WHERE project_id = ? AND name = 'Done'", projectID).Scan(&doneColumnID)
-		assert.NoError(t, err)
-
-		_, err = db.ExecContext(ctx,
-			"UPDATE columns SET holds_completed_tasks = true WHERE id = ?", doneColumnID)
-		assert.NoError(t, err)
-
 		cmd := DoneCmd()
-
-		_, err = cli.ExecuteCLICommand(t, app, cmd, []string{
-			"not-a-number",
-		})
-
-		// Should error - invalid task ID
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid task ID")
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"not-a-number"})
+		cli.AssertExitError(t, err, 5) // ExitValidation
+		assert.Contains(t, err.Error(), "invalid task ID 'not-a-number': must be a number")
 	})
 }

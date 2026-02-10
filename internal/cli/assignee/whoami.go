@@ -3,7 +3,6 @@ package assignee
 import (
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -47,10 +46,7 @@ func runWhoAmI(cmd *cobra.Command, args []string) error {
 
 	cfg, err := config.Load()
 	if err != nil {
-		if fmtErr := formatter.Error("CONFIG_LOAD_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "CONFIG_LOAD_ERROR", err.Error())
 	}
 
 	activeAssignee := cfg.GetActiveAssignee()

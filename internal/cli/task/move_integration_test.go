@@ -362,71 +362,56 @@ func TestMoveTask_Negative(t *testing.T) {
 	// Create test project with properly linked columns
 	_, column1ID, _, column3ID := setupLinkedColumns(t, db)
 
-	// Note: We skip this test because the move command calls os.Exit() on validation errors,
-	// which would terminate the test process. In production, this is the correct behavior,
-	// but it cannot be tested in a standard Go unit test without process isolation.
-	// The validation logic is still tested in the service layer tests.
 	t.Run("Move to next column when already in last column", func(t *testing.T) {
-		t.Skip("Skipping: move command calls os.Exit() on this validation error")
-		// Create task in last column
 		taskID := cli.CreateTestTask(t, db, column3ID, "Task in last column")
 
 		cmd := MoveCmd()
 
-		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", fmt.Sprintf("%d", taskID),
 			"next",
 		})
-
-		// Note: This would call os.Exit(cli.ExitValidation) which terminates the process
+		cli.AssertExitError(t, err, 5) // ExitValidation
+		assert.Contains(t, err.Error(), "already in the last column")
 	})
 
-	// Note: We skip this test because the move command calls os.Exit() on validation errors.
 	t.Run("Move to prev column when already in first column", func(t *testing.T) {
-		t.Skip("Skipping: move command calls os.Exit() on this validation error")
-		// Create task in first column
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task in first column")
 
 		cmd := MoveCmd()
 
-		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", fmt.Sprintf("%d", taskID),
 			"prev",
 		})
-
-		// Note: This would call os.Exit(cli.ExitValidation) which terminates the process
+		cli.AssertExitError(t, err, 5) // ExitValidation
+		assert.Contains(t, err.Error(), "already in the first column")
 	})
 
-	// Note: We skip this test because the move command calls os.Exit() when column not found.
 	t.Run("Move to non-existent column by name", func(t *testing.T) {
-		t.Skip("Skipping: move command calls os.Exit() when column is not found")
-		// Create task in first column
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task for invalid column test")
 
 		cmd := MoveCmd()
 
-		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", fmt.Sprintf("%d", taskID),
 			"NonExistentColumn",
 		})
-
-		// Note: This would call os.Exit(cli.ExitNotFound) which terminates the process
+		cli.AssertExitError(t, err, 3) // ExitNotFound
+		assert.Contains(t, err.Error(), "column 'NonExistentColumn' not found")
 	})
 
-	// Note: We skip this test because the move command calls os.Exit() when task not found.
 	t.Run("Move non-existent task", func(t *testing.T) {
-		t.Skip("Skipping: move command calls os.Exit() when task is not found")
-		// Use a task ID that doesn't exist
 		nonExistentTaskID := 999999
 
 		cmd := MoveCmd()
 
-		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", fmt.Sprintf("%d", nonExistentTaskID),
 			"next",
 		})
-
-		// Note: This would call os.Exit(cli.ExitNotFound) which terminates the process
+		cli.AssertExitError(t, err, 3) // ExitNotFound
+		assert.Contains(t, err.Error(), "task 999999 not found")
 	})
 
 	t.Run("Move without providing task ID flag", func(t *testing.T) {

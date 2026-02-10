@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -122,19 +121,17 @@ func parseFlagsToMap(cmd *cobra.Command) map[string]any {
 	return flags
 }
 
-// MustGetString retrieves a string flag and panics if it doesn't exist
-func (a *Arguments) MustGetString(name string) string {
+// MustGetString retrieves a string flag or returns an error if it doesn't exist
+func (a *Arguments) MustGetString(name string) (string, error) {
 	v, ok := a.Flags[name]
 	if !ok {
-		slog.Error("flag not found", "flag", name)
-		os.Exit(cli.ExitValidation)
+		return "", cli.NewExitErr(cli.ExitValidation, fmt.Sprintf("required flag %q not found", name))
 	}
 	val, ok := v.(string)
 	if !ok {
-		slog.Error("flag type assertion failed", "flag", name, "expected", "string", "got", fmt.Sprintf("%T", v))
-		os.Exit(cli.ExitValidation)
+		return "", cli.NewExitErr(cli.ExitValidation, fmt.Sprintf("flag %q: expected string, got %T", name, v))
 	}
-	return val
+	return val, nil
 }
 
 // GetString retrieves a string flag with default
@@ -150,19 +147,17 @@ func (a *Arguments) GetString(name string, defaultVal string) string {
 	return val
 }
 
-// MustGetInt retrieves an int flag and panics if it doesn't exist
-func (a *Arguments) MustGetInt(name string) int {
+// MustGetInt retrieves an int flag or returns an error if it doesn't exist
+func (a *Arguments) MustGetInt(name string) (int, error) {
 	v, ok := a.Flags[name]
 	if !ok {
-		slog.Error("flag not found", "flag", name)
-		os.Exit(cli.ExitValidation)
+		return 0, cli.NewExitErr(cli.ExitValidation, fmt.Sprintf("required flag %q not found", name))
 	}
 	val, ok := v.(int)
 	if !ok {
-		slog.Error("flag type assertion failed", "flag", name, "expected", "int", "got", fmt.Sprintf("%T", v))
-		os.Exit(cli.ExitValidation)
+		return 0, cli.NewExitErr(cli.ExitValidation, fmt.Sprintf("flag %q: expected int, got %T", name, v))
 	}
-	return val
+	return val, nil
 }
 
 // GetInt retrieves an int flag with default

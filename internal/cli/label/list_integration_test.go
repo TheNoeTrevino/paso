@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	rootcli "github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
@@ -129,9 +130,10 @@ func TestListLabels_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("Missing project flag calls os.Exit", func(t *testing.T) {
-		// The list command calls os.Exit(ExitUsage) when no project is specified
-		// and git branch detection fails, so we cannot test this in-process.
-		t.Skip("Skipping: command calls os.Exit() when no project is specified")
+		cmd := ListCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
+		cli.AssertExitError(t, err, rootcli.ExitUsage)
+		assert.Contains(t, err.Error(), "no project specified")
 	})
 
 	t.Run("Invalid project flag value", func(t *testing.T) {

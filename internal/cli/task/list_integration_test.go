@@ -46,7 +46,6 @@ func TestListTask_Positive(t *testing.T) {
 		assert.Contains(t, cleanOutput, "TYPE")
 		assert.Contains(t, cleanOutput, "PRIORITY")
 		assert.Contains(t, cleanOutput, "LABELS")
-		assert.Contains(t, cleanOutput, "STATUS")
 
 		// Verify all tasks appear in the table
 		assert.Contains(t, cleanOutput, "Task 1")

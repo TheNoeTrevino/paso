@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 )
 
 // LinkCmd returns the task link subcommand
@@ -44,12 +45,12 @@ Examples:
 	// Required flags
 	cmd.Flags().IntP("parent", "P", 0, "Parent task ID (required)")
 	if err := cmd.MarkFlagRequired("parent"); err != nil {
-		slog.Error("failed to marking flag as required", "error", err)
+		slog.Error("failed to mark flag as required", "error", err)
 	}
 
 	cmd.Flags().IntP("child", "C", 0, "Child task ID (required)")
 	if err := cmd.MarkFlagRequired("child"); err != nil {
-		slog.Error("failed to marking flag as required", "error", err)
+		slog.Error("failed to mark flag as required", "error", err)
 	}
 
 	// Agent-friendly flags
@@ -77,11 +78,8 @@ func runLink(cmd *cobra.Command, args []string) error {
 
 	// Validate mutually exclusive flags
 	if blocker && related {
-		if fmtErr := formatter.Error("INVALID_FLAGS",
-			"cannot specify both --blocker and --related flags"); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
+		return formatter.Error(cli.ExitUsage, "INVALID_FLAGS",
+			"cannot specify both --blocker and --related flags")
 	}
 
 	// Determine relation type ID
@@ -99,23 +97,17 @@ func runLink(cmd *cobra.Command, args []string) error {
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
 	// Create the relationship with specific type
 	if err := cliInstance.App.TaskService.AddChildRelation(ctx, parentID, childID, relationTypeID); err != nil {
-		if fmtErr := formatter.Error("LINK_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "LINK_ERROR", err.Error())
 	}
 
 	// Output success
@@ -134,14 +126,16 @@ func runLink(cmd *cobra.Command, args []string) error {
 	}
 
 	// Human-readable output with relationship type
+	colors := cli.GetColorScheme()
+	var message string
 	switch relationTypeID {
 	case 2:
-		fmt.Printf("✓ Created blocking relationship: task %d is blocked by task %d\n", parentID, childID)
+		message = fmt.Sprintf("Created blocking relationship: task %d is blocked by task %d", parentID, childID)
 	case 3:
-		fmt.Printf("✓ Created related relationship between task %d and task %d\n", parentID, childID)
+		message = fmt.Sprintf("Created related relationship between task %d and task %d", parentID, childID)
 	default:
-		fmt.Printf("✓ Linked task %d as child of task %d\n", childID, parentID)
+		message = fmt.Sprintf("Linked task %d as child of task %d", childID, parentID)
 	}
-
+	fmt.Print(styles.RenderSuccess(message, colors))
 	return nil
 }

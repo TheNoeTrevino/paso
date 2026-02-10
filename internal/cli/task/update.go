@@ -5,36 +5,33 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 )
 
 // UpdateCmd returns the task update subcommand
 func UpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update",
+		Use:   "update <id>",
 		Short: "Update a task",
 		Long: `Update task title, description, or priority.
 
 Examples:
-  # Update title and priority (shorthand)
-  paso task update -i 42 -t "New title" -r high
+  # Update title and priority
+  paso task update 42 -t "New title" -r high
 
   # Update description
-  paso task update -i 42 -d "Updated description"
+  paso task update 42 -d "Updated description"
 
   # Long-form flags also supported
-  paso task update --id=42 --title="New title" --priority=high
+  paso task update 42 --title="New title" --priority=high
 `,
+		Args: cobra.ExactArgs(1),
 		RunE: runUpdate,
-	}
-
-	// Required flags
-	cmd.Flags().IntP("id", "i", 0, "Task ID (required)")
-	if err := cmd.MarkFlagRequired("id"); err != nil {
-		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	// Optional update flags
@@ -52,7 +49,6 @@ Examples:
 func runUpdate(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
-	taskID, _ := cmd.Flags().GetInt("id")
 	taskTitle, _ := cmd.Flags().GetString("title")
 	taskDescription, _ := cmd.Flags().GetString("description")
 	taskPriority, _ := cmd.Flags().GetString("priority")
@@ -61,17 +57,20 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
+	// Parse ID from positional argument
+	taskID, err := strconv.Atoi(args[0])
+	if err != nil {
+		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0]))
+	}
+
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
@@ -81,10 +80,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	priorityFlag := cmd.Flags().Lookup("priority")
 
 	if !titleFlag.Changed && !descFlag.Changed && !priorityFlag.Changed {
-		if fmtErr := formatter.Error("NO_UPDATES", "at least one of --title, --description, or --priority must be specified"); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
+		return formatter.Error(cli.ExitUsage, "NO_UPDATES", "at least one of --title, --description, or --priority must be specified")
 	}
 
 	// Update title/description if provided
@@ -99,10 +95,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 			req.Description = &taskDescription
 		}
 		if err := cliInstance.App.TaskService.UpdateTask(ctx, req); err != nil {
-			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("failed to formatting error message", "error", fmtErr)
-			}
-			return err
+			return formatter.Error(cli.ExitError, "UPDATE_ERROR", err.Error())
 		}
 	}
 
@@ -110,20 +103,14 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if priorityFlag.Changed {
 		priorityID, err := cli.ParsePriority(taskPriority)
 		if err != nil {
-			if fmtErr := formatter.Error("INVALID_PRIORITY", err.Error()); fmtErr != nil {
-				slog.Error("failed to formatting error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitValidation)
+			return formatter.Error(cli.ExitValidation, "INVALID_PRIORITY", err.Error())
 		}
 		req := taskservice.UpdateTaskRequest{
 			TaskID:     taskID,
 			PriorityID: &priorityID,
 		}
 		if err := cliInstance.App.TaskService.UpdateTask(ctx, req); err != nil {
-			if fmtErr := formatter.Error("PRIORITY_UPDATE_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("failed to formatting error message", "error", fmtErr)
-			}
-			return err
+			return formatter.Error(cli.ExitError, "PRIORITY_UPDATE_ERROR", err.Error())
 		}
 	}
 
@@ -140,6 +127,8 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	fmt.Printf("✓ Task %d updated successfully\n", taskID)
+	colors := cli.GetColorScheme()
+	message := fmt.Sprintf("Task %d updated successfully", taskID)
+	fmt.Print(styles.RenderSuccess(message, colors))
 	return nil
 }

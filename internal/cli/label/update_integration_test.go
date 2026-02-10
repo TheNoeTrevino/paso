@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	rootcli "github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
@@ -20,7 +21,7 @@ func TestUpdateLabel_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", labelID),
+			fmt.Sprintf("%d", labelID),
 			"--name", "updated-name",
 			"--quiet",
 		})
@@ -40,7 +41,7 @@ func TestUpdateLabel_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", labelID),
+			fmt.Sprintf("%d", labelID),
 			"--color", "#00FF00",
 			"--quiet",
 		})
@@ -60,7 +61,7 @@ func TestUpdateLabel_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", labelID),
+			fmt.Sprintf("%d", labelID),
 			"--name", "new-name",
 			"--color", "#0000FF",
 			"--quiet",
@@ -81,7 +82,7 @@ func TestUpdateLabel_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", labelID),
+			fmt.Sprintf("%d", labelID),
 			"--name", "json-updated",
 			"--json",
 		})
@@ -104,35 +105,40 @@ func TestUpdateLabel_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", labelID),
+			fmt.Sprintf("%d", labelID),
 			"--name", "renamed",
 			"--color", "#112233",
 		})
 
 		assert.NoError(t, err)
 		assert.Contains(t, output, "updated successfully")
-		assert.Contains(t, output, "human-update")
-		assert.Contains(t, output, "renamed")
-		assert.Contains(t, output, "#DDEEFF")
-		assert.Contains(t, output, "#112233")
 	})
 }
 
 func TestUpdateLabel_ErrorCases(t *testing.T) {
-	_, app := cli.SetupCLITest(t)
+	db, app := cli.SetupCLITest(t)
 
-	t.Run("Invalid color format calls os.Exit", func(t *testing.T) {
-		// This calls os.Exit via ExitValidation, which we cannot capture in-process.
-		// Skipping as it would terminate the test process.
-		t.Skip("Skipping: command calls os.Exit() on invalid color format")
+	t.Run("Invalid color format", func(t *testing.T) {
+		projectID := cli.CreateTestProject(t, db, "Color Test Project")
+		labelID := cli.CreateTestLabel(t, db, projectID, "color-test", "#FF0000")
+		cmd := UpdateCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			fmt.Sprintf("%d", labelID),
+			"--color", "not-a-color",
+			"--quiet",
+		})
+		cli.AssertExitError(t, err, rootcli.ExitValidation)
+		assert.Contains(t, err.Error(), "color must be in hex format")
 	})
 
 	t.Run("Invalid label ID format", func(t *testing.T) {
 		cmd := UpdateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", "not-a-number",
+			"invalid",
 			"--name", "test",
+			"--quiet",
 		})
-		assert.Error(t, err)
+		cli.AssertExitError(t, err, rootcli.ExitValidation)
+		assert.Contains(t, err.Error(), "invalid ID")
 	})
 }

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/huh/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // CreateDatabaseConnectionForm creates a huh form for adding a new database connection
@@ -38,7 +39,8 @@ func CreateDatabaseConnectionForm(
 		huh.NewNote().
 			TitleFunc(func() string {
 				if connectionString != nil && strings.Contains(strings.ToLower(*connectionString), "password=") {
-					return "⚠️  Connection strings with passwords are stored in plaintext.\nConsider using PostgreSQL .pgpass file instead."
+					warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA500"))
+					return warningStyle.Render("▲  Connection strings with passwords are stored in plaintext.\nConsider using PostgreSQL .pgpass file instead.")
 				}
 				return ""
 			}, connectionString),

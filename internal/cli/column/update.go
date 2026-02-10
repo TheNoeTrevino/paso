@@ -5,42 +5,53 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 )
 
 // UpdateCmd returns the column update subcommand
 func UpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update",
+		Use:   "update <id>",
 		Short: "Update a column",
-		Long: `Update a column's name or designation.
+		Long: `Update a column's name and special properties.
+
+Special column flags control which columns are used by task movement commands:
+  --ready: Sets this column for the 'paso task to-ready' command
+  --in-progress: Sets this column for the 'paso task in-progress move' command
+  --completed: Sets this column for the 'paso task done' command
+
+Note: Only one column per project can have each special property. Setting a flag
+on one column automatically removes it from any other column that had it.
 
 Examples:
-  # Update column name (shorthand)
-  paso column update -i 1 -n "Completed"
+  # Update column name
+  paso column update 1 -n "Completed"
 
-  # Set column designations
-  paso column update -i 1 -r          # Mark as ready column
-  paso column update -i 2 -I          # Mark as in-progress column
-  paso column update -i 3 -c          # Mark as completed column
-  paso column update -i 3 -c -f       # Force completed column override
+  # Set a column as the ready column
+  paso column update 2 -r
+
+  # Set a column as the in-progress column
+  paso column update 3 -I
+
+  # Set a column as the completed column
+  paso column update 4 -c
+
+  # Force completed column override
+  paso column update 3 -c -f
 
   # JSON output for agents
-  paso column update -i 1 -n "Completed" -j
+  paso column update 1 -n "Completed" -j
 
   # Long-form flags also supported
-  paso column update --id=1 --name="Completed" --json
+  paso column update 1 --name="Completed" --json
 `,
+		Args: cobra.ExactArgs(1),
 		RunE: runUpdate,
-	}
-
-	// Required flags
-	cmd.Flags().IntP("id", "i", 0, "Column ID (required)")
-	if err := cmd.MarkFlagRequired("id"); err != nil {
-		slog.Error("failed to mark flag as required", "error", err)
 	}
 
 	// Optional flags
@@ -60,7 +71,6 @@ Examples:
 func runUpdate(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
-	columnID, _ := cmd.Flags().GetInt("id")
 	columnName, _ := cmd.Flags().GetString("name")
 	setReady, _ := cmd.Flags().GetBool("ready")
 	setCompleted, _ := cmd.Flags().GetBool("completed")
@@ -71,21 +81,21 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
+	// Parse ID from positional argument
+	columnID, err := strconv.Atoi(args[0])
+	if err != nil {
+		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0]))
+	}
+
 	// Validate at least one update flag is provided
 	if columnName == "" && !setReady && !setCompleted && !setInProgress {
-		if fmtErr := formatter.Error("INVALID_INPUT", "at least one of --name, --ready, --completed, or --in-progress must be provided"); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return fmt.Errorf("failed to validate input: at least one of --name, --ready, --completed, or --in-progress must be provided")
+		return formatter.Error(cli.ExitUsage, "INVALID_INPUT", "at least one of --name, --ready, --completed, or --in-progress must be provided")
 	}
 
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -96,10 +106,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	// Validate column exists
 	column, err := cliInstance.App.ColumnService.GetColumnByID(ctx, columnID)
 	if err != nil {
-		if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnID)); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return fmt.Errorf("failed to find column: column %d not found", columnID)
+		return formatter.Error(cli.ExitNotFound, "COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnID))
 	}
 
 	oldName := column.Name
@@ -108,10 +115,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	// Update column name if provided
 	if columnName != "" {
 		if err := cliInstance.App.ColumnService.UpdateColumnName(ctx, columnID, columnName); err != nil {
-			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			return err
+			return formatter.Error(cli.ExitError, "UPDATE_ERROR", err.Error())
 		}
 	}
 
@@ -119,10 +123,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if setReady {
 		updatedColumn, err = cliInstance.App.ColumnService.SetHoldsReadyTasks(ctx, columnID)
 		if err != nil {
-			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			return err
+			return formatter.Error(cli.ExitError, "UPDATE_ERROR", err.Error())
 		}
 	}
 
@@ -132,16 +133,10 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			// Check for specific error about completed column already existing
 			if strings.Contains(err.Error(), "completed column already exists") {
-				if fmtErr := formatter.Error("COMPLETED_COLUMN_EXISTS",
-					fmt.Sprintf("%s\n\nUse the --force flag to change the done column.\nPaso uses the done column to move tasks with the {complete task command}.\nThis could lead to unexpected behavior, and this is not suggested.", err.Error())); fmtErr != nil {
-					slog.Error("failed to format error message", "error", fmtErr)
-				}
-				return err
+				return formatter.Error(cli.ExitError, "COMPLETED_COLUMN_EXISTS",
+					fmt.Sprintf("%s\n\nUse the --force flag to change the done column.\nPaso uses the done column to move tasks with the {complete task command}.\nThis could lead to unexpected behavior, and this is not suggested.", err.Error()))
 			}
-			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			return err
+			return formatter.Error(cli.ExitError, "UPDATE_ERROR", err.Error())
 		}
 	}
 
@@ -149,10 +144,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if setInProgress {
 		updatedColumn, err = cliInstance.App.ColumnService.SetHoldsInProgressTasks(ctx, columnID)
 		if err != nil {
-			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			return err
+			return formatter.Error(cli.ExitError, "UPDATE_ERROR", err.Error())
 		}
 	}
 
@@ -176,18 +168,20 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Human-readable output
-	fmt.Printf("✓ Column %d updated successfully\n", columnID)
-	if columnName != "" && columnName != oldName {
-		fmt.Printf("  Name: '%s' → '%s'\n", oldName, columnName)
+	colors := cli.GetColorScheme()
+	details := []styles.Detail{
+		{Key: "ID", Value: strconv.Itoa(columnID)},
+		{Key: "Name", Value: updatedColumn.Name},
 	}
 	if setReady {
-		fmt.Printf("  Now holds ready tasks: %v\n", updatedColumn.HoldsReadyTasks)
-	}
-	if setCompleted {
-		fmt.Printf("  Now holds completed tasks: %v\n", updatedColumn.HoldsCompletedTasks)
+		details = append(details, styles.Detail{Key: "Ready tasks", Value: fmt.Sprintf("%v", updatedColumn.HoldsReadyTasks)})
 	}
 	if setInProgress {
-		fmt.Printf("  Now holds in-progress tasks: %v\n", updatedColumn.HoldsInProgressTasks)
+		details = append(details, styles.Detail{Key: "In-progress tasks", Value: fmt.Sprintf("%v", updatedColumn.HoldsInProgressTasks)})
 	}
+	if setCompleted {
+		details = append(details, styles.Detail{Key: "Completed tasks", Value: fmt.Sprintf("%v", updatedColumn.HoldsCompletedTasks)})
+	}
+	fmt.Print(styles.RenderSuccessWithDetails("Column updated successfully", details, colors))
 	return nil
 }

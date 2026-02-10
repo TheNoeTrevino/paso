@@ -8,12 +8,15 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/handler"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/config/colors"
 	"github.com/thenoetrevino/paso/internal/models"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/user"
@@ -76,7 +79,10 @@ type createHandler struct{}
 // Execute implements the Handler interface
 func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (any, error) {
 	// Get flag values from arguments
-	taskTitle := args.MustGetString("title")
+	taskTitle, err := args.MustGetString("title")
+	if err != nil {
+		return nil, err
+	}
 	taskDescription := args.GetString("description", "")
 	taskType := args.GetString("type", "task")
 	taskPriority := args.GetString("priority", "medium")
@@ -225,6 +231,24 @@ type taskCreateResult struct {
 // GetID implements the GetID interface for quiet mode output
 func (r *taskCreateResult) GetID() int {
 	return r.ID
+}
+
+// PrettyPrint implements the PrettyPrintable interface for styled output
+func (r *taskCreateResult) PrettyPrint(colorScheme colors.ColorScheme) string {
+	details := []styles.Detail{
+		{Key: "ID", Value: strconv.Itoa(r.ID)},
+		{Key: "Title", Value: r.Title},
+		{Key: "Project", Value: r.Project},
+		{Key: "Priority", Value: r.Priority},
+		{Key: "Type", Value: r.Type},
+	}
+
+	if r.Description != "" {
+		truncated := styles.TruncateString(r.Description, 60)
+		details = append(details, styles.Detail{Key: "Description", Value: truncated})
+	}
+
+	return styles.RenderSuccessWithDetails("Task created successfully", details, colorScheme)
 }
 
 func parseCreateFlags(cmd *cobra.Command) error {
