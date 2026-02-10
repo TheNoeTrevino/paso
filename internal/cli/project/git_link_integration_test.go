@@ -139,13 +139,15 @@ func TestGitLink_ForceFlag(t *testing.T) {
 }
 
 func TestGitLink_JSONOutput(t *testing.T) {
-	db, app := cli.SetupCLITest(t)
+	db, app, mockGit := cli.SetupCLITestWithGit(t)
 	defer func() {
 		err := db.Close()
 		assert.NoError(t, err)
 	}()
 
 	t.Run("JSON output contains expected fields", func(t *testing.T) {
+		mockGit.Branches["test-branch"] = true
+
 		result, err := db.ExecContext(context.Background(),
 			"INSERT INTO projects (name, description) VALUES (?, ?)",
 			"JSON Test Project", "Test")
