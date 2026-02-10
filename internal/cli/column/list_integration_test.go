@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	rootcli "github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
@@ -333,9 +334,22 @@ func TestListColumns_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("Invalid project ID error handling", func(t *testing.T) {
+		cmd := ListCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--project", "99999",
+			"--quiet",
+		})
+		cli.AssertExitError(t, err, rootcli.ExitNotFound)
+		assert.Contains(t, err.Error(), "project 99999 not found")
 	})
 
 	t.Run("Missing project flag", func(t *testing.T) {
+		cmd := ListCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--quiet",
+		})
+		cli.AssertExitError(t, err, rootcli.ExitUsage)
+		assert.Contains(t, err.Error(), "no project specified")
 	})
 
 	t.Run("Invalid project flag value", func(t *testing.T) {

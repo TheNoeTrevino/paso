@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	rootcli "github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
@@ -120,12 +121,9 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 	})
 
 	t.Run("Delete column cannot delete if it contains tasks", func(t *testing.T) {
-		// Note: This test would call os.Exit() on delete failure, terminating the test process
-
 		// Expected behavior:
 		// - The column service will move tasks to the first column before deleting
 		// - So this test scenario doesn't actually trigger an error anymore
-		// - Keeping this test for documentation purposes
 	})
 
 	t.Run("Delete column - human readable output", func(t *testing.T) {
@@ -242,55 +240,50 @@ func TestDeleteColumnIntegration_Negative(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("Delete non-existent column", func(t *testing.T) {
-		// Expected behavior:
-		// - Exit code: cli.ExitNotFound (3)
-		// - Error message: "COLUMN_NOT_FOUND" with column ID that doesn't exist
 		cmd := DeleteCmd()
-		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"99999",
 			"--quiet",
 		})
+		cli.AssertExitError(t, err, rootcli.ExitNotFound)
+		assert.Contains(t, err.Error(), "column 99999 not found")
 	})
 
 	t.Run("Delete column - missing required ID argument", func(t *testing.T) {
-		// Expected behavior:
-		// - Error message indicating ID argument is required
 		cmd := DeleteCmd()
-		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--quiet",
 		})
+		assert.Error(t, err)
 	})
 
 	t.Run("Delete column - zero column ID", func(t *testing.T) {
-		// Expected behavior:
-		// - Exit code: cli.ExitNotFound (3)
-		// - Column 0 does not exist
 		cmd := DeleteCmd()
-		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"0",
 			"--quiet",
 		})
+		cli.AssertExitError(t, err, rootcli.ExitNotFound)
+		assert.Contains(t, err.Error(), "column 0 not found")
 	})
 
 	t.Run("Delete column - negative column ID", func(t *testing.T) {
-		// Expected behavior:
-		// - Exit code: cli.ExitNotFound (3)
-		// - Column -1 does not exist
+		// Cobra may interpret "-1" as a flag, so just assert error
 		cmd := DeleteCmd()
-		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"-1",
 			"--quiet",
 		})
+		assert.Error(t, err)
 	})
 
 	t.Run("Column ID as string instead of int", func(t *testing.T) {
-		// Expected behavior:
-		// - Exit code: cli.ExitValidation (5)
-		// - Error message: "invalid ID 'invalid': must be a number"
 		cmd := DeleteCmd()
-		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"invalid",
 			"--quiet",
 		})
+		cli.AssertExitError(t, err, rootcli.ExitValidation)
+		assert.Contains(t, err.Error(), "invalid ID 'invalid': must be a number")
 	})
 }

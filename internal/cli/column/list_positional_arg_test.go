@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	rootcli "github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
 
@@ -143,7 +145,7 @@ func TestListColumn_PositionalArgVsFlag(t *testing.T) {
 		assert.NoError(t, err)
 
 		var result map[string]any
-		json.Unmarshal([]byte(output), &result)
+		require.NoError(t, json.Unmarshal([]byte(output), &result))
 
 		columns := result["columns"].([]any)
 		// Should contain column from project 2
@@ -159,6 +161,15 @@ func TestListColumn_PositionalArgVsFlag(t *testing.T) {
 	})
 
 	t.Run("Invalid positional arg shows clear error", func(t *testing.T) {
+		_, app := cli.SetupCLITest(t)
+
+		cmd := ListCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"not-a-number",
+			"--quiet",
+		})
+		cli.AssertExitError(t, err, rootcli.ExitUsage)
+		assert.Contains(t, err.Error(), "Invalid project ID")
 	})
 
 	t.Run("Positional arg works for valid project", func(t *testing.T) {
@@ -195,8 +206,6 @@ func TestListColumn_PositionalArgVsFlag(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contains(t, output, "Columns in project 'Test Project':")
 		assert.Contains(t, output, "Column 1")
-
-		// Note: "No positional arg, no flag" case calls os.Exit() and cannot be tested here
 	})
 }
 
@@ -216,8 +225,32 @@ func TestListColumn_PositionalArgEdgeCases(t *testing.T) {
 	})
 
 	t.Run("Positional arg with zero value", func(t *testing.T) {
+		db, app := cli.SetupCLITest(t)
+		defer func() {
+			_ = db.Close()
+		}()
+
+		cmd := ListCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"0",
+			"--quiet",
+		})
+		cli.AssertExitError(t, err, rootcli.ExitNotFound)
+		assert.Contains(t, err.Error(), "project 0 not found")
 	})
 
 	t.Run("Positional arg with negative value", func(t *testing.T) {
+		db, app := cli.SetupCLITest(t)
+		defer func() {
+			_ = db.Close()
+		}()
+
+		// Cobra may interpret "-1" as a flag, so just assert error
+		cmd := ListCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"-1",
+			"--quiet",
+		})
+		assert.Error(t, err)
 	})
 }
