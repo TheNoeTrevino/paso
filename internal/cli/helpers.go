@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/config/colors"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -244,4 +246,14 @@ func tryGitBranchDetectionWithCLI(ctx context.Context, cliInstance *CLI) (int, e
 	}
 
 	return project.ID, nil
+}
+
+// GetColorScheme loads the color scheme from config or returns default
+// This is a helper to reduce boilerplate in commands that need styled output
+func GetColorScheme() colors.ColorScheme {
+	cfg, err := config.Load()
+	if err != nil || cfg == nil {
+		return config.DefaultColorScheme()
+	}
+	return cfg.ColorScheme
 }

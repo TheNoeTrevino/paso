@@ -354,11 +354,11 @@ func (r *Runner) printSummary() int {
 	}
 
 	for _, result := range passed {
-		fmt.Printf("%s✅ PASS%s  %s\n", colorGreen, colorReset, result.Name)
+		fmt.Printf("%s✓ PASS%s  %s\n", colorGreen, colorReset, result.Name)
 	}
 
 	for _, result := range failed {
-		fmt.Printf("%s❌ FAIL%s  %s", colorRed, colorReset, result.Name)
+		fmt.Printf("%sx FAIL%s  %s", colorRed, colorReset, result.Name)
 		if result.Message != "" {
 			fmt.Printf(" - %s", result.Message)
 		}
@@ -373,9 +373,9 @@ func (r *Runner) printSummary() int {
 
 	totalSteps := passedCount + failedCount
 	if failedCount == 0 {
-		fmt.Printf("%s     ✅ All CI/CD steps passed!       %s\n", colorGreen, colorReset)
+		fmt.Printf("%s     ✓ All CI/CD steps passed!       %s\n", colorGreen, colorReset)
 	} else {
-		fmt.Printf("%s     ❌ CI/CD Pipeline Failed          %s\n", colorRed, colorReset)
+		fmt.Printf("%s     x CI/CD Pipeline Failed          %s\n", colorRed, colorReset)
 		fmt.Printf("%s     Failed: %d/%d steps%s\n", colorRed, failedCount, totalSteps, colorReset)
 	}
 	fmt.Printf("%s======================================%s\n", colorBlue, colorReset)

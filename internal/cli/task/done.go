@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 )
 
@@ -22,6 +23,8 @@ func DoneCmd() *cobra.Command {
 
 The completed column is marked with holds_completed_tasks = true.
 Use 'paso column update -i <column_id> -c' to designate a completed column.
+
+Note: This command moves tasks to the column marked as completed (see: paso column update --completed)
 
 Examples:
   # Move task to completed column
@@ -53,7 +56,11 @@ func runDone(cmd *cobra.Command, args []string) error {
 	// Parse task ID from positional argument
 	taskID, err := strconv.Atoi(args[0])
 	if err != nil {
-		return fmt.Errorf("invalid task ID: %s", args[0])
+		formatter := &cli.OutputFormatter{}
+		if fmtErr := formatter.Error("INVALID_ID", fmt.Sprintf("invalid task ID '%s': must be a number", args[0])); fmtErr != nil {
+			slog.Error("failed to format error message", "error", fmtErr)
+		}
+		os.Exit(cli.ExitValidation)
 	}
 
 	jsonOutput, _ := cmd.Flags().GetBool("json")
@@ -67,7 +74,7 @@ func runDone(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -110,7 +117,7 @@ func runDone(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("MOVE_ERROR", err.Error()); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 
 	// Get updated task detail for output
@@ -119,7 +126,7 @@ func runDone(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 
 	toColumnName := updatedTaskDetail.ColumnName
@@ -140,6 +147,8 @@ func runDone(cmd *cobra.Command, args []string) error {
 	}
 
 	// Human-readable output
-	fmt.Printf("Task %d moved to '%s'\n", taskID, toColumnName)
+	colors := cli.GetColorScheme()
+	message := fmt.Sprintf("Task %d moved to '%s'", taskID, toColumnName)
+	fmt.Print(styles.RenderSuccess(message, colors))
 	return nil
 }

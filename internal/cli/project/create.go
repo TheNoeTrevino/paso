@@ -8,11 +8,15 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/handler"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
+	"github.com/thenoetrevino/paso/internal/config/colors"
 	projectservice "github.com/thenoetrevino/paso/internal/services/project"
 )
 
@@ -87,7 +91,8 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 	if gitInfo.IsValidForAssociation() {
 		gitBranch = gitInfo.CurrentBranch
 		if !quietMode {
-			fmt.Printf("ℹ️  Associating project with git branch: %s\n", gitBranch)
+			infoSymbol := lipgloss.NewStyle().Foreground(lipgloss.Color("#0000FF")).Render("i")
+			fmt.Printf("%s  Associating project with git branch: %s\n", infoSymbol, gitBranch)
 		}
 	}
 
@@ -103,8 +108,9 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		if !quietMode {
 			existingProject, _ := cliInstance.App.ProjectService.GetProjectByGitBranch(ctx, gitBranch)
 			if existingProject != nil {
-				fmt.Printf("⚠️  Warning: Branch '%s' is already associated with project '%s' (ID: %d)\n",
-					gitBranch, existingProject.Name, existingProject.ID)
+				warningSymbol := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA500")).Render("^")
+				fmt.Printf("%s  Warning: Branch '%s' is already associated with project '%s' (ID: %d)\n",
+					warningSymbol, gitBranch, existingProject.Name, existingProject.ID)
 			}
 			fmt.Println("Creating new project without branch association...")
 		}
@@ -142,14 +148,19 @@ func (r *projectCreateResult) GetID() int {
 	return r.ID
 }
 
-// String provides human-readable output for the project creation result
-func (r *projectCreateResult) String() string {
-	if r.Description != "" {
-		return fmt.Sprintf("✓ Project created: %s (ID: %d)\n  Description: %s\n  Created: %s",
-			r.Name, r.ID, r.Description, r.CreatedAt)
+// PrettyPrint implements the PrettyPrintable interface for styled output
+func (r *projectCreateResult) PrettyPrint(colorScheme colors.ColorScheme) string {
+	details := []styles.Detail{
+		{Key: "ID", Value: strconv.Itoa(r.ID)},
+		{Key: "Name", Value: r.Name},
 	}
-	return fmt.Sprintf("✓ Project created: %s (ID: %d)\n  Created: %s",
-		r.Name, r.ID, r.CreatedAt)
+
+	if r.Description != "" {
+		truncated := styles.TruncateString(r.Description, 60)
+		details = append(details, styles.Detail{Key: "Description", Value: truncated})
+	}
+
+	return styles.RenderSuccessWithDetails("Project created successfully", details, colorScheme)
 }
 
 func parseCreateFlags(cmd *cobra.Command) error {

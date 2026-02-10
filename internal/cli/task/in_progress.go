@@ -9,8 +9,10 @@ import (
 	"strconv"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 )
 
@@ -24,6 +26,9 @@ or list all in-progress tasks for a project.
 
 The in-progress column is marked with holds_in_progress_tasks = true.
 Use 'paso column update -i <column_id> -I' to designate an in-progress column.
+
+Note: When moving tasks, this command uses the column marked as in-progress 
+(see: paso column update --in-progress).
 
 Examples:
   # Move task to in-progress column
@@ -73,12 +78,15 @@ func runInProgress(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("INVALID_INPUT", "either provide a task ID or use --project flag to list tasks"); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return fmt.Errorf("failed to validate input: either provide a task ID or use --project flag to list tasks")
+		os.Exit(cli.ExitValidation)
 	}
 
 	taskID, err := strconv.Atoi(args[0])
 	if err != nil {
-		return fmt.Errorf("invalid task ID: %s", args[0])
+		if fmtErr := formatter.Error("INVALID_ID", fmt.Sprintf("invalid task ID '%s': must be a number", args[0])); fmtErr != nil {
+			slog.Error("failed to format error message", "error", fmtErr)
+		}
+		os.Exit(cli.ExitValidation)
 	}
 
 	return moveTaskToInProgress(ctx, taskID, formatter)
@@ -91,7 +99,7 @@ func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.Outp
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -116,7 +124,7 @@ func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.Outp
 		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 
 	// Convert TaskDetail to simpler format for display
@@ -177,7 +185,7 @@ func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.Outp
 		// Include blocked indicator
 		blockedInfo := ""
 		if t.IsBlocked {
-			blockedInfo = " ⚠️ BLOCKED"
+			blockedInfo = " " + lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render("▲") + " BLOCKED"
 		}
 
 		fmt.Printf("  [%d] %s%s%s\n", t.ID, t.Title, priorityInfo, blockedInfo)
@@ -193,7 +201,7 @@ func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.Output
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -236,7 +244,7 @@ func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.Output
 		if fmtErr := formatter.Error("MOVE_ERROR", err.Error()); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 
 	// Get updated task detail for output
@@ -245,7 +253,7 @@ func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.Output
 		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 
 	toColumnName := updatedTaskDetail.ColumnName
@@ -266,6 +274,8 @@ func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.Output
 	}
 
 	// Human-readable output
-	fmt.Printf("Task %d moved to '%s'\n", taskID, toColumnName)
+	colors := cli.GetColorScheme()
+	message := fmt.Sprintf("Task %d moved to '%s'", taskID, toColumnName)
+	fmt.Print(styles.RenderSuccess(message, colors))
 	return nil
 }

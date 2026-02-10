@@ -5,42 +5,41 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 	labelservice "github.com/thenoetrevino/paso/internal/services/label"
 )
 
 // UpdateCmd returns the label update subcommand
 func UpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update",
+		Use:   "update <id>",
 		Short: "Update a label",
 		Long: `Update a label's name and/or color.
 
 Examples:
-  # Update both name and color (shorthand)
-  paso label update -i 1 -n "critical-bug" -c "#FF0000"
+  # Update both name and color
+  paso label update 1 -n "critical-bug" -c "#FF0000"
 
   # Update only name (keeps existing color)
-  paso label update -i 1 -n "critical-bug"
+  paso label update 1 -n "critical-bug"
 
   # Update only color (keeps existing name)
-  paso label update -i 1 -c "#FF0000"
+  paso label update 1 -c "#FF0000"
 
   # JSON output
-  paso label update -i 1 -n "urgent" -j
+  paso label update 1 -n "urgent" -j
 
   # Long-form flags also supported
-  paso label update --id=1 --name="urgent" --json
+  paso label update 1 --name="urgent" --json
 `,
+		Args: cobra.ExactArgs(1),
 		RunE: runUpdate,
 	}
 
-	cmd.Flags().IntP("id", "i", 0, "Label ID (required)")
-	if err := cmd.MarkFlagRequired("id"); err != nil {
-		slog.Error("failed to marking flag as required", "error", err)
-	}
 	cmd.Flags().StringP("name", "n", "", "New label name")
 	cmd.Flags().StringP("color", "c", "", "New label color in hex format #RRGGBB")
 
@@ -53,7 +52,6 @@ Examples:
 func runUpdate(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
-	labelID, _ := cmd.Flags().GetInt("id")
 	labelName, _ := cmd.Flags().GetString("name")
 	labelColor, _ := cmd.Flags().GetString("color")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
@@ -61,17 +59,26 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
+	// Parse ID from positional argument
+	labelID, err := strconv.Atoi(args[0])
+	if err != nil {
+		if fmtErr := formatter.Error("INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0])); fmtErr != nil {
+			slog.Error("failed to format error message", "error", fmtErr)
+		}
+		os.Exit(cli.ExitValidation)
+	}
+
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
@@ -81,7 +88,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	if !nameProvided && !colorProvided {
 		if fmtErr := formatter.Error("MISSING_FLAGS", "at least one of --name or --color must be provided"); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitUsage)
 	}
@@ -90,7 +97,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	currentLabel, err := cli.GetLabelByID(ctx, cliInstance, labelID)
 	if err != nil {
 		if fmtErr := formatter.Error("LABEL_NOT_FOUND", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -106,7 +113,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		// Validate color format
 		if err := cli.ValidateColorHex(labelColor); err != nil {
 			if fmtErr := formatter.Error("INVALID_COLOR", err.Error()); fmtErr != nil {
-				slog.Error("failed to formatting error message", "error", fmtErr)
+				slog.Error("failed to format error message", "error", fmtErr)
 			}
 			os.Exit(cli.ExitValidation)
 		}
@@ -126,9 +133,9 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	if err := cliInstance.App.LabelService.UpdateLabel(ctx, req); err != nil {
 		if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 
 	// Output based on mode
@@ -150,12 +157,8 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Human-readable output
-	fmt.Printf("✓ Label %d updated successfully\n", labelID)
-	if nameProvided {
-		fmt.Printf("  Name: '%s' → '%s'\n", currentLabel.Name, newName)
-	}
-	if colorProvided {
-		fmt.Printf("  Color: %s → %s\n", currentLabel.Color, newColor)
-	}
+	colors := cli.GetColorScheme()
+	message := fmt.Sprintf("Label %d updated successfully", labelID)
+	fmt.Print(styles.RenderSuccess(message, colors))
 	return nil
 }

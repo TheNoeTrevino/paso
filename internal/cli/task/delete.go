@@ -5,30 +5,28 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 )
 
 // DeleteCmd returns the task delete subcommand
 func DeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete",
+		Use:   "delete <id>",
 		Short: "Delete a task",
 		Long: `Delete a task by ID (requires confirmation unless --force/-f or --quiet/-q).
 
 Examples:
-  paso task delete -i 42
-  paso task delete -i 42 -f
-  paso task delete --id=42 --force --json
+  paso task delete 42
+  paso task delete 42 -f
+  paso task delete 42 --force --json
 `,
+		Args: cobra.ExactArgs(1),
 		RunE: runDelete,
-	}
-
-	cmd.Flags().IntP("id", "i", 0, "Task ID (required)")
-	if err := cmd.MarkFlagRequired("id"); err != nil {
-		slog.Error("failed to marking flag as required", "error", err)
 	}
 
 	cmd.Flags().BoolP("force", "f", false, "Skip confirmation")
@@ -42,24 +40,32 @@ Examples:
 func runDelete(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
-	taskID, _ := cmd.Flags().GetInt("id")
 	force, _ := cmd.Flags().GetBool("force")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
+	// Parse ID from positional argument
+	taskID, err := strconv.Atoi(args[0])
+	if err != nil {
+		if fmtErr := formatter.Error("INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0])); fmtErr != nil {
+			slog.Error("failed to format error message", "error", fmtErr)
+		}
+		os.Exit(cli.ExitValidation)
+	}
+
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
 		return err
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
@@ -67,7 +73,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	task, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -78,7 +84,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		var response string
 		_, err := fmt.Scanln(&response)
 		if err != nil {
-			slog.Error("failed to reading user input", "error", err)
+			slog.Error("failed to read user input", "error", err)
 			fmt.Println("Cancelled (failed to read input)")
 			return nil
 		}
@@ -91,7 +97,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	// Delete the task
 	if err := cliInstance.App.TaskService.DeleteTask(ctx, taskID); err != nil {
 		if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
 		return err
 	}
@@ -108,6 +114,8 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	fmt.Printf("✓ Task %d deleted successfully\n", taskID)
+	colors := cli.GetColorScheme()
+	message := fmt.Sprintf("Task %d deleted successfully", taskID)
+	fmt.Print(styles.RenderSuccess(message, colors))
 	return nil
 }

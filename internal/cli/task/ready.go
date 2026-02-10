@@ -59,13 +59,13 @@ func runReady(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
@@ -75,7 +75,7 @@ func runReady(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
 			err.Error(),
 			"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitUsage)
 	}
@@ -86,7 +86,7 @@ func runReady(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.ErrorWithSuggestion("PROJECT_NOT_FOUND",
 			fmt.Sprintf("project %d not found", taskProject),
 			"Use 'paso project list' to see available projects"); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
 		os.Exit(cli.ExitNotFound)
 	}
@@ -96,9 +96,9 @@ func runReady(cmd *cobra.Command, args []string) error {
 	readyTasks, err = cliInstance.App.TaskService.GetReadyTaskSummariesByProject(ctx, taskProject)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 
 	// Output in appropriate format

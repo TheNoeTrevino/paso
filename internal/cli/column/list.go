@@ -6,35 +6,41 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
-	"strings"
 
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/table"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/config"
 )
 
 // ListCmd returns the column list subcommand
 func ListCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list",
+		Use:   "list [project-id]",
 		Short: "List columns in a project",
 		Long: `List all columns in a project (in order).
 
 Examples:
-  # Human-readable list (shorthand)
+  # Using positional argument (recommended)
+  paso column list 1
+
+  # Using shorthand flag
   paso column list -p 1
 
+  # Using git branch association
+  paso column list
+
   # JSON output for agents
-  paso column list -p 1 -j
+  paso column list 1 -j
 
   # Quiet mode (one ID per line)
-  paso column list -p 1 -q
+  paso column list 1 -q
 
   # Long-form flags also supported
   paso column list --project=1 --json
 `,
+		Args: cobra.MaximumNArgs(1),
 		RunE: runList,
 	}
 
@@ -62,7 +68,7 @@ func runList(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -70,15 +76,31 @@ func runList(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	// Get project ID from flag or git branch
-	columnProject, err := cli.GetProjectIDWithCLI(cmd, cliInstance)
-	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
-			err.Error(),
-			"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
+	// Get project ID with precedence: positional arg > flag > git detection
+	var columnProject int
+
+	if len(args) > 0 {
+		// Priority 1: Positional argument
+		columnProject, err = strconv.Atoi(args[0])
+		if err != nil {
+			if fmtErr := formatter.ErrorWithSuggestion("INVALID_PROJECT_ID",
+				fmt.Sprintf("Invalid project ID: %s", args[0]),
+				"Project ID must be a number"); fmtErr != nil {
+				slog.Error("failed to format error message", "error", fmtErr)
+			}
+			os.Exit(cli.ExitUsage)
 		}
-		return err
+	} else {
+		// Priority 2: Flag or git branch detection
+		columnProject, err = cli.GetProjectIDWithCLI(cmd, cliInstance)
+		if err != nil {
+			if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
+				err.Error(),
+				"Specify project ID as argument, use --project flag, or associate branch with project"); fmtErr != nil {
+				slog.Error("failed to format error message", "error", fmtErr)
+			}
+			os.Exit(cli.ExitUsage)
+		}
 	}
 
 	// Validate project exists
@@ -87,7 +109,7 @@ func runList(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", columnProject)); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return fmt.Errorf("project %d not found", columnProject)
+		os.Exit(cli.ExitNotFound)
 	}
 
 	// Get columns
@@ -96,7 +118,7 @@ func runList(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 
 	// Output based on mode
@@ -131,66 +153,73 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	baseStyle := lipgloss.NewStyle().Padding(0, 1)
-	headerStyle := baseStyle.Bold(true).Foreground(lipgloss.Color("252"))
+	// Load config for color scheme
+	cfg, err := config.Load()
+	if err != nil {
+		cfg = &config.Config{
+			ColorScheme: config.DefaultColorScheme(),
+		}
+	}
 
+	// Define colors
+	normalColor := lipgloss.Color(cfg.ColorScheme.Normal)
+	headerColor := lipgloss.Color(cfg.ColorScheme.Accent)
+	successColor := lipgloss.Color(cfg.ColorScheme.Create)
+
+	// Build table data
 	var rows [][]string
-	for _, col := range columns {
+
+	for i, col := range columns {
+		readyMark := "-"
+		if col.HoldsReadyTasks {
+			readyMark = "✓"
+		}
+		inProgressMark := "-"
+		if col.HoldsInProgressTasks {
+			inProgressMark = "✓"
+		}
+		completedMark := "-"
+		if col.HoldsCompletedTasks {
+			completedMark = "✓"
+		}
+
 		rows = append(rows, []string{
+			strconv.Itoa(i + 1),
 			strconv.Itoa(col.ID),
 			col.Name,
-			renderTypeFlags(col),
+			readyMark,
+			inProgressMark,
+			completedMark,
 		})
 	}
 
-	tbl := table.New().
+	// Create table with styling
+	baseStyle := lipgloss.NewStyle().Padding(0, 1)
+	headerStyle := baseStyle.Bold(true).Foreground(headerColor)
+
+	t := table.New().
 		Border(lipgloss.RoundedBorder()).
 		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("238"))).
-		Headers("ID", "NAME", "TYPE").
+		Headers("#", "ID", "NAME", "READY", "IN-PROG", "DONE").
 		Rows(rows...).
 		StyleFunc(func(row, col int) lipgloss.Style {
 			if row == table.HeaderRow {
 				return headerStyle
 			}
 
-			even := row%2 == 0
-			if even {
-				return baseStyle.Foreground(lipgloss.Color("245"))
+			// Checkmark columns (cols 3, 4, 5) - highlight checkmarks
+			if col >= 3 && col <= 5 {
+				if rows[row][col] == "✓" {
+					return baseStyle.Foreground(successColor)
+				}
+				return baseStyle.Foreground(lipgloss.Color("240"))
 			}
-			return baseStyle.Foreground(lipgloss.Color("252"))
+
+			return baseStyle.Foreground(normalColor)
 		})
 
-	fmt.Println(tbl)
+	fmt.Printf("Columns in project '%s':\n", project.Name)
+	fmt.Println(t)
+
 	return nil
-}
-
-func renderTypeFlags(col *models.Column) string {
-	var parts []string
-
-	if col.HoldsReadyTasks {
-		styled := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("#00E2C7")).
-			Render("[READY]")
-		parts = append(parts, styled)
-	}
-	if col.HoldsInProgressTasks {
-		styled := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("#FFAB40")).
-			Render("[IN-PROGRESS]")
-		parts = append(parts, styled)
-	}
-	if col.HoldsCompletedTasks {
-		styled := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("#64B5F6")).
-			Render("[COMPLETED]")
-		parts = append(parts, styled)
-	}
-
-	if len(parts) == 0 {
-		return ""
-	}
-	return strings.Join(parts, " ")
 }

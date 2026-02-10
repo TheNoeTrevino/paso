@@ -50,13 +50,13 @@ func runList(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
@@ -64,9 +64,9 @@ func runList(cmd *cobra.Command, args []string) error {
 	projects, err := cliInstance.App.ProjectService.GetAllProjects(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("PROJECT_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 
 	// Output in appropriate format

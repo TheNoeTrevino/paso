@@ -33,7 +33,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 		cmd := DeleteCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--force",
 		})
 
@@ -56,7 +56,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 		cmd := DeleteCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--quiet",
 		})
 
@@ -78,7 +78,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 		cmd := DeleteCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--json",
 			"--force",
 		})
@@ -124,7 +124,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 		// Delete parent task
 		cmd := DeleteCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", parentID),
+			fmt.Sprintf("%d", parentID),
 			"--force",
 		})
 
@@ -166,7 +166,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 		// Delete blocker task
 		cmd := DeleteCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", blockerID),
+			fmt.Sprintf("%d", blockerID),
 			"--force",
 		})
 
@@ -226,7 +226,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 		// Delete task
 		cmd := DeleteCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--force",
 		})
 
@@ -265,7 +265,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 		cmd := DeleteCmd()
 		for _, taskID := range taskIDs {
 			output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-				"--id", fmt.Sprintf("%d", taskID),
+				fmt.Sprintf("%d", taskID),
 				"--quiet",
 			})
 
@@ -308,7 +308,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 		// Delete task
 		cmd := DeleteCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--force",
 		})
 
@@ -373,7 +373,7 @@ func TestDeleteTask_Positive(t *testing.T) {
 		// Delete main task
 		cmd := DeleteCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", mainTaskID),
+			fmt.Sprintf("%d", mainTaskID),
 			"--force",
 		})
 

@@ -12,21 +12,34 @@ import (
 	"charm.land/lipgloss/v2/table"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
 // ListCmd returns the task list subcommand
 func ListCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list",
+		Use:   "list [project-id]",
 		Short: "List tasks",
 		Long: `List all tasks in a project.
 
 Examples:
-  paso task list -p 1
-  paso task list -p 1 -j
-  paso task list --project=1 --json
+  # Using positional argument (recommended)
+  paso task list 2
+
+  # Using shorthand flag
+  paso task list -p 2
+
+  # Using git branch association
+  paso task list
+
+  # JSON output
+  paso task list 2 -j
+
+  # Long-form flags also supported
+  paso task list --project=2 --json
 `,
+		Args: cobra.MaximumNArgs(1),
 		RunE: runList,
 	}
 
@@ -52,34 +65,50 @@ func runList(cmd *cobra.Command, args []string) error {
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
-	// Get project ID from flag or git branch
-	taskProject, err := cli.GetProjectIDWithCLI(cmd, cliInstance)
-	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
-			err.Error(),
-			"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+	// Get project ID with precedence: positional arg > flag > git detection
+	var taskProject int
+
+	if len(args) > 0 {
+		// Priority 1: Positional argument
+		taskProject, err = strconv.Atoi(args[0])
+		if err != nil {
+			if fmtErr := formatter.ErrorWithSuggestion("INVALID_PROJECT_ID",
+				fmt.Sprintf("Invalid project ID: %s", args[0]),
+				"Project ID must be a number"); fmtErr != nil {
+				slog.Error("failed to format error message", "error", fmtErr)
+			}
+			os.Exit(cli.ExitUsage)
 		}
-		os.Exit(cli.ExitUsage)
+	} else {
+		// Priority 2: Flag or git branch detection
+		taskProject, err = cli.GetProjectIDWithCLI(cmd, cliInstance)
+		if err != nil {
+			if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
+				err.Error(),
+				"Specify project ID as argument, use --project flag, or associate branch with project"); fmtErr != nil {
+				slog.Error("failed to format error message", "error", fmtErr)
+			}
+			os.Exit(cli.ExitUsage)
+		}
 	}
 
 	// Get tasks (returns map[columnID][]*TaskSummary)
 	tasksByColumn, err := cliInstance.App.TaskService.GetTaskSummariesByProject(ctx, taskProject)
 	if err != nil {
 		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
+			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 
 	// Flatten tasks from all columns
@@ -110,67 +139,83 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	baseStyle := lipgloss.NewStyle().Padding(0, 1)
-	headerStyle := baseStyle.Bold(true).Foreground(lipgloss.Color("252"))
-
-	typeColors := map[string]string{
-		"task":    "#929292",
-		"feature": "#00E2C7",
-		"bug":     "#FF7698",
+	// Load config for color scheme
+	cfg, err := config.Load()
+	if err != nil {
+		cfg = &config.Config{
+			ColorScheme: config.DefaultColorScheme(),
+		}
 	}
 
+	// Define colors
+	normalColor := lipgloss.Color(cfg.ColorScheme.Normal)
+	headerColor := lipgloss.Color(cfg.ColorScheme.Accent)
+
+	// Build table data
 	var rows [][]string
-	for _, t := range allTasks {
-		labels := renderLabels(t.Labels)
-		status := ""
-		if t.IsBlocked {
-			status = "BLOCKED"
+	taskRowColors := make(map[int]string) // row index -> priority color
+
+	for i, t := range allTasks {
+		// Build labels string
+		labelNames := make([]string, len(t.Labels))
+		for j, lbl := range t.Labels {
+			labelNames[j] = lbl.Name
 		}
+		labelsStr := strings.Join(labelNames, ", ")
+		if labelsStr == "" {
+			labelsStr = "-"
+		}
+
+		// Blocked indicator
+		blockedStr := ""
+		if t.IsBlocked {
+			blockedStr = "BLOCKED"
+		}
+
 		rows = append(rows, []string{
 			strconv.Itoa(t.ID),
 			t.Title,
-			t.TypeDescription,
 			t.PriorityDescription,
-			labels,
-			status,
+			t.TypeDescription,
+			labelsStr,
+			blockedStr,
 		})
+		taskRowColors[i] = t.PriorityColor
 	}
 
-	tbl := table.New().
+	// Create table with styling
+	baseStyle := lipgloss.NewStyle().Padding(0, 1)
+	headerStyle := baseStyle.Bold(true).Foreground(headerColor)
+
+	t := table.New().
 		Border(lipgloss.RoundedBorder()).
 		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("238"))).
-		Headers("ID", "TITLE", "TYPE", "PRIORITY", "LABELS", "STATUS").
+		Headers("ID", "TITLE", "PRIORITY", "TYPE", "LABELS", "").
 		Rows(rows...).
 		StyleFunc(func(row, col int) lipgloss.Style {
 			if row == table.HeaderRow {
 				return headerStyle
 			}
 
-			task := allTasks[row]
-			even := row%2 == 0
-
-			switch col {
-			case 2: // TYPE
-				if color, ok := typeColors[strings.ToLower(task.TypeDescription)]; ok {
-					return baseStyle.Foreground(lipgloss.Color(color))
-				}
-			case 3: // PRIORITY
-				if task.PriorityColor != "" {
-					return baseStyle.Foreground(lipgloss.Color(task.PriorityColor))
-				}
-			case 5: // STATUS (blocked)
-				if task.IsBlocked {
-					return baseStyle.Bold(true).Foreground(lipgloss.Color("#FF5555"))
+			// Priority column (col 2) - use task priority color
+			if col == 2 {
+				priorityColor := taskRowColors[row]
+				if priorityColor != "" {
+					return baseStyle.Foreground(lipgloss.Color(priorityColor))
 				}
 			}
 
-			if even {
-				return baseStyle.Foreground(lipgloss.Color("245"))
+			// Blocked column (col 5)
+			if col == 5 && rows[row][5] != "" {
+				return baseStyle.Bold(true).Foreground(lipgloss.Color("#FF5555"))
 			}
-			return baseStyle.Foreground(lipgloss.Color("252"))
+
+			return baseStyle.Foreground(normalColor)
 		})
 
-	fmt.Println(tbl)
+	fmt.Printf("Found %d tasks:\n", len(allTasks))
+	fmt.Println(t)
+
 	return nil
 }
 

@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 	columnservice "github.com/thenoetrevino/paso/internal/services/column"
 )
-
-// Note: os is still imported for os.Stdout used in JSON output
 
 // CreateCmd returns the column create subcommand
 func CreateCmd() *cobra.Command {
@@ -24,9 +24,27 @@ func CreateCmd() *cobra.Command {
 		Short: "Create a new column",
 		Long: `Create a new column in a project.
 
+Special Column Flags:
+  Columns can be marked with special properties to control task workflow:
+  
+  --ready       Mark this column as holding ready tasks. When tasks are marked
+                as ready, they will automatically move to this column.
+  
+  --completed   Mark this column as holding completed tasks. When tasks are 
+                marked as done, they will automatically move to this column.
+  
+  --in-progress Mark this column as holding in-progress tasks. When tasks are
+                started, they will automatically move to this column.
+  
+  Note: Only one column per project can have each special property. Setting a 
+  special property on a new column will automatically remove it from other columns.
+
 Examples:
   # Create column using shorthand flags
   paso column create -n "Review" -p 1
+
+  # Create column with special property
+  paso column create -n "Done" -p 1 -c
 
   # Create column after specific column
   paso column create -n "Done" -p 1 -a 3
@@ -85,7 +103,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -101,7 +119,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitUsage)
 	}
 
 	// Validate project exists
@@ -110,7 +128,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", columnProject)); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return fmt.Errorf("failed to find project: project %d not found", columnProject)
+		os.Exit(cli.ExitNotFound)
 	}
 
 	// Validate after column if specified
@@ -121,14 +139,14 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			if fmtErr := formatter.Error("COLUMN_NOT_FOUND", fmt.Sprintf("column %d not found", columnAfter)); fmtErr != nil {
 				slog.Error("failed to format error message", "error", fmtErr)
 			}
-			return fmt.Errorf("failed to find column: column %d not found", columnAfter)
+			os.Exit(cli.ExitNotFound)
 		}
 		// Verify column belongs to same project
 		if afterCol.ProjectID != columnProject {
 			if fmtErr := formatter.Error("INVALID_COLUMN", fmt.Sprintf("column %d does not belong to project %d", columnAfter, columnProject)); fmtErr != nil {
 				slog.Error("failed to format error message", "error", fmtErr)
 			}
-			return fmt.Errorf("failed to validate column: column %d does not belong to project %d", columnAfter, columnProject)
+			os.Exit(cli.ExitValidation)
 		}
 		afterID = &columnAfter
 	}
@@ -148,12 +166,12 @@ func runCreate(cmd *cobra.Command, args []string) error {
 				fmt.Sprintf("%s\n\nUse the --force flag to change the done column.\nPaso uses the done column to move tasks with the {complete task command}.\nThis could lead to unexpected behavior, and this is not suggested.", err.Error())); fmtErr != nil {
 				slog.Error("failed to format error message", "error", fmtErr)
 			}
-			return err
+			os.Exit(cli.ExitValidation)
 		}
 		if fmtErr := formatter.Error("COLUMN_CREATE_ERROR", err.Error()); fmtErr != nil {
 			slog.Error("failed to format error message", "error", fmtErr)
 		}
-		return err
+		os.Exit(cli.ExitError)
 	}
 
 	// Output based on mode
@@ -174,7 +192,12 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Human-readable output
-	fmt.Printf("✓ Column '%s' created successfully (ID: %d)\n", columnName, column.ID)
-	fmt.Printf("  Project: %s\n", project.Name)
+	colors := cli.GetColorScheme()
+	details := []styles.Detail{
+		{Key: "ID", Value: strconv.Itoa(column.ID)},
+		{Key: "Name", Value: columnName},
+		{Key: "Project", Value: project.Name},
+	}
+	fmt.Print(styles.RenderSuccessWithDetails("Column created successfully", details, colors))
 	return nil
 }

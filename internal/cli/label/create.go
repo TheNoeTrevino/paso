@@ -6,10 +6,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/handler"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
+	"github.com/thenoetrevino/paso/internal/config/colors"
 	labelservice "github.com/thenoetrevino/paso/internal/services/label"
 )
 
@@ -39,12 +42,12 @@ Examples:
 	// Required flags
 	cmd.Flags().StringP("name", "n", "", "Label name (required)")
 	if err := cmd.MarkFlagRequired("name"); err != nil {
-		slog.Error("failed to marking flag as required", "error", err)
+		slog.Error("failed to mark flag as required", "error", err)
 	}
 
 	cmd.Flags().StringP("color", "c", "", "Label color in hex format #RRGGBB (required)")
 	if err := cmd.MarkFlagRequired("color"); err != nil {
-		slog.Error("failed to marking flag as required", "error", err)
+		slog.Error("failed to mark flag as required", "error", err)
 	}
 
 	cmd.Flags().IntP("project", "p", 0, "Project ID (uses git branch association if not specified)")
@@ -73,7 +76,7 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to closing CLI", "error", err)
+			slog.Error("failed to close CLI", "error", err)
 		}
 	}()
 
@@ -119,6 +122,18 @@ type labelCreateResult struct {
 // GetID implements the GetID interface for quiet mode output
 func (r *labelCreateResult) GetID() int {
 	return r.ID
+}
+
+// PrettyPrint implements the PrettyPrintable interface for styled output
+func (r *labelCreateResult) PrettyPrint(colorScheme colors.ColorScheme) string {
+	details := []styles.Detail{
+		{Key: "ID", Value: strconv.Itoa(r.ID)},
+		{Key: "Name", Value: r.Name},
+		{Key: "Color", Value: r.Color},
+		{Key: "Project", Value: r.Project},
+	}
+
+	return styles.RenderSuccessWithDetails("Label created successfully", details, colorScheme)
 }
 
 func parseCreateFlags(cmd *cobra.Command) error {

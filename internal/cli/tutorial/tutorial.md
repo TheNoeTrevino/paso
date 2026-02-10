@@ -1,6 +1,6 @@
 # Paso Workflow Context
 
-# 🚨 CRITICAL TASK TRACKING RULES 🚨
+# ! CRITICAL TASK TRACKING RULES !
 
 **NEVER use the TodoWrite tool or markdown TODOs in this project!**
 
@@ -125,7 +125,7 @@ paso task create --project=1 --title="Implement feature X" --type=feature
 
 **Creating dependent work:**
 
-⚠️ **CRITICAL: Understanding --parent and --child with --blocker** ⚠️
+! **CRITICAL: Understanding --parent and --child with --blocker** !
 
 When using `--blocker`, the parameter names can be confusing:
 - `--parent` = The task that IS BLOCKED (waits for the other)

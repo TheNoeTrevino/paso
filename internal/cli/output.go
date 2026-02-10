@@ -5,12 +5,21 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+
+	"github.com/thenoetrevino/paso/internal/cli/styles"
+	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/config/colors"
 )
 
 // OutputFormatter handles three output modes: JSON, quiet, and human-readable
 type OutputFormatter struct {
 	JSON  bool
 	Quiet bool
+}
+
+// PrettyPrintable defines an interface for custom human-readable output formatting
+type PrettyPrintable interface {
+	PrettyPrint(colors colors.ColorScheme) string
 }
 
 // Success outputs successful operation result.
@@ -65,20 +74,43 @@ func (f *OutputFormatter) ErrorWithSuggestion(code string, message string, sugge
 		return nil
 	}
 
-	// Human-readable error
-	fmt.Fprintf(os.Stderr, "❌ Error: %s\n", message)
+	// Human-readable error with colored X mark
+	cfg, err := config.Load()
+	if err != nil || cfg == nil {
+		cfg = &config.Config{
+			ColorScheme: config.DefaultColorScheme(),
+		}
+	}
+
+	errorMsg := styles.RenderError(message, cfg.ColorScheme)
+	fmt.Fprintf(os.Stderr, "%s\n", errorMsg)
 	if suggestion != "" {
-		fmt.Fprintf(os.Stderr, "💡 Suggestion: %s\n", suggestion)
+		fmt.Fprintf(os.Stderr, "ⓘ Suggestion: %s\n", suggestion)
 	}
 	return nil
 }
 
 // prettyPrint formats data for human-readable output
 func (f *OutputFormatter) prettyPrint(data any) error {
+	// First check if data implements PrettyPrintable for styled output
+	if pp, ok := data.(PrettyPrintable); ok {
+		cfg, err := config.Load()
+		if err != nil || cfg == nil {
+			cfg = &config.Config{
+				ColorScheme: config.DefaultColorScheme(),
+			}
+		}
+		fmt.Print(pp.PrettyPrint(cfg.ColorScheme))
+		return nil
+	}
+
+	// Fall back to String() method if available
 	if stringer, ok := data.(fmt.Stringer); ok {
 		fmt.Print(stringer.String())
 		return nil
 	}
+
+	// Last resort: raw struct dump
 	fmt.Printf("%+v\n", data)
 	return nil
 }

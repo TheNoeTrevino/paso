@@ -40,7 +40,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--title", "Updated Title",
 			"--quiet",
 		})
@@ -64,7 +64,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--description", "Updated Description",
 			"--quiet",
 		})
@@ -88,7 +88,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--priority", "trivial",
 			"--quiet",
 		})
@@ -113,7 +113,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--priority", "low",
 			"--quiet",
 		})
@@ -138,7 +138,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--priority", "medium",
 			"--quiet",
 		})
@@ -163,7 +163,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--priority", "high",
 			"--quiet",
 		})
@@ -188,7 +188,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--priority", "critical",
 			"--quiet",
 		})
@@ -214,7 +214,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--title", "New Title",
 			"--description", "New Description",
 			"--priority", "high",
@@ -244,7 +244,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--title", "Updated in Quiet Mode",
 			"--quiet",
 		})
@@ -264,7 +264,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--title", "Updated in JSON Mode",
 			"--json",
 		})
@@ -288,15 +288,13 @@ func TestUpdateTask_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--title", "Updated in Normal Mode",
 		})
 
 		assert.NoError(t, err)
-		// Default mode should have success message
-		assert.Contains(t, output, "✓ Task")
-		assert.Contains(t, output, fmt.Sprintf("%d", taskID))
-		assert.Contains(t, output, "updated successfully")
+		// Default mode should have success message (checkmark is ANSI-wrapped)
+		assert.Contains(t, output, fmt.Sprintf("Task %d updated successfully", taskID))
 	})
 
 	t.Run("Verify unchanged fields remain intact", func(t *testing.T) {
@@ -311,7 +309,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		// First, set priority to high
 		cmd1 := UpdateCmd()
 		_, err = cli.ExecuteCLICommand(t, app, cmd1, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--priority", "high",
 			"--quiet",
 		})
@@ -320,7 +318,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		// Now update only title, verify description and priority unchanged
 		cmd2 := UpdateCmd()
 		_, err = cli.ExecuteCLICommand(t, app, cmd2, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--title", "Only Title Changed",
 			"--quiet",
 		})
@@ -351,7 +349,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		cmd := UpdateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--description", "",
 			"--quiet",
 		})
@@ -374,7 +372,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		// Update title first
 		cmd1 := UpdateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd1, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--title", "Updated Title",
 			"--quiet",
 		})
@@ -383,7 +381,7 @@ func TestUpdateTask_Positive(t *testing.T) {
 		// Update description second
 		cmd2 := UpdateCmd()
 		_, err = cli.ExecuteCLICommand(t, app, cmd2, []string{
-			"--id", fmt.Sprintf("%d", taskID),
+			fmt.Sprintf("%d", taskID),
 			"--description", "Updated Description",
 			"--quiet",
 		})
@@ -411,7 +409,7 @@ func TestUpdateTask_Negative(t *testing.T) {
 
 		// Use a task ID that doesn't exist
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", "99999",
+			"99999",
 			"--title", "Updated Title",
 		})
 
@@ -422,12 +420,13 @@ func TestUpdateTask_Negative(t *testing.T) {
 	t.Run("Error with negative task ID", func(t *testing.T) {
 		cmd := UpdateCmd()
 
+		// "-1" is interpreted by cobra as a flag, causing an unknown flag error
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", "-1",
+			"-1",
 			"--title", "Updated Title",
 		})
 
-		// Should fail with negative task ID
+		// Should fail with negative task ID (cobra flag parse error)
 		assert.Error(t, err)
 	})
 
@@ -435,7 +434,7 @@ func TestUpdateTask_Negative(t *testing.T) {
 		cmd := UpdateCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
-			"--id", "0",
+			"0",
 			"--title", "Updated Title",
 		})
 
