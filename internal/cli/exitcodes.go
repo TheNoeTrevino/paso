@@ -45,6 +45,10 @@ func (e *ExitErr) Error() string {
 	return e.Message
 }
 
+func (e *ExitErr) ExitCode() int {
+	return e.Code
+}
+
 func NewExitErr(code int, message string) *ExitErr {
 	return &ExitErr{Code: code, Message: message}
 }
