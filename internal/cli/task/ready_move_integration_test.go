@@ -450,6 +450,10 @@ func TestReadyMoveTask_Negative(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Invalid task ID - non-numeric", func(t *testing.T) {
+		cmd := ReadyMoveCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"not-a-number"})
+		cli.AssertExitError(t, err, 5) // ExitValidation
+		assert.Contains(t, err.Error(), "invalid task ID 'not-a-number': must be a number")
 	})
 
 	t.Run("Missing task ID argument", func(t *testing.T) {
@@ -461,65 +465,55 @@ func TestReadyMoveTask_Negative(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	// Note: We skip tests for "Non-existent task ID" and "No ready column configured"
-	// because they cause the command to call os.Exit(), which terminates the test process.
-	// These error cases are tested in the service layer tests.
-
 	t.Run("Non-existent task ID", func(t *testing.T) {
-		// Use a task ID that doesn't exist
 		nonExistentTaskID := 999999
 
 		cmd := ReadyMoveCmd()
 
-		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			fmt.Sprintf("%d", nonExistentTaskID),
 		})
-
-		// Note: This would call os.Exit(cli.ExitNotFound) which terminates the process
+		cli.AssertExitError(t, err, 3) // ExitNotFound
+		assert.Contains(t, err.Error(), "task 999999 not found")
 	})
 
 	t.Run("Project with no ready column configured", func(t *testing.T) {
-		// Create a new project without a ready column
 		newProjectID := cli.CreateTestProject(t, db, "Project Without Ready Column")
 		newColumnID := cli.CreateTestColumn(t, db, newProjectID, "Regular Column")
 
-		// Ensure no columns are marked as ready
 		_, err := db.ExecContext(ctx,
 			"UPDATE columns SET holds_ready_tasks = false WHERE project_id = ?", newProjectID)
 		require.NoError(t, err)
 
-		// Create task in the regular column
 		taskID := cli.CreateTestTask(t, db, newColumnID, "Task in Project Without Ready")
 
 		cmd := ReadyMoveCmd()
 
-		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err = cli.ExecuteCLICommand(t, app, cmd, []string{
 			fmt.Sprintf("%d", taskID),
 		})
-
-		// Note: This would call os.Exit(cli.ExitValidation) which terminates the process
+		cli.AssertExitError(t, err, 5) // ExitValidation
+		assert.Contains(t, err.Error(), "no ready column configured")
 	})
 
 	t.Run("Invalid task ID - zero", func(t *testing.T) {
 		cmd := ReadyMoveCmd()
 
-		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"0",
 		})
-
-		// Note: The service validates this and returns ErrInvalidTaskID,
-		// but the CLI will call os.Exit() before we can capture the error.
+		cli.AssertExitError(t, err, 3) // ExitNotFound
+		assert.Contains(t, err.Error(), "task 0 not found")
 	})
 
 	t.Run("Invalid task ID - negative", func(t *testing.T) {
 		cmd := ReadyMoveCmd()
 
-		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"-1",
 		})
-
-		// Note: The service validates this and returns ErrInvalidTaskID,
-		// but the CLI will call os.Exit() before we can capture the error.
+		// Cobra may interpret "-1" as a flag, so we just assert error
+		assert.Error(t, err)
 	})
 
 	t.Run("Too many arguments", func(t *testing.T) {

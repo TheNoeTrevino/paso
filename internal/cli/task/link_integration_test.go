@@ -469,33 +469,125 @@ func TestLinkTask_Negative(t *testing.T) {
 	})
 
 	t.Run("Both blocker and related flags (mutually exclusive)", func(t *testing.T) {
-		// Note: This test is skipped because the link command calls os.Exit(cli.ExitUsage)
-		// when both --blocker and --related flags are provided, which terminates the test process.
-		// The validation logic in link.go (lines 76-82) correctly handles this case.
+		parentID := cli.CreateTestTask(t, db, columnID, "Exclusive Parent")
+		childID := cli.CreateTestTask(t, db, columnID, "Exclusive Child")
+
+		cmd := LinkCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--parent", strconv.Itoa(parentID),
+			"--child", strconv.Itoa(childID),
+			"--blocker",
+			"--related",
+		})
+		cli.AssertExitError(t, err, 2) // ExitUsage
+		assert.Contains(t, err.Error(), "cannot specify both")
 	})
 
 	t.Run("Invalid parent ID (non-existent task)", func(t *testing.T) {
+		childID := cli.CreateTestTask(t, db, columnID, "Child for NonExistent Parent")
+
+		cmd := LinkCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--parent", "999999",
+			"--child", strconv.Itoa(childID),
+		})
+		cli.AssertExitError(t, err, 1) // ExitError
+		assert.Contains(t, err.Error(), "failed to add child relation")
 	})
 
 	t.Run("Invalid child ID (non-existent task)", func(t *testing.T) {
+		parentID := cli.CreateTestTask(t, db, columnID, "Parent for NonExistent Child")
+
+		cmd := LinkCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--parent", strconv.Itoa(parentID),
+			"--child", "999999",
+		})
+		cli.AssertExitError(t, err, 1) // ExitError
+		assert.Contains(t, err.Error(), "failed to add child relation")
 	})
 
 	t.Run("Self-reference (parent equals child)", func(t *testing.T) {
+		taskID := cli.CreateTestTask(t, db, columnID, "Self Reference Task")
+
+		cmd := LinkCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--parent", strconv.Itoa(taskID),
+			"--child", strconv.Itoa(taskID),
+		})
+		cli.AssertExitError(t, err, 1) // ExitError
+		assert.Contains(t, err.Error(), "circular dependency")
 	})
 
 	t.Run("Circular dependency prevention", func(t *testing.T) {
+		parentID := cli.CreateTestTask(t, db, columnID, "Circular Parent")
+		childID := cli.CreateTestTask(t, db, columnID, "Circular Child")
+
+		// Create A -> B link
+		cmd1 := LinkCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd1, []string{
+			"--parent", strconv.Itoa(parentID),
+			"--child", strconv.Itoa(childID),
+			"--quiet",
+		})
+		require.NoError(t, err)
+
+		// Try B -> A link (should fail with circular dependency)
+		cmd2 := LinkCmd()
+		_, err = cli.ExecuteCLICommand(t, app, cmd2, []string{
+			"--parent", strconv.Itoa(childID),
+			"--child", strconv.Itoa(parentID),
+		})
+		cli.AssertExitError(t, err, 1) // ExitError
+		assert.Contains(t, err.Error(), "circular dependency")
 	})
 
 	t.Run("Zero parent ID", func(t *testing.T) {
+		childID := cli.CreateTestTask(t, db, columnID, "Child for Zero Parent")
+
+		cmd := LinkCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--parent", "0",
+			"--child", strconv.Itoa(childID),
+		})
+		cli.AssertExitError(t, err, 1) // ExitError
+		assert.Contains(t, err.Error(), "invalid task ID")
 	})
 
 	t.Run("Zero child ID", func(t *testing.T) {
+		parentID := cli.CreateTestTask(t, db, columnID, "Parent for Zero Child")
+
+		cmd := LinkCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--parent", strconv.Itoa(parentID),
+			"--child", "0",
+		})
+		cli.AssertExitError(t, err, 1) // ExitError
+		assert.Contains(t, err.Error(), "invalid task ID")
 	})
 
 	t.Run("Negative parent ID", func(t *testing.T) {
+		childID := cli.CreateTestTask(t, db, columnID, "Child for Negative Parent")
+
+		cmd := LinkCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--parent", "-1",
+			"--child", strconv.Itoa(childID),
+		})
+		// Cobra may interpret "-1" as a flag
+		assert.Error(t, err)
 	})
 
 	t.Run("Negative child ID", func(t *testing.T) {
+		parentID := cli.CreateTestTask(t, db, columnID, "Parent for Negative Child")
+
+		cmd := LinkCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--parent", strconv.Itoa(parentID),
+			"--child", "-1",
+		})
+		// Cobra may interpret "-1" as a flag
+		assert.Error(t, err)
 	})
 
 	t.Run("Duplicate link (same parent-child pair) - idempotent", func(t *testing.T) {

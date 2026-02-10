@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/testutil/cli"
 )
@@ -150,7 +151,7 @@ func TestListTask_PositionalArgVsFlag(t *testing.T) {
 		var result struct {
 			Tasks []*models.TaskSummary `json:"tasks"`
 		}
-		json.Unmarshal([]byte(output), &result)
+		require.NoError(t, json.Unmarshal([]byte(output), &result))
 
 		// Should contain task from project 2
 		assert.Equal(t, 1, len(result.Tasks))
@@ -158,6 +159,15 @@ func TestListTask_PositionalArgVsFlag(t *testing.T) {
 	})
 
 	t.Run("Invalid positional arg shows clear error", func(t *testing.T) {
+		db, app := cli.SetupCLITest(t)
+		defer func() {
+			_ = db.Close()
+		}()
+
+		cmd := ListCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"not-a-number"})
+		cli.AssertExitError(t, err, 2) // ExitUsage
+		assert.Contains(t, err.Error(), "Invalid project ID: not-a-number")
 	})
 
 	t.Run("Positional arg works for valid project", func(t *testing.T) {
@@ -196,9 +206,6 @@ func TestListTask_PositionalArgVsFlag(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contains(t, output, "Found 1 tasks")
 		assert.Contains(t, output, "Task 1")
-
-		// Note: "no positional arg, no flag" case is skipped because
-		// the command calls os.Exit() when no project can be determined
 	})
 }
 
@@ -226,12 +233,9 @@ func TestListTask_PositionalArgEdgeCases(t *testing.T) {
 		cmd := ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"0"})
 
-		// Project 0 might not exist, but the command should handle it gracefully
-		// Either returns empty result or error
-		_ = err
-		_ = output
-		// The behavior depends on whether project 0 exists in DB
-		// This test just ensures no panic occurs
+		// Project 0 doesn't exist but the query returns empty results gracefully
+		assert.NoError(t, err)
+		assert.Contains(t, output, "No tasks found")
 	})
 
 	t.Run("Positional arg with negative value", func(t *testing.T) {
@@ -241,11 +245,9 @@ func TestListTask_PositionalArgEdgeCases(t *testing.T) {
 		}()
 
 		cmd := ListCmd()
-		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"-1"})
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"-1"})
 
-		// Negative project ID might fail or return empty result
-		// The important part is no panic occurs
-		_ = err
-		_ = output
+		// Cobra interprets "-1" as an unknown flag, not a positional arg
+		assert.Error(t, err)
 	})
 }

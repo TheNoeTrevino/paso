@@ -506,23 +506,17 @@ func TestBlockedTask_Negative(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("Missing project ID - no flag and no env var", func(t *testing.T) {
-		// Note: This test will trigger os.Exit() call in the command
-		// Since os.Exit() terminates the process, we skip this test
-		// and document the expected behavior
-
-		// Expected behavior:
-		// - Error code: cli.ExitUsage
-		// - Error message: "NO_PROJECT" with suggestion to use "paso use project"
+		cmd := BlockedCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
+		cli.AssertExitError(t, err, 2) // ExitUsage
+		assert.Contains(t, err.Error(), "no project specified")
 	})
 
 	t.Run("Invalid project ID - non-existent", func(t *testing.T) {
-		// Note: This test will trigger os.Exit() call in the command
-		// Since os.Exit() terminates the process, we skip this test
-		// and document the expected behavior
-
-		// Expected behavior:
-		// - Error code: cli.ExitNotFound
-		// - Error message: "PROJECT_NOT_FOUND" with suggestion to use "paso project list"
+		cmd := BlockedCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--project", "999999"})
+		cli.AssertExitError(t, err, 3) // ExitNotFound
+		assert.Contains(t, err.Error(), "project 999999 not found")
 	})
 
 	t.Run("Project ID as string instead of int", func(t *testing.T) {
@@ -536,18 +530,16 @@ func TestBlockedTask_Negative(t *testing.T) {
 	})
 
 	t.Run("Negative project ID", func(t *testing.T) {
-		// Note: This will likely trigger os.Exit() for non-existent project
-
-		// Expected behavior:
-		// - Error code: cli.ExitNotFound
-		// - Project -1 does not exist
+		cmd := BlockedCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--project", "-1"})
+		// Cobra may interpret -1 as a flag; just assert error
+		assert.Error(t, err)
 	})
 
 	t.Run("Zero project ID", func(t *testing.T) {
-		// Note: This will likely trigger os.Exit() for non-existent project
-
-		// Expected behavior:
-		// - Error code: cli.ExitNotFound
-		// - Project 0 does not exist
+		cmd := BlockedCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--project", "0"})
+		cli.AssertExitError(t, err, 3) // ExitNotFound
+		assert.Contains(t, err.Error(), "project 0 not found")
 	})
 }

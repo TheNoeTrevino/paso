@@ -215,6 +215,15 @@ func TestCommentTask_Positive(t *testing.T) {
 	// Edge cases (Task 61 requirements)
 
 	t.Run("Empty comment message - rejected by service", func(t *testing.T) {
+		taskID := cli.CreateTestTask(t, db, columnID, "Empty Comment Task")
+
+		cmd := CommentCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--id", strconv.Itoa(taskID),
+			"--message", "",
+		})
+		// Cobra may reject empty required flag or service rejects empty message
+		assert.Error(t, err)
 	})
 
 	t.Run("Very long comment - 999 characters", func(t *testing.T) {
@@ -566,29 +575,57 @@ func TestCommentTask_Negative(t *testing.T) {
 	})
 
 	t.Run("Invalid task ID - non-existent", func(t *testing.T) {
+		cmd := CommentCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--id", "999999",
+			"--message", "test comment on non-existent task",
+		})
+		cli.AssertExitError(t, err, 1) // ExitError
+		assert.Contains(t, err.Error(), "failed to get task detail")
 	})
 
 	t.Run("Zero task ID", func(t *testing.T) {
+		cmd := CommentCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--id", "0",
+			"--message", "test comment on zero task",
+		})
+		cli.AssertExitError(t, err, 1) // ExitError
+		assert.Contains(t, err.Error(), "invalid task ID")
 	})
 
 	t.Run("Negative task ID", func(t *testing.T) {
+		cmd := CommentCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--id", "-1",
+			"--message", "test comment on negative task",
+		})
+		// Cobra may interpret "-1" as a flag
+		assert.Error(t, err)
 	})
 
 	t.Run("Message exceeds 1000 characters - 1001 chars", func(t *testing.T) {
-		// Note: This test is skipped because the comment command calls os.Exit() at line 82
-		// when the message length exceeds 1000 characters, which would terminate the test process.
-		// The validation logic in comment.go (lines 77-83) correctly handles this case before
-		// initializing the CLI, ensuring the error is caught early.
-		//
-		// To test this manually, run:
-		// paso task comment --id=1 --message="$(printf 'a%.0s' {1..1001})"
-		// Expected: exits with code 2 (cli.ExitValidation) and error message
+		taskID := cli.CreateTestTask(t, db, columnID, "Long Comment 1001 Task")
+
+		cmd := CommentCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--id", strconv.Itoa(taskID),
+			"--message", strings.Repeat("x", 1001),
+		})
+		cli.AssertExitError(t, err, 5) // ExitValidation
+		assert.Contains(t, err.Error(), "message exceeds 1000 character limit")
 	})
 
 	t.Run("Message exceeds 1000 characters - 1500 chars", func(t *testing.T) {
-		// Note: This test is skipped because the comment command calls os.Exit() at line 82
-		// when the message length exceeds 1000 characters, which would terminate the test process.
-		// See comment.go lines 77-83 for validation implementation.
+		taskID := cli.CreateTestTask(t, db, columnID, "Long Comment 1500 Task")
+
+		cmd := CommentCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"--id", strconv.Itoa(taskID),
+			"--message", strings.Repeat("y", 1500),
+		})
+		cli.AssertExitError(t, err, 5) // ExitValidation
+		assert.Contains(t, err.Error(), "message exceeds 1000 character limit")
 	})
 
 	t.Run("Empty author string is valid", func(t *testing.T) {

@@ -181,6 +181,12 @@ func TestDoneTask_Positive(t *testing.T) {
 }
 
 func TestDoneTask_Negative(t *testing.T) {
+	_, app := cli.SetupCLITest(t)
+
 	t.Run("Invalid task ID - non-numeric", func(t *testing.T) {
+		cmd := DoneCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"not-a-number"})
+		cli.AssertExitError(t, err, 5) // ExitValidation
+		assert.Contains(t, err.Error(), "invalid task ID 'not-a-number': must be a number")
 	})
 }
