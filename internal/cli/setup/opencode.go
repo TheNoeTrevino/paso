@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/cli"
 )
 
 // OpenCodeCmd returns the setup opencode subcommand
@@ -35,18 +36,16 @@ Examples:
   # Remove plugin
   paso setup opencode --remove
 `,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if checkFlag {
-				CheckOpenCode()
-				return
+				return CheckOpenCode()
 			}
 
 			if removeFlag {
-				RemoveOpenCode(projectFlag)
-				return
+				return RemoveOpenCode(projectFlag)
 			}
 
-			InstallOpenCode(projectFlag)
+			return InstallOpenCode(projectFlag)
 		},
 	}
 
@@ -58,7 +57,7 @@ Examples:
 }
 
 // InstallOpenCode installs the OpenCode plugin
-func InstallOpenCode(project bool) {
+func InstallOpenCode(project bool) error {
 	var configPath string
 
 	if project {
@@ -67,8 +66,7 @@ func InstallOpenCode(project bool) {
 	} else {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: failed to get home directory: %v\n", err)
-			os.Exit(1)
+			return cli.NewExitErr(cli.ExitError, fmt.Sprintf("failed to get home directory: %v", err))
 		}
 		configPath = filepath.Join(home, ".config/opencode/opencode.json")
 		fmt.Println("Installing OpenCode plugin globally...")
@@ -76,8 +74,7 @@ func InstallOpenCode(project bool) {
 
 	// Ensure parent directory exists
 	if err := EnsureDir(filepath.Dir(configPath), 0o755); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("%v", err))
 	}
 
 	// Load or create config
@@ -87,8 +84,7 @@ func InstallOpenCode(project bool) {
 		config = make(map[string]any)
 	} else {
 		if err := json.Unmarshal(data, &config); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: failed to parse opencode.json: %v\n", err)
-			os.Exit(1)
+			return cli.NewExitErr(cli.ExitError, fmt.Sprintf("failed to parse opencode.json: %v", err))
 		}
 	}
 
@@ -103,7 +99,7 @@ func InstallOpenCode(project bool) {
 	for _, p := range plugins {
 		if p == pluginName {
 			fmt.Println("✓ Plugin already installed")
-			return
+			return nil
 		}
 	}
 
@@ -114,27 +110,25 @@ func InstallOpenCode(project bool) {
 	// Write back
 	data, err = json.MarshalIndent(config, "", "  ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: marshal config: %v\n", err)
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("marshal config: %v", err))
 	}
 
 	if err := atomicWriteFile(configPath, data); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: write config: %v\n", err)
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("write config: %v", err))
 	}
 
 	fmt.Printf("\n✓ OpenCode plugin installed\n")
 	fmt.Printf("  Config: %s\n", configPath)
 	fmt.Println("\nNote: You may need to install the plugin package:")
 	fmt.Println("  bun add opencode-paso")
+	return nil
 }
 
 // CheckOpenCode checks if OpenCode plugin is installed
-func CheckOpenCode() {
+func CheckOpenCode() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: failed to get home directory: %v\n", err)
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("failed to get home directory: %v", err))
 	}
 
 	globalConfig := filepath.Join(home, ".config/opencode/opencode.json")
@@ -150,12 +144,13 @@ func CheckOpenCode() {
 	} else {
 		fmt.Println("✗ Plugin not installed")
 		fmt.Println("  Run: paso setup opencode")
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, "plugin not installed")
 	}
+	return nil
 }
 
 // RemoveOpenCode removes the OpenCode plugin
-func RemoveOpenCode(project bool) {
+func RemoveOpenCode(project bool) error {
 	var configPath string
 
 	if project {
@@ -164,8 +159,7 @@ func RemoveOpenCode(project bool) {
 	} else {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: failed to get home directory: %v\n", err)
-			os.Exit(1)
+			return cli.NewExitErr(cli.ExitError, fmt.Sprintf("failed to get home directory: %v", err))
 		}
 		configPath = filepath.Join(home, ".config/opencode/opencode.json")
 		fmt.Println("Removing OpenCode plugin globally...")
@@ -174,19 +168,18 @@ func RemoveOpenCode(project bool) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		fmt.Println("No config file found")
-		return
+		return nil
 	}
 
 	var config map[string]any
 	if err := json.Unmarshal(data, &config); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: failed to parse opencode.json: %v\n", err)
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("failed to parse opencode.json: %v", err))
 	}
 
 	plugins, ok := config["plugin"].([]any)
 	if !ok {
 		fmt.Println("No plugins configured")
-		return
+		return nil
 	}
 
 	// Filter out paso plugin
@@ -202,23 +195,22 @@ func RemoveOpenCode(project bool) {
 
 	if !removed {
 		fmt.Println("Plugin not found in config")
-		return
+		return nil
 	}
 
 	config["plugin"] = filtered
 
 	data, err = json.MarshalIndent(config, "", "  ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: marshal config: %v\n", err)
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("marshal config: %v", err))
 	}
 
 	if err := atomicWriteFile(configPath, data); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: write config: %v\n", err)
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("write config: %v", err))
 	}
 
 	fmt.Println("✓ OpenCode plugin removed")
+	return nil
 }
 
 // hasPasoPlugin checks if opencode.json has the paso plugin

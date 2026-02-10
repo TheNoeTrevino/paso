@@ -58,19 +58,13 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	// Parse ID from positional argument
 	projectID, err := strconv.Atoi(args[0])
 	if err != nil {
-		if fmtErr := formatter.Error("INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0])); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitValidation)
+		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0]))
 	}
 
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -81,10 +75,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	// Get project details for confirmation
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, projectID)
 	if err != nil {
-		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", projectID)); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+		return formatter.Error(cli.ExitNotFound, "PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", projectID))
 	}
 
 	// Fetch project statistics (columns and tasks)
@@ -145,10 +136,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 
 	// Delete the project
 	if err := cliInstance.App.ProjectService.DeleteProject(ctx, projectID, force); err != nil {
-		if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "DELETE_ERROR", err.Error())
 	}
 
 	// Output success

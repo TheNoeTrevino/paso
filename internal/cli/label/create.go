@@ -64,8 +64,14 @@ type createHandler struct{}
 
 // Execute implements the Handler interface
 func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (any, error) {
-	labelName := args.MustGetString("name")
-	labelColor := args.MustGetString("color")
+	labelName, err := args.MustGetString("name")
+	if err != nil {
+		return nil, err
+	}
+	labelColor, err := args.MustGetString("color")
+	if err != nil {
+		return nil, err
+	}
 	if err := cli.ValidateColorHex(labelColor); err != nil {
 		return nil, fmt.Errorf("invalid color: %w", err)
 	}

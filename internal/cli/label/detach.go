@@ -65,10 +65,7 @@ func runDetach(cmd *cobra.Command, args []string) error {
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -78,10 +75,7 @@ func runDetach(cmd *cobra.Command, args []string) error {
 
 	// Detach label from task (no validation needed - removing non-existent association is not an error)
 	if err := cliInstance.App.TaskService.DetachLabel(ctx, taskID, labelID); err != nil {
-		if fmtErr := formatter.Error("DETACH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "DETACH_ERROR", err.Error())
 	}
 
 	// Output success

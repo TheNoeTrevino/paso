@@ -58,10 +58,7 @@ func runReady(cmd *cobra.Command, args []string) error {
 	// Initialize CLI first
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -72,33 +69,24 @@ func runReady(cmd *cobra.Command, args []string) error {
 	// Get project ID from flag or git branch
 	taskProject, err := cli.GetProjectIDWithCLI(cmd, cliInstance)
 	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
+		return formatter.ErrorWithSuggestion(cli.ExitUsage, "NO_PROJECT",
 			err.Error(),
-			"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
+			"Use --project flag or create a project associated with this git branch")
 	}
 
 	// Validate project exists
 	_, err = cliInstance.App.ProjectService.GetProjectByID(ctx, taskProject)
 	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("PROJECT_NOT_FOUND",
+		return formatter.ErrorWithSuggestion(cli.ExitNotFound, "PROJECT_NOT_FOUND",
 			fmt.Sprintf("project %d not found", taskProject),
-			"Use 'paso project list' to see available projects"); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+			"Use 'paso project list' to see available projects")
 	}
 
 	// Get ready tasks (tasks in ready columns and not blocked)
 	var readyTasks []*models.TaskSummary
 	readyTasks, err = cliInstance.App.TaskService.GetReadyTaskSummariesByProject(ctx, taskProject)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "TASK_FETCH_ERROR", err.Error())
 	}
 
 	// Output in appropriate format

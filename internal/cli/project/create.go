@@ -68,7 +68,10 @@ type createHandler struct{}
 // Execute implements the Handler interface
 func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (any, error) {
 	// Get flag values from arguments
-	projectTitle := args.MustGetString("title")
+	projectTitle, err := args.MustGetString("title")
+	if err != nil {
+		return nil, err
+	}
 	projectDescription := args.GetString("description", "")
 
 	// Check if quiet mode is enabled

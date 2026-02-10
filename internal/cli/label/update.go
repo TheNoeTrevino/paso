@@ -62,19 +62,13 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	// Parse ID from positional argument
 	labelID, err := strconv.Atoi(args[0])
 	if err != nil {
-		if fmtErr := formatter.Error("INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0])); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitValidation)
+		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0]))
 	}
 
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -87,19 +81,13 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	colorProvided := cmd.Flags().Changed("color")
 
 	if !nameProvided && !colorProvided {
-		if fmtErr := formatter.Error("MISSING_FLAGS", "at least one of --name or --color must be provided"); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
+		return formatter.Error(cli.ExitUsage, "MISSING_FLAGS", "at least one of --name or --color must be provided")
 	}
 
 	// Get existing label to fetch current values
 	currentLabel, err := cli.GetLabelByID(ctx, cliInstance, labelID)
 	if err != nil {
-		if fmtErr := formatter.Error("LABEL_NOT_FOUND", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+		return formatter.Error(cli.ExitNotFound, "LABEL_NOT_FOUND", err.Error())
 	}
 
 	// Use existing values if not provided
@@ -112,10 +100,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if colorProvided {
 		// Validate color format
 		if err := cli.ValidateColorHex(labelColor); err != nil {
-			if fmtErr := formatter.Error("INVALID_COLOR", err.Error()); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitValidation)
+			return formatter.Error(cli.ExitValidation, "INVALID_COLOR", err.Error())
 		}
 		newColor = labelColor
 	}
@@ -132,10 +117,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := cliInstance.App.LabelService.UpdateLabel(ctx, req); err != nil {
-		if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "UPDATE_ERROR", err.Error())
 	}
 
 	// Output based on mode

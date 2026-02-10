@@ -50,10 +50,7 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -63,10 +60,7 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	assignees, err := cliInstance.App.AssigneeService.List(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("ASSIGNEE_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "ASSIGNEE_FETCH_ERROR", err.Error())
 	}
 
 	if quietMode {

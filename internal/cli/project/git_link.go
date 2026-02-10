@@ -82,10 +82,7 @@ func runGitLink(cmd *cobra.Command, args []string) error {
 	// Initialize CLI first so we can use the injectable git detector
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -119,10 +116,7 @@ func runGitLink(cmd *cobra.Command, args []string) error {
 
 		currentProject, err := cliInstance.App.ProjectService.GetProjectByGitBranch(ctx, gitInfo.CurrentBranch)
 		if err != nil {
-			if fmtErr := formatter.Error("PROJECT_FETCH_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitError)
+			return formatter.Error(cli.ExitError, "PROJECT_FETCH_ERROR", err.Error())
 		}
 		if currentProject == nil {
 			return outputError(formatter, jsonOutput, "NO_CURRENT_PROJECT",
@@ -134,19 +128,13 @@ func runGitLink(cmd *cobra.Command, args []string) error {
 	// Get the project to display its name
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, projectID)
 	if err != nil {
-		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project with ID %d not found", projectID)); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+		return formatter.Error(cli.ExitNotFound, "PROJECT_NOT_FOUND", fmt.Sprintf("project with ID %d not found", projectID))
 	}
 
 	// Check if branch is already linked to another project
 	existingProject, err := cliInstance.App.ProjectService.GetProjectByGitBranch(ctx, branchName)
 	if err != nil {
-		if fmtErr := formatter.Error("PROJECT_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "PROJECT_FETCH_ERROR", err.Error())
 	}
 
 	if existingProject != nil && existingProject.ID != projectID {
@@ -177,10 +165,7 @@ func runGitLink(cmd *cobra.Command, args []string) error {
 			ID:        existingProject.ID,
 			GitBranch: &emptyBranch,
 		}); err != nil {
-			if fmtErr := formatter.Error("UNLINK_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitError)
+			return formatter.Error(cli.ExitError, "UNLINK_ERROR", err.Error())
 		}
 
 		if !quietMode && !jsonOutput {
@@ -194,10 +179,7 @@ func runGitLink(cmd *cobra.Command, args []string) error {
 		ID:        projectID,
 		GitBranch: &branchName,
 	}); err != nil {
-		if fmtErr := formatter.Error("LINK_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "LINK_ERROR", err.Error())
 	}
 
 	// Output success

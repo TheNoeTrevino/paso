@@ -65,10 +65,7 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -79,45 +76,30 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	// Validate task exists
 	task, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID))
 	}
 
 	// Get task's project ID via column
 	column, err := cliInstance.App.ColumnService.GetColumnByID(ctx, task.ColumnID)
 	if err != nil {
-		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "COLUMN_FETCH_ERROR", err.Error())
 	}
 	taskProjectID := column.ProjectID
 
 	// Validate label exists
 	label, err := cli.GetLabelByID(ctx, cliInstance, labelID)
 	if err != nil {
-		if fmtErr := formatter.Error("LABEL_NOT_FOUND", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+		return formatter.Error(cli.ExitNotFound, "LABEL_NOT_FOUND", err.Error())
 	}
 
 	// Verify task and label belong to same project
 	if taskProjectID != label.ProjectID {
-		if fmtErr := formatter.Error("PROJECT_MISMATCH", fmt.Sprintf("task %d and label %d do not belong to the same project", taskID, labelID)); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitValidation)
+		return formatter.Error(cli.ExitValidation, "PROJECT_MISMATCH", fmt.Sprintf("task %d and label %d do not belong to the same project", taskID, labelID))
 	}
 
 	// Attach label to task
 	if err := cliInstance.App.TaskService.AttachLabel(ctx, taskID, labelID); err != nil {
-		if fmtErr := formatter.Error("ATTACH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "ATTACH_ERROR", err.Error())
 	}
 
 	// Output success

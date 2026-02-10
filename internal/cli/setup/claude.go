@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/cli"
 )
 
 // ClaudeCmd returns the setup claude subcommand
@@ -39,18 +40,16 @@ Examples:
   # Remove hooks
   paso setup claude --remove
 `,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if checkFlag {
-				CheckClaude()
-				return
+				return CheckClaude()
 			}
 
 			if removeFlag {
-				RemoveClaude(projectFlag)
-				return
+				return RemoveClaude(projectFlag)
 			}
 
-			InstallClaude(projectFlag)
+			return InstallClaude(projectFlag)
 		},
 	}
 
@@ -62,7 +61,7 @@ Examples:
 }
 
 // InstallClaude installs Claude Code hooks
-func InstallClaude(project bool) {
+func InstallClaude(project bool) error {
 	var settingsPath string
 
 	if project {
@@ -71,8 +70,7 @@ func InstallClaude(project bool) {
 	} else {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: failed to get home directory: %v\n", err)
-			os.Exit(1)
+			return cli.NewExitErr(cli.ExitError, fmt.Sprintf("failed to get home directory: %v", err))
 		}
 		settingsPath = filepath.Join(home, ".claude/settings.json")
 		fmt.Println("Installing Claude hooks globally...")
@@ -80,8 +78,7 @@ func InstallClaude(project bool) {
 
 	// Ensure parent directory exists
 	if err := EnsureDir(filepath.Dir(settingsPath), 0o755); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("%v", err))
 	}
 
 	// Load or create settings
@@ -91,8 +88,7 @@ func InstallClaude(project bool) {
 		settings = make(map[string]any)
 	} else {
 		if err := json.Unmarshal(data, &settings); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: failed to parse settings.json: %v\n", err)
-			os.Exit(1)
+			return cli.NewExitErr(cli.ExitError, fmt.Sprintf("failed to parse settings.json: %v", err))
 		}
 	}
 
@@ -116,26 +112,24 @@ func InstallClaude(project bool) {
 	// Write back to file
 	data, err = json.MarshalIndent(settings, "", "  ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: marshal settings: %v\n", err)
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("marshal settings: %v", err))
 	}
 
 	if err := atomicWriteFile(settingsPath, data); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: write settings: %v\n", err)
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("write settings: %v", err))
 	}
 
 	fmt.Printf("\n✓ Claude Code integration installed\n")
 	fmt.Printf("  Settings: %s\n", settingsPath)
 	fmt.Println("\nRestart Claude Code for changes to take effect.")
+	return nil
 }
 
 // CheckClaude checks if Claude integration is installed
-func CheckClaude() {
+func CheckClaude() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: failed to get home directory: %v\n", err)
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("failed to get home directory: %v", err))
 	}
 
 	globalSettings := filepath.Join(home, ".claude/settings.json")
@@ -151,12 +145,13 @@ func CheckClaude() {
 	} else {
 		fmt.Println("✗ No hooks installed")
 		fmt.Println("  Run: paso setup claude")
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, "no hooks installed")
 	}
+	return nil
 }
 
 // RemoveClaude removes Claude Code hooks
-func RemoveClaude(project bool) {
+func RemoveClaude(project bool) error {
 	var settingsPath string
 
 	if project {
@@ -165,8 +160,7 @@ func RemoveClaude(project bool) {
 	} else {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: failed to get home directory: %v\n", err)
-			os.Exit(1)
+			return cli.NewExitErr(cli.ExitError, fmt.Sprintf("failed to get home directory: %v", err))
 		}
 		settingsPath = filepath.Join(home, ".claude/settings.json")
 		fmt.Println("Removing Claude hooks globally...")
@@ -176,19 +170,18 @@ func RemoveClaude(project bool) {
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
 		fmt.Println("No settings file found")
-		return
+		return nil
 	}
 
 	var settings map[string]any
 	if err := json.Unmarshal(data, &settings); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: failed to parse settings.json: %v\n", err)
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("failed to parse settings.json: %v", err))
 	}
 
 	hooks, ok := settings["hooks"].(map[string]any)
 	if !ok {
 		fmt.Println("No hooks found")
-		return
+		return nil
 	}
 
 	// Remove paso tutorial hooks
@@ -198,16 +191,15 @@ func RemoveClaude(project bool) {
 	// Write back
 	data, err = json.MarshalIndent(settings, "", "  ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: marshal settings: %v\n", err)
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("marshal settings: %v", err))
 	}
 
 	if err := atomicWriteFile(settingsPath, data); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: write settings: %v\n", err)
-		os.Exit(1)
+		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("write settings: %v", err))
 	}
 
 	fmt.Println("✓ Claude hooks removed")
+	return nil
 }
 
 // addHookCommand adds a hook command to an event if not already present

@@ -70,10 +70,7 @@ func runMove(cmd *cobra.Command, args []string) error {
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -84,28 +81,19 @@ func runMove(cmd *cobra.Command, args []string) error {
 	// Get task detail to find current column and project
 	taskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID))
 	}
 
 	// Get column to find project ID
 	currentColumn, err := cliInstance.App.ColumnService.GetColumnByID(ctx, taskDetail.ColumnID)
 	if err != nil {
-		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "COLUMN_FETCH_ERROR", err.Error())
 	}
 
 	// Get all columns for the project
 	columns, err := cliInstance.App.ColumnService.GetColumnsByProject(ctx, currentColumn.ProjectID)
 	if err != nil {
-		if fmtErr := formatter.Error("COLUMN_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "COLUMN_FETCH_ERROR", err.Error())
 	}
 
 	currentColumnName := cli.GetCurrentColumnName(columns, taskDetail.ColumnID)
@@ -117,27 +105,18 @@ func runMove(cmd *cobra.Command, args []string) error {
 		// Find next column name for output
 		toColumnName = findNextColumnName(columns, taskDetail.ColumnID)
 		if toColumnName == "Unknown" {
-			if fmtErr := formatter.Error("NO_NEXT_COLUMN",
-				fmt.Sprintf("task is already in the last column (%s)", currentColumnName)); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitValidation)
+			return formatter.Error(cli.ExitValidation, "NO_NEXT_COLUMN",
+				fmt.Sprintf("task is already in the last column (%s)", currentColumnName))
 		}
 
 		if !dryRun {
 			err = cliInstance.App.TaskService.MoveTaskToNextColumn(ctx, taskID)
 			if err != nil {
 				if strings.Contains(err.Error(), "no next column") {
-					if fmtErr := formatter.Error("NO_NEXT_COLUMN",
-						fmt.Sprintf("task is already in the last column (%s)", currentColumnName)); fmtErr != nil {
-						slog.Error("failed to format error message", "error", fmtErr)
-					}
-					os.Exit(cli.ExitValidation)
+					return formatter.Error(cli.ExitValidation, "NO_NEXT_COLUMN",
+						fmt.Sprintf("task is already in the last column (%s)", currentColumnName))
 				}
-				if fmtErr := formatter.Error("MOVE_ERROR", err.Error()); fmtErr != nil {
-					slog.Error("failed to format error message", "error", fmtErr)
-				}
-				os.Exit(cli.ExitError)
+				return formatter.Error(cli.ExitError, "MOVE_ERROR", err.Error())
 			}
 		}
 
@@ -145,27 +124,18 @@ func runMove(cmd *cobra.Command, args []string) error {
 		// Find prev column name for output
 		toColumnName = findPrevColumnName(columns, taskDetail.ColumnID)
 		if toColumnName == "Unknown" {
-			if fmtErr := formatter.Error("NO_PREV_COLUMN",
-				fmt.Sprintf("task is already in the first column (%s)", currentColumnName)); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitValidation)
+			return formatter.Error(cli.ExitValidation, "NO_PREV_COLUMN",
+				fmt.Sprintf("task is already in the first column (%s)", currentColumnName))
 		}
 
 		if !dryRun {
 			err = cliInstance.App.TaskService.MoveTaskToPrevColumn(ctx, taskID)
 			if err != nil {
 				if strings.Contains(err.Error(), "no previous column") {
-					if fmtErr := formatter.Error("NO_PREV_COLUMN",
-						fmt.Sprintf("task is already in the first column (%s)", currentColumnName)); fmtErr != nil {
-						slog.Error("failed to format error message", "error", fmtErr)
-					}
-					os.Exit(cli.ExitValidation)
+					return formatter.Error(cli.ExitValidation, "NO_PREV_COLUMN",
+						fmt.Sprintf("task is already in the first column (%s)", currentColumnName))
 				}
-				if fmtErr := formatter.Error("MOVE_ERROR", err.Error()); fmtErr != nil {
-					slog.Error("failed to format error message", "error", fmtErr)
-				}
-				os.Exit(cli.ExitError)
+				return formatter.Error(cli.ExitError, "MOVE_ERROR", err.Error())
 			}
 		}
 
@@ -173,13 +143,10 @@ func runMove(cmd *cobra.Command, args []string) error {
 		// Try to find column by name
 		targetColumn, err := cli.FindColumnByName(columns, target)
 		if err != nil {
-			if fmtErr := formatter.ErrorWithSuggestion("COLUMN_NOT_FOUND",
+			return formatter.ErrorWithSuggestion(cli.ExitNotFound, "COLUMN_NOT_FOUND",
 				fmt.Sprintf("column '%s' not found", target),
 				fmt.Sprintf("Task is currently in: %s\nAvailable columns: %s",
-					currentColumnName, cli.FormatAvailableColumns(columns))); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitNotFound)
+					currentColumnName, cli.FormatAvailableColumns(columns)))
 		}
 
 		toColumnName = targetColumn.Name
@@ -188,10 +155,7 @@ func runMove(cmd *cobra.Command, args []string) error {
 		if targetColumn.ID != taskDetail.ColumnID && !dryRun {
 			err = cliInstance.App.TaskService.MoveTaskToColumn(ctx, taskID, targetColumn.ID)
 			if err != nil {
-				if fmtErr := formatter.Error("MOVE_ERROR", err.Error()); fmtErr != nil {
-					slog.Error("failed to format error message", "error", fmtErr)
-				}
-				os.Exit(cli.ExitError)
+				return formatter.Error(cli.ExitError, "MOVE_ERROR", err.Error())
 			}
 		}
 	}

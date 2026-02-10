@@ -60,19 +60,13 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	// Parse ID from positional argument
 	taskID, err := strconv.Atoi(args[0])
 	if err != nil {
-		if fmtErr := formatter.Error("INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0])); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitValidation)
+		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0]))
 	}
 
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -86,10 +80,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	priorityFlag := cmd.Flags().Lookup("priority")
 
 	if !titleFlag.Changed && !descFlag.Changed && !priorityFlag.Changed {
-		if fmtErr := formatter.Error("NO_UPDATES", "at least one of --title, --description, or --priority must be specified"); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
+		return formatter.Error(cli.ExitUsage, "NO_UPDATES", "at least one of --title, --description, or --priority must be specified")
 	}
 
 	// Update title/description if provided
@@ -104,10 +95,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 			req.Description = &taskDescription
 		}
 		if err := cliInstance.App.TaskService.UpdateTask(ctx, req); err != nil {
-			if fmtErr := formatter.Error("UPDATE_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			return err
+			return formatter.Error(cli.ExitError, "UPDATE_ERROR", err.Error())
 		}
 	}
 
@@ -115,20 +103,14 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if priorityFlag.Changed {
 		priorityID, err := cli.ParsePriority(taskPriority)
 		if err != nil {
-			if fmtErr := formatter.Error("INVALID_PRIORITY", err.Error()); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitValidation)
+			return formatter.Error(cli.ExitValidation, "INVALID_PRIORITY", err.Error())
 		}
 		req := taskservice.UpdateTaskRequest{
 			TaskID:     taskID,
 			PriorityID: &priorityID,
 		}
 		if err := cliInstance.App.TaskService.UpdateTask(ctx, req); err != nil {
-			if fmtErr := formatter.Error("PRIORITY_UPDATE_ERROR", err.Error()); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			return err
+			return formatter.Error(cli.ExitError, "PRIORITY_UPDATE_ERROR", err.Error())
 		}
 	}
 

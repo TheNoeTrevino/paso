@@ -60,22 +60,15 @@ func runShow(cmd *cobra.Command, args []string) error {
 
 	// Validate task ID
 	if taskID <= 0 {
-		if fmtErr := formatter.ErrorWithSuggestion("INVALID_TASK_ID",
+		return formatter.ErrorWithSuggestion(cli.ExitUsage, "INVALID_TASK_ID",
 			"task ID must be a positive integer",
-			"Usage: paso task show <id> or paso task show --id=<id>"); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
-		return nil
+			"Usage: paso task show <id> or paso task show --id=<id>")
 	}
 
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -86,11 +79,7 @@ func runShow(cmd *cobra.Command, args []string) error {
 	// Get task details
 	task, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
-		return nil
+		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID))
 	}
 
 	// Output in appropriate format

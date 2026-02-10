@@ -59,19 +59,13 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	// Parse ID from positional argument
 	labelID, err := strconv.Atoi(args[0])
 	if err != nil {
-		if fmtErr := formatter.Error("INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0])); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitValidation)
+		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0]))
 	}
 
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -82,10 +76,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	// Get label details for confirmation
 	label, err := cli.GetLabelByID(ctx, cliInstance, labelID)
 	if err != nil {
-		if fmtErr := formatter.Error("LABEL_NOT_FOUND", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+		return formatter.Error(cli.ExitNotFound, "LABEL_NOT_FOUND", err.Error())
 	}
 
 	// Ask for confirmation unless force or quiet mode
@@ -106,10 +97,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 
 	// Delete the label
 	if err := cliInstance.App.LabelService.DeleteLabel(ctx, labelID); err != nil {
-		if fmtErr := formatter.Error("DELETE_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "DELETE_ERROR", err.Error())
 	}
 
 	// Output success

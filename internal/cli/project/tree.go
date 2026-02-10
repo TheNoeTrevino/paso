@@ -60,10 +60,7 @@ func runTree(cmd *cobra.Command, args []string) error {
 
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -75,31 +72,22 @@ func runTree(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		projectID, err = strconv.Atoi(args[0])
 		if err != nil || projectID <= 0 {
-			if fmtErr := formatter.ErrorWithSuggestion("INVALID_PROJECT_ID",
+			return formatter.ErrorWithSuggestion(cli.ExitUsage, "INVALID_PROJECT_ID",
 				"project ID must be a positive integer",
-				"Usage: paso project tree <project-id> or paso project tree -p <id>"); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitUsage)
+				"Usage: paso project tree <project-id> or paso project tree -p <id>")
 		}
 	} else {
 		projectID, err = cli.GetProjectIDWithCLI(cmd, cliInstance)
 		if err != nil {
-			if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
+			return formatter.ErrorWithSuggestion(cli.ExitUsage, "NO_PROJECT",
 				err.Error(),
-				"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitUsage)
+				"Use --project flag or create a project associated with this git branch")
 		}
 	}
 
 	tree, err := cliInstance.App.TaskService.GetTaskTreeByProject(ctx, projectID)
 	if err != nil {
-		if fmtErr := formatter.Error("TREE_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "TREE_FETCH_ERROR", err.Error())
 	}
 
 	// Handle empty tree

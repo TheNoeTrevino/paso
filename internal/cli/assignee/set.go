@@ -52,10 +52,7 @@ func runSet(cmd *cobra.Command, args []string) error {
 
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -65,17 +62,11 @@ func runSet(cmd *cobra.Command, args []string) error {
 
 	cfg, err := config.Load()
 	if err != nil {
-		if fmtErr := formatter.Error("CONFIG_LOAD_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "CONFIG_LOAD_ERROR", err.Error())
 	}
 
 	if err := cfg.SetActiveAssignee(name); err != nil {
-		if fmtErr := formatter.Error("SET_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to formatting error message", "error", fmtErr)
-		}
-		return err
+		return formatter.Error(cli.ExitError, "SET_ERROR", err.Error())
 	}
 
 	if quietMode {

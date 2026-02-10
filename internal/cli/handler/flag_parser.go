@@ -3,7 +3,6 @@ package handler
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -25,16 +24,12 @@ func NewFlagParser(cmd *cobra.Command, formatter *cli.OutputFormatter) *FlagPars
 }
 
 // ParseProjectID extracts project ID from --project flag or environment variable
-// Returns the project ID or exits on error
 func (p *FlagParser) ParseProjectID() (int, error) {
 	projectID, err := cli.GetProjectID(p.cmd)
 	if err != nil {
-		if fmtErr := p.formatter.ErrorWithSuggestion("NO_PROJECT",
+		return 0, p.formatter.ErrorWithSuggestion(cli.ExitUsage, "NO_PROJECT",
 			err.Error(),
-			"Use --project flag or create a project associated with this git branch"); fmtErr != nil {
-			fmt.Fprintf(os.Stderr, "Error formatting error message: %v\n", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
+			"Use --project flag or create a project associated with this git branch")
 	}
 	return projectID, nil
 }

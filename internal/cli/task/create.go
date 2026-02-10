@@ -79,7 +79,10 @@ type createHandler struct{}
 // Execute implements the Handler interface
 func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (any, error) {
 	// Get flag values from arguments
-	taskTitle := args.MustGetString("title")
+	taskTitle, err := args.MustGetString("title")
+	if err != nil {
+		return nil, err
+	}
 	taskDescription := args.GetString("description", "")
 	taskType := args.GetString("type", "task")
 	taskPriority := args.GetString("priority", "medium")

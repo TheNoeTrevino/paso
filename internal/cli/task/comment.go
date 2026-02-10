@@ -80,20 +80,14 @@ func runComment(cmd *cobra.Command, args []string) error {
 
 	// Validate message length before initializing CLI
 	if len(message) > 1000 {
-		if fmtErr := formatter.Error("MESSAGE_TOO_LONG",
-			"message exceeds 1000 character limit"); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitValidation)
+		return formatter.Error(cli.ExitValidation, "MESSAGE_TOO_LONG",
+			"message exceeds 1000 character limit")
 	}
 
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -104,10 +98,7 @@ func runComment(cmd *cobra.Command, args []string) error {
 	// Validate task exists
 	taskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "TASK_FETCH_ERROR", err.Error())
 	}
 
 	// Create comment
@@ -117,10 +108,7 @@ func runComment(cmd *cobra.Command, args []string) error {
 		Author:  author,
 	})
 	if err != nil {
-		if fmtErr := formatter.Error("COMMENT_CREATE_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "COMMENT_CREATE_ERROR", err.Error())
 	}
 
 	// Output based on mode (JSON/Quiet/Human)

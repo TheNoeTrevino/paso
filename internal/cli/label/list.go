@@ -64,10 +64,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	// Initialize CLI first
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -82,42 +79,30 @@ func runList(cmd *cobra.Command, args []string) error {
 		// Priority 1: Positional argument
 		labelProject, err = strconv.Atoi(args[0])
 		if err != nil {
-			if fmtErr := formatter.ErrorWithSuggestion("INVALID_PROJECT_ID",
+			return formatter.ErrorWithSuggestion(cli.ExitUsage, "INVALID_PROJECT_ID",
 				fmt.Sprintf("Invalid project ID: %s", args[0]),
-				"Project ID must be a number"); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitUsage)
+				"Project ID must be a number")
 		}
 	} else {
 		// Priority 2: Flag or git branch detection
 		labelProject, err = cli.GetProjectIDWithCLI(cmd, cliInstance)
 		if err != nil {
-			if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
+			return formatter.ErrorWithSuggestion(cli.ExitUsage, "NO_PROJECT",
 				err.Error(),
-				"Specify project ID as argument, use --project flag, or associate branch with project"); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitUsage)
+				"Specify project ID as argument, use --project flag, or associate branch with project")
 		}
 	}
 
 	// Validate project exists
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, labelProject)
 	if err != nil {
-		if fmtErr := formatter.Error("PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", labelProject)); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+		return formatter.Error(cli.ExitNotFound, "PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", labelProject))
 	}
 
 	// Get labels
 	labels, err := cliInstance.App.LabelService.GetLabelsByProject(ctx, labelProject)
 	if err != nil {
-		if fmtErr := formatter.Error("LABEL_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "LABEL_FETCH_ERROR", err.Error())
 	}
 
 	// Output based on mode

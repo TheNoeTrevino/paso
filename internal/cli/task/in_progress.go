@@ -75,18 +75,12 @@ func runInProgress(cmd *cobra.Command, args []string) error {
 
 	// Move mode - require task ID
 	if len(args) == 0 {
-		if fmtErr := formatter.Error("INVALID_INPUT", "either provide a task ID or use --project flag to list tasks"); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitValidation)
+		return formatter.Error(cli.ExitValidation, "INVALID_INPUT", "either provide a task ID or use --project flag to list tasks")
 	}
 
 	taskID, err := strconv.Atoi(args[0])
 	if err != nil {
-		if fmtErr := formatter.Error("INVALID_ID", fmt.Sprintf("invalid task ID '%s': must be a number", args[0])); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitValidation)
+		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid task ID '%s': must be a number", args[0]))
 	}
 
 	return moveTaskToInProgress(ctx, taskID, formatter)
@@ -96,10 +90,7 @@ func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.Outp
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -110,21 +101,15 @@ func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.Outp
 	// Validate project exists
 	_, err = cliInstance.App.ProjectService.GetProjectByID(ctx, projectID)
 	if err != nil {
-		if fmtErr := formatter.ErrorWithSuggestion("PROJECT_NOT_FOUND",
+		return formatter.ErrorWithSuggestion(cli.ExitNotFound, "PROJECT_NOT_FOUND",
 			fmt.Sprintf("project %d not found", projectID),
-			"Use 'paso project list' to see available projects"); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+			"Use 'paso project list' to see available projects")
 	}
 
 	// Get in-progress tasks
 	tasks, err := cliInstance.App.TaskService.GetInProgressTasksByProject(ctx, projectID)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "TASK_FETCH_ERROR", err.Error())
 	}
 
 	// Convert TaskDetail to simpler format for display
@@ -198,10 +183,7 @@ func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.Output
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -212,10 +194,7 @@ func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.Output
 	// Get task detail before move for output
 	taskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID)); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitNotFound)
+		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID))
 	}
 
 	currentColumnName := taskDetail.ColumnName
@@ -234,26 +213,17 @@ func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.Output
 			return nil
 		}
 		if strings.Contains(err.Error(), "no in-progress column configured") {
-			if fmtErr := formatter.ErrorWithSuggestion("NO_IN_PROGRESS_COLUMN",
+			return formatter.ErrorWithSuggestion(cli.ExitValidation, "NO_IN_PROGRESS_COLUMN",
 				"no in-progress column configured for this project",
-				"Use 'paso column update --id=<column_id> --in-progress' to designate an in-progress column"); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitValidation)
+				"Use 'paso column update --id=<column_id> --in-progress' to designate an in-progress column")
 		}
-		if fmtErr := formatter.Error("MOVE_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "MOVE_ERROR", err.Error())
 	}
 
 	// Get updated task detail for output
 	updatedTaskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "TASK_FETCH_ERROR", err.Error())
 	}
 
 	toColumnName := updatedTaskDetail.ColumnName

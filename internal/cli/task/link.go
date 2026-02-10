@@ -78,11 +78,8 @@ func runLink(cmd *cobra.Command, args []string) error {
 
 	// Validate mutually exclusive flags
 	if blocker && related {
-		if fmtErr := formatter.Error("INVALID_FLAGS",
-			"cannot specify both --blocker and --related flags"); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitUsage)
+		return formatter.Error(cli.ExitUsage, "INVALID_FLAGS",
+			"cannot specify both --blocker and --related flags")
 	}
 
 	// Determine relation type ID
@@ -100,10 +97,7 @@ func runLink(cmd *cobra.Command, args []string) error {
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -113,10 +107,7 @@ func runLink(cmd *cobra.Command, args []string) error {
 
 	// Create the relationship with specific type
 	if err := cliInstance.App.TaskService.AddChildRelation(ctx, parentID, childID, relationTypeID); err != nil {
-		if fmtErr := formatter.Error("LINK_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "LINK_ERROR", err.Error())
 	}
 
 	// Output success

@@ -64,10 +64,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	// Initialize CLI first
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
-		if fmtErr := formatter.Error("INITIALIZATION_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
 	}
 	defer func() {
 		if err := cliInstance.Close(); err != nil {
@@ -82,33 +79,24 @@ func runList(cmd *cobra.Command, args []string) error {
 		// Priority 1: Positional argument
 		taskProject, err = strconv.Atoi(args[0])
 		if err != nil {
-			if fmtErr := formatter.ErrorWithSuggestion("INVALID_PROJECT_ID",
+			return formatter.ErrorWithSuggestion(cli.ExitUsage, "INVALID_PROJECT_ID",
 				fmt.Sprintf("Invalid project ID: %s", args[0]),
-				"Project ID must be a number"); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitUsage)
+				"Project ID must be a number")
 		}
 	} else {
 		// Priority 2: Flag or git branch detection
 		taskProject, err = cli.GetProjectIDWithCLI(cmd, cliInstance)
 		if err != nil {
-			if fmtErr := formatter.ErrorWithSuggestion("NO_PROJECT",
+			return formatter.ErrorWithSuggestion(cli.ExitUsage, "NO_PROJECT",
 				err.Error(),
-				"Specify project ID as argument, use --project flag, or associate branch with project"); fmtErr != nil {
-				slog.Error("failed to format error message", "error", fmtErr)
-			}
-			os.Exit(cli.ExitUsage)
+				"Specify project ID as argument, use --project flag, or associate branch with project")
 		}
 	}
 
 	// Get tasks (returns map[columnID][]*TaskSummary)
 	tasksByColumn, err := cliInstance.App.TaskService.GetTaskSummariesByProject(ctx, taskProject)
 	if err != nil {
-		if fmtErr := formatter.Error("TASK_FETCH_ERROR", err.Error()); fmtErr != nil {
-			slog.Error("failed to format error message", "error", fmtErr)
-		}
-		os.Exit(cli.ExitError)
+		return formatter.Error(cli.ExitError, "TASK_FETCH_ERROR", err.Error())
 	}
 
 	// Flatten tasks from all columns
