@@ -161,11 +161,12 @@ func TestGitLink_JSONOutput(t *testing.T) {
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			strconv.Itoa(int(projectID)),
+			"--branch", "test-branch",
 			"--json",
 		})
 
-		if err == nil {
-			assert.Contains(t, output, `"success":true`)
-		}
+		assert.NoError(t, err)
+		assert.Contains(t, output, `"success":true`)
+		assert.Contains(t, output, `"branch":"test-branch"`)
 	})
 }
