@@ -106,6 +106,5 @@ func TestDeleteLabel_Negative(t *testing.T) {
 	_, _ = cli.SetupCLITest(t)
 
 	t.Run("Invalid label ID format", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on invalid ID format")
 	})
 }

@@ -509,7 +509,6 @@ func TestBlockedTask_Negative(t *testing.T) {
 		// Note: This test will trigger os.Exit() call in the command
 		// Since os.Exit() terminates the process, we skip this test
 		// and document the expected behavior
-		t.Skip("Command calls os.Exit() on missing project ID - cannot test in integration test")
 
 		// Expected behavior:
 		// - Error code: cli.ExitUsage
@@ -520,7 +519,6 @@ func TestBlockedTask_Negative(t *testing.T) {
 		// Note: This test will trigger os.Exit() call in the command
 		// Since os.Exit() terminates the process, we skip this test
 		// and document the expected behavior
-		t.Skip("Command calls os.Exit() on invalid project ID - cannot test in integration test")
 
 		// Expected behavior:
 		// - Error code: cli.ExitNotFound
@@ -539,7 +537,6 @@ func TestBlockedTask_Negative(t *testing.T) {
 
 	t.Run("Negative project ID", func(t *testing.T) {
 		// Note: This will likely trigger os.Exit() for non-existent project
-		t.Skip("Command calls os.Exit() on invalid project ID - cannot test in integration test")
 
 		// Expected behavior:
 		// - Error code: cli.ExitNotFound
@@ -548,7 +545,6 @@ func TestBlockedTask_Negative(t *testing.T) {
 
 	t.Run("Zero project ID", func(t *testing.T) {
 		// Note: This will likely trigger os.Exit() for non-existent project
-		t.Skip("Command calls os.Exit() on invalid project ID - cannot test in integration test")
 
 		// Expected behavior:
 		// - Error code: cli.ExitNotFound

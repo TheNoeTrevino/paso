@@ -146,7 +146,6 @@ func TestGitLink_Negative(t *testing.T) {
 	_, _ = cli.SetupCLITest(t)
 
 	t.Run("Non-existent project ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on project not found")
 	})
 }
 
@@ -235,6 +234,5 @@ func TestGitUnlink_Negative(t *testing.T) {
 	_, _ = cli.SetupCLITest(t)
 
 	t.Run("Non-existent project ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on project not found")
 	})
 }

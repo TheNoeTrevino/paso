@@ -158,7 +158,6 @@ func TestListTask_PositionalArgVsFlag(t *testing.T) {
 	})
 
 	t.Run("Invalid positional arg shows clear error", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on invalid project ID")
 	})
 
 	t.Run("Positional arg works for valid project", func(t *testing.T) {

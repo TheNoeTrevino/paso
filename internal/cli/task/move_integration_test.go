@@ -367,7 +367,6 @@ func TestMoveTask_Negative(t *testing.T) {
 	// but it cannot be tested in a standard Go unit test without process isolation.
 	// The validation logic is still tested in the service layer tests.
 	t.Run("Move to next column when already in last column", func(t *testing.T) {
-		t.Skip("Skipping: move command calls os.Exit() on this validation error")
 		// Create task in last column
 		taskID := cli.CreateTestTask(t, db, column3ID, "Task in last column")
 
@@ -383,7 +382,6 @@ func TestMoveTask_Negative(t *testing.T) {
 
 	// Note: We skip this test because the move command calls os.Exit() on validation errors.
 	t.Run("Move to prev column when already in first column", func(t *testing.T) {
-		t.Skip("Skipping: move command calls os.Exit() on this validation error")
 		// Create task in first column
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task in first column")
 
@@ -399,7 +397,6 @@ func TestMoveTask_Negative(t *testing.T) {
 
 	// Note: We skip this test because the move command calls os.Exit() when column not found.
 	t.Run("Move to non-existent column by name", func(t *testing.T) {
-		t.Skip("Skipping: move command calls os.Exit() when column is not found")
 		// Create task in first column
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task for invalid column test")
 
@@ -415,7 +412,6 @@ func TestMoveTask_Negative(t *testing.T) {
 
 	// Note: We skip this test because the move command calls os.Exit() when task not found.
 	t.Run("Move non-existent task", func(t *testing.T) {
-		t.Skip("Skipping: move command calls os.Exit() when task is not found")
 		// Use a task ID that doesn't exist
 		nonExistentTaskID := 999999
 

@@ -121,7 +121,6 @@ func TestDeleteColumnIntegration_Positive(t *testing.T) {
 
 	t.Run("Delete column cannot delete if it contains tasks", func(t *testing.T) {
 		// Note: This test would call os.Exit() on delete failure, terminating the test process
-		t.Skip("Skipping: command calls os.Exit() on delete error")
 
 		// Expected behavior:
 		// - The column service will move tasks to the first column before deleting
@@ -243,8 +242,6 @@ func TestDeleteColumnIntegration_Negative(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("Delete non-existent column", func(t *testing.T) {
-		t.Skip("Skipping test that calls os.Exit() - cannot test exit behavior in integration tests")
-
 		// Expected behavior:
 		// - Exit code: cli.ExitNotFound (3)
 		// - Error message: "COLUMN_NOT_FOUND" with column ID that doesn't exist
@@ -256,8 +253,6 @@ func TestDeleteColumnIntegration_Negative(t *testing.T) {
 	})
 
 	t.Run("Delete column - missing required ID argument", func(t *testing.T) {
-		t.Skip("Skipping test that fails cobra argument validation")
-
 		// Expected behavior:
 		// - Error message indicating ID argument is required
 		cmd := DeleteCmd()
@@ -267,8 +262,6 @@ func TestDeleteColumnIntegration_Negative(t *testing.T) {
 	})
 
 	t.Run("Delete column - zero column ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on invalid column ID")
-
 		// Expected behavior:
 		// - Exit code: cli.ExitNotFound (3)
 		// - Column 0 does not exist
@@ -280,8 +273,6 @@ func TestDeleteColumnIntegration_Negative(t *testing.T) {
 	})
 
 	t.Run("Delete column - negative column ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on invalid column ID")
-
 		// Expected behavior:
 		// - Exit code: cli.ExitNotFound (3)
 		// - Column -1 does not exist
@@ -293,8 +284,6 @@ func TestDeleteColumnIntegration_Negative(t *testing.T) {
 	})
 
 	t.Run("Column ID as string instead of int", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on invalid ID format")
-
 		// Expected behavior:
 		// - Exit code: cli.ExitValidation (5)
 		// - Error message: "invalid ID 'invalid': must be a number"

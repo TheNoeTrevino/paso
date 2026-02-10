@@ -469,42 +469,33 @@ func TestLinkTask_Negative(t *testing.T) {
 	})
 
 	t.Run("Both blocker and related flags (mutually exclusive)", func(t *testing.T) {
-		t.Skip("Skipping test: command calls os.Exit() on mutually exclusive flag error")
 		// Note: This test is skipped because the link command calls os.Exit(cli.ExitUsage)
 		// when both --blocker and --related flags are provided, which terminates the test process.
 		// The validation logic in link.go (lines 76-82) correctly handles this case.
 	})
 
 	t.Run("Invalid parent ID (non-existent task)", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on AddChildRelation error")
 	})
 
 	t.Run("Invalid child ID (non-existent task)", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on AddChildRelation error")
 	})
 
 	t.Run("Self-reference (parent equals child)", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on AddChildRelation error")
 	})
 
 	t.Run("Circular dependency prevention", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on AddChildRelation error")
 	})
 
 	t.Run("Zero parent ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on AddChildRelation error")
 	})
 
 	t.Run("Zero child ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on AddChildRelation error")
 	})
 
 	t.Run("Negative parent ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on AddChildRelation error")
 	})
 
 	t.Run("Negative child ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on AddChildRelation error")
 	})
 
 	t.Run("Duplicate link (same parent-child pair) - idempotent", func(t *testing.T) {

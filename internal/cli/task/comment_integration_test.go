@@ -215,7 +215,6 @@ func TestCommentTask_Positive(t *testing.T) {
 	// Edge cases (Task 61 requirements)
 
 	t.Run("Empty comment message - rejected by service", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on empty message validation")
 	})
 
 	t.Run("Very long comment - 999 characters", func(t *testing.T) {
@@ -567,19 +566,15 @@ func TestCommentTask_Negative(t *testing.T) {
 	})
 
 	t.Run("Invalid task ID - non-existent", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on task not found")
 	})
 
 	t.Run("Zero task ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on task not found")
 	})
 
 	t.Run("Negative task ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on task not found")
 	})
 
 	t.Run("Message exceeds 1000 characters - 1001 chars", func(t *testing.T) {
-		t.Skip("Skipping test: command calls os.Exit(cli.ExitValidation) when message exceeds 1000 characters")
 		// Note: This test is skipped because the comment command calls os.Exit() at line 82
 		// when the message length exceeds 1000 characters, which would terminate the test process.
 		// The validation logic in comment.go (lines 77-83) correctly handles this case before
@@ -591,7 +586,6 @@ func TestCommentTask_Negative(t *testing.T) {
 	})
 
 	t.Run("Message exceeds 1000 characters - 1500 chars", func(t *testing.T) {
-		t.Skip("Skipping test: command calls os.Exit(cli.ExitValidation) when message exceeds 1000 characters")
 		// Note: This test is skipped because the comment command calls os.Exit() at line 82
 		// when the message length exceeds 1000 characters, which would terminate the test process.
 		// See comment.go lines 77-83 for validation implementation.

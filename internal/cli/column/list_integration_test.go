@@ -333,11 +333,9 @@ func TestListColumns_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("Invalid project ID error handling", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on project not found")
 	})
 
 	t.Run("Missing project flag", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() when project cannot be resolved")
 	})
 
 	t.Run("Invalid project flag value", func(t *testing.T) {

@@ -131,7 +131,7 @@ func TestListLabels_Errors(t *testing.T) {
 	t.Run("Missing project flag calls os.Exit", func(t *testing.T) {
 		// The list command calls os.Exit(ExitUsage) when no project is specified
 		// and git branch detection fails, so we cannot test this in-process.
-		t.Skip("Skipping: command calls os.Exit() when no project is specified")
+
 	})
 
 	t.Run("Invalid project flag value", func(t *testing.T) {

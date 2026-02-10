@@ -30,22 +30,18 @@ func TestCreateColumn_MissingFlags(t *testing.T) {
 
 	// Test missing --project flag
 	t.Run("missing --project flag", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() when project cannot be resolved")
 	})
 
 	// Test invalid project ID
 	t.Run("invalid project ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on project not found")
 	})
 
 	// Test invalid --after column ID
 	t.Run("invalid --after column ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on column not found")
 	})
 
 	// Test after column from different project
 	t.Run("after column from different project", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on validation error")
 	})
 }
 
@@ -65,7 +61,6 @@ func TestUpdateColumn_MissingFlags(t *testing.T) {
 
 	// Test non-existent column ID
 	t.Run("non-existent column ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on column not found")
 		// Expected behavior:
 		// - Exit code: cli.ExitNotFound (3)
 		// - Error message: "COLUMN_NOT_FOUND"
@@ -73,7 +68,6 @@ func TestUpdateColumn_MissingFlags(t *testing.T) {
 
 	// Test no update flags provided
 	t.Run("no update flags provided", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on missing update flags")
 		// Expected behavior:
 		// - Exit code: cli.ExitUsage (2)
 		// - Error message: "at least one of --name, --ready, --completed, or --in-progress must be provided"
@@ -81,7 +75,6 @@ func TestUpdateColumn_MissingFlags(t *testing.T) {
 
 	// Test invalid ID value format
 	t.Run("invalid ID value format", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on invalid ID format")
 		// Expected behavior:
 		// - Exit code: cli.ExitValidation (5)
 		// - Error message: "invalid ID 'invalid': must be a number"
@@ -89,7 +82,6 @@ func TestUpdateColumn_MissingFlags(t *testing.T) {
 
 	// Test zero column ID
 	t.Run("zero column ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on column not found")
 		// Expected behavior:
 		// - Exit code: cli.ExitNotFound (3)
 		// - Column 0 does not exist
@@ -102,12 +94,10 @@ func TestListColumn_MissingFlags(t *testing.T) {
 
 	// Test missing --project flag
 	t.Run("missing --project flag", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() when project cannot be resolved")
 	})
 
 	// Test invalid project ID
 	t.Run("invalid project ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on project not found")
 	})
 
 	// Test invalid --project value format
@@ -122,7 +112,6 @@ func TestListColumn_MissingFlags(t *testing.T) {
 
 	// Test negative project ID
 	t.Run("negative project ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on project not found")
 	})
 }
 
@@ -142,7 +131,6 @@ func TestDeleteColumn_MissingFlags(t *testing.T) {
 
 	// Test non-existent column ID
 	t.Run("non-existent column ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on column not found")
 		// Expected behavior:
 		// - Exit code: cli.ExitNotFound (3)
 		// - Error message: "COLUMN_NOT_FOUND"
@@ -150,7 +138,6 @@ func TestDeleteColumn_MissingFlags(t *testing.T) {
 
 	// Test invalid ID value format
 	t.Run("invalid ID value format", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on invalid ID format")
 		// Expected behavior:
 		// - Exit code: cli.ExitValidation (5)
 		// - Error message: "invalid ID 'invalid': must be a number"
@@ -158,7 +145,6 @@ func TestDeleteColumn_MissingFlags(t *testing.T) {
 
 	// Test zero column ID
 	t.Run("zero column ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on column not found")
 		// Expected behavior:
 		// - Exit code: cli.ExitNotFound (3)
 		// - Column 0 does not exist
@@ -166,7 +152,6 @@ func TestDeleteColumn_MissingFlags(t *testing.T) {
 
 	// Test negative column ID
 	t.Run("negative column ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on column not found")
 		// Expected behavior:
 		// - Exit code: cli.ExitNotFound (3)
 		// - Column -1 does not exist
@@ -208,7 +193,6 @@ func TestCreateColumn_DuplicateName(t *testing.T) {
 
 // TestUpdateColumn_InvalidTransition tests invalid flag transitions
 func TestUpdateColumn_InvalidTransition(t *testing.T) {
-	t.Skip("Skipping: command calls os.Exit() on completed column conflict")
 	db, app := cli.SetupCLITest(t)
 
 	// Create test project and column
@@ -239,7 +223,6 @@ func TestUpdateColumn_InvalidTransition(t *testing.T) {
 
 // TestCreateColumn_ProjectValidation tests project validation during creation
 func TestCreateColumn_ProjectValidation(t *testing.T) {
-	t.Skip("Skipping: all subtests call os.Exit() on invalid project IDs")
 	_, app := cli.SetupCLITest(t)
 
 	tests := []struct {

@@ -120,10 +120,8 @@ func TestUpdateLabel_ErrorCases(t *testing.T) {
 	t.Run("Invalid color format calls os.Exit", func(t *testing.T) {
 		// This calls os.Exit via ExitValidation, which we cannot capture in-process.
 		// Skipping as it would terminate the test process.
-		t.Skip("Skipping: command calls os.Exit() on invalid color format")
 	})
 
 	t.Run("Invalid label ID format", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on invalid ID format")
 	})
 }

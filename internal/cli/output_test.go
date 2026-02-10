@@ -333,8 +333,9 @@ func TestOutputFormatter_Error_JSON(t *testing.T) {
 			os.Stdout = w
 
 			formatter := &OutputFormatter{JSON: true, Quiet: false}
-			err = formatter.Error(tt.code, tt.message)
-			assert.NoError(t, err, "Error method should not return error")
+			exitErr := formatter.Error(ExitError, tt.code, tt.message)
+			assert.NotNil(t, exitErr, "Error method should return ExitErr")
+			assert.Equal(t, ExitError, exitErr.Code)
 
 			_ = w.Close()
 			os.Stdout = oldStdout
@@ -370,8 +371,9 @@ func TestOutputFormatter_Error_Quiet(t *testing.T) {
 	os.Stderr = w
 
 	formatter := &OutputFormatter{JSON: false, Quiet: true}
-	err = formatter.Error("TEST_ERROR", "this should be suppressed")
-	assert.NoError(t, err, "Error method should not return error")
+	exitErr := formatter.Error(ExitError, "TEST_ERROR", "this should be suppressed")
+	assert.NotNil(t, exitErr, "Error method should return ExitErr")
+	assert.Equal(t, ExitError, exitErr.Code)
 
 	_ = w.Close()
 	os.Stderr = oldStderr
@@ -419,8 +421,9 @@ func TestOutputFormatter_Error_HumanReadable(t *testing.T) {
 			os.Stderr = w
 
 			formatter := &OutputFormatter{JSON: false, Quiet: false}
-			err = formatter.Error(tt.code, tt.message)
-			assert.NoError(t, err, "Error method should not return error")
+			exitErr := formatter.Error(ExitError, tt.code, tt.message)
+			assert.NotNil(t, exitErr, "Error method should return ExitErr")
+			assert.Equal(t, ExitError, exitErr.Code)
 
 			_ = w.Close()
 			os.Stderr = oldStderr
@@ -480,8 +483,9 @@ func TestOutputFormatter_ErrorWithSuggestion_JSON(t *testing.T) {
 			os.Stdout = w
 
 			formatter := &OutputFormatter{JSON: true, Quiet: false}
-			err = formatter.ErrorWithSuggestion(tt.code, tt.message, tt.suggestion)
-			assert.NoError(t, err, "ErrorWithSuggestion method should not return error")
+			exitErr := formatter.ErrorWithSuggestion(ExitError, tt.code, tt.message, tt.suggestion)
+			assert.NotNil(t, exitErr, "ErrorWithSuggestion method should return ExitErr")
+			assert.Equal(t, ExitError, exitErr.Code)
 
 			_ = w.Close()
 			os.Stdout = oldStdout
@@ -537,8 +541,9 @@ func TestOutputFormatter_ErrorWithSuggestion_Quiet(t *testing.T) {
 			os.Stderr = w
 
 			formatter := &OutputFormatter{JSON: false, Quiet: true}
-			err = formatter.ErrorWithSuggestion("ERR", "message", tt.suggestion)
-			assert.NoError(t, err, "ErrorWithSuggestion method should not return error")
+			exitErr := formatter.ErrorWithSuggestion(ExitError, "ERR", "message", tt.suggestion)
+			assert.NotNil(t, exitErr, "ErrorWithSuggestion method should return ExitErr")
+			assert.Equal(t, ExitError, exitErr.Code)
 
 			_ = w.Close()
 			os.Stderr = oldStderr
@@ -605,8 +610,9 @@ func TestOutputFormatter_ErrorWithSuggestion_HumanReadable(t *testing.T) {
 			os.Stderr = w
 
 			formatter := &OutputFormatter{JSON: false, Quiet: false}
-			err = formatter.ErrorWithSuggestion(tt.code, tt.message, tt.suggestion)
-			assert.NoError(t, err, "ErrorWithSuggestion method should not return error")
+			exitErr := formatter.ErrorWithSuggestion(ExitError, tt.code, tt.message, tt.suggestion)
+			assert.NotNil(t, exitErr, "ErrorWithSuggestion method should return ExitErr")
+			assert.Equal(t, ExitError, exitErr.Code)
 
 			// Close writer before checking error
 			_ = w.Close()
@@ -686,8 +692,9 @@ func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 		os.Stdout = w
 
 		formatter := &OutputFormatter{JSON: true, Quiet: true}
-		err = formatter.Error("TEST", "message")
-		assert.NoError(t, err, "Error method should not return error")
+		exitErr := formatter.Error(ExitError, "TEST", "message")
+		assert.NotNil(t, exitErr, "Error method should return ExitErr")
+		assert.Equal(t, ExitError, exitErr.Code)
 
 		_ = w.Close()
 		os.Stdout = oldStdout
@@ -749,8 +756,9 @@ func TestOutputFormatter_ErrorCallsErrorWithSuggestion(t *testing.T) {
 	os.Stdout = w
 
 	formatter := &OutputFormatter{JSON: true, Quiet: false}
-	err = formatter.Error("CODE", "message")
-	assert.NoError(t, err, "Error method should not return error")
+	exitErr := formatter.Error(ExitError, "CODE", "message")
+	assert.NotNil(t, exitErr, "Error method should return ExitErr")
+	assert.Equal(t, ExitError, exitErr.Code)
 
 	_ = w.Close()
 	os.Stdout = oldStdout

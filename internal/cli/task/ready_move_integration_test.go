@@ -450,7 +450,6 @@ func TestReadyMoveTask_Negative(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Invalid task ID - non-numeric", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on invalid task ID")
 	})
 
 	t.Run("Missing task ID argument", func(t *testing.T) {
@@ -467,7 +466,6 @@ func TestReadyMoveTask_Negative(t *testing.T) {
 	// These error cases are tested in the service layer tests.
 
 	t.Run("Non-existent task ID", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() when task is not found")
 		// Use a task ID that doesn't exist
 		nonExistentTaskID := 999999
 
@@ -481,8 +479,6 @@ func TestReadyMoveTask_Negative(t *testing.T) {
 	})
 
 	t.Run("Project with no ready column configured", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on this validation error")
-
 		// Create a new project without a ready column
 		newProjectID := cli.CreateTestProject(t, db, "Project Without Ready Column")
 		newColumnID := cli.CreateTestColumn(t, db, newProjectID, "Regular Column")
@@ -505,8 +501,6 @@ func TestReadyMoveTask_Negative(t *testing.T) {
 	})
 
 	t.Run("Invalid task ID - zero", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on invalid task ID")
-
 		cmd := ReadyMoveCmd()
 
 		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -518,8 +512,6 @@ func TestReadyMoveTask_Negative(t *testing.T) {
 	})
 
 	t.Run("Invalid task ID - negative", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on invalid task ID")
-
 		cmd := ReadyMoveCmd()
 
 		_, _ = cli.ExecuteCLICommand(t, app, cmd, []string{

@@ -615,14 +615,12 @@ func TestReadyTask_Negative(t *testing.T) {
 		// Note: This test case calls os.Exit() in ready.go:63 (ExitUsage)
 		// We cannot test os.Exit() calls in integration tests without special handling
 		// Skipping this test as it would terminate the test process
-		t.Skip("Skipping test that calls os.Exit() - cannot test exit behavior in integration tests")
 	})
 
 	t.Run("Invalid project ID - non-existent project", func(t *testing.T) {
 		// Note: This test case calls os.Exit() in ready.go:88 (ExitNotFound)
 		// We cannot test os.Exit() calls in integration tests without special handling
 		// Skipping this test as it would terminate the test process
-		t.Skip("Skipping test that calls os.Exit() - cannot test exit behavior in integration tests")
 	})
 
 	t.Run("Project with no ready column", func(t *testing.T) {

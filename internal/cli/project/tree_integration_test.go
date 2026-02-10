@@ -109,7 +109,6 @@ func TestTreeProject_Negative(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("Invalid positional argument", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on invalid project ID")
 	})
 
 	t.Run("Too many positional arguments", func(t *testing.T) {

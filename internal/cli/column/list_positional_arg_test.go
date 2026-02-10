@@ -159,7 +159,6 @@ func TestListColumn_PositionalArgVsFlag(t *testing.T) {
 	})
 
 	t.Run("Invalid positional arg shows clear error", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on invalid positional arg")
 	})
 
 	t.Run("Positional arg works for valid project", func(t *testing.T) {
@@ -217,10 +216,8 @@ func TestListColumn_PositionalArgEdgeCases(t *testing.T) {
 	})
 
 	t.Run("Positional arg with zero value", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on project not found")
 	})
 
 	t.Run("Positional arg with negative value", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on project not found")
 	})
 }

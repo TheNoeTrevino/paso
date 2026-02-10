@@ -182,6 +182,5 @@ func TestDoneTask_Positive(t *testing.T) {
 
 func TestDoneTask_Negative(t *testing.T) {
 	t.Run("Invalid task ID - non-numeric", func(t *testing.T) {
-		t.Skip("Skipping: command calls os.Exit() on invalid task ID")
 	})
 }
