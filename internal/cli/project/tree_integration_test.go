@@ -109,6 +109,12 @@ func TestTreeProject_Negative(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("Invalid positional argument", func(t *testing.T) {
+		cmd := TreeCmd()
+		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
+			"invalid",
+		})
+		cli.AssertExitError(t, err, 2)
+		assert.Contains(t, err.Error(), "project ID must be a positive integer")
 	})
 
 	t.Run("Too many positional arguments", func(t *testing.T) {
