@@ -48,13 +48,15 @@ func (f *OutputFormatter) Success(data any) error {
 	return f.prettyPrint(data)
 }
 
-// Error outputs error information
-func (f *OutputFormatter) Error(code string, message string) error {
-	return f.ErrorWithSuggestion(code, message, "")
+// Error prints a styled error message and returns an *ExitErr that carries the
+// exit code back to main. Callers should simply: return formatter.Error(...)
+func (f *OutputFormatter) Error(exitCode int, code string, message string) *ExitErr {
+	return f.ErrorWithSuggestion(exitCode, code, message, "")
 }
 
-// ErrorWithSuggestion outputs error information with an optional suggestion
-func (f *OutputFormatter) ErrorWithSuggestion(code string, message string, suggestion string) error {
+// ErrorWithSuggestion prints a styled error with an optional suggestion and
+// returns an *ExitErr carrying the exit code.
+func (f *OutputFormatter) ErrorWithSuggestion(exitCode int, code string, message string, suggestion string) *ExitErr {
 	if f.JSON {
 		errData := map[string]any{
 			"code":    code,
@@ -63,31 +65,31 @@ func (f *OutputFormatter) ErrorWithSuggestion(code string, message string, sugge
 		if suggestion != "" {
 			errData["suggestion"] = suggestion
 		}
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
+		if err := json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"success": false,
 			"error":   errData,
-		})
+		}); err != nil {
+			slog.Error("failed to encode JSON error", "error", err)
+		}
+		return NewExitErr(exitCode, message)
 	}
 
-	// In quiet mode, suppress error output to stderr (error will still be returned)
-	if f.Quiet {
-		return nil
-	}
+	if !f.Quiet {
+		cfg, err := config.Load()
+		if err != nil || cfg == nil {
+			cfg = &config.Config{
+				ColorScheme: config.DefaultColorScheme(),
+			}
+		}
 
-	// Human-readable error with colored X mark
-	cfg, err := config.Load()
-	if err != nil || cfg == nil {
-		cfg = &config.Config{
-			ColorScheme: config.DefaultColorScheme(),
+		errorMsg := styles.RenderError(message, cfg.ColorScheme)
+		fmt.Fprintf(os.Stderr, "%s\n", errorMsg)
+		if suggestion != "" {
+			fmt.Fprintf(os.Stderr, "ⓘ Suggestion: %s\n", suggestion)
 		}
 	}
 
-	errorMsg := styles.RenderError(message, cfg.ColorScheme)
-	fmt.Fprintf(os.Stderr, "%s\n", errorMsg)
-	if suggestion != "" {
-		fmt.Fprintf(os.Stderr, "ⓘ Suggestion: %s\n", suggestion)
-	}
-	return nil
+	return NewExitErr(exitCode, message)
 }
 
 // prettyPrint formats data for human-readable output
