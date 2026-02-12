@@ -232,9 +232,9 @@ func TestUpdateTaskEstimate_Errors(t *testing.T) {
 
 		invalidEstimate := "0d"
 		err := svc.UpdateTaskEstimate(ctx, taskID, &invalidEstimate)
-		// Zero is technically a valid number, though not meaningful for estimates
-		// The validation doesn't explicitly forbid it
-		assert.NoError(t, err)
+		// Zero quantities are now rejected as they are not meaningful for estimates
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrInvalidEstimateFormat)
 	})
 
 	t.Run("invalid estimate format - negative quantity", func(t *testing.T) {

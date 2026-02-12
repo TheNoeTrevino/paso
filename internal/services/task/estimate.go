@@ -32,7 +32,7 @@ type EstimateComponent struct {
 //   - The quantity is not a positive integer
 func ParseEstimate(estimate string) ([]EstimateComponent, error) {
 	if estimate == "" {
-		return nil, fmt.Errorf("estimate string cannot be empty")
+		return nil, ErrInvalidEstimateFormat
 	}
 
 	// Regex to match digit sequences followed by unit letters
@@ -40,17 +40,21 @@ func ParseEstimate(estimate string) ([]EstimateComponent, error) {
 	matches := re.FindAllStringSubmatch(estimate, -1)
 
 	if len(matches) == 0 {
-		return nil, fmt.Errorf("invalid estimate format: no valid components found")
+		return nil, fmt.Errorf("%w: no valid components found", ErrInvalidEstimateFormat)
 	}
 
 	// Verify that the entire string was matched (no extra characters)
-	fullMatch := re.FindAllString(estimate, -1)
-	var reconstructed string
-	for _, match := range fullMatch {
-		reconstructed += match
+	// Use FindAllStringIndex to check coverage without allocating strings
+	indexes := re.FindAllStringIndex(estimate, -1)
+	expectedPos := 0
+	for _, idx := range indexes {
+		if idx[0] != expectedPos {
+			return nil, fmt.Errorf("%w: contains invalid characters", ErrInvalidEstimateFormat)
+		}
+		expectedPos = idx[1]
 	}
-	if reconstructed != estimate {
-		return nil, fmt.Errorf("invalid estimate format: contains invalid characters")
+	if expectedPos != len(estimate) {
+		return nil, fmt.Errorf("%w: contains invalid characters", ErrInvalidEstimateFormat)
 	}
 
 	components := make([]EstimateComponent, 0, len(matches))
@@ -59,18 +63,18 @@ func ParseEstimate(estimate string) ([]EstimateComponent, error) {
 	for _, match := range matches {
 		quantity, err := strconv.Atoi(match[1])
 		if err != nil {
-			return nil, fmt.Errorf("invalid quantity '%s': %w", match[1], err)
+			return nil, fmt.Errorf("%w: invalid quantity '%s': %w", ErrInvalidEstimateFormat, match[1], err)
 		}
 
 		if quantity <= 0 {
-			return nil, fmt.Errorf("quantity must be positive, got %d", quantity)
+			return nil, fmt.Errorf("%w: quantity must be positive, got %d", ErrInvalidEstimateFormat, quantity)
 		}
 
 		unit := match[2]
 
 		// Check for duplicate units
 		if seenUnits[unit] {
-			return nil, fmt.Errorf("duplicate unit '%s' found", unit)
+			return nil, fmt.Errorf("%w: '%s' appears multiple times", ErrDuplicateEstimateUnit, unit)
 		}
 		seenUnits[unit] = true
 

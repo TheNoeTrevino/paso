@@ -1,9 +1,7 @@
 package task
 
 import (
-	"fmt"
 	"strings"
-	"unicode"
 )
 
 // validateCreateTaskRequest validates all fields for creating a task.
@@ -23,6 +21,11 @@ func validateCreateTaskRequest(req CreateTaskRequest) error {
 	}
 	if err := validateTypeID(req.TypeID); err != nil {
 		return err
+	}
+	if req.Estimate != "" {
+		if err := ValidateEstimate(&req.Estimate); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -170,55 +173,7 @@ func ValidateEstimate(estimate *string) error {
 		return nil
 	}
 
-	// Track which units we've seen to prevent duplicates
-	seenUnits := make(map[rune]bool)
-	validUnits := map[rune]bool{
-		'h': true, // hours
-		'd': true, // days
-		'w': true, // weeks
-		'm': true, // months
-	}
-
-	i := 0
-	foundAtLeastOneSegment := false
-
-	for i < len(est) {
-		// Must start with a digit
-		if !unicode.IsDigit(rune(est[i])) {
-			return fmt.Errorf("%w: expected digit at position %d, got '%c'", ErrInvalidEstimateFormat, i+1, est[i])
-		}
-
-		// Consume all digits
-		start := i
-		for i < len(est) && unicode.IsDigit(rune(est[i])) {
-			i++
-		}
-
-		// Must be followed by a unit letter
-		if i >= len(est) {
-			return fmt.Errorf("%w: missing unit after number '%s'", ErrInvalidEstimateFormat, est[start:i])
-		}
-
-		unit := rune(est[i])
-
-		// Validate the unit is one of h, d, w, m
-		if !validUnits[unit] {
-			return fmt.Errorf("%w: '%c' is not valid (use h, d, w, or m)", ErrInvalidEstimateUnit, unit)
-		}
-
-		// Check for duplicate units
-		if seenUnits[unit] {
-			return fmt.Errorf("%w: '%c' appears multiple times", ErrDuplicateEstimateUnit, unit)
-		}
-		seenUnits[unit] = true
-
-		i++
-		foundAtLeastOneSegment = true
-	}
-
-	if !foundAtLeastOneSegment {
-		return ErrInvalidEstimateFormat
-	}
-
-	return nil
+	// Delegate to ParseEstimate for validation
+	_, err := ParseEstimate(est)
+	return err
 }

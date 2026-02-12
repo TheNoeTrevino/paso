@@ -12,6 +12,8 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
+const estimateFormatHint = "Invalid format (use e.g. 2h, 1d, 1w2d)"
+
 // updateLabelPicker handles keyboard input in the label picker mode
 func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	keyMsg, ok := msg.(tea.KeyMsg)
@@ -854,7 +856,7 @@ func (m Model) updateEstimateInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if buffer == "" {
 				m.Pickers.Estimate.SetError("")
 			} else if err := taskservice.ValidateEstimate(&buffer); err != nil {
-				m.Pickers.Estimate.SetError("Invalid format (use e.g. 2h, 1d, 1w2d)")
+				m.Pickers.Estimate.SetError(estimateFormatHint)
 			} else {
 				m.Pickers.Estimate.SetError("")
 			}
@@ -867,7 +869,7 @@ func (m Model) updateEstimateInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Validate if non-empty
 		if buffer != "" {
 			if err := taskservice.ValidateEstimate(&buffer); err != nil {
-				m.Pickers.Estimate.SetError("Invalid format (use e.g. 2h, 1d, 1w2d)")
+				m.Pickers.Estimate.SetError(estimateFormatHint)
 				return m, nil // Don't close on validation error
 			}
 		}
@@ -917,7 +919,7 @@ func (m Model) updateEstimateInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Pickers.Estimate.SetBuffer(buffer)
 			// Real-time validation
 			if err := taskservice.ValidateEstimate(&buffer); err != nil {
-				m.Pickers.Estimate.SetError("Invalid format (use e.g. 2h, 1d, 1w2d)")
+				m.Pickers.Estimate.SetError(estimateFormatHint)
 			} else {
 				m.Pickers.Estimate.SetError("")
 			}
