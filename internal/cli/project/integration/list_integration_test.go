@@ -15,6 +15,7 @@ func TestListProjects(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("list projects when none exist", func(t *testing.T) {
+		t.Parallel()
 		cmd := project.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
 
@@ -23,6 +24,7 @@ func TestListProjects(t *testing.T) {
 	})
 
 	t.Run("list projects JSON when none exist", func(t *testing.T) {
+		t.Parallel()
 		cmd := project.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--json"})
 
@@ -38,6 +40,7 @@ func TestListProjects(t *testing.T) {
 	})
 
 	t.Run("list projects quiet when none exist", func(t *testing.T) {
+		t.Parallel()
 		cmd := project.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--quiet"})
 
@@ -55,6 +58,7 @@ func TestListProjects_WithData(t *testing.T) {
 	cli.CreateTestProject(t, db, "Gamma Project")
 
 	t.Run("list projects JSON with data", func(t *testing.T) {
+		t.Parallel()
 		cmd := project.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--json"})
 
@@ -70,6 +74,7 @@ func TestListProjects_WithData(t *testing.T) {
 	})
 
 	t.Run("list projects quiet with data", func(t *testing.T) {
+		t.Parallel()
 		cmd := project.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--quiet"})
 
@@ -82,6 +87,7 @@ func TestListProjects_WithData(t *testing.T) {
 	})
 
 	t.Run("list projects human-readable with data", func(t *testing.T) {
+		t.Parallel()
 		cmd := project.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
 

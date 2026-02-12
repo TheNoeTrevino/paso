@@ -86,6 +86,7 @@ func TestIsEmpty_WhitespaceOnly(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			state := NewInputState()
 			state.Buffer = tc.buffer
 
@@ -116,6 +117,7 @@ func TestTrimmedBuffer_LeadingTrailingSpaces(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			state := NewInputState()
 			state.Buffer = tc.buffer
 

@@ -16,6 +16,7 @@ func TestTreeProject(t *testing.T) {
 	projectID := cli.CreateTestProject(t, db, "Tree Project")
 
 	t.Run("tree with empty project JSON", func(t *testing.T) {
+		t.Parallel()
 		cmd := project.TreeCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--project", fmt.Sprintf("%d", projectID),
@@ -35,6 +36,7 @@ func TestTreeProject(t *testing.T) {
 	})
 
 	t.Run("tree with empty project human-readable", func(t *testing.T) {
+		t.Parallel()
 		cmd := project.TreeCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--project", fmt.Sprintf("%d", projectID),
@@ -45,6 +47,7 @@ func TestTreeProject(t *testing.T) {
 	})
 
 	t.Run("tree with empty project quiet mode", func(t *testing.T) {
+		t.Parallel()
 		cmd := project.TreeCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--project", fmt.Sprintf("%d", projectID),
@@ -55,6 +58,7 @@ func TestTreeProject(t *testing.T) {
 	})
 
 	t.Run("tree with tasks JSON", func(t *testing.T) {
+		t.Parallel()
 		taskProjectID := cli.CreateTestProject(t, db, "Task Tree Project")
 		taskTodoColumnID := cli.GetColumnIDByName(t, db, taskProjectID, "Todo")
 
@@ -79,6 +83,7 @@ func TestTreeProject(t *testing.T) {
 	})
 
 	t.Run("tree with positional argument", func(t *testing.T) {
+		t.Parallel()
 		cmd := project.TreeCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			fmt.Sprintf("%d", projectID),
@@ -99,6 +104,7 @@ func TestTreeProject_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("invalid positional argument", func(t *testing.T) {
+		t.Parallel()
 		cmd := project.TreeCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"invalid",
@@ -108,6 +114,7 @@ func TestTreeProject_Errors(t *testing.T) {
 	})
 
 	t.Run("too many positional arguments", func(t *testing.T) {
+		t.Parallel()
 		cmd := project.TreeCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"1", "2",

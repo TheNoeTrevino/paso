@@ -200,6 +200,7 @@ func TestTaskToModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := TaskToModel(tt.input)
 
 			assert.Equal(t, tt.expected.ID, result.ID)
@@ -354,6 +355,7 @@ func TestParentTasksToReferences(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := ParentTasksToReferences(tt.input)
 
 			require.Len(t, result, len(tt.expected))
@@ -491,6 +493,7 @@ func TestChildTasksToReferences(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := ChildTasksToReferences(tt.input)
 
 			require.Len(t, result, len(tt.expected))
@@ -606,6 +609,7 @@ func TestCommentsToModels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := CommentsToModels(tt.input)
 
 			require.Len(t, result, len(tt.expected))
@@ -736,6 +740,7 @@ func TestParseLabelsFromConcatenated(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := ParseLabelsFromConcatenated(tt.ids, tt.names, tt.colors)
 
 			require.Len(t, result, len(tt.expected))
@@ -877,6 +882,7 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := TaskSummaryFromRowToModel(tt.input)
 
 			assert.Equal(t, tt.expected.ID, result.ID)
@@ -966,6 +972,7 @@ func TestReadyTaskSummaryFromRowToModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := ReadyTaskSummaryFromRowToModel(tt.input)
 
 			assert.Equal(t, tt.expected.ID, result.ID)
@@ -1053,6 +1060,7 @@ func TestFilteredTaskSummaryFromRowToModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := FilteredTaskSummaryFromRowToModel(tt.input)
 
 			assert.Equal(t, tt.expected.ID, result.ID)

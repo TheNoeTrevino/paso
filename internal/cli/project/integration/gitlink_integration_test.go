@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/cli/project"
+	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/testing/cli"
 )
 
@@ -28,6 +28,7 @@ func TestGitLink(t *testing.T) {
 	}
 
 	t.Run("link project to explicit branch by ID", func(t *testing.T) {
+		t.Parallel()
 		projectID := cli.CreateTestProject(t, db, "Link Explicit Branch")
 
 		// Register the branch in the mock
@@ -53,6 +54,7 @@ func TestGitLink(t *testing.T) {
 	})
 
 	t.Run("link project using current branch auto-detection", func(t *testing.T) {
+		t.Parallel()
 		projectID := cli.CreateTestProject(t, db, "Link Current Branch")
 
 		// The mock's current branch is "feature/current"
@@ -77,6 +79,7 @@ func TestGitLink(t *testing.T) {
 	})
 
 	t.Run("link project JSON output", func(t *testing.T) {
+		t.Parallel()
 		projectID := cli.CreateTestProject(t, db, "Link JSON Project")
 
 		mockGit.Branches["feature/json-branch"] = true
@@ -101,6 +104,7 @@ func TestGitLink(t *testing.T) {
 	})
 
 	t.Run("force transfer branch from another project", func(t *testing.T) {
+		t.Parallel()
 		// Create two projects; link the first to the branch
 		firstProjectID := cli.CreateTestProject(t, db, "First Owner")
 		secondProjectID := cli.CreateTestProject(t, db, "New Owner")
@@ -149,6 +153,7 @@ func TestGitLink_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("non-existent project ID", func(t *testing.T) {
+		t.Parallel()
 		cmd := project.GitLinkCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "999999",
@@ -174,6 +179,7 @@ func TestGitUnlink(t *testing.T) {
 	}
 
 	t.Run("unlink project with pre-linked branch", func(t *testing.T) {
+		t.Parallel()
 		projectID := cli.CreateTestProject(t, db, "Linked For Unlink")
 
 		mockGit.Branches["feature/to-unlink"] = true
@@ -212,6 +218,7 @@ func TestGitUnlink(t *testing.T) {
 	})
 
 	t.Run("unlink project with no branch linked", func(t *testing.T) {
+		t.Parallel()
 		projectID := cli.CreateTestProject(t, db, "No Branch Project")
 
 		cmd := project.GitUnlinkCmd()
@@ -224,6 +231,7 @@ func TestGitUnlink(t *testing.T) {
 	})
 
 	t.Run("unlink project with no branch linked JSON", func(t *testing.T) {
+		t.Parallel()
 		projectID := cli.CreateTestProject(t, db, "No Branch JSON Project")
 
 		cmd := project.GitUnlinkCmd()
@@ -247,6 +255,7 @@ func TestGitUnlink_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("non-existent project ID", func(t *testing.T) {
+		t.Parallel()
 		cmd := project.GitUnlinkCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "999999",

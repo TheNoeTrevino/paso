@@ -136,6 +136,7 @@ func TestCreateColumn_Integration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cmd := column.CreateCmd()
 
 			output, err := cli.ExecuteCLICommand(t, app, cmd, tt.flags)
@@ -206,6 +207,7 @@ func TestCreateColumn_ErrorCases(t *testing.T) {
 
 	for _, tt := range errorTests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cmd := column.CreateCmd()
 
 			_, err := cli.ExecuteCLICommand(t, app, cmd, tt.flags)
@@ -225,6 +227,7 @@ func TestCreateColumn_FlagCombinations(t *testing.T) {
 	projectID := cli.CreateTestProject(t, db, "Combo Test Project")
 
 	t.Run("create column with ready and quiet flags", func(t *testing.T) {
+		t.Parallel()
 		cmd := column.CreateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -254,6 +257,7 @@ func TestCreateColumn_FlagCombinations(t *testing.T) {
 	})
 
 	t.Run("create column with completed and JSON flags", func(t *testing.T) {
+		t.Parallel()
 		cmd := column.CreateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -283,6 +287,7 @@ func TestCreateColumn_FlagCombinations(t *testing.T) {
 	})
 
 	t.Run("create multiple columns in same project", func(t *testing.T) {
+		t.Parallel()
 		cmd := column.CreateCmd()
 
 		for i := 1; i <= 3; i++ {
