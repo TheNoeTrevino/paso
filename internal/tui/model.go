@@ -872,21 +872,41 @@ func (m *Model) initChildPickerForForm() bool {
 	return true
 }
 
-// initLabelPickerForForm initializes the label picker for use in task form mode.
-// In edit mode: loads existing label selections from FormState.
-// In create mode: starts with empty selection (labels applied on form submission).
+// initLabelPicker initializes the label picker for both form and board modes.
+// - In form mode: Uses FormLabelIDs from form state (edit or create)
+// - In board mode: Uses labels from the currently selected task (quick edit)
 //
-// Returns false if there's no current project.
-func (m *Model) initLabelPickerForForm() bool {
+// Returns false if there's no current project or (in board mode) no selected task.
+func (m *Model) initLabelPicker(mode state.Mode) bool {
 	project := m.getCurrentProject()
 	if project == nil {
+		m.UI.Notification.Add(state.LevelError, "No project selected")
 		return false
 	}
 
-	// Build map of currently selected label IDs from form state
-	labelIDMap := make(map[int]bool)
-	for _, labelID := range m.Forms.Form.FormLabelIDs {
-		labelIDMap[labelID] = true
+	var labelIDMap map[int]bool
+	var taskID int
+
+	if mode == state.TicketFormMode {
+		// Form mode: use FormLabelIDs
+		labelIDMap = make(map[int]bool)
+		for _, labelID := range m.Forms.Form.FormLabelIDs {
+			labelIDMap[labelID] = true
+		}
+		taskID = m.Forms.Form.EditingTaskID // 0 for create mode
+	} else {
+		// Board mode: use current task's labels
+		task := m.getCurrentTask()
+		if task == nil {
+			m.UI.Notification.Add(state.LevelError, "No task selected")
+			return false
+		}
+		labelIDMap = make(map[int]bool)
+		for _, label := range task.Labels {
+			labelIDMap[label.ID] = true
+		}
+		taskID = task.ID
+		m.Forms.Form.EditingTaskID = taskID // Set for board mode updates
 	}
 
 	// Build picker items from all available labels
@@ -900,10 +920,10 @@ func (m *Model) initLabelPickerForForm() bool {
 
 	// Initialize LabelPickerState
 	m.Pickers.Label.Items = items
-	m.Pickers.Label.TaskID = m.Forms.Form.EditingTaskID // 0 for create mode
+	m.Pickers.Label.TaskID = taskID
 	m.Pickers.Label.Cursor = 0
 	m.Pickers.Label.Filter = ""
-	m.Pickers.Label.ReturnMode = state.TicketFormMode
+	m.Pickers.Label.ReturnMode = mode
 
 	return true
 }
@@ -914,33 +934,59 @@ func (m *Model) getFilteredLabelPickerItems() []state.LabelPickerItem {
 	return m.Pickers.Label.GetFilteredItems()
 }
 
-// initPriorityPickerForForm initializes the priority picker for use in task form mode.
-// Loads the current priority from the form state.
-func (m *Model) initPriorityPickerForForm() bool {
-	// Get current priority ID from form state
-	// If we're editing a task, get it from the task detail
-	// Otherwise, default to medium (id=3)
-	currentPriorityID := 3 // Default to medium
+// initPriorityPicker initializes the priority picker for both form and board modes.
+// - In form mode: Defaults to medium priority (id=3) for new tasks, loads from DB for editing
+// - In board mode: Loads priority from the currently selected task
+//
+// Returns false if there's a database error or (in board mode) no selected task.
+func (m *Model) initPriorityPicker(mode state.Mode) bool {
+	var currentPriorityID int
+	var taskID int
 
-	// If editing an existing task, get the current priority ID directly from database
-	if m.Forms.Form.EditingTaskID != 0 {
+	if mode == state.TicketFormMode {
+		// Form mode: default to medium priority for new tasks
+		currentPriorityID = 3
+		taskID = m.Forms.Form.EditingTaskID
+
+		// If editing an existing task, get the current priority ID from database
+		if taskID != 0 {
+			ctx, cancel := m.DBContext()
+			defer cancel()
+
+			_, priorityID, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, taskID)
+			if err != nil {
+				slog.Error("failed to get task priority ID for priority picker", "error", err)
+				return false
+			}
+			currentPriorityID = priorityID
+		}
+	} else {
+		// Board mode: use current task's priority
+		task := m.getCurrentTask()
+		if task == nil {
+			m.UI.Notification.Add(state.LevelError, "No task selected")
+			return false
+		}
+
 		ctx, cancel := m.DBContext()
 		defer cancel()
 
-		_, priorityID, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, m.Forms.Form.EditingTaskID)
+		_, priorityID, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, task.ID)
 		if err != nil {
-			slog.Error("failed to get task priority ID for priority picker", "error", err)
+			slog.Error("failed to get task priority ID for board picker", "error", err)
+			m.UI.Notification.Add(state.LevelError, "Failed to load task priority")
 			return false
 		}
 
 		currentPriorityID = priorityID
+		taskID = task.ID
+		m.Forms.Form.EditingTaskID = taskID // Set for board mode updates
 	}
 
 	// Initialize PriorityPickerState
 	m.Pickers.Priority.SetSelectedPriorityID(currentPriorityID)
-	// Set cursor to match the selected priority (adjust for 0-indexing)
-	m.Pickers.Priority.SetCursor(currentPriorityID - 1)
-	m.Pickers.Priority.ReturnMode = state.TicketFormMode
+	m.Pickers.Priority.SetCursor(currentPriorityID - 1) // 0-indexed
+	m.Pickers.Priority.ReturnMode = mode
 
 	return true
 }
@@ -977,31 +1023,56 @@ func (m *Model) initTypePickerForForm() bool {
 	return true
 }
 
-// initAssigneePickerForForm initializes the assignee picker for use in task form mode.
-// Loads available assignees and sets the cursor to the current assignee.
-func (m *Model) initAssigneePickerForForm() bool {
+// initAssigneePicker initializes the assignee picker for both form and board modes.
+// - In form mode: Uses FormAssigneeID from form state
+// - In board mode: Uses assignee from the currently selected task
+//
+// Returns false if there's a database error or (in board mode) no selected task.
+func (m *Model) initAssigneePicker(mode state.Mode) bool {
 	ctx, cancel := m.DBContext()
 	defer cancel()
 
 	assignees, err := m.App.AssigneeService.List(ctx)
 	if err != nil {
 		slog.Error("failed to load assignees for picker", "error", err)
+		m.UI.Notification.Add(state.LevelError, "Failed to load assignees")
 		return false
 	}
 
+	var currentAssigneeID int
+	var taskID int
+
+	if mode == state.TicketFormMode {
+		// Form mode: use FormAssigneeID
+		currentAssigneeID = m.Forms.Form.FormAssigneeID
+	} else {
+		// Board mode: use current task's assignee
+		task := m.getCurrentTask()
+		if task == nil {
+			m.UI.Notification.Add(state.LevelError, "No task selected")
+			return false
+		}
+
+		if task.AssigneeID != nil {
+			currentAssigneeID = *task.AssigneeID
+		}
+		taskID = task.ID
+		m.Forms.Form.EditingTaskID = taskID // Set for board mode updates
+	}
+
 	m.Pickers.Assignee.SetAssignees(assignees)
-	m.Pickers.Assignee.SetSelectedID(m.Forms.Form.FormAssigneeID)
+	m.Pickers.Assignee.SetSelectedID(currentAssigneeID)
 
 	// Position cursor to match current assignee (offset by 1 for the clear option)
 	cursorPos := 0 // Default to "clear assignee" option
 	for i, a := range assignees {
-		if a.ID == m.Forms.Form.FormAssigneeID {
+		if a.ID == currentAssigneeID {
 			cursorPos = i + 1 // +1 because index 0 is the clear option
 			break
 		}
 	}
 	m.Pickers.Assignee.SetCursor(cursorPos)
-	m.Pickers.Assignee.ReturnMode = state.TicketFormMode
+	m.Pickers.Assignee.ReturnMode = mode
 
 	return true
 }

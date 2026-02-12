@@ -12,6 +12,8 @@ type KeyMappings struct {
 	MoveTaskDown   string `yaml:"move_task_down"`
 	ViewTask       string `yaml:"view_task"`
 	EditLabels     string `yaml:"edit_labels"`
+	EditPriority   string `yaml:"edit_priority"`
+	EditAssignee   string `yaml:"edit_assignee"`
 	EditParentTask string `yaml:"edit_parent_task"`
 	EditChildTask  string `yaml:"edit_child_task"`
 
@@ -61,7 +63,9 @@ func DefaultKeyMappings() KeyMappings {
 		MoveTaskUp:     "K",
 		MoveTaskDown:   "J",
 		ViewTask:       " ",
-		EditLabels:     "l",
+		EditLabels:     "ctrl+l",
+		EditPriority:   "ctrl+r",
+		EditAssignee:   "ctrl+a",
 		EditParentTask: "p",
 		EditChildTask:  "c",
 		SaveForm:       "ctrl+s",
@@ -128,6 +132,12 @@ func (k *KeyMappings) applyDefaults() {
 	}
 	if k.EditLabels == "" {
 		k.EditLabels = defaults.EditLabels
+	}
+	if k.EditPriority == "" {
+		k.EditPriority = defaults.EditPriority
+	}
+	if k.EditAssignee == "" {
+		k.EditAssignee = defaults.EditAssignee
 	}
 	if k.EditParentTask == "" {
 		k.EditParentTask = defaults.EditParentTask

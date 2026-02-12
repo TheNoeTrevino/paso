@@ -1,6 +1,10 @@
 package theme
 
-import "github.com/thenoetrevino/paso/internal/config/colors"
+import (
+	"sync"
+
+	"github.com/thenoetrevino/paso/internal/config/colors"
+)
 
 // Colors holds the current theme colors, initialized by Init
 var (
@@ -22,26 +26,30 @@ var (
 	ErrorBg        string
 	StatusBarBg    string
 	StatusBarText  string
+	once           sync.Once
 )
 
 // Init initializes the theme colors from the given color scheme
+// Thread-safe: uses sync.Once to ensure initialization happens exactly once
 func Init(colors colors.ColorScheme) {
-	Highlight = colors.Accent
-	Subtle = colors.Subtle
-	Normal = colors.Normal
-	Create = colors.Create
-	Blocked = colors.Blocked
-	Background = colors.Background
-	SelectedBorder = colors.SelectedBorder
-	SelectedBg = colors.SelectedBg
-	TaskBg = colors.TaskBackground
-	ColumnBg = colors.ColumnBackground
-	InfoFg = colors.InfoFg
-	InfoBg = colors.InfoBg
-	WarningFg = colors.WarningFg
-	WarningBg = colors.WarningBg
-	ErrorFg = colors.ErrorFg
-	ErrorBg = colors.ErrorBg
-	StatusBarBg = colors.StatusBarBg
-	StatusBarText = colors.StatusBarText
+	once.Do(func() {
+		Highlight = colors.Accent
+		Subtle = colors.Subtle
+		Normal = colors.Normal
+		Create = colors.Create
+		Blocked = colors.Blocked
+		Background = colors.Background
+		SelectedBorder = colors.SelectedBorder
+		SelectedBg = colors.SelectedBg
+		TaskBg = colors.TaskBackground
+		ColumnBg = colors.ColumnBackground
+		InfoFg = colors.InfoFg
+		InfoBg = colors.InfoBg
+		WarningFg = colors.WarningFg
+		WarningBg = colors.WarningBg
+		ErrorFg = colors.ErrorFg
+		ErrorBg = colors.ErrorBg
+		StatusBarBg = colors.StatusBarBg
+		StatusBarText = colors.StatusBarText
+	})
 }

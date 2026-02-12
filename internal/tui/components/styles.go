@@ -3,6 +3,8 @@
 package components
 
 import (
+	"sync"
+
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/config/colors"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
@@ -108,125 +110,130 @@ var (
 
 	// DetailPanelStyle defines the appearance of the task detail panel
 	DetailPanelStyle lipgloss.Style
+
+	once sync.Once
 )
 
 // InitStyles initializes all styles with the given color scheme
+// Thread-safe: uses sync.Once to ensure initialization happens exactly once
 func InitStyles(colors colors.ColorScheme) {
-	theme.Init(colors)
+	once.Do(func() {
+		theme.Init(colors)
 
-	TabStyle = lipgloss.NewStyle().
-		Border(tabBorder, true).
-		BorderForeground(lipgloss.Color(theme.Highlight)).
-		Padding(0, 1)
+		TabStyle = lipgloss.NewStyle().
+			Border(tabBorder, true).
+			BorderForeground(lipgloss.Color(theme.Highlight)).
+			Padding(0, 1)
 
-	ActiveTabStyle = TabStyle.Border(activeTabBorder, true)
+		ActiveTabStyle = TabStyle.Border(activeTabBorder, true)
 
-	TabGapStyle = TabStyle.
-		BorderTop(false).
-		BorderLeft(false).
-		BorderRight(false)
+		TabGapStyle = TabStyle.
+			BorderTop(false).
+			BorderLeft(false).
+			BorderRight(false)
 
-	// ColumnStyle defines appearance without fixed width - width is set dynamically
-	ColumnStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(colors.ColumnBorder)).
-		PaddingLeft(1).
-		PaddingRight(1)
+		// ColumnStyle defines appearance without fixed width - width is set dynamically
+		ColumnStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(colors.ColumnBorder)).
+			PaddingLeft(1).
+			PaddingRight(1)
 
-	// TaskStyle defines appearance without fixed width - width is set dynamically
-	TaskStyle = lipgloss.NewStyle().
-		BorderStyle(lipgloss.ThickBorder()).
-		BorderForeground(lipgloss.Color(colors.TaskBorder)).
-		BorderBackground(lipgloss.Color(colors.TaskBackground)).
-		Background(lipgloss.Color(colors.TaskBackground)).
-		Padding(0)
+		// TaskStyle defines appearance without fixed width - width is set dynamically
+		TaskStyle = lipgloss.NewStyle().
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(lipgloss.Color(colors.TaskBorder)).
+			BorderBackground(lipgloss.Color(colors.TaskBackground)).
+			Background(lipgloss.Color(colors.TaskBackground)).
+			Padding(0)
 
-	TaskTitleStyle = lipgloss.NewStyle().
-		Bold(true)
+		TaskTitleStyle = lipgloss.NewStyle().
+			Bold(true)
 
-	ColumnTitleStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colors.Title))
+		ColumnTitleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(colors.Title))
 
-	FormBoxStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(colors.Accent)).
-		Padding(1, 2)
+		FormBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(colors.Accent)).
+			Padding(1, 2)
 
-	ProjectFormBoxStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(colors.Create)).
-		Padding(1, 2)
+		ProjectFormBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(colors.Create)).
+			Padding(1, 2)
 
-	CreateInputBoxStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(colors.Create)).
-		Padding(1)
+		CreateInputBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(colors.Create)).
+			Padding(1)
 
-	EditInputBoxStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(colors.Edit)).
-		Padding(1)
+		EditInputBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(colors.Edit)).
+			Padding(1)
 
-	DeleteConfirmBoxStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(colors.Delete)).
-		Padding(1)
+		DeleteConfirmBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(colors.Delete)).
+			Padding(1)
 
-	HelpBoxStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(colors.Edit)).
-		Padding(1, 2)
+		HelpBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(colors.Edit)).
+			Padding(1, 2)
 
-	LabelPickerBoxStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(colors.Accent)).
-		Padding(1, 2)
+		LabelPickerBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(colors.Accent)).
+			Padding(1, 2)
 
-	LabelPickerCreateBoxStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(colors.Create)).
-		Padding(1, 2)
+		LabelPickerCreateBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(colors.Create)).
+			Padding(1, 2)
 
-	InfoBannerStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colors.InfoFg)).
-		Background(lipgloss.Color(colors.InfoBg)).
-		Bold(true).
-		Padding(0, 1)
+		InfoBannerStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(colors.InfoFg)).
+			Background(lipgloss.Color(colors.InfoBg)).
+			Bold(true).
+			Padding(0, 1)
 
-	WarningBannerStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colors.WarningFg)).
-		Background(lipgloss.Color(colors.WarningBg)).
-		Bold(true).
-		Padding(0, 1)
+		WarningBannerStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(colors.WarningFg)).
+			Background(lipgloss.Color(colors.WarningBg)).
+			Bold(true).
+			Padding(0, 1)
 
-	ErrorBannerStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colors.ErrorFg)).
-		Background(lipgloss.Color(colors.ErrorBg)).
-		Bold(true).
-		Padding(0, 1)
+		ErrorBannerStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(colors.ErrorFg)).
+			Background(lipgloss.Color(colors.ErrorBg)).
+			Bold(true).
+			Padding(0, 1)
 
-	IndicatorStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Subtle)).
-		Align(lipgloss.Center)
+		IndicatorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Subtle)).
+			Align(lipgloss.Center)
 
-	StatusBarStyle = lipgloss.NewStyle().
-		Background(lipgloss.Color(colors.StatusBarBg)).
-		Foreground(lipgloss.Color(colors.StatusBarText))
+		StatusBarStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color(colors.StatusBarBg)).
+			Foreground(lipgloss.Color(colors.StatusBarText))
 
-	StatusBarSearchStyle = lipgloss.NewStyle().
-		Background(lipgloss.Color(colors.Background))
+		StatusBarSearchStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color(colors.Background))
 
-	StatusBarTipStyle = lipgloss.NewStyle().
-		Background(lipgloss.Color(colors.Background)).
-		Foreground(lipgloss.Color(theme.Subtle))
+		StatusBarTipStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color(colors.Background)).
+			Foreground(lipgloss.Color(theme.Subtle))
 
-	BlockedStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.ErrorFg))
+		BlockedStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.ErrorFg))
 
-	SubtleStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Subtle))
+		SubtleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Subtle))
 
-	DetailPanelStyle = lipgloss.NewStyle().
-		Padding(1, 2)
+		DetailPanelStyle = lipgloss.NewStyle().
+			Padding(1, 2)
+	})
 }
