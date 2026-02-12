@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
@@ -51,14 +50,15 @@ Examples:
 func runEstimate(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
-	taskID, err := strconv.Atoi(args[0])
-	if err != nil {
-		return fmt.Errorf("invalid task ID: %s", args[0])
-	}
-
 	clearEstimate, _ := cmd.Flags().GetBool("clear")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
+
+	// Parse input
+	input, err := ParseEstimateArgs(args, clearEstimate)
+	if err != nil {
+		return err
+	}
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
@@ -73,27 +73,25 @@ func runEstimate(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Verify task exists
-	_, err = cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
+	_, err = cliInstance.App.TaskService.GetTaskDetail(ctx, input.TaskID)
 	if err != nil {
-		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID))
+		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", input.TaskID))
 	}
 
-	if clearEstimate {
-		return updateEstimate(cmd, cliInstance, taskID, nil, formatter, jsonOutput, quietMode)
+	if input.Clear {
+		return updateEstimate(cmd, cliInstance, input.TaskID, nil, formatter, jsonOutput, quietMode)
 	}
 
-	if len(args) < 2 {
+	if input.Estimate == "" {
 		return formatter.Error(cli.ExitValidation, "MISSING_ESTIMATE", "estimate value is required (or use --clear to remove)")
 	}
 
-	estimate := args[1]
-
 	// Validate estimate format before calling service
-	if err := taskservice.ValidateEstimate(&estimate); err != nil {
+	if err := taskservice.ValidateEstimate(&input.Estimate); err != nil {
 		return formatter.Error(cli.ExitValidation, "INVALID_ESTIMATE", err.Error())
 	}
 
-	return updateEstimate(cmd, cliInstance, taskID, &estimate, formatter, jsonOutput, quietMode)
+	return updateEstimate(cmd, cliInstance, input.TaskID, &input.Estimate, formatter, jsonOutput, quietMode)
 }
 
 func updateEstimate(cmd *cobra.Command, cliInstance *cli.CLI, taskID int, estimate *string, formatter *cli.OutputFormatter, jsonOutput, quietMode bool) error {
@@ -104,28 +102,23 @@ func updateEstimate(cmd *cobra.Command, cliInstance *cli.CLI, taskID int, estima
 		return formatter.Error(cli.ExitError, "ESTIMATE_ERROR", err.Error())
 	}
 
+	result := &EstimateResult{
+		TaskID:  taskID,
+		Cleared: estimate == nil,
+	}
+	if estimate != nil {
+		result.Estimate = *estimate
+	}
+
 	if quietMode {
 		fmt.Printf("%d\n", taskID)
 		return nil
 	}
 
 	if jsonOutput {
-		result := map[string]any{
-			"success": true,
-			"task_id": taskID,
-		}
-		if estimate != nil {
-			result["estimate"] = *estimate
-		} else {
-			result["estimate"] = nil
-		}
-		return json.NewEncoder(os.Stdout).Encode(result)
+		return json.NewEncoder(os.Stdout).Encode(FormatEstimateJSON(result))
 	}
 
-	if estimate != nil {
-		cli.PrintSuccess(fmt.Sprintf("Task %d estimate set to %s", taskID, *estimate))
-	} else {
-		cli.PrintSuccess(fmt.Sprintf("Task %d estimate cleared", taskID))
-	}
+	cli.PrintSuccess(FormatEstimateOutput(result))
 	return nil
 }
