@@ -200,6 +200,7 @@ func TestTaskToModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 			result := TaskToModel(tt.input)
 
@@ -355,6 +356,7 @@ func TestParentTasksToReferences(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 			result := ParentTasksToReferences(tt.input)
 
@@ -493,6 +495,7 @@ func TestChildTasksToReferences(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 			result := ChildTasksToReferences(tt.input)
 
@@ -609,6 +612,7 @@ func TestCommentsToModels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 			result := CommentsToModels(tt.input)
 
@@ -740,6 +744,7 @@ func TestParseLabelsFromConcatenated(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 			result := ParseLabelsFromConcatenated(tt.ids, tt.names, tt.colors)
 
@@ -882,6 +887,7 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 			result := TaskSummaryFromRowToModel(tt.input)
 
@@ -972,6 +978,7 @@ func TestReadyTaskSummaryFromRowToModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 			result := ReadyTaskSummaryFromRowToModel(tt.input)
 
@@ -1060,6 +1067,7 @@ func TestFilteredTaskSummaryFromRowToModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 			result := FilteredTaskSummaryFromRowToModel(tt.input)
 

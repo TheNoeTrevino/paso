@@ -328,13 +328,17 @@ func (c *Client) startBatcher() {
 		select {
 		case <-c.ctx.Done():
 			// Flush any pending events before exiting
-			flushPending()
+			if err := flushPending(); err != nil {
+				slog.Debug("error flushing events on context done", "error", err)
+			}
 			return
 
 		case event, ok := <-c.eventQueue:
 			if !ok {
 				// Channel closed - flush and exit
-				flushPending()
+				if err := flushPending(); err != nil {
+					slog.Debug("error flushing events on channel close", "error", err)
+				}
 				return
 			}
 
@@ -367,7 +371,9 @@ func (c *Client) startBatcher() {
 			}
 
 		case <-ticker.C:
-			flushPending()
+			if err := flushPending(); err != nil {
+				slog.Debug("error flushing events on ticker", "error", err)
+			}
 
 		case respCh := <-c.flushReq:
 			// ForceFlush request - immediately flush and respond

@@ -39,6 +39,8 @@ func TestRenderColumnHeader(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
+			t.Parallel()
 			result := renderColumnHeader(tt.column, tt.taskCount)
 			assert.Contains(t, result, tt.wantText)
 		})
@@ -87,6 +89,8 @@ func TestRenderEmptyColumnContent_PaddingCalculation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
+			t.Parallel()
 			result := renderEmptyColumnContent("Header")
 			lines := strings.Split(result, "\n")
 

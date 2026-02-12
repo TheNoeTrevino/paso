@@ -30,6 +30,8 @@ func TestInProgressTask(t *testing.T) {
 	cli.SetColumnHoldsInProgressTasks(t, db, inProgressColumnID)
 
 	t.Run("mark task as in-progress", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create task in todo column
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task to Start")
 
@@ -51,6 +53,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("mark task as in-progress - quiet mode", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create task in todo column
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Quiet Mode Task")
 
@@ -73,6 +77,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("mark task as in-progress - JSON mode", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create task in todo column
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "JSON Mode Task")
 
@@ -104,6 +110,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("list in-progress tasks", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create task and move it to in-progress using the command
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Listed In Progress Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 4})
@@ -129,6 +137,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("list in-progress tasks - quiet mode", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create and move tasks to in-progress using the command
 		taskID1 := cli.CreateTestTask(t, db, todoColumnID, "Quiet List Task 1")
 		taskID2 := cli.CreateTestTask(t, db, todoColumnID, "Quiet List Task 2")
@@ -170,6 +180,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("list in-progress tasks - JSON mode", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create and move a task to in-progress using the command
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "JSON List Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 7})
@@ -219,6 +231,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("task already in in-progress column", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create task already in in-progress column
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Already In Progress")
 
@@ -241,6 +255,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("multiple tasks moved to in-progress", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create multiple tasks
 		taskID1 := cli.CreateTestTask(t, db, todoColumnID, "Multi Task 1")
 		taskID2 := cli.CreateTestTask(t, db, todoColumnID, "Multi Task 2")
@@ -281,6 +297,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("list in-progress tasks with different priorities", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create tasks with different priorities
 		lowPriorityTaskID := cli.CreateTestTask(t, db, inProgressColumnID, "Low Priority Task")
 		highPriorityTaskID := cli.CreateTestTask(t, db, inProgressColumnID, "High Priority Task")
@@ -304,6 +322,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("list in-progress tasks with blocked status", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create blocker and blocked tasks
 		blockerTaskID := cli.CreateTestTask(t, db, todoColumnID, "Blocker Task")
 		blockedTaskID := cli.CreateTestTask(t, db, inProgressColumnID, "Blocked In Progress Task")
@@ -327,6 +347,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("list empty in-progress tasks", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create a new project with no in-progress tasks
 		newProjectID := cli.CreateTestProject(t, db, "Empty Project")
 		emptyInProgressColumnID := cli.CreateTestColumn(t, db, newProjectID, "In Progress")
@@ -345,6 +367,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("move task with labels to in-progress", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create task with labels
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task With Labels")
 
@@ -378,6 +402,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("move task from different column to in-progress", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create a "Done" column
 		doneColumnID := cli.CreateTestColumn(t, db, projectID, "Done")
 
@@ -401,6 +427,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("move task with description to in-progress", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create task with description
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task With Description")
 
@@ -427,6 +455,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("list in-progress tasks in JSON with complete structure", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create a task with all metadata
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Complete Metadata Task")
 

@@ -95,6 +95,7 @@ func TestCreateLabel_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 
 			db := fixtures.SetupTestDB(t)
@@ -145,6 +146,7 @@ func TestCreateLabel_InvalidColor(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 			req := CreateLabelRequest{
 				ProjectID: env.ProjectID,
@@ -424,6 +426,7 @@ func TestUpdateLabel_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 
 			db := fixtures.SetupTestDB(t)
@@ -505,6 +508,7 @@ func TestDeleteLabel_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 
 			db := fixtures.SetupTestDB(t)
@@ -595,6 +599,7 @@ func TestCreateLabel_InvalidLabelID_Errors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 
 			db := fixtures.SetupTestDB(t)
@@ -719,6 +724,7 @@ func TestCreateLabel_SpecialCharacters(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 
 			db := fixtures.SetupTestDB(t)
@@ -828,6 +834,7 @@ func TestUpdateLabel_InvalidLabelID_Errors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 
 			db := fixtures.SetupTestDB(t)
@@ -930,6 +937,7 @@ func TestUpdateLabel_InvalidColorFormats(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 			req := UpdateLabelRequest{
 				ID:    created.ID,
@@ -1003,6 +1011,7 @@ func TestDeleteLabel_InvalidLabelID_Errors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 
 			db := fixtures.SetupTestDB(t)
@@ -1081,6 +1090,7 @@ func TestCreateLabel_BoundaryValues(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 
 			db := fixtures.SetupTestDB(t)
@@ -1125,6 +1135,7 @@ func TestCreateLabel_ValidColorFormats(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 
 			db := fixtures.SetupTestDB(t)

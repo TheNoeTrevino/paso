@@ -21,6 +21,7 @@ func TestCreateProject_Integration(t *testing.T) {
 
 	t.Run("create project with title only", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		cmd := project.CreateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -43,6 +44,7 @@ func TestCreateProject_Integration(t *testing.T) {
 
 	t.Run("create project with description", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		cmd := project.CreateCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -64,6 +66,7 @@ func TestCreateProject_Integration(t *testing.T) {
 	})
 
 	t.Run("create project creates default columns", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		cmd := project.CreateCmd()
 
@@ -111,6 +114,7 @@ func TestCreateProject_InGitRepo(t *testing.T) {
 
 	t.Run("create project in git repo associates with branch", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		// Configure mock: simulate being in a git repo on branch "feature/test-branch"
 		mockGit.Info = git.GitInfo{
 			IsRepo:        true,
@@ -155,6 +159,7 @@ func TestCreateProject_OutsideGitRepo(t *testing.T) {
 
 	t.Run("create project outside git repo has no branch", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		// Configure mock: simulate NOT being in a git repo
 		mockGit.Info = git.GitInfo{
 			IsRepo: false,
@@ -192,6 +197,7 @@ func TestCreateProject_BranchAlreadyAssociated(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("warn when branch already associated", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		// Configure mock: we are on branch "feature/existing-branch" in a git repo
 		mockGit.Info = git.GitInfo{
@@ -241,6 +247,7 @@ func TestCreateProject_MultipleProjectsNoBranch(t *testing.T) {
 
 	t.Run("multiple projects without branches allowed", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		// Create multiple projects outside git repos
 		for i := 0; i < 3; i++ {
 			cmd := project.CreateCmd()
@@ -284,6 +291,7 @@ func TestCreateProject_DifferentBranches(t *testing.T) {
 
 	t.Run("projects on different branches allowed", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		// Manually create projects on different branches
 		// (simulating what the CLI would do with git detection)
 
@@ -323,6 +331,7 @@ func TestCreateProject_Integration_Errors(t *testing.T) {
 
 	t.Run("create project missing title returns error", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		cmd := project.CreateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
 		assert.Error(t, err)
@@ -337,6 +346,7 @@ func TestCreateProject_GitBranchWithSlashes(t *testing.T) {
 	db, _ := cli.SetupCLITest(t)
 
 	t.Run("branch names with slashes", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		// Create a project with a branch containing slashes
 		projectID := cli.CreateTestProjectWithBranch(t, db, "Test Project", "feature/auth/user-login")

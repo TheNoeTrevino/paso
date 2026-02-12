@@ -15,6 +15,8 @@ func TestNilClientMethods(t *testing.T) {
 	var client *Client // nil client
 
 	t.Run("SetNotifyFunc on nil client", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		defer func() {
 			r := recover()
 			assert.Nil(t, r)
@@ -23,6 +25,8 @@ func TestNilClientMethods(t *testing.T) {
 	})
 
 	t.Run("Listen on nil client", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		defer func() {
 			r := recover()
 			assert.Nil(t, r)
@@ -40,6 +44,8 @@ func TestNilClientMethods(t *testing.T) {
 	})
 
 	t.Run("Subscribe on nil client", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		defer func() {
 			r := recover()
 			assert.Nil(t, r)
@@ -49,6 +55,8 @@ func TestNilClientMethods(t *testing.T) {
 	})
 
 	t.Run("SendEvent on nil client", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		defer func() {
 			r := recover()
 			assert.Nil(t, r)
@@ -58,6 +66,8 @@ func TestNilClientMethods(t *testing.T) {
 	})
 
 	t.Run("Close on nil client", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		defer func() {
 			r := recover()
 			assert.Nil(t, r)

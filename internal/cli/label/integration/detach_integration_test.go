@@ -20,6 +20,8 @@ func TestDetachLabel_Integration(t *testing.T) {
 	todoColumnID := cli.GetColumnIDByName(t, db, projectID, "Todo")
 
 	t.Run("detach label from task", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Detach Task")
 		labelID := cli.CreateTestLabel(t, db, projectID, "detach-me", "#FF0000")
 
@@ -45,6 +47,8 @@ func TestDetachLabel_Integration(t *testing.T) {
 	})
 
 	t.Run("detach label JSON output", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "JSON Detach Task")
 		labelID := cli.CreateTestLabel(t, db, projectID, "json-detach", "#00FF00")
 
@@ -68,6 +72,8 @@ func TestDetachLabel_Integration(t *testing.T) {
 	})
 
 	t.Run("detach label quiet mode", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Quiet Detach Task")
 		labelID := cli.CreateTestLabel(t, db, projectID, "quiet-detach", "#0000FF")
 
@@ -91,6 +97,8 @@ func TestDetachLabel_Integration(t *testing.T) {
 	})
 
 	t.Run("detach non-existent association is not an error", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "No Association Task")
 		labelID := cli.CreateTestLabel(t, db, projectID, "no-association", "#AABBCC")
 

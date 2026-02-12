@@ -18,6 +18,7 @@ func TestDeleteProject_Integration(t *testing.T) {
 
 	t.Run("delete project with force flag", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		projectID := cli.CreateTestProject(t, db, "Force Delete Project")
 		cmd := project.DeleteCmd()
 
@@ -38,6 +39,7 @@ func TestDeleteProject_Integration(t *testing.T) {
 
 	t.Run("delete project with quiet flag", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		projectID := cli.CreateTestProject(t, db, "Quiet Delete Project")
 		cmd := project.DeleteCmd()
 
@@ -56,6 +58,7 @@ func TestDeleteProject_Integration(t *testing.T) {
 	})
 
 	t.Run("delete project with JSON output", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		projectID := cli.CreateTestProject(t, db, "JSON Delete Project")
 		cmd := project.DeleteCmd()
@@ -81,6 +84,7 @@ func TestDeleteProject_Integration_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("invalid project ID format", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		cmd := project.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{

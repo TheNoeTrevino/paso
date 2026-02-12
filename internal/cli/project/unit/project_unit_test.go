@@ -20,6 +20,7 @@ func TestCreateProject(t *testing.T) {
 
 	t.Run("create project", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 
 		mockProject := mocks.NewMockProjectService()
 		mockProject.CreateProjectResult = &models.Project{
@@ -41,6 +42,7 @@ func TestCreateProject(t *testing.T) {
 	})
 
 	t.Run("create project with --json", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 
 		mockProject := mocks.NewMockProjectService()
@@ -69,6 +71,7 @@ func TestCreateProject(t *testing.T) {
 
 	t.Run("create project with --quiet", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 
 		mockProject := mocks.NewMockProjectService()
 		mockProject.CreateProjectResult = &models.Project{
@@ -87,6 +90,7 @@ func TestCreateProject(t *testing.T) {
 	})
 
 	t.Run("create project missing title", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 
 		mockProject := mocks.NewMockProjectService()
@@ -107,6 +111,7 @@ func TestListProject(t *testing.T) {
 
 	t.Run("list projects", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 
 		mockProject := mocks.NewMockProjectService()
 		mockProject.GetAllProjectsResult = []*models.Project{
@@ -126,6 +131,7 @@ func TestListProject(t *testing.T) {
 	})
 
 	t.Run("list projects with --json", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 
 		mockProject := mocks.NewMockProjectService()
@@ -152,6 +158,7 @@ func TestListProject(t *testing.T) {
 
 	t.Run("list empty projects", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 
 		mockProject := mocks.NewMockProjectService()
 		mockProject.GetAllProjectsResult = []*models.Project{}
@@ -170,6 +177,7 @@ func TestDeleteProject(t *testing.T) {
 	t.Parallel()
 
 	t.Run("delete project with --force", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 
 		mockProject := mocks.NewMockProjectService()
@@ -193,6 +201,7 @@ func TestDeleteProject(t *testing.T) {
 	})
 
 	t.Run("delete project with --json", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 
 		mockProject := mocks.NewMockProjectService()
@@ -218,6 +227,7 @@ func TestDeleteProject(t *testing.T) {
 	})
 
 	t.Run("delete non-existent project", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 
 		mockProject := mocks.NewMockProjectService()

@@ -95,6 +95,7 @@ func TestTruncateString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 			got := truncateString(tt.input, tt.maxLen)
 			assert.Equal(t, tt.want, got)
@@ -304,6 +305,7 @@ func TestRenderDetailPanelLoading(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 			result := RenderDetailPanelLoading(80, 40, tt.spinnerFrame)
 

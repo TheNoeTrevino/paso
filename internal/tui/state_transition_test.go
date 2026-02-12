@@ -86,6 +86,8 @@ func TestSelectedColumn_BoundaryConditions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
+			t.Parallel()
 			m.UIState.SelectedColumn = tt.selection
 			assert.Equal(t, tt.want, m.UIState.SelectedColumn)
 		})
@@ -121,6 +123,8 @@ func TestSelectedTask_UpdatesCorrectly(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
+			t.Parallel()
 			m.UIState.SelectedTask = tt.selection
 			assert.Equal(t, tt.want, m.UIState.SelectedTask)
 		})
@@ -245,6 +249,8 @@ func TestViewportState_CalculatesCorrectly(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
+			t.Parallel()
 			m.UIState.SetWidth(tt.width)
 			viewportSize := m.UIState.ViewportSize()
 
@@ -275,6 +281,8 @@ func TestModeUsesLayers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("Mode", func(t *testing.T) {
+		t.Parallel()
+			t.Parallel()
 			usesLayers := tt.mode.UsesLayers()
 			assert.Equal(t, tt.wantLayers, usesLayers)
 		})

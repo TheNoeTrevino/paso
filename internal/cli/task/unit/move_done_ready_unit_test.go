@@ -29,6 +29,7 @@ func TestMoveTask(t *testing.T) {
 
 	t.Run("move to next column", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 
 		mockTask := mocks.NewMockTaskService()
 		mockColumn := mocks.NewMockColumnService()
@@ -49,6 +50,7 @@ func TestMoveTask(t *testing.T) {
 	})
 
 	t.Run("move to specific column by name", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 
 		mockTask := mocks.NewMockTaskService()
@@ -71,6 +73,7 @@ func TestMoveTask(t *testing.T) {
 
 	t.Run("move with --quiet", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 
 		mockTask := mocks.NewMockTaskService()
 		mockColumn := mocks.NewMockColumnService()
@@ -90,6 +93,7 @@ func TestMoveTask(t *testing.T) {
 	})
 
 	t.Run("move with --json", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 
 		mockTask := mocks.NewMockTaskService()
@@ -117,6 +121,7 @@ func TestMoveTask(t *testing.T) {
 
 	t.Run("task not found", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 
 		mockTask := mocks.NewMockTaskService()
 		mockColumn := mocks.NewMockColumnService()
@@ -138,6 +143,7 @@ func TestDoneTask(t *testing.T) {
 	t.Parallel()
 
 	t.Run("mark task done", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 
 		mockTask := mocks.NewMockTaskService()
@@ -162,6 +168,7 @@ func TestDoneTask(t *testing.T) {
 
 	t.Run("done with --quiet", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 
 		mockTask := mocks.NewMockTaskService()
 		callCount := 0
@@ -183,6 +190,7 @@ func TestDoneTask(t *testing.T) {
 	})
 
 	t.Run("done with --json", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 
 		mockTask := mocks.NewMockTaskService()
@@ -212,6 +220,7 @@ func TestDoneTask(t *testing.T) {
 
 	t.Run("task not found", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 
 		mockTask := mocks.NewMockTaskService()
 		mockTask.GetTaskDetailErr = fmt.Errorf("not found")
@@ -230,6 +239,7 @@ func TestReadyTask(t *testing.T) {
 	t.Parallel()
 
 	t.Run("list ready tasks", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 
 		mockTask := mocks.NewMockTaskService()
@@ -255,6 +265,7 @@ func TestReadyTask(t *testing.T) {
 
 	t.Run("no ready tasks", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 
 		mockTask := mocks.NewMockTaskService()
 		mockProject := mocks.NewMockProjectService()
@@ -273,6 +284,7 @@ func TestReadyTask(t *testing.T) {
 	})
 
 	t.Run("ready with --json", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 
 		mockTask := mocks.NewMockTaskService()
@@ -305,6 +317,7 @@ func TestReadyTask(t *testing.T) {
 	})
 
 	t.Run("ready with --quiet", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 
 		mockTask := mocks.NewMockTaskService()

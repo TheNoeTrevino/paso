@@ -23,6 +23,8 @@ func TestCreateTask(t *testing.T) {
 
 	// Test creating a task with just title and project ID
 	t.Run("create task with title only", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := task.CreateCmd()
 
 		// Capture output to verify task ID is returned
@@ -45,6 +47,8 @@ func TestCreateTask(t *testing.T) {
 
 	// Test creating a task with all fields
 	t.Run("create task with all fields", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := task.CreateCmd()
 
 		// Create a column to put the task in (other than default)

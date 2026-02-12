@@ -108,7 +108,6 @@ func TestRenderListViewScrolling(t *testing.T) {
 
 // TestRenderListViewDifferentSorts tests various sort fields
 func TestRenderListViewDifferentSorts(t *testing.T) {
-	t.Parallel()
 	rows := []ListViewRow{
 		{
 			Task: &models.TaskSummary{
@@ -133,8 +132,11 @@ func TestRenderListViewDifferentSorts(t *testing.T) {
 		state.SortByStatus,
 	}
 
+	t.Parallel()
 	for _, sortField := range sorts {
 		t.Run("sort", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 			output := RenderListView(rows, 0, 0, sortField, state.SortAsc, 100, 20)
 
 			assert.NotEmpty(t, output)

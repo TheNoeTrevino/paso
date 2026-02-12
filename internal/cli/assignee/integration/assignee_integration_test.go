@@ -17,6 +17,8 @@ func TestCreateAssignee(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
 
 	t.Run("create with name default output", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := assignee.CreateCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--name", "alice"})
 		assert.NoError(t, err)
@@ -31,6 +33,8 @@ func TestCreateAssignee(t *testing.T) {
 	})
 
 	t.Run("create with json output", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := assignee.CreateCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--name", "bob", "--json"})
 		assert.NoError(t, err)
@@ -46,6 +50,8 @@ func TestCreateAssignee(t *testing.T) {
 	})
 
 	t.Run("create with quiet output", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := assignee.CreateCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--name", "charlie", "--quiet"})
 		assert.NoError(t, err)
@@ -61,6 +67,8 @@ func TestCreateAssignee_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("missing name flag", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := assignee.CreateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
 		assert.Error(t, err)
@@ -68,12 +76,16 @@ func TestCreateAssignee_Errors(t *testing.T) {
 	})
 
 	t.Run("empty name", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := assignee.CreateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--name", ""})
 		assert.Error(t, err)
 	})
 
 	t.Run("duplicate name", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create first assignee
 		cmd := assignee.CreateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--name", "duplicate"})
@@ -87,6 +99,8 @@ func TestCreateAssignee_Errors(t *testing.T) {
 	})
 
 	t.Run("name too long", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		longName := strings.Repeat("a", 256) // Max is 255
 		cmd := assignee.CreateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--name", longName})
@@ -99,6 +113,8 @@ func TestListAssignees_Empty(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("default output empty", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := assignee.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
 		assert.NoError(t, err)
@@ -106,6 +122,8 @@ func TestListAssignees_Empty(t *testing.T) {
 	})
 
 	t.Run("json output empty", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := assignee.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--json"})
 		assert.NoError(t, err)
@@ -120,6 +138,8 @@ func TestListAssignees_Empty(t *testing.T) {
 	})
 
 	t.Run("quiet output empty", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := assignee.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--quiet"})
 		assert.NoError(t, err)
@@ -137,6 +157,8 @@ func TestListAssignees_Populated(t *testing.T) {
 	fixtures.CreateTestAssignee(t, db, fixtures.SQLiteDialect(), "charlie")
 
 	t.Run("default output table", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := assignee.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
 		assert.NoError(t, err)
@@ -148,6 +170,8 @@ func TestListAssignees_Populated(t *testing.T) {
 	})
 
 	t.Run("json output", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := assignee.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--json"})
 		assert.NoError(t, err)
@@ -172,6 +196,8 @@ func TestListAssignees_Populated(t *testing.T) {
 	})
 
 	t.Run("quiet output ids only", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := assignee.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--quiet"})
 		assert.NoError(t, err)
@@ -189,6 +215,8 @@ func TestDeleteAssignee(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
 
 	t.Run("delete with force and json", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Create assignee to delete
 		id := fixtures.CreateTestAssignee(t, db, fixtures.SQLiteDialect(), "to-delete")
 
@@ -214,6 +242,8 @@ func TestDeleteAssignee(t *testing.T) {
 	})
 
 	t.Run("delete with force and quiet", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		id := fixtures.CreateTestAssignee(t, db, fixtures.SQLiteDialect(), "quiet-delete")
 
 		cmd := assignee.DeleteCmd()
@@ -233,6 +263,8 @@ func TestDeleteAssignee(t *testing.T) {
 	})
 
 	t.Run("delete with force default output", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		id := fixtures.CreateTestAssignee(t, db, fixtures.SQLiteDialect(), "default-delete")
 
 		cmd := assignee.DeleteCmd()
@@ -250,6 +282,8 @@ func TestDeleteAssignee_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("nonexistent id", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := assignee.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "999999",
@@ -260,6 +294,8 @@ func TestDeleteAssignee_Errors(t *testing.T) {
 	})
 
 	t.Run("missing id flag", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := assignee.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--force"})
 		assert.Error(t, err)
@@ -267,6 +303,8 @@ func TestDeleteAssignee_Errors(t *testing.T) {
 	})
 
 	t.Run("invalid id format", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := assignee.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "not-a-number",

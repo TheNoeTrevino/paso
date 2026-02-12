@@ -33,6 +33,7 @@ func TestListColumns(t *testing.T) {
 
 	t.Run("list columns with project flag", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		cmd := column.ListCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -58,6 +59,7 @@ func TestListColumns(t *testing.T) {
 	})
 
 	t.Run("list columns with JSON output", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		cmd := column.ListCmd()
 
@@ -96,6 +98,7 @@ func TestListColumns(t *testing.T) {
 
 	t.Run("list columns with quiet mode", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		cmd := column.ListCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -117,6 +120,7 @@ func TestListColumns(t *testing.T) {
 
 	t.Run("list columns when none exist (empty project)", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		// Create a project with no columns
 		emptyProjectID := cli.CreateBareProject(t, db, "Empty Project")
 
@@ -131,6 +135,7 @@ func TestListColumns(t *testing.T) {
 	})
 
 	t.Run("list columns and verify sorting by position", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		// Create a project with custom columns in specific order
 		customProjectID := cli.CreateBareProject(t, db, "Ordered Project")
@@ -170,6 +175,7 @@ func TestListColumns(t *testing.T) {
 
 	t.Run("list columns with column flags set", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		// Create a project and modify column flags
 		flagProjectID := cli.CreateBareProject(t, db, "Flag Project")
 
@@ -190,6 +196,7 @@ func TestListColumns(t *testing.T) {
 	})
 
 	t.Run("list columns in JSON mode with complete structure", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		// Create a project with multiple columns
 		jsonProjectID := cli.CreateBareProject(t, db, "JSON Project")
@@ -239,6 +246,7 @@ func TestListColumns(t *testing.T) {
 
 	t.Run("list columns with multiple projects", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		// Create another project (bare, so it only has the columns we create)
 		projectID2 := cli.CreateBareProject(t, db, "Second Project")
 
@@ -270,6 +278,7 @@ func TestListColumns(t *testing.T) {
 
 	t.Run("list columns with all flag combinations", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		// Test quiet and JSON together (quiet should take precedence)
 		cmd := column.ListCmd()
 
@@ -299,6 +308,7 @@ func TestListColumns_Errors(t *testing.T) {
 
 	t.Run("invalid project ID error handling", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		cmd := column.ListCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--project", "99999",
@@ -310,6 +320,7 @@ func TestListColumns_Errors(t *testing.T) {
 
 	t.Run("missing project flag", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		cmd := column.ListCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--quiet",
@@ -319,6 +330,7 @@ func TestListColumns_Errors(t *testing.T) {
 	})
 
 	t.Run("invalid project flag value", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		cmd := column.ListCmd()
 
@@ -337,6 +349,7 @@ func TestListColumns_EdgeCases(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
 
 	t.Run("list columns with special characters in names", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		projectID := cli.CreateBareProject(t, db, "Special Project")
 
@@ -359,6 +372,7 @@ func TestListColumns_EdgeCases(t *testing.T) {
 
 	t.Run("list columns with long names", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		projectID := cli.CreateBareProject(t, db, "Long Names Project")
 
 		longName := "This is a very long column name that should still display properly"
@@ -375,6 +389,7 @@ func TestListColumns_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("list columns preserves insertion order", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		projectID := cli.CreateBareProject(t, db, "Order Project")
 
@@ -411,6 +426,7 @@ func TestListColumns_EdgeCases(t *testing.T) {
 
 	t.Run("list columns with no flags formatting", func(t *testing.T) {
 		t.Parallel()
+		t.Parallel()
 		// Create a project with columns that have no flags set
 		projectID := cli.CreateBareProject(t, db, "No Flags Project")
 
@@ -428,6 +444,7 @@ func TestListColumns_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("list columns quiet mode with single column", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		projectID := cli.CreateBareProject(t, db, "Single Column Project")
 
@@ -448,6 +465,7 @@ func TestListColumns_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("list columns JSON output with empty project", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		projectID := cli.CreateBareProject(t, db, "Empty JSON Project")
 

@@ -19,6 +19,8 @@ func TestCreateLabel_Errors(t *testing.T) {
 
 	// Task 31: Test Duplicate Labels
 	t.Run("create duplicate label", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := label.CreateCmd()
 
 		// 1. Create first label
@@ -46,6 +48,8 @@ func TestCreateLabel_Errors(t *testing.T) {
 	})
 
 	t.Run("create label with invalid color", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := label.CreateCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{

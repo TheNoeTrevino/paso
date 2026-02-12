@@ -31,6 +31,8 @@ func TestListTask_Integration(t *testing.T) {
 	task3 := cli.CreateTestTask(t, db, col2, "Task 3")
 
 	t.Run("list tasks human readable", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := task.ListCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -56,6 +58,8 @@ func TestListTask_Integration(t *testing.T) {
 	})
 
 	t.Run("list tasks quiet mode", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := task.ListCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -74,6 +78,8 @@ func TestListTask_Integration(t *testing.T) {
 	})
 
 	t.Run("list tasks JSON mode", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := task.ListCmd()
 
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{

@@ -15,12 +15,13 @@ import (
 func TestGitUnlink_PositionalArgument(t *testing.T) {
 	t.Parallel()
 	db, app := cli.SetupCLITest(t)
-	defer func() {
+	t.Cleanup(func() {
 		err := db.Close()
 		assert.NoError(t, err)
-	}()
+	})
 
 	t.Run("unlink project with positional project ID", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		projectID := cli.CreateTestProjectWithBranch(t, db, "Test Project", "test-branch")
 
@@ -46,12 +47,13 @@ func TestGitUnlink_PositionalArgument(t *testing.T) {
 func TestGitUnlink_FlagArgument(t *testing.T) {
 	t.Parallel()
 	db, app := cli.SetupCLITest(t)
-	defer func() {
+	t.Cleanup(func() {
 		err := db.Close()
 		assert.NoError(t, err)
-	}()
+	})
 
 	t.Run("unlink project with --id flag", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		projectID := cli.CreateTestProjectWithBranch(t, db, "Flag Test Project", "flag-test-branch")
 
@@ -77,12 +79,13 @@ func TestGitUnlink_FlagArgument(t *testing.T) {
 func TestGitUnlink_ErrorCases(t *testing.T) {
 	t.Parallel()
 	db, app := cli.SetupCLITest(t)
-	defer func() {
+	t.Cleanup(func() {
 		err := db.Close()
 		assert.NoError(t, err)
-	}()
+	})
 
 	t.Run("invalid project ID returns error", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		cmd := project.GitUnlinkCmd()
 
@@ -95,6 +98,7 @@ func TestGitUnlink_ErrorCases(t *testing.T) {
 	})
 
 	t.Run("too many arguments returns error", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		cmd := project.GitUnlinkCmd()
 
@@ -111,12 +115,13 @@ func TestGitUnlink_ErrorCases(t *testing.T) {
 func TestGitUnlink_AlreadyUnlinked(t *testing.T) {
 	t.Parallel()
 	db, app := cli.SetupCLITest(t)
-	defer func() {
+	t.Cleanup(func() {
 		err := db.Close()
 		assert.NoError(t, err)
-	}()
+	})
 
 	t.Run("unlinking project with no branch shows warning", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		projectID := cli.CreateTestProject(t, db, "Unlinked Project")
 
@@ -134,12 +139,13 @@ func TestGitUnlink_AlreadyUnlinked(t *testing.T) {
 func TestGitUnlink_JSONOutput(t *testing.T) {
 	t.Parallel()
 	db, app := cli.SetupCLITest(t)
-	defer func() {
+	t.Cleanup(func() {
 		err := db.Close()
 		assert.NoError(t, err)
-	}()
+	})
 
 	t.Run("jSON output contains expected fields", func(t *testing.T) {
+		t.Parallel()
 		t.Parallel()
 		projectID := cli.CreateTestProjectWithBranch(t, db, "JSON Test Project", "json-test-branch")
 

@@ -23,6 +23,8 @@ func TestCreateColumn_MissingFlags(t *testing.T) {
 
 	// Test missing --name flag
 	t.Run("missing --name flag", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.CreateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--project", fmt.Sprintf("%d", projectID),
@@ -33,6 +35,8 @@ func TestCreateColumn_MissingFlags(t *testing.T) {
 
 	// Test missing --project flag
 	t.Run("missing --project flag", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.CreateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--name", "Test Column",
@@ -44,6 +48,8 @@ func TestCreateColumn_MissingFlags(t *testing.T) {
 
 	// Test invalid project ID
 	t.Run("invalid project ID", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.CreateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--name", "Test Column",
@@ -56,6 +62,8 @@ func TestCreateColumn_MissingFlags(t *testing.T) {
 
 	// Test invalid --after column ID
 	t.Run("invalid --after column ID", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.CreateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--name", "Test Column",
@@ -69,6 +77,8 @@ func TestCreateColumn_MissingFlags(t *testing.T) {
 
 	// Test after column from different project
 	t.Run("after column from different project", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		otherProjectID := cli.CreateTestProject(t, db, "Other Project")
 		otherColumnID := cli.CreateTestColumn(t, db, otherProjectID, "Other Column")
 
@@ -91,6 +101,8 @@ func TestUpdateColumn_MissingFlags(t *testing.T) {
 
 	// Test missing ID argument
 	t.Run("missing ID argument", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.UpdateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--name", "Updated Name",
@@ -101,6 +113,8 @@ func TestUpdateColumn_MissingFlags(t *testing.T) {
 
 	// Test non-existent column ID
 	t.Run("non-existent column ID", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.UpdateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"99999",
@@ -113,6 +127,8 @@ func TestUpdateColumn_MissingFlags(t *testing.T) {
 
 	// Test no update flags provided
 	t.Run("no update flags provided", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.UpdateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"1",
@@ -124,6 +140,8 @@ func TestUpdateColumn_MissingFlags(t *testing.T) {
 
 	// Test invalid ID value format
 	t.Run("invalid ID value format", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.UpdateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"invalid",
@@ -136,6 +154,8 @@ func TestUpdateColumn_MissingFlags(t *testing.T) {
 
 	// Test zero column ID
 	t.Run("zero column ID", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.UpdateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"0",
@@ -154,6 +174,8 @@ func TestListColumn_MissingFlags(t *testing.T) {
 
 	// Test missing --project flag
 	t.Run("missing --project flag", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.ListCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--quiet",
@@ -164,6 +186,8 @@ func TestListColumn_MissingFlags(t *testing.T) {
 
 	// Test invalid project ID
 	t.Run("invalid project ID", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.ListCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--project", "99999",
@@ -175,6 +199,8 @@ func TestListColumn_MissingFlags(t *testing.T) {
 
 	// Test invalid --project value format
 	t.Run("invalid --project value format", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.ListCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--project", "invalid",
@@ -185,6 +211,8 @@ func TestListColumn_MissingFlags(t *testing.T) {
 
 	// Test negative project ID
 	t.Run("negative project ID", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Cobra may interpret "-1" as a flag, so just assert error
 		cmd := column.ListCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -202,6 +230,8 @@ func TestDeleteColumn_MissingFlags(t *testing.T) {
 
 	// Test missing ID argument
 	t.Run("missing ID argument", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--force",
@@ -212,6 +242,8 @@ func TestDeleteColumn_MissingFlags(t *testing.T) {
 
 	// Test non-existent column ID
 	t.Run("non-existent column ID", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"99999",
@@ -223,6 +255,8 @@ func TestDeleteColumn_MissingFlags(t *testing.T) {
 
 	// Test invalid ID value format
 	t.Run("invalid ID value format", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"invalid",
@@ -234,6 +268,8 @@ func TestDeleteColumn_MissingFlags(t *testing.T) {
 
 	// Test zero column ID
 	t.Run("zero column ID", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		cmd := column.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"0",
@@ -245,6 +281,8 @@ func TestDeleteColumn_MissingFlags(t *testing.T) {
 
 	// Test negative column ID
 	t.Run("negative column ID", func(t *testing.T) {
+		t.Parallel()
+		t.Parallel()
 		// Cobra may interpret "-1" as a flag, so just assert error
 		cmd := column.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -350,6 +388,8 @@ func TestCreateColumn_ProjectValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
+			t.Parallel()
 			cmd := column.CreateCmd()
 			_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 				"--name", "Test Column",

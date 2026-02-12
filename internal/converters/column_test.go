@@ -229,6 +229,7 @@ func TestColumnToModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 
 			result := ColumnToModel(tt.input)
@@ -326,6 +327,7 @@ func TestColumnFromIDRowToModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 
 			result := ColumnFromIDRowToModel(tt.input)
@@ -587,6 +589,7 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+		t.Parallel()
 			t.Parallel()
 
 			result := ColumnsFromRowsToModels(tt.input)
