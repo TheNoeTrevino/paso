@@ -150,13 +150,16 @@ func (m *MockTaskService) CallCount(method string) int {
 
 func (m *MockTaskService) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.recordCall("GetTaskDetail", taskID, nil)
 	fn := m.GetTaskDetailFunc
+	result := m.GetTaskDetailResult
+	err := m.GetTaskDetailErr
+	m.mu.Unlock()
+
 	if fn != nil {
 		return fn(ctx, taskID)
 	}
-	return m.GetTaskDetailResult, m.GetTaskDetailErr
+	return result, err
 }
 
 func (m *MockTaskService) GetTaskActivities(_ context.Context, taskID int) ([]models.ActivityItem, error) {

@@ -432,31 +432,53 @@ func TestFetchTasksInParallel(t *testing.T) {
 	t.Run("fetches all tasks concurrently", func(t *testing.T) {
 		t.Parallel()
 
+		// Track concurrent execution using atomic counter and channels
+		var maxConcurrent int32
+		var currentConcurrent int32
+		startSignal := make(chan struct{}, 5) // Signal when each goroutine starts work
+
 		mock := mocks.NewMockTaskService()
 		mock.GetTaskDetailFunc = func(ctx context.Context, taskID int) (*models.TaskDetail, error) {
+			// Increment concurrent counter
+			current := atomic.AddInt32(&currentConcurrent, 1)
+
+			// Track max concurrency
+			for {
+				max := atomic.LoadInt32(&maxConcurrent)
+				if current <= max || atomic.CompareAndSwapInt32(&maxConcurrent, max, current) {
+					break
+				}
+			}
+
+			// Signal that this goroutine has started
+			startSignal <- struct{}{}
+
+			// Simulate work to ensure goroutines overlap
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
-			case <-time.After(10 * time.Millisecond):
+			case <-time.After(20 * time.Millisecond):
 			}
+
+			// Decrement when done
+			atomic.AddInt32(&currentConcurrent, -1)
+
 			return &models.TaskDetail{ID: taskID, Title: "Mock Task"}, nil
 		}
 
 		ids := []int{1, 2, 3, 4, 5}
 		ctx := context.Background()
 
-		start := time.Now()
 		details, errs := fetchTasksInParallel(ctx, mock, ids)
-		elapsed := time.Since(start)
 
 		assert.Len(t, details, 5)
 		assert.Empty(t, errs)
-		// If sequential, would take 50ms+ (5 tasks * 10ms each)
-		// If parallel, should be ~10-15ms (just one task's delay)
-		// Race detector adds ~40ms overhead, so with race we expect ~50-55ms
-		// Using 70ms threshold to be safe while still catching if parallelism breaks
-		assert.Less(t, elapsed, 70*time.Millisecond,
-			"parallel execution should be faster than sequential (took %v)", elapsed)
+
+		// Verify that multiple tasks were running concurrently
+		// If truly parallel with 5 tasks, we should see at least 2 (and likely all 5) running concurrently
+		max := atomic.LoadInt32(&maxConcurrent)
+		assert.GreaterOrEqual(t, max, int32(2),
+			"expected at least 2 concurrent calls, got %d - tasks may be running sequentially", max)
 	})
 
 	t.Run("collects errors from failed fetches", func(t *testing.T) {
