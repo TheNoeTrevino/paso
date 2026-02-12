@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/cli/task"
+	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/testing/cli"
 	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 )

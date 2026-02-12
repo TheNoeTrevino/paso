@@ -59,7 +59,7 @@ func TestSanitizeBranchName_ValidBranches(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			result, err := SanitizeBranchName(tt.input)
 			assert.NoError(t, err)
@@ -123,7 +123,7 @@ func TestSanitizeBranchName_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			result, err := SanitizeBranchName(tt.input)
 			if tt.expectError {
@@ -209,7 +209,7 @@ func TestSanitizeBranchName_SpecialCharacters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			_, err := SanitizeBranchName(tt.input)
 			if tt.expectError {
@@ -330,7 +330,7 @@ func TestSanitizeBranchName_SecurityVulnerabilities(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			_, err := SanitizeBranchName(tt.input)
 			if tt.expectError {
@@ -391,7 +391,7 @@ func TestSanitizeBranchName_LongBranches(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			result, err := SanitizeBranchName(tt.input)
 			if tt.shouldError {
@@ -440,7 +440,7 @@ func TestSanitizeBranchName_Unicode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			result, err := SanitizeBranchName(tt.input)
 			assert.NoError(t, err, "Should handle unicode characters without error")
@@ -539,7 +539,7 @@ func TestGitInfo_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			// Test the validation logic (this will depend on implementation)
@@ -617,7 +617,7 @@ func TestSanitizeBranchName_TableDriven(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			result, err := SanitizeBranchName(tt.input)

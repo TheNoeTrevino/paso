@@ -68,7 +68,7 @@ func TestParseTaskID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			cmd := createTestCommand()
@@ -128,7 +128,7 @@ func TestParseColumnID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			cmd := createTestCommand()
@@ -188,7 +188,7 @@ func TestParseLabelID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			cmd := createTestCommand()
@@ -263,7 +263,7 @@ func TestParseString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			cmd := createTestCommand()
@@ -320,7 +320,7 @@ func TestParseStringOptional(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			cmd := createTestCommand()
@@ -383,7 +383,7 @@ func TestParseInt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			cmd := createTestCommand()
@@ -439,7 +439,7 @@ func TestParseIntOptional(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			cmd := createTestCommand()
@@ -486,7 +486,7 @@ func TestParseBool(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			cmd := createTestCommand()
@@ -588,7 +588,7 @@ func TestParseColor(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			cmd := createTestCommand()
@@ -661,7 +661,7 @@ func TestOutputFormats(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			cmd := createTestCommand()
@@ -722,7 +722,7 @@ func TestOutputFormats_MissingFlags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			cmd := createTestCommand()

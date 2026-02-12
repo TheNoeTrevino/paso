@@ -216,7 +216,7 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			env := setupTestEnv(t)
@@ -350,7 +350,7 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			env := setupTestEnv(t)
@@ -400,7 +400,7 @@ func TestDeleteTask_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			env := setupTestEnv(t)
@@ -512,7 +512,7 @@ func TestAttachLabel_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			env := setupTestEnv(t)
@@ -618,7 +618,7 @@ func TestDetachLabel_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			env := setupTestEnv(t)
@@ -739,7 +739,7 @@ func TestAddParentRelation_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			env := setupTestEnv(t)
@@ -837,7 +837,7 @@ func TestAddChildRelation_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			env := setupTestEnv(t)
@@ -946,7 +946,7 @@ func TestRemoveParentRelation_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			env := setupTestEnv(t)
@@ -1035,7 +1035,7 @@ func TestRemoveChildRelation_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			env := setupTestEnv(t)
@@ -1118,7 +1118,7 @@ func TestMoveTaskToColumn_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			env := setupTestEnv(t)
@@ -1167,7 +1167,7 @@ func TestGetTaskSummariesByProject_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			env := setupTestEnv(t)
@@ -1214,7 +1214,7 @@ func TestGetTaskReferencesForProject_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			env := setupTestEnv(t)

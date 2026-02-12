@@ -408,7 +408,7 @@ func TestTruncateTextToWidth(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			result := TruncateTextToWidth(tc.text, tc.maxWidth)
 			assert.Equal(t, tc.expected, result)

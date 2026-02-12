@@ -37,7 +37,7 @@ func TestRenderCardComponent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			// Create a styled card representation
 			content := tt.title + "\n" + tt.content
@@ -140,7 +140,7 @@ func TestRenderTaskComponent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			// Task rendering should not panic
 			// (actual rendering function name depends on implementation)
@@ -215,7 +215,7 @@ func TestColumnHeaderFormatting(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			col := &models.Column{ID: 1, Name: tt.columnName}
 			header := renderColumnHeader(col, tt.taskCount)
@@ -241,7 +241,7 @@ func TestScrollIndicatorRendering(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			result := renderScrollIndicator(tt.show, tt.message)
 
@@ -288,7 +288,7 @@ func TestStatusBarRendering(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			// Status bar should handle any dimension without panic
 			_ = tt.width
@@ -360,7 +360,7 @@ func TestTaskCountInColumn(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			tasks := make([]*models.TaskSummary, tt.taskCount)
 			for i := 0; i < tt.taskCount; i++ {

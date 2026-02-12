@@ -36,8 +36,8 @@ func TestFormatAddMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
-		t.Parallel()
+			t.Parallel()
+			t.Parallel()
 			result := formatAddMessage(tt.dbName, tt.connected)
 			assert.Equal(t, tt.want, result)
 		})
@@ -74,8 +74,8 @@ func TestFormatConnectMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
-		t.Parallel()
+			t.Parallel()
+			t.Parallel()
 			result := formatConnectMessage(tt.dbName, tt.connected)
 			assert.Equal(t, tt.want, result)
 		})
@@ -106,8 +106,8 @@ func TestAddCmd_FlagValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
-		t.Parallel()
+			t.Parallel()
+			t.Parallel()
 			cmd := AddCmd()
 			cmd.SetArgs(tt.args)
 			err := cmd.Execute()

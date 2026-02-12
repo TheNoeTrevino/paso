@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/app"
-	projectservice "github.com/thenoetrevino/paso/internal/services/project"
 	"github.com/thenoetrevino/paso/internal/cli/task"
+	projectservice "github.com/thenoetrevino/paso/internal/services/project"
 	"github.com/thenoetrevino/paso/internal/testing/cli"
 	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 )

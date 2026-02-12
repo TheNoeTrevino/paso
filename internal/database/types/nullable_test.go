@@ -41,7 +41,7 @@ func TestFromSQLNullInt64(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			result := FromSQLNullInt64(tt.input)
@@ -77,7 +77,7 @@ func TestFromSQLNullInt32(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			result := FromSQLNullInt32(tt.input)
@@ -133,7 +133,7 @@ func TestNullInt64FromInterface(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			result := NullInt64FromInterface(tt.input)
@@ -164,7 +164,7 @@ func TestNullInt64_ToSQLNullInt64(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			result := tt.input.ToSQLNullInt64()
@@ -195,7 +195,7 @@ func TestNullInt64_ToSQLNullInt32(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			result := tt.input.ToSQLNullInt32()
@@ -231,7 +231,7 @@ func TestNullInt64_ToInterface(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			result := tt.input.ToInterface()
@@ -279,7 +279,7 @@ func TestFromSQLNullString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			result := FromSQLNullString(tt.input)
@@ -325,7 +325,7 @@ func TestNullStringFromInterface(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			result := NullStringFromInterface(tt.input)
@@ -356,7 +356,7 @@ func TestNullString_ToSQLNullString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			result := tt.input.ToSQLNullString()
@@ -397,7 +397,7 @@ func TestFromSQLNullTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			result := FromSQLNullTime(tt.input)
@@ -430,7 +430,7 @@ func TestNullTime_ToSQLNullTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			result := tt.input.ToSQLNullTime()
@@ -484,7 +484,7 @@ func TestConvertSlice(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 
 			result := ConvertSlice(tt.input, converter)

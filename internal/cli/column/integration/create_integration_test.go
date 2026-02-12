@@ -136,7 +136,7 @@ func TestCreateColumn_Integration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			cmd := column.CreateCmd()
 
@@ -208,7 +208,7 @@ func TestCreateColumn_ErrorCases(t *testing.T) {
 
 	for _, tt := range errorTests {
 		t.Run(tt.name, func(t *testing.T) {
-		t.Parallel()
+			t.Parallel()
 			t.Parallel()
 			cmd := column.CreateCmd()
 
