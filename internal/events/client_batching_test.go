@@ -58,8 +58,10 @@ func TestClient_EventBatchingDuringNetworkFailure(t *testing.T) {
 	err = client.SendEvent(testEvent)
 	require.NoError(t, err)
 
-	// Wait for debounce and verify event was sent
-	time.Sleep(client.debounce + 50*time.Millisecond)
+	// Force flush to ensure event is sent
+	err = client.ForceFlush(ctx)
+	require.NoError(t, err)
+
 	select {
 	case msg := <-messages:
 		assert.Equal(t, "event", msg.Type)
@@ -97,8 +99,9 @@ func TestClient_EventBatchingDuringNetworkFailure(t *testing.T) {
 
 	t.Logf("All %d events queued while daemon was down", numEventsWhileDown)
 
-	// Wait a bit to ensure batcher has tried to flush (will fail due to no connection)
-	time.Sleep(client.debounce + 100*time.Millisecond)
+	// Force flush to ensure batcher has tried to flush (will fail due to no connection)
+	// We expect this to return an error since the connection is down
+	_ = client.ForceFlush(ctx)
 
 	// Restore network connection: create a new mock daemon on the same socket path
 	t.Logf("Restoring network: starting new daemon...")
@@ -178,8 +181,9 @@ func TestClient_EventBatchingDuringNetworkFailure(t *testing.T) {
 		require.Fail(t, "Timeout waiting for reconnect subscribe")
 	}
 
-	// Wait for the batcher to flush the queued events
-	time.Sleep(client.debounce + 200*time.Millisecond)
+	// Force flush to ensure queued events are sent after reconnection
+	err = client.ForceFlush(ctx)
+	require.NoError(t, err)
 
 	// Collect all event messages sent after reconnection
 	var receivedEvents []Message
@@ -258,8 +262,8 @@ collectLoop:
 		assert.NoError(t, err)
 	}
 
-	// Wait for events to be batched and sent
-	time.Sleep(client.debounce + 100*time.Millisecond)
+	// Wait for debounce timer to fire naturally (testing debounce timing)
+	time.Sleep(client.debounce + 50*time.Millisecond)
 
 	// Should receive batched event
 	select {
@@ -296,8 +300,9 @@ collectLoop:
 	assert.Equal(t, queueTestEvents, successCount)
 	t.Logf("Queue handled %d events successfully (capacity: 100)", queueTestEvents)
 
-	// Wait for queue to drain
-	time.Sleep(client.debounce + 200*time.Millisecond)
+	// Force flush to ensure queue drains
+	err = client.ForceFlush(ctx)
+	require.NoError(t, err)
 
 	// Drain any remaining messages
 	drained := 0

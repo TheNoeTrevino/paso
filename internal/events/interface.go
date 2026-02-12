@@ -21,6 +21,9 @@ type EventPublisher interface {
 	// SetNotifyFunc sets the callback for user-facing notification messages
 	SetNotifyFunc(fn NotifyFunc)
 
+	// ForceFlush synchronously flushes any pending batched events
+	ForceFlush(ctx context.Context) error
+
 	// Close closes the connection to the daemon and stops all goroutines
 	Close() error
 }

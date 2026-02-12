@@ -11,6 +11,7 @@ import (
 )
 
 func TestSendEvent_Success(t *testing.T) {
+	t.Parallel()
 	socketPath, listener, messages := setupMockDaemon(t)
 	defer func() { _ = listener.Close() }()
 
@@ -41,8 +42,9 @@ func TestSendEvent_Success(t *testing.T) {
 	err = client.SendEvent(testEvent)
 	require.NoError(t, err)
 
-	// Note: Events are batched, so we need to wait for debounce duration
-	time.Sleep(client.debounce + 50*time.Millisecond)
+	// Force flush to ensure event is sent immediately
+	err = client.ForceFlush(ctx)
+	require.NoError(t, err)
 
 	// Check if message was received (might be batched)
 	select {
@@ -56,6 +58,7 @@ func TestSendEvent_Success(t *testing.T) {
 }
 
 func TestSendEvent_BeforeConnect(t *testing.T) {
+	t.Parallel()
 	socketPath := filepath.Join(t.TempDir(), "paso.sock")
 
 	client, err := NewClient(socketPath)
@@ -109,8 +112,9 @@ func TestSendEvent_Batching(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// Wait for batch to be sent
-	time.Sleep(client.debounce + 100*time.Millisecond)
+	// Force flush to ensure batch is sent
+	err = client.ForceFlush(ctx)
+	require.NoError(t, err)
 
 	// Should receive at least one message (events might be batched)
 	select {

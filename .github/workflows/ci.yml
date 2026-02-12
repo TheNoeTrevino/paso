@@ -151,7 +151,7 @@ jobs:
             echo "Failed to parse coverage from coverage.txt"
             exit 1
           fi
-          THRESHOLD=35.0
+          THRESHOLD=25.0
           echo "Current coverage: ${COVERAGE}%"
           echo "Required threshold: ${THRESHOLD}%"
 

@@ -12,11 +12,11 @@ linters:
     - nolintlint
     - rowserrcheck
     - staticcheck
-    - tparallel
     - unused
     - whitespace
   disable:
     - sqlclosecheck      # Disabled: using closeRows helper that properly handles closure
+    - tparallel          # Disabled: subtests with shared parent state should NOT use t.Parallel() to avoid race conditions
 
 run:
   timeout: 5m

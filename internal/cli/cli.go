@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	"github.com/thenoetrevino/paso/internal/app"
+	"github.com/thenoetrevino/paso/internal/appcontext"
 	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/logging"
-	"github.com/thenoetrevino/paso/internal/testutil"
 	"github.com/thenoetrevino/paso/internal/user"
 )
 
@@ -29,7 +29,7 @@ type CLI struct {
 // If not found, creates a new CLI instance
 func GetCLIFromContext(ctx context.Context) (*CLI, error) {
 	// Check if testApp is in context (test mode)
-	if testAppVal := ctx.Value(testutil.TestAppKey); testAppVal != nil {
+	if testAppVal := ctx.Value(appcontext.AppKey); testAppVal != nil {
 		if testApp, ok := testAppVal.(*app.App); ok {
 			return &CLI{
 				App: testApp,

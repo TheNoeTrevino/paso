@@ -8,6 +8,7 @@ import (
 )
 
 func TestFindColumnByName_Found(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo", ProjectID: 1},
 		{ID: 2, Name: "In Progress", ProjectID: 1},
@@ -30,6 +31,7 @@ func TestFindColumnByName_Found(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			col, err := FindColumnByName(columns, tt.searchName)
 			assert.NoError(t, err, "FindColumnByName should not return error for: %s", tt.searchName)
 			if col != nil {
@@ -40,6 +42,7 @@ func TestFindColumnByName_Found(t *testing.T) {
 }
 
 func TestFindColumnByName_NotFound(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo", ProjectID: 1},
 		{ID: 2, Name: "In Progress", ProjectID: 1},
@@ -56,6 +59,7 @@ func TestFindColumnByName_NotFound(t *testing.T) {
 
 	for _, searchName := range tests {
 		t.Run(searchName, func(t *testing.T) {
+			t.Parallel()
 			_, err := FindColumnByName(columns, searchName)
 			assert.Error(t, err)
 		})
@@ -63,6 +67,7 @@ func TestFindColumnByName_NotFound(t *testing.T) {
 }
 
 func TestFindColumnByName_EmptyList(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{}
 
 	_, err := FindColumnByName(columns, "Todo")
@@ -70,6 +75,7 @@ func TestFindColumnByName_EmptyList(t *testing.T) {
 }
 
 func TestFormatAvailableColumns(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		columns  []*models.Column
@@ -100,6 +106,7 @@ func TestFormatAvailableColumns(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := FormatAvailableColumns(tt.columns)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -107,6 +114,7 @@ func TestFormatAvailableColumns(t *testing.T) {
 }
 
 func TestGetCurrentColumnName(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo", ProjectID: 1},
 		{ID: 2, Name: "In Progress", ProjectID: 1},
@@ -126,6 +134,7 @@ func TestGetCurrentColumnName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := GetCurrentColumnName(columns, tt.columnID)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -133,6 +142,7 @@ func TestGetCurrentColumnName(t *testing.T) {
 }
 
 func TestGetCurrentColumnName_EmptyList(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{}
 
 	result := GetCurrentColumnName(columns, 1)

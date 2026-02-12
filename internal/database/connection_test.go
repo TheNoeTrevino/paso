@@ -13,6 +13,7 @@ import (
 )
 
 func TestConnection_SQLite(t *testing.T) {
+	t.Parallel()
 	// Create a temporary SQLite database file
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
@@ -28,6 +29,7 @@ func TestConnection_SQLite(t *testing.T) {
 }
 
 func TestConnection_SQLite_NonExistent(t *testing.T) {
+	t.Parallel()
 	// Test connection to non-existent SQLite database (should create it)
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "nonexistent.db")
@@ -41,6 +43,7 @@ func TestConnection_SQLite_NonExistent(t *testing.T) {
 }
 
 func TestConnection_PostgreSQL_Invalid(t *testing.T) {
+	t.Parallel()
 	// Test connection to invalid PostgreSQL server (should fail)
 	connStr := "host=invalid.invalid port=5432 user=test password=test dbname=test"
 
@@ -49,6 +52,7 @@ func TestConnection_PostgreSQL_Invalid(t *testing.T) {
 }
 
 func TestConnection_UnsupportedType(t *testing.T) {
+	t.Parallel()
 	// Test with unsupported database type
 	err := TestConnection("dummy", DatabaseType("unsupported"))
 	require.Error(t, err)
@@ -56,6 +60,7 @@ func TestConnection_UnsupportedType(t *testing.T) {
 }
 
 func TestConnection_PasswordSanitization(t *testing.T) {
+	t.Parallel()
 	// Test that error messages sanitize passwords
 	// This will fail to connect but should not leak the password
 	invalidConnStr := "postgres://user:secret123@nonexistent-host:5432/db"
@@ -71,6 +76,7 @@ func TestConnection_PasswordSanitization(t *testing.T) {
 }
 
 func TestSanitizeConnectionString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -130,6 +136,7 @@ func TestSanitizeConnectionString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := sanitizeConnectionString(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -137,6 +144,7 @@ func TestSanitizeConnectionString(t *testing.T) {
 }
 
 func TestParseConnectionString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		input     string
@@ -186,6 +194,7 @@ func TestParseConnectionString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result, err := ParseConnectionString(tt.input)
 			if tt.wantError {
 				require.Error(t, err)
@@ -199,6 +208,7 @@ func TestParseConnectionString(t *testing.T) {
 }
 
 func TestParseURLConnectionString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		input     string
@@ -284,6 +294,7 @@ func TestParseURLConnectionString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result, err := parseURLConnectionString(tt.input)
 			if tt.wantError {
 				require.Error(t, err)
@@ -305,6 +316,7 @@ func TestParseURLConnectionString(t *testing.T) {
 }
 
 func TestParseKeyValueConnectionString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		input     string
@@ -385,6 +397,7 @@ func TestParseKeyValueConnectionString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result, err := parseKeyValueConnectionString(tt.input)
 			if tt.wantError {
 				require.Error(t, err)

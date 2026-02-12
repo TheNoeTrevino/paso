@@ -3,17 +3,17 @@ package tui
 import (
 	"context"
 	"testing"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
 // TestTaskForm_FieldProgression tests Tab and Shift+Tab navigation between form fields
 func TestTaskForm_FieldProgression(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	defer func() { _ = db.Close() }()
 
@@ -24,19 +24,16 @@ func TestTaskForm_FieldProgression(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyTab})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Press Tab again
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyTab})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Press Shift+Tab to move to previous field
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyTab, Mod: tea.ModShift})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Verify model was updated successfully
 	require.NotNil(t, m, "Model should not be nil after updates")
@@ -44,6 +41,7 @@ func TestTaskForm_FieldProgression(t *testing.T) {
 
 // TestTaskForm_ShortcutToPriorityPicker tests Ctrl+P to open priority picker from form
 func TestTaskForm_ShortcutToPriorityPicker(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	defer func() { _ = db.Close() }()
 
@@ -54,7 +52,6 @@ func TestTaskForm_ShortcutToPriorityPicker(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Code: 'p', Mod: tea.ModCtrl})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode changed or form still active
 	require.NotNil(t, m, "Model should not be nil after shortcut")
@@ -62,6 +59,7 @@ func TestTaskForm_ShortcutToPriorityPicker(t *testing.T) {
 
 // TestTaskForm_ShortcutToLabelPicker tests Ctrl+L to open label picker from form
 func TestTaskForm_ShortcutToLabelPicker(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	defer func() { _ = db.Close() }()
 
@@ -72,7 +70,6 @@ func TestTaskForm_ShortcutToLabelPicker(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Code: 'l', Mod: tea.ModCtrl})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode changed or form still active
 	require.NotNil(t, m, "Model should not be nil after shortcut")
@@ -80,6 +77,7 @@ func TestTaskForm_ShortcutToLabelPicker(t *testing.T) {
 
 // TestTaskForm_ShortcutToParentPicker tests Ctrl+Shift+P to open parent picker from form
 func TestTaskForm_ShortcutToParentPicker(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	defer func() { _ = db.Close() }()
 
@@ -90,7 +88,6 @@ func TestTaskForm_ShortcutToParentPicker(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Code: 'P', Mod: tea.ModCtrl | tea.ModShift})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode changed or form still active
 	require.NotNil(t, m, "Model should not be nil after shortcut")
@@ -98,6 +95,7 @@ func TestTaskForm_ShortcutToParentPicker(t *testing.T) {
 
 // TestTaskForm_SaveWithCtrlS tests submitting form with Ctrl+S
 func TestTaskForm_SaveWithCtrlS(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	defer func() { _ = db.Close() }()
 
@@ -106,13 +104,11 @@ func TestTaskForm_SaveWithCtrlS(t *testing.T) {
 
 	// Type some input (simulating user filling the form)
 	TypeStringToModel(&m, "Test Task")
-	time.Sleep(50 * time.Millisecond)
 
 	// Press Ctrl+S to save
 	msg := tea.KeyPressMsg(tea.Key{Code: 's', Mod: tea.ModCtrl})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(100 * time.Millisecond)
 
 	// Verify form processed the save command
 	require.NotNil(t, m, "Model should not be nil after save")
@@ -120,6 +116,7 @@ func TestTaskForm_SaveWithCtrlS(t *testing.T) {
 
 // TestTaskForm_DiscardConfirmation tests Esc key to trigger discard confirmation
 func TestTaskForm_DiscardConfirmation(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	defer func() { _ = db.Close() }()
 
@@ -128,13 +125,11 @@ func TestTaskForm_DiscardConfirmation(t *testing.T) {
 
 	// Type some input to make form "dirty"
 	TypeStringToModel(&m, "Unsaved Task")
-	time.Sleep(50 * time.Millisecond)
 
 	// Press Escape to trigger discard
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Mode may change to confirmation or back to normal
 	require.NotNil(t, m, "Model should not be nil after escape")
@@ -142,6 +137,7 @@ func TestTaskForm_DiscardConfirmation(t *testing.T) {
 
 // TestProjectForm_Creation tests creating a new project
 func TestProjectForm_Creation(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	defer func() { _ = db.Close() }()
 
@@ -150,23 +146,19 @@ func TestProjectForm_Creation(t *testing.T) {
 
 	// Type project name
 	TypeStringToModel(&m, "New Project")
-	time.Sleep(50 * time.Millisecond)
 
 	// Press Tab to move to description field
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyTab})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Type description
 	TypeStringToModel(&m, "Project description")
-	time.Sleep(50 * time.Millisecond)
 
 	// Press Ctrl+S to save
 	msg = tea.KeyPressMsg(tea.Key{Code: 's', Mod: tea.ModCtrl})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(100 * time.Millisecond)
 
 	// Verify form was processed
 	// Still in form mode, form may not support quick save
@@ -175,6 +167,7 @@ func TestProjectForm_Creation(t *testing.T) {
 
 // TestColumnForm_Creation tests creating a new column
 func TestColumnForm_Creation(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	defer func() { _ = db.Close() }()
 
@@ -183,19 +176,16 @@ func TestColumnForm_Creation(t *testing.T) {
 
 	// Type column name
 	TypeStringToModel(&m, "New Column")
-	time.Sleep(50 * time.Millisecond)
 
 	// Press Tab to move to next field if available
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyTab})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Press Ctrl+S to save
 	msg = tea.KeyPressMsg(tea.Key{Code: 's', Mod: tea.ModCtrl})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(100 * time.Millisecond)
 
 	// Verify form was processed
 	require.NotNil(t, m, "Model should not be nil after form submission")
@@ -203,6 +193,7 @@ func TestColumnForm_Creation(t *testing.T) {
 
 // TestCommentForm_Creation tests adding a comment to a task
 func TestCommentForm_Creation(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	defer func() { _ = db.Close() }()
 
@@ -212,7 +203,7 @@ func TestCommentForm_Creation(t *testing.T) {
 	columns, err := m.App.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to load columns for test setup")
 	if len(columns) > 0 {
-		taskID := testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Task to comment on")
+		taskID := fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[0].ID, "Task to comment on")
 
 		// Enter comment form mode
 		m.UIState.Mode = state.CommentFormMode
@@ -220,13 +211,11 @@ func TestCommentForm_Creation(t *testing.T) {
 
 		// Type comment text
 		TypeStringToModel(&m, "This is a comment")
-		time.Sleep(50 * time.Millisecond)
 
 		// Press Ctrl+S to save comment
 		msg := tea.KeyPressMsg(tea.Key{Code: 's', Mod: tea.ModCtrl})
 		updatedModel, _ := m.Update(msg)
 		m = updatedModel.(Model)
-		time.Sleep(100 * time.Millisecond)
 
 		// Verify comment form was processed
 		require.NotNil(t, m, "Model should not be nil after comment submission")
@@ -235,6 +224,7 @@ func TestCommentForm_Creation(t *testing.T) {
 
 // TestEditColumnForm_RenameColumn tests renaming an existing column
 func TestEditColumnForm_RenameColumn(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	defer func() { _ = db.Close() }()
 
@@ -243,19 +233,16 @@ func TestEditColumnForm_RenameColumn(t *testing.T) {
 
 	// Type new column name
 	TypeStringToModel(&m, "Renamed Column")
-	time.Sleep(50 * time.Millisecond)
 
 	// Press Tab to navigate form
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyTab})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Press Ctrl+S to save column
 	msg = tea.KeyPressMsg(tea.Key{Code: 's', Mod: tea.ModCtrl})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(100 * time.Millisecond)
 
 	// Verify edit column form was processed
 	require.NotNil(t, m, "Model should not be nil after form submission")
@@ -263,6 +250,7 @@ func TestEditColumnForm_RenameColumn(t *testing.T) {
 
 // TestProjectForm_DiscardChanges tests discarding changes to project form
 func TestProjectForm_DiscardChanges(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	defer func() { _ = db.Close() }()
 
@@ -271,13 +259,11 @@ func TestProjectForm_DiscardChanges(t *testing.T) {
 
 	// Type some text
 	TypeStringToModel(&m, "Project name")
-	time.Sleep(50 * time.Millisecond)
 
 	// Press Escape to discard
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify escape was processed
 	// Mode changed, which is expected
@@ -286,6 +272,7 @@ func TestProjectForm_DiscardChanges(t *testing.T) {
 
 // TestTaskForm_CharacterInput tests typing characters into task form
 func TestTaskForm_CharacterInput(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	defer func() { _ = db.Close() }()
 
@@ -295,7 +282,6 @@ func TestTaskForm_CharacterInput(t *testing.T) {
 	// Type a series of characters
 	testChars := "This is a task title with spaces 123!@#"
 	TypeStringToModel(&m, testChars)
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify form is still in task form mode
 	assert.Equal(t, state.TicketFormMode, m.UIState.Mode)

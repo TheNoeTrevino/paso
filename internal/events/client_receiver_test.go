@@ -110,6 +110,9 @@ func TestClient_EventReceiverHandlesInvalidEventType(t *testing.T) {
 	// Channel to receive events
 	receivedEvents := make(chan Event, 5)
 
+	// Server done signal
+	serverDone := make(chan struct{})
+
 	// Start server that sends events with invalid types
 	go func() {
 		conn, err := listener.Accept()
@@ -173,14 +176,17 @@ func TestClient_EventReceiverHandlesInvalidEventType(t *testing.T) {
 		}
 		_ = encoder.Encode(validEvent2)
 
-		// Keep connection alive
-		time.Sleep(2 * time.Second)
+		// Keep connection alive until test completes
+		<-serverDone
 	}()
 
 	// Create and connect client
 	client, err := NewClient(socketPath)
 	require.NoError(t, err)
-	defer func() { _ = client.Close() }()
+	defer func() {
+		close(serverDone)
+		_ = client.Close()
+	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -238,6 +244,9 @@ func TestClient_EventReceiverTracksSequenceNumbers(t *testing.T) {
 	// Channel to receive events
 	receivedEvents := make(chan Event, 10)
 
+	// Server done signal
+	serverDone := make(chan struct{})
+
 	// Start server that sends events with various sequence numbers
 	go func() {
 		conn, err := listener.Accept()
@@ -279,14 +288,17 @@ func TestClient_EventReceiverTracksSequenceNumbers(t *testing.T) {
 			time.Sleep(50 * time.Millisecond)
 		}
 
-		// Keep connection alive
-		time.Sleep(2 * time.Second)
+		// Keep connection alive until test completes
+		<-serverDone
 	}()
 
 	// Create and connect client
 	client, err := NewClient(socketPath)
 	require.NoError(t, err)
-	defer func() { _ = client.Close() }()
+	defer func() {
+		close(serverDone)
+		_ = client.Close()
+	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
@@ -371,6 +383,9 @@ func TestClient_EventReceiverHandlesMissingSequenceNumbers(t *testing.T) {
 	// Channel to receive events
 	receivedEvents := make(chan Event, 10)
 
+	// Server done signal
+	serverDone := make(chan struct{})
+
 	// Start server that sends events with zero/missing sequence numbers
 	go func() {
 		conn, err := listener.Accept()
@@ -434,13 +449,14 @@ func TestClient_EventReceiverHandlesMissingSequenceNumbers(t *testing.T) {
 		}
 		_ = encoder.Encode(event2)
 
-		// Keep connection alive
-		time.Sleep(2 * time.Second)
+		// Keep connection alive until test completes
+		<-serverDone
 	}()
 
 	// Create and connect client
 	client, err := NewClient(socketPath)
 	require.NoError(t, err)
+	defer close(serverDone)
 	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -569,6 +585,9 @@ func TestClient_EventReceiverPingPongHandling(t *testing.T) {
 	// Channel to track if pong was received
 	pongReceived := make(chan bool, 1)
 
+	// Server done signal
+	serverDone := make(chan struct{})
+
 	// Start server that sends ping and expects pong
 	go func() {
 		conn, err := listener.Accept()
@@ -614,9 +633,10 @@ func TestClient_EventReceiverPingPongHandling(t *testing.T) {
 			}
 		}()
 
-		// Keep connection alive
-		time.Sleep(2 * time.Second)
+		// Keep connection alive until test completes
+		<-serverDone
 	}()
+	defer close(serverDone)
 
 	// Create and connect client
 	client, err := NewClient(socketPath)
@@ -658,6 +678,9 @@ func TestClient_EventReceiverContinuesAfterErrors(t *testing.T) {
 
 	// Channel to receive events
 	receivedEvents := make(chan Event, 10)
+
+	// Server done signal
+	serverDone := make(chan struct{})
 
 	// Start server that sends mix of valid and problematic messages
 	go func() {
@@ -722,14 +745,17 @@ func TestClient_EventReceiverContinuesAfterErrors(t *testing.T) {
 		}
 		_ = encoder.Encode(event2)
 
-		// Keep connection alive
-		time.Sleep(2 * time.Second)
+		// Keep connection alive until test completes
+		<-serverDone
 	}()
 
 	// Create and connect client
 	client, err := NewClient(socketPath)
 	require.NoError(t, err)
-	defer func() { _ = client.Close() }()
+	defer func() {
+		close(serverDone)
+		_ = client.Close()
+	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()

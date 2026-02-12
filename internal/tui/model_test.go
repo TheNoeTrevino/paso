@@ -9,11 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/config"
-	testutilcli "github.com/thenoetrevino/paso/internal/testutil/cli"
+	testutilcli "github.com/thenoetrevino/paso/internal/testing/cli"
 )
 
 // TestModelInitialization tests that a Model can be created without panic
 func TestModelInitialization(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -33,6 +34,7 @@ func TestModelInitialization(t *testing.T) {
 
 // TestModelImplementsTeaModel verifies Model implements tea.Model interface
 func TestModelImplementsTeaModel(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -59,6 +61,7 @@ func TestModelImplementsTeaModel(t *testing.T) {
 
 // TestModelViewGeneratesOutput verifies model rendering produces output
 func TestModelViewGeneratesOutput(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

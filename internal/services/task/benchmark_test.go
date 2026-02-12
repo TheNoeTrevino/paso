@@ -7,10 +7,10 @@ import (
 
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/models"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 )
 
-// newBenchmarkService creates a new service for benchmarking (panics on error since tests use valid SQLite)
+// newBenchmarkService creates a new service for benchmarking
 func newBenchmarkService(b *testing.B, db *sql.DB) Service {
 	b.Helper()
 	svc, err := NewService(db, database.SQLite, nil, nil)
@@ -20,165 +20,36 @@ func newBenchmarkService(b *testing.B, db *sql.DB) Service {
 	return svc
 }
 
-// createBenchmarkProject creates a project with columns for benchmarking
-func createBenchmarkProject(b *testing.B, db *sql.DB) int {
+// createBenchmarkTaskWithLabels creates a task and attaches the given labels.
+// Use fixtures.CreateTestTask directly when no labels are needed.
+func createBenchmarkTaskWithLabels(b *testing.B, db *sql.DB, columnID int, title string, labelIDs []int) int {
 	b.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name, description) VALUES (?, ?)", "Benchmark Project", "Description")
-	if err != nil {
-		b.Fatalf("Failed to create benchmark project: %v", err)
-	}
-
-	// Initialize project counter
-	projectID, err := result.LastInsertId()
-	if err != nil {
-		b.Fatal(err)
-	}
-	_, err = db.ExecContext(context.Background(), "INSERT INTO project_counters (project_id, next_ticket_number) VALUES (?, 1)", projectID)
-	if err != nil {
-		b.Fatalf("Failed to initialize project counter: %v", err)
-	}
-
-	return int(projectID)
-}
-
-// createBenchmarkTask creates a task with optional labels
-func createBenchmarkTask(b *testing.B, db *sql.DB, columnID int, title string, labelIDs []int) int {
-	b.Helper()
-
-	// Get next position
-	var maxPos sql.NullInt64
-	err := db.QueryRowContext(context.Background(),
-		"SELECT MAX(position) FROM tasks WHERE column_id = ?", columnID).Scan(&maxPos)
-	if err != nil && err != sql.ErrNoRows {
-		b.Fatalf("Failed to get max position: %v", err)
-	}
-
-	nextPos := 0
-	if maxPos.Valid {
-		nextPos = int(maxPos.Int64) + 1
-	}
-
-	result, err := db.ExecContext(context.Background(),
-		"INSERT INTO tasks (column_id, title, position, type_id, priority_id) VALUES (?, ?, ?, 1, 3)",
-		columnID, title, nextPos)
-	if err != nil {
-		b.Fatalf("Failed to create benchmark task: %v", err)
-	}
-
-	taskID, err := result.LastInsertId()
-	if err != nil {
-		b.Fatal(err)
-	}
-	taskIDInt := int(taskID)
-
-	// Attach labels if provided
+	taskID := fixtures.CreateTestTask(b, db, testDialect, columnID, title)
 	for _, labelID := range labelIDs {
-		_, err := db.ExecContext(context.Background(),
-			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID)
-		if err != nil {
-			b.Fatalf("Failed to attach label: %v", err)
-		}
+		fixtures.AttachLabelToTask(b, db, testDialect, taskID, labelID)
 	}
-
-	return taskIDInt
+	return taskID
 }
 
-// createBenchmarkLabel creates a label
-func createBenchmarkLabel(b *testing.B, db *sql.DB, projectID int, name, color string) int {
-	b.Helper()
-	result, err := db.ExecContext(context.Background(),
-		"INSERT INTO labels (project_id, name, color) VALUES (?, ?, ?)", projectID, name, color)
-	if err != nil {
-		b.Fatalf("Failed to create benchmark label: %v", err)
-	}
-	labelID, err := result.LastInsertId()
-	if err != nil {
-		b.Fatal(err)
-	}
-	return int(labelID)
-}
-
-// createInProgressColumn creates an in-progress column
-func createInProgressColumn(b *testing.B, db *sql.DB, projectID int) int {
-	b.Helper()
-	result, err := db.ExecContext(context.Background(),
-		"INSERT INTO columns (project_id, name, holds_in_progress_tasks) VALUES (?, ?, ?)",
-		projectID, "In Progress", true)
-	if err != nil {
-		b.Fatalf("Failed to create in-progress column: %v", err)
-	}
-	columnID, err := result.LastInsertId()
-	if err != nil {
-		b.Fatal(err)
-	}
-	return int(columnID)
-}
-
-// createReadyColumn creates a ready column
-func createReadyColumn(b *testing.B, db *sql.DB, projectID int) int {
-	b.Helper()
-	result, err := db.ExecContext(context.Background(),
-		"INSERT INTO columns (project_id, name, holds_ready_tasks) VALUES (?, ?, ?)",
-		projectID, "Ready", true)
-	if err != nil {
-		b.Fatalf("Failed to create ready column: %v", err)
-	}
-	columnID, err := result.LastInsertId()
-	if err != nil {
-		b.Fatal(err)
-	}
-	return int(columnID)
-}
-
-// addCommentToTask adds a comment to a task
-func addCommentToTask(b *testing.B, db *sql.DB, taskID int, author, message string) {
-	b.Helper()
-	_, err := db.ExecContext(context.Background(),
-		"INSERT INTO task_comments (task_id, author, content) VALUES (?, ?, ?)",
-		taskID, author, message)
-	if err != nil {
-		b.Fatalf("Failed to add comment: %v", err)
-	}
-}
-
-// addBenchmarkTaskRelation adds a task relationship
-func addBenchmarkTaskRelation(b *testing.B, db *sql.DB, parentID, childID, relationTypeID int) {
-	b.Helper()
-	_, err := db.ExecContext(context.Background(),
-		"INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (?, ?, ?)",
-		parentID, childID, relationTypeID)
-	if err != nil {
-		b.Fatalf("Failed to add task relation: %v", err)
-	}
-}
-
-// BenchmarkGetTaskDetail measures the performance of fetching a complete task detail
-// This operation loads: task details, labels, parent tasks, child tasks, and comments
-// The optimized version should efficiently fetch all related data
 func BenchmarkGetTaskDetail(b *testing.B) {
-	db := testutil.SetupTestDB(b)
+	db := fixtures.SetupTestDB(b)
 
-	projectID := createBenchmarkProject(b, db)
-	columnID := createBenchmarkColumn(b, db, projectID)
+	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
+	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
 
-	// Create labels
-	label1 := createBenchmarkLabel(b, db, projectID, "feature", "#0066FF")
-	label2 := createBenchmarkLabel(b, db, projectID, "urgent", "#FF0000")
+	label1 := fixtures.CreateTestLabel(b, db, testDialect, projectID, "feature", "#0066FF")
+	label2 := fixtures.CreateTestLabel(b, db, testDialect, projectID, "urgent", "#FF0000")
 
-	// Create a task with labels
-	taskID := createBenchmarkTask(b, db, columnID, "Test Task", []int{label1, label2})
+	taskID := createBenchmarkTaskWithLabels(b, db, columnID, "Test Task", []int{label1, label2})
 
-	// Create parent and child tasks for relationships
-	parentID := createBenchmarkTask(b, db, columnID, "Parent Task", []int{})
-	childID := createBenchmarkTask(b, db, columnID, "Child Task", []int{})
+	parentID := fixtures.CreateTestTask(b, db, testDialect, columnID, "Parent Task")
+	childID := fixtures.CreateTestTask(b, db, testDialect, columnID, "Child Task")
 
-	// Add relationships
-	addBenchmarkTaskRelation(b, db, parentID, taskID, 1) // parent-child
-	addBenchmarkTaskRelation(b, db, taskID, childID, 1)
+	fixtures.AddTaskSubtask(b, db, testDialect, parentID, taskID, 1)
+	fixtures.AddTaskSubtask(b, db, testDialect, taskID, childID, 1)
 
-	// Add comments
-	addCommentToTask(b, db, taskID, "user1", "Great progress!")
-	addCommentToTask(b, db, taskID, "user2", "Looks good to me")
+	fixtures.CreateTestComment(b, db, testDialect, taskID, "Great progress!", "user1")
+	fixtures.CreateTestComment(b, db, testDialect, taskID, "Looks good to me", "user2")
 
 	service := newBenchmarkService(b, db)
 	ctx := context.Background()
@@ -192,22 +63,17 @@ func BenchmarkGetTaskDetail(b *testing.B) {
 	}
 }
 
-// BenchmarkGetInProgressTasksByProject measures fetching all in-progress tasks
-// After N+1 fix: should be a single optimized query instead of N+5 queries per task
-// This is the most impactful optimization as it's a common operation
 func BenchmarkGetInProgressTasksByProject(b *testing.B) {
-	db := testutil.SetupTestDB(b)
+	db := fixtures.SetupTestDB(b)
 
-	projectID := createBenchmarkProject(b, db)
-	inProgressColumnID := createInProgressColumn(b, db, projectID)
-	normalColumnID := createBenchmarkColumn(b, db, projectID)
+	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
+	inProgressColumnID := fixtures.CreateColumnWithFlags(b, db, testDialect, projectID, "In Progress", false, false, true)
+	normalColumnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
 
-	// Create labels for diversity
-	label1 := createBenchmarkLabel(b, db, projectID, "frontend", "#FF00FF")
-	label2 := createBenchmarkLabel(b, db, projectID, "backend", "#00FF00")
-	label3 := createBenchmarkLabel(b, db, projectID, "database", "#FFFF00")
+	label1 := fixtures.CreateTestLabel(b, db, testDialect, projectID, "frontend", "#FF00FF")
+	label2 := fixtures.CreateTestLabel(b, db, testDialect, projectID, "backend", "#00FF00")
+	label3 := fixtures.CreateTestLabel(b, db, testDialect, projectID, "database", "#FFFF00")
 
-	// Create 50 in-progress tasks with varying label counts
 	for i := 0; i < 50; i++ {
 		title := "In Progress Task " + string(rune(i))
 		var labelIDs []int
@@ -219,13 +85,12 @@ func BenchmarkGetInProgressTasksByProject(b *testing.B) {
 		case 2:
 			labelIDs = []int{label1, label2, label3}
 		}
-		createBenchmarkTask(b, db, inProgressColumnID, title, labelIDs)
+		createBenchmarkTaskWithLabels(b, db, inProgressColumnID, title, labelIDs)
 	}
 
-	// Create some tasks in other columns (should not be fetched)
 	for i := 0; i < 30; i++ {
 		title := "Other Task " + string(rune(i))
-		createBenchmarkTask(b, db, normalColumnID, title, []int{})
+		fixtures.CreateTestTask(b, db, testDialect, normalColumnID, title)
 	}
 
 	service := newBenchmarkService(b, db)
@@ -240,35 +105,23 @@ func BenchmarkGetInProgressTasksByProject(b *testing.B) {
 	}
 }
 
-// BenchmarkGetTaskSummariesByProject measures fetching task summaries for kanban view
-// This is the primary display operation for the board
-// The optimized version efficiently groups tasks by column
 func BenchmarkGetTaskSummariesByProject(b *testing.B) {
-	db := testutil.SetupTestDB(b)
+	db := fixtures.SetupTestDB(b)
 
-	projectID := createBenchmarkProject(b, db)
+	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
 
-	// Create multiple columns
 	columns := make([]int, 5)
 	for i := 0; i < 5; i++ {
 		colName := "Column " + string(rune('A'+i))
-		columns[i] = createBenchmarkColumn(b, db, projectID)
-		// Name the column (update via direct SQL since we don't have updateColumn)
-		_, err := db.ExecContext(context.Background(),
-			"UPDATE columns SET name = ? WHERE id = ?", colName, columns[i])
-		if err != nil {
-			b.Fatal(err)
-		}
+		columns[i] = fixtures.CreateTestColumn(b, db, testDialect, projectID, colName)
 	}
 
-	// Create labels
 	labels := make([]int, 4)
 	labelColors := []string{"#FF0000", "#00FF00", "#0000FF", "#FFFF00"}
 	for i := 0; i < 4; i++ {
-		labels[i] = createBenchmarkLabel(b, db, projectID, "label"+string(rune('a'+i)), labelColors[i])
+		labels[i] = fixtures.CreateTestLabel(b, db, testDialect, projectID, "label"+string(rune('a'+i)), labelColors[i])
 	}
 
-	// Create 200 tasks distributed across columns with varying labels
 	for col := 0; col < 5; col++ {
 		for i := 0; i < 40; i++ {
 			title := "Task " + string(rune(col)) + "-" + string(rune(i%10))
@@ -277,7 +130,7 @@ func BenchmarkGetTaskSummariesByProject(b *testing.B) {
 			for j := 0; j <= labelCount; j++ {
 				labelIDs = append(labelIDs, labels[j])
 			}
-			createBenchmarkTask(b, db, columns[col], title, labelIDs)
+			createBenchmarkTaskWithLabels(b, db, columns[col], title, labelIDs)
 		}
 	}
 
@@ -293,18 +146,15 @@ func BenchmarkGetTaskSummariesByProject(b *testing.B) {
 	}
 }
 
-// BenchmarkGetTaskSummariesByProjectFiltered measures filtered task summary retrieval
-// Tests the search/filter functionality on the board
 func BenchmarkGetTaskSummariesByProjectFiltered(b *testing.B) {
-	db := testutil.SetupTestDB(b)
+	db := fixtures.SetupTestDB(b)
 
-	projectID := createBenchmarkProject(b, db)
-	columnID := createBenchmarkColumn(b, db, projectID)
+	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
+	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
 
-	// Create 100 tasks with varied names
 	for i := 0; i < 100; i++ {
 		title := "Database Migration Task " + string(rune(i%10))
-		createBenchmarkTask(b, db, columnID, title, []int{})
+		fixtures.CreateTestTask(b, db, testDialect, columnID, title)
 	}
 
 	service := newBenchmarkService(b, db)
@@ -319,32 +169,24 @@ func BenchmarkGetTaskSummariesByProjectFiltered(b *testing.B) {
 	}
 }
 
-// BenchmarkGetTaskTreeByProject measures hierarchical task tree construction
-// This is a complex recursive operation with multiple queries
-// Performance depends on the depth and breadth of the task hierarchy
 func BenchmarkGetTaskTreeByProject(b *testing.B) {
-	db := testutil.SetupTestDB(b)
+	db := fixtures.SetupTestDB(b)
 
-	projectID := createBenchmarkProject(b, db)
-	columnID := createBenchmarkColumn(b, db, projectID)
+	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
+	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
 
-	// Create a task hierarchy
-	// 5 root tasks
-	// Each root has 3 children
-	// Each child has 2 grandchildren
 	rootTasks := make([]int, 5)
 	for i := 0; i < 5; i++ {
-		rootTasks[i] = createBenchmarkTask(b, db, columnID, "Root Task "+string(rune(i)), []int{})
+		rootTasks[i] = fixtures.CreateTestTask(b, db, testDialect, columnID, "Root Task "+string(rune(i)))
 
 		childTasks := make([]int, 3)
 		for j := 0; j < 3; j++ {
-			childTasks[j] = createBenchmarkTask(b, db, columnID, "Child "+string(rune(i))+"-"+string(rune(j)), []int{})
-			addBenchmarkTaskRelation(b, db, rootTasks[i], childTasks[j], 1)
+			childTasks[j] = fixtures.CreateTestTask(b, db, testDialect, columnID, "Child "+string(rune(i))+"-"+string(rune(j)))
+			fixtures.AddTaskSubtask(b, db, testDialect, rootTasks[i], childTasks[j], 1)
 
-			// Add grandchildren
 			for k := 0; k < 2; k++ {
-				grandchildID := createBenchmarkTask(b, db, columnID, "Grandchild "+string(rune(i))+"-"+string(rune(j))+"-"+string(rune(k)), []int{})
-				addBenchmarkTaskRelation(b, db, childTasks[j], grandchildID, 1)
+				grandchildID := fixtures.CreateTestTask(b, db, testDialect, columnID, "Grandchild "+string(rune(i))+"-"+string(rune(j))+"-"+string(rune(k)))
+				fixtures.AddTaskSubtask(b, db, testDialect, childTasks[j], grandchildID, 1)
 			}
 		}
 	}
@@ -361,14 +203,12 @@ func BenchmarkGetTaskTreeByProject(b *testing.B) {
 	}
 }
 
-// BenchmarkUpdateTask measures the performance of task updates
-// Tests single field updates vs. multi-field updates
 func BenchmarkUpdateTask(b *testing.B) {
-	db := testutil.SetupTestDB(b)
+	db := fixtures.SetupTestDB(b)
 
-	projectID := createBenchmarkProject(b, db)
-	columnID := createBenchmarkColumn(b, db, projectID)
-	taskID := createBenchmarkTask(b, db, columnID, "Original Title", []int{})
+	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
+	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
+	taskID := fixtures.CreateTestTask(b, db, testDialect, columnID, "Original Title")
 
 	service := newBenchmarkService(b, db)
 	ctx := context.Background()
@@ -389,17 +229,14 @@ func BenchmarkUpdateTask(b *testing.B) {
 	}
 }
 
-// BenchmarkCreateTask measures the performance of task creation
-// Tests the full creation pipeline including label attachment
 func BenchmarkCreateTask(b *testing.B) {
-	db := testutil.SetupTestDB(b)
+	db := fixtures.SetupTestDB(b)
 
-	projectID := createBenchmarkProject(b, db)
-	columnID := createBenchmarkColumn(b, db, projectID)
+	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
+	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
 
-	// Create labels to attach
-	label1 := createBenchmarkLabel(b, db, projectID, "feature", "#FF0000")
-	label2 := createBenchmarkLabel(b, db, projectID, "important", "#00FF00")
+	label1 := fixtures.CreateTestLabel(b, db, testDialect, projectID, "feature", "#FF0000")
+	label2 := fixtures.CreateTestLabel(b, db, testDialect, projectID, "important", "#00FF00")
 
 	service := newBenchmarkService(b, db)
 	ctx := context.Background()
@@ -421,19 +258,16 @@ func BenchmarkCreateTask(b *testing.B) {
 	}
 }
 
-// BenchmarkAttachLabel measures label attachment performance
-// This is frequently used when editing tasks
 func BenchmarkAttachLabel(b *testing.B) {
-	db := testutil.SetupTestDB(b)
+	db := fixtures.SetupTestDB(b)
 
-	projectID := createBenchmarkProject(b, db)
-	columnID := createBenchmarkColumn(b, db, projectID)
-	taskID := createBenchmarkTask(b, db, columnID, "Test Task", []int{})
+	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
+	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
+	taskID := fixtures.CreateTestTask(b, db, testDialect, columnID, "Test Task")
 
-	// Create multiple labels
 	labels := make([]int, b.N)
 	for i := 0; i < b.N; i++ {
-		labels[i] = createBenchmarkLabel(b, db, projectID, "label_"+string(rune(i)), "#FF00FF")
+		labels[i] = fixtures.CreateTestLabel(b, db, testDialect, projectID, "label_"+string(rune(i)), "#FF00FF")
 	}
 
 	service := newBenchmarkService(b, db)
@@ -448,24 +282,18 @@ func BenchmarkAttachLabel(b *testing.B) {
 	}
 }
 
-// BenchmarkDetachLabel measures label detachment performance
 func BenchmarkDetachLabel(b *testing.B) {
-	db := testutil.SetupTestDB(b)
+	db := fixtures.SetupTestDB(b)
 
-	projectID := createBenchmarkProject(b, db)
-	columnID := createBenchmarkColumn(b, db, projectID)
-	taskID := createBenchmarkTask(b, db, columnID, "Test Task", []int{})
+	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
+	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
+	taskID := fixtures.CreateTestTask(b, db, testDialect, columnID, "Test Task")
 
-	// Create and attach multiple labels
 	labels := make([]int, b.N)
 	for i := 0; i < b.N; i++ {
-		labelID := createBenchmarkLabel(b, db, projectID, "label_"+string(rune(i)), "#FF00FF")
+		labelID := fixtures.CreateTestLabel(b, db, testDialect, projectID, "label_"+string(rune(i)), "#FF00FF")
 		labels[i] = labelID
-		_, err := db.ExecContext(context.Background(),
-			"INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID)
-		if err != nil {
-			b.Fatal(err)
-		}
+		fixtures.AttachLabelToTask(b, db, testDialect, taskID, labelID)
 	}
 
 	service := newBenchmarkService(b, db)
@@ -480,19 +308,16 @@ func BenchmarkDetachLabel(b *testing.B) {
 	}
 }
 
-// BenchmarkMoveTaskToColumn measures column movement performance
-// This is frequent during task workflow changes
 func BenchmarkMoveTaskToColumn(b *testing.B) {
-	db := testutil.SetupTestDB(b)
+	db := fixtures.SetupTestDB(b)
 
-	projectID := createBenchmarkProject(b, db)
-	columnID := createBenchmarkColumn(b, db, projectID)
-	targetColumn := createBenchmarkColumn(b, db, projectID)
+	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
+	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
+	targetColumn := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Target")
 
-	// Create multiple tasks to move
 	tasks := make([]int, b.N)
 	for i := 0; i < b.N; i++ {
-		tasks[i] = createBenchmarkTask(b, db, columnID, "Move Task "+string(rune(i)), []int{})
+		tasks[i] = fixtures.CreateTestTask(b, db, testDialect, columnID, "Move Task "+string(rune(i)))
 	}
 
 	service := newBenchmarkService(b, db)
@@ -507,13 +332,12 @@ func BenchmarkMoveTaskToColumn(b *testing.B) {
 	}
 }
 
-// BenchmarkCreateComment measures comment creation performance
 func BenchmarkCreateComment(b *testing.B) {
-	db := testutil.SetupTestDB(b)
+	db := fixtures.SetupTestDB(b)
 
-	projectID := createBenchmarkProject(b, db)
-	columnID := createBenchmarkColumn(b, db, projectID)
-	taskID := createBenchmarkTask(b, db, columnID, "Test Task", []int{})
+	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
+	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
+	taskID := fixtures.CreateTestTask(b, db, testDialect, columnID, "Test Task")
 
 	service := newBenchmarkService(b, db)
 	ctx := context.Background()
@@ -531,24 +355,21 @@ func BenchmarkCreateComment(b *testing.B) {
 	}
 }
 
-// BenchmarkGetReadyTaskSummariesByProject measures fetching ready tasks (for "Start Work" flow)
 func BenchmarkGetReadyTaskSummariesByProject(b *testing.B) {
-	db := testutil.SetupTestDB(b)
+	db := fixtures.SetupTestDB(b)
 
-	projectID := createBenchmarkProject(b, db)
-	readyColumnID := createReadyColumn(b, db, projectID)
-	normalColumnID := createBenchmarkColumn(b, db, projectID)
+	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
+	readyColumnID := fixtures.CreateColumnWithFlags(b, db, testDialect, projectID, "Ready", true, false, false)
+	normalColumnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
 
-	// Create 100 ready tasks
 	for i := 0; i < 100; i++ {
 		title := "Ready Task " + string(rune(i%10))
-		createBenchmarkTask(b, db, readyColumnID, title, []int{})
+		fixtures.CreateTestTask(b, db, testDialect, readyColumnID, title)
 	}
 
-	// Create some normal tasks (should not be fetched)
 	for i := 0; i < 50; i++ {
 		title := "Normal Task " + string(rune(i%10))
-		createBenchmarkTask(b, db, normalColumnID, title, []int{})
+		fixtures.CreateTestTask(b, db, testDialect, normalColumnID, title)
 	}
 
 	service := newBenchmarkService(b, db)
@@ -563,20 +384,17 @@ func BenchmarkGetReadyTaskSummariesByProject(b *testing.B) {
 	}
 }
 
-// BenchmarkAddParentRelation measures adding parent-child relationships
 func BenchmarkAddParentRelation(b *testing.B) {
-	db := testutil.SetupTestDB(b)
+	db := fixtures.SetupTestDB(b)
 
-	projectID := createBenchmarkProject(b, db)
-	columnID := createBenchmarkColumn(b, db, projectID)
+	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
+	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
 
-	// Create parent task
-	parentID := createBenchmarkTask(b, db, columnID, "Parent Task", []int{})
+	parentID := fixtures.CreateTestTask(b, db, testDialect, columnID, "Parent Task")
 
-	// Create child tasks
 	childTasks := make([]int, b.N)
 	for i := 0; i < b.N; i++ {
-		childTasks[i] = createBenchmarkTask(b, db, columnID, "Child Task "+string(rune(i)), []int{})
+		childTasks[i] = fixtures.CreateTestTask(b, db, testDialect, columnID, "Child Task "+string(rune(i)))
 	}
 
 	service := newBenchmarkService(b, db)
@@ -591,18 +409,15 @@ func BenchmarkAddParentRelation(b *testing.B) {
 	}
 }
 
-// BenchmarkGetTaskReferencesForProject measures fetching all task references for a project
-// This is used in the task linking interface
 func BenchmarkGetTaskReferencesForProject(b *testing.B) {
-	db := testutil.SetupTestDB(b)
+	db := fixtures.SetupTestDB(b)
 
-	projectID := createBenchmarkProject(b, db)
-	columnID := createBenchmarkColumn(b, db, projectID)
+	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
+	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
 
-	// Create 200 tasks
 	for i := 0; i < 200; i++ {
 		title := "Task " + string(rune(i%10))
-		createBenchmarkTask(b, db, columnID, title, []int{})
+		fixtures.CreateTestTask(b, db, testDialect, columnID, title)
 	}
 
 	service := newBenchmarkService(b, db)
@@ -615,19 +430,4 @@ func BenchmarkGetTaskReferencesForProject(b *testing.B) {
 			b.Fatalf("GetTaskReferencesForProject failed: %v", err)
 		}
 	}
-}
-
-// Helper function to create benchmark column
-func createBenchmarkColumn(b *testing.B, db *sql.DB, projectID int) int {
-	b.Helper()
-	result, err := db.ExecContext(context.Background(),
-		"INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Column")
-	if err != nil {
-		b.Fatalf("Failed to create benchmark column: %v", err)
-	}
-	columnID, err := result.LastInsertId()
-	if err != nil {
-		b.Fatal(err)
-	}
-	return int(columnID)
 }

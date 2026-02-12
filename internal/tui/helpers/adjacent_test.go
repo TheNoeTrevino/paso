@@ -9,6 +9,7 @@ import (
 )
 
 func TestGetAdjacentTaskIDs_EmptyColumns(t *testing.T) {
+	t.Parallel()
 	result := GetAdjacentTaskIDs(
 		[]*models.Column{},
 		map[int][]*models.TaskSummary{},
@@ -20,6 +21,7 @@ func TestGetAdjacentTaskIDs_EmptyColumns(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_NilColumns(t *testing.T) {
+	t.Parallel()
 	result := GetAdjacentTaskIDs(
 		nil,
 		map[int][]*models.TaskSummary{},
@@ -31,6 +33,7 @@ func TestGetAdjacentTaskIDs_NilColumns(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_SingleColumnNoTasks(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	tasks := map[int][]*models.TaskSummary{
 		1: {},
@@ -60,8 +63,10 @@ func TestGetAdjacentTaskIDs_SelectedColumnOutOfBounds(t *testing.T) {
 		{"index way out of bounds", 100},
 	}
 
+	t.Parallel()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := GetAdjacentTaskIDs(columns, tasks, tt.selectedCol, 0)
 			assert.Equal(t, commands.AdjacentTasks{}, result)
 		})
@@ -69,6 +74,7 @@ func TestGetAdjacentTaskIDs_SelectedColumnOutOfBounds(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_SelectedTaskOutOfBounds(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	tasks := map[int][]*models.TaskSummary{
 		1: {
@@ -88,6 +94,7 @@ func TestGetAdjacentTaskIDs_SelectedTaskOutOfBounds(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := GetAdjacentTaskIDs(columns, tasks, 0, tt.selectedTask)
 			assert.Equal(t, commands.AdjacentTasks{}, result)
 		})
@@ -95,6 +102,7 @@ func TestGetAdjacentTaskIDs_SelectedTaskOutOfBounds(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_SingleColumnSingleTask(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	tasks := map[int][]*models.TaskSummary{
 		1: {{ID: 42, Title: "Only Task"}},
@@ -110,6 +118,7 @@ func TestGetAdjacentTaskIDs_SingleColumnSingleTask(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_AtFirstColumn(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo"},
 		{ID: 2, Name: "In Progress"},
@@ -129,6 +138,7 @@ func TestGetAdjacentTaskIDs_AtFirstColumn(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_AtLastColumn(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo"},
 		{ID: 2, Name: "In Progress"},
@@ -148,6 +158,7 @@ func TestGetAdjacentTaskIDs_AtLastColumn(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_AtFirstTaskInColumn(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	tasks := map[int][]*models.TaskSummary{
 		1: {
@@ -165,6 +176,7 @@ func TestGetAdjacentTaskIDs_AtFirstTaskInColumn(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_AtLastTaskInColumn(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	tasks := map[int][]*models.TaskSummary{
 		1: {
@@ -182,6 +194,7 @@ func TestGetAdjacentTaskIDs_AtLastTaskInColumn(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_MiddlePosition(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo"},
 		{ID: 2, Name: "In Progress"},
@@ -207,6 +220,7 @@ func TestGetAdjacentTaskIDs_MiddlePosition(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_LeftColumnEmpty(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo"},
 		{ID: 2, Name: "In Progress"},
@@ -223,6 +237,7 @@ func TestGetAdjacentTaskIDs_LeftColumnEmpty(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_RightColumnEmpty(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo"},
 		{ID: 2, Name: "In Progress"},
@@ -239,6 +254,7 @@ func TestGetAdjacentTaskIDs_RightColumnEmpty(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_AdjacentColumnIndexClamping(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo"},
 		{ID: 2, Name: "In Progress"},
@@ -258,6 +274,7 @@ func TestGetAdjacentTaskIDs_AdjacentColumnIndexClamping(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_AdjacentColumnPreservesIndex(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo"},
 		{ID: 2, Name: "In Progress"},
@@ -280,6 +297,7 @@ func TestGetAdjacentTaskIDs_AdjacentColumnPreservesIndex(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_NilTasksMap(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 
 	result := GetAdjacentTaskIDs(columns, nil, 0, 0)
@@ -288,6 +306,7 @@ func TestGetAdjacentTaskIDs_NilTasksMap(t *testing.T) {
 }
 
 func TestGetAdjacentTaskIDs_MissingColumnInTasksMap(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	tasks := map[int][]*models.TaskSummary{}
 

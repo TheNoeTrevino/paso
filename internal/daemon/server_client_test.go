@@ -10,6 +10,7 @@ import (
 )
 
 func TestClientConnection_Single(t *testing.T) {
+	t.Parallel()
 	_, socketPath := setupTestDaemon(t)
 
 	// Connect a raw client
@@ -39,6 +40,7 @@ func TestClientConnection_Single(t *testing.T) {
 }
 
 func TestClientConnection_Multiple(t *testing.T) {
+	t.Parallel()
 	server, socketPath := setupTestDaemon(t)
 
 	numClients := 5
@@ -57,6 +59,7 @@ func TestClientConnection_Multiple(t *testing.T) {
 }
 
 func TestClientDisconnection(t *testing.T) {
+	t.Parallel()
 	server, socketPath := setupTestDaemon(t)
 
 	// Connect a client

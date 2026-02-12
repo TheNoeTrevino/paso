@@ -7,6 +7,7 @@ import (
 )
 
 func TestFormatAddMessage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		dbName    string
@@ -35,6 +36,7 @@ func TestFormatAddMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := formatAddMessage(tt.dbName, tt.connected)
 			assert.Equal(t, tt.want, result)
 		})
@@ -42,6 +44,7 @@ func TestFormatAddMessage(t *testing.T) {
 }
 
 func TestFormatConnectMessage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		dbName    string
@@ -70,6 +73,7 @@ func TestFormatConnectMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := formatConnectMessage(tt.dbName, tt.connected)
 			assert.Equal(t, tt.want, result)
 		})
@@ -77,6 +81,7 @@ func TestFormatConnectMessage(t *testing.T) {
 }
 
 func TestAddCmd_FlagValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		args    []string
@@ -99,6 +104,7 @@ func TestAddCmd_FlagValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cmd := AddCmd()
 			cmd.SetArgs(tt.args)
 			err := cmd.Execute()
@@ -116,6 +122,7 @@ func TestAddCmd_FlagValidation(t *testing.T) {
 }
 
 func TestDbCmd_Subcommands(t *testing.T) {
+	t.Parallel()
 	cmd := DbCmd()
 
 	// Verify all expected subcommands are registered

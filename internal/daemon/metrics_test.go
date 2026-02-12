@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewMetrics(t *testing.T) {
+	t.Parallel()
 	m := NewMetrics()
 
 	require.NotNil(t, m)
@@ -28,6 +29,7 @@ func TestNewMetrics(t *testing.T) {
 }
 
 func TestIncEventsSent(t *testing.T) {
+	t.Parallel()
 	m := NewMetrics()
 
 	// Increment once
@@ -44,6 +46,7 @@ func TestIncEventsSent(t *testing.T) {
 }
 
 func TestIncEventsReceived(t *testing.T) {
+	t.Parallel()
 	m := NewMetrics()
 
 	m.IncEventsReceived()
@@ -58,6 +61,7 @@ func TestIncEventsReceived(t *testing.T) {
 }
 
 func TestIncReconnections(t *testing.T) {
+	t.Parallel()
 	m := NewMetrics()
 
 	m.IncReconnections()
@@ -72,6 +76,7 @@ func TestIncReconnections(t *testing.T) {
 }
 
 func TestIncRefreshesTotal(t *testing.T) {
+	t.Parallel()
 	m := NewMetrics()
 
 	m.IncRefreshesTotal()
@@ -86,6 +91,7 @@ func TestIncRefreshesTotal(t *testing.T) {
 }
 
 func TestSetConnectedClients(t *testing.T) {
+	t.Parallel()
 	m := NewMetrics()
 
 	// Set to various values
@@ -102,6 +108,7 @@ func TestSetConnectedClients(t *testing.T) {
 }
 
 func TestGetSnapshot(t *testing.T) {
+	t.Parallel()
 	m := NewMetrics()
 
 	// Set some values
@@ -140,6 +147,7 @@ func TestGetSnapshot(t *testing.T) {
 }
 
 func TestMetricsConcurrency_AllOperations(t *testing.T) {
+	t.Parallel()
 	m := NewMetrics()
 
 	// Number of goroutines and operations per goroutine
@@ -218,6 +226,7 @@ func TestMetricsConcurrency_AllOperations(t *testing.T) {
 }
 
 func TestMetricsConcurrency_ReadWhileWrite(t *testing.T) {
+	t.Parallel()
 	m := NewMetrics()
 
 	stopChan := make(chan struct{})
@@ -278,6 +287,7 @@ func TestMetricsConcurrency_ReadWhileWrite(t *testing.T) {
 }
 
 func TestMetricsSnapshot_IsImmutable(t *testing.T) {
+	t.Parallel()
 	m := NewMetrics()
 
 	m.IncEventsSent()

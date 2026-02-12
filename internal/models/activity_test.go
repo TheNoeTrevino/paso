@@ -36,7 +36,6 @@ func TestActivityType_String(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			result := tt.input.String()
 			assert.Equal(t, tt.expected, result)
 		})
@@ -169,7 +168,6 @@ func TestMergeActivities(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			result := MergeActivities(tt.events, tt.comments)
 			require.Len(t, result, tt.expectedLen)
 

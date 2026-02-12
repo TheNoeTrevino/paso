@@ -7,6 +7,7 @@ import (
 )
 
 func TestValidateColorHex_Valid(t *testing.T) {
+	t.Parallel()
 	tests := []string{
 		"#FF0000", // Red
 		"#00FF00", // Green
@@ -20,6 +21,7 @@ func TestValidateColorHex_Valid(t *testing.T) {
 
 	for _, color := range tests {
 		t.Run(color, func(t *testing.T) {
+			t.Parallel()
 			err := ValidateColorHex(color)
 			assert.NoError(t, err, "Color should be valid: %s", color)
 		})
@@ -27,6 +29,7 @@ func TestValidateColorHex_Valid(t *testing.T) {
 }
 
 func TestValidateColorHex_Invalid(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		color       string
 		description string
@@ -43,6 +46,7 @@ func TestValidateColorHex_Invalid(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.description, func(t *testing.T) {
+			t.Parallel()
 			err := ValidateColorHex(tt.color)
 			assert.Error(t, err)
 		})
@@ -50,6 +54,7 @@ func TestValidateColorHex_Invalid(t *testing.T) {
 }
 
 func TestParsePriority_Valid(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected int
@@ -69,6 +74,7 @@ func TestParsePriority_Valid(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
 			result, err := ParsePriority(tt.input)
 			assert.NoError(t, err, "ParsePriority should not return error for: %s", tt.input)
 			assert.Equal(t, tt.expected, result)
@@ -77,6 +83,7 @@ func TestParsePriority_Valid(t *testing.T) {
 }
 
 func TestParsePriority_Invalid(t *testing.T) {
+	t.Parallel()
 	tests := []string{
 		"invalid",
 		"normal",
@@ -89,6 +96,7 @@ func TestParsePriority_Invalid(t *testing.T) {
 
 	for _, input := range tests {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			_, err := ParsePriority(input)
 			assert.Error(t, err)
 		})
@@ -96,6 +104,7 @@ func TestParsePriority_Invalid(t *testing.T) {
 }
 
 func TestParseTaskType_Valid(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected int
@@ -110,6 +119,7 @@ func TestParseTaskType_Valid(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
 			result, err := ParseTaskType(tt.input)
 			assert.NoError(t, err, "ParseTaskType should not return error for: %s", tt.input)
 			assert.Equal(t, tt.expected, result)
@@ -118,6 +128,7 @@ func TestParseTaskType_Valid(t *testing.T) {
 }
 
 func TestParseTaskType_Invalid(t *testing.T) {
+	t.Parallel()
 	tests := []string{
 		"bug",
 		"story",
@@ -130,6 +141,7 @@ func TestParseTaskType_Invalid(t *testing.T) {
 
 	for _, input := range tests {
 		t.Run(input, func(t *testing.T) {
+			t.Parallel()
 			_, err := ParseTaskType(input)
 			assert.Error(t, err)
 		})

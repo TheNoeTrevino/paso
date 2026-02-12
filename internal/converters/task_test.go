@@ -13,6 +13,7 @@ import (
 // TEST CASES - TaskToModel
 
 func TestTaskToModel(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 
 	tests := []struct {
@@ -199,6 +200,7 @@ func TestTaskToModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := TaskToModel(tt.input)
 
 			assert.Equal(t, tt.expected.ID, result.ID)
@@ -217,6 +219,7 @@ func TestTaskToModel(t *testing.T) {
 // TEST CASES - ParentTasksToReferences
 
 func TestParentTasksToReferences(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    []types.GetParentTasksRow
@@ -352,6 +355,7 @@ func TestParentTasksToReferences(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := ParentTasksToReferences(tt.input)
 
 			require.Len(t, result, len(tt.expected))
@@ -373,6 +377,7 @@ func TestParentTasksToReferences(t *testing.T) {
 // TEST CASES - ChildTasksToReferences
 
 func TestChildTasksToReferences(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    []types.GetChildTasksRow
@@ -488,6 +493,7 @@ func TestChildTasksToReferences(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := ChildTasksToReferences(tt.input)
 
 			require.Len(t, result, len(tt.expected))
@@ -509,6 +515,7 @@ func TestChildTasksToReferences(t *testing.T) {
 // TEST CASES - CommentsToModels
 
 func TestCommentsToModels(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 
 	tests := []struct {
@@ -602,6 +609,7 @@ func TestCommentsToModels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := CommentsToModels(tt.input)
 
 			require.Len(t, result, len(tt.expected))
@@ -620,6 +628,7 @@ func TestCommentsToModels(t *testing.T) {
 // TEST CASES - ParseLabelsFromConcatenated
 
 func TestParseLabelsFromConcatenated(t *testing.T) {
+	t.Parallel()
 	sep := string(rune(31)) // labelSeparator
 
 	tests := []struct {
@@ -731,6 +740,7 @@ func TestParseLabelsFromConcatenated(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := ParseLabelsFromConcatenated(tt.ids, tt.names, tt.colors)
 
 			require.Len(t, result, len(tt.expected))
@@ -747,6 +757,7 @@ func TestParseLabelsFromConcatenated(t *testing.T) {
 // TEST CASES - TaskSummaryFromRowToModel
 
 func TestTaskSummaryFromRowToModel(t *testing.T) {
+	t.Parallel()
 	sep := string(rune(31))
 
 	tests := []struct {
@@ -871,6 +882,7 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := TaskSummaryFromRowToModel(tt.input)
 
 			assert.Equal(t, tt.expected.ID, result.ID)
@@ -894,6 +906,7 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 // TEST CASES - ReadyTaskSummaryFromRowToModel
 
 func TestReadyTaskSummaryFromRowToModel(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    types.GetReadyTaskSummariesByProjectRow
@@ -959,6 +972,7 @@ func TestReadyTaskSummaryFromRowToModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := ReadyTaskSummaryFromRowToModel(tt.input)
 
 			assert.Equal(t, tt.expected.ID, result.ID)
@@ -977,6 +991,7 @@ func TestReadyTaskSummaryFromRowToModel(t *testing.T) {
 // TEST CASES - FilteredTaskSummaryFromRowToModel
 
 func TestFilteredTaskSummaryFromRowToModel(t *testing.T) {
+	t.Parallel()
 	sep := string(rune(31))
 
 	tests := []struct {
@@ -1045,6 +1060,7 @@ func TestFilteredTaskSummaryFromRowToModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := FilteredTaskSummaryFromRowToModel(tt.input)
 
 			assert.Equal(t, tt.expected.ID, result.ID)

@@ -11,6 +11,7 @@ import (
 )
 
 func TestBroadcast_SingleClient(t *testing.T) {
+	t.Parallel()
 	server, socketPath := setupTestDaemon(t)
 
 	// Connect client using event client
@@ -48,6 +49,7 @@ func TestBroadcast_SingleClient(t *testing.T) {
 }
 
 func TestBroadcast_MultipleClients(t *testing.T) {
+	t.Parallel()
 	server, socketPath := setupTestDaemon(t)
 
 	numClients := 3
@@ -89,6 +91,7 @@ func TestBroadcast_MultipleClients(t *testing.T) {
 }
 
 func TestBroadcast_SubscriptionFiltering(t *testing.T) {
+	t.Parallel()
 	server, socketPath := setupTestDaemon(t)
 
 	// Client A subscribes to project 1
@@ -128,6 +131,7 @@ func TestBroadcast_SubscriptionFiltering(t *testing.T) {
 }
 
 func TestBroadcast_AllProjects(t *testing.T) {
+	t.Parallel()
 	server, socketPath := setupTestDaemon(t)
 
 	// Client A subscribes to project 1
@@ -167,6 +171,7 @@ func TestBroadcast_AllProjects(t *testing.T) {
 }
 
 func TestBroadcast_SequenceNumbers(t *testing.T) {
+	t.Parallel()
 	server, socketPath := setupTestDaemon(t)
 
 	client := setupTestClient(t, socketPath)

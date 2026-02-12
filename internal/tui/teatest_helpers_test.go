@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"testing"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/require"
@@ -15,7 +14,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/services/label"
 	"github.com/thenoetrevino/paso/internal/services/project"
 	"github.com/thenoetrevino/paso/internal/services/task"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -23,7 +22,7 @@ import (
 // Returns both the model and database for use in tests
 func SetupTestModelWithDB(t *testing.T) (Model, *sql.DB) {
 	t.Helper()
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	// Create app container with all services
 	taskSvc, err := task.NewService(db, database.SQLite, nil, nil)
@@ -43,7 +42,7 @@ func SetupTestModelWithDB(t *testing.T) (Model, *sql.DB) {
 
 	// Create test project and columns
 	ctx := context.Background()
-	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Test Project")
+	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Test Project")
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to get columns")
 
@@ -92,7 +91,7 @@ func TypeStringToModel(m *Model, s string) *Model {
 
 // WaitForModeChange verifies the model's mode matches the expected state
 // Note: Bubbletea model updates are synchronous, so this checks immediately
-func WaitForModeChange(t *testing.T, m *Model, expectedMode state.Mode, timeout time.Duration) {
+func WaitForModeChange(t *testing.T, m *Model, expectedMode state.Mode) {
 	t.Helper()
 	require.Equal(t, expectedMode, m.UIState.Mode)
 }

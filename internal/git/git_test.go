@@ -534,7 +534,6 @@ func TestGitInfo_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			// Test the validation logic (this will depend on implementation)
 			// For now, check basic invariants
 			isValid := tt.gitInfo.IsRepo &&
@@ -611,7 +610,6 @@ func TestSanitizeBranchName_TableDriven(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			result, err := SanitizeBranchName(tt.input)
 
 			if tt.expectError {

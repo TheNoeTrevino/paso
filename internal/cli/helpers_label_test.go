@@ -6,18 +6,19 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thenoetrevino/paso/internal/testutil"
-	testutilcli "github.com/thenoetrevino/paso/internal/testutil/cli"
+	testutilcli "github.com/thenoetrevino/paso/internal/testing/cli"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 )
 
 func TestGetLabelByID_Found(t *testing.T) {
+	t.Parallel()
 	db, appInstance := testutilcli.SetupCLITest(t)
 
 	ctx := context.Background()
 
 	// Create test data
-	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Test Project")
-	labelID := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "Bug", "#FF0000")
+	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Test Project")
+	labelID := fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "Bug", "#FF0000")
 
 	// Create CLI instance
 	cliInstance := &CLI{
@@ -36,16 +37,17 @@ func TestGetLabelByID_Found(t *testing.T) {
 }
 
 func TestGetLabelByID_Found_MultipleProjects(t *testing.T) {
+	t.Parallel()
 	db, appInstance := testutilcli.SetupCLITest(t)
 
 	ctx := context.Background()
 
 	// Create multiple projects with labels
-	project1ID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Project 1")
-	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), project1ID, "Label 1", "#FF0000")
+	project1ID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Project 1")
+	fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), project1ID, "Label 1", "#FF0000")
 
-	project2ID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Project 2")
-	label2ID := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), project2ID, "Label 2", "#00FF00")
+	project2ID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Project 2")
+	label2ID := fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), project2ID, "Label 2", "#00FF00")
 
 	// Create CLI instance
 	cliInstance := &CLI{
@@ -62,6 +64,7 @@ func TestGetLabelByID_Found_MultipleProjects(t *testing.T) {
 }
 
 func TestGetLabelByID_NotFound(t *testing.T) {
+	t.Parallel()
 	_, appInstance := testutilcli.SetupCLITest(t)
 
 	ctx := context.Background()
@@ -81,6 +84,7 @@ func TestGetLabelByID_NotFound(t *testing.T) {
 }
 
 func TestGetLabelByID_EmptyDatabase(t *testing.T) {
+	t.Parallel()
 	_, appInstance := testutilcli.SetupCLITest(t)
 
 	ctx := context.Background()

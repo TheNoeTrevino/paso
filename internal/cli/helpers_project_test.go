@@ -9,6 +9,7 @@ import (
 )
 
 func TestGetProjectID_FlagSet(t *testing.T) {
+	t.Parallel()
 	// Create a command with the --project flag
 	cmd := &cobra.Command{
 		Use: "test",
@@ -27,6 +28,7 @@ func TestGetProjectID_FlagSet(t *testing.T) {
 }
 
 func TestGetProjectID_NeitherSet(t *testing.T) {
+	t.Parallel()
 	// Create a command without setting the flag
 	cmd := &cobra.Command{
 		Use: "test",

@@ -69,7 +69,6 @@ func TestParseTaskID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			cmd := createTestCommand()
 			cmd.Flags().Int("id", tt.flagValue, "task id")
 
@@ -128,7 +127,6 @@ func TestParseColumnID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			cmd := createTestCommand()
 			cmd.Flags().Int("column-id", tt.flagValue, "column id")
 
@@ -187,7 +185,6 @@ func TestParseLabelID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			cmd := createTestCommand()
 			cmd.Flags().Int("label-id", tt.flagValue, "label id")
 
@@ -261,7 +258,6 @@ func TestParseString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			cmd := createTestCommand()
 			cmd.Flags().String("name", "", "name flag")
 			_ = cmd.Flags().Set("name", tt.flagValue)
@@ -317,7 +313,6 @@ func TestParseStringOptional(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			cmd := createTestCommand()
 			cmd.Flags().String("description", "", "description flag")
 			_ = cmd.Flags().Set("description", tt.flagValue)
@@ -379,7 +374,6 @@ func TestParseInt(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			cmd := createTestCommand()
 			cmd.Flags().Int("count", tt.flagValue, "count flag")
 
@@ -434,7 +428,6 @@ func TestParseIntOptional(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			cmd := createTestCommand()
 			cmd.Flags().Int("offset", tt.flagValue, "offset flag")
 
@@ -480,7 +473,6 @@ func TestParseBool(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			cmd := createTestCommand()
 			cmd.Flags().Bool("enabled", tt.flagValue, "enabled flag")
 
@@ -581,7 +573,6 @@ func TestParseColor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			cmd := createTestCommand()
 			cmd.Flags().String("color", "", "color flag")
 			_ = cmd.Flags().Set("color", tt.flagValue)
@@ -653,7 +644,6 @@ func TestOutputFormats(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			cmd := createTestCommand()
 			cmd.Flags().Bool("json", tt.jsonFlag, "json output")
 			cmd.Flags().Bool("quiet", tt.quietFlag, "quiet mode")
@@ -713,7 +703,6 @@ func TestOutputFormats_MissingFlags(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			cmd := createTestCommand()
 			tt.setupFlags(cmd)
 

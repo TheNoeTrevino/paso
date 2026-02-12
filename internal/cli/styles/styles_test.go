@@ -9,6 +9,7 @@ import (
 )
 
 func TestInit(t *testing.T) {
+	t.Parallel()
 	scheme := colors.ColorScheme{
 		Title:     "#FFFFFF",
 		Accent:    "#00FF00",
@@ -29,16 +30,19 @@ func TestInit(t *testing.T) {
 }
 
 func TestColoredText(t *testing.T) {
+	t.Parallel()
 	result := ColoredText("hello", "#FF0000")
 	assert.Contains(t, result, "hello")
 }
 
 func TestBoldColoredText(t *testing.T) {
+	t.Parallel()
 	result := BoldColoredText("bold text", "#00FF00")
 	assert.Contains(t, result, "bold text")
 }
 
 func TestRenderLabelChip(t *testing.T) {
+	t.Parallel()
 	label := &models.Label{
 		ID:    1,
 		Name:  "bug",
@@ -50,6 +54,7 @@ func TestRenderLabelChip(t *testing.T) {
 }
 
 func TestRenderTaskReference(t *testing.T) {
+	t.Parallel()
 	ref := &models.TaskReference{
 		ID:            1,
 		TicketNumber:  42,
@@ -64,6 +69,7 @@ func TestRenderTaskReference(t *testing.T) {
 }
 
 func TestRenderTaskReferenceWithLabel(t *testing.T) {
+	t.Parallel()
 	ref := &models.TaskReference{
 		ID:            1,
 		TicketNumber:  42,
@@ -80,6 +86,7 @@ func TestRenderTaskReferenceWithLabel(t *testing.T) {
 }
 
 func TestRenderCard(t *testing.T) {
+	t.Parallel()
 	// Init styles first so CardStyle is set
 	scheme := colors.ColorScheme{
 		Title:     "#FFFFFF",
@@ -100,6 +107,7 @@ func TestRenderCard(t *testing.T) {
 }
 
 func TestTreeConstants(t *testing.T) {
+	t.Parallel()
 	assert.NotEmpty(t, TreeBranch)
 	assert.NotEmpty(t, TreeLastBranch)
 	assert.NotEmpty(t, TreeVertical)

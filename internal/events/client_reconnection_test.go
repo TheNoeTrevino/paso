@@ -73,10 +73,9 @@ func TestClient_ContextCancellationDuringReconnection(t *testing.T) {
 		t.Logf("Event channel closed")
 	}()
 
-	// Wait for reconnection to actually start
-	// The listenLoop will detect the closed connection and start reconnecting
-	// We need to wait long enough for it to get into the retry loop
-	time.Sleep(500 * time.Millisecond)
+	// Give the client time to detect the closed connection and start reconnecting
+	// The listenLoop will detect the closed connection and start the reconnection goroutine
+	time.Sleep(200 * time.Millisecond)
 	t.Logf("Client should now be attempting reconnection")
 
 	// Now close the client while it's attempting to reconnect
@@ -332,13 +331,18 @@ func TestClient_RestoresSubscriptionAfterReconnect(t *testing.T) {
 	err = startFunc()
 	require.NoError(t, err)
 
-	// Give daemon time to fully start
-	time.Sleep(100 * time.Millisecond)
-
 	// Call reconnect() directly to test the subscription restoration logic
 	// This simulates what the Listen loop would do when it detects connection loss
+	// Retry if daemon isn't fully ready yet
 	t.Logf("Testing reconnect() with subscription restoration...")
-	success := client.reconnect(ctx)
+	var success bool
+	for i := 0; i < 5; i++ {
+		success = client.reconnect(ctx)
+		if success {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 
 	require.True(t, success)
 	t.Logf("reconnect() succeeded")
@@ -364,11 +368,6 @@ ResubscribeLoop:
 			}
 		case <-timeout:
 			break ResubscribeLoop
-		default:
-			if subscribeCount > 0 && time.Since(time.Now()) > 500*time.Millisecond {
-				break ResubscribeLoop
-			}
-			time.Sleep(50 * time.Millisecond)
 		}
 	}
 

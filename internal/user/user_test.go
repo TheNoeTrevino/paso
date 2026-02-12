@@ -7,6 +7,7 @@ import (
 )
 
 func TestGetCurrentUsername(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		validate func(string) bool
@@ -29,6 +30,7 @@ func TestGetCurrentUsername(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			username := GetCurrentUsername()
 			assert.True(t, tt.validate(username))
 		})
@@ -36,6 +38,7 @@ func TestGetCurrentUsername(t *testing.T) {
 }
 
 func TestGetCurrentUsernameFallback(t *testing.T) {
+	t.Parallel()
 	// This test verifies that the function always returns something
 	username := GetCurrentUsername()
 

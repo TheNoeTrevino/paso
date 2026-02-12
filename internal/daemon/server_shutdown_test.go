@@ -11,6 +11,7 @@ import (
 )
 
 func TestShutdown_GracefulClose(t *testing.T) {
+	t.Parallel()
 	server, socketPath := setupTestDaemon(t)
 
 	// Connect a few clients
@@ -38,6 +39,7 @@ func TestShutdown_GracefulClose(t *testing.T) {
 }
 
 func TestShutdown_Idempotent(t *testing.T) {
+	t.Parallel()
 	socketPath := getTestSocketPath(t)
 	server, err := NewServer(socketPath)
 	require.NoError(t, err)

@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewServer_Success(t *testing.T) {
+	t.Parallel()
 	socketPath := getTestSocketPath(t)
 
 	server, err := NewServer(socketPath)
@@ -27,6 +28,7 @@ func TestNewServer_Success(t *testing.T) {
 }
 
 func TestNewServer_DirectoryCreation(t *testing.T) {
+	t.Parallel()
 	// Use t.TempDir() which ensures cleanup
 	tmpDir := t.TempDir()
 	nestedPath := filepath.Join(tmpDir, "nested", "subdirs", "paso.sock")
@@ -48,6 +50,7 @@ func TestNewServer_DirectoryCreation(t *testing.T) {
 }
 
 func TestNewServer_StaleSocketCleanup(t *testing.T) {
+	t.Parallel()
 	socketPath := getTestSocketPath(t)
 
 	// Create a stale socket file

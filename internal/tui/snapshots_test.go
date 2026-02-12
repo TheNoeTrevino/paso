@@ -15,7 +15,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/services/label"
 	"github.com/thenoetrevino/paso/internal/services/project"
 	"github.com/thenoetrevino/paso/internal/services/task"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -26,6 +26,7 @@ import (
 
 // TestSnapshots verifies TUI rendering consistency across different application states
 func TestSnapshots(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		setup func(*testing.T, *sql.DB) Model
@@ -94,7 +95,8 @@ func TestSnapshots(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db := testutil.SetupTestDB(t)
+			t.Parallel()
+			db := fixtures.SetupTestDB(t)
 
 			m := tt.setup(t, db)
 
@@ -120,7 +122,7 @@ func setupEmptyProject(t *testing.T, db *sql.DB) Model {
 	defer cancel()
 
 	// Create project and services
-	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Test Project")
+	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Test Project")
 	appContainer := createAppContainer(t, db)
 
 	// Load project data
@@ -156,7 +158,7 @@ func setupBoardWithTasks(t *testing.T, db *sql.DB) Model {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Test Project")
+	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Test Project")
 	appContainer := createAppContainer(t, db)
 
 	// Get columns
@@ -166,10 +168,10 @@ func setupBoardWithTasks(t *testing.T, db *sql.DB) Model {
 	require.GreaterOrEqual(t, len(columns), 3, "Expected at least 3 columns")
 
 	// Create tasks in different columns
-	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Setup database")
-	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Configure service")
-	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[1].ID, "Implement API endpoints")
-	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[2].ID, "Deploy to production")
+	fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[0].ID, "Setup database")
+	fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[0].ID, "Configure service")
+	fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[1].ID, "Implement API endpoints")
+	fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[2].ID, "Deploy to production")
 
 	tasks, err := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
 	require.NoError(t, err)
@@ -196,7 +198,7 @@ func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) Model {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Test Project")
+	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Test Project")
 	appContainer := createAppContainer(t, db)
 
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
@@ -204,13 +206,13 @@ func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) Model {
 
 	// Create multiple tasks per column
 	for i := range 5 {
-		testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Task "+string(rune(65+i)))
+		fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[0].ID, "Task "+string(rune(65+i)))
 	}
 	for i := range 3 {
-		testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[1].ID, "In Progress Task "+string(rune(65+i)))
+		fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[1].ID, "In Progress Task "+string(rune(65+i)))
 	}
 	for i := range 2 {
-		testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[2].ID, "Done Task "+string(rune(65+i)))
+		fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[2].ID, "Done Task "+string(rune(65+i)))
 	}
 
 	tasks, err := appContainer.TaskService.GetTaskSummariesByProject(ctx, projectID)
@@ -238,21 +240,21 @@ func setupBoardWithLabels(t *testing.T, db *sql.DB) Model {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Test Project")
+	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Test Project")
 	appContainer := createAppContainer(t, db)
 
 	// Create labels
-	labelBug := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "bug", "#FF0000")
-	labelFeature := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "feature", "#00FF00")
-	labelDoc := testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "documentation", "#0000FF")
+	labelBug := fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "bug", "#FF0000")
+	labelFeature := fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "feature", "#00FF00")
+	labelDoc := fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "documentation", "#0000FF")
 
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err)
 
 	// Create tasks with labels
-	task1ID := testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Fix critical bug")
-	task2ID := testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Implement new feature")
-	task3ID := testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[1].ID, "Write API docs")
+	task1ID := fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[0].ID, "Fix critical bug")
+	task2ID := fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[0].ID, "Implement new feature")
+	task3ID := fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[1].ID, "Write API docs")
 
 	// Attach labels
 	_, err = db.ExecContext(ctx, "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", task1ID, labelBug)
@@ -315,7 +317,7 @@ func setupProjectNoColumns(t *testing.T, db *sql.DB) Model {
 	defer cancel()
 
 	// Create project but don't create any columns
-	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Empty Project")
+	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Empty Project")
 	appContainer := createAppContainer(t, db)
 
 	// Delete default columns that were auto-created
@@ -343,7 +345,7 @@ func setupConnectionDisconnected(t *testing.T, db *sql.DB) Model {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Test Project")
+	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Test Project")
 	appContainer := createAppContainer(t, db)
 
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
@@ -377,7 +379,7 @@ func setupConnectionReconnecting(t *testing.T, db *sql.DB) Model {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Test Project")
+	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Test Project")
 	appContainer := createAppContainer(t, db)
 
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
@@ -410,7 +412,7 @@ func setupNotificationError(t *testing.T, db *sql.DB) Model {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Test Project")
+	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Test Project")
 	appContainer := createAppContainer(t, db)
 
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
@@ -444,7 +446,7 @@ func setupNotificationWarning(t *testing.T, db *sql.DB) Model {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Test Project")
+	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Test Project")
 	appContainer := createAppContainer(t, db)
 
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
@@ -494,6 +496,7 @@ func createAppContainer(t *testing.T, db *sql.DB) *app.App {
 
 // TestSnapshotRegressions verifies that snapshot files exist and match baseline
 func TestSnapshotRegressions(t *testing.T) {
+	t.Parallel()
 	// This test verifies that snapshot golden files are properly maintained
 	helper := NewSnapshotHelper(t)
 
@@ -513,6 +516,7 @@ func TestSnapshotRegressions(t *testing.T) {
 
 	for _, name := range snapshotNames {
 		t.Run("verify_"+name, func(t *testing.T) {
+			t.Parallel()
 			_, err := helper.ReadSnapshot(name)
 			if err != nil {
 				t.Logf("Snapshot %s not found. Run UPDATE_SNAPSHOTS=1 to create", name)

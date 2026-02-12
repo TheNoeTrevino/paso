@@ -11,6 +11,7 @@ import (
 // TestModeTransition_NormalToForm verifies mode transitions from NormalMode to form modes.
 // Edge case: User initiates form entry (create task, edit column, etc).
 func TestModeTransition_NormalToForm(t *testing.T) {
+	t.Parallel()
 	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
 	m.UIState.Mode = state.NormalMode
 
@@ -26,6 +27,7 @@ func TestModeTransition_NormalToForm(t *testing.T) {
 // TestModeTransition_FormToNormal verifies mode transitions from form modes back to NormalMode.
 // Edge case: User cancels or submits form (ESC or Enter).
 func TestModeTransition_FormToNormal(t *testing.T) {
+	t.Parallel()
 	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
 
 	// Start in form mode
@@ -41,6 +43,7 @@ func TestModeTransition_FormToNormal(t *testing.T) {
 // TestModeTransition_MultipleTransitions verifies sequential mode changes work correctly.
 // Edge case: User enters form, exits, enters picker, exits.
 func TestModeTransition_MultipleTransitions(t *testing.T) {
+	t.Parallel()
 	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
 	m.UIState.Mode = state.NormalMode
 
@@ -63,6 +66,7 @@ func TestModeTransition_MultipleTransitions(t *testing.T) {
 // TestSelectedColumn_BoundaryConditions verifies column selection respects boundaries.
 // Edge case: Selection at column 0 (first), at last column, out of bounds.
 func TestSelectedColumn_BoundaryConditions(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
 		{ID: 2, Name: "Col2"},
@@ -82,6 +86,7 @@ func TestSelectedColumn_BoundaryConditions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			m.UIState.SelectedColumn = tt.selection
 			assert.Equal(t, tt.want, m.UIState.SelectedColumn)
 		})
@@ -91,6 +96,7 @@ func TestSelectedColumn_BoundaryConditions(t *testing.T) {
 // TestSelectedTask_UpdatesCorrectly verifies task selection state updates work.
 // Edge case: Task selection at 0, middle, last, and boundary crossing.
 func TestSelectedTask_UpdatesCorrectly(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	tasks := map[int][]*models.TaskSummary{
 		1: {
@@ -116,6 +122,7 @@ func TestSelectedTask_UpdatesCorrectly(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			m.UIState.SelectedTask = tt.selection
 			assert.Equal(t, tt.want, m.UIState.SelectedTask)
 		})
@@ -125,6 +132,7 @@ func TestSelectedTask_UpdatesCorrectly(t *testing.T) {
 // TestCursorPosition_AtEnd verifies cursor positioning at boundaries.
 // Edge case: Selected indices are at the end of available items.
 func TestCursorPosition_AtEnd(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
 		{ID: 2, Name: "Col2"},
@@ -152,6 +160,7 @@ func TestCursorPosition_AtEnd(t *testing.T) {
 // TestEmptyState_HandlesEmptyColumns verifies behavior with no columns.
 // Edge case: Project with no columns created yet.
 func TestEmptyState_HandlesEmptyColumns(t *testing.T) {
+	t.Parallel()
 	m := setupTestModel([]*models.Column{}, nil)
 
 	// Should default to valid state even with no columns
@@ -165,6 +174,7 @@ func TestEmptyState_HandlesEmptyColumns(t *testing.T) {
 // TestEmptyState_HandlesEmptyTasks verifies behavior when selected column has no tasks.
 // Edge case: Column exists but has no tasks yet.
 func TestEmptyState_HandlesEmptyTasks(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo"},
 		{ID: 2, Name: "InProgress"},
@@ -190,6 +200,7 @@ func TestEmptyState_HandlesEmptyTasks(t *testing.T) {
 // TestStateIndependence_ColumnAndTaskSelection verifies column and task selection are independent.
 // Edge case: Changing column doesn't affect task selection value (though task may be out of bounds).
 func TestStateIndependence_ColumnAndTaskSelection(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
 		{ID: 2, Name: "Col2"},
@@ -212,6 +223,7 @@ func TestStateIndependence_ColumnAndTaskSelection(t *testing.T) {
 // TestViewportState_CalculatesCorrectly verifies viewport calculations for column visibility.
 // Edge case: Terminal width changes, viewport must recalculate visible columns.
 func TestViewportState_CalculatesCorrectly(t *testing.T) {
+	t.Parallel()
 	columns := make([]*models.Column, 10)
 	for i := 0; i < 10; i++ {
 		columns[i] = &models.Column{ID: i + 1, Name: "Col"}
@@ -235,6 +247,7 @@ func TestViewportState_CalculatesCorrectly(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			m.UIState.SetWidth(tt.width)
 			viewportSize := m.UIState.ViewportSize()
 
@@ -250,6 +263,7 @@ func TestViewportState_CalculatesCorrectly(t *testing.T) {
 // TestModeUsesLayers verifies that certain modes require layer-based rendering.
 // Edge case: Identifying which modes use layered vs full-screen rendering.
 func TestModeUsesLayers(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		mode       state.Mode
 		wantLayers bool
@@ -264,6 +278,7 @@ func TestModeUsesLayers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("Mode", func(t *testing.T) {
+			t.Parallel()
 			usesLayers := tt.mode.UsesLayers()
 			assert.Equal(t, tt.wantLayers, usesLayers)
 		})

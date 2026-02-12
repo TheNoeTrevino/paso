@@ -60,7 +60,6 @@ func TestGetPreset(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			result := GetPreset(tt.input)
 			require.NotNil(t, result)
 			assert.Equal(t, tt.expectedPreset, result.Preset)
@@ -76,7 +75,6 @@ func TestGetPreset_AllPresetsFullyPopulated(t *testing.T) {
 	for _, name := range presets {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-
 			scheme := GetPreset(name)
 			require.NotNil(t, scheme)
 
@@ -337,7 +335,6 @@ func TestApplyDefaults_UsesNamedPreset(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			scheme := &ColorScheme{Preset: tt.preset}
 			scheme.ApplyDefaults()
 

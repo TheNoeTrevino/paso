@@ -230,7 +230,6 @@ func TestColumnToModel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			result := ColumnToModel(tt.input)
 
 			assert.Equal(t, tt.expected.ID, result.ID)
@@ -327,7 +326,6 @@ func TestColumnFromIDRowToModel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			result := ColumnFromIDRowToModel(tt.input)
 
 			assert.Equal(t, tt.expected.ID, result.ID)
@@ -588,7 +586,6 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			result := ColumnsFromRowsToModels(tt.input)
 
 			require.Len(t, result, len(tt.expected))

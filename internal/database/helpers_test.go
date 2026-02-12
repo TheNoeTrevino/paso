@@ -122,6 +122,7 @@ func createTestProject(t *testing.T, db *sql.DB, name string) int {
 }
 
 func TestWithTx_Success_Commit(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 
 	ctx := context.Background()
@@ -143,6 +144,7 @@ func TestWithTx_Success_Commit(t *testing.T) {
 }
 
 func TestWithTx_Error_Rollback(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
 
 	ctx := context.Background()
@@ -170,6 +172,7 @@ func TestWithTx_Error_Rollback(t *testing.T) {
 }
 
 func TestWithTx_Error_BeginFails(t *testing.T) {
+	t.Parallel()
 	// Create a closed database to trigger begin error
 	db := setupTestDB(t)
 	_ = db.Close()
@@ -183,6 +186,7 @@ func TestWithTx_Error_BeginFails(t *testing.T) {
 }
 
 func TestNullInt64ToPtr_Valid(t *testing.T) {
+	t.Parallel()
 	nv := sql.NullInt64{Int64: 42, Valid: true}
 	result := nullInt64ToPtr(nv)
 
@@ -191,6 +195,7 @@ func TestNullInt64ToPtr_Valid(t *testing.T) {
 }
 
 func TestNullInt64ToPtr_Null(t *testing.T) {
+	t.Parallel()
 	nv := sql.NullInt64{Int64: 0, Valid: false}
 	result := nullInt64ToPtr(nv)
 
@@ -198,6 +203,7 @@ func TestNullInt64ToPtr_Null(t *testing.T) {
 }
 
 func TestNullStringToString_Valid(t *testing.T) {
+	t.Parallel()
 	ns := sql.NullString{String: "test string", Valid: true}
 	result := NullStringToString(ns)
 
@@ -205,6 +211,7 @@ func TestNullStringToString_Valid(t *testing.T) {
 }
 
 func TestNullStringToString_Null(t *testing.T) {
+	t.Parallel()
 	ns := sql.NullString{String: "", Valid: false}
 	result := NullStringToString(ns)
 
@@ -212,6 +219,7 @@ func TestNullStringToString_Null(t *testing.T) {
 }
 
 func TestNullTimeToTime_Valid(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	nt := sql.NullTime{Time: now, Valid: true}
 	result := NullTimeToTime(nt)
@@ -220,6 +228,7 @@ func TestNullTimeToTime_Valid(t *testing.T) {
 }
 
 func TestNullTimeToTime_Null(t *testing.T) {
+	t.Parallel()
 	nt := sql.NullTime{Time: time.Time{}, Valid: false}
 	result := NullTimeToTime(nt)
 
@@ -227,6 +236,7 @@ func TestNullTimeToTime_Null(t *testing.T) {
 }
 
 func TestAnyToIntPtr_Int64(t *testing.T) {
+	t.Parallel()
 	var val any = int64(123)
 	result := AnyToIntPtr(val)
 
@@ -235,6 +245,7 @@ func TestAnyToIntPtr_Int64(t *testing.T) {
 }
 
 func TestAnyToIntPtr_Int(t *testing.T) {
+	t.Parallel()
 	var val any = int(456)
 	result := AnyToIntPtr(val)
 
@@ -243,6 +254,7 @@ func TestAnyToIntPtr_Int(t *testing.T) {
 }
 
 func TestAnyToIntPtr_Nil(t *testing.T) {
+	t.Parallel()
 	var val any = nil
 	result := AnyToIntPtr(val)
 
@@ -250,6 +262,7 @@ func TestAnyToIntPtr_Nil(t *testing.T) {
 }
 
 func TestAnyToIntPtr_InvalidType(t *testing.T) {
+	t.Parallel()
 	var val any = "not an int"
 	result := AnyToIntPtr(val)
 
@@ -265,9 +278,10 @@ func (m *mockEventPublisher) Connect(ctx context.Context) error { return nil }
 func (m *mockEventPublisher) Listen(ctx context.Context) (<-chan events.Event, error) {
 	return nil, nil
 }
-func (m *mockEventPublisher) Subscribe(projectID int) error      { return nil }
-func (m *mockEventPublisher) SetNotifyFunc(fn events.NotifyFunc) {}
-func (m *mockEventPublisher) Close() error                       { return nil }
+func (m *mockEventPublisher) Subscribe(projectID int) error        { return nil }
+func (m *mockEventPublisher) SetNotifyFunc(fn events.NotifyFunc)   {}
+func (m *mockEventPublisher) ForceFlush(ctx context.Context) error { return nil }
+func (m *mockEventPublisher) Close() error                         { return nil }
 
 func (m *mockEventPublisher) SendEvent(event events.Event) error {
 	if m.shouldFail {
@@ -278,6 +292,7 @@ func (m *mockEventPublisher) SendEvent(event events.Event) error {
 }
 
 func TestSendEvent_WithClient(t *testing.T) {
+	t.Parallel()
 	mock := &mockEventPublisher{sentEvents: []events.Event{}}
 	projectID := 42
 
@@ -291,11 +306,13 @@ func TestSendEvent_WithClient(t *testing.T) {
 }
 
 func TestSendEvent_NilClient(t *testing.T) {
+	t.Parallel()
 	// Should not panic with nil client
 	sendEvent(nil, 42)
 }
 
 func TestSendEvent_Error(t *testing.T) {
+	t.Parallel()
 	mock := &mockEventPublisher{shouldFail: true}
 
 	// Should not panic or return error (errors are logged)

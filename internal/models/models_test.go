@@ -7,6 +7,7 @@ import (
 )
 
 func TestPriority_Creation(t *testing.T) {
+	t.Parallel()
 	p := Priority{
 		ID:          4,
 		Description: "high",
@@ -19,6 +20,7 @@ func TestPriority_Creation(t *testing.T) {
 }
 
 func TestType_Creation(t *testing.T) {
+	t.Parallel()
 	typ := Type{
 		ID:          2,
 		Description: "feature",
@@ -29,6 +31,7 @@ func TestType_Creation(t *testing.T) {
 }
 
 func TestRelationType_Creation(t *testing.T) {
+	t.Parallel()
 	rt := RelationType{
 		ID:         2,
 		PToCLabel:  "Blocked By",
@@ -45,6 +48,7 @@ func TestRelationType_Creation(t *testing.T) {
 }
 
 func TestRelationType_NonBlocking(t *testing.T) {
+	t.Parallel()
 	rt := RelationType{
 		ID:         1,
 		PToCLabel:  "Parent",
