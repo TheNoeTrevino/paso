@@ -848,30 +848,13 @@ func (m Model) updateEstimateInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "backspace":
-		buffer := m.Pickers.Estimate.Buffer()
-		if len(buffer) > 0 {
-			buffer = buffer[:len(buffer)-1]
-			m.Pickers.Estimate.SetBuffer(buffer)
-			// Real-time validation
-			if buffer == "" {
-				m.Pickers.Estimate.SetError("")
-			} else if err := taskservice.ValidateEstimate(&buffer); err != nil {
-				m.Pickers.Estimate.SetError(estimateFormatHint)
-			} else {
-				m.Pickers.Estimate.SetError("")
-			}
-		}
+		m.Pickers.Estimate.Backspace(taskservice.ValidateEstimate, estimateFormatHint)
 		return m, nil
 
 	case "enter":
-		buffer := m.Pickers.Estimate.Buffer()
-
-		// Validate if non-empty
-		if buffer != "" {
-			if err := taskservice.ValidateEstimate(&buffer); err != nil {
-				m.Pickers.Estimate.SetError(estimateFormatHint)
-				return m, nil // Don't close on validation error
-			}
+		buffer, ok := m.Pickers.Estimate.Submit(taskservice.ValidateEstimate, estimateFormatHint)
+		if !ok {
+			return m, nil // Don't close on validation error
 		}
 
 		// Update form state
@@ -915,14 +898,7 @@ func (m Model) updateEstimateInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Accept single printable characters
 		key := keyMsg.String()
 		if len(key) == 1 {
-			buffer := m.Pickers.Estimate.Buffer() + key
-			m.Pickers.Estimate.SetBuffer(buffer)
-			// Real-time validation
-			if err := taskservice.ValidateEstimate(&buffer); err != nil {
-				m.Pickers.Estimate.SetError(estimateFormatHint)
-			} else {
-				m.Pickers.Estimate.SetError("")
-			}
+			m.Pickers.Estimate.AppendChar(key, taskservice.ValidateEstimate, estimateFormatHint)
 		}
 		return m, nil
 	}
