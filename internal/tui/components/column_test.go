@@ -10,6 +10,7 @@ import (
 )
 
 func TestRenderColumnHeader(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		column    *models.Column
@@ -45,6 +46,7 @@ func TestRenderColumnHeader(t *testing.T) {
 }
 
 func TestRenderScrollIndicator_Show(t *testing.T) {
+	t.Parallel()
 	result := renderScrollIndicator(true, "▲ more above")
 
 	assert.Contains(t, result, "▲")
@@ -53,12 +55,14 @@ func TestRenderScrollIndicator_Show(t *testing.T) {
 }
 
 func TestRenderScrollIndicator_Hide(t *testing.T) {
+	t.Parallel()
 	result := renderScrollIndicator(false, "▲ more above")
 
 	assert.Equal(t, "\n", result)
 }
 
 func TestRenderEmptyColumnContent_Structure(t *testing.T) {
+	t.Parallel()
 	header := "Test Header"
 
 	result := renderEmptyColumnContent(header)
@@ -71,6 +75,7 @@ func TestRenderEmptyColumnContent_Structure(t *testing.T) {
 }
 
 func TestRenderEmptyColumnContent_PaddingCalculation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		height int
@@ -95,6 +100,7 @@ func TestRenderEmptyColumnContent_PaddingCalculation(t *testing.T) {
 }
 
 func TestApplyColumnStyle_Selection(t *testing.T) {
+	t.Parallel()
 	content := "test content"
 	width := 40
 
@@ -110,6 +116,7 @@ func TestApplyColumnStyle_Selection(t *testing.T) {
 }
 
 func TestApplyColumnStyle_Height(t *testing.T) {
+	t.Parallel()
 	content := "test content"
 	width := 40
 
@@ -123,6 +130,7 @@ func TestApplyColumnStyle_Height(t *testing.T) {
 }
 
 func TestRenderColumnWithTasksContent_VisibleTaskCalculation(t *testing.T) {
+	t.Parallel()
 	// Create test tasks
 	tasks := make([]*models.TaskSummary, 10)
 	for i := range tasks {
@@ -145,6 +153,7 @@ func TestRenderColumnWithTasksContent_VisibleTaskCalculation(t *testing.T) {
 }
 
 func TestRenderColumnWithTasksContent_ScrollIndicators(t *testing.T) {
+	t.Parallel()
 	tasks := make([]*models.TaskSummary, 20)
 	for i := range tasks {
 		tasks[i] = &models.TaskSummary{

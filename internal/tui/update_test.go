@@ -15,6 +15,7 @@ import (
 // TestModeDispatch_TaskFormMode ensures form mode intercepts all messages.
 // Edge case: When in TicketFormMode, ALL messages should go to updateTaskForm.
 func TestModeDispatch_TaskFormMode(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	m := setupTestModel(columns, nil)
 
@@ -44,6 +45,7 @@ func TestModeDispatch_TaskFormMode(t *testing.T) {
 // TestModeDispatch_NormalMode ensures normal mode routes to handlers.
 // Edge case: KeyMsg in NormalMode should go to handleKeyMsg dispatcher.
 func TestModeDispatch_NormalMode(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Col1"},
 		{ID: 2, Name: "Col2"},
@@ -67,6 +69,7 @@ func TestModeDispatch_NormalMode(t *testing.T) {
 
 // TestUpdateTaskForm_EscapeCancels ensures ESC key exits form mode.
 func TestUpdateTaskForm_EscapeCancels(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	m := setupTestModel(columns, nil)
 
@@ -97,6 +100,7 @@ func TestUpdateTaskForm_EscapeCancels(t *testing.T) {
 // title doesn't create a task. This exercises the ESC path where the form has no changes
 // (empty title = no changes), so it exits immediately without saving.
 func TestUpdateTaskForm_EmptyTitleEscNoTask(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	m.NotifyChan = make(chan events.NotificationMsg, 1)
 

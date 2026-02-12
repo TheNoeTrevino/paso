@@ -8,6 +8,7 @@ import (
 )
 
 func TestFindColumnByName_Found(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo", ProjectID: 1},
 		{ID: 2, Name: "In Progress", ProjectID: 1},
@@ -40,6 +41,7 @@ func TestFindColumnByName_Found(t *testing.T) {
 }
 
 func TestFindColumnByName_NotFound(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo", ProjectID: 1},
 		{ID: 2, Name: "In Progress", ProjectID: 1},
@@ -63,6 +65,7 @@ func TestFindColumnByName_NotFound(t *testing.T) {
 }
 
 func TestFindColumnByName_EmptyList(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{}
 
 	_, err := FindColumnByName(columns, "Todo")
@@ -70,6 +73,7 @@ func TestFindColumnByName_EmptyList(t *testing.T) {
 }
 
 func TestFormatAvailableColumns(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		columns  []*models.Column
@@ -107,6 +111,7 @@ func TestFormatAvailableColumns(t *testing.T) {
 }
 
 func TestGetCurrentColumnName(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo", ProjectID: 1},
 		{ID: 2, Name: "In Progress", ProjectID: 1},
@@ -133,6 +138,7 @@ func TestGetCurrentColumnName(t *testing.T) {
 }
 
 func TestGetCurrentColumnName_EmptyList(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{}
 
 	result := GetCurrentColumnName(columns, 1)

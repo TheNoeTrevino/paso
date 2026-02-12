@@ -8,6 +8,7 @@ import (
 
 // TestEventPublisherNilCheck verifies that nil checks work correctly with the interface
 func TestEventPublisherNilCheck(t *testing.T) {
+	t.Parallel()
 	var publisher EventPublisher
 
 	// Should be nil
@@ -27,6 +28,7 @@ func TestEventPublisherNilCheck(t *testing.T) {
 
 // TestEventPublisherImplementation verifies Client implements EventPublisher
 func TestEventPublisherImplementation(t *testing.T) {
+	t.Parallel()
 	// This will fail to compile if Client doesn't implement EventPublisher
 	var _ EventPublisher = (*Client)(nil)
 	t.Log("Client correctly implements EventPublisher interface")

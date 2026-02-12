@@ -14,6 +14,7 @@ import (
 // TestSendEvent_QueueFullWithBackpressure tests that SendEvent applies
 // exponential backoff when the queue is full, ensuring events aren't silently dropped.
 func TestSendEvent_QueueFullWithBackpressure(t *testing.T) {
+	t.Parallel()
 	socketPath, listener, messages := setupMockDaemon(t)
 	defer func() { _ = listener.Close() }()
 
@@ -59,8 +60,9 @@ func TestSendEvent_QueueFullWithBackpressure(t *testing.T) {
 		t.Logf("Queue saturation detected and logged: %v", lastErr)
 	}
 
-	// Wait for batching to complete
-	time.Sleep(client.debounce + 200*time.Millisecond)
+	// Force flush to ensure batching completes
+	err = client.ForceFlush(ctx)
+	require.NoError(t, err)
 
 	// Verify at least some events were processed
 	eventCount := 0
@@ -83,6 +85,7 @@ func TestSendEvent_QueueFullWithBackpressure(t *testing.T) {
 // TestSendEvent_HighThroughputReliability tests event reliability under
 // high-throughput scenarios where queue saturation is likely.
 func TestSendEvent_HighThroughputReliability(t *testing.T) {
+	t.Parallel()
 	socketPath, listener, messages := setupMockDaemon(t)
 	defer func() { _ = listener.Close() }()
 
@@ -127,8 +130,9 @@ func TestSendEvent_HighThroughputReliability(t *testing.T) {
 		t.Logf("Success rate lower than expected: %.1f%%", successRate)
 	}
 
-	// Wait for all events to be batched and sent
-	time.Sleep(client.debounce + 500*time.Millisecond)
+	// Force flush to ensure all events are sent
+	err = client.ForceFlush(ctx)
+	require.NoError(t, err)
 
 	// Verify we received events
 	eventCount := 0
@@ -187,8 +191,9 @@ func TestSendEvent_BackpressureQueueRecovery(t *testing.T) {
 		}
 	}
 
-	// Wait for queue to drain via batcher
-	time.Sleep(100 * time.Millisecond)
+	// Force flush to drain queue via batcher
+	err = client.ForceFlush(ctx)
+	require.NoError(t, err)
 
 	// Second batch: should now be able to send without excessive retry
 	// If recovery works, these should succeed quickly
@@ -214,6 +219,7 @@ func TestSendEvent_BackpressureQueueRecovery(t *testing.T) {
 // TestSendEvent_ErrorMessageClarity tests that queue saturation errors
 // provide clear, actionable error messages for debugging.
 func TestSendEvent_ErrorMessageClarity(t *testing.T) {
+	t.Parallel()
 	socketPath := filepath.Join(t.TempDir(), "paso.sock")
 
 	client, err := NewClient(socketPath)

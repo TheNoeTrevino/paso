@@ -7,6 +7,7 @@ import (
 )
 
 func TestFormatAddMessage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		dbName    string
@@ -42,6 +43,7 @@ func TestFormatAddMessage(t *testing.T) {
 }
 
 func TestFormatConnectMessage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		dbName    string
@@ -77,6 +79,7 @@ func TestFormatConnectMessage(t *testing.T) {
 }
 
 func TestAddCmd_FlagValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		args    []string
@@ -116,6 +119,7 @@ func TestAddCmd_FlagValidation(t *testing.T) {
 }
 
 func TestDbCmd_Subcommands(t *testing.T) {
+	t.Parallel()
 	cmd := DbCmd()
 
 	// Verify all expected subcommands are registered

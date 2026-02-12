@@ -18,6 +18,7 @@ import (
 // >5 seconds, the Subscribe() call would immediately fail because sendToSocket()
 // set a deadline but never cleared it, and Subscribe() didn't set its own deadline.
 func TestSubscribe_AfterLongDelay(t *testing.T) {
+	t.Parallel()
 	socketPath, listener, messages := setupMockDaemon(t)
 	defer func() { _ = listener.Close() }()
 
@@ -51,8 +52,9 @@ func TestSubscribe_AfterLongDelay(t *testing.T) {
 	err = client.SendEvent(testEvent)
 	require.NoError(t, err)
 
-	// Wait for event to be sent (batching)
-	time.Sleep(client.debounce + 100*time.Millisecond)
+	// Force flush to ensure event is sent
+	err = client.ForceFlush(ctx)
+	require.NoError(t, err)
 
 	// Drain the event message
 	select {
@@ -97,7 +99,8 @@ func TestSubscribe_AfterLongDelay(t *testing.T) {
 	err = client.SendEvent(testEvent2)
 	require.NoError(t, err)
 
-	time.Sleep(client.debounce + 100*time.Millisecond)
+	err = client.ForceFlush(ctx)
+	require.NoError(t, err)
 
 	select {
 	case msg := <-messages:
@@ -111,6 +114,7 @@ func TestSubscribe_AfterLongDelay(t *testing.T) {
 // TestSubscribe_ClearsWriteDeadline verifies that Subscribe properly clears the
 // write deadline after encoding, so it doesn't affect future operations.
 func TestSubscribe_ClearsWriteDeadline(t *testing.T) {
+	t.Parallel()
 	socketPath, listener, messages := setupMockDaemon(t)
 	defer func() { _ = listener.Close() }()
 
@@ -167,6 +171,7 @@ func TestSubscribe_ClearsWriteDeadline(t *testing.T) {
 // TestSubscribe_MultipleRapidChanges tests rapidly switching between projects
 // to ensure no race conditions or deadline issues occur.
 func TestSubscribe_MultipleRapidChanges(t *testing.T) {
+	t.Parallel()
 	socketPath, listener, messages := setupMockDaemon(t)
 	defer func() { _ = listener.Close() }()
 
@@ -216,6 +221,7 @@ func TestSubscribe_MultipleRapidChanges(t *testing.T) {
 // TestSendEvent_ClearsDeadline verifies that SendEvent (via sendToSocket) properly
 // clears the write deadline after encoding.
 func TestSendEvent_ClearsDeadline(t *testing.T) {
+	t.Parallel()
 	socketPath, listener, messages := setupMockDaemon(t)
 	defer func() { _ = listener.Close() }()
 
@@ -248,8 +254,9 @@ func TestSendEvent_ClearsDeadline(t *testing.T) {
 	err = client.SendEvent(event1)
 	require.NoError(t, err)
 
-	// Wait for batching
-	time.Sleep(client.debounce + 100*time.Millisecond)
+	// Force flush to ensure first event is sent
+	err = client.ForceFlush(ctx)
+	require.NoError(t, err)
 
 	// Drain first event
 	select {
@@ -271,7 +278,8 @@ func TestSendEvent_ClearsDeadline(t *testing.T) {
 	err = client.SendEvent(event2)
 	require.NoError(t, err)
 
-	time.Sleep(client.debounce + 100*time.Millisecond)
+	err = client.ForceFlush(ctx)
+	require.NoError(t, err)
 
 	select {
 	case msg := <-messages:

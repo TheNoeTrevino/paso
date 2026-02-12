@@ -11,6 +11,7 @@ import (
 )
 
 func TestNewClient_Success(t *testing.T) {
+	t.Parallel()
 	socketPath := filepath.Join(t.TempDir(), "paso.sock")
 
 	client, err := NewClient(socketPath)
@@ -41,6 +42,7 @@ func TestNewClient_CustomDebounce(t *testing.T) {
 }
 
 func TestConnect_Success(t *testing.T) {
+	t.Parallel()
 	socketPath, listener, _ := setupMockDaemon(t)
 	defer func() { _ = listener.Close() }()
 
@@ -64,6 +66,7 @@ func TestConnect_Success(t *testing.T) {
 }
 
 func TestConnect_NoServer(t *testing.T) {
+	t.Parallel()
 	socketPath := filepath.Join(t.TempDir(), "nonexistent.sock")
 
 	client, err := NewClient(socketPath)
@@ -80,6 +83,7 @@ func TestConnect_NoServer(t *testing.T) {
 }
 
 func TestConnect_ContextTimeout(t *testing.T) {
+	t.Parallel()
 	socketPath := filepath.Join(t.TempDir(), "timeout.sock")
 
 	client, err := NewClient(socketPath)

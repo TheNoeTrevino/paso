@@ -17,6 +17,7 @@ import (
 // Bug context: This test ensures that when switching projects in the TUI,
 // the daemon correctly updates which events are routed to the client.
 func TestSubscription_Switching(t *testing.T) {
+	t.Parallel()
 	server, socketPath := setupTestDaemon(t)
 	logServerState(t, server, "initial")
 
@@ -98,6 +99,7 @@ func TestSubscription_Switching(t *testing.T) {
 //
 // Bug context: The fix includes handling ProjectID=0 as a broadcast signal.
 func TestSubscription_ProjectZeroHandling(t *testing.T) {
+	t.Parallel()
 	server, socketPath := setupTestDaemon(t)
 	logServerState(t, server, "initial")
 

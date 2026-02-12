@@ -13,6 +13,7 @@ import (
 // TestSwitchDatabaseWithDataIntegrity verifies that data persists when
 // switching between SQLite and PostgreSQL configurations
 func TestSwitchDatabaseWithDataIntegrity(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	// Setup SQLite database with test data
@@ -46,6 +47,7 @@ func TestSwitchDatabaseWithDataIntegrity(t *testing.T) {
 // TestLocalDatabasePersistence verifies that data persists across
 // multiple connections to the same SQLite database
 func TestLocalDatabasePersistence(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	tmpDir := t.TempDir()
@@ -133,6 +135,7 @@ func TestLocalDatabasePersistence(t *testing.T) {
 // TestRemoteDatabaseConfiguration verifies that remote PostgreSQL
 // configuration is properly validated and initialized
 func TestRemoteDatabaseConfiguration(t *testing.T) {
+	t.Parallel()
 	// This test validates connection string parsing and configuration
 	// without requiring actual PostgreSQL connection
 
@@ -154,6 +157,7 @@ func TestRemoteDatabaseConfiguration(t *testing.T) {
 // TestDatabaseConfigIsLocalVsRemote verifies the helper methods
 // for detecting local vs remote databases
 func TestDatabaseConfigIsLocalVsRemote(t *testing.T) {
+	t.Parallel()
 	// Test local (SQLite)
 	localConfig := Config{
 		Type:       SQLite,
@@ -178,6 +182,7 @@ func TestDatabaseConfigIsLocalVsRemote(t *testing.T) {
 // TestSwitchBetweenDatabases verifies that we can create different
 // database configs and validate their connection strings
 func TestSwitchBetweenDatabases(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 
 	// Config 1: Local SQLite
@@ -223,6 +228,7 @@ func TestSwitchBetweenDatabases(t *testing.T) {
 // TestDatabaseInitializationWithDifferentTypes verifies that
 // InitDB works correctly with both SQLite and PostgreSQL configurations
 func TestDatabaseInitializationWithDifferentTypes(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 
@@ -260,6 +266,7 @@ func TestDatabaseInitializationWithDifferentTypes(t *testing.T) {
 // TestDataIntegrityAcrossConnections verifies that data written
 // in one connection is readable in another connection to the same database
 func TestDataIntegrityAcrossConnections(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "integrity_test.db")
@@ -393,6 +400,7 @@ func TestDataIntegrityAcrossConnections(t *testing.T) {
 // TestConcurrentDatabaseAccess verifies that concurrent operations
 // work correctly within a single database connection
 func TestConcurrentDatabaseAccess(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	tmpDir := t.TempDir()
 

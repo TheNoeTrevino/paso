@@ -158,7 +158,6 @@ func TestOutputFormatter_Success_Quiet_WithID(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stdout
 			oldStdout := os.Stdout
@@ -269,7 +268,6 @@ func TestOutputFormatter_Success_HumanReadable(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stdout
 			oldStdout := os.Stdout
@@ -324,7 +322,6 @@ func TestOutputFormatter_Error_JSON(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stdout
 			oldStdout := os.Stdout
@@ -412,7 +409,6 @@ func TestOutputFormatter_Error_HumanReadable(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stderr
 			oldStderr := os.Stderr
@@ -474,7 +470,6 @@ func TestOutputFormatter_ErrorWithSuggestion_JSON(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stdout
 			oldStdout := os.Stdout
@@ -532,7 +527,6 @@ func TestOutputFormatter_ErrorWithSuggestion_Quiet(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stderr (should be empty in quiet mode)
 			oldStderr := os.Stderr
@@ -601,7 +595,6 @@ func TestOutputFormatter_ErrorWithSuggestion_HumanReadable(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// Capture stderr
 			oldStderr := os.Stderr
@@ -638,7 +631,7 @@ func TestOutputFormatter_ErrorWithSuggestion_HumanReadable(t *testing.T) {
 func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 	// When Quiet is true and data has GetID(), it should output ID only
 	// even if JSON is also true (Quiet check happens first)
-	t.Run("Quiet takes precedence over JSON when GetID exists", func(t *testing.T) {
+	t.Run("quiet takes precedence over JSON when GetID exists", func(t *testing.T) {
 		oldStdout := os.Stdout
 		r, w, err := os.Pipe()
 		require.NoError(t, err, "Failed to create pipe for test")
@@ -661,7 +654,7 @@ func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 	})
 
 	// When Quiet is true but data has no GetID(), it falls through to JSON
-	t.Run("Quiet without GetID falls through to JSON", func(t *testing.T) {
+	t.Run("quiet without GetID falls through to JSON", func(t *testing.T) {
 		oldStdout := os.Stdout
 		r, w, err := os.Pipe()
 		require.NoError(t, err, "Failed to create pipe for test")
@@ -685,7 +678,7 @@ func TestOutputFormatter_QuietModeGetIDPrecedence(t *testing.T) {
 	})
 
 	// JSON should take precedence for Error
-	t.Run("JSON takes precedence over Quiet for Error", func(t *testing.T) {
+	t.Run("jSON takes precedence over Quiet for Error", func(t *testing.T) {
 		oldStdout := os.Stdout
 		r, w, err := os.Pipe()
 		require.NoError(t, err, "Failed to create pipe for test")
@@ -721,7 +714,6 @@ func TestOutputFormatter_NilData(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			oldStdout := os.Stdout
 			r, w, err := os.Pipe()

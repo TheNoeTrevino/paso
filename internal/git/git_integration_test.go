@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 )
 
 // setupGitRepo creates a temporary git repository for testing
@@ -119,7 +119,7 @@ func TestDetectGitInfo_NormalRepo(t *testing.T) {
 	createCommit(t, repoDir, "Initial commit")
 
 	// Change to repo directory
-	testutil.ChdirTemp(t, repoDir)
+	fixtures.ChdirTemp(t, repoDir)
 
 	// Test DetectGitInfo
 	ctx := context.Background()
@@ -144,7 +144,7 @@ func TestDetectGitInfo_FeatureBranch(t *testing.T) {
 	createBranch(t, repoDir, "feature/my-awesome-feature")
 
 	// Change to repo directory
-	testutil.ChdirTemp(t, repoDir)
+	fixtures.ChdirTemp(t, repoDir)
 
 	ctx := context.Background()
 	info := DetectGitInfo(ctx)
@@ -165,7 +165,7 @@ func TestDetectGitInfo_DetachedHead(t *testing.T) {
 	detachHead(t, repoDir)
 
 	// Change to repo directory
-	testutil.ChdirTemp(t, repoDir)
+	fixtures.ChdirTemp(t, repoDir)
 
 	ctx := context.Background()
 	info := DetectGitInfo(ctx)
@@ -185,7 +185,7 @@ func TestDetectGitInfo_EmptyRepo(t *testing.T) {
 	// Don't create any commits
 
 	// Change to repo directory
-	testutil.ChdirTemp(t, repoDir)
+	fixtures.ChdirTemp(t, repoDir)
 
 	ctx := context.Background()
 	info := DetectGitInfo(ctx)
@@ -206,7 +206,7 @@ func TestDetectGitInfo_NotARepo(t *testing.T) {
 	// Don't initialize git in this directory
 
 	// Change to non-repo directory
-	testutil.ChdirTemp(t, tmpDir)
+	fixtures.ChdirTemp(t, tmpDir)
 
 	ctx := context.Background()
 	info := DetectGitInfo(ctx)
@@ -232,7 +232,7 @@ func TestDetectGitInfo_BareRepository(t *testing.T) {
 	require.NoError(t, err, "Failed to initialize bare repository")
 
 	// Change to bare repo directory
-	testutil.ChdirTemp(t, tmpDir)
+	fixtures.ChdirTemp(t, tmpDir)
 
 	info := DetectGitInfo(ctx)
 
@@ -251,7 +251,7 @@ func TestDetectGitInfo_Timeout(t *testing.T) {
 	createCommit(t, repoDir, "Initial commit")
 
 	// Change to repo directory
-	testutil.ChdirTemp(t, repoDir)
+	fixtures.ChdirTemp(t, repoDir)
 
 	// Create a context with very short timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
@@ -290,7 +290,7 @@ func TestDetectGitInfo_BranchWithSpecialChars(t *testing.T) {
 			createBranch(t, repoDir, branchName)
 
 			// Change to repo directory
-			testutil.ChdirTemp(t, repoDir)
+			fixtures.ChdirTemp(t, repoDir)
 
 			ctx := context.Background()
 			info := DetectGitInfo(ctx)
@@ -319,7 +319,7 @@ func TestDetectGitInfo_Subdirectory(t *testing.T) {
 	require.NoError(t, err, "Failed to create subdirectory")
 
 	// Change to subdirectory
-	testutil.ChdirTemp(t, subDir)
+	fixtures.ChdirTemp(t, subDir)
 
 	ctx := context.Background()
 	info := DetectGitInfo(ctx)
@@ -353,13 +353,13 @@ func TestDetectGitInfo_MultipleWorktrees(t *testing.T) {
 	}
 
 	// Test from main repo
-	testutil.ChdirTemp(t, repoDir)
+	fixtures.ChdirTemp(t, repoDir)
 
 	infoMain := DetectGitInfo(ctx)
 	assert.Equal(t, "main", infoMain.CurrentBranch, "Should detect main branch in main repo")
 
 	// Test from worktree
-	testutil.ChdirTemp(t, worktreeDir)
+	fixtures.ChdirTemp(t, worktreeDir)
 
 	infoWorktree := DetectGitInfo(ctx)
 	assert.Equal(t, "feature/branch1", infoWorktree.CurrentBranch, "Should detect feature branch in worktree")
@@ -381,7 +381,7 @@ func TestDetectGitInfo_VeryLongBranchName(t *testing.T) {
 
 	createBranch(t, repoDir, longBranchName)
 
-	testutil.ChdirTemp(t, repoDir)
+	fixtures.ChdirTemp(t, repoDir)
 
 	ctx := context.Background()
 	info := DetectGitInfo(ctx)
@@ -406,7 +406,7 @@ func TestDetectGitInfo_CorruptedRepo(t *testing.T) {
 	err := os.Remove(headPath)
 	require.NoError(t, err, "Failed to corrupt repository")
 
-	testutil.ChdirTemp(t, repoDir)
+	fixtures.ChdirTemp(t, repoDir)
 
 	ctx := context.Background()
 	info := DetectGitInfo(ctx)

@@ -12,6 +12,7 @@ import (
 
 // TestRenderListViewBasic tests basic list view rendering
 func TestRenderListViewBasic(t *testing.T) {
+	t.Parallel()
 	rows := []ListViewRow{
 		{
 			Task: &models.TaskSummary{
@@ -39,6 +40,7 @@ func TestRenderListViewBasic(t *testing.T) {
 
 // TestRenderListViewEmpty tests list view with no rows
 func TestRenderListViewEmpty(t *testing.T) {
+	t.Parallel()
 	var rows []ListViewRow
 
 	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20)
@@ -48,6 +50,7 @@ func TestRenderListViewEmpty(t *testing.T) {
 
 // TestRenderListViewSelectedRow tests rendering with selected row
 func TestRenderListViewSelectedRow(t *testing.T) {
+	t.Parallel()
 	rows := []ListViewRow{
 		{
 			Task: &models.TaskSummary{
@@ -83,6 +86,7 @@ func TestRenderListViewSelectedRow(t *testing.T) {
 
 // TestRenderListViewScrolling tests rendering with scroll offset
 func TestRenderListViewScrolling(t *testing.T) {
+	t.Parallel()
 	// Create many rows
 	rows := make([]ListViewRow, 50)
 	for i := 0; i < 50; i++ {
@@ -104,6 +108,7 @@ func TestRenderListViewScrolling(t *testing.T) {
 
 // TestRenderListViewDifferentSorts tests various sort fields
 func TestRenderListViewDifferentSorts(t *testing.T) {
+	t.Parallel()
 	rows := []ListViewRow{
 		{
 			Task: &models.TaskSummary{
@@ -139,6 +144,7 @@ func TestRenderListViewDifferentSorts(t *testing.T) {
 
 // TestRenderListViewSortOrders tests ascending and descending
 func TestRenderListViewSortOrders(t *testing.T) {
+	t.Parallel()
 	rows := []ListViewRow{
 		{
 			Task: &models.TaskSummary{
@@ -167,6 +173,7 @@ func TestRenderListViewSortOrders(t *testing.T) {
 
 // TestRenderListViewNarrowWidth tests rendering with narrow width
 func TestRenderListViewNarrowWidth(t *testing.T) {
+	t.Parallel()
 	rows := []ListViewRow{
 		{
 			Task: &models.TaskSummary{
@@ -194,6 +201,7 @@ func TestRenderListViewNarrowWidth(t *testing.T) {
 
 // TestRenderListViewLargeWidth tests rendering with large width
 func TestRenderListViewLargeWidth(t *testing.T) {
+	t.Parallel()
 	rows := []ListViewRow{
 		{
 			Task: &models.TaskSummary{
@@ -213,6 +221,7 @@ func TestRenderListViewLargeWidth(t *testing.T) {
 
 // TestRenderListViewManyRows tests rendering with many rows
 func TestRenderListViewManyRows(t *testing.T) {
+	t.Parallel()
 	rows := make([]ListViewRow, 100)
 	for i := 0; i < 100; i++ {
 		rows[i] = ListViewRow{
@@ -232,6 +241,7 @@ func TestRenderListViewManyRows(t *testing.T) {
 
 // TestRenderListViewUnicodeContent tests rendering with unicode
 func TestRenderListViewUnicodeContent(t *testing.T) {
+	t.Parallel()
 	rows := []ListViewRow{
 		{
 			Task: &models.TaskSummary{
@@ -258,6 +268,7 @@ func TestRenderListViewUnicodeContent(t *testing.T) {
 
 // TestRenderListViewScrollBehavior tests scroll indicator rendering
 func TestRenderListViewScrollBehavior(t *testing.T) {
+	t.Parallel()
 	// Create rows
 	rows := make([]ListViewRow, 30)
 	for i := 0; i < 30; i++ {
@@ -286,6 +297,7 @@ func TestRenderListViewScrollBehavior(t *testing.T) {
 
 // TestRenderListViewMinimalSize tests rendering in minimal space
 func TestRenderListViewMinimalSize(t *testing.T) {
+	t.Parallel()
 	rows := []ListViewRow{
 		{
 			Task: &models.TaskSummary{
@@ -305,6 +317,7 @@ func TestRenderListViewMinimalSize(t *testing.T) {
 
 // TestRenderListViewHeaderPresent tests that header is always rendered
 func TestRenderListViewHeaderPresent(t *testing.T) {
+	t.Parallel()
 	rows := []ListViewRow{
 		{
 			Task: &models.TaskSummary{
@@ -325,6 +338,7 @@ func TestRenderListViewHeaderPresent(t *testing.T) {
 
 // TestRenderListViewConsistency tests rendering consistency across calls
 func TestRenderListViewConsistency(t *testing.T) {
+	t.Parallel()
 	rows := []ListViewRow{
 		{
 			Task: &models.TaskSummary{
@@ -344,6 +358,7 @@ func TestRenderListViewConsistency(t *testing.T) {
 
 // TestListViewRowStructure tests the ListViewRow data structure
 func TestListViewRowStructure(t *testing.T) {
+	t.Parallel()
 	row := ListViewRow{
 		Task: &models.TaskSummary{
 			ID:    42,
@@ -360,6 +375,7 @@ func TestListViewRowStructure(t *testing.T) {
 
 // TestRenderListViewEdgeCases tests handling of edge cases
 func TestRenderListViewEdgeCases(t *testing.T) {
+	t.Parallel()
 	// Test with rows that have zero height
 	rows := []ListViewRow{
 		{

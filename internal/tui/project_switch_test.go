@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/models"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -49,12 +49,13 @@ func setupProjectSwitchTest(t *testing.T, selectedProject int) Model {
 // Bug context: When switching projects with }, the detail cache should be cleared and
 // the detail panel should load the task at the new cursor position (column 0, task 0).
 func TestHandleNextProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 
 	ctx := context.Background()
 
 	// Create a second project so we have 2 projects to switch between
-	project2ID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Second Project")
+	project2ID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Second Project")
 
 	// Load both projects into the model
 	projects, err := m.App.ProjectService.GetAllProjects(ctx)
@@ -70,7 +71,7 @@ func TestHandleNextProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 
 	// Create a task in the first column of the second project
 	firstColID := columns2[0].ID
-	taskID := testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), firstColID, "Task in Project 2")
+	taskID := fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), firstColID, "Task in Project 2")
 
 	// Set terminal width to enable detail panel
 	m.UIState.SetWidth(detailPanelVisibleWidth)
@@ -131,6 +132,7 @@ func TestHandleNextProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 // Bug context: When switching projects with {, the detail cache should be cleared and
 // the detail panel should load the task at the new cursor position (column 0, task 0).
 func TestHandlePrevProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 
 	ctx := context.Background()
@@ -145,10 +147,10 @@ func TestHandlePrevProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 	cols1, err := m.App.ColumnService.GetColumnsByProject(ctx, project1ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, cols1)
-	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), cols1[0].ID, "Task in Project 1")
+	fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), cols1[0].ID, "Task in Project 1")
 
 	// Create a second project so we have 2 projects to switch between
-	project2ID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Second Project")
+	project2ID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Second Project")
 
 	// Load both projects into the model
 	projects, err := m.App.ProjectService.GetAllProjects(ctx)
@@ -164,7 +166,7 @@ func TestHandlePrevProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 
 	// Create a task in the first column of the second project so there's something to prefetch
 	firstColID := columns2[0].ID
-	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), firstColID, "Task in Project 2")
+	fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), firstColID, "Task in Project 2")
 
 	// Set terminal width to enable detail panel
 	m.UIState.SetWidth(detailPanelVisibleWidth)
@@ -210,6 +212,7 @@ func TestHandlePrevProject_ClearsCacheAndTriggersPrefetch(t *testing.T) {
 //
 // Edge case: User presses } when already at the last project.
 func TestHandleNextProject_AtLastProject_NoOp(t *testing.T) {
+	t.Parallel()
 	m := setupProjectSwitchTest(t, 0)
 
 	// Position at last project for this edge case test
@@ -244,6 +247,7 @@ func TestHandleNextProject_AtLastProject_NoOp(t *testing.T) {
 //
 // Edge case: User presses { when already at the first project.
 func TestHandlePrevProject_AtFirstProject_NoOp(t *testing.T) {
+	t.Parallel()
 	m := setupProjectSwitchTest(t, 0)
 
 	// Call handlePrevProject when already at first project
@@ -276,6 +280,7 @@ func TestHandlePrevProject_AtFirstProject_NoOp(t *testing.T) {
 // Bug context: Ensures that rapidly switching between projects always clears the cache
 // and triggers prefetch, preventing stale task details from appearing.
 func TestProjectSwitch_MultipleProjectsRoundTrip(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 
 	ctx := context.Background()
@@ -287,8 +292,8 @@ func TestProjectSwitch_MultipleProjectsRoundTrip(t *testing.T) {
 	project1ID := project1[0].ID
 
 	// Create two more projects (total of 3)
-	project2ID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Project Two")
-	project3ID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "Project Three")
+	project2ID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Project Two")
+	project3ID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Project Three")
 
 	// Load all projects
 	projects, err := m.App.ProjectService.GetAllProjects(ctx)
@@ -302,13 +307,13 @@ func TestProjectSwitch_MultipleProjectsRoundTrip(t *testing.T) {
 	cols2, _ := m.App.ColumnService.GetColumnsByProject(ctx, project2ID)
 	cols3, _ := m.App.ColumnService.GetColumnsByProject(ctx, project3ID)
 	if len(cols1) > 0 {
-		testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), cols1[0].ID, "Task in Project 1")
+		fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), cols1[0].ID, "Task in Project 1")
 	}
 	if len(cols2) > 0 {
-		testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), cols2[0].ID, "Task in Project 2")
+		fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), cols2[0].ID, "Task in Project 2")
 	}
 	if len(cols3) > 0 {
-		testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), cols3[0].ID, "Task in Project 3")
+		fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), cols3[0].ID, "Task in Project 3")
 	}
 
 	// Set terminal width to enable detail panel

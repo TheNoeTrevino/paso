@@ -13,6 +13,7 @@ import (
 // TEST CASES - TaskToModel
 
 func TestTaskToModel(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 
 	tests := []struct {
@@ -217,6 +218,7 @@ func TestTaskToModel(t *testing.T) {
 // TEST CASES - ParentTasksToReferences
 
 func TestParentTasksToReferences(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    []types.GetParentTasksRow
@@ -373,6 +375,7 @@ func TestParentTasksToReferences(t *testing.T) {
 // TEST CASES - ChildTasksToReferences
 
 func TestChildTasksToReferences(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    []types.GetChildTasksRow
@@ -509,6 +512,7 @@ func TestChildTasksToReferences(t *testing.T) {
 // TEST CASES - CommentsToModels
 
 func TestCommentsToModels(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 
 	tests := []struct {
@@ -620,6 +624,7 @@ func TestCommentsToModels(t *testing.T) {
 // TEST CASES - ParseLabelsFromConcatenated
 
 func TestParseLabelsFromConcatenated(t *testing.T) {
+	t.Parallel()
 	sep := string(rune(31)) // labelSeparator
 
 	tests := []struct {
@@ -747,6 +752,7 @@ func TestParseLabelsFromConcatenated(t *testing.T) {
 // TEST CASES - TaskSummaryFromRowToModel
 
 func TestTaskSummaryFromRowToModel(t *testing.T) {
+	t.Parallel()
 	sep := string(rune(31))
 
 	tests := []struct {
@@ -894,6 +900,7 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 // TEST CASES - ReadyTaskSummaryFromRowToModel
 
 func TestReadyTaskSummaryFromRowToModel(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    types.GetReadyTaskSummariesByProjectRow
@@ -977,6 +984,7 @@ func TestReadyTaskSummaryFromRowToModel(t *testing.T) {
 // TEST CASES - FilteredTaskSummaryFromRowToModel
 
 func TestFilteredTaskSummaryFromRowToModel(t *testing.T) {
+	t.Parallel()
 	sep := string(rune(31))
 
 	tests := []struct {

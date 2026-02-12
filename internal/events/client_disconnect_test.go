@@ -281,8 +281,10 @@ func TestClient_ReconnectsAfterDaemonRestart(t *testing.T) {
 	err = client.SendEvent(testEvent)
 	require.NoError(t, err)
 
-	// Wait for batching and verify event was sent
-	time.Sleep(client.debounce + 100*time.Millisecond)
+	// Force flush to ensure event is sent
+	err = client.ForceFlush(ctx)
+	require.NoError(t, err)
+
 	select {
 	case msg := <-messages:
 		assert.Equal(t, "event", msg.Type)

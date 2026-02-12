@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/database"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 )
 
 func newTestService(t *testing.T, db *sql.DB) Service {
@@ -80,7 +80,7 @@ func createTestTaskWithProjectSetup(t *testing.T, db *sql.DB) int {
 func TestCreateTaskCreatedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -100,7 +100,7 @@ func TestCreateTaskCreatedEvent(t *testing.T) {
 func TestCreateTaskMovedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -119,7 +119,7 @@ func TestCreateTaskMovedEvent(t *testing.T) {
 func TestCreateTaskAssociatedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -138,7 +138,7 @@ func TestCreateTaskAssociatedEvent(t *testing.T) {
 func TestCreateTaskDisassociatedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -157,7 +157,7 @@ func TestCreateTaskDisassociatedEvent(t *testing.T) {
 func TestCreateLabelAddedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -176,7 +176,7 @@ func TestCreateLabelAddedEvent(t *testing.T) {
 func TestCreateLabelRemovedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -195,7 +195,7 @@ func TestCreateLabelRemovedEvent(t *testing.T) {
 func TestCreatePriorityChangedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -214,7 +214,7 @@ func TestCreatePriorityChangedEvent(t *testing.T) {
 func TestCreateTypeChangedEvent(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -233,7 +233,7 @@ func TestCreateTypeChangedEvent(t *testing.T) {
 func TestGetEventsByTask_MultipleEvents(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -279,7 +279,7 @@ func TestGetEventsByTask_MultipleEvents(t *testing.T) {
 func TestGetEventsByTask_EmptyList(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -292,7 +292,7 @@ func TestGetEventsByTask_EmptyList(t *testing.T) {
 func TestGetEventsByTask_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	ctx := context.Background()
@@ -307,7 +307,7 @@ func TestGetEventsByTask_InvalidTaskID(t *testing.T) {
 func TestCreateEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	queries := newTestQuerier(t, db)
@@ -323,7 +323,7 @@ func TestCreateEvent_InvalidTaskID(t *testing.T) {
 func TestCreateTaskMovedEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	queries := newTestQuerier(t, db)
@@ -335,7 +335,7 @@ func TestCreateTaskMovedEvent_InvalidTaskID(t *testing.T) {
 func TestCreateTaskAssociatedEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	queries := newTestQuerier(t, db)
@@ -347,7 +347,7 @@ func TestCreateTaskAssociatedEvent_InvalidTaskID(t *testing.T) {
 func TestCreateTaskDisassociatedEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	queries := newTestQuerier(t, db)
@@ -359,7 +359,7 @@ func TestCreateTaskDisassociatedEvent_InvalidTaskID(t *testing.T) {
 func TestCreateLabelAddedEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	queries := newTestQuerier(t, db)
@@ -371,7 +371,7 @@ func TestCreateLabelAddedEvent_InvalidTaskID(t *testing.T) {
 func TestCreateLabelRemovedEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	queries := newTestQuerier(t, db)
@@ -383,7 +383,7 @@ func TestCreateLabelRemovedEvent_InvalidTaskID(t *testing.T) {
 func TestCreatePriorityChangedEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	queries := newTestQuerier(t, db)
@@ -395,7 +395,7 @@ func TestCreatePriorityChangedEvent_InvalidTaskID(t *testing.T) {
 func TestCreateTypeChangedEvent_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	queries := newTestQuerier(t, db)
@@ -407,7 +407,7 @@ func TestCreateTypeChangedEvent_InvalidTaskID(t *testing.T) {
 func TestEventAuthorPreserved(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -439,7 +439,7 @@ func TestEventAuthorPreserved(t *testing.T) {
 func TestEventTimestampSet(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -460,7 +460,7 @@ func TestEventTimestampSet(t *testing.T) {
 func TestEventTaskIDPreserved(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -479,7 +479,7 @@ func TestEventTaskIDPreserved(t *testing.T) {
 func TestEventIDAssigned(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	taskID := createTestTaskWithProjectSetup(t, db)
@@ -498,7 +498,7 @@ func TestEventIDAssigned(t *testing.T) {
 func TestGetEventsByTask_OnlyReturnsEventsForSpecificTask(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 	ctx := context.Background()

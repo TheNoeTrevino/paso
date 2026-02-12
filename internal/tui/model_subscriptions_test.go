@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thenoetrevino/paso/internal/testing/mocks"
 )
 
 // TestSwitchToProject_UpdatesSubscription verifies that switching to a
@@ -14,11 +15,12 @@ import (
 // (via handleNextProject/handlePrevProject), the EventClient is updated
 // to subscribe to the new project's events.
 func TestSwitchToProject_UpdatesSubscription(t *testing.T) {
+	t.Parallel()
 	// Create test model with 3 projects
 	m := createTestModelWithProjects(3, 2, 1)
 
 	// Create mock event client
-	mockClient := newMockEventPublisher()
+	mockClient := mocks.NewMockEventPublisher()
 	m.EventClient = mockClient
 
 	// Verify we have 3 projects
@@ -46,7 +48,7 @@ func TestSwitchToProject_UpdatesSubscription(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify subscription was recorded
-	history := mockClient.getSubscriptionHistory()
+	history := mockClient.GetSubscriptionHistory()
 	require.Len(t, history, 1)
 	assert.Equal(t, 1, history[0])
 	t.Logf("Subscribe to project 1 recorded")
@@ -56,13 +58,13 @@ func TestSwitchToProject_UpdatesSubscription(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify second subscription was recorded
-	history = mockClient.getSubscriptionHistory()
+	history = mockClient.GetSubscriptionHistory()
 	require.Len(t, history, 2)
 	assert.Equal(t, 2, history[1])
 	t.Logf("Subscribe to project 2 recorded")
 
 	// Verify current subscription is project 2
-	assert.Equal(t, 2, mockClient.getCurrentSubscription())
+	assert.Equal(t, 2, mockClient.GetCurrentSubscription())
 
 	// Subscribe to project 3, then back to project 1
 	err = m.EventClient.Subscribe(3)
@@ -71,7 +73,7 @@ func TestSwitchToProject_UpdatesSubscription(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify full history: [1, 2, 3, 1]
-	history = mockClient.getSubscriptionHistory()
+	history = mockClient.GetSubscriptionHistory()
 	expectedHistory := []int{1, 2, 3, 1}
 	require.Len(t, history, len(expectedHistory))
 	for i, expected := range expectedHistory {
@@ -80,7 +82,7 @@ func TestSwitchToProject_UpdatesSubscription(t *testing.T) {
 	t.Logf("Multiple subscription changes recorded: %v", history)
 
 	// Verify current subscription is project 1 (navigated back)
-	assert.Equal(t, 1, mockClient.getCurrentSubscription())
+	assert.Equal(t, 1, mockClient.GetCurrentSubscription())
 	t.Logf("Current subscription correctly tracks last Subscribe call")
 }
 
@@ -90,6 +92,7 @@ func TestSwitchToProject_UpdatesSubscription(t *testing.T) {
 // Bug context: The fix allows RefreshMsg with ProjectID=0 to trigger refresh
 // for any project, not just the currently selected one.
 func TestRefreshMsg_HandlesProjectZero(t *testing.T) {
+	t.Parallel()
 	// This test checks the condition logic in the RefreshMsg handler
 	// The handler should accept events where:
 	// - ProjectID == 0 (broadcast), OR
@@ -141,6 +144,7 @@ func TestRefreshMsg_HandlesProjectZero(t *testing.T) {
 //
 // This is a unit test of the condition logic.
 func TestRefreshMsg_IgnoresWrongProject(t *testing.T) {
+	t.Parallel()
 	currentProjectID := 2
 
 	// Event for project 1 should be ignored when on project 2

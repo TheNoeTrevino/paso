@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/models"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -68,6 +68,7 @@ func createMixedActivityItems() []models.ActivityItem {
 }
 
 func TestActivityView_NavigateUp(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -82,6 +83,7 @@ func TestActivityView_NavigateUp(t *testing.T) {
 }
 
 func TestActivityView_NavigateUpWithK(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -96,6 +98,7 @@ func TestActivityView_NavigateUpWithK(t *testing.T) {
 }
 
 func TestActivityView_NavigateDown(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -110,6 +113,7 @@ func TestActivityView_NavigateDown(t *testing.T) {
 }
 
 func TestActivityView_NavigateDownWithJ(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -124,6 +128,7 @@ func TestActivityView_NavigateDownWithJ(t *testing.T) {
 }
 
 func TestActivityView_CursorBoundsAtTop(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -138,6 +143,7 @@ func TestActivityView_CursorBoundsAtTop(t *testing.T) {
 }
 
 func TestActivityView_CursorBoundsAtBottom(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -153,6 +159,7 @@ func TestActivityView_CursorBoundsAtBottom(t *testing.T) {
 }
 
 func TestActivityView_EditEventShowsWarning(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -170,6 +177,7 @@ func TestActivityView_EditEventShowsWarning(t *testing.T) {
 }
 
 func TestActivityView_DeleteEventShowsWarning(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -187,6 +195,7 @@ func TestActivityView_DeleteEventShowsWarning(t *testing.T) {
 }
 
 func TestActivityView_EditCommentEntersFormMode(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -201,6 +210,7 @@ func TestActivityView_EditCommentEntersFormMode(t *testing.T) {
 }
 
 func TestActivityView_DeleteCommentEntersDeleteMode(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -215,6 +225,7 @@ func TestActivityView_DeleteCommentEntersDeleteMode(t *testing.T) {
 }
 
 func TestActivityView_MixedItems_EditEventBlocked(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -233,6 +244,7 @@ func TestActivityView_MixedItems_EditEventBlocked(t *testing.T) {
 }
 
 func TestActivityView_MixedItems_EditCommentAllowed(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -251,6 +263,7 @@ func TestActivityView_MixedItems_EditCommentAllowed(t *testing.T) {
 }
 
 func TestActivityView_AddNewComment(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -265,6 +278,7 @@ func TestActivityView_AddNewComment(t *testing.T) {
 }
 
 func TestActivityView_EscapeClosesView(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -278,6 +292,7 @@ func TestActivityView_EscapeClosesView(t *testing.T) {
 }
 
 func TestActivityView_QClosesView(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -291,6 +306,7 @@ func TestActivityView_QClosesView(t *testing.T) {
 }
 
 func TestActivityView_EnterAlsoEdits(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -305,6 +321,7 @@ func TestActivityView_EnterAlsoEdits(t *testing.T) {
 }
 
 func TestActivityView_EnterOnEventBlocked(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -319,6 +336,7 @@ func TestActivityView_EnterOnEventBlocked(t *testing.T) {
 }
 
 func TestActivityView_EmptyList(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -333,6 +351,7 @@ func TestActivityView_EmptyList(t *testing.T) {
 }
 
 func TestActivityView_EditWithNoSelection(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -349,6 +368,7 @@ func TestActivityView_EditWithNoSelection(t *testing.T) {
 }
 
 func TestActivityView_DeleteWithNoSelection(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -365,6 +385,7 @@ func TestActivityView_DeleteWithNoSelection(t *testing.T) {
 }
 
 func TestActivityView_NavigationSequence(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	m.UIState.Mode = state.CommentsViewMode
@@ -394,6 +415,7 @@ func TestActivityView_NavigationSequence(t *testing.T) {
 }
 
 func TestMergeActivities_SortedByCreatedAtDescending(t *testing.T) {
+	t.Parallel()
 	baseTime := time.Now()
 
 	events := []models.TaskEvent{
@@ -422,6 +444,7 @@ func TestMergeActivities_SortedByCreatedAtDescending(t *testing.T) {
 }
 
 func TestMergeActivities_EmptyInputs(t *testing.T) {
+	t.Parallel()
 	t.Run("empty events", func(t *testing.T) {
 		comments := []models.Comment{
 			{ID: 1, TaskID: 1, Message: "Comment", Author: "user", CreatedAt: time.Now(), UpdatedAt: time.Now()},
@@ -445,6 +468,7 @@ func TestMergeActivities_EmptyInputs(t *testing.T) {
 }
 
 func TestCommentState_SetActivities(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 
 	activities := createTestActivityItems(5, models.ActivityTypeComment)
@@ -455,6 +479,7 @@ func TestCommentState_SetActivities(t *testing.T) {
 }
 
 func TestCommentState_SetActivities_ResetsCursor(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 
 	activities := createTestActivityItems(5, models.ActivityTypeComment)
@@ -468,6 +493,7 @@ func TestCommentState_SetActivities_ResetsCursor(t *testing.T) {
 }
 
 func TestCommentState_GetSelectedActivity(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 
 	activities := createTestActivityItems(3, models.ActivityTypeComment)
@@ -480,6 +506,7 @@ func TestCommentState_GetSelectedActivity(t *testing.T) {
 }
 
 func TestCommentState_GetSelectedActivity_Empty(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 
 	selected := cs.GetSelectedActivity()
@@ -487,6 +514,7 @@ func TestCommentState_GetSelectedActivity_Empty(t *testing.T) {
 }
 
 func TestCommentState_MoveCursorUp(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 	cs.SetActivities(createTestActivityItems(5, models.ActivityTypeComment))
 	cs.Cursor = 2
@@ -497,6 +525,7 @@ func TestCommentState_MoveCursorUp(t *testing.T) {
 }
 
 func TestCommentState_MoveCursorUp_AtTop(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 	cs.SetActivities(createTestActivityItems(5, models.ActivityTypeComment))
 	cs.Cursor = 0
@@ -507,6 +536,7 @@ func TestCommentState_MoveCursorUp_AtTop(t *testing.T) {
 }
 
 func TestCommentState_MoveCursorDown(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 	cs.SetActivities(createTestActivityItems(5, models.ActivityTypeComment))
 	cs.Cursor = 2
@@ -517,6 +547,7 @@ func TestCommentState_MoveCursorDown(t *testing.T) {
 }
 
 func TestCommentState_MoveCursorDown_AtBottom(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 	cs.SetActivities(createTestActivityItems(5, models.ActivityTypeComment))
 	cs.Cursor = 4
@@ -527,6 +558,7 @@ func TestCommentState_MoveCursorDown_AtBottom(t *testing.T) {
 }
 
 func TestCommentState_EnsureCommentVisible_ScrollUp(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 	cs.SetActivities(createTestActivityItems(10, models.ActivityTypeComment))
 	cs.ScrollOffset = 5
@@ -538,6 +570,7 @@ func TestCommentState_EnsureCommentVisible_ScrollUp(t *testing.T) {
 }
 
 func TestCommentState_EnsureCommentVisible_ScrollDown(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 	cs.SetActivities(createTestActivityItems(10, models.ActivityTypeComment))
 	cs.ScrollOffset = 0
@@ -549,6 +582,7 @@ func TestCommentState_EnsureCommentVisible_ScrollDown(t *testing.T) {
 }
 
 func TestCommentState_DeleteSelected(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 	cs.SetActivities(createTestActivityItems(5, models.ActivityTypeComment))
 	cs.Cursor = 2
@@ -560,6 +594,7 @@ func TestCommentState_DeleteSelected(t *testing.T) {
 }
 
 func TestCommentState_DeleteSelected_AtEnd(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 	cs.SetActivities(createTestActivityItems(5, models.ActivityTypeComment))
 	cs.Cursor = 4
@@ -571,6 +606,7 @@ func TestCommentState_DeleteSelected_AtEnd(t *testing.T) {
 }
 
 func TestCommentState_DeleteSelected_LastItem(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 	cs.SetActivities(createTestActivityItems(1, models.ActivityTypeComment))
 	cs.Cursor = 0
@@ -582,6 +618,7 @@ func TestCommentState_DeleteSelected_LastItem(t *testing.T) {
 }
 
 func TestCommentState_Clear(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 	cs.SetActivities(createTestActivityItems(5, models.ActivityTypeComment))
 	cs.Cursor = 3
@@ -597,6 +634,7 @@ func TestCommentState_Clear(t *testing.T) {
 }
 
 func TestCommentState_IsEmpty(t *testing.T) {
+	t.Parallel()
 	cs := state.NewCommentState()
 
 	assert.True(t, cs.IsEmpty(), "Should be empty initially")
@@ -606,6 +644,7 @@ func TestCommentState_IsEmpty(t *testing.T) {
 }
 
 func TestActivityItem_FromEvent(t *testing.T) {
+	t.Parallel()
 	event := models.TaskEvent{
 		ID:        1,
 		TaskID:    42,
@@ -626,6 +665,7 @@ func TestActivityItem_FromEvent(t *testing.T) {
 }
 
 func TestActivityItem_FromComment(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	later := now.Add(time.Hour)
 	comment := models.Comment{
@@ -650,12 +690,14 @@ func TestActivityItem_FromComment(t *testing.T) {
 }
 
 func TestActivityType_String(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "Event", models.ActivityTypeEvent.String())
 	assert.Equal(t, "Comment", models.ActivityTypeComment.String())
 	assert.Equal(t, "Unknown", models.ActivityType(99).String())
 }
 
 func TestActivityView_DataLoading_WithRealDB(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	ctx := context.Background()
 
@@ -664,7 +706,7 @@ func TestActivityView_DataLoading_WithRealDB(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, columns)
 
-	taskID := testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Test Task")
+	taskID := fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[0].ID, "Test Task")
 
 	_, err = db.ExecContext(ctx, `
 		INSERT INTO task_comments (task_id, content, author) 

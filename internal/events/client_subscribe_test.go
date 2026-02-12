@@ -11,6 +11,7 @@ import (
 )
 
 func TestSubscribe_BeforeConnect(t *testing.T) {
+	t.Parallel()
 	socketPath := filepath.Join(t.TempDir(), "paso.sock")
 
 	client, err := NewClient(socketPath)
@@ -25,6 +26,7 @@ func TestSubscribe_BeforeConnect(t *testing.T) {
 }
 
 func TestSubscribe_AfterConnect(t *testing.T) {
+	t.Parallel()
 	socketPath, listener, messages := setupMockDaemon(t)
 	defer func() { _ = listener.Close() }()
 
@@ -72,6 +74,7 @@ func TestSubscribe_AfterConnect(t *testing.T) {
 }
 
 func TestSubscribe_MultipleProjects(t *testing.T) {
+	t.Parallel()
 	socketPath, listener, messages := setupMockDaemon(t)
 	defer func() { _ = listener.Close() }()
 

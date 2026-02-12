@@ -3,25 +3,25 @@ package tui
 import (
 	"context"
 	"testing"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
 // TestLabelPicker_NavigationAndSelection tests arrow key navigation and Enter selection
 func TestLabelPicker_NavigationAndSelection(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 
 	// Create test labels
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "bug", "#FF0000")
-	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "feature", "#00FF00")
-	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "docs", "#0000FF")
+	fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "bug", "#FF0000")
+	fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "feature", "#00FF00")
+	fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "docs", "#0000FF")
 
 	// Reload labels
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
@@ -38,19 +38,16 @@ func TestLabelPicker_NavigationAndSelection(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Navigate down arrow again
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Press enter to select
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify model was updated successfully
 	if m.UIState.Mode == state.LabelPickerMode {
@@ -61,14 +58,15 @@ func TestLabelPicker_NavigationAndSelection(t *testing.T) {
 
 // TestLabelPicker_FilteringAndBackspace tests typing to filter and backspace to clear
 func TestLabelPicker_FilteringAndBackspace(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 
 	// Create labels
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "bug", "#FF0000")
-	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "backend", "#00FF00")
-	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "frontend", "#0000FF")
+	fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "bug", "#FF0000")
+	fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "backend", "#00FF00")
+	fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "frontend", "#0000FF")
 
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to load labels for test setup")
@@ -82,13 +80,11 @@ func TestLabelPicker_FilteringAndBackspace(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Text: "b", Code: 'b'})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Press backspace to clear filter
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyBackspace})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Verify we're back to showing labels in the picker
 	assert.Equal(t, state.LabelPickerMode, m.UIState.Mode)
@@ -96,13 +92,14 @@ func TestLabelPicker_FilteringAndBackspace(t *testing.T) {
 
 // TestLabelPicker_MultiSelectToggle tests space key to toggle selection
 func TestLabelPicker_MultiSelectToggle(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 
 	// Create labels
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "bug", "#FF0000")
-	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "feature", "#00FF00")
+	fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "bug", "#FF0000")
+	fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "feature", "#00FF00")
 
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to load labels for test setup")
@@ -116,25 +113,21 @@ func TestLabelPicker_MultiSelectToggle(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Code: ' '})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Navigate down
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Press space again
 	msg = tea.KeyPressMsg(tea.Key{Code: ' '})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Press enter to confirm
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify model was updated
 	require.NotNil(t, m, "Model should not be nil after picker selection")
@@ -142,6 +135,7 @@ func TestLabelPicker_MultiSelectToggle(t *testing.T) {
 
 // TestPriorityPicker_Selection tests priority picker navigation and selection
 func TestPriorityPicker_Selection(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter priority picker mode
@@ -151,13 +145,11 @@ func TestPriorityPicker_Selection(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Press enter to select
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode can change or stay in picker
 	require.NotNil(t, m, "Model should not be nil after picker selection")
@@ -165,6 +157,7 @@ func TestPriorityPicker_Selection(t *testing.T) {
 
 // TestTypePicker_Selection tests type picker navigation and selection
 func TestTypePicker_Selection(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter type picker mode
@@ -174,13 +167,11 @@ func TestTypePicker_Selection(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Press enter to select
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify model updated
 	require.NotNil(t, m, "Model should not be nil after picker selection")
@@ -188,6 +179,7 @@ func TestTypePicker_Selection(t *testing.T) {
 
 // TestParentPicker_SearchAndSelect tests searching for parent task and selecting it
 func TestParentPicker_SearchAndSelect(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 
 	// Create a parent task
@@ -199,7 +191,7 @@ func TestParentPicker_SearchAndSelect(t *testing.T) {
 		t.Skip("No columns available for testing")
 	}
 
-	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Parent Task")
+	fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[0].ID, "Parent Task")
 
 	// Reload tasks
 	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
@@ -213,13 +205,11 @@ func TestParentPicker_SearchAndSelect(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Text: "p", Code: 'p'})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Press enter to select
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify parent picker interaction
 	require.NotNil(t, m, "Model should not be nil after parent picker interaction")
@@ -227,6 +217,7 @@ func TestParentPicker_SearchAndSelect(t *testing.T) {
 
 // TestChildPicker_SearchAndSelect tests searching for child task and selecting it
 func TestChildPicker_SearchAndSelect(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 
 	// Create a child task
@@ -238,7 +229,7 @@ func TestChildPicker_SearchAndSelect(t *testing.T) {
 		t.Skip("No columns available for testing")
 	}
 
-	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columns[0].ID, "Child Task")
+	fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[0].ID, "Child Task")
 
 	// Reload tasks
 	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
@@ -252,13 +243,11 @@ func TestChildPicker_SearchAndSelect(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Text: "c", Code: 'c'})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Press enter to select
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify child picker interaction
 	require.NotNil(t, m, "Model should not be nil after child picker interaction")
@@ -266,6 +255,7 @@ func TestChildPicker_SearchAndSelect(t *testing.T) {
 
 // TestRelationTypePicker_Selection tests relation type picker
 func TestRelationTypePicker_Selection(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter relation type picker mode
@@ -275,20 +265,19 @@ func TestRelationTypePicker_Selection(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Press enter to select
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
-	// Verify mode change or stay in relation picker
+	// Verify mode can change or stay in relation picker
 	require.NotNil(t, m, "Model should not be nil after relation picker selection")
 }
 
 // TestStatusPicker_ColumnSelection tests status/column picker selection
 func TestStatusPicker_ColumnSelection(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter status picker mode
@@ -304,13 +293,11 @@ func TestStatusPicker_ColumnSelection(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Press enter to select
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify mode can change
 	require.NotNil(t, m, "Model should not be nil after status picker selection")
@@ -318,12 +305,13 @@ func TestStatusPicker_ColumnSelection(t *testing.T) {
 
 // TestLabelPicker_EscapeExitsMode tests that Escape exits the picker
 func TestLabelPicker_EscapeExitsMode(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 
 	// Create labels
 	ctx := context.Background()
 	projectID := m.AppState.GetCurrentProjectID()
-	testutil.CreateTestLabel(t, db, testutil.SQLiteDialect(), projectID, "test", "#FFFFFF")
+	fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "test", "#FFFFFF")
 
 	labels, err := m.App.LabelService.GetLabelsByProject(ctx, projectID)
 	require.NoError(t, err, "Failed to load labels for test setup")
@@ -337,7 +325,6 @@ func TestLabelPicker_EscapeExitsMode(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(50 * time.Millisecond)
 
 	// Verify something happened (mode change or escape handled)
 	// Escape was processed
@@ -346,6 +333,7 @@ func TestLabelPicker_EscapeExitsMode(t *testing.T) {
 
 // TestPriorityPicker_UpDownNavigation tests up and down navigation in priority picker
 func TestPriorityPicker_UpDownNavigation(t *testing.T) {
+	t.Parallel()
 	m, _ := SetupTestModelWithDB(t)
 
 	// Enter priority picker mode
@@ -355,13 +343,11 @@ func TestPriorityPicker_UpDownNavigation(t *testing.T) {
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyDown})
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Navigate up
 	msg = tea.KeyPressMsg(tea.Key{Code: tea.KeyUp})
 	updatedModel, _ = m.Update(msg)
 	m = updatedModel.(Model)
-	time.Sleep(10 * time.Millisecond)
 
 	// Verify navigation works
 	assert.Equal(t, state.PriorityPickerMode, m.UIState.Mode)

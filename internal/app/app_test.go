@@ -5,11 +5,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 )
 
 func TestNew(t *testing.T) {
-	db := testutil.SetupTestDB(t)
+	t.Parallel()
+	db := fixtures.SetupTestDB(t)
 
 	// Create app with no options (defaults)
 	app, err := New(db)
@@ -27,7 +28,8 @@ func TestNew(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	db := testutil.SetupTestDB(t)
+	t.Parallel()
+	db := fixtures.SetupTestDB(t)
 
 	app, err := New(db)
 	require.NoError(t, err, "failed to create app")

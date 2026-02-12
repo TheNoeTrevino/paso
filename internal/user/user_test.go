@@ -7,6 +7,7 @@ import (
 )
 
 func TestGetCurrentUsername(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		validate func(string) bool
@@ -36,6 +37,7 @@ func TestGetCurrentUsername(t *testing.T) {
 }
 
 func TestGetCurrentUsernameFallback(t *testing.T) {
+	t.Parallel()
 	// This test verifies that the function always returns something
 	username := GetCurrentUsername()
 

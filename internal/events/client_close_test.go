@@ -12,6 +12,7 @@ import (
 )
 
 func TestClose_BeforeConnect(t *testing.T) {
+	t.Parallel()
 	socketPath := filepath.Join(t.TempDir(), "paso.sock")
 
 	client, err := NewClient(socketPath)
@@ -25,6 +26,7 @@ func TestClose_BeforeConnect(t *testing.T) {
 }
 
 func TestClose_AfterConnect(t *testing.T) {
+	t.Parallel()
 	socketPath, listener, _ := setupMockDaemon(t)
 	defer func() { _ = listener.Close() }()
 
@@ -52,6 +54,7 @@ func TestClose_AfterConnect(t *testing.T) {
 }
 
 func TestClose_Idempotent(t *testing.T) {
+	t.Parallel()
 	socketPath, listener, _ := setupMockDaemon(t)
 	defer func() { _ = listener.Close() }()
 
@@ -75,6 +78,7 @@ func TestClose_Idempotent(t *testing.T) {
 }
 
 func TestSetNotifyFunc(t *testing.T) {
+	t.Parallel()
 	socketPath := filepath.Join(t.TempDir(), "paso.sock")
 
 	client, err := NewClient(socketPath)
@@ -98,6 +102,7 @@ func TestSetNotifyFunc(t *testing.T) {
 }
 
 func TestConnect_InvalidSocketPath(t *testing.T) {
+	t.Parallel()
 	// Use a path that's too long or invalid
 	invalidPath := fmt.Sprintf("/tmp/%s.sock", string(make([]byte, 200)))
 

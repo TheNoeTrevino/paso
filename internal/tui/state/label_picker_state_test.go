@@ -11,6 +11,7 @@ import (
 // TestGetFilteredItems_EmptyFilter ensures no filter returns all items.
 // Edge case: User hasn't typed any filter text yet.
 func TestGetFilteredItems_EmptyFilter(t *testing.T) {
+	t.Parallel()
 	state := NewLabelPickerState()
 	state.Items = []LabelPickerItem{
 		{Label: &models.Label{ID: 1, Name: "bug"}, Selected: false},
@@ -25,6 +26,7 @@ func TestGetFilteredItems_EmptyFilter(t *testing.T) {
 // TestGetFilteredItems_NoMatches ensures filter matching nothing returns empty result.
 // Edge case: User's filter text doesn't match any labels.
 func TestGetFilteredItems_NoMatches(t *testing.T) {
+	t.Parallel()
 	state := NewLabelPickerState()
 	state.Items = []LabelPickerItem{
 		{Label: &models.Label{ID: 1, Name: "bug"}, Selected: false},
@@ -41,6 +43,7 @@ func TestGetFilteredItems_NoMatches(t *testing.T) {
 // TestGetFilteredItems_CaseInsensitive ensures "BUG" matches "bug" label.
 // Edge case: User types filter in different case than label name.
 func TestGetFilteredItems_CaseInsensitive(t *testing.T) {
+	t.Parallel()
 	state := NewLabelPickerState()
 	state.Items = []LabelPickerItem{
 		{Label: &models.Label{ID: 1, Name: "bug"}, Selected: false},
@@ -69,6 +72,7 @@ func TestGetFilteredItems_CaseInsensitive(t *testing.T) {
 // TestMoveCursorDown_EmptyItems ensures cursor movement with no labels is safe.
 // Edge case: User navigates in label picker with zero labels.
 func TestMoveCursorDown_EmptyItems(t *testing.T) {
+	t.Parallel()
 	state := NewLabelPickerState()
 	state.Items = []LabelPickerItem{} // No items
 	state.Cursor = 0
@@ -82,6 +86,7 @@ func TestMoveCursorDown_EmptyItems(t *testing.T) {
 // TestMoveCursorDown_AtMax ensures cursor at last item doesn't move beyond.
 // Edge case: User presses down when cursor is at bottom.
 func TestMoveCursorDown_AtMax(t *testing.T) {
+	t.Parallel()
 	state := NewLabelPickerState()
 	state.Items = []LabelPickerItem{
 		{Label: &models.Label{ID: 1, Name: "Label1"}, Selected: false},
@@ -100,6 +105,7 @@ func TestMoveCursorDown_AtMax(t *testing.T) {
 // Edge case: User types filter that reduces list to fewer items than cursor position.
 // Note: This is a behavioral test - actual adjustment happens in update.go, not in state.
 func TestCursorAdjustment_FilterReducesList(t *testing.T) {
+	t.Parallel()
 	state := NewLabelPickerState()
 	state.Items = []LabelPickerItem{
 		{Label: &models.Label{ID: 1, Name: "bug"}, Selected: false},
@@ -126,6 +132,7 @@ func TestCursorAdjustment_FilterReducesList(t *testing.T) {
 // TestAppendFilter_MaxLength ensures filter at 50 chars rejects more input.
 // Edge case: User types continuously until reaching filter limit.
 func TestAppendFilter_MaxLength(t *testing.T) {
+	t.Parallel()
 	state := NewLabelPickerState()
 
 	// Fill filter to exactly 50 characters
@@ -141,6 +148,7 @@ func TestAppendFilter_MaxLength(t *testing.T) {
 // TestBackspaceFilter_Empty ensures backspace on empty filter is safe.
 // Edge case: User presses backspace when filter is already empty.
 func TestBackspaceFilter_Empty(t *testing.T) {
+	t.Parallel()
 	state := NewLabelPickerState()
 	state.Filter = ""
 

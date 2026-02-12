@@ -11,6 +11,7 @@ import (
 
 // TestRenderCardComponent tests basic card rendering without panic
 func TestRenderCardComponent(t *testing.T) {
+	t.Parallel()
 	// Create a simple styled card content
 	tests := []struct {
 		name    string
@@ -47,6 +48,7 @@ func TestRenderCardComponent(t *testing.T) {
 
 // TestRenderColumnStructure tests that column rendering produces valid structure
 func TestRenderColumnStructure(t *testing.T) {
+	t.Parallel()
 	column := &models.Column{
 		ID:   1,
 		Name: "In Progress",
@@ -78,6 +80,7 @@ func TestRenderColumnStructure(t *testing.T) {
 
 // TestRenderTaskComponent tests task rendering
 func TestRenderTaskComponent(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		task     *models.TaskSummary
@@ -145,6 +148,7 @@ func TestRenderTaskComponent(t *testing.T) {
 
 // TestMultipleColumnsRendering tests rendering multiple columns together
 func TestMultipleColumnsRendering(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Backlog"},
 		{ID: 2, Name: "In Progress"},
@@ -174,6 +178,7 @@ func TestMultipleColumnsRendering(t *testing.T) {
 
 // TestEmptyColumnRendering tests rendering columns with no tasks
 func TestEmptyColumnRendering(t *testing.T) {
+	t.Parallel()
 	column := &models.Column{
 		ID:   1,
 		Name: "Empty Column",
@@ -191,6 +196,7 @@ func TestEmptyColumnRendering(t *testing.T) {
 
 // TestColumnHeaderFormatting tests column header format with different task counts
 func TestColumnHeaderFormatting(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		columnName    string
@@ -215,6 +221,7 @@ func TestColumnHeaderFormatting(t *testing.T) {
 
 // TestScrollIndicatorRendering tests scroll indicator formatting
 func TestScrollIndicatorRendering(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		show       bool
@@ -241,6 +248,7 @@ func TestScrollIndicatorRendering(t *testing.T) {
 
 // TestLabelChipRendering tests label rendering in chip format
 func TestLabelChipRendering(t *testing.T) {
+	t.Parallel()
 	labels := []*models.Label{
 		{ID: 1, Name: "bug", Color: "#FF0000"},
 		{ID: 2, Name: "feature", Color: "#00FF00"},
@@ -256,6 +264,7 @@ func TestLabelChipRendering(t *testing.T) {
 
 // TestStatusBarRendering tests status bar component rendering
 func TestStatusBarRendering(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		width     int
@@ -282,6 +291,7 @@ func TestStatusBarRendering(t *testing.T) {
 
 // TestComponentsWithUnicodeContent tests components handle unicode characters
 func TestComponentsWithUnicodeContent(t *testing.T) {
+	t.Parallel()
 	tasks := []*models.TaskSummary{
 		{
 			ID:                  1,
@@ -306,6 +316,7 @@ func TestComponentsWithUnicodeContent(t *testing.T) {
 
 // TestComponentStylingConsistency tests that component styling is applied consistently
 func TestComponentStylingStyling(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Column A"},
 		{ID: 2, Name: "Column B"},
@@ -325,6 +336,7 @@ func TestComponentStylingStyling(t *testing.T) {
 
 // TestTaskCountInColumn tests task counting in columns
 func TestTaskCountInColumn(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		taskCount int
@@ -354,6 +366,7 @@ func TestTaskCountInColumn(t *testing.T) {
 
 // TestPriorityColorMapping tests priority colors are set correctly
 func TestPriorityColorMapping(t *testing.T) {
+	t.Parallel()
 	priorities := map[string]string{
 		"Trivial":  "#3B82F6",
 		"Low":      "#22C55E",
@@ -370,6 +383,7 @@ func TestPriorityColorMapping(t *testing.T) {
 
 // TestTaskTypeIcons tests task type icons are available
 func TestTaskTypeIcons(t *testing.T) {
+	t.Parallel()
 	types := []string{
 		"task",
 		"feature",

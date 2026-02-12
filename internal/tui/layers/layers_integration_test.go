@@ -9,6 +9,7 @@ import (
 
 // TestCreateCenteredLayerWithContent tests layer creation with content
 func TestCreateCenteredLayerWithContent(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		content      string
@@ -52,6 +53,7 @@ func TestCreateCenteredLayerWithContent(t *testing.T) {
 
 // TestCreateCenteredLayerWithEmptyContent tests layer creation with empty content
 func TestCreateCenteredLayerWithEmptyContent(t *testing.T) {
+	t.Parallel()
 	layer := CreateCenteredLayer("", 120, 40)
 
 	assert.Nil(t, layer)
@@ -59,6 +61,7 @@ func TestCreateCenteredLayerWithEmptyContent(t *testing.T) {
 
 // TestLayerPositioning tests that layers are centered correctly
 func TestLayerPositioning(t *testing.T) {
+	t.Parallel()
 	content := "Center"
 	screenWidth := 100
 	screenHeight := 50
@@ -73,6 +76,7 @@ func TestLayerPositioning(t *testing.T) {
 
 // TestLayerPositioningOnSmallScreen tests centering on very small screens
 func TestLayerPositioningOnSmallScreen(t *testing.T) {
+	t.Parallel()
 	content := "X"
 	screenWidth := 5
 	screenHeight := 3
@@ -84,6 +88,7 @@ func TestLayerPositioningOnSmallScreen(t *testing.T) {
 
 // TestCalculatePickerDimensions tests picker dimension calculation
 func TestCalculatePickerDimensions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		itemCount    int
@@ -161,6 +166,7 @@ func TestCalculatePickerDimensions(t *testing.T) {
 
 // TestPickerDimensionsWithLargeItemCount tests picker dimensions with many items
 func TestPickerDimensionsWithLargeItemCount(t *testing.T) {
+	t.Parallel()
 	pickerWidth, pickerHeight := CalculatePickerDimensions(
 		10000, // very many items
 		true,
@@ -176,6 +182,7 @@ func TestPickerDimensionsWithLargeItemCount(t *testing.T) {
 
 // TestPickerDimensionsMinimums tests that picker respects minimum dimensions
 func TestPickerDimensionsMinimums(t *testing.T) {
+	t.Parallel()
 	width, height := CalculatePickerDimensions(
 		10, // some items
 		false,
@@ -191,6 +198,7 @@ func TestPickerDimensionsMinimums(t *testing.T) {
 
 // TestPickerDimensionsMaximums tests that picker respects maximum dimensions
 func TestPickerDimensionsMaximums(t *testing.T) {
+	t.Parallel()
 	screenHeight := 50
 	pickerWidth, pickerHeight := CalculatePickerDimensions(
 		100,
@@ -209,6 +217,7 @@ func TestPickerDimensionsMaximums(t *testing.T) {
 
 // TestPickerDimensionsWithAndWithoutFilter tests filter impact on dimensions
 func TestPickerDimensionsWithAndWithoutFilter(t *testing.T) {
+	t.Parallel()
 	const itemCount = 10
 	const screenWidth = 120
 	const screenHeight = 40
@@ -226,6 +235,7 @@ func TestPickerDimensionsWithAndWithoutFilter(t *testing.T) {
 
 // TestPickerDimensionsConsistency tests consistency across multiple calls
 func TestPickerDimensionsConsistency(t *testing.T) {
+	t.Parallel()
 	params := struct {
 		itemCount    int
 		hasFilter    bool
@@ -263,6 +273,7 @@ func TestPickerDimensionsConsistency(t *testing.T) {
 
 // TestLayerMultipleDimensions tests layers work with various screen dimensions
 func TestLayerMultipleDimensions(t *testing.T) {
+	t.Parallel()
 	screenDimensions := [][2]int{
 		{40, 10},
 		{80, 24},
@@ -281,6 +292,7 @@ func TestLayerMultipleDimensions(t *testing.T) {
 
 // TestLayerWithMultilineContent tests layer centering with multiline content
 func TestLayerWithMultilineContent(t *testing.T) {
+	t.Parallel()
 	multilineContent := `Line 1
 Line 2
 Line 3

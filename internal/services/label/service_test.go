@@ -9,10 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/database"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 )
 
-// newTestService creates a new service for testing (panics on error since tests use valid SQLite)
+var testDialect = fixtures.SQLiteDialect()
+
+// newTestService creates a new service for testing
 func newTestService(t *testing.T, db *sql.DB) Service {
 	t.Helper()
 	svc, err := NewService(db, database.SQLite, nil)
@@ -20,55 +22,25 @@ func newTestService(t *testing.T, db *sql.DB) Service {
 	return svc
 }
 
-// createTestProject creates a test project and returns its ID
-func createTestProject(t *testing.T, db *sql.DB) int {
+// createTestTaskInProject creates a column and task in the given project, returning the task ID.
+func createTestTaskInProject(t *testing.T, db *sql.DB, projectID int) int {
 	t.Helper()
-	result, err := db.ExecContext(context.Background(), "INSERT INTO projects (name, description) VALUES (?, ?)", "Test Project", "Test Description")
-	require.NoError(t, err)
-	id, err := result.LastInsertId()
-	require.NoError(t, err)
-	return int(id)
-}
-
-// createTestTask creates a test task and returns its ID
-func createTestTask(t *testing.T, db *sql.DB, projectID int) int {
-	t.Helper()
-	// First create a column for the task
-	columnResult, err := db.ExecContext(context.Background(), "INSERT INTO columns (project_id, name) VALUES (?, ?)", projectID, "Default")
-	require.NoError(t, err)
-	columnID, err := columnResult.LastInsertId()
-	require.NoError(t, err)
-
-	// Create task in that column
-	result, err := db.ExecContext(context.Background(), "INSERT INTO tasks (column_id, title, description, position) VALUES (?, ?, ?, ?)", columnID, "Test Task", "Test Description", 0)
-	require.NoError(t, err)
-	id, err := result.LastInsertId()
-	require.NoError(t, err)
-	return int(id)
-}
-
-// attachLabelToTask attaches a label to a task
-func attachLabelToTask(t *testing.T, db *sql.DB, taskID, labelID int) {
-	t.Helper()
-	_, err := db.ExecContext(context.Background(), "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", taskID, labelID)
-	require.NoError(t, err)
+	columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "Default")
+	return fixtures.CreateTestTask(t, db, testDialect, columnID, "Test Task")
 }
 
 func TestCreateLabel(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
-
-	projectID := createTestProject(t, db)
-	svc := newTestService(t, db)
+	env := setupTestEnv(t)
 
 	req := CreateLabelRequest{
-		ProjectID: projectID,
+		ProjectID: env.ProjectID,
 		Name:      "Bug",
 		Color:     "#FF5733",
 	}
 
-	result, err := svc.CreateLabel(context.Background(), req)
+	result, err := env.Svc.CreateLabel(env.Ctx, req)
 	require.NoError(t, err)
 
 	require.NotNil(t, result)
@@ -77,7 +49,7 @@ func TestCreateLabel(t *testing.T) {
 
 	assert.Equal(t, "#FF5733", result.Color)
 
-	assert.Equal(t, projectID, result.ProjectID)
+	assert.Equal(t, env.ProjectID, result.ProjectID)
 
 	assert.NotZero(t, result.ID)
 }
@@ -105,7 +77,7 @@ func TestCreateLabel_Validation(t *testing.T) {
 			name:  "name too long",
 			color: "#FF5733",
 			setupFn: func(db *sql.DB) int {
-				return createTestProject(t, db)
+				return fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 			},
 			labelName: strings.Repeat("a", 51),
 			wantErr:   true,
@@ -125,7 +97,7 @@ func TestCreateLabel_Validation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := testutil.SetupTestDB(t)
+			db := fixtures.SetupTestDB(t)
 
 			projectID := tt.projectID
 			if tt.setupFn != nil {
@@ -157,10 +129,7 @@ func TestCreateLabel_Validation(t *testing.T) {
 func TestCreateLabel_InvalidColor(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
-
-	projectID := createTestProject(t, db)
-	svc := newTestService(t, db)
+	env := setupTestEnv(t)
 
 	testCases := []struct {
 		name  string
@@ -178,12 +147,12 @@ func TestCreateLabel_InvalidColor(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			req := CreateLabelRequest{
-				ProjectID: projectID,
+				ProjectID: env.ProjectID,
 				Name:      "Bug",
 				Color:     tc.color,
 			}
 
-			_, err := svc.CreateLabel(context.Background(), req)
+			_, err := env.Svc.CreateLabel(env.Ctx, req)
 
 			require.Error(t, err)
 
@@ -195,9 +164,7 @@ func TestCreateLabel_InvalidColor(t *testing.T) {
 func TestCreateLabel_InvalidProjectID(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
-
-	svc := newTestService(t, db)
+	env := setupTestEnv(t)
 
 	req := CreateLabelRequest{
 		ProjectID: 0, // Invalid
@@ -205,7 +172,7 @@ func TestCreateLabel_InvalidProjectID(t *testing.T) {
 		Color:     "#FF5733",
 	}
 
-	_, err := svc.CreateLabel(context.Background(), req)
+	_, err := env.Svc.CreateLabel(env.Ctx, req)
 
 	require.Error(t, err)
 
@@ -215,28 +182,24 @@ func TestCreateLabel_InvalidProjectID(t *testing.T) {
 func TestGetLabelsByProject(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
-
-	projectID := createTestProject(t, db)
-	svc := newTestService(t, db)
-	ctx := context.Background()
+	env := setupTestEnv(t)
 
 	// Create two labels
-	_, err := svc.CreateLabel(ctx, CreateLabelRequest{
-		ProjectID: projectID,
+	_, err := env.Svc.CreateLabel(env.Ctx, CreateLabelRequest{
+		ProjectID: env.ProjectID,
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
 	require.NoError(t, err)
 
-	_, err = svc.CreateLabel(ctx, CreateLabelRequest{
-		ProjectID: projectID,
+	_, err = env.Svc.CreateLabel(env.Ctx, CreateLabelRequest{
+		ProjectID: env.ProjectID,
 		Name:      "Feature",
 		Color:     "#33FF57",
 	})
 	require.NoError(t, err)
 
-	results, err := svc.GetLabelsByProject(ctx, projectID)
+	results, err := env.Svc.GetLabelsByProject(env.Ctx, env.ProjectID)
 	require.NoError(t, err)
 
 	require.Len(t, results, 2)
@@ -249,12 +212,9 @@ func TestGetLabelsByProject(t *testing.T) {
 func TestGetLabelsByProject_Empty(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	env := setupTestEnv(t)
 
-	projectID := createTestProject(t, db)
-	svc := newTestService(t, db)
-
-	results, err := svc.GetLabelsByProject(context.Background(), projectID)
+	results, err := env.Svc.GetLabelsByProject(env.Ctx, env.ProjectID)
 	require.NoError(t, err)
 
 	assert.Len(t, results, 0)
@@ -263,11 +223,9 @@ func TestGetLabelsByProject_Empty(t *testing.T) {
 func TestGetLabelsByProject_InvalidProjectID(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	env := setupTestEnv(t)
 
-	svc := newTestService(t, db)
-
-	_, err := svc.GetLabelsByProject(context.Background(), 0)
+	_, err := env.Svc.GetLabelsByProject(env.Ctx, 0)
 
 	require.Error(t, err)
 
@@ -277,32 +235,28 @@ func TestGetLabelsByProject_InvalidProjectID(t *testing.T) {
 func TestGetLabelsForTask(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
-
-	projectID := createTestProject(t, db)
-	taskID := createTestTask(t, db, projectID)
-	svc := newTestService(t, db)
-	ctx := context.Background()
+	env := setupTestEnv(t)
+	taskID := createTestTaskInProject(t, env.DB, env.ProjectID)
 
 	// Create two labels and attach them to the task
-	label1, err := svc.CreateLabel(ctx, CreateLabelRequest{
-		ProjectID: projectID,
+	label1, err := env.Svc.CreateLabel(env.Ctx, CreateLabelRequest{
+		ProjectID: env.ProjectID,
 		Name:      "Bug",
 		Color:     "#FF5733",
 	})
 	require.NoError(t, err)
 
-	label2, err := svc.CreateLabel(ctx, CreateLabelRequest{
-		ProjectID: projectID,
+	label2, err := env.Svc.CreateLabel(env.Ctx, CreateLabelRequest{
+		ProjectID: env.ProjectID,
 		Name:      "Critical",
 		Color:     "#FF0000",
 	})
 	require.NoError(t, err)
 
-	attachLabelToTask(t, db, taskID, label1.ID)
-	attachLabelToTask(t, db, taskID, label2.ID)
+	fixtures.AttachLabelToTask(t, env.DB, env.Dialect, taskID, label1.ID)
+	fixtures.AttachLabelToTask(t, env.DB, env.Dialect, taskID, label2.ID)
 
-	results, err := svc.GetLabelsForTask(ctx, taskID)
+	results, err := env.Svc.GetLabelsForTask(env.Ctx, taskID)
 	require.NoError(t, err)
 
 	require.Len(t, results, 2)
@@ -321,13 +275,10 @@ func TestGetLabelsForTask(t *testing.T) {
 func TestGetLabelsForTask_Empty(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	env := setupTestEnv(t)
+	taskID := createTestTaskInProject(t, env.DB, env.ProjectID)
 
-	projectID := createTestProject(t, db)
-	taskID := createTestTask(t, db, projectID)
-	svc := newTestService(t, db)
-
-	results, err := svc.GetLabelsForTask(context.Background(), taskID)
+	results, err := env.Svc.GetLabelsForTask(env.Ctx, taskID)
 	require.NoError(t, err)
 
 	assert.Len(t, results, 0)
@@ -336,11 +287,9 @@ func TestGetLabelsForTask_Empty(t *testing.T) {
 func TestGetLabelsForTask_InvalidTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	env := setupTestEnv(t)
 
-	svc := newTestService(t, db)
-
-	_, err := svc.GetLabelsForTask(context.Background(), 0)
+	_, err := env.Svc.GetLabelsForTask(env.Ctx, 0)
 
 	require.Error(t, err)
 
@@ -350,9 +299,9 @@ func TestGetLabelsForTask_InvalidTaskID(t *testing.T) {
 func TestUpdateLabel(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
-	projectID := createTestProject(t, db)
+	projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 	svc := newTestService(t, db)
 	ctx := context.Background()
 
@@ -389,9 +338,9 @@ func TestUpdateLabel(t *testing.T) {
 func TestUpdateLabel_OnlyName(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
-	projectID := createTestProject(t, db)
+	projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 	svc := newTestService(t, db)
 	ctx := context.Background()
 
@@ -438,7 +387,7 @@ func TestUpdateLabel_Validation(t *testing.T) {
 			wantErr: true,
 			errType: ErrEmptyName,
 			setupFn: func(db *sql.DB) int {
-				projectID := createTestProject(t, db)
+				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 				label, err := newTestService(t, db).CreateLabel(context.Background(), CreateLabelRequest{
 					ProjectID: projectID,
 					Name:      "Bug",
@@ -454,7 +403,7 @@ func TestUpdateLabel_Validation(t *testing.T) {
 			wantErr:  true,
 			errType:  ErrInvalidColor,
 			setupFn: func(db *sql.DB) int {
-				projectID := createTestProject(t, db)
+				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 				label, err := newTestService(t, db).CreateLabel(context.Background(), CreateLabelRequest{
 					ProjectID: projectID,
 					Name:      "Bug",
@@ -477,7 +426,7 @@ func TestUpdateLabel_Validation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := testutil.SetupTestDB(t)
+			db := fixtures.SetupTestDB(t)
 
 			labelID := tt.labelID
 			if tt.setupFn != nil {
@@ -514,9 +463,9 @@ func ptrStr(s string) *string {
 func TestDeleteLabel(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
-	projectID := createTestProject(t, db)
+	projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 	svc := newTestService(t, db)
 	ctx := context.Background()
 
@@ -558,7 +507,7 @@ func TestDeleteLabel_Validation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := testutil.SetupTestDB(t)
+			db := fixtures.SetupTestDB(t)
 
 			svc := newTestService(t, db)
 			err := svc.DeleteLabel(context.Background(), tt.labelID)
@@ -579,10 +528,10 @@ func TestDeleteLabel_Validation(t *testing.T) {
 func TestDeleteLabel_CascadeToTaskLabels(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
-	projectID := createTestProject(t, db)
-	taskID := createTestTask(t, db, projectID)
+	projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
+	taskID := createTestTaskInProject(t, db, projectID)
 	svc := newTestService(t, db)
 	ctx := context.Background()
 
@@ -594,7 +543,7 @@ func TestDeleteLabel_CascadeToTaskLabels(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	attachLabelToTask(t, db, taskID, created.ID)
+	fixtures.AttachLabelToTask(t, db, testDialect, taskID, created.ID)
 
 	// Verify label is attached
 	taskLabels, err := svc.GetLabelsForTask(ctx, taskID)
@@ -648,7 +597,7 @@ func TestCreateLabel_InvalidLabelID_Errors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := testutil.SetupTestDB(t)
+			db := fixtures.SetupTestDB(t)
 
 			svc := newTestService(t, db)
 			req := CreateLabelRequest{
@@ -672,9 +621,9 @@ func TestCreateLabel_InvalidLabelID_Errors(t *testing.T) {
 func TestCreateLabel_DuplicateNames(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
-	projectID := createTestProject(t, db)
+	projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 	svc := newTestService(t, db)
 	ctx := context.Background()
 
@@ -704,10 +653,10 @@ func TestCreateLabel_DuplicateNames(t *testing.T) {
 func TestCreateLabel_DuplicateNames_DifferentProjects(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
-	projectID1 := createTestProject(t, db)
-	projectID2 := createTestProject(t, db)
+	projectID1 := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
+	projectID2 := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 	svc := newTestService(t, db)
 	ctx := context.Background()
 
@@ -772,9 +721,9 @@ func TestCreateLabel_SpecialCharacters(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := testutil.SetupTestDB(t)
+			db := fixtures.SetupTestDB(t)
 
-			projectID := createTestProject(t, db)
+			projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 			svc := newTestService(t, db)
 
 			req := CreateLabelRequest{
@@ -800,7 +749,7 @@ func TestCreateLabel_SpecialCharacters(t *testing.T) {
 func TestGetLabelsByProject_NegativeProjectID(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -814,7 +763,7 @@ func TestGetLabelsByProject_NegativeProjectID(t *testing.T) {
 func TestGetLabelsByProject_NonExistentProject(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -828,7 +777,7 @@ func TestGetLabelsByProject_NonExistentProject(t *testing.T) {
 func TestGetLabelsForTask_NegativeTaskID(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -842,7 +791,7 @@ func TestGetLabelsForTask_NegativeTaskID(t *testing.T) {
 func TestGetLabelsForTask_NonExistentTask(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -881,7 +830,7 @@ func TestUpdateLabel_InvalidLabelID_Errors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := testutil.SetupTestDB(t)
+			db := fixtures.SetupTestDB(t)
 
 			svc := newTestService(t, db)
 			req := UpdateLabelRequest{
@@ -900,7 +849,7 @@ func TestUpdateLabel_InvalidLabelID_Errors(t *testing.T) {
 func TestUpdateLabel_NonExistentLabel(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -919,9 +868,9 @@ func TestUpdateLabel_NonExistentLabel(t *testing.T) {
 func TestUpdateLabel_NameTooLong(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
-	projectID := createTestProject(t, db)
+	projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 	svc := newTestService(t, db)
 	ctx := context.Background()
 
@@ -951,9 +900,9 @@ func TestUpdateLabel_NameTooLong(t *testing.T) {
 func TestUpdateLabel_InvalidColorFormats(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
-	projectID := createTestProject(t, db)
+	projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 	svc := newTestService(t, db)
 	ctx := context.Background()
 
@@ -999,9 +948,9 @@ func TestUpdateLabel_InvalidColorFormats(t *testing.T) {
 func TestUpdateLabel_NoFieldsToUpdate(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
-	projectID := createTestProject(t, db)
+	projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 	svc := newTestService(t, db)
 	ctx := context.Background()
 
@@ -1056,7 +1005,7 @@ func TestDeleteLabel_InvalidLabelID_Errors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := testutil.SetupTestDB(t)
+			db := fixtures.SetupTestDB(t)
 
 			svc := newTestService(t, db)
 
@@ -1070,7 +1019,7 @@ func TestDeleteLabel_InvalidLabelID_Errors(t *testing.T) {
 func TestDeleteLabel_NonExistentLabel(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
 	svc := newTestService(t, db)
 
@@ -1082,9 +1031,9 @@ func TestDeleteLabel_NonExistentLabel(t *testing.T) {
 func TestDeleteLabel_AlreadyDeleted(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
-	projectID := createTestProject(t, db)
+	projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 	svc := newTestService(t, db)
 	ctx := context.Background()
 
@@ -1134,9 +1083,9 @@ func TestCreateLabel_BoundaryValues(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := testutil.SetupTestDB(t)
+			db := fixtures.SetupTestDB(t)
 
-			projectID := createTestProject(t, db)
+			projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 			svc := newTestService(t, db)
 
 			req := CreateLabelRequest{
@@ -1178,9 +1127,9 @@ func TestCreateLabel_ValidColorFormats(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			db := testutil.SetupTestDB(t)
+			db := fixtures.SetupTestDB(t)
 
-			projectID := createTestProject(t, db)
+			projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 			svc := newTestService(t, db)
 
 			req := CreateLabelRequest{
@@ -1205,9 +1154,9 @@ func TestCreateLabel_ValidColorFormats(t *testing.T) {
 func TestUpdateLabel_DuplicateNameInProject(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 
-	projectID := createTestProject(t, db)
+	projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 	svc := newTestService(t, db)
 	ctx := context.Background()
 
@@ -1244,13 +1193,13 @@ func TestUpdateLabel_DuplicateNameInProject(t *testing.T) {
 func TestUpdateLabel_DuplicateName_DifferentProjects(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 	svc := newTestService(t, db)
 	ctx := context.Background()
 
 	// Create two projects
-	project1ID := createTestProject(t, db)
-	project2ID := createTestProject(t, db)
+	project1ID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
+	project2ID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 
 	// Create label "Bug" in project1
 	_, err := svc.CreateLabel(ctx, CreateLabelRequest{
@@ -1288,11 +1237,11 @@ func TestUpdateLabel_DuplicateName_DifferentProjects(t *testing.T) {
 func TestUpdateLabel_SameNameNoChange(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 	svc := newTestService(t, db)
 	ctx := context.Background()
 
-	projectID := createTestProject(t, db)
+	projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 
 	// Create label
 	label, err := svc.CreateLabel(ctx, CreateLabelRequest{
@@ -1316,11 +1265,11 @@ func TestUpdateLabel_SameNameNoChange(t *testing.T) {
 func TestUpdateLabel_CaseVariation(t *testing.T) {
 	t.Parallel()
 
-	db := testutil.SetupTestDB(t)
+	db := fixtures.SetupTestDB(t)
 	svc := newTestService(t, db)
 	ctx := context.Background()
 
-	projectID := createTestProject(t, db)
+	projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
 
 	// Create label "bug" (lowercase)
 	_, err := svc.CreateLabel(ctx, CreateLabelRequest{

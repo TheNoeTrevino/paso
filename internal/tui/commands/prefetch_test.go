@@ -4,127 +4,23 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/models"
-	"github.com/thenoetrevino/paso/internal/services/task"
+	"github.com/thenoetrevino/paso/internal/testing/mocks"
 	"go.uber.org/goleak"
 )
 
-// mockTaskService is a minimal mock that implements only GetTaskDetail for prefetch tests
-type mockTaskService struct {
-	task.Service // embed to satisfy interface, panics on unimplemented methods
-
-	mu            sync.Mutex
-	callCount     int
-	taskDetails   map[int]*models.TaskDetail
-	taskErrors    map[int]error
-	delay         time.Duration // optional delay per call
-	failuresLeft  map[int]int   // track remaining failures before success (for retry tests)
-	variableDelay bool          // if true, add small variable delay based on call count
-}
-
-func newMockTaskService() *mockTaskService {
-	return &mockTaskService{
-		taskDetails:  make(map[int]*models.TaskDetail),
-		taskErrors:   make(map[int]error),
-		failuresLeft: make(map[int]int),
+func defaultPrefetchMock() *mocks.MockTaskService {
+	mock := mocks.NewMockTaskService()
+	mock.GetTaskDetailFunc = func(_ context.Context, taskID int) (*models.TaskDetail, error) {
+		return &models.TaskDetail{ID: taskID, Title: "Mock Task"}, nil
 	}
-}
-
-func (m *mockTaskService) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error) {
-	m.mu.Lock()
-	callNum := m.callCount
-	m.callCount++
-	delay := m.delay
-	variableDelay := m.variableDelay
-	m.mu.Unlock()
-
-	// Simulate delay if configured
-	if delay > 0 || variableDelay {
-		waitTime := delay
-		if variableDelay {
-			// Add small variable delay based on call count (0-4ms)
-			waitTime += time.Duration(callNum%5) * time.Millisecond
-		}
-		if waitTime > 0 {
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			case <-time.After(waitTime):
-			}
-		}
-	}
-
-	// Check context cancellation
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Check for retry simulation
-	if failures, ok := m.failuresLeft[taskID]; ok && failures > 0 {
-		m.failuresLeft[taskID]--
-		return nil, errors.New("simulated transient error")
-	}
-
-	// Return configured error
-	if err, ok := m.taskErrors[taskID]; ok {
-		return nil, err
-	}
-
-	// Return configured detail or default
-	if detail, ok := m.taskDetails[taskID]; ok {
-		return detail, nil
-	}
-
-	return &models.TaskDetail{
-		ID:    taskID,
-		Title: "Mock Task",
-	}, nil
-}
-
-func (m *mockTaskService) getCallCount() int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.callCount
-}
-
-func (m *mockTaskService) setTaskDetail(taskID int, detail *models.TaskDetail) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.taskDetails[taskID] = detail
-}
-
-func (m *mockTaskService) setTaskError(taskID int, err error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.taskErrors[taskID] = err
-}
-
-func (m *mockTaskService) setFailuresBeforeSuccess(taskID int, failures int) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.failuresLeft[taskID] = failures
-}
-
-func (m *mockTaskService) setDelay(d time.Duration) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.delay = d
-}
-
-func (m *mockTaskService) setVariableDelay(enabled bool) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.variableDelay = enabled
+	return mock
 }
 
 func TestFetchTaskDetailsCmd_CacheHitScenarios(t *testing.T) {
@@ -133,7 +29,7 @@ func TestFetchTaskDetailsCmd_CacheHitScenarios(t *testing.T) {
 	t.Run("all adjacent tasks cached returns empty Details map", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
+		mock := defaultPrefetchMock()
 		adjacent := AdjacentTasks{
 			Current: 1,
 			Above:   2,
@@ -153,13 +49,13 @@ func TestFetchTaskDetailsCmd_CacheHitScenarios(t *testing.T) {
 		assert.Empty(t, result.Details, "expected empty Details map when all cached")
 		assert.Empty(t, result.Errors, "expected no errors")
 		assert.Equal(t, 1, result.CurrentID, "CurrentID should match adjacent.Current")
-		assert.Equal(t, 0, mock.getCallCount(), "no service calls should be made")
+		assert.Equal(t, 0, mock.CallCount("GetTaskDetail"), "no service calls should be made")
 	})
 
 	t.Run("current cached but adjacent not cached fetches adjacent", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
+		mock := defaultPrefetchMock()
 		adjacent := AdjacentTasks{
 			Current: 1,
 			Above:   2,
@@ -186,7 +82,7 @@ func TestFetchTaskDetailsCmd_CacheHitScenarios(t *testing.T) {
 	t.Run("partial cache hit only fetches uncached IDs", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
+		mock := defaultPrefetchMock()
 		adjacent := AdjacentTasks{
 			Current: 1,
 			Above:   2,
@@ -215,7 +111,7 @@ func TestFetchTaskDetailsCmd_CacheHitScenarios(t *testing.T) {
 	t.Run("zero IDs are ignored", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
+		mock := defaultPrefetchMock()
 		adjacent := AdjacentTasks{
 			Current: 1,
 			Above:   0, // no task above
@@ -240,7 +136,7 @@ func TestFetchTaskDetailsCmd_CacheHitScenarios(t *testing.T) {
 	t.Run("empty adjacent returns current only", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
+		mock := defaultPrefetchMock()
 		adjacent := AdjacentTasks{
 			Current: 10,
 			Above:   0,
@@ -267,8 +163,13 @@ func TestFetchWithRetry_RetryLogic(t *testing.T) {
 	t.Run("succeeds on first attempt", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
-		mock.setTaskDetail(1, &models.TaskDetail{ID: 1, Title: "Test Task"})
+		mock := mocks.NewMockTaskService()
+		mock.GetTaskDetailFunc = func(_ context.Context, taskID int) (*models.TaskDetail, error) {
+			if taskID == 1 {
+				return &models.TaskDetail{ID: 1, Title: "Test Task"}, nil
+			}
+			return &models.TaskDetail{ID: taskID, Title: "Mock Task"}, nil
+		}
 
 		ctx := context.Background()
 		detail, err := fetchWithRetry(ctx, mock, 1, 3)
@@ -276,16 +177,28 @@ func TestFetchWithRetry_RetryLogic(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 1, detail.ID)
 		assert.Equal(t, "Test Task", detail.Title)
-		assert.Equal(t, 1, mock.getCallCount(), "should succeed on first attempt")
+		assert.Equal(t, 1, mock.CallCount("GetTaskDetail"), "should succeed on first attempt")
 	})
 
 	t.Run("succeeds after N-1 failures", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
-		mock.setTaskDetail(1, &models.TaskDetail{ID: 1, Title: "Test Task"})
-		// Fail 2 times, succeed on 3rd
-		mock.setFailuresBeforeSuccess(1, 2)
+		mock := mocks.NewMockTaskService()
+		var mu sync.Mutex
+		failuresLeft := map[int]int{1: 2}
+		mock.GetTaskDetailFunc = func(_ context.Context, taskID int) (*models.TaskDetail, error) {
+			mu.Lock()
+			if f, ok := failuresLeft[taskID]; ok && f > 0 {
+				failuresLeft[taskID]--
+				mu.Unlock()
+				return nil, errors.New("simulated transient error")
+			}
+			mu.Unlock()
+			if taskID == 1 {
+				return &models.TaskDetail{ID: 1, Title: "Test Task"}, nil
+			}
+			return &models.TaskDetail{ID: taskID, Title: "Mock Task"}, nil
+		}
 
 		ctx := context.Background()
 		detail, err := fetchWithRetry(ctx, mock, 1, 3)
@@ -293,15 +206,20 @@ func TestFetchWithRetry_RetryLogic(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 1, detail.ID)
 		// Should have called 3 times (2 failures + 1 success)
-		assert.Equal(t, 3, mock.getCallCount(), "should retry and eventually succeed")
+		assert.Equal(t, 3, mock.CallCount("GetTaskDetail"), "should retry and eventually succeed")
 	})
 
 	t.Run("fails after max retries exhausted", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
-		// Set permanent error
-		mock.setTaskError(1, errors.New("permanent error"))
+		mock := mocks.NewMockTaskService()
+		taskErrors := map[int]error{1: errors.New("permanent error")}
+		mock.GetTaskDetailFunc = func(_ context.Context, taskID int) (*models.TaskDetail, error) {
+			if err, ok := taskErrors[taskID]; ok {
+				return nil, err
+			}
+			return &models.TaskDetail{ID: taskID, Title: "Mock Task"}, nil
+		}
 
 		ctx := context.Background()
 		_, err := fetchWithRetry(ctx, mock, 1, 3)
@@ -309,36 +227,53 @@ func TestFetchWithRetry_RetryLogic(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "permanent error")
 		// Should have tried exactly 3 times
-		assert.Equal(t, 3, mock.getCallCount(), "should try exactly maxRetries times")
+		assert.Equal(t, 3, mock.CallCount("GetTaskDetail"), "should try exactly maxRetries times")
 	})
 
 	t.Run("respects maxRetries parameter", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
-		mock.setTaskError(1, errors.New("error"))
+		mock := mocks.NewMockTaskService()
+		mock.GetTaskDetailFunc = func(_ context.Context, taskID int) (*models.TaskDetail, error) {
+			if taskID == 1 {
+				return nil, errors.New("error")
+			}
+			return &models.TaskDetail{ID: taskID, Title: "Mock Task"}, nil
+		}
 
 		ctx := context.Background()
 		_, err := fetchWithRetry(ctx, mock, 1, 5)
 
 		require.Error(t, err)
-		assert.Equal(t, 5, mock.getCallCount(), "should try exactly 5 times with maxRetries=5")
+		assert.Equal(t, 5, mock.CallCount("GetTaskDetail"), "should try exactly 5 times with maxRetries=5")
 	})
 
 	t.Run("succeeds on last retry attempt", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
-		mock.setTaskDetail(1, &models.TaskDetail{ID: 1, Title: "Success"})
-		// Fail 2 times, succeed on 3rd (last retry)
-		mock.setFailuresBeforeSuccess(1, 2)
+		mock := mocks.NewMockTaskService()
+		var mu sync.Mutex
+		failuresLeft := map[int]int{1: 2}
+		mock.GetTaskDetailFunc = func(_ context.Context, taskID int) (*models.TaskDetail, error) {
+			mu.Lock()
+			if f, ok := failuresLeft[taskID]; ok && f > 0 {
+				failuresLeft[taskID]--
+				mu.Unlock()
+				return nil, errors.New("simulated transient error")
+			}
+			mu.Unlock()
+			if taskID == 1 {
+				return &models.TaskDetail{ID: 1, Title: "Success"}, nil
+			}
+			return &models.TaskDetail{ID: taskID, Title: "Mock Task"}, nil
+		}
 
 		ctx := context.Background()
 		detail, err := fetchWithRetry(ctx, mock, 1, 3)
 
 		require.NoError(t, err)
 		assert.Equal(t, "Success", detail.Title)
-		assert.Equal(t, 3, mock.getCallCount())
+		assert.Equal(t, 3, mock.CallCount("GetTaskDetail"))
 	})
 }
 
@@ -348,7 +283,7 @@ func TestFetchWithRetry_ContextTimeout(t *testing.T) {
 	t.Run("returns context error when cancelled before first attempt", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
+		mock := defaultPrefetchMock()
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
 
@@ -361,9 +296,13 @@ func TestFetchWithRetry_ContextTimeout(t *testing.T) {
 	t.Run("returns context error when cancelled during retry backoff", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
-		// Set transient error to force retry
-		mock.setTaskError(1, errors.New("transient"))
+		mock := mocks.NewMockTaskService()
+		mock.GetTaskDetailFunc = func(_ context.Context, taskID int) (*models.TaskDetail, error) {
+			if taskID == 1 {
+				return nil, errors.New("transient")
+			}
+			return &models.TaskDetail{ID: taskID, Title: "Mock Task"}, nil
+		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
 		defer cancel()
@@ -379,8 +318,15 @@ func TestFetchWithRetry_ContextTimeout(t *testing.T) {
 	t.Run("returns context error when cancelled mid-operation", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
-		mock.setDelay(100 * time.Millisecond) // Slow service call
+		mock := mocks.NewMockTaskService()
+		mock.GetTaskDetailFunc = func(ctx context.Context, taskID int) (*models.TaskDetail, error) {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(100 * time.Millisecond):
+			}
+			return &models.TaskDetail{ID: taskID, Title: "Mock Task"}, nil
+		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
 		defer cancel()
@@ -399,7 +345,7 @@ func TestFetchTaskDetailsCmd_ContextHandling(t *testing.T) {
 	t.Run("completes successfully with valid context", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
+		mock := defaultPrefetchMock()
 		adjacent := AdjacentTasks{Current: 1, Above: 2, Below: 3}
 		cachedIDs := []int{}
 
@@ -415,8 +361,14 @@ func TestFetchTaskDetailsCmd_ContextHandling(t *testing.T) {
 	t.Run("handles service errors gracefully", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
-		mock.setTaskError(2, errors.New("service unavailable"))
+		mock := mocks.NewMockTaskService()
+		taskErrors := map[int]error{2: errors.New("service unavailable")}
+		mock.GetTaskDetailFunc = func(_ context.Context, taskID int) (*models.TaskDetail, error) {
+			if err, ok := taskErrors[taskID]; ok {
+				return nil, err
+			}
+			return &models.TaskDetail{ID: taskID, Title: "Mock Task"}, nil
+		}
 
 		adjacent := AdjacentTasks{Current: 1, Above: 2, Below: 3}
 		cachedIDs := []int{}
@@ -439,7 +391,7 @@ func TestFetchTaskDetailsCmd_NoGoroutineLeaks(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	t.Run("successful completion", func(t *testing.T) {
-		mock := newMockTaskService()
+		mock := defaultPrefetchMock()
 		adjacent := AdjacentTasks{Current: 1, Above: 2, Below: 3, Left: 4, Right: 5}
 		cachedIDs := []int{}
 
@@ -448,7 +400,7 @@ func TestFetchTaskDetailsCmd_NoGoroutineLeaks(t *testing.T) {
 	})
 
 	t.Run("all cached", func(t *testing.T) {
-		mock := newMockTaskService()
+		mock := defaultPrefetchMock()
 		adjacent := AdjacentTasks{Current: 1, Above: 2, Below: 3}
 		cachedIDs := []int{1, 2, 3}
 
@@ -457,9 +409,14 @@ func TestFetchTaskDetailsCmd_NoGoroutineLeaks(t *testing.T) {
 	})
 
 	t.Run("partial errors", func(t *testing.T) {
-		mock := newMockTaskService()
-		mock.setTaskError(2, errors.New("error"))
-		mock.setTaskError(4, errors.New("error"))
+		mock := mocks.NewMockTaskService()
+		taskErrors := map[int]error{2: errors.New("error"), 4: errors.New("error")}
+		mock.GetTaskDetailFunc = func(_ context.Context, taskID int) (*models.TaskDetail, error) {
+			if err, ok := taskErrors[taskID]; ok {
+				return nil, err
+			}
+			return &models.TaskDetail{ID: taskID, Title: "Mock Task"}, nil
+		}
 
 		adjacent := AdjacentTasks{Current: 1, Above: 2, Below: 3, Left: 4, Right: 5}
 		cachedIDs := []int{}
@@ -475,8 +432,15 @@ func TestFetchTasksInParallel(t *testing.T) {
 	t.Run("fetches all tasks concurrently", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
-		mock.setDelay(10 * time.Millisecond)
+		mock := mocks.NewMockTaskService()
+		mock.GetTaskDetailFunc = func(ctx context.Context, taskID int) (*models.TaskDetail, error) {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(10 * time.Millisecond):
+			}
+			return &models.TaskDetail{ID: taskID, Title: "Mock Task"}, nil
+		}
 
 		ids := []int{1, 2, 3, 4, 5}
 		ctx := context.Background()
@@ -495,9 +459,14 @@ func TestFetchTasksInParallel(t *testing.T) {
 	t.Run("collects errors from failed fetches", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
-		mock.setTaskError(2, errors.New("error 2"))
-		mock.setTaskError(4, errors.New("error 4"))
+		mock := mocks.NewMockTaskService()
+		taskErrors := map[int]error{2: errors.New("error 2"), 4: errors.New("error 4")}
+		mock.GetTaskDetailFunc = func(_ context.Context, taskID int) (*models.TaskDetail, error) {
+			if err, ok := taskErrors[taskID]; ok {
+				return nil, err
+			}
+			return &models.TaskDetail{ID: taskID, Title: "Mock Task"}, nil
+		}
 
 		ids := []int{1, 2, 3, 4, 5}
 		ctx := context.Background()
@@ -513,7 +482,7 @@ func TestFetchTasksInParallel(t *testing.T) {
 	t.Run("handles empty input", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
+		mock := defaultPrefetchMock()
 		ids := []int{}
 		ctx := context.Background()
 
@@ -521,13 +490,13 @@ func TestFetchTasksInParallel(t *testing.T) {
 
 		assert.Empty(t, details)
 		assert.Empty(t, errs)
-		assert.Equal(t, 0, mock.getCallCount())
+		assert.Equal(t, 0, mock.CallCount("GetTaskDetail"))
 	})
 
 	t.Run("handles single task", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
+		mock := defaultPrefetchMock()
 		ids := []int{42}
 		ctx := context.Background()
 
@@ -629,9 +598,17 @@ func TestFetchTaskDetailsCmd_ConcurrencySafety(t *testing.T) {
 	t.Run("results map is thread-safe", func(t *testing.T) {
 		t.Parallel()
 
-		mock := newMockTaskService()
-		// Add small variable delay to increase chance of race conditions
-		mock.setVariableDelay(true)
+		var callCount atomic.Int64
+		mock := mocks.NewMockTaskService()
+		mock.GetTaskDetailFunc = func(_ context.Context, taskID int) (*models.TaskDetail, error) {
+			n := callCount.Add(1)
+			// Add small variable delay based on call count (0-4ms)
+			waitTime := time.Duration(n%5) * time.Millisecond
+			if waitTime > 0 {
+				time.Sleep(waitTime)
+			}
+			return &models.TaskDetail{ID: taskID, Title: "Mock Task"}, nil
+		}
 
 		adjacent := AdjacentTasks{Current: 1, Above: 2, Below: 3, Left: 4, Right: 5}
 		cachedIDs := []int{}

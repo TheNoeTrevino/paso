@@ -7,6 +7,7 @@ import (
 )
 
 func TestValidateColorHex_Valid(t *testing.T) {
+	t.Parallel()
 	tests := []string{
 		"#FF0000", // Red
 		"#00FF00", // Green
@@ -27,6 +28,7 @@ func TestValidateColorHex_Valid(t *testing.T) {
 }
 
 func TestValidateColorHex_Invalid(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		color       string
 		description string
@@ -50,6 +52,7 @@ func TestValidateColorHex_Invalid(t *testing.T) {
 }
 
 func TestParsePriority_Valid(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected int
@@ -77,6 +80,7 @@ func TestParsePriority_Valid(t *testing.T) {
 }
 
 func TestParsePriority_Invalid(t *testing.T) {
+	t.Parallel()
 	tests := []string{
 		"invalid",
 		"normal",
@@ -96,6 +100,7 @@ func TestParsePriority_Invalid(t *testing.T) {
 }
 
 func TestParseTaskType_Valid(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected int
@@ -118,6 +123,7 @@ func TestParseTaskType_Valid(t *testing.T) {
 }
 
 func TestParseTaskType_Invalid(t *testing.T) {
+	t.Parallel()
 	tests := []string{
 		"bug",
 		"story",

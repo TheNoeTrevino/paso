@@ -9,13 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
 // TestEventHandler_RefreshMsg_ReloadsData verifies that a RefreshMsg for the current project
 // triggers a data reload and the model reflects the updated database state.
 func TestEventHandler_RefreshMsg_ReloadsData(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	m.NotifyChan = make(chan events.NotificationMsg, 1)
 	m.SubscriptionStarted = true
@@ -30,7 +31,7 @@ func TestEventHandler_RefreshMsg_ReloadsData(t *testing.T) {
 	columnID := columns[0].ID
 
 	// Add a task directly to the database (simulating an external change)
-	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), int(columnID), "New Task From Event")
+	fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), int(columnID), "New Task From Event")
 
 	// Send a RefreshMsg through Update (broadcast event)
 	refreshMsg := RefreshMsg{
@@ -65,6 +66,7 @@ func TestEventHandler_RefreshMsg_ReloadsData(t *testing.T) {
 // TestEventHandler_RefreshMsg_SpecificProject verifies that a RefreshMsg with the
 // current project's ID triggers a reload.
 func TestEventHandler_RefreshMsg_SpecificProject(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	m.NotifyChan = make(chan events.NotificationMsg, 1)
 	m.SubscriptionStarted = true
@@ -76,7 +78,7 @@ func TestEventHandler_RefreshMsg_SpecificProject(t *testing.T) {
 	require.NotEmpty(t, columns)
 	columnID := columns[0].ID
 
-	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), int(columnID), "Project-Specific Task")
+	fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), int(columnID), "Project-Specific Task")
 
 	// Send RefreshMsg targeting this specific project
 	refreshMsg := RefreshMsg{
@@ -105,6 +107,7 @@ func TestEventHandler_RefreshMsg_SpecificProject(t *testing.T) {
 // TestEventHandler_RefreshMsg_IgnoresOtherProject verifies that a RefreshMsg for a
 // different project does not trigger a reload of the current project's data.
 func TestEventHandler_RefreshMsg_IgnoresOtherProject(t *testing.T) {
+	t.Parallel()
 	m, db := SetupTestModelWithDB(t)
 	m.NotifyChan = make(chan events.NotificationMsg, 1)
 	m.SubscriptionStarted = true
@@ -124,7 +127,7 @@ func TestEventHandler_RefreshMsg_IgnoresOtherProject(t *testing.T) {
 	}
 
 	// Add a task directly to DB
-	testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), int(columnID), "Should Not Appear")
+	fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), int(columnID), "Should Not Appear")
 
 	// Send RefreshMsg for a different project ID
 	refreshMsg := RefreshMsg{
@@ -150,6 +153,7 @@ func TestEventHandler_RefreshMsg_IgnoresOtherProject(t *testing.T) {
 // TestEventHandler_NotificationMsg_AddsNotification verifies that notification messages
 // sent through Update are added to the notification state.
 func TestEventHandler_NotificationMsg_AddsNotification(t *testing.T) {
+	t.Parallel()
 	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
 	m.NotifyChan = make(chan events.NotificationMsg, 1)
 	m.ConnectionState = state.NewConnectionState(state.Connected)
@@ -175,6 +179,7 @@ func TestEventHandler_NotificationMsg_AddsNotification(t *testing.T) {
 // TestEventHandler_NotificationMsg_UpdatesConnectionState verifies that specific
 // notification messages (e.g. "Connection lost") update the connection state.
 func TestEventHandler_NotificationMsg_UpdatesConnectionState(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		message        string
@@ -221,6 +226,7 @@ func TestEventHandler_NotificationMsg_UpdatesConnectionState(t *testing.T) {
 // (ConnectionEstablishedMsg, ConnectionLostMsg, ConnectionReconnectingMsg)
 // update the model's connection state when sent through Update.
 func TestEventHandler_ConnectionMessages(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		msg            interface{}
@@ -261,6 +267,7 @@ func TestEventHandler_ConnectionMessages(t *testing.T) {
 // TestEventHandler_SequentialStateUpdates verifies state consistency during sequential
 // state mutations, as happens in the bubbletea single-threaded event loop.
 func TestEventHandler_SequentialStateUpdates(t *testing.T) {
+	t.Parallel()
 	m := setupTestModel(
 		[]*models.Column{{ID: 1, Name: "Todo"}},
 		map[int][]*models.TaskSummary{

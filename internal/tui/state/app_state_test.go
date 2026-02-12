@@ -11,6 +11,7 @@ import (
 // TestGetCurrentProject_EmptyProjects ensures project access with no projects returns nil.
 // Edge case: Application startup with no projects in database.
 func TestGetCurrentProject_EmptyProjects(t *testing.T) {
+	t.Parallel()
 	state := NewAppState(
 		[]*models.Project{}, // Empty projects
 		0,
@@ -26,6 +27,7 @@ func TestGetCurrentProject_EmptyProjects(t *testing.T) {
 // TestGetCurrentProject_InvalidIndex ensures project access with out-of-bounds index returns nil.
 // Edge case: Corrupted state with invalid selectedProject index.
 func TestGetCurrentProject_InvalidIndex(t *testing.T) {
+	t.Parallel()
 	projects := []*models.Project{
 		{ID: 1, Name: "Project 1"},
 		{ID: 2, Name: "Project 2"},
@@ -51,6 +53,7 @@ func TestGetCurrentProject_InvalidIndex(t *testing.T) {
 // TestGetCurrentProjectID_NilProject ensures project ID returns 0 when no project selected.
 // Edge case: GetCurrentProject() returns nil.
 func TestGetCurrentProjectID_NilProject(t *testing.T) {
+	t.Parallel()
 	// Empty projects -> GetCurrentProject returns nil
 	state := NewAppState([]*models.Project{}, 0, nil, nil, nil)
 
@@ -67,6 +70,7 @@ func TestGetCurrentProjectID_NilProject(t *testing.T) {
 // TestNewAppState_NilTasks ensures constructor initializes nil tasks map to empty map.
 // Edge case: Constructor called with nil tasks map.
 func TestNewAppState_NilTasks(t *testing.T) {
+	t.Parallel()
 	// Pass nil for tasks map
 	state := NewAppState(nil, 0, nil, nil, nil)
 
@@ -87,6 +91,7 @@ func TestNewAppState_NilTasks(t *testing.T) {
 // TestGetColumnByID_ValidColumn ensures O(1) column lookup works correctly.
 // Performance value: Verifies the columnByID map provides correct lookups.
 func TestGetColumnByID_ValidColumn(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo"},
 		{ID: 2, Name: "In Progress"},
@@ -105,6 +110,7 @@ func TestGetColumnByID_ValidColumn(t *testing.T) {
 // TestGetColumnByID_InvalidColumn ensures lookup for non-existent column returns nil.
 // Edge case: Querying for a column ID that doesn't exist.
 func TestGetColumnByID_InvalidColumn(t *testing.T) {
+	t.Parallel()
 	columns := []*models.Column{
 		{ID: 1, Name: "Todo"},
 		{ID: 2, Name: "Done"},
@@ -120,6 +126,7 @@ func TestGetColumnByID_InvalidColumn(t *testing.T) {
 // TestGetColumnByID_EmptyColumns ensures lookup with no columns returns nil.
 // Edge case: Application state with no columns loaded.
 func TestGetColumnByID_EmptyColumns(t *testing.T) {
+	t.Parallel()
 	state := NewAppState(nil, 0, []*models.Column{}, nil, nil)
 
 	col := state.GetColumnByID(1)
@@ -129,6 +136,7 @@ func TestGetColumnByID_EmptyColumns(t *testing.T) {
 // TestSetColumns_UpdatesMap ensures SetColumns rebuilds the columnByID map.
 // Performance value: Verifies map stays in sync when columns change.
 func TestSetColumns_UpdatesMap(t *testing.T) {
+	t.Parallel()
 	initialColumns := []*models.Column{
 		{ID: 1, Name: "Original"},
 	}

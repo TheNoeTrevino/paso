@@ -7,16 +7,17 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 )
 
 func TestDeleteAssigneeSetNullBehavior(t *testing.T) {
-	db := testutil.SetupTestDB(t)
+	t.Parallel()
+	db := fixtures.SetupTestDB(t)
 
 	ctx := context.Background()
 
 	// Create a project and column for the task
-	projectID := testutil.CreateTestProject(t, db, testutil.SQLiteDialect(), "test-project")
+	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "test-project")
 	// CreateTestProject creates 3 columns, get the first one
 	var columnID int
 	err := db.QueryRowContext(ctx, "SELECT id FROM columns WHERE project_id = ? LIMIT 1", projectID).Scan(&columnID)
@@ -29,7 +30,7 @@ func TestDeleteAssigneeSetNullBehavior(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a task assigned to this assignee
-	taskID := testutil.CreateTestTask(t, db, testutil.SQLiteDialect(), columnID, "test-task")
+	taskID := fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columnID, "test-task")
 	_, err = db.ExecContext(ctx, "UPDATE tasks SET assignee_id = ? WHERE id = ?", assigneeID, taskID)
 	require.NoError(t, err)
 

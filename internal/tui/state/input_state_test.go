@@ -11,6 +11,7 @@ import (
 // TestAppendChar_MaxLength ensures buffer at 100 chars rejects more input.
 // Edge case: User types continuously until reaching buffer limit.
 func TestAppendChar_MaxLength(t *testing.T) {
+	t.Parallel()
 	state := NewInputState()
 
 	// Fill buffer to exactly 100 characters
@@ -27,6 +28,7 @@ func TestAppendChar_MaxLength(t *testing.T) {
 // TestAppendChar_AtMaxLength ensures exactly at limit, one more char is rejected.
 // Edge case: Boundary condition at exactly maxLength.
 func TestAppendChar_AtMaxLength(t *testing.T) {
+	t.Parallel()
 	state := NewInputState()
 
 	// Add exactly 100 characters
@@ -46,6 +48,7 @@ func TestAppendChar_AtMaxLength(t *testing.T) {
 // TestBackspace_EmptyBuffer ensures backspace on empty string is safe.
 // Edge case: User presses backspace repeatedly when buffer is empty.
 func TestBackspace_EmptyBuffer(t *testing.T) {
+	t.Parallel()
 	state := NewInputState()
 	state.Buffer = ""
 
@@ -65,6 +68,7 @@ func TestBackspace_EmptyBuffer(t *testing.T) {
 // TestIsEmpty_WhitespaceOnly ensures detection of whitespace-only input.
 // Edge case: User enters only spaces/tabs, then submits.
 func TestIsEmpty_WhitespaceOnly(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name   string
 		buffer string
@@ -94,6 +98,7 @@ func TestIsEmpty_WhitespaceOnly(t *testing.T) {
 // TestTrimmedBuffer_LeadingTrailingSpaces ensures input sanitization works.
 // Edge case: User enters text with leading/trailing whitespace.
 func TestTrimmedBuffer_LeadingTrailingSpaces(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name   string
 		buffer string

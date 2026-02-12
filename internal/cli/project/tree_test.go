@@ -8,6 +8,7 @@ import (
 )
 
 func TestMarkBlockingChains(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		tree     *models.TaskTreeNode
@@ -201,6 +202,7 @@ func TestMarkBlockingChains(t *testing.T) {
 }
 
 func TestMarkBlockingChainsEmptyTree(t *testing.T) {
+	t.Parallel()
 	// Test with a node that has no children
 	node := &models.TaskTreeNode{
 		ID:           1,
@@ -217,6 +219,7 @@ func TestMarkBlockingChainsEmptyTree(t *testing.T) {
 }
 
 func TestMarkBlockingChainsSelfBlocking(t *testing.T) {
+	t.Parallel()
 	// Test with a root node that is itself blocking (edge case)
 	node := &models.TaskTreeNode{
 		ID:           1,

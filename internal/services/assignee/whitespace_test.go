@@ -7,11 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/database"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 )
 
 func TestCreateTrimsWhitespace(t *testing.T) {
-	db := testutil.SetupTestDB(t)
+	t.Parallel()
+	db := fixtures.SetupTestDB(t)
 
 	svc, err := NewService(db, database.SQLite)
 	require.NoError(t, err)
@@ -34,7 +35,8 @@ func TestCreateTrimsWhitespace(t *testing.T) {
 }
 
 func TestGetByNameTrimsWhitespace(t *testing.T) {
-	db := testutil.SetupTestDB(t)
+	t.Parallel()
+	db := fixtures.SetupTestDB(t)
 
 	svc, err := NewService(db, database.SQLite)
 	require.NoError(t, err)

@@ -19,6 +19,7 @@ func makeTestDetail(id int) *models.TaskDetail {
 // TestNewTaskDetailCache_DefaultSize ensures default cache size is used for invalid maxSize.
 // Edge case: User provides zero or negative maxSize.
 func TestNewTaskDetailCache_DefaultSize(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		maxSize  int
@@ -40,6 +41,7 @@ func TestNewTaskDetailCache_DefaultSize(t *testing.T) {
 // TestSet_LRUEvictionOrder verifies oldest entries are evicted first when cache exceeds maxSize.
 // This tests Task 221: Fill cache to max, add one more, verify FIRST entry was evicted.
 func TestSet_LRUEvictionOrder(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		maxSize        int
@@ -104,6 +106,7 @@ func TestSet_LRUEvictionOrder(t *testing.T) {
 // TestGet_UpdatesLRUPosition verifies that accessing a cached item moves it to most recently used.
 // This tests Task 222: Add A, B, C; access A; add D; verify B was evicted (not A).
 func TestGet_UpdatesLRUPosition(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 
 	// Add entries A(1), B(2), C(3) in that order
@@ -133,6 +136,7 @@ func TestGet_UpdatesLRUPosition(t *testing.T) {
 
 // TestGet_UpdatesLRUPosition_MultipleAccesses tests multiple Get() calls affecting eviction order.
 func TestGet_UpdatesLRUPosition_MultipleAccesses(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 
 	// Add A, B, C
@@ -161,6 +165,7 @@ func TestGet_UpdatesLRUPosition_MultipleAccesses(t *testing.T) {
 // TestSet_NilDetail ensures setting nil detail is a no-op.
 // Edge case: Caller passes nil detail, should not add entry or cause panic.
 func TestSet_NilDetail(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 
 	// Set a valid entry first
@@ -182,6 +187,7 @@ func TestSet_NilDetail(t *testing.T) {
 
 // TestSet_UpdateExisting ensures updating existing entry refreshes LRU position.
 func TestSet_UpdateExisting(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 
 	// Add A, B, C
@@ -211,6 +217,7 @@ func TestSet_UpdateExisting(t *testing.T) {
 // TestInvalidate_NonExistentID ensures Invalidate on non-existent ID is safe (no panic).
 // Edge case: Caller tries to invalidate an ID that was never cached or already evicted.
 func TestInvalidate_NonExistentID(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 
 	// Add some entries
@@ -227,6 +234,7 @@ func TestInvalidate_NonExistentID(t *testing.T) {
 
 // TestInvalidate_EmptyCache ensures Invalidate on empty cache is safe.
 func TestInvalidate_EmptyCache(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 
 	// Invalidate on empty cache (should not panic)
@@ -239,6 +247,7 @@ func TestInvalidate_EmptyCache(t *testing.T) {
 
 // TestCachedIDs_EmptyCache ensures CachedIDs returns empty slice on empty cache.
 func TestCachedIDs_EmptyCache(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 
 	ids := cache.CachedIDs()
@@ -249,6 +258,7 @@ func TestCachedIDs_EmptyCache(t *testing.T) {
 
 // TestCachedIDs_ReturnsCopy ensures returned slice is a copy that can be safely modified.
 func TestCachedIDs_ReturnsCopy(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 	cache.Set(1, makeTestDetail(1))
 	cache.Set(2, makeTestDetail(2))
@@ -265,6 +275,7 @@ func TestCachedIDs_ReturnsCopy(t *testing.T) {
 
 // TestSetBatch_EmptyMap ensures SetBatch with empty map is safe.
 func TestSetBatch_EmptyMap(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 
 	// Add an entry first
@@ -282,6 +293,7 @@ func TestSetBatch_EmptyMap(t *testing.T) {
 
 // TestSetBatch_NilMap ensures SetBatch with nil map is safe.
 func TestSetBatch_NilMap(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 	cache.Set(1, makeTestDetail(1))
 
@@ -293,6 +305,7 @@ func TestSetBatch_NilMap(t *testing.T) {
 
 // TestGet_NonExistentID ensures Get on non-existent ID returns nil, false.
 func TestGet_NonExistentID(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 	cache.Set(1, makeTestDetail(1))
 
@@ -304,6 +317,7 @@ func TestGet_NonExistentID(t *testing.T) {
 
 // TestGet_EmptyCache ensures Get on empty cache returns nil, false.
 func TestGet_EmptyCache(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 
 	detail, found := cache.Get(1)
@@ -314,6 +328,7 @@ func TestGet_EmptyCache(t *testing.T) {
 
 // TestHas_EmptyCache ensures Has on empty cache returns false.
 func TestHas_EmptyCache(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 
 	assert.False(t, cache.Has(1), "Has(1) on empty cache should return false")
@@ -321,6 +336,7 @@ func TestHas_EmptyCache(t *testing.T) {
 
 // TestClear_EmptyCache ensures Clear on empty cache is safe.
 func TestClear_EmptyCache(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 
 	// Clear empty cache (should not panic)
@@ -332,6 +348,7 @@ func TestClear_EmptyCache(t *testing.T) {
 
 // TestClear_WithEntries ensures Clear removes all entries.
 func TestClear_WithEntries(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 	cache.Set(1, makeTestDetail(1))
 	cache.Set(2, makeTestDetail(2))
@@ -347,6 +364,7 @@ func TestClear_WithEntries(t *testing.T) {
 
 // TestInvalidate_RemovesFromOrder ensures Invalidate properly removes from LRU order.
 func TestInvalidate_RemovesFromOrder(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(3)
 
 	// Add A, B, C
@@ -375,6 +393,7 @@ func TestInvalidate_RemovesFromOrder(t *testing.T) {
 
 // TestCachedIDs_PreservesLRUOrder ensures CachedIDs returns IDs in LRU order (oldest first).
 func TestCachedIDs_PreservesLRUOrder(t *testing.T) {
+	t.Parallel()
 	cache := NewTaskDetailCache(5)
 
 	// Add in order: 1, 2, 3

@@ -8,11 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/database"
-	"github.com/thenoetrevino/paso/internal/testutil"
+	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 )
 
 func TestGetOrCreate(t *testing.T) {
-	db := testutil.SetupTestDB(t)
+	t.Parallel()
+	db := fixtures.SetupTestDB(t)
 
 	svc, err := NewService(db, database.SQLite)
 	require.NoError(t, err)
@@ -31,7 +32,8 @@ func TestGetOrCreate(t *testing.T) {
 }
 
 func TestGetOrCreateConcurrent(t *testing.T) {
-	db := testutil.SetupTestDB(t)
+	t.Parallel()
+	db := fixtures.SetupTestDB(t)
 
 	// SQLite in-memory DBs are per-connection; limit to one connection so all
 	// goroutines share the same schema and data.

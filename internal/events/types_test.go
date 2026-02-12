@@ -9,10 +9,12 @@ import (
 )
 
 func TestProtocolVersion(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 1, ProtocolVersion)
 }
 
 func TestEventTypes(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		eventType EventType
 		expected  string
@@ -28,6 +30,7 @@ func TestEventTypes(t *testing.T) {
 }
 
 func TestEvent_Creation(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	event := Event{
 		Type:       EventDatabaseChanged,
@@ -43,6 +46,7 @@ func TestEvent_Creation(t *testing.T) {
 }
 
 func TestSubscribeMessage_Creation(t *testing.T) {
+	t.Parallel()
 	// Test specific project subscription
 	msg := SubscribeMessage{ProjectID: 5}
 	assert.Equal(t, 5, msg.ProjectID)
@@ -53,6 +57,7 @@ func TestSubscribeMessage_Creation(t *testing.T) {
 }
 
 func TestMessage_EventMessage(t *testing.T) {
+	t.Parallel()
 	event := &Event{
 		Type:      EventDatabaseChanged,
 		ProjectID: 10,
@@ -72,6 +77,7 @@ func TestMessage_EventMessage(t *testing.T) {
 }
 
 func TestMessage_SubscribeMessage(t *testing.T) {
+	t.Parallel()
 	subscribe := &SubscribeMessage{ProjectID: 7}
 
 	msg := Message{
@@ -88,6 +94,7 @@ func TestMessage_SubscribeMessage(t *testing.T) {
 }
 
 func TestMessage_PingPong(t *testing.T) {
+	t.Parallel()
 	// Test ping message
 	pingMsg := Message{
 		Version: ProtocolVersion,
@@ -104,6 +111,7 @@ func TestMessage_PingPong(t *testing.T) {
 }
 
 func TestNotificationMsg_Levels(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		level   string
 		message string
