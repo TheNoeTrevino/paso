@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 	"github.com/thenoetrevino/paso/internal/config"
 )
 
@@ -80,6 +82,7 @@ func runRemove(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	fmt.Printf("✓ Database '%s' removed\n", name)
+	colorScheme := cli.GetColorScheme()
+	fmt.Print(styles.RenderSuccess(fmt.Sprintf("Database '%s' removed", name), colorScheme))
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 )
 
 // DeleteCmd returns the assignee delete subcommand
@@ -105,6 +106,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	fmt.Printf("✓ Assignee %d deleted successfully\n", assigneeID)
+	colorScheme := cli.GetColorScheme()
+	fmt.Print(styles.RenderSuccess(fmt.Sprintf("Assignee %d deleted successfully", assigneeID), colorScheme))
 	return nil
 }

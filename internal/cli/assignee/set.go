@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 	"github.com/thenoetrevino/paso/internal/config"
 )
 
@@ -80,6 +81,7 @@ func runSet(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	fmt.Printf("✓ Active assignee set to '%s'\n", name)
+	colorScheme := cli.GetColorScheme()
+	fmt.Print(styles.RenderSuccess(fmt.Sprintf("Active assignee set to '%s'", name), colorScheme))
 	return nil
 }
