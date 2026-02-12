@@ -135,6 +135,8 @@ func outputJSON(task *models.TaskDetail) error {
 				"id":   task.ColumnID,
 				"name": task.ColumnName,
 			},
+			"assignee":     task.AssigneeName,
+			"estimate":     task.Estimate,
 			"position":     task.Position,
 			"is_blocked":   task.IsBlocked,
 			"labels":       task.Labels,
@@ -190,6 +192,26 @@ func outputHuman(task *models.TaskDetail, colors colors.ColorScheme) error {
 	content.WriteString(fmt.Sprintf("%s %s\n",
 		styles.LabelStyle.Render("Column:"),
 		styles.ValueStyle.Render(task.ColumnName),
+	))
+
+	// Assignee
+	assigneeDisplay := "None"
+	if task.AssigneeName != nil && *task.AssigneeName != "" {
+		assigneeDisplay = *task.AssigneeName
+	}
+	content.WriteString(fmt.Sprintf("%s %s\n",
+		styles.LabelStyle.Render("Assignee:"),
+		styles.ValueStyle.Render(assigneeDisplay),
+	))
+
+	// Estimate
+	estimateDisplay := "None"
+	if task.Estimate != nil && *task.Estimate != "" {
+		estimateDisplay = *task.Estimate
+	}
+	content.WriteString(fmt.Sprintf("%s %s\n",
+		styles.LabelStyle.Render("Estimate:"),
+		styles.ValueStyle.Render(estimateDisplay),
 	))
 
 	// Timestamps

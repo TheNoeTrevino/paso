@@ -154,6 +154,12 @@ func runList(cmd *cobra.Command, args []string) error {
 			labelsStr = "-"
 		}
 
+		// Estimate display
+		estimateStr := "-"
+		if t.Estimate != nil && *t.Estimate != "" {
+			estimateStr = *t.Estimate
+		}
+
 		// Blocked indicator
 		blockedStr := ""
 		if t.IsBlocked {
@@ -165,6 +171,7 @@ func runList(cmd *cobra.Command, args []string) error {
 			t.Title,
 			t.PriorityDescription,
 			t.TypeDescription,
+			estimateStr,
 			labelsStr,
 			blockedStr,
 		})
@@ -178,7 +185,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	t := table.New().
 		Border(lipgloss.RoundedBorder()).
 		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("238"))).
-		Headers("ID", "TITLE", "PRIORITY", "TYPE", "LABELS", "").
+		Headers("ID", "TITLE", "PRIORITY", "TYPE", "EST", "LABELS", "").
 		Rows(rows...).
 		StyleFunc(func(row, col int) lipgloss.Style {
 			if row == table.HeaderRow {
@@ -193,8 +200,8 @@ func runList(cmd *cobra.Command, args []string) error {
 				}
 			}
 
-			// Blocked column (col 5)
-			if col == 5 && rows[row][5] != "" {
+			// Blocked column (col 6)
+			if col == 6 && rows[row][6] != "" {
 				return baseStyle.Bold(true).Foreground(lipgloss.Color("#FF5555"))
 			}
 

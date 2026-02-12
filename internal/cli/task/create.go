@@ -65,6 +65,7 @@ Examples:
 	cmd.Flags().IntP("blocks", "B", 0, "Task ID that is blocked by this task")
 	cmd.Flags().StringP("column", "c", "", "Column name (defaults to first column)")
 	cmd.Flags().StringP("assignee", "a", "", "Assignee name (defaults to active assignee)")
+	cmd.Flags().StringP("estimate", "e", "", "Time estimate (e.g. 2h, 30m, 1d)")
 
 	// Agent-friendly flags (REQUIRED on all commands)
 	cmd.Flags().BoolP("json", "j", false, "Output in JSON format")
@@ -91,6 +92,7 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 	taskBlocks := args.GetInt("blocks", 0)
 	taskColumn := args.GetString("column", "")
 	taskAssignee := args.GetString("assignee", "")
+	taskEstimate := args.GetString("estimate", "")
 
 	// Initialize CLI first (uses injected instance from context if in test mode)
 	cliInstance, err := cli.GetCLIFromContext(ctx)
@@ -186,6 +188,7 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		PriorityID:  priorityID,
 		TypeID:      typeID,
 		AssigneeID:  assigneeID,
+		Estimate:    taskEstimate,
 	}
 
 	// Add parent relationship if specified
