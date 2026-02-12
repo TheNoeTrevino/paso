@@ -115,6 +115,8 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleQuickEditPriority()
 	case km.EditAssignee:
 		return m.handleQuickEditAssignee()
+	case km.EditEstimate:
+		return m.handleQuickEditEstimate()
 	case "/":
 		return m.handleEnterSearch()
 	}
@@ -562,5 +564,13 @@ func (m Model) handleQuickEditAssignee() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.UIState.Mode = state.AssigneePickerMode
+	return m, nil
+}
+
+func (m Model) handleQuickEditEstimate() (tea.Model, tea.Cmd) {
+	if !m.initEstimateInput(state.NormalMode) {
+		return m, nil
+	}
+	m.UIState.Mode = state.EstimateInputMode
 	return m, nil
 }

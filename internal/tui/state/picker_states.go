@@ -12,6 +12,7 @@ type PickerStates struct {
 	RelationType *RelationTypePickerState // Picker for selecting relationship types (blocking, related, etc.)
 	Status       *StatusPickerState       // Picker for selecting task status/column
 	Assignee     *AssigneePickerState     // Picker for selecting task assignee
+	Estimate     *EstimateInputState      // Input for entering task time estimate
 }
 
 // NewPickerStates creates a new PickerStates instance with all pickers initialized.
@@ -25,5 +26,6 @@ func NewPickerStates() *PickerStates {
 		RelationType: NewRelationTypePickerState(),
 		Status:       NewStatusPickerState(),
 		Assignee:     NewAssigneePickerState(),
+		Estimate:     NewEstimateInputState(),
 	}
 }

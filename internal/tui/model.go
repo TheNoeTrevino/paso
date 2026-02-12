@@ -1077,6 +1077,48 @@ func (m *Model) initAssigneePicker(mode state.Mode) bool {
 	return true
 }
 
+// initEstimateInput initializes the estimate input for both form and board modes.
+// - In form mode: Uses FormEstimate from form state (edit or create)
+// - In board mode: Uses estimate from the currently selected task (quick edit)
+//
+// Returns false if there's no selected task in board mode.
+func (m *Model) initEstimateInput(mode state.Mode) bool {
+	var estimateValue string
+	var taskID int
+
+	if mode == state.TicketFormMode {
+		// Form mode: use FormEstimate
+		estimateValue = m.Forms.Form.FormEstimate
+	} else {
+		// Board mode: use current task's estimate
+		task := m.getCurrentTask()
+		if task == nil {
+			m.UI.Notification.Add(state.LevelError, "No task selected")
+			return false
+		}
+		if task.Estimate != nil {
+			estimateValue = *task.Estimate
+		} else {
+			estimateValue = ""
+		}
+		taskID = task.ID
+		m.Forms.Form.EditingTaskID = taskID // Set for board mode updates
+	}
+
+	m.Pickers.Estimate.SetBuffer(estimateValue)
+	m.Pickers.Estimate.SetError("")
+	m.Pickers.Estimate.ReturnMode = mode
+
+	return true
+}
+
+// initEstimateInputForForm initializes the estimate input for use in task form mode.
+// Pre-fills the input buffer with the current estimate value.
+// Deprecated: Use initEstimateInput(state.TicketFormMode) instead.
+func (m *Model) initEstimateInputForForm() {
+	m.initEstimateInput(state.TicketFormMode)
+}
+
 // buildListViewRows creates a flat list of all tasks with their column names.
 // The list is sorted according to the current sort settings in listViewState.
 func (m Model) buildListViewRows() []renderers.ListViewRow {

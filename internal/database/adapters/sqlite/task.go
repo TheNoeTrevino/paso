@@ -237,6 +237,10 @@ func (a *Adapter) UpdateTaskAssignee(ctx context.Context, arg types.UpdateTaskAs
 	return a.queries.UpdateTaskAssignee(ctx, toGeneratedUpdateTaskAssigneeParams(arg))
 }
 
+func (a *Adapter) UpdateTaskEstimate(ctx context.Context, arg types.UpdateTaskEstimateParams) error {
+	return a.queries.UpdateTaskEstimate(ctx, toGeneratedUpdateTaskEstimateParams(arg))
+}
+
 func (a *Adapter) UpdateTaskType(ctx context.Context, arg types.UpdateTaskTypeParams) error {
 	return a.queries.UpdateTaskType(ctx, toGeneratedUpdateTaskTypeParams(arg))
 }

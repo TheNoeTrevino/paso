@@ -1,5 +1,9 @@
 package task
 
+import (
+	"strings"
+)
+
 // validateCreateTaskRequest validates all fields for creating a task.
 // All required fields must pass validation.
 func validateCreateTaskRequest(req CreateTaskRequest) error {
@@ -17,6 +21,11 @@ func validateCreateTaskRequest(req CreateTaskRequest) error {
 	}
 	if err := validateTypeID(req.TypeID); err != nil {
 		return err
+	}
+	if req.Estimate != "" {
+		if err := ValidateEstimate(&req.Estimate); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -147,4 +156,24 @@ func validateCommentMessage(message string) error {
 		return ErrCommentMessageTooLong
 	}
 	return nil
+}
+
+// ValidateEstimate validates a time estimate string.
+// Valid formats: "1h", "2d", "3w", "4m", "1w2d3h", etc.
+// Invalid formats: "1x", "abc", "d1", "1", "1ww", "1d2d", empty strings
+// nil or empty estimates are allowed (estimates are optional).
+func ValidateEstimate(estimate *string) error {
+	// nil or empty estimates are allowed (optional field)
+	if estimate == nil || *estimate == "" {
+		return nil
+	}
+
+	est := strings.TrimSpace(*estimate)
+	if est == "" {
+		return nil
+	}
+
+	// Delegate to ParseEstimate for validation
+	_, err := ParseEstimate(est)
+	return err
 }

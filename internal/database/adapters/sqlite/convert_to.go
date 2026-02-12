@@ -105,6 +105,13 @@ func toGeneratedUpdateTaskAssigneeParams(t types.UpdateTaskAssigneeParams) gener
 	}
 }
 
+func toGeneratedUpdateTaskEstimateParams(t types.UpdateTaskEstimateParams) generated_sqlite.UpdateTaskEstimateParams {
+	return generated_sqlite.UpdateTaskEstimateParams{
+		Estimate: t.Estimate.ToSQLNullString(),
+		ID:       t.ID,
+	}
+}
+
 func toGeneratedCreateProjectRecordParams(t types.CreateProjectRecordParams) generated_sqlite.CreateProjectRecordParams {
 	return generated_sqlite.CreateProjectRecordParams{
 		Name:        t.Name,

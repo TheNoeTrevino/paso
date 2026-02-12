@@ -155,6 +155,12 @@ func renderDetailMetadata(task *models.TaskDetail, width int) string {
 		parts = append(parts, assigneeLine)
 	}
 
+	// Estimate
+	if task.Estimate != nil && *task.Estimate != "" {
+		estimateLine := labelStyle.Render("Estimate: ") + *task.Estimate
+		parts = append(parts, estimateLine)
+	}
+
 	// Blocked status
 	if task.IsBlocked {
 		blockedStyle := lipgloss.NewStyle().

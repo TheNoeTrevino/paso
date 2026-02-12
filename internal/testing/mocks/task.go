@@ -47,6 +47,7 @@ type MockTaskService struct {
 	CreateTaskErr         error
 	UpdateTaskErr         error
 	UpdateTaskAssigneeErr error
+	UpdateTaskEstimateErr error
 	DeleteTaskErr         error
 
 	// TaskWriter result injection
@@ -256,6 +257,15 @@ func (m *MockTaskService) UpdateTaskAssignee(_ context.Context, taskID int, assi
 		"assigneeID": assigneeID,
 	})
 	return m.UpdateTaskAssigneeErr
+}
+
+func (m *MockTaskService) UpdateTaskEstimate(_ context.Context, taskID int, estimate *string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.recordCall("UpdateTaskEstimate", taskID, map[string]interface{}{
+		"estimate": estimate,
+	})
+	return m.UpdateTaskEstimateErr
 }
 
 func (m *MockTaskService) DeleteTask(_ context.Context, taskID int) error {

@@ -35,6 +35,9 @@ const (
 	PickerAssigneeWidth  = 40
 	PickerAssigneeHeight = 14 // dynamic content + chrome
 
+	EstimateInputWidth  = 40
+	EstimateInputHeight = 12 // input field + error + help text + chrome
+
 	PickerStatusWidth           = 40 // height is dynamic based on column count
 	PickerStatusChromeHeight    = 6  // title, spacing, footer
 	PickerColorDefaultItemCount = 10

@@ -439,7 +439,6 @@ TEXT EDITING (Title/Description)
   Shift+Enter     New line
   Alt+Enter       New line
   Ctrl+J          New line
-  Ctrl+E          Open editor
   Enter           Next field
 
 COMMENTS SECTION
@@ -456,6 +455,8 @@ QUICK ACTIONS
   Ctrl+C          Select child tasks
   Ctrl+R          Change priority
   Ctrl+T          Change task type
+  Ctrl+A          Change assignee
+  Ctrl+E          Change estimate
 
 HELP
   Ctrl+/          Toggle this help menu
@@ -693,6 +694,24 @@ func (m Model) renderAssigneePickerLayer() *lipgloss.Layer {
 				m.Pickers.Assignee.SelectedID(),
 				m.Pickers.Assignee.Cursor(),
 				true, // showClearOpt
+				width-layers.PickerBorderPaddingWidth,
+			)
+		},
+		boxStyle: components.LabelPickerBoxStyle,
+	})
+}
+
+// renderEstimateInputLayer renders the estimate input overlay as a layer
+func (m Model) renderEstimateInputLayer() *lipgloss.Layer {
+	return m.createPickerLayer(pickerLayerConfig{
+		dimensionStrategy: fixedPickerDimensions{
+			width:  layers.EstimateInputWidth,
+			height: layers.EstimateInputHeight,
+		},
+		contentRenderer: func(width, height int) string {
+			return renderers.RenderEstimateInput(
+				m.Pickers.Estimate.Buffer(),
+				m.Pickers.Estimate.Error(),
 				width-layers.PickerBorderPaddingWidth,
 			)
 		},

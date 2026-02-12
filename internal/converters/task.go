@@ -148,6 +148,10 @@ func TaskSummaryFromRowToModel(row types.GetTaskSummariesByProjectRow) *models.T
 		name := row.AssigneeName.String
 		summary.AssigneeName = &name
 	}
+	if row.Estimate.Valid {
+		estimate := row.Estimate.String
+		summary.Estimate = &estimate
+	}
 
 	return summary
 }
@@ -180,6 +184,10 @@ func ReadyTaskSummaryFromRowToModel(row types.GetReadyTaskSummariesByProjectRow)
 		name := row.AssigneeName.String
 		summary.AssigneeName = &name
 	}
+	if row.Estimate.Valid {
+		estimate := row.Estimate.String
+		summary.Estimate = &estimate
+	}
 
 	return summary
 }
@@ -211,6 +219,10 @@ func FilteredTaskSummaryFromRowToModel(row types.GetTaskSummariesByProjectFilter
 	if row.AssigneeName.Valid {
 		name := row.AssigneeName.String
 		summary.AssigneeName = &name
+	}
+	if row.Estimate.Valid {
+		estimate := row.Estimate.String
+		summary.Estimate = &estimate
 	}
 
 	return summary

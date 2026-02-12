@@ -36,6 +36,7 @@ const (
 	SearchMode                             // Vim-style search mode (/)
 	StatusPickerMode                       // Status picker popup for list view
 	AssigneePickerMode                     // Assignee picker popup
+	EstimateInputMode                      // Estimate input overlay
 	TaskFormHelpMode                       // Help screen for task form shortcuts
 	DatabaseSelectMode                     // Selecting from existing database connections
 	DatabaseCreateMode                     // Creating a new database connection (huh form)
@@ -70,6 +71,7 @@ func (m Mode) UsesLayers() bool {
 		RelationTypePickerMode,
 		StatusPickerMode,
 		AssigneePickerMode,
+		EstimateInputMode,
 		DiscardConfirmMode,
 		NormalMode,
 		SearchMode,

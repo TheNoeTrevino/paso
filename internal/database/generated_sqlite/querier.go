@@ -210,6 +210,8 @@ type Querier interface {
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) error
 	// Updates a task's assignee
 	UpdateTaskAssignee(ctx context.Context, arg UpdateTaskAssigneeParams) error
+	// Updates a task's estimate
+	UpdateTaskEstimate(ctx context.Context, arg UpdateTaskEstimateParams) error
 	// Updates a task's priority level
 	UpdateTaskPriority(ctx context.Context, arg UpdateTaskPriorityParams) error
 	// Updates a task's type classification

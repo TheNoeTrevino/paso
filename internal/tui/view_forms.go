@@ -89,6 +89,16 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 	}
 	parts = append(parts, "")
 
+	// Estimate section
+	parts = append(parts, labelHeaderStyle.Render("Estimate"))
+	if m.Forms.Form.FormEstimate != "" {
+		estimateStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight))
+		parts = append(parts, estimateStyle.Render(m.Forms.Form.FormEstimate))
+	} else {
+		parts = append(parts, subtleStyle.Render("none"))
+	}
+	parts = append(parts, "")
+
 	// Created timestamp
 	parts = append(parts, labelHeaderStyle.Render("Created"))
 	parts = append(parts, createdStr)

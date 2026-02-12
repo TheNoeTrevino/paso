@@ -11,6 +11,7 @@ Available Commands:
   create      Create a new task
   delete      Delete a task
   done        Move a task to the completed column
+  estimate    Set a time estimate on a task
   help        Help about any command
   in-progress Move a task to in-progress or list in-progress tasks
   link        Link tasks with relationships

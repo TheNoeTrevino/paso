@@ -63,6 +63,7 @@ type GetReadyTaskSummariesByProjectRow struct {
 	Title               string
 	ColumnID            int64
 	Position            int64
+	Estimate            NullString
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
@@ -107,6 +108,7 @@ type GetTaskDetailRow struct {
 	TicketNumber        NullInt64
 	CreatedAt           NullTime
 	UpdatedAt           NullTime
+	Estimate            NullString
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
@@ -146,6 +148,7 @@ type GetTaskSummariesByColumnRow struct {
 	Title               string
 	ColumnID            int64
 	Position            int64
+	Estimate            NullString
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
@@ -162,6 +165,7 @@ type GetTaskSummariesByProjectRow struct {
 	Title               string
 	ColumnID            int64
 	Position            int64
+	Estimate            NullString
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
@@ -179,6 +183,7 @@ type GetTaskSummariesByProjectFilteredRow struct {
 	Title               string
 	ColumnID            int64
 	Position            int64
+	Estimate            NullString
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
