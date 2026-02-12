@@ -60,8 +60,6 @@ type FormState struct {
 	FormAssigneeID          int       // Task assignee ID (0 means unassigned)
 	FormAssigneeName        string    // Task assignee display name
 	FormEstimate            string    // Task time estimate (e.g., "2h", "1d")
-	FormEstimateFocused     bool      // Whether the estimate input field is focused
-	FormEstimateError       string    // Real-time validation error message for estimate
 
 	// Task form initial values (for change detection)
 	InitialFormTitle       string // Initial title value when form was created
@@ -199,8 +197,6 @@ func (s *FormState) ClearTaskForm() {
 	s.FormAssigneeID = 0
 	s.FormAssigneeName = ""
 	s.FormEstimate = ""
-	s.FormEstimateFocused = false
-	s.FormEstimateError = ""
 }
 
 // IsTaskFormActive returns true if a task form is currently active.

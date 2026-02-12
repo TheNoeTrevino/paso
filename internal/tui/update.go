@@ -367,6 +367,8 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateTypePicker(msg)
 	case state.AssigneePickerMode:
 		return m.updateAssigneePicker(msg)
+	case state.EstimateInputMode:
+		return m.updateEstimateInput(msg)
 	case state.RelationTypePickerMode:
 		return m.updateRelationTypePicker(msg)
 	case state.DatabaseSelectMode:

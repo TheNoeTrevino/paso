@@ -126,17 +126,6 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 		return
 	}
 
-	// update estimate
-	estimate := m.Forms.Form.FormEstimate
-	var estimatePtr *string
-	if estimate != "" {
-		estimatePtr = &estimate
-	}
-	if err := m.App.TaskService.UpdateTaskEstimate(ctx, taskID, estimatePtr); err != nil {
-		slog.Error("failed to updating estimate", "error", err)
-		m.UI.Notification.Add(state.LevelError, "Error updating estimate")
-	}
-
 	// update labels - need to handle this through detaching old and attaching new
 	// First, get current labels
 	taskDetail, err := m.App.TaskService.GetTaskDetail(ctx, taskID)
@@ -419,32 +408,6 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Handle estimate field input when focused
-	if m.Forms.Form.FormEstimateFocused {
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
-			switch keyMsg.String() {
-			case "esc", "enter", "tab":
-				m.Forms.Form.FormEstimateFocused = false
-				return m, nil
-			case "backspace":
-				if len(m.Forms.Form.FormEstimate) > 0 {
-					m.Forms.Form.FormEstimate = m.Forms.Form.FormEstimate[:len(m.Forms.Form.FormEstimate)-1]
-					m.validateEstimateInput()
-				}
-				return m, nil
-			default:
-				// Only accept printable characters (single rune keys)
-				key := keyMsg.String()
-				if len(key) == 1 {
-					m.Forms.Form.FormEstimate += key
-					m.validateEstimateInput()
-					return m, nil
-				}
-				return m, nil
-			}
-		}
-	}
-
 	// Check for keyboard shortcuts before passing to form
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		switch keyMsg.String() {
@@ -507,8 +470,9 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "ctrl+e":
-			// Toggle estimate field focus
-			m.Forms.Form.FormEstimateFocused = !m.Forms.Form.FormEstimateFocused
+			// Open estimate input layer
+			m.initEstimateInputForForm()
+			m.UIState.Mode = state.EstimateInputMode
 			return m, nil
 
 		case "ctrl+h":
@@ -1022,19 +986,4 @@ func (m Model) handleOpenCommentsView() (tea.Model, tea.Cmd) {
 	m.UIState.Mode = state.CommentsViewMode
 
 	return m, nil
-}
-
-// validateEstimateInput runs real-time validation on the estimate input field
-// and updates the error message in form state
-func (m *Model) validateEstimateInput() {
-	estimate := m.Forms.Form.FormEstimate
-	if estimate == "" {
-		m.Forms.Form.FormEstimateError = ""
-		return
-	}
-	if err := taskService.ValidateEstimate(&estimate); err != nil {
-		m.Forms.Form.FormEstimateError = "Invalid format (use e.g. 2h, 1d, 1w2d)"
-	} else {
-		m.Forms.Form.FormEstimateError = ""
-	}
 }

@@ -831,6 +831,101 @@ func (m Model) updateAssigneePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// updateEstimateInput handles keyboard input in the estimate input mode.
+// This provides a text input overlay for entering time estimates on tasks.
+func (m Model) updateEstimateInput(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	switch keyMsg.String() {
+	case "esc":
+		m.UIState.Mode = m.Pickers.Estimate.ReturnMode
+		m.Pickers.Estimate.Reset()
+		return m, nil
+
+	case "backspace":
+		buffer := m.Pickers.Estimate.Buffer()
+		if len(buffer) > 0 {
+			buffer = buffer[:len(buffer)-1]
+			m.Pickers.Estimate.SetBuffer(buffer)
+			// Real-time validation
+			if buffer == "" {
+				m.Pickers.Estimate.SetError("")
+			} else if err := taskservice.ValidateEstimate(&buffer); err != nil {
+				m.Pickers.Estimate.SetError("Invalid format (use e.g. 2h, 1d, 1w2d)")
+			} else {
+				m.Pickers.Estimate.SetError("")
+			}
+		}
+		return m, nil
+
+	case "enter":
+		buffer := m.Pickers.Estimate.Buffer()
+
+		// Validate if non-empty
+		if buffer != "" {
+			if err := taskservice.ValidateEstimate(&buffer); err != nil {
+				m.Pickers.Estimate.SetError("Invalid format (use e.g. 2h, 1d, 1w2d)")
+				return m, nil // Don't close on validation error
+			}
+		}
+
+		// Update form state
+		m.Forms.Form.FormEstimate = buffer
+
+		// If editing existing task, save immediately to database
+		if m.Forms.Form.EditingTaskID != 0 {
+			ctx, cancel := m.DBContext()
+			defer cancel()
+
+			var estimatePtr *string
+			if buffer != "" {
+				estimatePtr = &buffer
+			}
+
+			err := m.App.TaskService.UpdateTaskEstimate(ctx, m.Forms.Form.EditingTaskID, estimatePtr)
+			if err != nil {
+				slog.Error("failed to update task estimate", "error", err)
+				m.UI.Notification.Add(state.LevelError, "Failed to update estimate")
+			} else {
+				if buffer == "" {
+					m.UI.Notification.Add(state.LevelInfo, "Estimate cleared")
+				} else {
+					m.UI.Notification.Add(state.LevelInfo, "Estimate set to "+buffer)
+				}
+				m.reloadCurrentColumnTasks()
+			}
+		} else {
+			// New task - just show notification
+			if buffer == "" {
+				m.UI.Notification.Add(state.LevelInfo, "Estimate cleared")
+			} else {
+				m.UI.Notification.Add(state.LevelInfo, "Estimate set to "+buffer)
+			}
+		}
+
+		m.UIState.Mode = m.Pickers.Estimate.ReturnMode
+		return m, nil
+
+	default:
+		// Accept single printable characters
+		key := keyMsg.String()
+		if len(key) == 1 {
+			buffer := m.Pickers.Estimate.Buffer() + key
+			m.Pickers.Estimate.SetBuffer(buffer)
+			// Real-time validation
+			if err := taskservice.ValidateEstimate(&buffer); err != nil {
+				m.Pickers.Estimate.SetError("Invalid format (use e.g. 2h, 1d, 1w2d)")
+			} else {
+				m.Pickers.Estimate.SetError("")
+			}
+		}
+		return m, nil
+	}
+}
+
 // updateRelationTypePicker handles keyboard input in the relation type picker mode
 func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	keyMsg, ok := msg.(tea.KeyMsg)

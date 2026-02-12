@@ -1077,6 +1077,14 @@ func (m *Model) initAssigneePicker(mode state.Mode) bool {
 	return true
 }
 
+// initEstimateInputForForm initializes the estimate input for use in task form mode.
+// Pre-fills the input buffer with the current estimate value.
+func (m *Model) initEstimateInputForForm() {
+	m.Pickers.Estimate.SetBuffer(m.Forms.Form.FormEstimate)
+	m.Pickers.Estimate.SetError("")
+	m.Pickers.Estimate.ReturnMode = state.TicketFormMode
+}
+
 // buildListViewRows creates a flat list of all tasks with their column names.
 // The list is sorted according to the current sort settings in listViewState.
 func (m Model) buildListViewRows() []renderers.ListViewRow {

@@ -203,7 +203,61 @@ func RenderLabelPicker(
 
 	// Help text
 	content.WriteString("\n")
-	content.WriteString(dimStyle.Render(components.PickerFooterToggleCreate) + "\n")
+	content.WriteString(dimStyle.Render(components.PickerFooterSelectConfirm) + "\n")
+
+	return content.String()
+}
+
+// RenderEstimateInput renders the estimate input overlay for entering time estimates
+func RenderEstimateInput(
+	buffer string,
+	errorMsg string,
+	width int,
+) string {
+	var content strings.Builder
+
+	// Title
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Highlight))
+	content.WriteString(titleStyle.Render("Estimate") + "\n\n")
+
+	// Subtitle
+	normalStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
+	content.WriteString(normalStyle.Render("Enter time estimate:") + "\n\n")
+
+	// Input field with border
+	inputStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(theme.Highlight)).
+		Padding(0, 1).
+		Width(width - 8).
+		MaxWidth(width - 8) // Prevent overflow
+
+	// Show the input buffer with a cursor indicator
+	displayText := buffer + "_"
+	if buffer == "" {
+		placeholderStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+		displayText = placeholderStyle.Render("e.g. 2h, 1d, 1w2d") + "_"
+	}
+	content.WriteString(inputStyle.Render(displayText) + "\n\n")
+
+	// Reserved space for error message (fixed skeleton - always 2 lines)
+	// Line 1: Error text or blank space
+	// Line 2: Blank space for visual breathing room
+	errorStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#EF4444")).
+		MaxWidth(width - 4). // Prevent error text overflow
+		Height(1)
+
+	if errorMsg != "" {
+		content.WriteString(errorStyle.Render(errorMsg) + "\n")
+	} else {
+		content.WriteString("\n") // Reserved blank line
+	}
+	content.WriteString("\n") // Breathing room
+
+	// Help text
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+	content.WriteString(dimStyle.Render("enter confirm • esc cancel"))
 
 	return content.String()
 }

@@ -91,19 +91,7 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 
 	// Estimate section
 	parts = append(parts, labelHeaderStyle.Render("Estimate"))
-	if m.Forms.Form.FormEstimateFocused {
-		cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight))
-		inputValue := m.Forms.Form.FormEstimate
-		if inputValue == "" {
-			parts = append(parts, cursorStyle.Render("▏")+" "+subtleStyle.Render("e.g. 2h, 1d, 1w2d"))
-		} else {
-			parts = append(parts, cursorStyle.Render(inputValue+"▏"))
-		}
-		if m.Forms.Form.FormEstimateError != "" {
-			errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444"))
-			parts = append(parts, errorStyle.Render(m.Forms.Form.FormEstimateError))
-		}
-	} else if m.Forms.Form.FormEstimate != "" {
+	if m.Forms.Form.FormEstimate != "" {
 		estimateStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight))
 		parts = append(parts, estimateStyle.Render(m.Forms.Form.FormEstimate))
 	} else {
