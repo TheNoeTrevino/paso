@@ -33,7 +33,6 @@ func TestReadyMoveTask(t *testing.T) {
 
 	t.Run("move task from In Progress to ready column - default output", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task in In Progress column
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Task to Move to Ready")
 
@@ -54,7 +53,6 @@ func TestReadyMoveTask(t *testing.T) {
 
 	t.Run("move task from Done to ready column - default output", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task in Done column
 		taskID := cli.CreateTestTask(t, db, doneColumnID, "Task from Done to Ready")
 
@@ -73,7 +71,6 @@ func TestReadyMoveTask(t *testing.T) {
 	})
 
 	t.Run("move task to ready column - quiet mode output", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create task in In Progress column
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Task for Quiet Mode")
@@ -95,7 +92,6 @@ func TestReadyMoveTask(t *testing.T) {
 	})
 
 	t.Run("move task to ready column - JSON mode output", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create task in In Progress column
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Task for JSON Mode")
@@ -127,7 +123,6 @@ func TestReadyMoveTask(t *testing.T) {
 
 	t.Run("verify column transition from Done to ready in JSON", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task in Done column
 		taskID := cli.CreateTestTask(t, db, doneColumnID, "Task from Done")
 
@@ -155,7 +150,6 @@ func TestReadyMoveTask(t *testing.T) {
 
 	t.Run("task already in ready column - warning to stderr", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task directly in ready column (Todo)
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Already in Ready Column")
 
@@ -180,7 +174,6 @@ func TestReadyMoveTask(t *testing.T) {
 
 	t.Run("task already in ready column - default output", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task directly in ready column (Todo)
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Already Ready")
 
@@ -203,7 +196,6 @@ func TestReadyMoveTask(t *testing.T) {
 	})
 
 	t.Run("verify task metadata preserved after move", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create task with full metadata in Done column
 		taskID := cli.CreateTestTask(t, db, doneColumnID, "Task with Metadata")
@@ -241,7 +233,6 @@ func TestReadyMoveTask(t *testing.T) {
 
 	t.Run("move task with labels - labels preserved", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task with labels
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Task With Labels")
 
@@ -275,7 +266,6 @@ func TestReadyMoveTask(t *testing.T) {
 
 	t.Run("move task with relationships - relationships preserved", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create parent and child tasks
 		parentTaskID := cli.CreateTestTask(t, db, inProgressColumnID, "Parent Task")
 		childTaskID := cli.CreateTestTask(t, db, inProgressColumnID, "Child Task")
@@ -307,7 +297,6 @@ func TestReadyMoveTask(t *testing.T) {
 
 	t.Run("move multiple tasks to ready column in sequence", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create multiple tasks in different columns
 		taskID1 := cli.CreateTestTask(t, db, inProgressColumnID, "Multi Task 1")
 		taskID2 := cli.CreateTestTask(t, db, doneColumnID, "Multi Task 2")
@@ -331,7 +320,6 @@ func TestReadyMoveTask(t *testing.T) {
 	})
 
 	t.Run("move task with blocking relationship preserved", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create blocker and blocked tasks
 		blockerTaskID := cli.CreateTestTask(t, db, doneColumnID, "Blocker Task")
@@ -364,7 +352,6 @@ func TestReadyMoveTask(t *testing.T) {
 
 	t.Run("move task with comments preserved", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task with comments
 		taskID := cli.CreateTestTask(t, db, doneColumnID, "Task With Comments")
 
@@ -394,7 +381,6 @@ func TestReadyMoveTask(t *testing.T) {
 	})
 
 	t.Run("verify position updated when moving to ready column", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create task in In Progress column
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Task for Position Test")
@@ -444,7 +430,6 @@ func TestReadyMoveTask_Errors(t *testing.T) {
 
 	t.Run("invalid task ID - non-numeric", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := task.ReadyMoveCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"not-a-number"})
 		cli.AssertExitError(t, err, 5) // ExitValidation
@@ -452,7 +437,6 @@ func TestReadyMoveTask_Errors(t *testing.T) {
 	})
 
 	t.Run("missing task ID argument", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		cmd := task.ReadyMoveCmd()
 
@@ -463,7 +447,6 @@ func TestReadyMoveTask_Errors(t *testing.T) {
 	})
 
 	t.Run("non-existent task ID", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		nonExistentTaskID := 999999
 
@@ -477,7 +460,6 @@ func TestReadyMoveTask_Errors(t *testing.T) {
 	})
 
 	t.Run("project with no ready column configured", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		newProjectID := cli.CreateTestProject(t, db, "Project Without Ready Column")
 		newColumnID := cli.CreateTestColumn(t, db, newProjectID, "Regular Column")
@@ -499,7 +481,6 @@ func TestReadyMoveTask_Errors(t *testing.T) {
 
 	t.Run("invalid task ID - zero", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := task.ReadyMoveCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -511,7 +492,6 @@ func TestReadyMoveTask_Errors(t *testing.T) {
 
 	t.Run("invalid task ID - negative", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := task.ReadyMoveCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -522,7 +502,6 @@ func TestReadyMoveTask_Errors(t *testing.T) {
 	})
 
 	t.Run("too many arguments", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create task for this test
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Task With Extra Args")
@@ -539,7 +518,6 @@ func TestReadyMoveTask_Errors(t *testing.T) {
 	})
 
 	t.Run("invalid flag combination - json and quiet", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create task for this test
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Task Flag Test")

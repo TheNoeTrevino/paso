@@ -446,7 +446,6 @@ func TestMergeActivities_EmptyInputs(t *testing.T) {
 	t.Parallel()
 	t.Run("empty events", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		comments := []models.Comment{
 			{ID: 1, TaskID: 1, Message: "Comment", Author: "user", CreatedAt: time.Now(), UpdatedAt: time.Now()},
 		}
@@ -456,7 +455,6 @@ func TestMergeActivities_EmptyInputs(t *testing.T) {
 
 	t.Run("empty comments", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		events := []models.TaskEvent{
 			{ID: 1, TaskID: 1, Content: "Event", Author: "system", CreatedAt: time.Now()},
 		}
@@ -465,7 +463,6 @@ func TestMergeActivities_EmptyInputs(t *testing.T) {
 	})
 
 	t.Run("both empty", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		merged := models.MergeActivities(nil, nil)
 		assert.Len(t, merged, 0, "Should have 0 activities")

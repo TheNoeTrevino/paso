@@ -31,7 +31,6 @@ func TestGetCurrentUsername(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
 			username := GetCurrentUsername()
 			assert.True(t, tt.validate(username))
 		})

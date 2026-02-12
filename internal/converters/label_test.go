@@ -172,8 +172,6 @@ func TestLabelToModel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			result := LabelToModel(tt.input)
 
 			require.NotNil(t, result)
@@ -238,8 +236,6 @@ func TestLabelsToModels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			result := LabelsToModels(tt.input)
 
 			require.NotNil(t, result)

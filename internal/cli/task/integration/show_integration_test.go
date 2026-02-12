@@ -24,7 +24,6 @@ func TestShowTask_Integration(t *testing.T) {
 
 	t.Run("show task with ID flag", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a task with description
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Test Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
@@ -46,7 +45,6 @@ func TestShowTask_Integration(t *testing.T) {
 
 	t.Run("show task with positional argument", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Another Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 2})
 
@@ -64,7 +62,6 @@ func TestShowTask_Integration(t *testing.T) {
 
 	t.Run("show task in quiet mode", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Quiet Task")
 
 		cmd := task.ShowCmd()
@@ -80,7 +77,6 @@ func TestShowTask_Integration(t *testing.T) {
 	})
 
 	t.Run("show task in JSON mode", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "JSON Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
@@ -113,7 +109,6 @@ func TestShowTask_Integration(t *testing.T) {
 
 	t.Run("show task with labels", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task with Labels")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 4})
 
@@ -137,7 +132,6 @@ func TestShowTask_Integration(t *testing.T) {
 	})
 
 	t.Run("show task with parent relationship", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create parent task
 		parentID := cli.CreateTestTask(t, db, todoColumnID, "Parent Task")
@@ -165,7 +159,6 @@ func TestShowTask_Integration(t *testing.T) {
 
 	t.Run("show task with blocking relationship", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create blocker task
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "Blocker Task")
 		cli.UpdateTaskFields(t, db, blockerID, map[string]any{"ticket_number": 7})
@@ -192,7 +185,6 @@ func TestShowTask_Integration(t *testing.T) {
 	})
 
 	t.Run("show task with all metadata", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Full Metadata Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
@@ -225,7 +217,6 @@ func TestShowTask_Integration(t *testing.T) {
 	})
 
 	t.Run("show task in JSON mode with complete structure", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Complete JSON Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
@@ -285,7 +276,6 @@ func TestShowTask_Integration(t *testing.T) {
 
 	t.Run("show task with multi-line description", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Multi-line Task")
 
 		multiLineDesc := `This is a multi-line description.
@@ -311,7 +301,6 @@ Each line should be properly displayed.`
 	})
 
 	t.Run("show task with position information", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create multiple tasks to verify position
 		task1ID := cli.CreateTestTask(t, db, todoColumnID, "Position Task 1")
@@ -341,7 +330,6 @@ Each line should be properly displayed.`
 
 	t.Run("show task with empty description", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "No Description Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 14})
 
@@ -359,7 +347,6 @@ Each line should be properly displayed.`
 	})
 
 	t.Run("show task with both parent and child relationships", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a task with both parent and child relationships
 		middleTaskID := cli.CreateTestTask(t, db, todoColumnID, "Middle Task")
@@ -397,8 +384,6 @@ func TestShowTask_Integration_Errors(t *testing.T) {
 
 	t.Run("missing task ID", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		cmd := task.ShowCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
 		cli.AssertExitError(t, err, rootcli.ExitUsage)
@@ -407,8 +392,6 @@ func TestShowTask_Integration_Errors(t *testing.T) {
 
 	t.Run("invalid task ID 'abc'", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		cmd := task.ShowCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"abc"})
 		cli.AssertExitError(t, err, rootcli.ExitUsage)
@@ -417,8 +400,6 @@ func TestShowTask_Integration_Errors(t *testing.T) {
 
 	t.Run("non-existent task ID 999999", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		cmd := task.ShowCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--id", "999999"})
 		cli.AssertExitError(t, err, rootcli.ExitNotFound)
@@ -427,8 +408,6 @@ func TestShowTask_Integration_Errors(t *testing.T) {
 
 	t.Run("negative task ID -1", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		cmd := task.ShowCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"-1"})
 		assert.Error(t, err)

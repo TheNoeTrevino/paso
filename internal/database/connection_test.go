@@ -137,7 +137,6 @@ func TestSanitizeConnectionString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
 			result := sanitizeConnectionString(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -195,7 +194,6 @@ func TestParseConnectionString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			t.Parallel()
 			result, err := ParseConnectionString(tt.input)
 			if tt.wantError {
@@ -296,7 +294,6 @@ func TestParseURLConnectionString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			t.Parallel()
 			result, err := parseURLConnectionString(tt.input)
 			if tt.wantError {
@@ -400,7 +397,6 @@ func TestParseKeyValueConnectionString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			t.Parallel()
 			result, err := parseKeyValueConnectionString(tt.input)
 			if tt.wantError {

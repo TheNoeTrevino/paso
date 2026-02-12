@@ -22,7 +22,6 @@ func TestGitLink_PositionalArguments(t *testing.T) {
 
 	t.Run("link project with positional project ID only (uses current branch)", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		projectID := cli.CreateTestProject(t, db, "Test Project")
 
 		cmd := project.GitLinkCmd()
@@ -56,7 +55,6 @@ func TestGitLink_FlagArguments(t *testing.T) {
 	})
 
 	t.Run("link project with --id flag only (uses current branch)", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		projectID := cli.CreateTestProject(t, db, "Flag Test Project")
 
@@ -92,7 +90,6 @@ func TestGitLink_ErrorCases(t *testing.T) {
 
 	t.Run("invalid project ID returns error", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := project.GitLinkCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -105,7 +102,6 @@ func TestGitLink_ErrorCases(t *testing.T) {
 	})
 
 	t.Run("too many arguments returns error", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		cmd := project.GitLinkCmd()
 
@@ -130,7 +126,6 @@ func TestGitLink_ForceFlag(t *testing.T) {
 
 	t.Run("force flag transfers branch from one project to another", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		t.Skip("Skipping: requires valid git branch to exist")
 	})
 }
@@ -144,7 +139,6 @@ func TestGitLink_JSONOutput(t *testing.T) {
 	})
 
 	t.Run("jSON output contains expected fields", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		mockGit.Branches["test-branch"] = true
 

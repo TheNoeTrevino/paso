@@ -28,7 +28,6 @@ func TestDeleteTask_Integration(t *testing.T) {
 
 	t.Run("delete task with force flag", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a task to delete
 		taskID := cli.CreateTestTask(t, db, columnID, "Task to Delete")
 
@@ -53,7 +52,6 @@ func TestDeleteTask_Integration(t *testing.T) {
 
 	t.Run("delete task with quiet flag", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a task to delete
 		taskID := cli.CreateTestTask(t, db, columnID, "Task to Delete Quietly")
 
@@ -76,7 +74,6 @@ func TestDeleteTask_Integration(t *testing.T) {
 	})
 
 	t.Run("delete task with json flag", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a task to delete
 		taskID := cli.CreateTestTask(t, db, columnID, "Task to Delete with JSON")
@@ -109,7 +106,6 @@ func TestDeleteTask_Integration(t *testing.T) {
 	})
 
 	t.Run("delete task with parent-child relationships", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create parent and child tasks
 		parentID := cli.CreateTestTask(t, db, columnID, "Parent Task")
@@ -159,7 +155,6 @@ func TestDeleteTask_Integration(t *testing.T) {
 
 	t.Run("delete task with blocking relationships", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create tasks with blocking relationship
 		blockerID := cli.CreateTestTask(t, db, columnID, "Blocker Task")
 		blockedID := cli.CreateTestTask(t, db, columnID, "Blocked Task")
@@ -200,7 +195,6 @@ func TestDeleteTask_Integration(t *testing.T) {
 	})
 
 	t.Run("delete task with labels", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a task
 		taskID := cli.CreateTestTask(t, db, columnID, "Task with Labels")
@@ -249,7 +243,6 @@ func TestDeleteTask_Integration(t *testing.T) {
 
 	t.Run("delete multiple tasks", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create multiple tasks
 		taskIDs := make([]int, 3)
 		for i := 0; i < 3; i++ {
@@ -279,7 +272,6 @@ func TestDeleteTask_Integration(t *testing.T) {
 	})
 
 	t.Run("delete task with comments", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a task
 		taskID := cli.CreateTestTask(t, db, columnID, "Task with Comments")
@@ -320,7 +312,6 @@ func TestDeleteTask_Integration(t *testing.T) {
 	})
 
 	t.Run("delete task with complex relationships", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a complex task structure:
 		// - Task with labels, comments, and both parent and child relationships
@@ -394,8 +385,6 @@ func TestDeleteTask_Integration_Errors(t *testing.T) {
 
 	t.Run("missing task ID", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		cmd := task.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--force"})
 		assert.Error(t, err)
@@ -403,8 +392,6 @@ func TestDeleteTask_Integration_Errors(t *testing.T) {
 
 	t.Run("invalid task ID 'abc'", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		cmd := task.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"abc", "--force"})
 		cli.AssertExitError(t, err, rootcli.ExitValidation)
@@ -413,8 +400,6 @@ func TestDeleteTask_Integration_Errors(t *testing.T) {
 
 	t.Run("non-existent ID 999999", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		cmd := task.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"999999", "--force"})
 		cli.AssertExitError(t, err, rootcli.ExitNotFound)
@@ -423,8 +408,6 @@ func TestDeleteTask_Integration_Errors(t *testing.T) {
 
 	t.Run("negative task ID -1", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		cmd := task.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"-1", "--force"})
 		assert.Error(t, err)

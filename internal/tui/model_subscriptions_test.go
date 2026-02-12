@@ -125,7 +125,6 @@ func TestRefreshMsg_HandlesProjectZero(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
 			// Test the condition that's in the actual RefreshMsg handler:
 			// if msg.ProjectID == 0 || msg.ProjectID == project.ID
 			shouldAccept := tc.msgProjectID == 0 || tc.msgProjectID == currentProjectID
@@ -173,7 +172,6 @@ func TestRefreshMsg_IgnoresWrongProject(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run("case", func(t *testing.T) {
-			t.Parallel()
 			t.Parallel()
 			shouldAccept := tc.msgProject == 0 || tc.msgProject == tc.currentProject
 			shouldIgnore := !shouldAccept

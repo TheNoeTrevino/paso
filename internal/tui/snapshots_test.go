@@ -96,7 +96,6 @@ func TestSnapshots(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
 			db := fixtures.SetupTestDB(t)
 
 			m := tt.setup(t, db)
@@ -517,7 +516,6 @@ func TestSnapshotRegressions(t *testing.T) {
 
 	for _, name := range snapshotNames {
 		t.Run("verify_"+name, func(t *testing.T) {
-			t.Parallel()
 			t.Parallel()
 			_, err := helper.ReadSnapshot(name)
 			if err != nil {

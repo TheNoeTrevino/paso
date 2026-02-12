@@ -107,8 +107,6 @@ func TestCreateColumn_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			db := fixtures.SetupTestDB(t)
 
 			projectID := tt.projectID
@@ -389,8 +387,6 @@ func TestUpdateColumnName_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			db := fixtures.SetupTestDB(t)
 
 			columnID := tt.columnID
@@ -468,8 +464,6 @@ func TestDeleteColumn_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			db := fixtures.SetupTestDB(t)
 
 			columnID := tt.columnID
@@ -904,8 +898,6 @@ func TestCreateColumn_InvalidAfterID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			db := fixtures.SetupTestDB(t)
 
 			projectID := tt.setupFn(db)

@@ -28,7 +28,6 @@ func TestUpdateTask_Integration(t *testing.T) {
 
 	t.Run("update title only", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a task first
 		taskID := cli.CreateTestTask(t, db, columnID, "Original Title")
 
@@ -57,7 +56,6 @@ func TestUpdateTask_Integration(t *testing.T) {
 
 	t.Run("update description only", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a task first
 		taskID := cli.CreateTestTask(t, db, columnID, "Original Title")
 
@@ -82,7 +80,6 @@ func TestUpdateTask_Integration(t *testing.T) {
 	})
 
 	t.Run("update priority to trivial", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a task first with default priority
 		taskID := cli.CreateTestTask(t, db, columnID, "Task Title")
@@ -111,7 +108,6 @@ func TestUpdateTask_Integration(t *testing.T) {
 
 	t.Run("update priority to low", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Task Title")
 
 		cmd := task.UpdateCmd()
@@ -137,7 +133,6 @@ func TestUpdateTask_Integration(t *testing.T) {
 	})
 
 	t.Run("update priority to medium", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Task Title")
 
@@ -165,7 +160,6 @@ func TestUpdateTask_Integration(t *testing.T) {
 
 	t.Run("update priority to high", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Task Title")
 
 		cmd := task.UpdateCmd()
@@ -192,7 +186,6 @@ func TestUpdateTask_Integration(t *testing.T) {
 
 	t.Run("update priority to critical", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Task Title")
 
 		cmd := task.UpdateCmd()
@@ -218,7 +211,6 @@ func TestUpdateTask_Integration(t *testing.T) {
 	})
 
 	t.Run("update multiple fields at once", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a task first
 		taskID := cli.CreateTestTask(t, db, columnID, "Original Title")
@@ -251,7 +243,6 @@ func TestUpdateTask_Integration(t *testing.T) {
 
 	t.Run("quiet mode output", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a task first
 		taskID := cli.CreateTestTask(t, db, columnID, "Test Task")
 
@@ -272,7 +263,6 @@ func TestUpdateTask_Integration(t *testing.T) {
 	})
 
 	t.Run("jSON mode output", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a task first
 		taskID := cli.CreateTestTask(t, db, columnID, "Test Task")
@@ -299,7 +289,6 @@ func TestUpdateTask_Integration(t *testing.T) {
 
 	t.Run("default human-readable output", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a task first
 		taskID := cli.CreateTestTask(t, db, columnID, "Test Task")
 
@@ -316,7 +305,6 @@ func TestUpdateTask_Integration(t *testing.T) {
 	})
 
 	t.Run("verify unchanged fields remain intact", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a task with specific values
 		taskID := cli.CreateTestTask(t, db, columnID, "Original Title")
@@ -357,7 +345,6 @@ func TestUpdateTask_Integration(t *testing.T) {
 
 	t.Run("update empty description", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a task with a description
 		taskID := cli.CreateTestTask(t, db, columnID, "Task Title")
 
@@ -384,7 +371,6 @@ func TestUpdateTask_Integration(t *testing.T) {
 	})
 
 	t.Run("update title and description separately preserves both", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a task
 		taskID := cli.CreateTestTask(t, db, columnID, "Original Title")
@@ -427,7 +413,6 @@ func TestUpdateTask_Integration_Errors(t *testing.T) {
 
 	t.Run("error with non-existent task ID", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := task.UpdateCmd()
 
 		// Use a task ID that doesn't exist
@@ -442,7 +427,6 @@ func TestUpdateTask_Integration_Errors(t *testing.T) {
 
 	t.Run("error with negative task ID", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := task.UpdateCmd()
 
 		// "-1" is interpreted by cobra as a flag, causing an unknown flag error
@@ -456,7 +440,6 @@ func TestUpdateTask_Integration_Errors(t *testing.T) {
 	})
 
 	t.Run("error with zero task ID", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		cmd := task.UpdateCmd()
 

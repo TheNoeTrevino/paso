@@ -45,7 +45,6 @@ func TestCreateCenteredLayerWithContent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
 			layer := CreateCenteredLayer(tt.content, tt.screenWidth, tt.screenHeight)
 
 			require.NotNil(t, layer)
@@ -149,7 +148,6 @@ func TestCalculatePickerDimensions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			t.Parallel()
 			width, height := CalculatePickerDimensions(
 				tt.itemCount,
@@ -288,7 +286,6 @@ func TestLayerMultipleDimensions(t *testing.T) {
 
 	for _, dims := range screenDimensions {
 		t.Run("dimension", func(t *testing.T) {
-			t.Parallel()
 			t.Parallel()
 			width, height := dims[0], dims[1]
 			layer := CreateCenteredLayer("Test", width, height)

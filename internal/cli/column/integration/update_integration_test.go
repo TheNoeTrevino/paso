@@ -23,7 +23,6 @@ func TestUpdateColumn_Integration(t *testing.T) {
 
 	t.Run("update column name only", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Original Name")
 
@@ -47,7 +46,6 @@ func TestUpdateColumn_Integration(t *testing.T) {
 
 	t.Run("enable ready flag (holds_ready_tasks)", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Test Column")
 
@@ -70,7 +68,6 @@ func TestUpdateColumn_Integration(t *testing.T) {
 	})
 
 	t.Run("enable completed flag (holds_completed_tasks)", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Test Column")
@@ -96,7 +93,6 @@ func TestUpdateColumn_Integration(t *testing.T) {
 
 	t.Run("enable in-progress flag (holds_in_progress_tasks)", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Test Column")
 
@@ -119,7 +115,6 @@ func TestUpdateColumn_Integration(t *testing.T) {
 	})
 
 	t.Run("update name and in-progress flag together", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a separate test project to avoid conflicts with other tests' in-progress flags
 		testProjectID := cliutil.CreateTestProject(t, db, "Test Project for In-Progress")
@@ -148,7 +143,6 @@ func TestUpdateColumn_Integration(t *testing.T) {
 
 	t.Run("update name and completed flag together with force", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Original Name")
 
@@ -176,7 +170,6 @@ func TestUpdateColumn_Integration(t *testing.T) {
 
 	t.Run("quiet mode output (no output)", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Test Column")
 
@@ -192,7 +185,6 @@ func TestUpdateColumn_Integration(t *testing.T) {
 	})
 
 	t.Run("jSON mode output", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Test Column")
@@ -220,7 +212,6 @@ func TestUpdateColumn_Integration(t *testing.T) {
 
 	t.Run("default human-readable output", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Test Column")
 
@@ -238,7 +229,6 @@ func TestUpdateColumn_Integration(t *testing.T) {
 	})
 
 	t.Run("verify unchanged fields remain intact", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a separate test project to avoid conflicts
 		testProjectID := cliutil.CreateTestProject(t, db, "Test Project for Unchanged Fields")
@@ -274,7 +264,6 @@ func TestUpdateColumn_Integration(t *testing.T) {
 
 	t.Run("jSON output includes column data", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Original Name")
 
@@ -301,7 +290,6 @@ func TestUpdateColumn_Integration(t *testing.T) {
 	})
 
 	t.Run("update same column multiple times sequentially", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Initial Name")
@@ -344,7 +332,6 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 
 	t.Run("update column name to same name", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Original Name")
 
@@ -367,7 +354,6 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("update column name with special characters", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Original Name")
@@ -393,7 +379,6 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 
 	t.Run("update column name with unicode characters", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Original Name")
 
@@ -417,7 +402,6 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("update column name with maximum length", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Original Name")
@@ -444,7 +428,6 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 
 	t.Run("ready flag toggles state appropriately", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Test Column")
 
@@ -466,7 +449,6 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("combined name and in-progress flag updates", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create a test column
 		testColumnID := cliutil.CreateTestColumn(t, db, projectID, "Original")

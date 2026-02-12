@@ -33,7 +33,6 @@ func TestNewTaskDetailCache_DefaultSize(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
 			cache := NewTaskDetailCache(tt.maxSize)
 			assert.Equal(t, tt.wantSize, cache.maxSize)
 		})
@@ -83,7 +82,6 @@ func TestSet_LRUEvictionOrder(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			t.Parallel()
 			cache := NewTaskDetailCache(tt.maxSize)
 

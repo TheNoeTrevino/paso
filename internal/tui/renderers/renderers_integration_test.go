@@ -136,7 +136,6 @@ func TestRenderListViewDifferentSorts(t *testing.T) {
 	for _, sortField := range sorts {
 		t.Run("sort", func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
 			output := RenderListView(rows, 0, 0, sortField, state.SortAsc, 100, 20)
 
 			assert.NotEmpty(t, output)

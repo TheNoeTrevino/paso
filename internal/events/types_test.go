@@ -124,7 +124,6 @@ func TestNotificationMsg_Levels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.level, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
 			notif := NotificationMsg{
 				Level:   tt.level,
 				Message: tt.message,

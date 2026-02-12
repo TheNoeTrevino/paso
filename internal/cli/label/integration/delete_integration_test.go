@@ -20,7 +20,6 @@ func TestDeleteLabel(t *testing.T) {
 
 	t.Run("delete label with force flag", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		labelID := cli.CreateTestLabel(t, db, projectID, "to-delete", "#FF0000")
 		cmd := label.DeleteCmd()
 
@@ -41,7 +40,6 @@ func TestDeleteLabel(t *testing.T) {
 
 	t.Run("delete label with quiet flag", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		labelID := cli.CreateTestLabel(t, db, projectID, "quiet-delete", "#00FF00")
 		cmd := label.DeleteCmd()
 
@@ -60,7 +58,6 @@ func TestDeleteLabel(t *testing.T) {
 	})
 
 	t.Run("delete label with JSON output", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		labelID := cli.CreateTestLabel(t, db, projectID, "json-delete", "#0000FF")
 		cmd := label.DeleteCmd()
@@ -87,7 +84,6 @@ func TestDeleteLabel(t *testing.T) {
 	})
 
 	t.Run("delete multiple labels sequentially", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		labelID1 := cli.CreateTestLabel(t, db, projectID, "delete-1", "#111111")
 		labelID2 := cli.CreateTestLabel(t, db, projectID, "delete-2", "#222222")
@@ -118,7 +114,6 @@ func TestDeleteLabel_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("invalid label ID format", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		cmd := label.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{

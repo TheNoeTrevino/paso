@@ -85,7 +85,6 @@ func TestCreateLabel_Integration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
 			cmd := label.CreateCmd()
 			output, err := cli.ExecuteCLICommand(t, app, cmd, tt.flags)
 
@@ -112,7 +111,6 @@ func TestCreateLabel_ErrorCases(t *testing.T) {
 
 	t.Run("invalid project ID", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := label.CreateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--name", "test-label",
@@ -125,7 +123,6 @@ func TestCreateLabel_ErrorCases(t *testing.T) {
 
 	t.Run("invalid color format", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := label.CreateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--name", "bad-color",
@@ -137,7 +134,6 @@ func TestCreateLabel_ErrorCases(t *testing.T) {
 	})
 
 	t.Run("short hex color rejected", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		cmd := label.CreateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{

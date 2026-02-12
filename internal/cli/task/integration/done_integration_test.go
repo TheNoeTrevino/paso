@@ -29,7 +29,6 @@ func TestDoneTask_Integration(t *testing.T) {
 
 	t.Run("mark task as done - default output", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task in todo column
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task to Complete")
 
@@ -49,7 +48,6 @@ func TestDoneTask_Integration(t *testing.T) {
 	})
 
 	t.Run("mark task as done - quiet mode output", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create task in todo column
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task for Quiet Mode")
@@ -71,7 +69,6 @@ func TestDoneTask_Integration(t *testing.T) {
 	})
 
 	t.Run("mark task as done - JSON mode output", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create task in todo column
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task for JSON Mode")
@@ -103,7 +100,6 @@ func TestDoneTask_Integration(t *testing.T) {
 
 	t.Run("verify column transition from In Progress to Done", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task in In Progress column
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Task from In Progress")
 
@@ -131,7 +127,6 @@ func TestDoneTask_Integration(t *testing.T) {
 
 	t.Run("task already in completed column", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task directly in done column
 		taskID := cli.CreateTestTask(t, db, doneColumnID, "Already Done Task")
 
@@ -155,7 +150,6 @@ func TestDoneTask_Integration(t *testing.T) {
 	})
 
 	t.Run("multiple tasks marked done", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create multiple tasks in different columns
 		taskID1 := cli.CreateTestTask(t, db, todoColumnID, "Task 1 to Complete")
@@ -185,7 +179,6 @@ func TestDoneTask_Integration_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("invalid task ID - non-numeric", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		cmd := task.DoneCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"not-a-number"})

@@ -246,7 +246,6 @@ func TestTruncateSegments_EmptyTextSegments(t *testing.T) {
 
 	t.Run("single empty segment", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		segments := []Segment{
 			{Text: "", Render: func(t string) string { return t }},
 		}
@@ -255,7 +254,6 @@ func TestTruncateSegments_EmptyTextSegments(t *testing.T) {
 	})
 
 	t.Run("multiple segments with some empty", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		segments := []Segment{
 			{Text: "aaa", Render: func(t string) string { return t }},
@@ -269,7 +267,6 @@ func TestTruncateSegments_EmptyTextSegments(t *testing.T) {
 	})
 
 	t.Run("all segments empty", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		segments := []Segment{
 			{Text: "", Render: func(t string) string { return t }},
@@ -290,13 +287,11 @@ func TestTruncateSegments_VerySmallMaxWidth(t *testing.T) {
 
 	t.Run("maxWidth zero", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		result := TruncateSegments(segments, " ", 0, "#000000", "#888888")
 		assert.Equal(t, "", result)
 	})
 
 	t.Run("maxWidth negative", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		result := TruncateSegments(segments, " ", -1, "#000000", "#888888")
 		assert.Equal(t, "", result)
@@ -304,13 +299,11 @@ func TestTruncateSegments_VerySmallMaxWidth(t *testing.T) {
 
 	t.Run("maxWidth 1", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		result := TruncateSegments(segments, " ", 1, "#000000", "#888888")
 		assert.Contains(t, result, "...")
 	})
 
 	t.Run("maxWidth 2", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		result := TruncateSegments(segments, " ", 2, "#000000", "#888888")
 		assert.Contains(t, result, "...")
@@ -408,7 +401,6 @@ func TestTruncateTextToWidth(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
 			t.Parallel()
 			result := TruncateTextToWidth(tc.text, tc.maxWidth)
 			assert.Equal(t, tc.expected, result)

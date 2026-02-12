@@ -12,7 +12,6 @@ func TestParseFlagsToMap(t *testing.T) {
 	t.Parallel()
 	t.Run("parses string flags", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, args []string) {}}
 		cmd.Flags().String("name", "", "test name")
 		cmd.SetArgs([]string{"--name", "hello"})
@@ -23,7 +22,6 @@ func TestParseFlagsToMap(t *testing.T) {
 	})
 
 	t.Run("parses int flags", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, args []string) {}}
 		cmd.Flags().Int("count", 0, "test count")
@@ -36,7 +34,6 @@ func TestParseFlagsToMap(t *testing.T) {
 
 	t.Run("parses bool flags", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, args []string) {}}
 		cmd.Flags().Bool("verbose", false, "verbose output")
 		cmd.SetArgs([]string{"--verbose"})
@@ -47,7 +44,6 @@ func TestParseFlagsToMap(t *testing.T) {
 	})
 
 	t.Run("parses float64 flags", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, args []string) {}}
 		cmd.Flags().Float64("rate", 0.0, "rate")
@@ -60,7 +56,6 @@ func TestParseFlagsToMap(t *testing.T) {
 
 	t.Run("parses string slice flags", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, args []string) {}}
 		cmd.Flags().StringSlice("tags", nil, "tags")
 		cmd.SetArgs([]string{"--tags", "a,b,c"})
@@ -72,7 +67,6 @@ func TestParseFlagsToMap(t *testing.T) {
 
 	t.Run("parses int slice flags", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, args []string) {}}
 		cmd.Flags().IntSlice("ids", nil, "ids")
 		cmd.SetArgs([]string{"--ids", "1,2,3"})
@@ -83,7 +77,6 @@ func TestParseFlagsToMap(t *testing.T) {
 	})
 
 	t.Run("only includes explicitly set flags", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, args []string) {}}
 		cmd.Flags().String("set-flag", "", "set")
@@ -98,7 +91,6 @@ func TestParseFlagsToMap(t *testing.T) {
 	})
 
 	t.Run("parses int64 flags", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		cmd := &cobra.Command{Use: "test", Run: func(cmd *cobra.Command, args []string) {}}
 		cmd.Flags().Int64("big", 0, "big number")
@@ -121,18 +113,15 @@ func TestArguments_GetString(t *testing.T) {
 
 	t.Run("returns value when present", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		assert.Equal(t, "hello", args.GetString("name", "default"))
 	})
 
 	t.Run("returns default when missing", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		assert.Equal(t, "default", args.GetString("missing", "default"))
 	})
 
 	t.Run("returns default when wrong type", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		assert.Equal(t, "default", args.GetString("bad", "default"))
 	})
@@ -149,18 +138,15 @@ func TestArguments_GetInt(t *testing.T) {
 
 	t.Run("returns value when present", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		assert.Equal(t, 42, args.GetInt("count", 0))
 	})
 
 	t.Run("returns default when missing", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		assert.Equal(t, 99, args.GetInt("missing", 99))
 	})
 
 	t.Run("returns default when wrong type", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		assert.Equal(t, 0, args.GetInt("bad", 0))
 	})
@@ -177,18 +163,15 @@ func TestArguments_GetBool(t *testing.T) {
 
 	t.Run("returns value when present", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		assert.True(t, args.GetBool("verbose"))
 	})
 
 	t.Run("returns false when missing", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		assert.False(t, args.GetBool("missing"))
 	})
 
 	t.Run("returns false when wrong type", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		assert.False(t, args.GetBool("bad"))
 	})
@@ -205,18 +188,15 @@ func TestArguments_GetStringSlice(t *testing.T) {
 
 	t.Run("returns value when present", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		assert.Equal(t, []string{"a", "b"}, args.GetStringSlice("tags", nil))
 	})
 
 	t.Run("returns default when missing", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		assert.Equal(t, []string{"default"}, args.GetStringSlice("missing", []string{"default"}))
 	})
 
 	t.Run("returns default when wrong type", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		assert.Nil(t, args.GetStringSlice("bad", nil))
 	})
@@ -233,18 +213,15 @@ func TestArguments_GetIntSlice(t *testing.T) {
 
 	t.Run("returns value when present", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		assert.Equal(t, []int{1, 2, 3}, args.GetIntSlice("ids", nil))
 	})
 
 	t.Run("returns default when missing", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		assert.Equal(t, []int{99}, args.GetIntSlice("missing", []int{99}))
 	})
 
 	t.Run("returns default when wrong type", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		assert.Nil(t, args.GetIntSlice("bad", nil))
 	})
@@ -265,7 +242,6 @@ func TestCommand_WithMockHandler(t *testing.T) {
 	t.Parallel()
 	t.Run("executes handler and formats output", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		handler := &mockHandler{result: map[string]any{"id": 1}}
 		parseFlags := func(cmd *cobra.Command) error { return nil }
 
@@ -282,7 +258,6 @@ func TestCommand_WithMockHandler(t *testing.T) {
 	})
 
 	t.Run("returns error from handler", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		handler := &mockHandler{err: assert.AnError}
 		parseFlags := func(cmd *cobra.Command) error { return nil }
@@ -301,7 +276,6 @@ func TestCommand_WithMockHandler(t *testing.T) {
 	})
 
 	t.Run("returns error from parseFlags", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		handler := &mockHandler{result: "ok"}
 		parseFlags := func(cmd *cobra.Command) error { return assert.AnError }

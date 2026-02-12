@@ -77,8 +77,6 @@ func TestCreateColumn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			mockProject := mocks.NewMockProjectService()
 			mockColumn := mocks.NewMockColumnService()
 			if tt.setupMocks != nil {
@@ -197,8 +195,6 @@ func TestListColumn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			mockProject := mocks.NewMockProjectService()
 			mockColumn := mocks.NewMockColumnService()
 			if tt.setupMocks != nil {
@@ -286,8 +282,6 @@ func TestUpdateColumn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			mockColumn := mocks.NewMockColumnService()
 			if tt.setupMock != nil {
 				tt.setupMock(mockColumn)
@@ -382,8 +376,6 @@ func TestDeleteColumn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			mockColumn := mocks.NewMockColumnService()
 			mockTask := mocks.NewMockTaskService()
 			if tt.setupMocks != nil {

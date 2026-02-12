@@ -67,7 +67,6 @@ func TestGetAdjacentTaskIDs_SelectedColumnOutOfBounds(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
 			result := GetAdjacentTaskIDs(columns, tasks, tt.selectedCol, 0)
 			assert.Equal(t, commands.AdjacentTasks{}, result)
 		})
@@ -95,7 +94,6 @@ func TestGetAdjacentTaskIDs_SelectedTaskOutOfBounds(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			t.Parallel()
 			result := GetAdjacentTaskIDs(columns, tasks, 0, tt.selectedTask)
 			assert.Equal(t, commands.AdjacentTasks{}, result)

@@ -112,8 +112,6 @@ func TestCreateTask_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			env := setupTestEnv(t)
 			req := tt.args.req
 			// Setup database if needed
@@ -306,8 +304,6 @@ func TestUpdateTask_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			env := setupTestEnv(t)
 			taskID := tt.taskID
 			if tt.setupFn != nil {

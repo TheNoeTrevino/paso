@@ -96,8 +96,6 @@ func TestCreateLabel_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			db := fixtures.SetupTestDB(t)
 
 			projectID := tt.projectID
@@ -146,7 +144,6 @@ func TestCreateLabel_InvalidColor(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
 			t.Parallel()
 			req := CreateLabelRequest{
 				ProjectID: env.ProjectID,
@@ -427,8 +424,6 @@ func TestUpdateLabel_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			db := fixtures.SetupTestDB(t)
 
 			labelID := tt.labelID
@@ -509,8 +504,6 @@ func TestDeleteLabel_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			db := fixtures.SetupTestDB(t)
 
 			svc := newTestService(t, db)
@@ -600,8 +593,6 @@ func TestCreateLabel_InvalidLabelID_Errors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			db := fixtures.SetupTestDB(t)
 
 			svc := newTestService(t, db)
@@ -725,8 +716,6 @@ func TestCreateLabel_SpecialCharacters(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			db := fixtures.SetupTestDB(t)
 
 			projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
@@ -835,8 +824,6 @@ func TestUpdateLabel_InvalidLabelID_Errors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			db := fixtures.SetupTestDB(t)
 
 			svc := newTestService(t, db)
@@ -938,7 +925,6 @@ func TestUpdateLabel_InvalidColorFormats(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
 			req := UpdateLabelRequest{
 				ID:    created.ID,
 				Color: &tc.color,
@@ -1012,8 +998,6 @@ func TestDeleteLabel_InvalidLabelID_Errors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			db := fixtures.SetupTestDB(t)
 
 			svc := newTestService(t, db)
@@ -1091,8 +1075,6 @@ func TestCreateLabel_BoundaryValues(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			db := fixtures.SetupTestDB(t)
 
 			projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
@@ -1136,8 +1118,6 @@ func TestCreateLabel_ValidColorFormats(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			db := fixtures.SetupTestDB(t)
 
 			projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")

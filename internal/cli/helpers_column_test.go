@@ -32,7 +32,6 @@ func TestFindColumnByName_Found(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
 			col, err := FindColumnByName(columns, tt.searchName)
 			assert.NoError(t, err, "FindColumnByName should not return error for: %s", tt.searchName)
 			if col != nil {
@@ -60,7 +59,6 @@ func TestFindColumnByName_NotFound(t *testing.T) {
 
 	for _, searchName := range tests {
 		t.Run(searchName, func(t *testing.T) {
-			t.Parallel()
 			t.Parallel()
 			_, err := FindColumnByName(columns, searchName)
 			assert.Error(t, err)
@@ -109,7 +107,6 @@ func TestFormatAvailableColumns(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
 			result := FormatAvailableColumns(tt.columns)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -137,7 +134,6 @@ func TestGetCurrentColumnName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			t.Parallel()
 			result := GetCurrentColumnName(columns, tt.columnID)
 			assert.Equal(t, tt.expected, result)

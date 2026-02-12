@@ -25,7 +25,6 @@ func TestListLabels(t *testing.T) {
 
 	t.Run("list labels human-readable", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := label.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--project", fmt.Sprintf("%d", projectID),
@@ -43,7 +42,6 @@ func TestListLabels(t *testing.T) {
 	})
 
 	t.Run("list labels JSON output", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		cmd := label.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -69,7 +67,6 @@ func TestListLabels(t *testing.T) {
 
 	t.Run("list labels quiet mode", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := label.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--project", fmt.Sprintf("%d", projectID),
@@ -86,7 +83,6 @@ func TestListLabels(t *testing.T) {
 
 	t.Run("list labels empty project", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		emptyProjectID := cli.CreateTestProject(t, db, "Empty Project")
 		cmd := label.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -98,7 +94,6 @@ func TestListLabels(t *testing.T) {
 	})
 
 	t.Run("list labels empty project JSON", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		emptyProjectID := cli.CreateTestProject(t, db, "Empty JSON Project")
 		cmd := label.ListCmd()
@@ -118,7 +113,6 @@ func TestListLabels(t *testing.T) {
 	})
 
 	t.Run("list labels project isolation", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		otherProjectID := cli.CreateTestProject(t, db, "Other Project")
 		cli.CreateTestLabel(t, db, otherProjectID, "other-label", "#0000FF")
@@ -146,7 +140,6 @@ func TestListLabels_Errors(t *testing.T) {
 
 	t.Run("missing project flag calls os.Exit", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := label.ListCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
 		cli.AssertExitError(t, err, rootcli.ExitUsage)
@@ -154,7 +147,6 @@ func TestListLabels_Errors(t *testing.T) {
 	})
 
 	t.Run("invalid project flag value", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		cmd := label.ListCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{

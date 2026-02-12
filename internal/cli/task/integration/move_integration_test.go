@@ -47,7 +47,6 @@ func TestMoveTask_Integration(t *testing.T) {
 
 	t.Run("move to next column", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task in first column
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task for next move")
 
@@ -71,7 +70,6 @@ func TestMoveTask_Integration(t *testing.T) {
 	})
 
 	t.Run("move to previous column", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create task in third column
 		taskID := cli.CreateTestTask(t, db, column3ID, "Task for prev move")
@@ -97,7 +95,6 @@ func TestMoveTask_Integration(t *testing.T) {
 
 	t.Run("move to specific column by name", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task in first column
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task for name move")
 
@@ -118,7 +115,6 @@ func TestMoveTask_Integration(t *testing.T) {
 
 	t.Run("move with case-insensitive column name - lowercase", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task in first column
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task for case test 1")
 
@@ -138,7 +134,6 @@ func TestMoveTask_Integration(t *testing.T) {
 	})
 
 	t.Run("move with case-insensitive column name - uppercase", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create task in first column
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task for case test 2")
@@ -161,7 +156,6 @@ func TestMoveTask_Integration(t *testing.T) {
 
 	t.Run("move with case-insensitive column name - mixed case", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task in first column
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task for case test 3")
 
@@ -181,7 +175,6 @@ func TestMoveTask_Integration(t *testing.T) {
 	})
 
 	t.Run("quiet mode output", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create task in first column
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task for quiet mode")
@@ -204,7 +197,6 @@ func TestMoveTask_Integration(t *testing.T) {
 	})
 
 	t.Run("jSON mode output", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create task in first column
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task for JSON mode")
@@ -237,7 +229,6 @@ func TestMoveTask_Integration(t *testing.T) {
 
 	t.Run("verify position changes when moving between columns", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task in first column
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task for position test")
 
@@ -265,7 +256,6 @@ func TestMoveTask_Integration(t *testing.T) {
 
 	t.Run("move to same column - already in target", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Create task in first column
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task already in target")
 
@@ -285,7 +275,6 @@ func TestMoveTask_Integration(t *testing.T) {
 	})
 
 	t.Run("move multiple times in sequence", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create task in first column
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task for multiple moves")
@@ -346,7 +335,6 @@ func TestMoveTask_Integration_Errors(t *testing.T) {
 
 	t.Run("move to next column when already in last column", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, column3ID, "Task in last column")
 
 		cmd := task.MoveCmd()
@@ -360,7 +348,6 @@ func TestMoveTask_Integration_Errors(t *testing.T) {
 	})
 
 	t.Run("move to prev column when already in first column", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task in first column")
 
@@ -376,7 +363,6 @@ func TestMoveTask_Integration_Errors(t *testing.T) {
 
 	t.Run("move to non-existent column by name", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task for invalid column test")
 
 		cmd := task.MoveCmd()
@@ -390,7 +376,6 @@ func TestMoveTask_Integration_Errors(t *testing.T) {
 	})
 
 	t.Run("move non-existent task", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		nonExistentTaskID := 999999
 
@@ -406,7 +391,6 @@ func TestMoveTask_Integration_Errors(t *testing.T) {
 
 	t.Run("move without providing task ID flag", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := task.MoveCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -418,7 +402,6 @@ func TestMoveTask_Integration_Errors(t *testing.T) {
 	})
 
 	t.Run("move without providing target argument", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Create task for this test
 		taskID := cli.CreateTestTask(t, db, column1ID, "Task without target")

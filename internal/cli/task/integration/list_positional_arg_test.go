@@ -16,7 +16,6 @@ func TestListTask_PositionalArgVsFlag(t *testing.T) {
 	t.Parallel()
 	t.Run("positional arg and flag produce same JSON output", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Setup
 		db, app := cli.SetupCLITest(t)
 		defer func() {
@@ -67,7 +66,6 @@ func TestListTask_PositionalArgVsFlag(t *testing.T) {
 
 	t.Run("positional arg and flag produce same quiet output", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		// Setup
 		db, app := cli.SetupCLITest(t)
 		defer func() {
@@ -99,7 +97,6 @@ func TestListTask_PositionalArgVsFlag(t *testing.T) {
 	})
 
 	t.Run("positional arg and flag produce same human-readable output", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		// Setup
 		db, app := cli.SetupCLITest(t)
@@ -133,7 +130,6 @@ func TestListTask_PositionalArgVsFlag(t *testing.T) {
 	})
 
 	t.Run("positional arg takes precedence over flag", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		db, app := cli.SetupCLITest(t)
 		defer func() {
@@ -170,7 +166,6 @@ func TestListTask_PositionalArgVsFlag(t *testing.T) {
 
 	t.Run("invalid positional arg shows clear error", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		db, app := cli.SetupCLITest(t)
 		defer func() {
 			_ = db.Close()
@@ -183,7 +178,6 @@ func TestListTask_PositionalArgVsFlag(t *testing.T) {
 	})
 
 	t.Run("positional arg works for valid project", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		db, app := cli.SetupCLITest(t)
 		defer func() {
@@ -203,7 +197,6 @@ func TestListTask_PositionalArgVsFlag(t *testing.T) {
 	})
 
 	t.Run("empty args falls back to flag or git detection", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		db, app := cli.SetupCLITest(t)
 		defer func() {
@@ -230,7 +223,6 @@ func TestListTask_PositionalArgEdgeCases(t *testing.T) {
 	t.Parallel()
 	t.Run("multiple positional args not allowed", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		db, app := cli.SetupCLITest(t)
 		defer func() {
 			_ = db.Close()
@@ -244,7 +236,6 @@ func TestListTask_PositionalArgEdgeCases(t *testing.T) {
 	})
 
 	t.Run("positional arg with zero value", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		db, app := cli.SetupCLITest(t)
 		defer func() {
@@ -260,7 +251,6 @@ func TestListTask_PositionalArgEdgeCases(t *testing.T) {
 	})
 
 	t.Run("positional arg with negative value", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		db, app := cli.SetupCLITest(t)
 		defer func() {

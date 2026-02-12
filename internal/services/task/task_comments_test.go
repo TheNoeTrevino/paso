@@ -89,8 +89,6 @@ func TestCreateComment_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			env := setupTestEnv(t)
 			taskID := tt.taskID
 			if tt.setupFn != nil {
@@ -193,8 +191,6 @@ func TestUpdateComment_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
-
 			env := setupTestEnv(t)
 			commentID := tt.commentID
 			if tt.setupFn != nil {

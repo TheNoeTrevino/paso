@@ -20,7 +20,6 @@ func TestCreateTask_Errors(t *testing.T) {
 	// Task 29: Test Invalid Column ID
 	t.Run("create task with invalid column", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
 		cmd := task.CreateCmd()
 
 		// Attempt to create a task in a non-existent column
@@ -40,7 +39,6 @@ func TestCreateTask_Errors(t *testing.T) {
 	cli.CreateTestColumn(t, db, projectID, "Todo")
 
 	t.Run("create task missing title", func(t *testing.T) {
-		t.Parallel()
 		t.Parallel()
 		cmd := task.CreateCmd()
 

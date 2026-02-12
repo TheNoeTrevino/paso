@@ -209,7 +209,6 @@ func TestEventHandler_NotificationMsg_UpdatesConnectionState(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			t.Parallel()
 			m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
 			m.NotifyChan = make(chan events.NotificationMsg, 1)
 			m.ConnectionState = state.NewConnectionState(tt.initialStatus)
@@ -253,7 +252,6 @@ func TestEventHandler_ConnectionMessages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			t.Parallel()
 			m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
 			m.NotifyChan = make(chan events.NotificationMsg, 1)

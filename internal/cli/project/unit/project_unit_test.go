@@ -20,8 +20,6 @@ func TestCreateProject(t *testing.T) {
 
 	t.Run("create project", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		mockProject := mocks.NewMockProjectService()
 		mockProject.CreateProjectResult = &models.Project{
 			ID:        1,
@@ -43,8 +41,6 @@ func TestCreateProject(t *testing.T) {
 
 	t.Run("create project with --json", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		mockProject := mocks.NewMockProjectService()
 		mockProject.CreateProjectResult = &models.Project{
 			ID:        2,
@@ -71,8 +67,6 @@ func TestCreateProject(t *testing.T) {
 
 	t.Run("create project with --quiet", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		mockProject := mocks.NewMockProjectService()
 		mockProject.CreateProjectResult = &models.Project{
 			ID:        3,
@@ -91,8 +85,6 @@ func TestCreateProject(t *testing.T) {
 
 	t.Run("create project missing title", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		mockProject := mocks.NewMockProjectService()
 
 		_, err := cli.ExecuteCLICommandWithMocks(t, cli.MockServices{
@@ -111,8 +103,6 @@ func TestListProject(t *testing.T) {
 
 	t.Run("list projects", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		mockProject := mocks.NewMockProjectService()
 		mockProject.GetAllProjectsResult = []*models.Project{
 			{ID: 1, Name: "Project Alpha"},
@@ -132,8 +122,6 @@ func TestListProject(t *testing.T) {
 
 	t.Run("list projects with --json", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		mockProject := mocks.NewMockProjectService()
 		mockProject.GetAllProjectsResult = []*models.Project{
 			{ID: 1, Name: "Project Alpha"},
@@ -158,8 +146,6 @@ func TestListProject(t *testing.T) {
 
 	t.Run("list empty projects", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		mockProject := mocks.NewMockProjectService()
 		mockProject.GetAllProjectsResult = []*models.Project{}
 
@@ -178,8 +164,6 @@ func TestDeleteProject(t *testing.T) {
 
 	t.Run("delete project with --force", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		mockProject := mocks.NewMockProjectService()
 		mockProject.GetProjectByIDResult = &models.Project{ID: 1, Name: "Doomed Project"}
 		mockColumn := mocks.NewMockColumnService()
@@ -202,8 +186,6 @@ func TestDeleteProject(t *testing.T) {
 
 	t.Run("delete project with --json", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		mockProject := mocks.NewMockProjectService()
 		mockProject.GetProjectByIDResult = &models.Project{ID: 5, Name: "JSON Delete"}
 		mockColumn := mocks.NewMockColumnService()
@@ -228,8 +210,6 @@ func TestDeleteProject(t *testing.T) {
 
 	t.Run("delete non-existent project", func(t *testing.T) {
 		t.Parallel()
-		t.Parallel()
-
 		mockProject := mocks.NewMockProjectService()
 		mockProject.GetProjectByIDErr = fmt.Errorf("not found")
 		mockColumn := mocks.NewMockColumnService()
