@@ -3,6 +3,7 @@ package styles
 
 import (
 	"fmt"
+	"sync"
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/config/colors"
@@ -10,6 +11,8 @@ import (
 )
 
 var (
+	once sync.Once
+
 	// Card styles
 	CardStyle lipgloss.Style
 	CardWidth = 80
@@ -30,54 +33,56 @@ var (
 
 // Init initializes all CLI styles with the given color scheme
 func Init(colors colors.ColorScheme) {
-	CardStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color(colors.Accent)).
-		Padding(1, 2).
-		Width(CardWidth)
+	once.Do(func() {
+		CardStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(colors.Accent)).
+			Padding(1, 2).
+			Width(CardWidth)
 
-	TitleStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colors.Title))
+		TitleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(colors.Title))
 
-	SubtitleStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colors.Subtle))
+		SubtitleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(colors.Subtle))
 
-	LabelStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colors.Accent))
+		LabelStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(colors.Accent))
 
-	ValueStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colors.Normal))
+		ValueStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(colors.Normal))
 
-	SectionStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color(colors.Accent)).
-		Bold(true).
-		MarginTop(1)
+		SectionStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(colors.Accent)).
+			Bold(true).
+			MarginTop(1)
 
-	BlockedStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colors.ErrorFg)).
-		Background(lipgloss.Color(colors.ErrorBg)).
-		Padding(0, 1)
+		BlockedStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(colors.ErrorFg)).
+			Background(lipgloss.Color(colors.ErrorBg)).
+			Padding(0, 1)
 
-	SuccessStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colors.InfoFg)).
-		Background(lipgloss.Color(colors.InfoBg)).
-		Padding(0, 1)
+		SuccessStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(colors.InfoFg)).
+			Background(lipgloss.Color(colors.InfoBg)).
+			Padding(0, 1)
 
-	ErrorStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colors.ErrorFg)).
-		Background(lipgloss.Color(colors.ErrorBg)).
-		Padding(0, 1)
+		ErrorStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(colors.ErrorFg)).
+			Background(lipgloss.Color(colors.ErrorBg)).
+			Padding(0, 1)
 
-	WarningStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(colors.WarningFg)).
-		Background(lipgloss.Color(colors.WarningBg)).
-		Padding(0, 1)
+		WarningStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(colors.WarningFg)).
+			Background(lipgloss.Color(colors.WarningBg)).
+			Padding(0, 1)
+	})
 }
 
 // ColoredText renders text with a hex color
