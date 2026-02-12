@@ -56,6 +56,9 @@ type Client struct {
 
 	// Batcher shutdown timeout (configurable for tests)
 	batcherShutdownTimeout time.Duration
+
+	// ForceFlush support - used to synchronously flush pending events
+	flushReq chan chan error
 }
 
 // NewClient creates a new event client but does not connect.
@@ -85,6 +88,7 @@ func NewClient(socketPath string) (*Client, error) {
 		batcherDone:            make(chan struct{}),
 		writeDeadline:          5 * time.Second, // Default: 5 seconds
 		batcherShutdownTimeout: 100 * time.Millisecond,
+		flushReq:               make(chan chan error),
 	}, nil
 }
 
@@ -297,24 +301,27 @@ func (c *Client) startBatcher() {
 	var hasMultipleProjects bool
 
 	// Helper to flush pending events
-	flushPending := func() {
+	flushPending := func() error {
 		if pending {
 			batchProjectID := projectID
 			if hasMultipleProjects {
 				batchProjectID = 0
 			}
 
-			if err := c.sendToSocket(Event{
+			err := c.sendToSocket(Event{
 				Type:      EventDatabaseChanged,
 				ProjectID: batchProjectID,
 				Timestamp: time.Now(),
-			}); err != nil {
+			})
+			if err != nil {
 				if !isConnectionError(err) {
 					slog.Error("failed to send batched event", "error", err)
 				}
+				return err
 			}
 			pending = false
 		}
+		return nil
 	}
 
 	for {
@@ -361,6 +368,11 @@ func (c *Client) startBatcher() {
 
 		case <-ticker.C:
 			flushPending()
+
+		case respCh := <-c.flushReq:
+			// ForceFlush request - immediately flush and respond
+			err := flushPending()
+			respCh <- err
 		}
 	}
 }
@@ -636,4 +648,46 @@ func (c *Client) Close() error {
 		}
 	})
 	return err
+}
+
+// ForceFlush synchronously flushes any pending batched events.
+// This is useful in tests and during graceful shutdown to ensure all events are sent.
+// It blocks until the flush completes or the context is canceled.
+func (c *Client) ForceFlush(ctx context.Context) error {
+	if c == nil {
+		return nil
+	}
+
+	// Check if batcher is running
+	c.mu.Lock()
+	batcherRunning := c.batcherRunning
+	c.mu.Unlock()
+
+	if !batcherRunning {
+		// No batcher running, nothing to flush
+		return nil
+	}
+
+	// Create a response channel and send the flush request
+	respCh := make(chan error, 1)
+	select {
+	case c.flushReq <- respCh:
+		// Request sent successfully, wait for response
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-c.ctx.Done():
+		// Client is shutting down
+		return nil
+	}
+
+	// Wait for the flush to complete
+	select {
+	case err := <-respCh:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-c.ctx.Done():
+		// Client is shutting down
+		return nil
+	}
 }
