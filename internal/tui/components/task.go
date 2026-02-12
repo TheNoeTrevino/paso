@@ -98,6 +98,12 @@ func renderTaskSummaryMetadata(task *models.TaskSummary, bg string, maxWidth int
 		segments = append(segments, text.NewStyledSegment("@"+*task.AssigneeName, assigneeStyle, bg))
 	}
 
+	// Estimate
+	if task.Estimate != nil && *task.Estimate != "" {
+		estimateStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight))
+		segments = append(segments, text.NewStyledSegment(*task.Estimate, estimateStyle, bg))
+	}
+
 	// Blocked badge
 	if task.IsBlocked {
 		segments = append(segments, text.NewStyledSegment("blocked", BlockedStyle, bg))

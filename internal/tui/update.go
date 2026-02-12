@@ -474,6 +474,9 @@ func (m Model) handleTaskDetailForEdit(msg taskDetailForEditMsg) (tea.Model, tea
 	if msg.taskDetail.AssigneeName != nil {
 		m.Forms.Form.FormAssigneeName = *msg.taskDetail.AssigneeName
 	}
+	if msg.taskDetail.Estimate != nil {
+		m.Forms.Form.FormEstimate = *msg.taskDetail.Estimate
+	}
 
 	m.Forms.Form.FormConfirm = true
 	m.Forms.Form.EditingTaskID = msg.taskID

@@ -439,7 +439,6 @@ TEXT EDITING (Title/Description)
   Shift+Enter     New line
   Alt+Enter       New line
   Ctrl+J          New line
-  Ctrl+E          Open editor
   Enter           Next field
 
 COMMENTS SECTION
@@ -456,6 +455,8 @@ QUICK ACTIONS
   Ctrl+C          Select child tasks
   Ctrl+R          Change priority
   Ctrl+T          Change task type
+  Ctrl+A          Change assignee
+  Ctrl+E          Edit estimate
 
 HELP
   Ctrl+/          Toggle this help menu
