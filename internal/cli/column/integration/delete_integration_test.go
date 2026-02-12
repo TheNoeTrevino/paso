@@ -22,7 +22,6 @@ func TestDeleteColumn_Integration(t *testing.T) {
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	t.Run("delete column by ID", func(t *testing.T) {
-		t.Parallel()
 		// Create a new column to delete
 		columnID := cli.CreateTestColumn(t, db, projectID, "DeleteMe")
 
@@ -44,7 +43,6 @@ func TestDeleteColumn_Integration(t *testing.T) {
 	})
 
 	t.Run("delete column with --quiet flag", func(t *testing.T) {
-		t.Parallel()
 		// Create a new column to delete
 		columnID := cli.CreateTestColumn(t, db, projectID, "QuietDelete")
 
@@ -66,7 +64,6 @@ func TestDeleteColumn_Integration(t *testing.T) {
 	})
 
 	t.Run("delete column with --json flag", func(t *testing.T) {
-		t.Parallel()
 		// Create a new column to delete
 		columnID := cli.CreateTestColumn(t, db, projectID, "JSONDelete")
 
@@ -98,7 +95,6 @@ func TestDeleteColumn_Integration(t *testing.T) {
 	})
 
 	t.Run("delete column with --force flag (skip confirmation)", func(t *testing.T) {
-		t.Parallel()
 		// Create a new column to delete
 		columnID := cli.CreateTestColumn(t, db, projectID, "ForceDelete")
 
@@ -120,14 +116,12 @@ func TestDeleteColumn_Integration(t *testing.T) {
 	})
 
 	t.Run("delete column cannot delete if it contains tasks", func(t *testing.T) {
-		t.Parallel()
 		// Expected behavior:
 		// - The column service will move tasks to the first column before deleting
 		// - So this test scenario doesn't actually trigger an error anymore
 	})
 
 	t.Run("delete column - human readable output", func(t *testing.T) {
-		t.Parallel()
 		// Create a new column to delete
 		columnID := cli.CreateTestColumn(t, db, projectID, "HumanDelete")
 
@@ -149,7 +143,6 @@ func TestDeleteColumn_Integration(t *testing.T) {
 	})
 
 	t.Run("delete multiple columns sequentially", func(t *testing.T) {
-		t.Parallel()
 		// Create two columns
 		columnID1 := cli.CreateTestColumn(t, db, projectID, "Delete1")
 		columnID2 := cli.CreateTestColumn(t, db, projectID, "Delete2")
@@ -184,7 +177,6 @@ func TestDeleteColumn_Integration(t *testing.T) {
 	})
 
 	t.Run("dry-run mode does not delete column", func(t *testing.T) {
-		t.Parallel()
 		// Create a column
 		columnID := cli.CreateTestColumn(t, db, projectID, "DryRunTest")
 
@@ -208,7 +200,6 @@ func TestDeleteColumn_Integration(t *testing.T) {
 	})
 
 	t.Run("dry-run mode with JSON output", func(t *testing.T) {
-		t.Parallel()
 		// Create a column
 		columnID := cli.CreateTestColumn(t, db, projectID, "DryRunJSON")
 
@@ -245,7 +236,6 @@ func TestDeleteColumn_Integration_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("delete non-existent column", func(t *testing.T) {
-		t.Parallel()
 		cmd := column.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"99999",
@@ -256,7 +246,6 @@ func TestDeleteColumn_Integration_Errors(t *testing.T) {
 	})
 
 	t.Run("delete column - missing required ID argument", func(t *testing.T) {
-		t.Parallel()
 		cmd := column.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--quiet",
@@ -265,7 +254,6 @@ func TestDeleteColumn_Integration_Errors(t *testing.T) {
 	})
 
 	t.Run("delete column - zero column ID", func(t *testing.T) {
-		t.Parallel()
 		cmd := column.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"0",
@@ -276,7 +264,6 @@ func TestDeleteColumn_Integration_Errors(t *testing.T) {
 	})
 
 	t.Run("delete column - negative column ID", func(t *testing.T) {
-		t.Parallel()
 		// Cobra may interpret "-1" as a flag, so just assert error
 		cmd := column.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -287,7 +274,6 @@ func TestDeleteColumn_Integration_Errors(t *testing.T) {
 	})
 
 	t.Run("column ID as string instead of int", func(t *testing.T) {
-		t.Parallel()
 		cmd := column.DeleteCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"invalid",

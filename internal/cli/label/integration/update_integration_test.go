@@ -19,7 +19,6 @@ func TestUpdateLabel(t *testing.T) {
 	projectID := cli.CreateTestProject(t, db, "Test Project")
 
 	t.Run("update label name only", func(t *testing.T) {
-		t.Parallel()
 		labelID := cli.CreateTestLabel(t, db, projectID, "original", "#FF0000")
 		cmd := label.UpdateCmd()
 
@@ -40,7 +39,6 @@ func TestUpdateLabel(t *testing.T) {
 	})
 
 	t.Run("update label color only", func(t *testing.T) {
-		t.Parallel()
 		labelID := cli.CreateTestLabel(t, db, projectID, "color-test", "#FF0000")
 		cmd := label.UpdateCmd()
 
@@ -61,7 +59,6 @@ func TestUpdateLabel(t *testing.T) {
 	})
 
 	t.Run("update both name and color", func(t *testing.T) {
-		t.Parallel()
 		labelID := cli.CreateTestLabel(t, db, projectID, "both-test", "#FF0000")
 		cmd := label.UpdateCmd()
 
@@ -83,7 +80,6 @@ func TestUpdateLabel(t *testing.T) {
 	})
 
 	t.Run("update label JSON output", func(t *testing.T) {
-		t.Parallel()
 		labelID := cli.CreateTestLabel(t, db, projectID, "json-update", "#AABBCC")
 		cmd := label.UpdateCmd()
 
@@ -107,7 +103,6 @@ func TestUpdateLabel(t *testing.T) {
 	})
 
 	t.Run("update label human-readable output", func(t *testing.T) {
-		t.Parallel()
 		labelID := cli.CreateTestLabel(t, db, projectID, "human-update", "#DDEEFF")
 		cmd := label.UpdateCmd()
 
@@ -127,7 +122,6 @@ func TestUpdateLabel_ErrorCases(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
 
 	t.Run("invalid color format", func(t *testing.T) {
-		t.Parallel()
 		projectID := cli.CreateTestProject(t, db, "Color Test Project")
 		labelID := cli.CreateTestLabel(t, db, projectID, "color-test", "#FF0000")
 		cmd := label.UpdateCmd()
@@ -141,7 +135,6 @@ func TestUpdateLabel_ErrorCases(t *testing.T) {
 	})
 
 	t.Run("invalid label ID format", func(t *testing.T) {
-		t.Parallel()
 		cmd := label.UpdateCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"invalid",

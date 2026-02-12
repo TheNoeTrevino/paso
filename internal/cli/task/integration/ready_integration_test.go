@@ -28,7 +28,6 @@ func TestReadyTask_Integration(t *testing.T) {
 	cli.SetColumnHoldsReadyTasks(t, db, todoColumnID)
 
 	t.Run("list ready tasks in project - human-readable mode", func(t *testing.T) {
-		t.Parallel()
 		// Create tasks in ready column
 		taskID1 := cli.CreateTestTask(t, db, todoColumnID, "Ready Task 1")
 		taskID2 := cli.CreateTestTask(t, db, todoColumnID, "Ready Task 2")
@@ -48,7 +47,6 @@ func TestReadyTask_Integration(t *testing.T) {
 	})
 
 	t.Run("list ready tasks - no ready tasks found", func(t *testing.T) {
-		t.Parallel()
 		// Create a new project with no tasks in ready column
 		newProjectID := cli.CreateTestProject(t, db, "Empty Project")
 
@@ -67,7 +65,6 @@ func TestReadyTask_Integration(t *testing.T) {
 	})
 
 	t.Run("list ready tasks - JSON mode", func(t *testing.T) {
-		t.Parallel()
 		// Create a fresh project for JSON test
 		jsonProjectID := cli.CreateTestProject(t, db, "JSON Project")
 
@@ -129,7 +126,6 @@ func TestReadyTask_Integration(t *testing.T) {
 	})
 
 	t.Run("list ready tasks - quiet mode", func(t *testing.T) {
-		t.Parallel()
 		// Create a fresh project for quiet test
 		quietProjectID := cli.CreateTestProject(t, db, "Quiet Project")
 
@@ -168,7 +164,6 @@ func TestReadyTask_Integration(t *testing.T) {
 	})
 
 	t.Run("blocked tasks do NOT appear in ready list", func(t *testing.T) {
-		t.Parallel()
 		// Create a fresh project for blocking test
 		blockProjectID := cli.CreateTestProject(t, db, "Block Project")
 
@@ -209,7 +204,6 @@ func TestReadyTask_Integration(t *testing.T) {
 	})
 
 	t.Run("priority display in human-readable mode", func(t *testing.T) {
-		t.Parallel()
 		// Create a fresh project for priority test
 		priorityProjectID := cli.CreateTestProject(t, db, "Priority Project")
 
@@ -252,7 +246,6 @@ func TestReadyTask_Integration(t *testing.T) {
 	})
 
 	t.Run("ready tasks must be in columns with holds_ready_tasks=true", func(t *testing.T) {
-		t.Parallel()
 		// Create a fresh project
 		flagProjectID := cli.CreateTestProject(t, db, "Flag Project")
 
@@ -287,7 +280,6 @@ func TestReadyTask_Integration(t *testing.T) {
 	})
 
 	t.Run("multiple ready tasks with labels", func(t *testing.T) {
-		t.Parallel()
 		// Create a fresh project for labels test
 		labelProjectID := cli.CreateTestProject(t, db, "Label Project")
 
@@ -319,7 +311,6 @@ func TestReadyTask_Integration(t *testing.T) {
 	})
 
 	t.Run("jSON output contains complete task structure", func(t *testing.T) {
-		t.Parallel()
 		// Create a fresh project for complete JSON test
 		completeProjectID := cli.CreateTestProject(t, db, "Complete Project")
 
@@ -374,7 +365,6 @@ func TestReadyTask_Integration(t *testing.T) {
 	})
 
 	t.Run("empty JSON response with no ready tasks", func(t *testing.T) {
-		t.Parallel()
 		// Create a fresh project with no ready tasks
 		emptyJSONProjectID := cli.CreateTestProject(t, db, "Empty JSON Project")
 
@@ -404,7 +394,6 @@ func TestReadyTask_Integration(t *testing.T) {
 	})
 
 	t.Run("empty quiet response with no ready tasks", func(t *testing.T) {
-		t.Parallel()
 		// Create a fresh project with no ready tasks
 		emptyQuietProjectID := cli.CreateTestProject(t, db, "Empty Quiet Project")
 
@@ -424,7 +413,6 @@ func TestReadyTask_Integration(t *testing.T) {
 	})
 
 	t.Run("multiple ready tasks ordered by position", func(t *testing.T) {
-		t.Parallel()
 		// Create a fresh project for ordering test
 		orderProjectID := cli.CreateTestProject(t, db, "Order Project")
 
@@ -459,7 +447,6 @@ func TestReadyTask_Integration(t *testing.T) {
 	})
 
 	t.Run("complex blocking scenario - multiple blockers", func(t *testing.T) {
-		t.Parallel()
 		// Create a fresh project for complex blocking test
 		complexProjectID := cli.CreateTestProject(t, db, "Complex Block Project")
 
@@ -505,7 +492,6 @@ func TestReadyTask_Integration_Errors(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
 
 	t.Run("missing project ID - no flag and no env var", func(t *testing.T) {
-		t.Parallel()
 		cmd := task.ReadyCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
 		cli.AssertExitError(t, err, 2) // ExitUsage
@@ -513,7 +499,6 @@ func TestReadyTask_Integration_Errors(t *testing.T) {
 	})
 
 	t.Run("invalid project ID - non-existent project", func(t *testing.T) {
-		t.Parallel()
 		cmd := task.ReadyCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--project", "999999"})
 		cli.AssertExitError(t, err, 3) // ExitNotFound
@@ -521,7 +506,6 @@ func TestReadyTask_Integration_Errors(t *testing.T) {
 	})
 
 	t.Run("project with no ready column", func(t *testing.T) {
-		t.Parallel()
 		// Create project but don't mark any column as ready column
 		projectID := cli.CreateTestProject(t, db, "No Ready Column Project")
 
@@ -543,7 +527,6 @@ func TestReadyTask_Integration_Errors(t *testing.T) {
 	})
 
 	t.Run("all tasks in ready column are blocked", func(t *testing.T) {
-		t.Parallel()
 		// Create project
 		projectID := cli.CreateTestProject(t, db, "All Blocked Project")
 

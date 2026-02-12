@@ -153,7 +153,6 @@ func TestGitLink_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("non-existent project ID", func(t *testing.T) {
-		t.Parallel()
 		cmd := project.GitLinkCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "999999",
@@ -255,7 +254,6 @@ func TestGitUnlink_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("non-existent project ID", func(t *testing.T) {
-		t.Parallel()
 		cmd := project.GitUnlinkCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "999999",

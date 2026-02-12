@@ -24,7 +24,6 @@ func TestAssignTask(t *testing.T) {
 	columnID := cli.GetColumnIDByName(t, db, projectID, "Todo")
 
 	t.Run("assign user to task", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Task to assign")
 
 		cmd := task.AssignCmd()
@@ -51,7 +50,6 @@ func TestAssignTask(t *testing.T) {
 	})
 
 	t.Run("assign with --quiet", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Task for quiet assign")
 
 		cmd := task.AssignCmd()
@@ -67,7 +65,6 @@ func TestAssignTask(t *testing.T) {
 	})
 
 	t.Run("assign with --json", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Task for JSON assign")
 
 		cmd := task.AssignCmd()
@@ -90,7 +87,6 @@ func TestAssignTask(t *testing.T) {
 	})
 
 	t.Run("clear assignee with --clear", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Task to clear assignee")
 
 		// First assign someone
@@ -126,7 +122,6 @@ func TestAssignTask(t *testing.T) {
 	})
 
 	t.Run("clear assignee with --json", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Task to clear with JSON")
 
 		// First assign someone
@@ -157,7 +152,6 @@ func TestAssignTask(t *testing.T) {
 	})
 
 	t.Run("assign without name defaults to system user", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Task for default assign")
 
 		cmd := task.AssignCmd()
@@ -179,7 +173,6 @@ func TestAssignTask(t *testing.T) {
 	})
 
 	t.Run("reassign task to different user", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Task to reassign")
 
 		// Assign to first user
@@ -220,7 +213,6 @@ func TestAssignTask_Errors(t *testing.T) {
 	columnID := cli.GetColumnIDByName(t, db, projectID, "Todo")
 
 	t.Run("invalid task ID", func(t *testing.T) {
-		t.Parallel()
 		cmd := task.AssignCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -233,7 +225,6 @@ func TestAssignTask_Errors(t *testing.T) {
 	})
 
 	t.Run("non-existent task ID", func(t *testing.T) {
-		t.Parallel()
 		cmd := task.AssignCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -247,7 +238,6 @@ func TestAssignTask_Errors(t *testing.T) {
 	})
 
 	t.Run("missing task ID", func(t *testing.T) {
-		t.Parallel()
 		cmd := task.AssignCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
@@ -257,7 +247,6 @@ func TestAssignTask_Errors(t *testing.T) {
 	})
 
 	t.Run("too many arguments", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Task for too many args")
 
 		cmd := task.AssignCmd()

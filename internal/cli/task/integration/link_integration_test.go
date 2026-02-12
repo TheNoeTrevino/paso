@@ -27,7 +27,6 @@ func TestLinkTask(t *testing.T) {
 	columnID := cli.GetColumnIDByName(t, db, projectID, "Todo")
 
 	t.Run("create parent-child relationship (default)", func(t *testing.T) {
-		t.Parallel()
 		// Create parent and child tasks
 		parentID := cli.CreateTestTask(t, db, columnID, "Parent Task")
 		childID := cli.CreateTestTask(t, db, columnID, "Child Task")
@@ -54,7 +53,6 @@ func TestLinkTask(t *testing.T) {
 	})
 
 	t.Run("create blocking relationship", func(t *testing.T) {
-		t.Parallel()
 		// Create tasks: blockedTask is blocked by blockerTask
 		blockedID := cli.CreateTestTask(t, db, columnID, "Blocked Task")
 		blockerID := cli.CreateTestTask(t, db, columnID, "Blocker Task")
@@ -82,7 +80,6 @@ func TestLinkTask(t *testing.T) {
 	})
 
 	t.Run("create related relationship", func(t *testing.T) {
-		t.Parallel()
 		// Create two related tasks
 		task1ID := cli.CreateTestTask(t, db, columnID, "Related Task 1")
 		task2ID := cli.CreateTestTask(t, db, columnID, "Related Task 2")
@@ -110,7 +107,6 @@ func TestLinkTask(t *testing.T) {
 	})
 
 	t.Run("link with JSON output", func(t *testing.T) {
-		t.Parallel()
 		parentID := cli.CreateTestTask(t, db, columnID, "JSON Parent")
 		childID := cli.CreateTestTask(t, db, columnID, "JSON Child")
 
@@ -138,7 +134,6 @@ func TestLinkTask(t *testing.T) {
 	})
 
 	t.Run("link with JSON output - blocking relationship", func(t *testing.T) {
-		t.Parallel()
 		parentID := cli.CreateTestTask(t, db, columnID, "JSON Blocked")
 		childID := cli.CreateTestTask(t, db, columnID, "JSON Blocker")
 
@@ -167,7 +162,6 @@ func TestLinkTask(t *testing.T) {
 	})
 
 	t.Run("link with JSON output - related relationship", func(t *testing.T) {
-		t.Parallel()
 		parentID := cli.CreateTestTask(t, db, columnID, "JSON Related 1")
 		childID := cli.CreateTestTask(t, db, columnID, "JSON Related 2")
 
@@ -196,7 +190,6 @@ func TestLinkTask(t *testing.T) {
 	})
 
 	t.Run("link with quiet mode", func(t *testing.T) {
-		t.Parallel()
 		parentID := cli.CreateTestTask(t, db, columnID, "Quiet Parent")
 		childID := cli.CreateTestTask(t, db, columnID, "Quiet Child")
 
@@ -222,7 +215,6 @@ func TestLinkTask(t *testing.T) {
 	})
 
 	t.Run("multiple links from same parent", func(t *testing.T) {
-		t.Parallel()
 		// Create one parent and multiple children
 		parentID := cli.CreateTestTask(t, db, columnID, "Multi-Parent")
 		child1ID := cli.CreateTestTask(t, db, columnID, "Multi-Child 1")
@@ -264,7 +256,6 @@ func TestLinkTask(t *testing.T) {
 	})
 
 	t.Run("multiple links to same child", func(t *testing.T) {
-		t.Parallel()
 		// Create multiple parents and one child
 		parent1ID := cli.CreateTestTask(t, db, columnID, "Multi-Link Parent 1")
 		parent2ID := cli.CreateTestTask(t, db, columnID, "Multi-Link Parent 2")
@@ -297,7 +288,6 @@ func TestLinkTask(t *testing.T) {
 	})
 
 	t.Run("verify task metadata preserved after linking", func(t *testing.T) {
-		t.Parallel()
 		// Create tasks with metadata
 		parentID := cli.CreateTestTask(t, db, columnID, "Parent with Metadata")
 		childID := cli.CreateTestTask(t, db, columnID, "Child with Metadata")
@@ -349,7 +339,6 @@ func TestLinkTask(t *testing.T) {
 	})
 
 	t.Run("link tasks in different columns", func(t *testing.T) {
-		t.Parallel()
 		// Create second column
 		inProgressColumn := cli.CreateTestColumn(t, db, projectID, "In Progress")
 
@@ -377,7 +366,6 @@ func TestLinkTask(t *testing.T) {
 	})
 
 	t.Run("link with mixed relationship types to same parent", func(t *testing.T) {
-		t.Parallel()
 		// One parent with different relationship types to different children
 		parentID := cli.CreateTestTask(t, db, columnID, "Mixed Parent")
 		childNormalID := cli.CreateTestTask(t, db, columnID, "Normal Child")
@@ -451,7 +439,6 @@ func TestLinkTask_Errors(t *testing.T) {
 	columnID := cli.GetColumnIDByName(t, db, projectID, "Todo")
 
 	t.Run("missing parent flag", func(t *testing.T) {
-		t.Parallel()
 		childID := cli.CreateTestTask(t, db, columnID, "Child Task")
 
 		cmd := task.LinkCmd()
@@ -465,7 +452,6 @@ func TestLinkTask_Errors(t *testing.T) {
 	})
 
 	t.Run("missing child flag", func(t *testing.T) {
-		t.Parallel()
 		parentID := cli.CreateTestTask(t, db, columnID, "Parent Task")
 
 		cmd := task.LinkCmd()
@@ -479,7 +465,6 @@ func TestLinkTask_Errors(t *testing.T) {
 	})
 
 	t.Run("both blocker and related flags (mutually exclusive)", func(t *testing.T) {
-		t.Parallel()
 		parentID := cli.CreateTestTask(t, db, columnID, "Exclusive Parent")
 		childID := cli.CreateTestTask(t, db, columnID, "Exclusive Child")
 
@@ -495,7 +480,6 @@ func TestLinkTask_Errors(t *testing.T) {
 	})
 
 	t.Run("invalid parent ID (non-existent task)", func(t *testing.T) {
-		t.Parallel()
 		childID := cli.CreateTestTask(t, db, columnID, "Child for NonExistent Parent")
 
 		cmd := task.LinkCmd()
@@ -508,7 +492,6 @@ func TestLinkTask_Errors(t *testing.T) {
 	})
 
 	t.Run("invalid child ID (non-existent task)", func(t *testing.T) {
-		t.Parallel()
 		parentID := cli.CreateTestTask(t, db, columnID, "Parent for NonExistent Child")
 
 		cmd := task.LinkCmd()
@@ -521,7 +504,6 @@ func TestLinkTask_Errors(t *testing.T) {
 	})
 
 	t.Run("self-reference (parent equals child)", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Self Reference Task")
 
 		cmd := task.LinkCmd()
@@ -534,7 +516,6 @@ func TestLinkTask_Errors(t *testing.T) {
 	})
 
 	t.Run("circular dependency prevention", func(t *testing.T) {
-		t.Parallel()
 		parentID := cli.CreateTestTask(t, db, columnID, "Circular Parent")
 		childID := cli.CreateTestTask(t, db, columnID, "Circular Child")
 
@@ -558,7 +539,6 @@ func TestLinkTask_Errors(t *testing.T) {
 	})
 
 	t.Run("zero parent ID", func(t *testing.T) {
-		t.Parallel()
 		childID := cli.CreateTestTask(t, db, columnID, "Child for Zero Parent")
 
 		cmd := task.LinkCmd()
@@ -571,7 +551,6 @@ func TestLinkTask_Errors(t *testing.T) {
 	})
 
 	t.Run("zero child ID", func(t *testing.T) {
-		t.Parallel()
 		parentID := cli.CreateTestTask(t, db, columnID, "Parent for Zero Child")
 
 		cmd := task.LinkCmd()
@@ -584,7 +563,6 @@ func TestLinkTask_Errors(t *testing.T) {
 	})
 
 	t.Run("negative parent ID", func(t *testing.T) {
-		t.Parallel()
 		childID := cli.CreateTestTask(t, db, columnID, "Child for Negative Parent")
 
 		cmd := task.LinkCmd()
@@ -597,7 +575,6 @@ func TestLinkTask_Errors(t *testing.T) {
 	})
 
 	t.Run("negative child ID", func(t *testing.T) {
-		t.Parallel()
 		parentID := cli.CreateTestTask(t, db, columnID, "Parent for Negative Child")
 
 		cmd := task.LinkCmd()
@@ -610,7 +587,6 @@ func TestLinkTask_Errors(t *testing.T) {
 	})
 
 	t.Run("duplicate link (same parent-child pair) - idempotent", func(t *testing.T) {
-		t.Parallel()
 		parentID := cli.CreateTestTask(t, db, columnID, "Parent for Duplicate")
 		childID := cli.CreateTestTask(t, db, columnID, "Child for Duplicate")
 

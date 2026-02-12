@@ -216,7 +216,6 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			env := setupTestEnv(t)
 			req := tt.setupFn(env.DB)
 
@@ -348,7 +347,6 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			env := setupTestEnv(t)
 			req := tt.setupFn(env.DB)
 
@@ -506,7 +504,6 @@ func TestAttachLabel_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			env := setupTestEnv(t)
 			taskID, labelID := tt.setupFn(env.DB)
 
@@ -610,7 +607,6 @@ func TestDetachLabel_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			env := setupTestEnv(t)
 			taskID, labelID := tt.setupFn(env.DB)
 
@@ -729,7 +725,6 @@ func TestAddParentRelation_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			env := setupTestEnv(t)
 			childID, parentID := tt.setupFn(env.DB)
 
@@ -825,7 +820,6 @@ func TestAddChildRelation_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			env := setupTestEnv(t)
 			parentID, childID := tt.setupFn(env.DB)
 
@@ -932,7 +926,6 @@ func TestRemoveParentRelation_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			env := setupTestEnv(t)
 			childID, parentID := tt.setupFn(env.DB)
 
@@ -1019,7 +1012,6 @@ func TestRemoveChildRelation_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			env := setupTestEnv(t)
 			parentID, childID := tt.setupFn(env.DB)
 
@@ -1100,7 +1092,6 @@ func TestMoveTaskToColumn_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			env := setupTestEnv(t)
 			taskID, columnID := tt.setupFn(env.DB)
 

@@ -28,7 +28,6 @@ func TestBlockedTask(t *testing.T) {
 	inProgressColumnID := cli.CreateTestColumn(t, db, projectID, "In Progress")
 
 	t.Run("list blocked tasks with blocking relationships", func(t *testing.T) {
-		t.Parallel()
 		// Create parent task
 		parentID := cli.CreateTestTask(t, db, todoColumnID, "Parent Task")
 		cli.UpdateTaskFields(t, db, parentID, map[string]any{"ticket_number": 1})
@@ -55,7 +54,6 @@ func TestBlockedTask(t *testing.T) {
 	})
 
 	t.Run("list blocked tasks with no blocked tasks", func(t *testing.T) {
-		t.Parallel()
 		// Create a new project with no blocking relationships
 		newProjectID := cli.CreateTestProject(t, db, "Empty Project")
 
@@ -75,7 +73,6 @@ func TestBlockedTask(t *testing.T) {
 	})
 
 	t.Run("list multiple blocked tasks", func(t *testing.T) {
-		t.Parallel()
 		// Create multiple blocked tasks
 		blocked1 := cli.CreateTestTask(t, db, todoColumnID, "Blocked Task 1")
 		blocker1 := cli.CreateTestTask(t, db, todoColumnID, "Blocker Task 1")
@@ -110,7 +107,6 @@ func TestBlockedTask(t *testing.T) {
 	})
 
 	t.Run("list blocked tasks in JSON mode", func(t *testing.T) {
-		t.Parallel()
 		// Create blocked task
 		blockedID := cli.CreateTestTask(t, db, todoColumnID, "JSON Blocked Task")
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "JSON Blocker Task")
@@ -160,7 +156,6 @@ func TestBlockedTask(t *testing.T) {
 	})
 
 	t.Run("list blocked tasks in quiet mode", func(t *testing.T) {
-		t.Parallel()
 		// Create blocked task
 		blockedID := cli.CreateTestTask(t, db, todoColumnID, "Quiet Blocked Task")
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "Quiet Blocker Task")
@@ -198,7 +193,6 @@ func TestBlockedTask(t *testing.T) {
 	})
 
 	t.Run("verify only IsBlocked==true tasks returned", func(t *testing.T) {
-		t.Parallel()
 		// Create a mix of blocked and non-blocked tasks
 		normalTask := cli.CreateTestTask(t, db, todoColumnID, "Normal Task")
 		blockedTask := cli.CreateTestTask(t, db, todoColumnID, "Should Be Blocked")
@@ -240,7 +234,6 @@ func TestBlockedTask(t *testing.T) {
 	})
 
 	t.Run("test priority display in human-readable mode", func(t *testing.T) {
-		t.Parallel()
 		// Create blocked tasks with different priorities
 		lowPriorityBlocked := cli.CreateTestTask(t, db, todoColumnID, "Low Priority Blocked")
 		lowBlocker := cli.CreateTestTask(t, db, todoColumnID, "Low Blocker")
@@ -279,7 +272,6 @@ func TestBlockedTask(t *testing.T) {
 	})
 
 	t.Run("blocked tasks in different columns", func(t *testing.T) {
-		t.Parallel()
 		// Create blocked tasks in different columns
 		todoBlocked := cli.CreateTestTask(t, db, todoColumnID, "Todo Blocked")
 		todoBlocker := cli.CreateTestTask(t, db, todoColumnID, "Todo Blocker")
@@ -315,7 +307,6 @@ func TestBlockedTask(t *testing.T) {
 	})
 
 	t.Run("blocked task with labels", func(t *testing.T) {
-		t.Parallel()
 		// Create blocked task with labels
 		blockedID := cli.CreateTestTask(t, db, todoColumnID, "Blocked With Labels")
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "Label Blocker")
@@ -365,7 +356,6 @@ func TestBlockedTask(t *testing.T) {
 	})
 
 	t.Run("jSON output structure verification", func(t *testing.T) {
-		t.Parallel()
 		// Create a simple blocked task
 		blockedID := cli.CreateTestTask(t, db, todoColumnID, "Structure Test")
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "Structure Blocker")
@@ -405,7 +395,6 @@ func TestBlockedTask(t *testing.T) {
 	})
 
 	t.Run("empty project with no tasks", func(t *testing.T) {
-		t.Parallel()
 		// Create a completely empty project
 		emptyProjectID := cli.CreateTestProject(t, db, "Completely Empty Project")
 
@@ -418,7 +407,6 @@ func TestBlockedTask(t *testing.T) {
 	})
 
 	t.Run("blocked task with critical priority", func(t *testing.T) {
-		t.Parallel()
 		// Create blocked task with critical priority
 		criticalBlocked := cli.CreateTestTask(t, db, todoColumnID, "Critical Blocked Task")
 		criticalBlocker := cli.CreateTestTask(t, db, todoColumnID, "Critical Blocker")
@@ -451,7 +439,6 @@ func TestBlockedTask_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("missing project ID - no flag and no env var", func(t *testing.T) {
-		t.Parallel()
 		cmd := task.BlockedCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{})
 		cli.AssertExitError(t, err, 2) // ExitUsage
@@ -459,7 +446,6 @@ func TestBlockedTask_Errors(t *testing.T) {
 	})
 
 	t.Run("invalid project ID - non-existent", func(t *testing.T) {
-		t.Parallel()
 		cmd := task.BlockedCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--project", "999999"})
 		cli.AssertExitError(t, err, 3) // ExitNotFound
@@ -467,7 +453,6 @@ func TestBlockedTask_Errors(t *testing.T) {
 	})
 
 	t.Run("project ID as string instead of int", func(t *testing.T) {
-		t.Parallel()
 		// This will fail at flag parsing level
 		blockedCmd := task.BlockedCmd()
 		_, err := cli.ExecuteCLICommand(t, app, blockedCmd,
@@ -478,7 +463,6 @@ func TestBlockedTask_Errors(t *testing.T) {
 	})
 
 	t.Run("negative project ID", func(t *testing.T) {
-		t.Parallel()
 		cmd := task.BlockedCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--project", "-1"})
 		// Cobra may interpret -1 as a flag; just assert error
@@ -486,7 +470,6 @@ func TestBlockedTask_Errors(t *testing.T) {
 	})
 
 	t.Run("zero project ID", func(t *testing.T) {
-		t.Parallel()
 		cmd := task.BlockedCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"--project", "0"})
 		cli.AssertExitError(t, err, 3) // ExitNotFound

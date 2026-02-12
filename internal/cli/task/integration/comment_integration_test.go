@@ -27,7 +27,6 @@ func TestCommentTask(t *testing.T) {
 	columnID := cli.GetColumnIDByName(t, db, projectID, "Todo")
 
 	t.Run("add basic comment - default output", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Test Task")
 
 		cmd := task.CommentCmd()
@@ -49,7 +48,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("add comment with custom author", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Test Task")
 
 		cmd := task.CommentCmd()
@@ -71,7 +69,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("add comment - JSON mode output", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "JSON Test Task")
 
 		cmd := task.CommentCmd()
@@ -106,7 +103,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("add comment - quiet mode output", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Quiet Test Task")
 
 		cmd := task.CommentCmd()
@@ -135,7 +131,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("add multiple comments to same task - sequential", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Multi-comment Task")
 
 		// Add first comment
@@ -181,7 +176,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("add comments to different tasks", func(t *testing.T) {
-		t.Parallel()
 		task1ID := cli.CreateTestTask(t, db, columnID, "Task One")
 		task2ID := cli.CreateTestTask(t, db, columnID, "Task Two")
 
@@ -219,7 +213,6 @@ func TestCommentTask(t *testing.T) {
 	// Edge cases (Task 61 requirements)
 
 	t.Run("empty comment message - rejected by service", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Empty Comment Task")
 
 		cmd := task.CommentCmd()
@@ -232,7 +225,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("very long comment - 999 characters", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Long Comment Task")
 
 		// Create a message with exactly 999 characters
@@ -256,7 +248,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("comment at 1000 character boundary", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Boundary Test Task")
 
 		// Create a message with exactly 1000 characters (at limit)
@@ -280,7 +271,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("comment with special characters - emoji", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Emoji Task")
 
 		message := "Great work! 🎉 ✅ 🚀 💯 ⭐"
@@ -302,7 +292,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("comment with Unicode - Chinese characters", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Chinese Task")
 
 		message := "这是一个测试评论 (This is a test comment)"
@@ -324,7 +313,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("comment with Unicode - Arabic characters", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Arabic Task")
 
 		message := "هذا تعليق اختباري (This is a test comment)"
@@ -346,7 +334,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("comment with newlines and special formatting", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Newline Task")
 
 		message := "Line 1\nLine 2\nLine 3\n\nDouble newline above"
@@ -369,7 +356,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("comment with single quotes", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Quotes Task")
 
 		message := "It's a test with 'quoted' words"
@@ -391,7 +377,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("comment with double quotes", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Double Quotes Task")
 
 		message := `This is a "quoted" message`
@@ -413,7 +398,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("comment with backslashes and escape sequences", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Backslash Task")
 
 		message := `Path: C:\Users\test\file.txt and escaped: \n \t \r`
@@ -435,7 +419,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("comment with only whitespace", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Whitespace Task")
 
 		message := "   \t   \n   "
@@ -457,7 +440,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("comment with HTML/XML-like content", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "HTML Task")
 
 		message := "<div>Test HTML content</div> <script>alert('test')</script>"
@@ -479,7 +461,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("comment with SQL-like content", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "SQL Task")
 
 		message := "SELECT * FROM tasks WHERE id = 1; DROP TABLE tasks; --"
@@ -507,7 +488,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("verify created_at timestamp is set", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Timestamp Task")
 
 		cmd := task.CommentCmd()
@@ -530,7 +510,6 @@ func TestCommentTask(t *testing.T) {
 	})
 
 	t.Run("default author uses current username", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Default Author Task")
 
 		cmd := task.CommentCmd()
@@ -565,7 +544,6 @@ func TestCommentTask_Errors(t *testing.T) {
 	columnID := cli.GetColumnIDByName(t, db, projectID, "Todo")
 
 	t.Run("missing --id flag", func(t *testing.T) {
-		t.Parallel()
 		cmd := task.CommentCmd()
 
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -578,7 +556,6 @@ func TestCommentTask_Errors(t *testing.T) {
 	})
 
 	t.Run("missing --message flag", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Test Task")
 
 		cmd := task.CommentCmd()
@@ -593,7 +570,6 @@ func TestCommentTask_Errors(t *testing.T) {
 	})
 
 	t.Run("invalid task ID - non-existent", func(t *testing.T) {
-		t.Parallel()
 		cmd := task.CommentCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "999999",
@@ -604,7 +580,6 @@ func TestCommentTask_Errors(t *testing.T) {
 	})
 
 	t.Run("zero task ID", func(t *testing.T) {
-		t.Parallel()
 		cmd := task.CommentCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "0",
@@ -615,7 +590,6 @@ func TestCommentTask_Errors(t *testing.T) {
 	})
 
 	t.Run("negative task ID", func(t *testing.T) {
-		t.Parallel()
 		cmd := task.CommentCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--id", "-1",
@@ -626,7 +600,6 @@ func TestCommentTask_Errors(t *testing.T) {
 	})
 
 	t.Run("message exceeds 1000 characters - 1001 chars", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Long Comment 1001 Task")
 
 		cmd := task.CommentCmd()
@@ -639,7 +612,6 @@ func TestCommentTask_Errors(t *testing.T) {
 	})
 
 	t.Run("message exceeds 1000 characters - 1500 chars", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Long Comment 1500 Task")
 
 		cmd := task.CommentCmd()
@@ -652,7 +624,6 @@ func TestCommentTask_Errors(t *testing.T) {
 	})
 
 	t.Run("empty author string is valid", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Empty Author Task")
 
 		cmd := task.CommentCmd()
@@ -676,7 +647,6 @@ func TestCommentTask_Errors(t *testing.T) {
 	})
 
 	t.Run("both JSON and quiet flags - quiet takes precedence", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, columnID, "Conflicting Flags Task")
 
 		cmd := task.CommentCmd()

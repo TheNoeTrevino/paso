@@ -21,7 +21,6 @@ func TestAttachLabel_Integration(t *testing.T) {
 	todoColumnID := cli.GetColumnIDByName(t, db, projectID, "Todo")
 
 	t.Run("attach label to task", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Test Task")
 		labelID := cli.CreateTestLabel(t, db, projectID, "attach-me", "#FF0000")
 
@@ -45,7 +44,6 @@ func TestAttachLabel_Integration(t *testing.T) {
 	})
 
 	t.Run("attach label JSON output", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "JSON Task")
 		labelID := cli.CreateTestLabel(t, db, projectID, "json-attach", "#00FF00")
 
@@ -67,7 +65,6 @@ func TestAttachLabel_Integration(t *testing.T) {
 	})
 
 	t.Run("attach label quiet mode", func(t *testing.T) {
-		t.Parallel()
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Quiet Task")
 		labelID := cli.CreateTestLabel(t, db, projectID, "quiet-attach", "#0000FF")
 
@@ -95,7 +92,6 @@ func TestAttachLabel_Integration_Errors(t *testing.T) {
 	_, app := cli.SetupCLITest(t)
 
 	t.Run("invalid task ID format", func(t *testing.T) {
-		t.Parallel()
 		cmd := label.AttachCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--task", "not-a-number",
@@ -105,7 +101,6 @@ func TestAttachLabel_Integration_Errors(t *testing.T) {
 	})
 
 	t.Run("invalid label ID format", func(t *testing.T) {
-		t.Parallel()
 		cmd := label.AttachCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"--task", "1",
