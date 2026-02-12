@@ -171,12 +171,11 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Human-readable output
-	colors := cli.GetColorScheme()
 	details := []styles.Detail{
 		{Key: "ID", Value: strconv.Itoa(column.ID)},
 		{Key: "Name", Value: columnName},
 		{Key: "Project", Value: project.Name},
 	}
-	fmt.Print(styles.RenderSuccessWithDetails("Column created successfully", details, colors))
+	fmt.Print(styles.RenderSuccessWithDetails("Column created successfully", details, cli.GetColorScheme()))
 	return nil
 }

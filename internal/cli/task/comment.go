@@ -137,13 +137,12 @@ func runComment(cmd *cobra.Command, args []string) error {
 	}
 
 	// Human-readable output
-	colors := cli.GetColorScheme()
 	details := []styles.Detail{
 		{Key: "Task", Value: fmt.Sprintf("#%d (%s)", taskDetail.TicketNumber, taskDetail.Title)},
 		{Key: "Project", Value: taskDetail.ProjectName},
 		{Key: "Message", Value: styles.TruncateString(message, 60)},
 		{Key: "Comment ID", Value: strconv.Itoa(comment.ID)},
 	}
-	fmt.Print(styles.RenderSuccessWithDetails("Comment added", details, colors))
+	fmt.Print(styles.RenderSuccessWithDetails("Comment added", details, cli.GetColorScheme()))
 	return nil
 }

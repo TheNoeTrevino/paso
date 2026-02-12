@@ -2,13 +2,11 @@ package assignee
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 	"github.com/thenoetrevino/paso/internal/config"
 )
 
@@ -81,7 +79,6 @@ func runSet(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	colorScheme := cli.GetColorScheme()
-	fmt.Print(styles.RenderSuccess(fmt.Sprintf("Active assignee set to '%s'", name), colorScheme))
+	cli.PrintSuccessf("Active assignee set to '%s'", name)
 	return nil
 }

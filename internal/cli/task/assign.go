@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/user"
 )
@@ -132,11 +131,10 @@ func assignTask(cmd *cobra.Command, cliInstance *cli.CLI, taskID int, assigneeID
 		return json.NewEncoder(os.Stdout).Encode(result)
 	}
 
-	colorScheme := cli.GetColorScheme()
 	if assigneeID != nil {
-		fmt.Print(styles.RenderSuccess(fmt.Sprintf("Task %d assigned to @%s", taskID, assigneeName), colorScheme))
+		cli.PrintSuccessf("Task %d assigned to @%s", taskID, assigneeName)
 	} else {
-		fmt.Print(styles.RenderSuccess(fmt.Sprintf("Task %d assignee cleared", taskID), colorScheme))
+		cli.PrintSuccessf("Task %d assignee cleared", taskID)
 	}
 	return nil
 }

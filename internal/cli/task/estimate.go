@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 )
 
@@ -123,11 +122,14 @@ func updateEstimate(cmd *cobra.Command, cliInstance *cli.CLI, taskID int, estima
 		return json.NewEncoder(os.Stdout).Encode(result)
 	}
 
-	colorScheme := cli.GetColorScheme()
 	if estimate != nil {
-		fmt.Print(styles.RenderSuccess(fmt.Sprintf("Task %d estimate set to %s", taskID, *estimate), colorScheme))
+
+		cli.PrintSuccess(fmt.Sprintf("Task %d estimate set to %s", taskID, *estimate))
+
 	} else {
-		fmt.Print(styles.RenderSuccess(fmt.Sprintf("Task %d estimate cleared", taskID), colorScheme))
+
+		cli.PrintSuccess(fmt.Sprintf("Task %d estimate cleared", taskID))
+
 	}
 	return nil
 }

@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 	projectsvc "github.com/thenoetrevino/paso/internal/services/project"
 )
 
@@ -170,9 +169,8 @@ func runGitLink(cmd *cobra.Command, args []string) error {
 		}
 
 		if !quietMode && !jsonOutput {
-			colorScheme := cli.GetColorScheme()
-			fmt.Print(styles.RenderSuccess(fmt.Sprintf("Unlinked branch \"%s\" from project \"%s\" (id: %d)",
-				branchName, existingProject.Name, existingProject.ID), colorScheme))
+			cli.PrintSuccessf("Unlinked branch \"%s\" from project \"%s\" (id: %d)",
+				branchName, existingProject.Name, existingProject.ID)
 		}
 	}
 
@@ -210,9 +208,8 @@ func runGitLink(cmd *cobra.Command, args []string) error {
 		return json.NewEncoder(os.Stdout).Encode(result)
 	}
 
-	colorScheme := cli.GetColorScheme()
-	fmt.Print(styles.RenderSuccess(fmt.Sprintf("Linked project \"%s\" (id: %d) to branch \"%s\"",
-		project.Name, project.ID, branchName), colorScheme))
+	cli.PrintSuccessf("Linked project \"%s\" (id: %d) to branch \"%s\"",
+		project.Name, project.ID, branchName)
 
 	return nil
 }

@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 	projectsvc "github.com/thenoetrevino/paso/internal/services/project"
 )
 
@@ -146,9 +145,8 @@ func runGitUnlink(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	colorScheme := cli.GetColorScheme()
-	fmt.Print(styles.RenderSuccess(fmt.Sprintf("Unlinked branch \"%s\" from project \"%s\" (id: %d)",
-		oldBranch, project.Name, project.ID), colorScheme))
+	cli.PrintSuccessf("Unlinked branch \"%s\" from project \"%s\" (id: %d)",
+		oldBranch, project.Name, project.ID)
 
 	return nil
 }

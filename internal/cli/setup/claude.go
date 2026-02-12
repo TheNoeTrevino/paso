@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/styles"
-	"github.com/thenoetrevino/paso/internal/config/colors"
 )
 
 // ClaudeCmd returns the setup claude subcommand
@@ -101,16 +100,14 @@ func InstallClaude(project bool) error {
 		settings["hooks"] = hooks
 	}
 
-	colorScheme := cli.GetColorScheme()
-
 	// Add SessionStart hook
-	if addHookCommand(hooks, "SessionStart", "paso tutorial", colorScheme) {
-		fmt.Print(styles.RenderSuccess("Registered SessionStart hook", colorScheme))
+	if addHookCommand(hooks, "SessionStart", "paso tutorial") {
+		cli.PrintSuccess("Registered SessionStart hook")
 	}
 
 	// Add PreCompact hook
-	if addHookCommand(hooks, "PreCompact", "paso tutorial", colorScheme) {
-		fmt.Print(styles.RenderSuccess("Registered PreCompact hook", colorScheme))
+	if addHookCommand(hooks, "PreCompact", "paso tutorial") {
+		cli.PrintSuccess("Registered PreCompact hook")
 	}
 
 	// Write back to file
@@ -125,7 +122,7 @@ func InstallClaude(project bool) error {
 
 	fmt.Print(styles.RenderSuccessWithDetails("Claude Code integration installed", []styles.Detail{
 		{Key: "Settings", Value: settingsPath},
-	}, colorScheme))
+	}, cli.GetColorScheme()))
 	fmt.Println("\nRestart Claude Code for changes to take effect.")
 	return nil
 }
@@ -143,11 +140,10 @@ func CheckClaude() error {
 	globalHooks := hasPasoHooks(globalSettings)
 	projectHooks := hasPasoHooks(projectSettings)
 
-	colorScheme := cli.GetColorScheme()
 	if globalHooks {
-		fmt.Print(styles.RenderSuccess(fmt.Sprintf("Global hooks installed: %s", globalSettings), colorScheme))
+		cli.PrintSuccess(fmt.Sprintf("Global hooks installed: %s", globalSettings))
 	} else if projectHooks {
-		fmt.Print(styles.RenderSuccess(fmt.Sprintf("Project hooks installed: %s", projectSettings), colorScheme))
+		cli.PrintSuccess(fmt.Sprintf("Project hooks installed: %s", projectSettings))
 	} else {
 		fmt.Println("✗ No hooks installed")
 		fmt.Println("  Run: paso setup claude")
@@ -190,11 +186,9 @@ func RemoveClaude(project bool) error {
 		return nil
 	}
 
-	colorScheme := cli.GetColorScheme()
-
 	// Remove paso tutorial hooks
-	removeHookCommand(hooks, "SessionStart", "paso tutorial", colorScheme)
-	removeHookCommand(hooks, "PreCompact", "paso tutorial", colorScheme)
+	removeHookCommand(hooks, "SessionStart", "paso tutorial")
+	removeHookCommand(hooks, "PreCompact", "paso tutorial")
 
 	// Write back
 	data, err = json.MarshalIndent(settings, "", "  ")
@@ -206,13 +200,13 @@ func RemoveClaude(project bool) error {
 		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("write settings: %v", err))
 	}
 
-	fmt.Print(styles.RenderSuccess("Claude hooks removed", colorScheme))
+	cli.PrintSuccess("Claude hooks removed")
 	return nil
 }
 
 // addHookCommand adds a hook command to an event if not already present
 // Returns true if hook was added, false if already exists
-func addHookCommand(hooks map[string]any, event, command string, colorScheme colors.ColorScheme) bool {
+func addHookCommand(hooks map[string]any, event, command string) bool {
 	// Get or create event array
 	eventHooks, ok := hooks[event].([]any)
 	if !ok {
@@ -235,7 +229,7 @@ func addHookCommand(hooks map[string]any, event, command string, colorScheme col
 				continue
 			}
 			if cmdMap["command"] == command {
-				fmt.Print(styles.RenderSuccess(fmt.Sprintf("Hook already registered: %s", event), colorScheme))
+				cli.PrintSuccess(fmt.Sprintf("Hook already registered: %s", event))
 				return false
 			}
 		}
@@ -258,7 +252,7 @@ func addHookCommand(hooks map[string]any, event, command string, colorScheme col
 }
 
 // removeHookCommand removes a hook command from an event
-func removeHookCommand(hooks map[string]any, event, command string, colorScheme colors.ColorScheme) {
+func removeHookCommand(hooks map[string]any, event, command string) {
 	eventHooks, ok := hooks[event].([]any)
 	if !ok {
 		return
@@ -287,7 +281,7 @@ func removeHookCommand(hooks map[string]any, event, command string, colorScheme 
 			}
 			if cmdMap["command"] == command {
 				keepHook = false
-				fmt.Print(styles.RenderSuccess(fmt.Sprintf("Removed %s hook", event), colorScheme))
+				cli.PrintSuccess(fmt.Sprintf("Removed %s hook", event))
 				break
 			}
 		}

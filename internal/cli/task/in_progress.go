@@ -12,7 +12,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 )
 
@@ -244,8 +243,7 @@ func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.Output
 	}
 
 	// Human-readable output
-	colors := cli.GetColorScheme()
 	message := fmt.Sprintf("Task %d moved to '%s'", taskID, toColumnName)
-	fmt.Print(styles.RenderSuccess(message, colors))
+	cli.PrintSuccess(message)
 	return nil
 }

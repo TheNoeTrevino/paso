@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/database"
 )
@@ -97,11 +96,10 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	colorScheme := cli.GetColorScheme()
 	if connected {
-		fmt.Print(styles.RenderSuccess(fmt.Sprintf("Database '%s' added successfully", name), colorScheme))
+		cli.PrintSuccessf("Database '%s' added successfully", name)
 	} else {
-		fmt.Print(styles.RenderSuccess(fmt.Sprintf("Database '%s' saved", name), colorScheme))
+		cli.PrintSuccessf("Database '%s' saved", name)
 		fmt.Fprintf(os.Stderr, "⚠ Connection test failed: %v\n", pingErr)
 	}
 

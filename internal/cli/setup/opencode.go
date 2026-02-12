@@ -95,13 +95,11 @@ func InstallOpenCode(project bool) error {
 		plugins = []any{}
 	}
 
-	colorScheme := cli.GetColorScheme()
-
 	// Check if already installed
 	pluginName := "opencode-paso"
 	for _, p := range plugins {
 		if p == pluginName {
-			fmt.Print(styles.RenderSuccess("Plugin already installed", colorScheme))
+			cli.PrintSuccess("Plugin already installed")
 			return nil
 		}
 	}
@@ -122,7 +120,7 @@ func InstallOpenCode(project bool) error {
 
 	fmt.Print(styles.RenderSuccessWithDetails("OpenCode plugin installed", []styles.Detail{
 		{Key: "Config", Value: configPath},
-	}, colorScheme))
+	}, cli.GetColorScheme()))
 	fmt.Println("\nNote: You may need to install the plugin package:")
 	fmt.Println("  bun add opencode-paso")
 	return nil
@@ -141,11 +139,10 @@ func CheckOpenCode() error {
 	globalInstalled := hasPasoPlugin(globalConfig)
 	projectInstalled := hasPasoPlugin(projectConfig)
 
-	colorScheme := cli.GetColorScheme()
 	if globalInstalled {
-		fmt.Print(styles.RenderSuccess(fmt.Sprintf("Plugin installed globally: %s", globalConfig), colorScheme))
+		cli.PrintSuccess(fmt.Sprintf("Plugin installed globally: %s", globalConfig))
 	} else if projectInstalled {
-		fmt.Print(styles.RenderSuccess(fmt.Sprintf("Plugin installed for project: %s", projectConfig), colorScheme))
+		cli.PrintSuccess(fmt.Sprintf("Plugin installed for project: %s", projectConfig))
 	} else {
 		fmt.Println("✗ Plugin not installed")
 		fmt.Println("  Run: paso setup opencode")
@@ -214,8 +211,7 @@ func RemoveOpenCode(project bool) error {
 		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("write config: %v", err))
 	}
 
-	colorScheme := cli.GetColorScheme()
-	fmt.Print(styles.RenderSuccess("OpenCode plugin removed", colorScheme))
+	cli.PrintSuccess("OpenCode plugin removed")
 	return nil
 }
 
