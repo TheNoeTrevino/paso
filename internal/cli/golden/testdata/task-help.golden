@@ -1,0 +1,27 @@
+Manage tasks
+
+Usage:
+  task [command]
+
+Available Commands:
+  assign      Assign a task to an assignee
+  blocked     List blocked tasks
+  comment     Add a comment to a task
+  completion  Generate the autocompletion script for the specified shell
+  create      Create a new task
+  delete      Delete a task
+  done        Move a task to the completed column
+  help        Help about any command
+  in-progress Move a task to in-progress or list in-progress tasks
+  link        Link tasks with relationships
+  list        List tasks
+  move        Move a task to another column
+  ready       List tasks ready to work on
+  show        Show task details
+  to-ready    Move a task to the ready column
+  update      Update a task
+
+Flags:
+  -h, --help   help for task
+
+Use "task [command] --help" for more information about a command.
