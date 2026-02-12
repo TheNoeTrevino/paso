@@ -103,6 +103,13 @@ func toGeneratedUpdateTaskAssigneeParams(t types.UpdateTaskAssigneeParams) gener
 	}
 }
 
+func toGeneratedUpdateTaskEstimateParams(t types.UpdateTaskEstimateParams) generated_postgres.UpdateTaskEstimateParams {
+	return generated_postgres.UpdateTaskEstimateParams{
+		Estimate: t.Estimate.ToSQLNullString(),
+		ID:       t.ID,
+	}
+}
+
 func toGeneratedCreateProjectRecordParams(t types.CreateProjectRecordParams) generated_postgres.CreateProjectRecordParams {
 	return generated_postgres.CreateProjectRecordParams{
 		Name:        t.Name,

@@ -27,6 +27,11 @@ var (
 	ErrCommentMessageTooLong = errors.New("comment message cannot exceed 1000 characters")
 	ErrInvalidCommentID      = errors.New("invalid comment ID")
 	ErrCommentNotFound       = errors.New("comment not found")
+
+	// Estimate validation errors
+	ErrInvalidEstimateFormat = errors.New("invalid estimate format: must be a combination of numbers followed by units (h, d, w, m)")
+	ErrInvalidEstimateUnit   = errors.New("invalid estimate unit: only h (hours), d (days), w (weeks), and m (months) are allowed")
+	ErrDuplicateEstimateUnit = errors.New("duplicate unit in estimate: each unit can only appear once")
 )
 
 // Movement-related errors

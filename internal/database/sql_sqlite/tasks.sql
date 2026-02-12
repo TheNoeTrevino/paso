@@ -6,8 +6,9 @@ insert into tasks (
     column_id,
     position,
     ticket_number,
-    assignee_id)
-values (?, ?, ?, ?, ?, ?)
+    assignee_id,
+    estimate)
+values (?, ?, ?, ?, ?, ?, ?)
 returning *;
 
 -- name: GetTask :one
@@ -74,6 +75,12 @@ update tasks
 set assignee_id = ?, updated_at = current_timestamp
 where id = ?;
 
+-- name: UpdateTaskEstimate :exec
+-- Updates a task's estimate
+update tasks
+set estimate = ?, updated_at = current_timestamp
+where id = ?;
+
 -- name: DeleteTask :exec
 -- Permanently deletes a task by ID
 delete from tasks
@@ -91,6 +98,7 @@ select
     t.ticket_number,
     t.created_at,
     t.updated_at,
+    t.estimate,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -128,6 +136,7 @@ select
     t.title,
     t.column_id,
     t.position,
+    t.estimate,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -148,6 +157,7 @@ group by
     t.title,
     t.column_id,
     t.position,
+    t.estimate,
     ty.description,
     p.description,
     p.color,
@@ -163,6 +173,7 @@ select
     t.title,
     t.column_id,
     t.position,
+    t.estimate,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -192,6 +203,7 @@ group by
     t.title,
     t.column_id,
     t.position,
+    t.estimate,
     ty.description,
     p.description,
     p.color,
@@ -206,6 +218,7 @@ select
     t.title,
     t.column_id,
     t.position,
+    t.estimate,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -235,6 +248,7 @@ group by
     t.title,
     t.column_id,
     t.position,
+    t.estimate,
     ty.description,
     p.description,
     p.color,
@@ -268,6 +282,7 @@ select
     t.position,
     t.created_at,
     t.updated_at,
+    t.estimate,
     c.name as column_name,
     proj.name as project_name,
     ty.description as type_description,
@@ -304,6 +319,7 @@ group by
     t.position,
     t.created_at,
     t.updated_at,
+    t.estimate,
     c.name,
     proj.name,
     ty.description,
@@ -320,6 +336,7 @@ select
     t.title,
     t.column_id,
     t.position,
+    t.estimate,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -349,6 +366,7 @@ group by
     t.title,
     t.column_id,
     t.position,
+    t.estimate,
     ty.description,
     p.description,
     p.color,

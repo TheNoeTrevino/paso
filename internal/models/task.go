@@ -39,6 +39,7 @@ type TaskSummary struct {
 	PriorityColor       string
 	AssigneeID          *int
 	AssigneeName        *string
+	Estimate            *string
 	ColumnID            int
 	Position            int
 	IsBlocked           bool // True if any child task has is_blocking=true
@@ -59,6 +60,7 @@ type TaskDetail struct {
 	PriorityColor       string
 	AssigneeID          *int
 	AssigneeName        *string
+	Estimate            *string
 	ColumnID            int
 	ColumnName          string // Column name for display
 	Position            int

@@ -73,6 +73,7 @@ type Task struct {
 	CreatedAt    sql.NullTime
 	UpdatedAt    sql.NullTime
 	AssigneeID   interface{}
+	Estimate     interface{}
 }
 
 type TaskComment struct {
