@@ -611,6 +611,10 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 		name := taskRow.AssigneeName.String
 		detail.AssigneeName = &name
 	}
+	if taskRow.Estimate.Valid {
+		estimate := taskRow.Estimate.String
+		detail.Estimate = &estimate
+	}
 
 	return detail, nil
 }

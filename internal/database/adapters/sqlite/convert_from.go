@@ -247,6 +247,7 @@ func fromGeneratedGetTaskDetailRow(g generated_sqlite.GetTaskDetailRow) types.Ge
 		TicketNumber:        types.FromSQLNullInt64(g.TicketNumber),
 		CreatedAt:           types.FromSQLNullTime(g.CreatedAt),
 		UpdatedAt:           types.FromSQLNullTime(g.UpdatedAt),
+		Estimate:            types.NullStringFromInterface(g.Estimate),
 		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
 		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
 		PriorityColor:       types.FromSQLNullString(g.PriorityColor),

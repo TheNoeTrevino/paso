@@ -108,6 +108,7 @@ type GetTaskDetailRow struct {
 	TicketNumber        NullInt64
 	CreatedAt           NullTime
 	UpdatedAt           NullTime
+	Estimate            NullString
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString

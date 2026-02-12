@@ -247,6 +247,7 @@ func fromGeneratedGetTaskDetailRow(g generated_postgres.GetTaskDetailRow) types.
 		TicketNumber:        types.FromSQLNullInt64(g.TicketNumber),
 		CreatedAt:           types.FromSQLNullTime(g.CreatedAt),
 		UpdatedAt:           types.FromSQLNullTime(g.UpdatedAt),
+		Estimate:            types.FromSQLNullString(g.Estimate),
 		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
 		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
 		PriorityColor:       types.FromSQLNullString(g.PriorityColor),
