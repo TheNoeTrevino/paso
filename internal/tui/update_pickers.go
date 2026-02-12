@@ -43,6 +43,8 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			// In view mode: return to NormalMode
 			m.UIState.Mode = state.NormalMode
+			// Clear EditingTaskID when returning to board
+			m.Forms.Form.EditingTaskID = 0
 		}
 		m.Pickers.Label.Filter = ""
 		m.Pickers.Label.Cursor = 0
@@ -660,8 +662,12 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Pickers.Priority.SetSelectedPriorityID(selectedPriority.ID)
 		}
 
-		// Return to ticket form mode
+		// Return to previous mode
 		m.UIState.Mode = m.Pickers.Priority.ReturnMode
+		// Clear EditingTaskID if returning to board
+		if m.Pickers.Priority.ReturnMode == state.NormalMode {
+			m.Forms.Form.EditingTaskID = 0
+		}
 		return m, nil
 	}
 
@@ -753,6 +759,10 @@ func (m Model) updateAssigneePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		m.UIState.Mode = m.Pickers.Assignee.ReturnMode
+		// Clear EditingTaskID if returning to board
+		if m.Pickers.Assignee.ReturnMode == state.NormalMode {
+			m.Forms.Form.EditingTaskID = 0
+		}
 		m.Pickers.Assignee.Reset()
 		return m, nil
 
@@ -811,6 +821,10 @@ func (m Model) updateAssigneePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.UIState.Mode = m.Pickers.Assignee.ReturnMode
+		// Clear EditingTaskID if returning to board
+		if m.Pickers.Assignee.ReturnMode == state.NormalMode {
+			m.Forms.Form.EditingTaskID = 0
+		}
 		return m, nil
 	}
 

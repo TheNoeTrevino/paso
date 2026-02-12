@@ -109,6 +109,12 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleSortList()
 	case km.ConnectRemote:
 		return m.handleConnectRemote()
+	case km.EditLabels:
+		return m.handleQuickEditLabels()
+	case km.EditPriority:
+		return m.handleQuickEditPriority()
+	case km.EditAssignee:
+		return m.handleQuickEditAssignee()
 	case "/":
 		return m.handleEnterSearch()
 	}
@@ -533,4 +539,28 @@ func (m *Model) ensureCurrentTaskVisible() {
 
 	maxTasksVisible := max((columnHeight-columnHeightOverhead)/components.TaskCardHeight, 1)
 	m.UIState.EnsureTaskVisible(currentCol.ID, m.UIState.SelectedTask, maxTasksVisible)
+}
+
+func (m Model) handleQuickEditLabels() (tea.Model, tea.Cmd) {
+	if !m.initLabelPickerForBoard() {
+		return m, nil
+	}
+	m.UIState.Mode = state.LabelPickerMode
+	return m, nil
+}
+
+func (m Model) handleQuickEditPriority() (tea.Model, tea.Cmd) {
+	if !m.initPriorityPickerForBoard() {
+		return m, nil
+	}
+	m.UIState.Mode = state.PriorityPickerMode
+	return m, nil
+}
+
+func (m Model) handleQuickEditAssignee() (tea.Model, tea.Cmd) {
+	if !m.initAssigneePickerForBoard() {
+		return m, nil
+	}
+	m.UIState.Mode = state.AssigneePickerMode
+	return m, nil
 }

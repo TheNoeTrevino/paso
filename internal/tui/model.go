@@ -1006,6 +1006,127 @@ func (m *Model) initAssigneePickerForForm() bool {
 	return true
 }
 
+// initLabelPickerForBoard initializes the label picker for quick editing from the kanban board.
+// Opens the picker in "view mode" where selections are applied immediately to the database.
+// Returns false if there's no current task selected.
+func (m *Model) initLabelPickerForBoard() bool {
+	task := m.getCurrentTask()
+	if task == nil {
+		m.UI.Notification.Add(state.LevelError, "No task selected")
+		return false
+	}
+
+	project := m.getCurrentProject()
+	if project == nil {
+		return false
+	}
+
+	// Build map of currently selected label IDs from the task summary
+	labelIDMap := make(map[int]bool)
+	for _, label := range task.Labels {
+		labelIDMap[label.ID] = true
+	}
+
+	// Build picker items from all available labels
+	var items []state.LabelPickerItem
+	for _, label := range m.AppState.Labels() {
+		items = append(items, state.LabelPickerItem{
+			Label:    label,
+			Selected: labelIDMap[label.ID],
+		})
+	}
+
+	// Initialize LabelPickerState for board mode
+	m.Pickers.Label.Items = items
+	m.Pickers.Label.TaskID = task.ID
+	m.Pickers.Label.Cursor = 0
+	m.Pickers.Label.Filter = ""
+	m.Pickers.Label.ReturnMode = state.NormalMode
+
+	// Set EditingTaskID so the picker knows which task to update
+	m.Forms.Form.EditingTaskID = task.ID
+
+	return true
+}
+
+// initPriorityPickerForBoard initializes the priority picker for quick editing from the kanban board.
+// Opens the picker in "view mode" where the selection is applied immediately to the database.
+// Returns false if there's no current task selected.
+func (m *Model) initPriorityPickerForBoard() bool {
+	task := m.getCurrentTask()
+	if task == nil {
+		m.UI.Notification.Add(state.LevelError, "No task selected")
+		return false
+	}
+
+	// Get current priority ID from the task
+	ctx, cancel := m.DBContext()
+	defer cancel()
+
+	_, priorityID, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, task.ID)
+	if err != nil {
+		slog.Error("failed to get task priority ID for board picker", "error", err)
+		m.UI.Notification.Add(state.LevelError, "Failed to load task priority")
+		return false
+	}
+
+	// Initialize PriorityPickerState for board mode
+	m.Pickers.Priority.SetSelectedPriorityID(priorityID)
+	m.Pickers.Priority.SetCursor(priorityID - 1) // 0-indexed
+	m.Pickers.Priority.ReturnMode = state.NormalMode
+
+	// Set EditingTaskID so the picker knows which task to update
+	m.Forms.Form.EditingTaskID = task.ID
+
+	return true
+}
+
+// initAssigneePickerForBoard initializes the assignee picker for quick editing from the kanban board.
+// Opens the picker in "view mode" where the selection is applied immediately to the database.
+// Returns false if there's no current task selected.
+func (m *Model) initAssigneePickerForBoard() bool {
+	task := m.getCurrentTask()
+	if task == nil {
+		m.UI.Notification.Add(state.LevelError, "No task selected")
+		return false
+	}
+
+	ctx, cancel := m.DBContext()
+	defer cancel()
+
+	assignees, err := m.App.AssigneeService.List(ctx)
+	if err != nil {
+		slog.Error("failed to load assignees for board picker", "error", err)
+		m.UI.Notification.Add(state.LevelError, "Failed to load assignees")
+		return false
+	}
+
+	m.Pickers.Assignee.SetAssignees(assignees)
+
+	// Get current assignee ID from task (may be nil)
+	var currentAssigneeID int
+	if task.AssigneeID != nil {
+		currentAssigneeID = *task.AssigneeID
+	}
+	m.Pickers.Assignee.SetSelectedID(currentAssigneeID)
+
+	// Position cursor to match current assignee (offset by 1 for the clear option)
+	cursorPos := 0 // Default to "clear assignee" option
+	for i, a := range assignees {
+		if a.ID == currentAssigneeID {
+			cursorPos = i + 1 // +1 because index 0 is the clear option
+			break
+		}
+	}
+	m.Pickers.Assignee.SetCursor(cursorPos)
+	m.Pickers.Assignee.ReturnMode = state.NormalMode
+
+	// Set EditingTaskID so the picker knows which task to update
+	m.Forms.Form.EditingTaskID = task.ID
+
+	return true
+}
+
 // buildListViewRows creates a flat list of all tasks with their column names.
 // The list is sorted according to the current sort settings in listViewState.
 func (m Model) buildListViewRows() []renderers.ListViewRow {
