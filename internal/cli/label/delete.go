@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 )
 
 // DeleteCmd returns the label delete subcommand
@@ -112,8 +111,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	colors := cli.GetColorScheme()
 	message := fmt.Sprintf("Label %d deleted successfully", labelID)
-	fmt.Print(styles.RenderSuccess(message, colors))
+	cli.PrintSuccess(message)
 	return nil
 }

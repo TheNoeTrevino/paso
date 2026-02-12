@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 )
 
 // DeleteCmd returns the task delete subcommand
@@ -102,8 +101,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	colors := cli.GetColorScheme()
 	message := fmt.Sprintf("Task %d deleted successfully", taskID)
-	fmt.Print(styles.RenderSuccess(message, colors))
+	cli.PrintSuccess(message)
 	return nil
 }

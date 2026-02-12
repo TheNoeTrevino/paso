@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 )
 
 // DeleteCmd returns the column delete subcommand
@@ -148,8 +147,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	colors := cli.GetColorScheme()
 	message := fmt.Sprintf("Column %d deleted successfully", columnID)
-	fmt.Print(styles.RenderSuccess(message, colors))
+	cli.PrintSuccess(message)
 	return nil
 }

@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 )
 
 // LinkCmd returns the task link subcommand
@@ -126,7 +125,6 @@ func runLink(cmd *cobra.Command, args []string) error {
 	}
 
 	// Human-readable output with relationship type
-	colors := cli.GetColorScheme()
 	var message string
 	switch relationTypeID {
 	case 2:
@@ -136,6 +134,6 @@ func runLink(cmd *cobra.Command, args []string) error {
 	default:
 		message = fmt.Sprintf("Linked task %d as child of task %d", childID, parentID)
 	}
-	fmt.Print(styles.RenderSuccess(message, colors))
+	cli.PrintSuccess(message)
 	return nil
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 )
 
 // OpenCodeCmd returns the setup opencode subcommand
@@ -98,7 +99,7 @@ func InstallOpenCode(project bool) error {
 	pluginName := "opencode-paso"
 	for _, p := range plugins {
 		if p == pluginName {
-			fmt.Println("✓ Plugin already installed")
+			cli.PrintSuccess("Plugin already installed")
 			return nil
 		}
 	}
@@ -117,8 +118,9 @@ func InstallOpenCode(project bool) error {
 		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("write config: %v", err))
 	}
 
-	fmt.Printf("\n✓ OpenCode plugin installed\n")
-	fmt.Printf("  Config: %s\n", configPath)
+	fmt.Print(styles.RenderSuccessWithDetails("OpenCode plugin installed", []styles.Detail{
+		{Key: "Config", Value: configPath},
+	}, cli.GetColorScheme()))
 	fmt.Println("\nNote: You may need to install the plugin package:")
 	fmt.Println("  bun add opencode-paso")
 	return nil
@@ -138,9 +140,9 @@ func CheckOpenCode() error {
 	projectInstalled := hasPasoPlugin(projectConfig)
 
 	if globalInstalled {
-		fmt.Println("✓ Plugin installed globally:", globalConfig)
+		cli.PrintSuccess(fmt.Sprintf("Plugin installed globally: %s", globalConfig))
 	} else if projectInstalled {
-		fmt.Println("✓ Plugin installed for project:", projectConfig)
+		cli.PrintSuccess(fmt.Sprintf("Plugin installed for project: %s", projectConfig))
 	} else {
 		fmt.Println("✗ Plugin not installed")
 		fmt.Println("  Run: paso setup opencode")
@@ -209,7 +211,7 @@ func RemoveOpenCode(project bool) error {
 		return cli.NewExitErr(cli.ExitError, fmt.Sprintf("write config: %v", err))
 	}
 
-	fmt.Println("✓ OpenCode plugin removed")
+	cli.PrintSuccess("OpenCode plugin removed")
 	return nil
 }
 

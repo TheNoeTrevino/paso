@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/config/colors"
 	"github.com/thenoetrevino/paso/internal/models"
@@ -256,4 +257,18 @@ func GetColorScheme() colors.ColorScheme {
 		return config.DefaultColorScheme()
 	}
 	return cfg.ColorScheme
+}
+
+// PrintSuccess prints a success message with the current color scheme
+// This is a convenience wrapper that automatically fetches the color scheme
+// and prints the formatted message to stdout
+func PrintSuccess(message string) {
+	fmt.Print(styles.RenderSuccess(message, GetColorScheme()))
+}
+
+// PrintSuccessf prints a formatted success message with the current color scheme
+// This is a convenience wrapper that automatically fetches the color scheme,
+// formats the message, and prints to stdout
+func PrintSuccessf(format string, args ...any) {
+	PrintSuccess(fmt.Sprintf(format, args...))
 }

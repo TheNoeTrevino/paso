@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/config"
 )
 
@@ -80,6 +81,6 @@ func runRemove(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	fmt.Printf("✓ Database '%s' removed\n", name)
+	cli.PrintSuccessf("Database '%s' removed", name)
 	return nil
 }

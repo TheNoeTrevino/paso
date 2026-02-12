@@ -168,7 +168,6 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Human-readable output
-	colors := cli.GetColorScheme()
 	details := []styles.Detail{
 		{Key: "ID", Value: strconv.Itoa(columnID)},
 		{Key: "Name", Value: updatedColumn.Name},
@@ -182,6 +181,6 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if setCompleted {
 		details = append(details, styles.Detail{Key: "Completed tasks", Value: fmt.Sprintf("%v", updatedColumn.HoldsCompletedTasks)})
 	}
-	fmt.Print(styles.RenderSuccessWithDetails("Column updated successfully", details, colors))
+	fmt.Print(styles.RenderSuccessWithDetails("Column updated successfully", details, cli.GetColorScheme()))
 	return nil
 }

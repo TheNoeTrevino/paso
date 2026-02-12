@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/database"
 )
@@ -96,9 +97,9 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	if connected {
-		fmt.Printf("✓ Database '%s' added successfully\n", name)
+		cli.PrintSuccessf("Database '%s' added successfully", name)
 	} else {
-		fmt.Printf("✓ Database '%s' saved\n", name)
+		cli.PrintSuccessf("Database '%s' saved", name)
 		fmt.Fprintf(os.Stderr, "⚠ Connection test failed: %v\n", pingErr)
 	}
 

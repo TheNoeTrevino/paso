@@ -105,6 +105,6 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	fmt.Printf("✓ Assignee %d deleted successfully\n", assigneeID)
+	cli.PrintSuccessf("Assignee %d deleted successfully", assigneeID)
 	return nil
 }

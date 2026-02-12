@@ -169,7 +169,7 @@ func runGitLink(cmd *cobra.Command, args []string) error {
 		}
 
 		if !quietMode && !jsonOutput {
-			fmt.Printf("Unlinked branch \"%s\" from project \"%s\" (id: %d)\n",
+			cli.PrintSuccessf("Unlinked branch \"%s\" from project \"%s\" (id: %d)",
 				branchName, existingProject.Name, existingProject.ID)
 		}
 	}
@@ -208,7 +208,7 @@ func runGitLink(cmd *cobra.Command, args []string) error {
 		return json.NewEncoder(os.Stdout).Encode(result)
 	}
 
-	fmt.Printf("Linked project \"%s\" (id: %d) to branch \"%s\"\n",
+	cli.PrintSuccessf("Linked project \"%s\" (id: %d) to branch \"%s\"",
 		project.Name, project.ID, branchName)
 
 	return nil

@@ -145,7 +145,7 @@ func runGitUnlink(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	fmt.Printf("Unlinked branch \"%s\" from project \"%s\" (id: %d)\n",
+	cli.PrintSuccessf("Unlinked branch \"%s\" from project \"%s\" (id: %d)",
 		oldBranch, project.Name, project.ID)
 
 	return nil

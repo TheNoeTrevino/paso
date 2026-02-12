@@ -132,9 +132,9 @@ func assignTask(cmd *cobra.Command, cliInstance *cli.CLI, taskID int, assigneeID
 	}
 
 	if assigneeID != nil {
-		fmt.Printf("Task %d assigned to @%s\n", taskID, assigneeName)
+		cli.PrintSuccessf("Task %d assigned to @%s", taskID, assigneeName)
 	} else {
-		fmt.Printf("Task %d assignee cleared\n", taskID)
+		cli.PrintSuccessf("Task %d assignee cleared", taskID)
 	}
 	return nil
 }

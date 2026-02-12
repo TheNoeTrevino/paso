@@ -2,7 +2,6 @@ package assignee
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"os"
 
@@ -80,6 +79,6 @@ func runSet(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	fmt.Printf("✓ Active assignee set to '%s'\n", name)
+	cli.PrintSuccessf("Active assignee set to '%s'", name)
 	return nil
 }

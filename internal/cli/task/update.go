@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 )
 
@@ -127,8 +126,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	colors := cli.GetColorScheme()
 	message := fmt.Sprintf("Task %d updated successfully", taskID)
-	fmt.Print(styles.RenderSuccess(message, colors))
+	cli.PrintSuccess(message)
 	return nil
 }

@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
@@ -180,7 +179,6 @@ func runMove(cmd *cobra.Command, args []string) error {
 	}
 
 	// Human-readable output
-	colors := cli.GetColorScheme()
 	var message string
 	if dryRun {
 		if currentColumnName == toColumnName {
@@ -195,7 +193,7 @@ func runMove(cmd *cobra.Command, args []string) error {
 			message = fmt.Sprintf("Task %d moved to '%s'", taskID, toColumnName)
 		}
 	}
-	fmt.Print(styles.RenderSuccess(message, colors))
+	cli.PrintSuccess(message)
 	return nil
 }
 

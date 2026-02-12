@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/database"
 )
@@ -71,9 +72,9 @@ func runConnect(cmd *cobra.Command, args []string) error {
 	}
 
 	if connected {
-		fmt.Printf("✓ Connected to '%s'\n", name)
+		cli.PrintSuccessf("Connected to '%s'", name)
 	} else {
-		fmt.Printf("✓ Switched to '%s'\n", name)
+		cli.PrintSuccessf("Switched to '%s'", name)
 		fmt.Fprintf(os.Stderr, "⚠ Connection test failed: %v\n", pingErr)
 	}
 

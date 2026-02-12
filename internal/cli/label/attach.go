@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 )
 
 // AttachCmd returns the label attach subcommand
@@ -115,8 +114,7 @@ func runAttach(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	colors := cli.GetColorScheme()
 	message := fmt.Sprintf("Label '%s' attached to task #%d", label.Name, taskID)
-	fmt.Print(styles.RenderSuccess(message, colors))
+	cli.PrintSuccess(message)
 	return nil
 }

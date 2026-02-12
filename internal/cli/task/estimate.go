@@ -123,9 +123,9 @@ func updateEstimate(cmd *cobra.Command, cliInstance *cli.CLI, taskID int, estima
 	}
 
 	if estimate != nil {
-		fmt.Printf("Task %d estimate set to %s\n", taskID, *estimate)
+		cli.PrintSuccess(fmt.Sprintf("Task %d estimate set to %s", taskID, *estimate))
 	} else {
-		fmt.Printf("Task %d estimate cleared\n", taskID)
+		cli.PrintSuccess(fmt.Sprintf("Task %d estimate cleared", taskID))
 	}
 	return nil
 }
