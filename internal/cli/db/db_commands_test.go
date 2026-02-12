@@ -2,6 +2,7 @@ package db_test
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,8 +18,13 @@ func isolateConfig(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 }
 
+// addLocalDB adds a database to the isolated config.
+// It ensures config is isolated to prevent polluting the actual user config directory.
 func addLocalDB(t *testing.T, name, path string) {
 	t.Helper()
+	if os.Getenv("XDG_CONFIG_HOME") == "" {
+		isolateConfig(t)
+	}
 	cmd := db.AddCmd()
 	cli.SetupCobraCommand(cmd, []string{path, "--name", name, "--local"})
 	_, err := cli.ExecuteCommand(t, cmd)
