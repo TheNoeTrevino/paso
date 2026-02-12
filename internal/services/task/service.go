@@ -36,6 +36,7 @@ type TaskWriter interface {
 	CreateTask(ctx context.Context, req CreateTaskRequest) (*models.Task, error)
 	UpdateTask(ctx context.Context, req UpdateTaskRequest) error
 	UpdateTaskAssignee(ctx context.Context, taskID int, assigneeID *int) error
+	UpdateTaskEstimate(ctx context.Context, taskID int, estimate *string) error
 	DeleteTask(ctx context.Context, taskID int) error
 }
 
@@ -93,9 +94,10 @@ type CreateTaskRequest struct {
 	Description  string
 	ColumnID     int
 	Position     int
-	PriorityID   int // Optional: 0 means use default
-	TypeID       int // Optional: 0 means use default
-	AssigneeID   int // Optional: 0 means use active assignee from config
+	PriorityID   int    // Optional: 0 means use default
+	TypeID       int    // Optional: 0 means use default
+	AssigneeID   int    // Optional: 0 means use active assignee from config
+	Estimate     string // Optional: empty means no estimate
 	LabelIDs     []int
 	ParentIDs    []int // Parent task IDs (tasks that depend on this task)
 	ChildIDs     []int // Child task IDs (tasks this task depends on)
@@ -223,6 +225,16 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 				ID:     createdTask.ID,
 			}); err != nil {
 				return fmt.Errorf("failed to set type: %w", err)
+			}
+		}
+
+		// Set estimate if provided
+		if req.Estimate != "" {
+			if err := qtx.UpdateTaskEstimate(ctx, types.UpdateTaskEstimateParams{
+				Estimate: types.NullString{String: req.Estimate, Valid: true},
+				ID:       createdTask.ID,
+			}); err != nil {
+				return fmt.Errorf("failed to set estimate: %w", err)
 			}
 		}
 
@@ -458,6 +470,35 @@ func (s *service) UpdateTaskAssignee(ctx context.Context, taskID int, assigneeID
 		ID:         int64(taskID),
 	}); err != nil {
 		return fmt.Errorf("failed to update task assignee: %w", err)
+	}
+
+	s.publishTaskEvent(ctx, taskID)
+	return nil
+}
+
+// UpdateTaskEstimate updates the estimate for a task
+func (s *service) UpdateTaskEstimate(ctx context.Context, taskID int, estimate *string) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	if err := validateTaskID(taskID); err != nil {
+		return err
+	}
+
+	if err := ValidateEstimate(estimate); err != nil {
+		return err
+	}
+
+	var nullEstimate types.NullString
+	if estimate != nil {
+		nullEstimate = types.NullString{String: *estimate, Valid: true}
+	}
+
+	if err := s.queries.UpdateTaskEstimate(ctx, types.UpdateTaskEstimateParams{
+		Estimate: nullEstimate,
+		ID:       int64(taskID),
+	}); err != nil {
+		return fmt.Errorf("failed to update task estimate: %w", err)
 	}
 
 	s.publishTaskEvent(ctx, taskID)
