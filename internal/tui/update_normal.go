@@ -542,7 +542,7 @@ func (m *Model) ensureCurrentTaskVisible() {
 }
 
 func (m Model) handleQuickEditLabels() (tea.Model, tea.Cmd) {
-	if !m.initLabelPickerForBoard() {
+	if !m.initLabelPicker(state.NormalMode) {
 		return m, nil
 	}
 	m.UIState.Mode = state.LabelPickerMode
@@ -550,7 +550,7 @@ func (m Model) handleQuickEditLabels() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleQuickEditPriority() (tea.Model, tea.Cmd) {
-	if !m.initPriorityPickerForBoard() {
+	if !m.initPriorityPicker(state.NormalMode) {
 		return m, nil
 	}
 	m.UIState.Mode = state.PriorityPickerMode
@@ -558,7 +558,7 @@ func (m Model) handleQuickEditPriority() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleQuickEditAssignee() (tea.Model, tea.Cmd) {
-	if !m.initAssigneePickerForBoard() {
+	if !m.initAssigneePicker(state.NormalMode) {
 		return m, nil
 	}
 	m.UIState.Mode = state.AssigneePickerMode

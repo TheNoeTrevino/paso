@@ -442,14 +442,14 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+l":
 			// Open label picker
-			if m.initLabelPickerForForm() {
+			if m.initLabelPicker(state.TicketFormMode) {
 				m.UIState.Mode = state.LabelPickerMode
 			}
 			return m, nil
 
 		case "ctrl+r":
 			// Open priority picker
-			if m.initPriorityPickerForForm() {
+			if m.initPriorityPicker(state.TicketFormMode) {
 				m.UIState.Mode = state.PriorityPickerMode
 			}
 			return m, nil
@@ -463,7 +463,7 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+a":
 			// Open assignee picker
-			if m.initAssigneePickerForForm() {
+			if m.initAssigneePicker(state.TicketFormMode) {
 				m.UIState.Mode = state.AssigneePickerMode
 			}
 			return m, nil
