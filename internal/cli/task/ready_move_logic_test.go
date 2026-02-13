@@ -278,10 +278,10 @@ func TestFormatReadyMoveQuiet(t *testing.T) {
 			name: "basic task ID",
 			result: &ReadyMoveResult{
 				TaskID:     42,
-				FromColumn: "Backlog",
+				FromColumn: "In Progress",
 				ToColumn:   "Ready",
 			},
-			want: "42",
+			want: "42\n",
 		},
 		{
 			name: "single digit task ID",
@@ -290,16 +290,16 @@ func TestFormatReadyMoveQuiet(t *testing.T) {
 				FromColumn: "Backlog",
 				ToColumn:   "Ready",
 			},
-			want: "1",
+			want: "1\n",
 		},
 		{
 			name: "large task ID",
 			result: &ReadyMoveResult{
 				TaskID:     999999,
-				FromColumn: "Backlog",
+				FromColumn: "Done",
 				ToColumn:   "Ready",
 			},
-			want: "999999",
+			want: "999999\n",
 		},
 		{
 			name: "zero task ID",
@@ -308,7 +308,7 @@ func TestFormatReadyMoveQuiet(t *testing.T) {
 				FromColumn: "Backlog",
 				ToColumn:   "Ready",
 			},
-			want: "0",
+			want: "0\n",
 		},
 		{
 			name: "negative task ID",
@@ -317,7 +317,7 @@ func TestFormatReadyMoveQuiet(t *testing.T) {
 				FromColumn: "Backlog",
 				ToColumn:   "Ready",
 			},
-			want: "-1",
+			want: "-1\n",
 		},
 		{
 			name: "columns don't matter",
@@ -326,7 +326,7 @@ func TestFormatReadyMoveQuiet(t *testing.T) {
 				FromColumn: "",
 				ToColumn:   "",
 			},
-			want: "42",
+			want: "42\n",
 		},
 	}
 

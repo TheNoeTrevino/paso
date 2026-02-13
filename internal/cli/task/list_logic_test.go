@@ -158,7 +158,7 @@ func TestFormatTasksQuiet(t *testing.T) {
 		{
 			name:     "empty tasks",
 			tasks:    []*models.TaskSummary{},
-			expected: []string{},
+			expected: nil,
 		},
 		{
 			name: "single task",

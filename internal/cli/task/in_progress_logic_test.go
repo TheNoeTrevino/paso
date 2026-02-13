@@ -57,7 +57,7 @@ func TestParseInProgressArgs(t *testing.T) {
 			name:          "no task ID and no project ID",
 			args:          []string{},
 			projectID:     0,
-			expectedError: "either provide a task ID or use --project flag to list tasks",
+			expectedError: "task ID is required (or use --project flag to list tasks)",
 		},
 		{
 			name:          "invalid task ID",
