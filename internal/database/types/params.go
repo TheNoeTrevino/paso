@@ -108,6 +108,8 @@ type CreateTaskParams struct {
 	Position     int64
 	TicketNumber NullInt64
 	AssigneeID   NullInt64
+	Estimate     NullString
+	DueDate      NullTime
 }
 
 type GetTaskAboveParams struct {

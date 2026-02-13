@@ -74,6 +74,7 @@ type Task struct {
 	UpdatedAt    sql.NullTime
 	AssigneeID   interface{}
 	Estimate     interface{}
+	DueDate      interface{}
 }
 
 type TaskComment struct {

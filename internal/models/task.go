@@ -11,6 +11,7 @@ type Task struct {
 	PriorityID  int
 	ColumnID    int
 	Position    int
+	DueDate     *time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -40,6 +41,7 @@ type TaskSummary struct {
 	AssigneeID          *int
 	AssigneeName        *string
 	Estimate            *string
+	DueDate             *time.Time
 	ColumnID            int
 	Position            int
 	IsBlocked           bool // True if any child task has is_blocking=true
@@ -61,6 +63,7 @@ type TaskDetail struct {
 	AssigneeID          *int
 	AssigneeName        *string
 	Estimate            *string
+	DueDate             *time.Time
 	ColumnID            int
 	ColumnName          string // Column name for display
 	Position            int

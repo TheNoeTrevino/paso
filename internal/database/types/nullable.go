@@ -90,6 +90,14 @@ func (n NullString) ToSQLNullString() sql.NullString {
 	return sql.NullString{String: n.String, Valid: n.Valid}
 }
 
+// ToInterface converts types.NullString to any (for SQLite)
+func (n NullString) ToInterface() any {
+	if !n.Valid {
+		return nil
+	}
+	return n.String
+}
+
 // NullTime is a database-agnostic nullable time type.
 type NullTime struct {
 	Time  time.Time
@@ -104,6 +112,14 @@ func FromSQLNullTime(n sql.NullTime) NullTime {
 // ToSQLNullTime converts types.NullTime to sql.NullTime
 func (n NullTime) ToSQLNullTime() sql.NullTime {
 	return sql.NullTime{Time: n.Time, Valid: n.Valid}
+}
+
+// ToInterface converts types.NullTime to any (for SQLite)
+func (n NullTime) ToInterface() any {
+	if !n.Valid {
+		return nil
+	}
+	return n.Time
 }
 
 // ConvertSlice converts a slice of one type to another using the provided converter function.

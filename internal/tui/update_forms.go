@@ -72,6 +72,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 		Position:    len(m.getTasksForColumn(currentCol.ID)),
 		AssigneeID:  m.Forms.Form.FormAssigneeID,
 		Estimate:    m.Forms.Form.FormEstimate,
+		DueDate:     m.Forms.Form.FormDueDate,
 		LabelIDs:    values.labelIDs,
 		ParentIDs:   parentIDs,
 		ChildIDs:    childIDs,

@@ -15,6 +15,8 @@ func toGeneratedCreateTaskParams(t types.CreateTaskParams) generated_sqlite.Crea
 		Position:     t.Position,
 		TicketNumber: t.TicketNumber.ToSQLNullInt64(),
 		AssigneeID:   t.AssigneeID.ToInterface(),
+		Estimate:     t.Estimate.ToInterface(),
+		DueDate:      t.DueDate.ToInterface(),
 	}
 }
 

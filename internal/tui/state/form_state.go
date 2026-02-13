@@ -52,14 +52,15 @@ type FormState struct {
 	ViewportFocused  bool           // Track if viewport has focus (for border color)
 
 	// Task metadata for display (edit mode only)
-	FormCreatedAt           time.Time // Task creation timestamp (only populated in edit mode)
-	FormUpdatedAt           time.Time // Task last update timestamp (only populated in edit mode)
-	FormTypeDescription     string    // Task type (e.g., "task", "feature")
-	FormPriorityDescription string    // Task priority (e.g., "low", "high", "critical")
-	FormPriorityColor       string    // Task priority color (hex code)
-	FormAssigneeID          int       // Task assignee ID (0 means unassigned)
-	FormAssigneeName        string    // Task assignee display name
-	FormEstimate            string    // Task time estimate (e.g., "2h", "1d")
+	FormCreatedAt           time.Time  // Task creation timestamp (only populated in edit mode)
+	FormUpdatedAt           time.Time  // Task last update timestamp (only populated in edit mode)
+	FormTypeDescription     string     // Task type (e.g., "task", "feature")
+	FormPriorityDescription string     // Task priority (e.g., "low", "high", "critical")
+	FormPriorityColor       string     // Task priority color (hex code)
+	FormAssigneeID          int        // Task assignee ID (0 means unassigned)
+	FormAssigneeName        string     // Task assignee display name
+	FormEstimate            string     // Task time estimate (e.g., "2h", "1d")
+	FormDueDate             *time.Time // Task due date (nil means no due date set)
 
 	// Task form initial values (for change detection)
 	InitialFormTitle       string // Initial title value when form was created
@@ -197,6 +198,7 @@ func (s *FormState) ClearTaskForm() {
 	s.FormAssigneeID = 0
 	s.FormAssigneeName = ""
 	s.FormEstimate = ""
+	s.FormDueDate = nil
 }
 
 // IsTaskFormActive returns true if a task form is currently active.

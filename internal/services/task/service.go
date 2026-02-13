@@ -94,10 +94,11 @@ type CreateTaskRequest struct {
 	Description  string
 	ColumnID     int
 	Position     int
-	PriorityID   int    // Optional: 0 means use default
-	TypeID       int    // Optional: 0 means use default
-	AssigneeID   int    // Optional: 0 means use active assignee from config
-	Estimate     string // Optional: empty means no estimate
+	PriorityID   int        // Optional: 0 means use default
+	TypeID       int        // Optional: 0 means use default
+	AssigneeID   int        // Optional: 0 means use active assignee from config
+	Estimate     string     // Optional: empty means no estimate
+	DueDate      *time.Time // Optional: nil means no due date
 	LabelIDs     []int
 	ParentIDs    []int // Parent task IDs (tasks that depend on this task)
 	ChildIDs     []int // Child task IDs (tasks this task depends on)
@@ -190,6 +191,16 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 			assigneeID = types.NullInt64{Int64: int64(req.AssigneeID), Valid: true}
 		}
 
+		var estimate types.NullString
+		if req.Estimate != "" {
+			estimate = types.NullString{String: req.Estimate, Valid: true}
+		}
+
+		var dueDate types.NullTime
+		if req.DueDate != nil {
+			dueDate = types.NullTime{Time: *req.DueDate, Valid: true}
+		}
+
 		var taskErr error
 		createdTask, taskErr = qtx.CreateTask(ctx, types.CreateTaskParams{
 			Title:        req.Title,
@@ -198,6 +209,8 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 			Position:     int64(req.Position),
 			TicketNumber: ticketNumber,
 			AssigneeID:   assigneeID,
+			Estimate:     estimate,
+			DueDate:      dueDate,
 		})
 		if taskErr != nil {
 			return fmt.Errorf("failed to create task: %w", taskErr)
@@ -225,16 +238,6 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 				ID:     createdTask.ID,
 			}); err != nil {
 				return fmt.Errorf("failed to set type: %w", err)
-			}
-		}
-
-		// Set estimate if provided
-		if req.Estimate != "" {
-			if err := qtx.UpdateTaskEstimate(ctx, types.UpdateTaskEstimateParams{
-				Estimate: types.NullString{String: req.Estimate, Valid: true},
-				ID:       createdTask.ID,
-			}); err != nil {
-				return fmt.Errorf("failed to set estimate: %w", err)
 			}
 		}
 

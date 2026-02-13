@@ -74,6 +74,7 @@ type Task struct {
 	UpdatedAt    sql.NullTime
 	AssigneeID   sql.NullInt32
 	Estimate     sql.NullString
+	DueDate      sql.NullTime
 }
 
 type TaskComment struct {
