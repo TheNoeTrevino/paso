@@ -39,7 +39,7 @@ func TestDoneTask_Integration(t *testing.T) {
 		})
 
 		assert.NoError(t, err)
-		assert.Contains(t, output, fmt.Sprintf("Task %d moved to 'Done'", taskID))
+		assert.Contains(t, output, fmt.Sprintf("Task %d moved from Todo to Done", taskID))
 
 		// Verify task moved to done column
 		columnID := fixtures.GetTaskColumnID(t, db, fixtures.SQLiteDialect(), taskID)

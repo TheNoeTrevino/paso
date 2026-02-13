@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -53,7 +52,7 @@ func runDone(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
 	// Parse task ID from positional argument
-	taskID, err := strconv.Atoi(args[0])
+	input, err := ParseDoneArgs(args)
 	if err != nil {
 		formatter := &cli.OutputFormatter{}
 		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid task ID '%s': must be a number", args[0]))
@@ -76,23 +75,23 @@ func runDone(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Get task detail before move for output
-	taskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
+	taskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, input.TaskID)
 	if err != nil {
-		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID))
+		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", input.TaskID))
 	}
 
 	currentColumnName := taskDetail.ColumnName
 
 	// Move task to completed column
-	err = cliInstance.App.TaskService.MoveTaskToCompletedColumn(ctx, taskID)
+	err = cliInstance.App.TaskService.MoveTaskToCompletedColumn(ctx, input.TaskID)
 	if err != nil {
 		// Check for specific errors
 		if err == taskservice.ErrTaskAlreadyInTargetColumn {
 			// Write to stderr as per requirements
-			fmt.Fprintf(os.Stderr, "Task %d is already in the completed column (%s)\n", taskID, currentColumnName)
+			fmt.Fprintf(os.Stderr, "Task %d is already in the completed column (%s)\n", input.TaskID, currentColumnName)
 			// Still exit successfully
 			if quietMode {
-				fmt.Printf("%d\n", taskID)
+				fmt.Printf("%d\n", input.TaskID)
 			}
 			return nil
 		}
@@ -105,30 +104,31 @@ func runDone(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get updated task detail for output
-	updatedTaskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
+	updatedTaskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, input.TaskID)
 	if err != nil {
 		return formatter.Error(cli.ExitError, "TASK_FETCH_ERROR", err.Error())
 	}
 
 	toColumnName := updatedTaskDetail.ColumnName
 
+	result := &DoneResult{
+		TaskID:     input.TaskID,
+		FromColumn: currentColumnName,
+		ToColumn:   toColumnName,
+	}
+
 	// Output success
 	if quietMode {
-		fmt.Printf("%d\n", taskID)
+		fmt.Printf("%d\n", input.TaskID)
 		return nil
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"success":     true,
-			"task_id":     taskID,
-			"from_column": currentColumnName,
-			"to_column":   toColumnName,
-		})
+		return json.NewEncoder(os.Stdout).Encode(FormatDoneJSON(result))
 	}
 
 	// Human-readable output
-	message := fmt.Sprintf("Task %d moved to '%s'", taskID, toColumnName)
+	message := FormatDoneOutput(result)
 	cli.PrintSuccess(message)
 	return nil
 }

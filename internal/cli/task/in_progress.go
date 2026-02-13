@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 
-	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
@@ -66,23 +64,18 @@ func runInProgress(cmd *cobra.Command, args []string) error {
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
-	// Determine mode: list or move
-	if projectID > 0 {
-		// List mode
-		return listInProgressTasks(ctx, projectID, formatter)
-	}
-
-	// Move mode - require task ID
-	if len(args) == 0 {
-		return formatter.Error(cli.ExitValidation, "INVALID_INPUT", "either provide a task ID or use --project flag to list tasks")
-	}
-
-	taskID, err := strconv.Atoi(args[0])
+	// Parse input
+	input, err := ParseInProgressArgs(args, projectID)
 	if err != nil {
-		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid task ID '%s': must be a number", args[0]))
+		return formatter.Error(cli.ExitValidation, "INVALID_INPUT", err.Error())
 	}
 
-	return moveTaskToInProgress(ctx, taskID, formatter)
+	// Execute based on mode
+	if input.Mode == InProgressModeList {
+		return listInProgressTasks(ctx, input.ProjectID, formatter)
+	}
+
+	return moveTaskToInProgress(ctx, input.TaskID, formatter)
 }
 
 func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.OutputFormatter) error {
@@ -111,17 +104,7 @@ func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.Outp
 		return formatter.Error(cli.ExitError, "TASK_FETCH_ERROR", err.Error())
 	}
 
-	// Convert TaskDetail to simpler format for display
-	type TaskDisplay struct {
-		ID                  int    `json:"id"`
-		TicketNumber        int    `json:"ticket_number"`
-		Title               string `json:"title"`
-		TypeDescription     string `json:"type_description"`
-		PriorityDescription string `json:"priority_description"`
-		PriorityColor       string `json:"priority_color"`
-		IsBlocked           bool   `json:"is_blocked"`
-	}
-
+	// Convert TaskDetail to display format
 	displayTasks := make([]TaskDisplay, len(tasks))
 	for i, t := range tasks {
 		displayTasks[i] = TaskDisplay{
@@ -135,46 +118,23 @@ func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.Outp
 		}
 	}
 
+	result := &ListInProgressResult{
+		Tasks: displayTasks,
+		Count: len(displayTasks),
+	}
+
 	// Output in appropriate format
 	if formatter.Quiet {
-		// Just print IDs
-		for _, t := range displayTasks {
-			fmt.Printf("%d\n", t.ID)
-		}
+		fmt.Print(FormatListQuiet(result))
 		return nil
 	}
 
 	if formatter.JSON {
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"success": true,
-			"tasks":   displayTasks,
-			"count":   len(displayTasks),
-		})
+		return json.NewEncoder(os.Stdout).Encode(FormatListJSON(result))
 	}
 
 	// Human-readable output
-	if len(displayTasks) == 0 {
-		fmt.Println("No in-progress tasks found")
-		return nil
-	}
-
-	fmt.Printf("Found %d in-progress tasks:\n\n", len(displayTasks))
-	for _, t := range displayTasks {
-		// Include priority if set
-		priorityInfo := ""
-		if t.PriorityDescription != "" && t.PriorityDescription != "medium" {
-			priorityInfo = fmt.Sprintf(" [%s]", t.PriorityDescription)
-		}
-
-		// Include blocked indicator
-		blockedInfo := ""
-		if t.IsBlocked {
-			blockedInfo = " " + lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Render("▲") + " BLOCKED"
-		}
-
-		fmt.Printf("  [%d] %s%s%s\n", t.ID, t.Title, priorityInfo, blockedInfo)
-	}
-
+	fmt.Print(FormatListHuman(result))
 	return nil
 }
 
@@ -227,23 +187,23 @@ func moveTaskToInProgress(ctx context.Context, taskID int, formatter *cli.Output
 
 	toColumnName := updatedTaskDetail.ColumnName
 
+	result := &MoveInProgressResult{
+		TaskID:     taskID,
+		FromColumn: currentColumnName,
+		ToColumn:   toColumnName,
+	}
+
 	// Output success
 	if formatter.Quiet {
-		fmt.Printf("%d\n", taskID)
+		fmt.Print(FormatMoveQuiet(result))
 		return nil
 	}
 
 	if formatter.JSON {
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"success":     true,
-			"task_id":     taskID,
-			"from_column": currentColumnName,
-			"to_column":   toColumnName,
-		})
+		return json.NewEncoder(os.Stdout).Encode(FormatMoveJSON(result))
 	}
 
 	// Human-readable output
-	message := fmt.Sprintf("Task %d moved to '%s'", taskID, toColumnName)
-	cli.PrintSuccess(message)
+	cli.PrintSuccess(FormatMoveHuman(result))
 	return nil
 }

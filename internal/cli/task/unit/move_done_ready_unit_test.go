@@ -150,7 +150,7 @@ func TestDoneTask(t *testing.T) {
 		}, cmd, []string{"42"})
 
 		require.NoError(t, err)
-		assert.Contains(t, output, "Task 42 moved to 'Done'")
+		assert.Contains(t, output, "Task 42 moved from In Progress to Done")
 		assert.True(t, mockTask.HasCall("MoveTaskToCompletedColumn", 42))
 	})
 

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
@@ -46,10 +44,11 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Parse ID from positional argument
-	taskID, err := strconv.Atoi(args[0])
+	input, err := ParseDeleteArgs(args)
 	if err != nil {
 		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0]))
 	}
+	taskID := input.TaskID
 
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
@@ -70,7 +69,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 
 	// Ask for confirmation unless force or quiet mode
 	if !force && !quietMode {
-		fmt.Printf("Delete task #%d: '%s'? (y/N): ", taskID, task.Title)
+		fmt.Print(FormatConfirmationPrompt(taskID, task.Title))
 		var response string
 		_, err := fmt.Scanln(&response)
 		if err != nil {
@@ -78,7 +77,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 			fmt.Println("Cancelled (failed to read input)")
 			return nil
 		}
-		if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+		if !IsConfirmationYes(response) {
 			fmt.Println("Cancelled")
 			return nil
 		}
@@ -94,14 +93,13 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	result := &DeleteResult{TaskID: taskID}
+
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"success": true,
-			"task_id": taskID,
-		})
+		return json.NewEncoder(os.Stdout).Encode(FormatDeleteJSON(result))
 	}
 
-	message := fmt.Sprintf("Task %d deleted successfully", taskID)
+	message := FormatDeleteOutput(result)
 	cli.PrintSuccess(message)
 	return nil
 }
