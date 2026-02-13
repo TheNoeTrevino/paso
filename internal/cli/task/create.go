@@ -5,11 +5,9 @@ package task
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
@@ -136,13 +134,9 @@ func (h *createHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		targetColumnID = col.ID
 	}
 
-	description := taskDescription
-	if description == "-" {
-		data, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read stdin: %w", err)
-		}
-		description = string(data)
+	description, err := ReadDescription(taskDescription, os.Stdin)
+	if err != nil {
+		return nil, err
 	}
 
 	// Parse type
@@ -257,8 +251,5 @@ func (r *taskCreateResult) PrettyPrint(colorScheme colors.ColorScheme) string {
 func parseCreateFlags(cmd *cobra.Command) error {
 	// Validate required flags
 	title, _ := cmd.Flags().GetString("title")
-	if strings.TrimSpace(title) == "" {
-		return fmt.Errorf("failed to validate input: title is required")
-	}
-	return nil
+	return ValidateCreateTitle(title)
 }
