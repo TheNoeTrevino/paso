@@ -72,13 +72,10 @@ func TestParseInProgressArgs(t *testing.T) {
 			expectedError: "invalid task ID '42@#$': must be a number",
 		},
 		{
-			name:      "negative task ID in string",
-			args:      []string{"-5"},
-			projectID: 0,
-			expected: &InProgressInput{
-				Mode:   InProgressModeMove,
-				TaskID: -5,
-			},
+			name:          "negative task ID in string",
+			args:          []string{"-5"},
+			projectID:     0,
+			expectedError: "task ID must be a positive integer",
 		},
 		{
 			name:          "empty string as task ID",

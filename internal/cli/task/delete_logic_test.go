@@ -38,18 +38,14 @@ func TestParseDeleteArgs(t *testing.T) {
 			},
 		},
 		{
-			name: "task ID of 0",
-			args: []string{"0"},
-			expected: &DeleteInput{
-				TaskID: 0,
-			},
+			name:          "task ID of 0",
+			args:          []string{"0"},
+			expectedError: "task ID must be a positive integer",
 		},
 		{
-			name: "negative task ID",
-			args: []string{"-5"},
-			expected: &DeleteInput{
-				TaskID: -5,
-			},
+			name:          "negative task ID",
+			args:          []string{"-5"},
+			expectedError: "task ID must be a positive integer",
 		},
 		{
 			name:          "no arguments",

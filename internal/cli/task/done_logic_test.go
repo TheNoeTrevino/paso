@@ -38,18 +38,14 @@ func TestParseDoneArgs(t *testing.T) {
 			},
 		},
 		{
-			name: "task ID of 0",
-			args: []string{"0"},
-			expected: &DoneInput{
-				TaskID: 0,
-			},
+			name:          "task ID of 0",
+			args:          []string{"0"},
+			expectedError: "task ID must be a positive integer",
 		},
 		{
-			name: "negative task ID",
-			args: []string{"-5"},
-			expected: &DoneInput{
-				TaskID: -5,
-			},
+			name:          "negative task ID",
+			args:          []string{"-5"},
+			expectedError: "task ID must be a positive integer",
 		},
 		{
 			name:          "no arguments",

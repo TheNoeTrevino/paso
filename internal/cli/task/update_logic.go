@@ -31,6 +31,10 @@ func ParseUpdateID(args []string) (int, error) {
 		return 0, fmt.Errorf("invalid ID '%s': must be a number", args[0])
 	}
 
+	if taskID <= 0 {
+		return 0, fmt.Errorf("task ID must be a positive integer")
+	}
+
 	return taskID, nil
 }
 

@@ -55,7 +55,7 @@ func runDone(cmd *cobra.Command, args []string) error {
 	input, err := ParseDoneArgs(args)
 	if err != nil {
 		formatter := &cli.OutputFormatter{}
-		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid task ID '%s': must be a number", args[0]))
+		return formatter.Error(cli.ExitValidation, "INVALID_ID", err.Error())
 	}
 
 	jsonOutput, _ := cmd.Flags().GetBool("json")

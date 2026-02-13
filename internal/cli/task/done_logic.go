@@ -28,6 +28,10 @@ func ParseDoneArgs(args []string) (*DoneInput, error) {
 		return nil, fmt.Errorf("invalid task ID: %s", args[0])
 	}
 
+	if taskID <= 0 {
+		return nil, fmt.Errorf("task ID must be a positive integer")
+	}
+
 	return &DoneInput{
 		TaskID: taskID,
 	}, nil

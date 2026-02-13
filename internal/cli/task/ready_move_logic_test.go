@@ -68,8 +68,8 @@ func TestParseReadyMoveArgs(t *testing.T) {
 			name:        "invalid task ID - negative number",
 			args:        []string{"-1"},
 			want:        nil,
-			wantErr:     false,
-			errContains: "",
+			wantErr:     true,
+			errContains: "task ID must be a positive integer",
 		},
 		{
 			name:        "invalid task ID - decimal",

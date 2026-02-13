@@ -52,14 +52,14 @@ func TestParseUpdateID(t *testing.T) {
 		{
 			name:    "invalid ID - negative",
 			args:    []string{"-1"},
-			want:    -1,
-			wantErr: false,
+			wantErr: true,
+			errMsg:  "task ID must be a positive integer",
 		},
 		{
 			name:    "invalid ID - zero",
 			args:    []string{"0"},
-			want:    0,
-			wantErr: false,
+			wantErr: true,
+			errMsg:  "task ID must be a positive integer",
 		},
 	}
 

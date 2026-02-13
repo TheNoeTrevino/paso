@@ -418,7 +418,7 @@ func TestReadyMoveTask_Errors(t *testing.T) {
 		cmd := task.ReadyMoveCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"not-a-number"})
 		cli.AssertExitError(t, err, 5) // ExitValidation
-		assert.Contains(t, err.Error(), "invalid task ID 'not-a-number': must be a number")
+		assert.Contains(t, err.Error(), "invalid task ID: not-a-number")
 	})
 
 	t.Run("missing task ID argument", func(t *testing.T) {
@@ -467,8 +467,8 @@ func TestReadyMoveTask_Errors(t *testing.T) {
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{
 			"0",
 		})
-		cli.AssertExitError(t, err, 3) // ExitNotFound
-		assert.Contains(t, err.Error(), "task 0 not found")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "task ID must be a positive integer")
 	})
 
 	t.Run("invalid task ID - negative", func(t *testing.T) {

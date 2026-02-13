@@ -65,6 +65,10 @@ func ParseInProgressArgs(args []string, projectID int) (*InProgressInput, error)
 		return nil, fmt.Errorf("invalid task ID '%s': must be a number", args[0])
 	}
 
+	if taskID <= 0 {
+		return nil, fmt.Errorf("task ID must be a positive integer")
+	}
+
 	return &InProgressInput{
 		Mode:   InProgressModeMove,
 		TaskID: taskID,

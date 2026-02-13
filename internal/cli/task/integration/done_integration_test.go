@@ -176,6 +176,6 @@ func TestDoneTask_Integration_Errors(t *testing.T) {
 		cmd := task.DoneCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"not-a-number"})
 		cli.AssertExitError(t, err, 5) // ExitValidation
-		assert.Contains(t, err.Error(), "invalid task ID 'not-a-number': must be a number")
+		assert.Contains(t, err.Error(), "invalid task ID: not-a-number")
 	})
 }

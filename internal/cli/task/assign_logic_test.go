@@ -43,12 +43,9 @@ func TestParseAssignArgs(t *testing.T) {
 			expectedError: "invalid task ID: not-a-number",
 		},
 		{
-			name: "negative task ID",
-			args: []string{"-5"},
-			expected: &AssignInput{
-				TaskID:       -5,
-				AssigneeName: "",
-			},
+			name:          "negative task ID",
+			args:          []string{"-5"},
+			expectedError: "task ID must be a positive integer",
 		},
 		{
 			name: "task ID with multi-word assignee name (takes first word only)",

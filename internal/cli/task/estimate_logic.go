@@ -30,6 +30,10 @@ func ParseEstimateArgs(args []string, clearFlag bool) (*EstimateInput, error) {
 		return nil, fmt.Errorf("invalid task ID: %s", args[0])
 	}
 
+	if taskID <= 0 {
+		return nil, fmt.Errorf("task ID must be a positive integer")
+	}
+
 	estimate := ""
 	if len(args) > 1 {
 		estimate = args[1]
