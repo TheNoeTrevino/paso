@@ -2,6 +2,7 @@ package task
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/thenoetrevino/paso/internal/cli/styles"
@@ -32,8 +33,9 @@ func ParseShowTaskID(args []string, flagID int) (*ShowInput, error) {
 	var taskID int
 
 	if len(args) > 0 {
-		if _, err := fmt.Sscanf(args[0], "%d", &taskID); err != nil {
-			// Invalid format - return generic error to match original behavior
+		var err error
+		taskID, err = strconv.Atoi(args[0])
+		if err != nil {
 			return nil, fmt.Errorf("task ID must be a positive integer")
 		}
 	} else {
@@ -144,10 +146,7 @@ func FormatShowHuman(task *models.TaskDetail, colorScheme colors.ColorScheme) st
 	if task.Description != "" {
 		content.WriteString(styles.SectionStyle.Render("Description"))
 		content.WriteString("\n")
-		// Indent each line
-		for _, line := range strings.Split(task.Description, "\n") {
-			content.WriteString("  " + styles.ValueStyle.Render(line) + "\n")
-		}
+		WriteIndentedLines(&content, task.Description, "  ", styles.ValueStyle)
 		content.WriteString("\n")
 	}
 
@@ -167,23 +166,15 @@ func FormatShowHuman(task *models.TaskDetail, colorScheme colors.ColorScheme) st
 	))
 
 	// Assignee
-	assigneeDisplay := "None"
-	if task.AssigneeName != nil && *task.AssigneeName != "" {
-		assigneeDisplay = *task.AssigneeName
-	}
 	content.WriteString(fmt.Sprintf("%s %s\n",
 		styles.LabelStyle.Render("Assignee:"),
-		styles.ValueStyle.Render(assigneeDisplay),
+		styles.ValueStyle.Render(DisplayOrDefault(task.AssigneeName, "None")),
 	))
 
 	// Estimate
-	estimateDisplay := "None"
-	if task.Estimate != nil && *task.Estimate != "" {
-		estimateDisplay = *task.Estimate
-	}
 	content.WriteString(fmt.Sprintf("%s %s\n",
 		styles.LabelStyle.Render("Estimate:"),
-		styles.ValueStyle.Render(estimateDisplay),
+		styles.ValueStyle.Render(DisplayOrDefault(task.Estimate, "None")),
 	))
 
 	// Timestamps
@@ -267,9 +258,7 @@ func FormatShowHuman(task *models.TaskDetail, colorScheme colors.ColorScheme) st
 			meta := fmt.Sprintf("[%s - %s]", comment.Author, timestamp)
 			content.WriteString("  " + styles.SubtitleStyle.Render(meta) + "\n")
 			// Comment content (indented)
-			for _, line := range strings.Split(comment.Message, "\n") {
-				content.WriteString("    " + styles.ValueStyle.Render(line) + "\n")
-			}
+			WriteIndentedLines(&content, comment.Message, "    ", styles.ValueStyle)
 			content.WriteString("\n")
 		}
 	}

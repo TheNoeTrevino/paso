@@ -40,10 +40,5 @@ func FormatDoneOutput(result *DoneResult) string {
 
 // FormatDoneJSON generates the JSON output structure
 func FormatDoneJSON(result *DoneResult) map[string]any {
-	return map[string]any{
-		"success":     true,
-		"task_id":     result.TaskID,
-		"from_column": result.FromColumn,
-		"to_column":   result.ToColumn,
-	}
+	return FormatMoveResultJSON(result.TaskID, result.FromColumn, result.ToColumn)
 }

@@ -12,10 +12,9 @@ type ReadyMoveInput struct {
 
 // ReadyMoveResult represents the output of a successful ready move operation
 type ReadyMoveResult struct {
-	TaskID       int
-	FromColumn   string
-	ToColumn     string
-	AlreadyReady bool
+	TaskID     int
+	FromColumn string
+	ToColumn   string
 }
 
 // ParseReadyMoveArgs parses task ID from command arguments
@@ -41,15 +40,10 @@ func FormatReadyMoveOutput(result *ReadyMoveResult) string {
 
 // FormatReadyMoveJSON generates the JSON output structure
 func FormatReadyMoveJSON(result *ReadyMoveResult) map[string]any {
-	return map[string]any{
-		"success":     true,
-		"task_id":     result.TaskID,
-		"from_column": result.FromColumn,
-		"to_column":   result.ToColumn,
-	}
+	return FormatMoveResultJSON(result.TaskID, result.FromColumn, result.ToColumn)
 }
 
 // FormatReadyMoveQuiet generates the quiet output (just the ID)
 func FormatReadyMoveQuiet(result *ReadyMoveResult) string {
-	return fmt.Sprintf("%d", result.TaskID)
+	return fmt.Sprintf("%d\n", result.TaskID)
 }
