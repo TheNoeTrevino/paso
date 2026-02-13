@@ -119,7 +119,7 @@ func runReadyMove(cmd *cobra.Command, args []string) error {
 
 	// Output success
 	if quietMode {
-		fmt.Printf("%s\n", FormatReadyMoveQuiet(result))
+		fmt.Print(FormatReadyMoveQuiet(result))
 		return nil
 	}
 
