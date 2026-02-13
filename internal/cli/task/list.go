@@ -6,14 +6,10 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
-	"strings"
 
-	"charm.land/lipgloss/v2"
-	"charm.land/lipgloss/v2/table"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/config"
-	"github.com/thenoetrevino/paso/internal/models"
 )
 
 // ListCmd returns the task list subcommand
@@ -100,25 +96,19 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	// Flatten tasks from all columns
-	var allTasks []*models.TaskSummary
-	for _, columnTasks := range tasksByColumn {
-		allTasks = append(allTasks, columnTasks...)
-	}
+	allTasks := FlattenTasksByColumn(tasksByColumn)
 
 	// Output in appropriate format
 	if quietMode {
 		// Just print IDs
-		for _, t := range allTasks {
-			fmt.Printf("%d\n", t.ID)
+		for _, id := range FormatTasksQuiet(allTasks) {
+			fmt.Println(id)
 		}
 		return nil
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"success": true,
-			"tasks":   allTasks,
-		})
+		return json.NewEncoder(os.Stdout).Encode(FormatTasksJSON(allTasks))
 	}
 
 	// Human-readable output
@@ -135,81 +125,12 @@ func runList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Define colors
-	normalColor := lipgloss.Color(cfg.ColorScheme.Normal)
-	headerColor := lipgloss.Color(cfg.ColorScheme.Accent)
-
-	// Build table data
-	var rows [][]string
-	taskRowColors := make(map[int]string) // row index -> priority color
-
-	for i, t := range allTasks {
-		// Build labels string
-		labelNames := make([]string, len(t.Labels))
-		for j, lbl := range t.Labels {
-			labelNames[j] = lbl.Name
-		}
-		labelsStr := strings.Join(labelNames, ", ")
-		if labelsStr == "" {
-			labelsStr = "-"
-		}
-
-		// Estimate display
-		estimateStr := "-"
-		if t.Estimate != nil && *t.Estimate != "" {
-			estimateStr = *t.Estimate
-		}
-
-		// Blocked indicator
-		blockedStr := ""
-		if t.IsBlocked {
-			blockedStr = "BLOCKED"
-		}
-
-		rows = append(rows, []string{
-			strconv.Itoa(t.ID),
-			t.Title,
-			t.PriorityDescription,
-			t.TypeDescription,
-			estimateStr,
-			labelsStr,
-			blockedStr,
-		})
-		taskRowColors[i] = t.PriorityColor
-	}
-
-	// Create table with styling
-	baseStyle := lipgloss.NewStyle().Padding(0, 1)
-	headerStyle := baseStyle.Bold(true).Foreground(headerColor)
-
-	t := table.New().
-		Border(lipgloss.RoundedBorder()).
-		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("238"))).
-		Headers("ID", "TITLE", "PRIORITY", "TYPE", "EST", "LABELS", "").
-		Rows(rows...).
-		StyleFunc(func(row, col int) lipgloss.Style {
-			if row == table.HeaderRow {
-				return headerStyle
-			}
-
-			// Priority column (col 2) - use task priority color
-			if col == 2 {
-				priorityColor := taskRowColors[row]
-				if priorityColor != "" {
-					return baseStyle.Foreground(lipgloss.Color(priorityColor))
-				}
-			}
-
-			// Blocked column (col 6)
-			if col == 6 && rows[row][6] != "" {
-				return baseStyle.Bold(true).Foreground(lipgloss.Color("#FF5555"))
-			}
-
-			return baseStyle.Foreground(normalColor)
-		})
+	// Build and render table
+	tableRows := BuildTableRows(allTasks)
+	renderedTable := RenderTasksTable(tableRows, cfg.ColorScheme)
 
 	fmt.Printf("Found %d tasks:\n", len(allTasks))
-	fmt.Println(t)
+	fmt.Println(renderedTable)
 
 	return nil
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -53,7 +52,7 @@ func runReadyMove(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
 	// Parse task ID from positional argument
-	taskID, err := strconv.Atoi(args[0])
+	input, err := ParseReadyMoveArgs(args)
 	if err != nil {
 		formatter := &cli.OutputFormatter{}
 		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid task ID '%s': must be a number", args[0]))
@@ -76,23 +75,23 @@ func runReadyMove(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Get task detail before move for output
-	taskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
+	taskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, input.TaskID)
 	if err != nil {
-		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID))
+		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", input.TaskID))
 	}
 
 	currentColumnName := taskDetail.ColumnName
 
 	// Move task to ready column
-	err = cliInstance.App.TaskService.MoveTaskToReadyColumn(ctx, taskID)
+	err = cliInstance.App.TaskService.MoveTaskToReadyColumn(ctx, input.TaskID)
 	if err != nil {
 		// Check for specific errors
 		if err == taskservice.ErrTaskAlreadyInTargetColumn {
 			// Write to stderr as per requirements
-			fmt.Fprintf(os.Stderr, "Task %d is already in the ready column (%s)\n", taskID, currentColumnName)
+			fmt.Fprintf(os.Stderr, "Task %d is already in the ready column (%s)\n", input.TaskID, currentColumnName)
 			// Still exit successfully
 			if quietMode {
-				fmt.Printf("%d\n", taskID)
+				fmt.Printf("%s\n", FormatReadyMoveQuiet(&ReadyMoveResult{TaskID: input.TaskID}))
 			}
 			return nil
 		}
@@ -105,29 +104,30 @@ func runReadyMove(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get updated task detail for output
-	updatedTaskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
+	updatedTaskDetail, err := cliInstance.App.TaskService.GetTaskDetail(ctx, input.TaskID)
 	if err != nil {
 		return formatter.Error(cli.ExitError, "TASK_FETCH_ERROR", err.Error())
 	}
 
 	toColumnName := updatedTaskDetail.ColumnName
 
+	result := &ReadyMoveResult{
+		TaskID:     input.TaskID,
+		FromColumn: currentColumnName,
+		ToColumn:   toColumnName,
+	}
+
 	// Output success
 	if quietMode {
-		fmt.Printf("%d\n", taskID)
+		fmt.Printf("%s\n", FormatReadyMoveQuiet(result))
 		return nil
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"success":     true,
-			"task_id":     taskID,
-			"from_column": currentColumnName,
-			"to_column":   toColumnName,
-		})
+		return json.NewEncoder(os.Stdout).Encode(FormatReadyMoveJSON(result))
 	}
 
-	message := fmt.Sprintf("Task %d moved to '%s'", taskID, toColumnName)
+	message := FormatReadyMoveOutput(result)
 	cli.PrintSuccess(message)
 	return nil
 }
