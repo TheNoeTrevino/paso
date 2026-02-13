@@ -2,6 +2,7 @@ package task
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -21,7 +22,7 @@ func FormatReadyOutput(result *ReadyResult) string {
 	output := fmt.Sprintf("Found %d ready tasks:\n\n", result.Count)
 	for _, t := range result.Tasks {
 		priorityInfo := ""
-		if t.PriorityDescription != "" && t.PriorityDescription != "medium" {
+		if ShouldDisplayPriority(t.PriorityDescription) {
 			priorityInfo = fmt.Sprintf(" [%s]", t.PriorityDescription)
 		}
 		output += fmt.Sprintf("  [%d] %s%s\n", t.ID, t.Title, priorityInfo)
@@ -41,9 +42,9 @@ func FormatReadyJSON(result *ReadyResult) map[string]any {
 
 // FormatReadyQuiet formats the ready result for quiet mode (IDs only)
 func FormatReadyQuiet(result *ReadyResult) string {
-	output := ""
+	var output strings.Builder
 	for _, t := range result.Tasks {
-		output += fmt.Sprintf("%d\n", t.ID)
+		output.WriteString(fmt.Sprintf("%d\n", t.ID))
 	}
-	return output
+	return output.String()
 }
