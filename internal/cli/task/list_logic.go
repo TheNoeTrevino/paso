@@ -60,6 +60,9 @@ func FlattenTasksByColumn(tasksByColumn map[int][]*models.TaskSummary) []*models
 
 // FormatTasksQuiet formats tasks for quiet output (IDs only)
 func FormatTasksQuiet(tasks []*models.TaskSummary) []string {
+	if len(tasks) == 0 {
+		return nil
+	}
 	ids := make([]string, len(tasks))
 	for i, t := range tasks {
 		ids[i] = strconv.Itoa(t.ID)
@@ -91,10 +94,7 @@ func BuildTableRows(tasks []*models.TaskSummary) []TableRow {
 		}
 
 		// Estimate display
-		estimateStr := "-"
-		if t.Estimate != nil && *t.Estimate != "" {
-			estimateStr = *t.Estimate
-		}
+		estimateStr := DisplayOrDefault(t.Estimate, "-")
 
 		// Blocked indicator
 		blockedStr := ""

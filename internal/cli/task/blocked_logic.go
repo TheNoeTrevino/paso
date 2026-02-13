@@ -2,6 +2,7 @@ package task
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -34,7 +35,7 @@ func FormatBlockedOutput(result *BlockedResult) string {
 	output := fmt.Sprintf("Found %d blocked tasks:\n\n", result.Count)
 	for _, t := range result.Tasks {
 		priorityInfo := ""
-		if t.PriorityDescription != "" && t.PriorityDescription != "medium" {
+		if ShouldDisplayPriority(t.PriorityDescription) {
 			priorityInfo = fmt.Sprintf(" [%s]", t.PriorityDescription)
 		}
 		output += fmt.Sprintf("  [%d] %s%s (BLOCKED)\n", t.ID, t.Title, priorityInfo)
@@ -53,9 +54,9 @@ func FormatBlockedJSON(result *BlockedResult) map[string]any {
 
 // FormatBlockedQuiet generates the quiet output (IDs only)
 func FormatBlockedQuiet(result *BlockedResult) string {
-	output := ""
+	var output strings.Builder
 	for _, t := range result.Tasks {
-		output += fmt.Sprintf("%d\n", t.ID)
+		output.WriteString(fmt.Sprintf("%d\n", t.ID))
 	}
-	return output
+	return output.String()
 }

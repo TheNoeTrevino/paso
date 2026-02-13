@@ -3,6 +3,7 @@ package task
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // InProgressMode represents the operation mode (list or move)
@@ -56,7 +57,7 @@ func ParseInProgressArgs(args []string, projectID int) (*InProgressInput, error)
 
 	// Move mode - require task ID
 	if len(args) == 0 {
-		return nil, fmt.Errorf("either provide a task ID or use --project flag to list tasks")
+		return nil, fmt.Errorf("task ID is required (or use --project flag to list tasks)")
 	}
 
 	taskID, err := strconv.Atoi(args[0])
@@ -72,11 +73,11 @@ func ParseInProgressArgs(args []string, projectID int) (*InProgressInput, error)
 
 // FormatListQuiet generates quiet output for listing (IDs only)
 func FormatListQuiet(result *ListInProgressResult) string {
-	output := ""
+	var output strings.Builder
 	for _, task := range result.Tasks {
-		output += fmt.Sprintf("%d\n", task.ID)
+		output.WriteString(fmt.Sprintf("%d\n", task.ID))
 	}
-	return output
+	return output.String()
 }
 
 // FormatListJSON generates JSON output for listing
@@ -96,13 +97,11 @@ func FormatListHuman(result *ListInProgressResult) string {
 
 	output := fmt.Sprintf("Found %d in-progress tasks:\n\n", result.Count)
 	for _, task := range result.Tasks {
-		// Include priority if set and not medium (default)
 		priorityInfo := ""
-		if task.PriorityDescription != "" && task.PriorityDescription != "medium" {
+		if ShouldDisplayPriority(task.PriorityDescription) {
 			priorityInfo = fmt.Sprintf(" [%s]", task.PriorityDescription)
 		}
 
-		// Include blocked indicator
 		blockedInfo := ""
 		if task.IsBlocked {
 			blockedInfo = " ▲ BLOCKED"
@@ -121,12 +120,7 @@ func FormatMoveQuiet(result *MoveInProgressResult) string {
 
 // FormatMoveJSON generates JSON output for moving
 func FormatMoveJSON(result *MoveInProgressResult) map[string]any {
-	return map[string]any{
-		"success":     true,
-		"task_id":     result.TaskID,
-		"from_column": result.FromColumn,
-		"to_column":   result.ToColumn,
-	}
+	return FormatMoveResultJSON(result.TaskID, result.FromColumn, result.ToColumn)
 }
 
 // FormatMoveHuman generates human-readable output for moving
