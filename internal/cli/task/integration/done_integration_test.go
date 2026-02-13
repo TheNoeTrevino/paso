@@ -39,7 +39,7 @@ func TestDoneTask_Integration(t *testing.T) {
 		})
 
 		assert.NoError(t, err)
-		assert.Contains(t, output, fmt.Sprintf("Task %d moved to 'Done'", taskID))
+		assert.Contains(t, output, fmt.Sprintf("Task %d moved from Todo to Done", taskID))
 
 		// Verify task moved to done column
 		columnID := fixtures.GetTaskColumnID(t, db, fixtures.SQLiteDialect(), taskID)
@@ -176,6 +176,6 @@ func TestDoneTask_Integration_Errors(t *testing.T) {
 		cmd := task.DoneCmd()
 		_, err := cli.ExecuteCLICommand(t, app, cmd, []string{"not-a-number"})
 		cli.AssertExitError(t, err, 5) // ExitValidation
-		assert.Contains(t, err.Error(), "invalid task ID 'not-a-number': must be a number")
+		assert.Contains(t, err.Error(), "invalid task ID: not-a-number")
 	})
 }

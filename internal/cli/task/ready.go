@@ -89,38 +89,22 @@ func runReady(cmd *cobra.Command, args []string) error {
 		return formatter.Error(cli.ExitError, "TASK_FETCH_ERROR", err.Error())
 	}
 
+	// Create result structure
+	result := &ReadyResult{
+		Tasks: readyTasks,
+		Count: len(readyTasks),
+	}
+
 	// Output in appropriate format
 	if quietMode {
-		// Just print IDs
-		for _, t := range readyTasks {
-			fmt.Printf("%d\n", t.ID)
-		}
+		fmt.Print(FormatReadyQuiet(result))
 		return nil
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"success": true,
-			"tasks":   readyTasks,
-			"count":   len(readyTasks),
-		})
+		return json.NewEncoder(os.Stdout).Encode(FormatReadyJSON(result))
 	}
 
-	// Human-readable output
-	if len(readyTasks) == 0 {
-		fmt.Println("No ready tasks found")
-		return nil
-	}
-
-	fmt.Printf("Found %d ready tasks:\n\n", len(readyTasks))
-	for _, t := range readyTasks {
-		// Include priority if set
-		priorityInfo := ""
-		if t.PriorityDescription != "" && t.PriorityDescription != "medium" {
-			priorityInfo = fmt.Sprintf(" [%s]", t.PriorityDescription)
-		}
-		fmt.Printf("  [%d] %s%s\n", t.ID, t.Title, priorityInfo)
-	}
-
+	fmt.Print(FormatReadyOutput(result))
 	return nil
 }

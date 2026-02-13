@@ -41,3 +41,50 @@ func (s *EstimateInputState) Reset() {
 	s.error = ""
 	s.ReturnMode = TicketFormMode
 }
+
+// AppendChar adds a character to the buffer and validates the result.
+// If validation fails, it sets the error to the provided hint.
+// If validation succeeds, it clears any existing error.
+func (s *EstimateInputState) AppendChar(ch string, validate func(*string) error, hint string) {
+	s.buffer += ch
+	if err := validate(&s.buffer); err != nil {
+		s.error = hint
+	} else {
+		s.error = ""
+	}
+}
+
+// Backspace removes the last character from the buffer and re-validates.
+// If the buffer becomes empty, the error is cleared.
+// Otherwise, validation is run and the error is set/cleared accordingly.
+func (s *EstimateInputState) Backspace(validate func(*string) error, hint string) {
+	if len(s.buffer) == 0 {
+		return
+	}
+
+	s.buffer = s.buffer[:len(s.buffer)-1]
+
+	if s.buffer == "" {
+		s.error = ""
+	} else if err := validate(&s.buffer); err != nil {
+		s.error = hint
+	} else {
+		s.error = ""
+	}
+}
+
+// Submit validates the current buffer and returns the result.
+// Returns (buffer, true) if the buffer is empty or passes validation.
+// Returns ("", false) if validation fails, and sets the error.
+func (s *EstimateInputState) Submit(validate func(*string) error, hint string) (string, bool) {
+	if s.buffer == "" {
+		return "", true
+	}
+
+	if err := validate(&s.buffer); err != nil {
+		s.error = hint
+		return "", false
+	}
+
+	return s.buffer, true
+}

@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/cli/styles"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 	userutil "github.com/thenoetrevino/paso/internal/user"
 )
@@ -79,9 +77,8 @@ func runComment(cmd *cobra.Command, args []string) error {
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Validate message length before initializing CLI
-	if len(message) > 1000 {
-		return formatter.Error(cli.ExitValidation, "MESSAGE_TOO_LONG",
-			"message exceeds 1000 character limit")
+	if err := ValidateCommentMessage(message); err != nil {
+		return formatter.Error(cli.ExitValidation, "MESSAGE_TOO_LONG", err.Error())
 	}
 
 	// Initialize CLI
@@ -111,38 +108,29 @@ func runComment(cmd *cobra.Command, args []string) error {
 		return formatter.Error(cli.ExitError, "COMMENT_CREATE_ERROR", err.Error())
 	}
 
+	// Build result
+	result := &CommentResult{
+		CommentID:    comment.ID,
+		TaskID:       comment.TaskID,
+		Message:      comment.Message,
+		Author:       comment.Author,
+		CreatedAt:    comment.CreatedAt.Format("2006-01-02 15:04:05"),
+		TaskTitle:    taskDetail.Title,
+		TicketNumber: taskDetail.TicketNumber,
+		ProjectName:  taskDetail.ProjectName,
+	}
+
 	// Output based on mode (JSON/Quiet/Human)
 	if quietMode {
-		fmt.Printf("%d\n", comment.ID)
+		fmt.Print(FormatCommentQuiet(result.CommentID))
 		return nil
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"success": true,
-			"comment": map[string]any{
-				"id":         comment.ID,
-				"task_id":    comment.TaskID,
-				"message":    comment.Message,
-				"author":     comment.Author,
-				"created_at": comment.CreatedAt,
-			},
-			"task": map[string]any{
-				"id":            taskDetail.ID,
-				"title":         taskDetail.Title,
-				"ticket_number": taskDetail.TicketNumber,
-				"project":       taskDetail.ProjectName,
-			},
-		})
+		return json.NewEncoder(os.Stdout).Encode(FormatCommentJSON(result))
 	}
 
 	// Human-readable output
-	details := []styles.Detail{
-		{Key: "Task", Value: fmt.Sprintf("#%d (%s)", taskDetail.TicketNumber, taskDetail.Title)},
-		{Key: "Project", Value: taskDetail.ProjectName},
-		{Key: "Message", Value: styles.TruncateString(message, 60)},
-		{Key: "Comment ID", Value: strconv.Itoa(comment.ID)},
-	}
-	fmt.Print(styles.RenderSuccessWithDetails("Comment added", details, cli.GetColorScheme()))
+	fmt.Print(FormatCommentHuman(result, cli.GetColorScheme()))
 	return nil
 }

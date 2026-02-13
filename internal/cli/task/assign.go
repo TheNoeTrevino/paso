@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
@@ -50,9 +49,10 @@ Examples:
 func runAssign(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
-	taskID, err := strconv.Atoi(args[0])
+	// Parse input
+	input, err := ParseAssignArgs(args)
 	if err != nil {
-		return fmt.Errorf("invalid task ID: %s", args[0])
+		return err
 	}
 
 	clearAssignee, _ := cmd.Flags().GetBool("clear")
@@ -72,20 +72,17 @@ func runAssign(cmd *cobra.Command, args []string) error {
 	}()
 
 	// Verify task exists
-	_, err = cliInstance.App.TaskService.GetTaskDetail(ctx, taskID)
+	_, err = cliInstance.App.TaskService.GetTaskDetail(ctx, input.TaskID)
 	if err != nil {
-		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", taskID))
+		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", input.TaskID))
 	}
 
 	if clearAssignee {
-		return assignTask(cmd, cliInstance, taskID, nil, "", formatter, jsonOutput, quietMode)
+		return assignTask(cmd, cliInstance, input.TaskID, nil, "", formatter, jsonOutput, quietMode)
 	}
 
 	// Resolve assignee name
-	assigneeName := ""
-	if len(args) > 1 {
-		assigneeName = args[1]
-	}
+	assigneeName := input.AssigneeName
 	if assigneeName == "" {
 		cfg, err := config.Load()
 		if err == nil {
@@ -102,7 +99,7 @@ func runAssign(cmd *cobra.Command, args []string) error {
 	}
 
 	assigneeID := &assignee.ID
-	return assignTask(cmd, cliInstance, taskID, assigneeID, assigneeName, formatter, jsonOutput, quietMode)
+	return assignTask(cmd, cliInstance, input.TaskID, assigneeID, assigneeName, formatter, jsonOutput, quietMode)
 }
 
 func assignTask(cmd *cobra.Command, cliInstance *cli.CLI, taskID int, assigneeID *int, assigneeName string, formatter *cli.OutputFormatter, jsonOutput, quietMode bool) error {
@@ -113,28 +110,21 @@ func assignTask(cmd *cobra.Command, cliInstance *cli.CLI, taskID int, assigneeID
 		return formatter.Error(cli.ExitError, "ASSIGN_ERROR", err.Error())
 	}
 
+	result := &AssignResult{
+		TaskID:       taskID,
+		AssigneeName: assigneeName,
+		Cleared:      assigneeID == nil,
+	}
+
 	if quietMode {
 		fmt.Printf("%d\n", taskID)
 		return nil
 	}
 
 	if jsonOutput {
-		result := map[string]any{
-			"success": true,
-			"task_id": taskID,
-		}
-		if assigneeID != nil {
-			result["assignee"] = assigneeName
-		} else {
-			result["assignee"] = nil
-		}
-		return json.NewEncoder(os.Stdout).Encode(result)
+		return json.NewEncoder(os.Stdout).Encode(FormatAssignJSON(result))
 	}
 
-	if assigneeID != nil {
-		cli.PrintSuccessf("Task %d assigned to @%s", taskID, assigneeName)
-	} else {
-		cli.PrintSuccessf("Task %d assignee cleared", taskID)
-	}
+	cli.PrintSuccess(FormatAssignOutput(result))
 	return nil
 }

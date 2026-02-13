@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/models"
 )
 
 // BlockedCmd returns the task blocked subcommand
@@ -89,47 +88,23 @@ func runBlocked(cmd *cobra.Command, args []string) error {
 	}
 
 	// Filter for blocked tasks (IsBlocked == true)
-	var blockedTasks []*models.TaskSummary
-	for _, columnTasks := range tasksByColumn {
-		for _, task := range columnTasks {
-			if task.IsBlocked {
-				blockedTasks = append(blockedTasks, task)
-			}
-		}
+	blockedTasks := FilterBlockedTasks(tasksByColumn)
+	result := &BlockedResult{
+		Tasks: blockedTasks,
+		Count: len(blockedTasks),
 	}
 
 	// Output in appropriate format
 	if quietMode {
-		// Just print IDs
-		for _, t := range blockedTasks {
-			fmt.Printf("%d\n", t.ID)
-		}
+		fmt.Print(FormatBlockedQuiet(result))
 		return nil
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"success": true,
-			"tasks":   blockedTasks,
-			"count":   len(blockedTasks),
-		})
+		return json.NewEncoder(os.Stdout).Encode(FormatBlockedJSON(result))
 	}
 
 	// Human-readable output
-	if len(blockedTasks) == 0 {
-		fmt.Println("No blocked tasks found")
-		return nil
-	}
-
-	fmt.Printf("Found %d blocked tasks:\n\n", len(blockedTasks))
-	for _, t := range blockedTasks {
-		// Include priority if set
-		priorityInfo := ""
-		if t.PriorityDescription != "" && t.PriorityDescription != "medium" {
-			priorityInfo = fmt.Sprintf(" [%s]", t.PriorityDescription)
-		}
-		fmt.Printf("  [%d] %s%s (BLOCKED)\n", t.ID, t.Title, priorityInfo)
-	}
-
+	fmt.Print(FormatBlockedOutput(result))
 	return nil
 }

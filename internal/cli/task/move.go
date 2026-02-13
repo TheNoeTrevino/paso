@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
-	"github.com/thenoetrevino/paso/internal/models"
 )
 
 // MoveCmd returns the task move subcommand
@@ -103,7 +102,7 @@ func runMove(cmd *cobra.Command, args []string) error {
 	case "next":
 		// Find next column name for output
 		toColumnName = findNextColumnName(columns, taskDetail.ColumnID)
-		if toColumnName == "Unknown" {
+		if toColumnName == unknownColumnName {
 			return formatter.Error(cli.ExitValidation, "NO_NEXT_COLUMN",
 				fmt.Sprintf("task is already in the last column (%s)", currentColumnName))
 		}
@@ -122,7 +121,7 @@ func runMove(cmd *cobra.Command, args []string) error {
 	case "prev":
 		// Find prev column name for output
 		toColumnName = findPrevColumnName(columns, taskDetail.ColumnID)
-		if toColumnName == "Unknown" {
+		if toColumnName == unknownColumnName {
 			return formatter.Error(cli.ExitValidation, "NO_PREV_COLUMN",
 				fmt.Sprintf("task is already in the first column (%s)", currentColumnName))
 		}
@@ -166,61 +165,12 @@ func runMove(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonOutput {
-		output := map[string]any{
-			"success":     true,
-			"task_id":     taskID,
-			"from_column": currentColumnName,
-			"to_column":   toColumnName,
-		}
-		if dryRun {
-			output["dry_run"] = true
-		}
-		return json.NewEncoder(os.Stdout).Encode(output)
+		result := createMoveResult(taskID, currentColumnName, toColumnName, dryRun)
+		return json.NewEncoder(os.Stdout).Encode(result)
 	}
 
 	// Human-readable output
-	var message string
-	if dryRun {
-		if currentColumnName == toColumnName {
-			message = fmt.Sprintf("Would keep task %d in '%s' (already there)", taskID, toColumnName)
-		} else {
-			message = fmt.Sprintf("Would move task %d from '%s' to '%s'", taskID, currentColumnName, toColumnName)
-		}
-	} else {
-		if currentColumnName == toColumnName {
-			message = fmt.Sprintf("Task %d is already in '%s'", taskID, toColumnName)
-		} else {
-			message = fmt.Sprintf("Task %d moved to '%s'", taskID, toColumnName)
-		}
-	}
+	message := formatMoveMessage(taskID, currentColumnName, toColumnName, dryRun)
 	cli.PrintSuccess(message)
 	return nil
-}
-
-// findNextColumnName finds the name of the next column in the linked list
-func findNextColumnName(columns []*models.Column, currentColumnID int) string {
-	for _, col := range columns {
-		if col.ID == currentColumnID && col.NextID != nil {
-			for _, nextCol := range columns {
-				if nextCol.ID == *col.NextID {
-					return nextCol.Name
-				}
-			}
-		}
-	}
-	return "Unknown"
-}
-
-// findPrevColumnName finds the name of the previous column in the linked list
-func findPrevColumnName(columns []*models.Column, currentColumnID int) string {
-	for _, col := range columns {
-		if col.ID == currentColumnID && col.PrevID != nil {
-			for _, prevCol := range columns {
-				if prevCol.ID == *col.PrevID {
-					return prevCol.Name
-				}
-			}
-		}
-	}
-	return "Unknown"
 }
