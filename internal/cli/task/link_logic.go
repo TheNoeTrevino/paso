@@ -2,6 +2,12 @@ package task
 
 import "fmt"
 
+const (
+	RelationTypeParentChild = 1
+	RelationTypeBlocking    = 2
+	RelationTypeRelated     = 3
+)
+
 // LinkInput represents the parsed input for linking tasks
 type LinkInput struct {
 	ParentID       int
@@ -29,20 +35,20 @@ func ValidateLinkFlags(blocker, related bool) error {
 // DetermineRelationType determines the relation type ID and name based on flags
 func DetermineRelationType(blocker, related bool) (int, string) {
 	if blocker {
-		return 2, "blocking"
+		return RelationTypeBlocking, "blocking"
 	}
 	if related {
-		return 3, "related"
+		return RelationTypeRelated, "related"
 	}
-	return 1, "parent-child"
+	return RelationTypeParentChild, "parent-child"
 }
 
 // FormatLinkOutput generates the human-readable output message
 func FormatLinkOutput(result *LinkResult) string {
 	switch result.RelationTypeID {
-	case 2:
+	case RelationTypeBlocking:
 		return fmt.Sprintf("Created blocking relationship: task %d is blocked by task %d", result.ParentID, result.ChildID)
-	case 3:
+	case RelationTypeRelated:
 		return fmt.Sprintf("Created related relationship between task %d and task %d", result.ParentID, result.ChildID)
 	default:
 		return fmt.Sprintf("Linked task %d as child of task %d", result.ChildID, result.ParentID)

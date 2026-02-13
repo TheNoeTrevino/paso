@@ -6,6 +6,12 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
+const (
+	unknownColumnName = "Unknown"
+	moveTargetNext    = "next"
+	moveTargetPrev    = "prev"
+)
+
 // findNextColumnName finds the name of the next column in the linked list
 func findNextColumnName(columns []*models.Column, currentColumnID int) string {
 	for _, col := range columns {
@@ -17,7 +23,7 @@ func findNextColumnName(columns []*models.Column, currentColumnID int) string {
 			}
 		}
 	}
-	return "Unknown"
+	return unknownColumnName
 }
 
 // findPrevColumnName finds the name of the previous column in the linked list
@@ -31,7 +37,7 @@ func findPrevColumnName(columns []*models.Column, currentColumnID int) string {
 			}
 		}
 	}
-	return "Unknown"
+	return unknownColumnName
 }
 
 // parseMoveTarget determines the type of move target (next, prev, or column name)
@@ -39,9 +45,9 @@ func findPrevColumnName(columns []*models.Column, currentColumnID int) string {
 func parseMoveTarget(target string) (targetType string, normalized string) {
 	switch target {
 	case "next", "Next", "NEXT":
-		return "next", "next"
+		return moveTargetNext, moveTargetNext
 	case "prev", "Prev", "PREV", "previous", "Previous", "PREVIOUS":
-		return "prev", "prev"
+		return moveTargetPrev, moveTargetPrev
 	default:
 		return "column", target
 	}
@@ -50,28 +56,32 @@ func parseMoveTarget(target string) (targetType string, normalized string) {
 // validateMoveTarget checks if a move is valid and returns an error message if not
 // Returns empty string if valid
 func validateMoveTarget(targetType, toColumnName, currentColumnName string) string {
-	if toColumnName == "Unknown" {
-		switch targetType {
-		case "next":
-			return fmt.Sprintf("task is already in the last column (%s)", currentColumnName)
-		case "prev":
-			return fmt.Sprintf("task is already in the first column (%s)", currentColumnName)
-		}
+	if toColumnName != unknownColumnName {
+		return ""
+	}
+
+	switch targetType {
+	case moveTargetNext:
+		return fmt.Sprintf("task is already in the last column (%s)", currentColumnName)
+	case moveTargetPrev:
+		return fmt.Sprintf("task is already in the first column (%s)", currentColumnName)
 	}
 	return ""
 }
 
 // formatMoveMessage generates the human-readable message for a move operation
 func formatMoveMessage(taskID int, fromColumn, toColumn string, dryRun bool) string {
-	if fromColumn == toColumn {
-		if dryRun {
-			return fmt.Sprintf("Would keep task %d in '%s' (already there)", taskID, toColumn)
-		}
-		return fmt.Sprintf("Task %d is already in '%s'", taskID, toColumn)
-	}
+	isSameColumn := fromColumn == toColumn
 
 	if dryRun {
+		if isSameColumn {
+			return fmt.Sprintf("Would keep task %d in '%s' (already there)", taskID, toColumn)
+		}
 		return fmt.Sprintf("Would move task %d from '%s' to '%s'", taskID, fromColumn, toColumn)
+	}
+
+	if isSameColumn {
+		return fmt.Sprintf("Task %d is already in '%s'", taskID, toColumn)
 	}
 	return fmt.Sprintf("Task %d moved to '%s'", taskID, toColumn)
 }
@@ -87,14 +97,11 @@ type MoveResult struct {
 
 // createMoveResult creates a MoveResult struct
 func createMoveResult(taskID int, fromColumn, toColumn string, dryRun bool) MoveResult {
-	result := MoveResult{
+	return MoveResult{
 		Success:    true,
 		TaskID:     taskID,
 		FromColumn: fromColumn,
 		ToColumn:   toColumn,
+		DryRun:     dryRun,
 	}
-	if dryRun {
-		result.DryRun = true
-	}
-	return result
 }

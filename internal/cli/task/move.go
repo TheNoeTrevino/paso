@@ -102,7 +102,7 @@ func runMove(cmd *cobra.Command, args []string) error {
 	case "next":
 		// Find next column name for output
 		toColumnName = findNextColumnName(columns, taskDetail.ColumnID)
-		if toColumnName == "Unknown" {
+		if toColumnName == unknownColumnName {
 			return formatter.Error(cli.ExitValidation, "NO_NEXT_COLUMN",
 				fmt.Sprintf("task is already in the last column (%s)", currentColumnName))
 		}
@@ -121,7 +121,7 @@ func runMove(cmd *cobra.Command, args []string) error {
 	case "prev":
 		// Find prev column name for output
 		toColumnName = findPrevColumnName(columns, taskDetail.ColumnID)
-		if toColumnName == "Unknown" {
+		if toColumnName == unknownColumnName {
 			return formatter.Error(cli.ExitValidation, "NO_PREV_COLUMN",
 				fmt.Sprintf("task is already in the first column (%s)", currentColumnName))
 		}

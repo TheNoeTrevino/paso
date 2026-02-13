@@ -8,6 +8,11 @@ import (
 	"github.com/thenoetrevino/paso/internal/config/colors"
 )
 
+const (
+	maxCommentLength      = 1000
+	commentTruncateLength = 60
+)
+
 // CommentInput represents the parsed input for creating a comment
 type CommentInput struct {
 	TaskID  int
@@ -29,8 +34,8 @@ type CommentResult struct {
 
 // ValidateCommentMessage validates the comment message length
 func ValidateCommentMessage(message string) error {
-	if len(message) > 1000 {
-		return fmt.Errorf("message exceeds 1000 character limit")
+	if len(message) > maxCommentLength {
+		return fmt.Errorf("message exceeds %d character limit", maxCommentLength)
 	}
 	return nil
 }
@@ -65,7 +70,7 @@ func FormatCommentHuman(result *CommentResult, colorScheme colors.ColorScheme) s
 	details := []styles.Detail{
 		{Key: "Task", Value: fmt.Sprintf("#%d (%s)", result.TicketNumber, result.TaskTitle)},
 		{Key: "Project", Value: result.ProjectName},
-		{Key: "Message", Value: styles.TruncateString(result.Message, 60)},
+		{Key: "Message", Value: styles.TruncateString(result.Message, commentTruncateLength)},
 		{Key: "Comment ID", Value: strconv.Itoa(result.CommentID)},
 	}
 	return styles.RenderSuccessWithDetails("Comment added", details, colorScheme)
