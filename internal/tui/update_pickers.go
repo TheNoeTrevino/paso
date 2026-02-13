@@ -3,6 +3,7 @@ package tui
 import (
 	"log/slog"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/models"
@@ -902,6 +903,61 @@ func (m Model) updateEstimateInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+}
+
+// updateDatePicker handles keyboard input in date picker mode
+func (m Model) updateDatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	switch keyMsg.String() {
+	case "esc":
+		// Cancel - return with zero time
+		m.Pickers.DatePicker.SelectedDate = time.Time{}
+		m.UIState.Mode = m.Pickers.DatePicker.ReturnMode
+		return m, nil
+
+	case "up", "k":
+		m.Pickers.DatePicker.MoveWeek(-1) // Move up 7 days
+		return m, nil
+
+	case "down", "j":
+		m.Pickers.DatePicker.MoveWeek(1) // Move down 7 days
+		return m, nil
+
+	case "left", "h":
+		m.Pickers.DatePicker.MoveDay(-1) // Previous day
+		return m, nil
+
+	case "right", "l":
+		m.Pickers.DatePicker.MoveDay(1) // Next day
+		return m, nil
+
+	case "[":
+		m.Pickers.DatePicker.PrevMonth() // Previous month
+		return m, nil
+
+	case "]":
+		m.Pickers.DatePicker.NextMonth() // Next month
+		return m, nil
+
+	case "enter":
+		// Confirm selection - set selectedDate to current cursor position
+		selectedDate := time.Date(
+			m.Pickers.DatePicker.CurrentYear,
+			m.Pickers.DatePicker.CurrentMonth,
+			m.Pickers.DatePicker.CursorDay,
+			0, 0, 0, 0,
+			time.Local,
+		)
+		m.Pickers.DatePicker.SelectedDate = selectedDate
+		m.UIState.Mode = m.Pickers.DatePicker.ReturnMode
+		return m, nil
+	}
+
+	return m, nil
 }
 
 // updateRelationTypePicker handles keyboard input in the relation type picker mode

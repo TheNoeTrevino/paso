@@ -719,6 +719,21 @@ func (m Model) renderEstimateInputLayer() *lipgloss.Layer {
 	})
 }
 
+// renderDatePickerLayer renders the date picker as a centered modal overlay
+func (m Model) renderDatePickerLayer() *lipgloss.Layer {
+	pickerContent := renderers.RenderDatePicker(
+		m.Pickers.DatePicker,
+		m.UIState.Width(),
+		m.UIState.Height,
+	)
+
+	return layers.CreateCenteredLayer(
+		pickerContent,
+		m.UIState.Width(),
+		m.UIState.Height,
+	)
+}
+
 // renderTypePickerLayer renders the type picker modal as a layer
 func (m Model) renderTypePickerLayer() *lipgloss.Layer {
 	return m.createPickerLayer(pickerLayerConfig{
