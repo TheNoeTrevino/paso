@@ -2,7 +2,6 @@ package task
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"os"
 
@@ -75,25 +74,12 @@ func runLink(cmd *cobra.Command, args []string) error {
 
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
-	// Validate mutually exclusive flags
-	if blocker && related {
-		return formatter.Error(cli.ExitUsage, "INVALID_FLAGS",
-			"cannot specify both --blocker and --related flags")
+	if err := ValidateLinkFlags(blocker, related); err != nil {
+		return formatter.Error(cli.ExitUsage, "INVALID_FLAGS", err.Error())
 	}
 
-	// Determine relation type ID
-	relationTypeID := 1 // Default: Parent/Child
-	relationTypeName := "parent-child"
+	relationTypeID, relationTypeName := DetermineRelationType(blocker, related)
 
-	if blocker {
-		relationTypeID = 2 // Blocked By/Blocker
-		relationTypeName = "blocking"
-	} else if related {
-		relationTypeID = 3 // Related To
-		relationTypeName = "related"
-	}
-
-	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
 	if err != nil {
 		return formatter.Error(cli.ExitError, "INITIALIZATION_ERROR", err.Error())
@@ -104,36 +90,25 @@ func runLink(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	// Create the relationship with specific type
 	if err := cliInstance.App.TaskService.AddChildRelation(ctx, parentID, childID, relationTypeID); err != nil {
 		return formatter.Error(cli.ExitError, "LINK_ERROR", err.Error())
 	}
 
-	// Output success
 	if quietMode {
 		return nil
 	}
 
-	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"success":          true,
-			"parent_id":        parentID,
-			"child_id":         childID,
-			"relation_type_id": relationTypeID,
-			"relation_type":    relationTypeName,
-		})
+	result := &LinkResult{
+		ParentID:       parentID,
+		ChildID:        childID,
+		RelationTypeID: relationTypeID,
+		RelationName:   relationTypeName,
 	}
 
-	// Human-readable output with relationship type
-	var message string
-	switch relationTypeID {
-	case 2:
-		message = fmt.Sprintf("Created blocking relationship: task %d is blocked by task %d", parentID, childID)
-	case 3:
-		message = fmt.Sprintf("Created related relationship between task %d and task %d", parentID, childID)
-	default:
-		message = fmt.Sprintf("Linked task %d as child of task %d", childID, parentID)
+	if jsonOutput {
+		return json.NewEncoder(os.Stdout).Encode(FormatLinkJSON(result))
 	}
-	cli.PrintSuccess(message)
+
+	cli.PrintSuccess(FormatLinkOutput(result))
 	return nil
 }
