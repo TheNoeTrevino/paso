@@ -88,7 +88,7 @@ func TestParseUpdateFlags(t *testing.T) {
 		{
 			name: "title only",
 			setup: func(cmd *cobra.Command) {
-				cmd.Flags().Set("title", "New Title")
+				require.NoError(t, cmd.Flags().Set("title", "New Title"))
 			},
 			want: &UpdateInput{
 				Title: stringPtr("New Title"),
@@ -97,7 +97,7 @@ func TestParseUpdateFlags(t *testing.T) {
 		{
 			name: "description only",
 			setup: func(cmd *cobra.Command) {
-				cmd.Flags().Set("description", "New Description")
+				require.NoError(t, cmd.Flags().Set("description", "New Description"))
 			},
 			want: &UpdateInput{
 				Description: stringPtr("New Description"),
@@ -106,7 +106,7 @@ func TestParseUpdateFlags(t *testing.T) {
 		{
 			name: "priority only",
 			setup: func(cmd *cobra.Command) {
-				cmd.Flags().Set("priority", "high")
+				require.NoError(t, cmd.Flags().Set("priority", "high"))
 			},
 			want: &UpdateInput{
 				Priority: stringPtr("high"),
@@ -115,8 +115,8 @@ func TestParseUpdateFlags(t *testing.T) {
 		{
 			name: "title and description",
 			setup: func(cmd *cobra.Command) {
-				cmd.Flags().Set("title", "New Title")
-				cmd.Flags().Set("description", "New Description")
+				require.NoError(t, cmd.Flags().Set("title", "New Title"))
+				require.NoError(t, cmd.Flags().Set("description", "New Description"))
 			},
 			want: &UpdateInput{
 				Title:       stringPtr("New Title"),
@@ -126,8 +126,8 @@ func TestParseUpdateFlags(t *testing.T) {
 		{
 			name: "title and priority",
 			setup: func(cmd *cobra.Command) {
-				cmd.Flags().Set("title", "New Title")
-				cmd.Flags().Set("priority", "critical")
+				require.NoError(t, cmd.Flags().Set("title", "New Title"))
+				require.NoError(t, cmd.Flags().Set("priority", "critical"))
 			},
 			want: &UpdateInput{
 				Title:    stringPtr("New Title"),
@@ -137,8 +137,8 @@ func TestParseUpdateFlags(t *testing.T) {
 		{
 			name: "description and priority",
 			setup: func(cmd *cobra.Command) {
-				cmd.Flags().Set("description", "New Description")
-				cmd.Flags().Set("priority", "low")
+				require.NoError(t, cmd.Flags().Set("description", "New Description"))
+				require.NoError(t, cmd.Flags().Set("priority", "low"))
 			},
 			want: &UpdateInput{
 				Description: stringPtr("New Description"),
@@ -148,9 +148,9 @@ func TestParseUpdateFlags(t *testing.T) {
 		{
 			name: "all fields",
 			setup: func(cmd *cobra.Command) {
-				cmd.Flags().Set("title", "New Title")
-				cmd.Flags().Set("description", "New Description")
-				cmd.Flags().Set("priority", "medium")
+				require.NoError(t, cmd.Flags().Set("title", "New Title"))
+				require.NoError(t, cmd.Flags().Set("description", "New Description"))
+				require.NoError(t, cmd.Flags().Set("priority", "medium"))
 			},
 			want: &UpdateInput{
 				Title:       stringPtr("New Title"),
@@ -161,7 +161,7 @@ func TestParseUpdateFlags(t *testing.T) {
 		{
 			name: "empty title",
 			setup: func(cmd *cobra.Command) {
-				cmd.Flags().Set("title", "")
+				require.NoError(t, cmd.Flags().Set("title", ""))
 			},
 			want: &UpdateInput{
 				Title: stringPtr(""),
@@ -170,7 +170,7 @@ func TestParseUpdateFlags(t *testing.T) {
 		{
 			name: "empty description",
 			setup: func(cmd *cobra.Command) {
-				cmd.Flags().Set("description", "")
+				require.NoError(t, cmd.Flags().Set("description", ""))
 			},
 			want: &UpdateInput{
 				Description: stringPtr(""),
@@ -179,7 +179,7 @@ func TestParseUpdateFlags(t *testing.T) {
 		{
 			name: "empty priority",
 			setup: func(cmd *cobra.Command) {
-				cmd.Flags().Set("priority", "")
+				require.NoError(t, cmd.Flags().Set("priority", ""))
 			},
 			want: &UpdateInput{
 				Priority: stringPtr(""),
