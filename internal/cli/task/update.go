@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
@@ -48,19 +47,23 @@ Examples:
 func runUpdate(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
-	taskTitle, _ := cmd.Flags().GetString("title")
-	taskDescription, _ := cmd.Flags().GetString("description")
-	taskPriority, _ := cmd.Flags().GetString("priority")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	quietMode, _ := cmd.Flags().GetBool("quiet")
-
 	formatter := &cli.OutputFormatter{JSON: jsonOutput, Quiet: quietMode}
 
 	// Parse ID from positional argument
-	taskID, err := strconv.Atoi(args[0])
+	taskID, err := ParseUpdateID(args)
 	if err != nil {
-		return formatter.Error(cli.ExitValidation, "INVALID_ID", fmt.Sprintf("invalid ID '%s': must be a number", args[0]))
+		return formatter.Error(cli.ExitValidation, "INVALID_ID", err.Error())
 	}
+
+	// Parse update flags
+	input, err := ParseUpdateFlags(cmd)
+	if err != nil {
+		return formatter.Error(cli.ExitUsage, "NO_UPDATES", err.Error())
+	}
+
+	input.TaskID = taskID
 
 	// Initialize CLI
 	cliInstance, err := cli.GetCLIFromContext(ctx)
@@ -73,25 +76,12 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	// At least one update field must be provided
-	titleFlag := cmd.Flags().Lookup("title")
-	descFlag := cmd.Flags().Lookup("description")
-	priorityFlag := cmd.Flags().Lookup("priority")
-
-	if !titleFlag.Changed && !descFlag.Changed && !priorityFlag.Changed {
-		return formatter.Error(cli.ExitUsage, "NO_UPDATES", "at least one of --title, --description, or --priority must be specified")
-	}
-
 	// Update title/description if provided
-	if titleFlag.Changed || descFlag.Changed {
+	if HasContentUpdate(input) {
 		req := taskservice.UpdateTaskRequest{
-			TaskID: taskID,
-		}
-		if titleFlag.Changed {
-			req.Title = &taskTitle
-		}
-		if descFlag.Changed {
-			req.Description = &taskDescription
+			TaskID:      input.TaskID,
+			Title:       input.Title,
+			Description: input.Description,
 		}
 		if err := cliInstance.App.TaskService.UpdateTask(ctx, req); err != nil {
 			return formatter.Error(cli.ExitError, "UPDATE_ERROR", err.Error())
@@ -99,13 +89,13 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Update priority if provided
-	if priorityFlag.Changed {
-		priorityID, err := cli.ParsePriority(taskPriority)
+	if HasPriorityUpdate(input) {
+		priorityID, err := cli.ParsePriority(*input.Priority)
 		if err != nil {
 			return formatter.Error(cli.ExitValidation, "INVALID_PRIORITY", err.Error())
 		}
 		req := taskservice.UpdateTaskRequest{
-			TaskID:     taskID,
+			TaskID:     input.TaskID,
 			PriorityID: &priorityID,
 		}
 		if err := cliInstance.App.TaskService.UpdateTask(ctx, req); err != nil {
@@ -114,19 +104,17 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Output success
+	result := &UpdateResult{TaskID: taskID}
+
 	if quietMode {
 		fmt.Printf("%d\n", taskID)
 		return nil
 	}
 
 	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"success": true,
-			"task_id": taskID,
-		})
+		return json.NewEncoder(os.Stdout).Encode(FormatUpdateJSON(result))
 	}
 
-	message := fmt.Sprintf("Task %d updated successfully", taskID)
-	cli.PrintSuccess(message)
+	cli.PrintSuccess(FormatUpdateOutput(result))
 	return nil
 }
