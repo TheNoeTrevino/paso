@@ -12,11 +12,16 @@ import (
 // and the appropriate theme color based on urgency.
 // Returns empty string and empty color if dueDate is nil.
 func FormatRelativeDueDate(dueDate *time.Time) (text string, color string) {
+	return formatRelativeDueDateFrom(dueDate, time.Now())
+}
+
+// formatRelativeDueDateFrom is the testable core of FormatRelativeDueDate.
+// It accepts a reference "now" time to enable deterministic testing.
+func formatRelativeDueDateFrom(dueDate *time.Time, now time.Time) (text string, color string) {
 	if dueDate == nil {
 		return "", ""
 	}
 
-	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	due := time.Date(dueDate.Year(), dueDate.Month(), dueDate.Day(), 0, 0, 0, 0, dueDate.Location())
 

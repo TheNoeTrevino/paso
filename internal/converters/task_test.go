@@ -15,6 +15,7 @@ import (
 func TestTaskToModel(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
+	dueDate := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
 
 	tests := []struct {
 		name     string
@@ -31,6 +32,7 @@ func TestTaskToModel(t *testing.T) {
 				Position:    10,
 				TypeID:      3,
 				PriorityID:  4,
+				DueDate:     types.NullTime{Time: dueDate, Valid: true},
 				CreatedAt:   types.NullTime{Time: now, Valid: true},
 				UpdatedAt:   types.NullTime{Time: now, Valid: true},
 			},
@@ -42,6 +44,7 @@ func TestTaskToModel(t *testing.T) {
 				Position:    10,
 				TypeID:      3,
 				PriorityID:  4,
+				DueDate:     &dueDate,
 				CreatedAt:   now,
 				UpdatedAt:   now,
 			},
@@ -212,6 +215,52 @@ func TestTaskToModel(t *testing.T) {
 			assert.Equal(t, tt.expected.PriorityID, result.PriorityID)
 			assert.True(t, result.CreatedAt.Equal(tt.expected.CreatedAt))
 			assert.True(t, result.UpdatedAt.Equal(tt.expected.UpdatedAt))
+			assert.Equal(t, tt.expected.DueDate, result.DueDate)
+		})
+	}
+}
+
+func TestTaskToModel_DueDate(t *testing.T) {
+	t.Parallel()
+
+	dueDate := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name            string
+		inputDueDate    types.NullTime
+		expectedDueDate *time.Time
+	}{
+		{
+			name:            "valid due date is converted to pointer",
+			inputDueDate:    types.NullTime{Time: dueDate, Valid: true},
+			expectedDueDate: &dueDate,
+		},
+		{
+			name:            "null due date is nil",
+			inputDueDate:    types.NullTime{Valid: false},
+			expectedDueDate: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			input := types.Task{
+				ID:       1,
+				Title:    "Test",
+				ColumnID: 1,
+				DueDate:  tt.inputDueDate,
+			}
+
+			result := TaskToModel(input)
+
+			if tt.expectedDueDate == nil {
+				assert.Nil(t, result.DueDate)
+			} else {
+				require.NotNil(t, result.DueDate)
+				assert.True(t, tt.expectedDueDate.Equal(*result.DueDate))
+			}
 		})
 	}
 }
@@ -878,6 +927,38 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 				Labels:              []*models.Label{},
 			},
 		},
+		{
+			name: "summary with valid due date",
+			input: types.GetTaskSummariesByProjectRow{
+				ID:       500,
+				Title:    "Task with due date",
+				ColumnID: 1,
+				DueDate:  types.NullTime{Time: time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC), Valid: true},
+			},
+			expected: &models.TaskSummary{
+				ID:       500,
+				Title:    "Task with due date",
+				ColumnID: 1,
+				DueDate:  ptrTime(time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)),
+				Labels:   []*models.Label{},
+			},
+		},
+		{
+			name: "summary with null due date",
+			input: types.GetTaskSummariesByProjectRow{
+				ID:       600,
+				Title:    "Task without due date",
+				ColumnID: 1,
+				DueDate:  types.NullTime{Valid: false},
+			},
+			expected: &models.TaskSummary{
+				ID:       600,
+				Title:    "Task without due date",
+				ColumnID: 1,
+				DueDate:  nil,
+				Labels:   []*models.Label{},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -893,6 +974,7 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 			assert.Equal(t, tt.expected.TypeDescription, result.TypeDescription)
 			assert.Equal(t, tt.expected.PriorityDescription, result.PriorityDescription)
 			assert.Equal(t, tt.expected.PriorityColor, result.PriorityColor)
+			assert.Equal(t, tt.expected.DueDate, result.DueDate)
 			require.Len(t, result.Labels, len(tt.expected.Labels))
 			for i := range result.Labels {
 				assert.Equal(t, tt.expected.Labels[i].ID, result.Labels[i].ID)
@@ -901,6 +983,10 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 			}
 		})
 	}
+}
+
+func ptrTime(t time.Time) *time.Time {
+	return &t
 }
 
 // TEST CASES - ReadyTaskSummaryFromRowToModel
@@ -983,7 +1069,44 @@ func TestReadyTaskSummaryFromRowToModel(t *testing.T) {
 			assert.Equal(t, tt.expected.TypeDescription, result.TypeDescription)
 			assert.Equal(t, tt.expected.PriorityDescription, result.PriorityDescription)
 			assert.Equal(t, tt.expected.PriorityColor, result.PriorityColor)
+			assert.Equal(t, tt.expected.DueDate, result.DueDate)
 			require.Len(t, result.Labels, len(tt.expected.Labels))
+		})
+	}
+}
+
+func TestReadyTaskSummaryFromRowToModel_DueDate(t *testing.T) {
+	t.Parallel()
+	dueDate := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name     string
+		input    types.NullTime
+		expected *time.Time
+	}{
+		{
+			name:     "valid due date",
+			input:    types.NullTime{Time: dueDate, Valid: true},
+			expected: &dueDate,
+		},
+		{
+			name:     "null due date",
+			input:    types.NullTime{Valid: false},
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			row := types.GetReadyTaskSummariesByProjectRow{
+				ID:       1,
+				Title:    "Test",
+				ColumnID: 1,
+				DueDate:  tt.input,
+			}
+			result := ReadyTaskSummaryFromRowToModel(row)
+			assert.Equal(t, tt.expected, result.DueDate)
 		})
 	}
 }
@@ -1071,7 +1194,44 @@ func TestFilteredTaskSummaryFromRowToModel(t *testing.T) {
 			assert.Equal(t, tt.expected.TypeDescription, result.TypeDescription)
 			assert.Equal(t, tt.expected.PriorityDescription, result.PriorityDescription)
 			assert.Equal(t, tt.expected.PriorityColor, result.PriorityColor)
+			assert.Equal(t, tt.expected.DueDate, result.DueDate)
 			require.Len(t, result.Labels, len(tt.expected.Labels))
+		})
+	}
+}
+
+func TestFilteredTaskSummaryFromRowToModel_DueDate(t *testing.T) {
+	t.Parallel()
+	dueDate := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name     string
+		input    types.NullTime
+		expected *time.Time
+	}{
+		{
+			name:     "valid due date",
+			input:    types.NullTime{Time: dueDate, Valid: true},
+			expected: &dueDate,
+		},
+		{
+			name:     "null due date",
+			input:    types.NullTime{Valid: false},
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			row := types.GetTaskSummariesByProjectFilteredRow{
+				ID:       1,
+				Title:    "Test",
+				ColumnID: 1,
+				DueDate:  tt.input,
+			}
+			result := FilteredTaskSummaryFromRowToModel(row)
+			assert.Equal(t, tt.expected, result.DueDate)
 		})
 	}
 }

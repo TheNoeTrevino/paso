@@ -739,3 +739,121 @@ func TestCursorWant_UserChangesMind(t *testing.T) {
 		t.Errorf("Jan: expected day 28 (new cursorWant), got %d", state.CursorDay)
 	}
 }
+
+func TestInitFromDate_WithDate(t *testing.T) {
+	tests := []struct {
+		name          string
+		date          time.Time
+		expectedMonth time.Month
+		expectedYear  int
+		expectedDay   int
+	}{
+		{
+			name:          "mid-month date",
+			date:          time.Date(2025, time.June, 15, 10, 30, 0, 0, time.UTC),
+			expectedMonth: time.June,
+			expectedYear:  2025,
+			expectedDay:   15,
+		},
+		{
+			name:          "first day of month",
+			date:          time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+			expectedMonth: time.January,
+			expectedYear:  2024,
+			expectedDay:   1,
+		},
+		{
+			name:          "last day of month",
+			date:          time.Date(2024, time.March, 31, 23, 59, 59, 0, time.UTC),
+			expectedMonth: time.March,
+			expectedYear:  2024,
+			expectedDay:   31,
+		},
+		{
+			name:          "leap day",
+			date:          time.Date(2024, time.February, 29, 12, 0, 0, 0, time.UTC),
+			expectedMonth: time.February,
+			expectedYear:  2024,
+			expectedDay:   29,
+		},
+		{
+			name:          "far future date",
+			date:          time.Date(2099, time.December, 25, 0, 0, 0, 0, time.UTC),
+			expectedMonth: time.December,
+			expectedYear:  2099,
+			expectedDay:   25,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			state := &DatePickerState{}
+			date := tt.date
+			state.InitFromDate(&date)
+
+			if state.CurrentMonth != tt.expectedMonth {
+				t.Errorf("CurrentMonth: expected %v, got %v", tt.expectedMonth, state.CurrentMonth)
+			}
+			if state.CurrentYear != tt.expectedYear {
+				t.Errorf("CurrentYear: expected %d, got %d", tt.expectedYear, state.CurrentYear)
+			}
+			if state.CursorDay != tt.expectedDay {
+				t.Errorf("CursorDay: expected %d, got %d", tt.expectedDay, state.CursorDay)
+			}
+			if state.cursorWant != tt.expectedDay {
+				t.Errorf("cursorWant: expected %d, got %d", tt.expectedDay, state.cursorWant)
+			}
+			if state.SelectedDate != tt.date {
+				t.Errorf("SelectedDate: expected %v, got %v", tt.date, state.SelectedDate)
+			}
+		})
+	}
+}
+
+func TestInitFromDate_NilDefaultsToToday(t *testing.T) {
+	state := &DatePickerState{}
+	state.InitFromDate(nil)
+
+	now := time.Now()
+	if state.CurrentMonth != now.Month() {
+		t.Errorf("CurrentMonth: expected %v, got %v", now.Month(), state.CurrentMonth)
+	}
+	if state.CurrentYear != now.Year() {
+		t.Errorf("CurrentYear: expected %d, got %d", now.Year(), state.CurrentYear)
+	}
+	if state.CursorDay != now.Day() {
+		t.Errorf("CursorDay: expected %d, got %d", now.Day(), state.CursorDay)
+	}
+	if state.cursorWant != now.Day() {
+		t.Errorf("cursorWant: expected %d, got %d", now.Day(), state.cursorWant)
+	}
+}
+
+func TestInitFromDate_OverwritesExistingState(t *testing.T) {
+	state := &DatePickerState{
+		CurrentMonth: time.January,
+		CurrentYear:  2020,
+		CursorDay:    1,
+		cursorWant:   1,
+		SelectedDate: time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	newDate := time.Date(2026, time.August, 22, 14, 0, 0, 0, time.UTC)
+	state.InitFromDate(&newDate)
+
+	if state.CurrentMonth != time.August {
+		t.Errorf("CurrentMonth: expected August, got %v", state.CurrentMonth)
+	}
+	if state.CurrentYear != 2026 {
+		t.Errorf("CurrentYear: expected 2026, got %d", state.CurrentYear)
+	}
+	if state.CursorDay != 22 {
+		t.Errorf("CursorDay: expected 22, got %d", state.CursorDay)
+	}
+	if state.cursorWant != 22 {
+		t.Errorf("cursorWant: expected 22, got %d", state.cursorWant)
+	}
+	if state.SelectedDate != newDate {
+		t.Errorf("SelectedDate: expected %v, got %v", newDate, state.SelectedDate)
+	}
+}
