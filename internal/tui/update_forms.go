@@ -72,6 +72,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 		Position:    len(m.getTasksForColumn(currentCol.ID)),
 		AssigneeID:  m.Forms.Form.FormAssigneeID,
 		Estimate:    m.Forms.Form.FormEstimate,
+		DueDate:     m.Forms.Form.FormDueDate,
 		LabelIDs:    values.labelIDs,
 		ParentIDs:   parentIDs,
 		ChildIDs:    childIDs,
@@ -473,6 +474,12 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Open estimate input layer
 			m.initEstimateInputForForm()
 			m.UIState.Mode = state.EstimateInputMode
+			return m, nil
+
+		case "ctrl+d":
+			// Open due date picker
+			m.initDatePickerForForm()
+			m.UIState.Mode = state.DatePickerMode
 			return m, nil
 
 		case "ctrl+h":

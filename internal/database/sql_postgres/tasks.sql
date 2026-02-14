@@ -7,8 +7,9 @@ insert into tasks (
     position,
     ticket_number,
     assignee_id,
-    estimate)
-values ($1, $2, $3, $4, $5, $6, $7)
+    estimate,
+    due_date)
+values ($1, $2, $3, $4, $5, $6, $7, $8)
 returning *;
 
 -- name: GetTask :one
@@ -81,6 +82,12 @@ update tasks
 set estimate = $1, updated_at = current_timestamp
 where id = $2;
 
+-- name: UpdateTaskDueDate :exec
+-- Updates a task's due date
+update tasks
+set due_date = $1, updated_at = current_timestamp
+where id = $2;
+
 -- name: DeleteTask :exec
 -- Permanently deletes a task by ID
 delete from tasks
@@ -99,6 +106,7 @@ select
     t.created_at,
     t.updated_at,
     t.estimate,
+    t.due_date,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -137,6 +145,7 @@ select
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -158,6 +167,7 @@ group by
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description,
     p.description,
     p.color,
@@ -174,6 +184,7 @@ select
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -204,6 +215,7 @@ group by
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description,
     p.description,
     p.color,
@@ -219,6 +231,7 @@ select
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -249,6 +262,7 @@ group by
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description,
     p.description,
     p.color,
@@ -283,6 +297,7 @@ select
     t.created_at,
     t.updated_at,
     t.estimate,
+    t.due_date,
     c.name as column_name,
     proj.name as project_name,
     ty.description as type_description,
@@ -320,6 +335,7 @@ group by
     t.created_at,
     t.updated_at,
     t.estimate,
+    t.due_date,
     c.name,
     proj.name,
     ty.description,
@@ -337,6 +353,7 @@ select
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -367,6 +384,7 @@ group by
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description,
     p.description,
     p.color,

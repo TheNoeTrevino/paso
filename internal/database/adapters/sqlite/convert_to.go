@@ -15,6 +15,8 @@ func toGeneratedCreateTaskParams(t types.CreateTaskParams) generated_sqlite.Crea
 		Position:     t.Position,
 		TicketNumber: t.TicketNumber.ToSQLNullInt64(),
 		AssigneeID:   t.AssigneeID.ToInterface(),
+		Estimate:     t.Estimate.ToInterface(),
+		DueDate:      t.DueDate.ToInterface(),
 	}
 }
 
@@ -109,6 +111,13 @@ func toGeneratedUpdateTaskEstimateParams(t types.UpdateTaskEstimateParams) gener
 	return generated_sqlite.UpdateTaskEstimateParams{
 		Estimate: t.Estimate.ToSQLNullString(),
 		ID:       t.ID,
+	}
+}
+
+func toGeneratedUpdateTaskDueDateParams(t types.UpdateTaskDueDateParams) generated_sqlite.UpdateTaskDueDateParams {
+	return generated_sqlite.UpdateTaskDueDateParams{
+		DueDate: t.DueDate.ToInterface(),
+		ID:      t.ID,
 	}
 }
 

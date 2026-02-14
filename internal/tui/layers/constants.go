@@ -41,4 +41,7 @@ const (
 	PickerStatusWidth           = 40 // height is dynamic based on column count
 	PickerStatusChromeHeight    = 6  // title, spacing, footer
 	PickerColorDefaultItemCount = 10
+
+	DatePickerWidth  = 50 // 42 chars content + padding
+	DatePickerHeight = 16 // header + weekdays + up to 6 weeks + padding
 )

@@ -170,6 +170,7 @@ func InitialModel(ctx context.Context, application *app.App, cfg *config.Config,
 	connectionState := state.NewConnectionState(initialStatus)
 
 	components.InitStyles(cfg.ColorScheme)
+	renderers.InitDatePickerStyles()
 
 	// Create notification channel for events client messages
 	notifyChan := make(chan events.NotificationMsg, 10)
@@ -1117,6 +1118,39 @@ func (m *Model) initEstimateInput(mode state.Mode) bool {
 // Deprecated: Use initEstimateInput(state.TicketFormMode) instead.
 func (m *Model) initEstimateInputForForm() {
 	m.initEstimateInput(state.TicketFormMode)
+}
+
+// initDatePickerForForm initializes the date picker for use in task form mode.
+// Pre-fills the picker with the current due date value from FormDueDate.
+// If FormDueDate is nil, defaults to today's date.
+func (m *Model) initDatePickerForForm() {
+	m.Pickers.DatePicker.InitFromDate(m.Forms.Form.FormDueDate)
+	m.Pickers.DatePicker.ReturnMode = state.TicketFormMode
+}
+
+func (m *Model) initDatePicker(mode state.Mode) bool {
+	var currentDueDate *time.Time
+
+	if mode == state.TicketFormMode {
+		// Form mode: use the form's due date
+		currentDueDate = m.Forms.Form.FormDueDate
+	} else {
+		// Board mode: use current task's due date
+		task := m.getCurrentTask()
+		if task == nil {
+			m.UI.Notification.Add(state.LevelError, "No task selected")
+			return false
+		}
+
+		currentDueDate = task.DueDate
+		m.Forms.Form.EditingTaskID = task.ID // Set for board mode updates
+	}
+
+	// Initialize DatePickerState
+	m.Pickers.DatePicker.InitFromDate(currentDueDate)
+	m.Pickers.DatePicker.ReturnMode = mode
+
+	return true
 }
 
 // buildListViewRows creates a flat list of all tasks with their column names.

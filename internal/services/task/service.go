@@ -37,6 +37,7 @@ type TaskWriter interface {
 	UpdateTask(ctx context.Context, req UpdateTaskRequest) error
 	UpdateTaskAssignee(ctx context.Context, taskID int, assigneeID *int) error
 	UpdateTaskEstimate(ctx context.Context, taskID int, estimate *string) error
+	UpdateTaskDueDate(ctx context.Context, taskID int, dueDate *time.Time) error
 	DeleteTask(ctx context.Context, taskID int) error
 }
 
@@ -94,10 +95,11 @@ type CreateTaskRequest struct {
 	Description  string
 	ColumnID     int
 	Position     int
-	PriorityID   int    // Optional: 0 means use default
-	TypeID       int    // Optional: 0 means use default
-	AssigneeID   int    // Optional: 0 means use active assignee from config
-	Estimate     string // Optional: empty means no estimate
+	PriorityID   int        // Optional: 0 means use default
+	TypeID       int        // Optional: 0 means use default
+	AssigneeID   int        // Optional: 0 means use active assignee from config
+	Estimate     string     // Optional: empty means no estimate
+	DueDate      *time.Time // Optional: nil means no due date
 	LabelIDs     []int
 	ParentIDs    []int // Parent task IDs (tasks that depend on this task)
 	ChildIDs     []int // Child task IDs (tasks this task depends on)
@@ -190,6 +192,16 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 			assigneeID = types.NullInt64{Int64: int64(req.AssigneeID), Valid: true}
 		}
 
+		var estimate types.NullString
+		if req.Estimate != "" {
+			estimate = types.NullString{String: req.Estimate, Valid: true}
+		}
+
+		var dueDate types.NullTime
+		if req.DueDate != nil {
+			dueDate = types.NullTime{Time: *req.DueDate, Valid: true}
+		}
+
 		var taskErr error
 		createdTask, taskErr = qtx.CreateTask(ctx, types.CreateTaskParams{
 			Title:        req.Title,
@@ -198,6 +210,8 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 			Position:     int64(req.Position),
 			TicketNumber: ticketNumber,
 			AssigneeID:   assigneeID,
+			Estimate:     estimate,
+			DueDate:      dueDate,
 		})
 		if taskErr != nil {
 			return fmt.Errorf("failed to create task: %w", taskErr)
@@ -225,16 +239,6 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 				ID:     createdTask.ID,
 			}); err != nil {
 				return fmt.Errorf("failed to set type: %w", err)
-			}
-		}
-
-		// Set estimate if provided
-		if req.Estimate != "" {
-			if err := qtx.UpdateTaskEstimate(ctx, types.UpdateTaskEstimateParams{
-				Estimate: types.NullString{String: req.Estimate, Valid: true},
-				ID:       createdTask.ID,
-			}); err != nil {
-				return fmt.Errorf("failed to set estimate: %w", err)
 			}
 		}
 
@@ -505,6 +509,32 @@ func (s *service) UpdateTaskEstimate(ctx context.Context, taskID int, estimate *
 	return nil
 }
 
+// UpdateTaskDueDate updates the due date field for an existing task.
+// Pass nil to clear the due date.
+func (s *service) UpdateTaskDueDate(ctx context.Context, taskID int, dueDate *time.Time) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	if err := validateTaskID(taskID); err != nil {
+		return err
+	}
+
+	var nullDueDate types.NullTime
+	if dueDate != nil {
+		nullDueDate = types.NullTime{Time: *dueDate, Valid: true}
+	}
+
+	if err := s.queries.UpdateTaskDueDate(ctx, types.UpdateTaskDueDateParams{
+		DueDate: nullDueDate,
+		ID:      int64(taskID),
+	}); err != nil {
+		return fmt.Errorf("failed to update task due date: %w", err)
+	}
+
+	s.publishTaskEvent(ctx, taskID)
+	return nil
+}
+
 // DeleteTask handles task deletion
 func (s *service) DeleteTask(ctx context.Context, taskID int) error {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -614,6 +644,9 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 	if taskRow.Estimate.Valid {
 		estimate := taskRow.Estimate.String
 		detail.Estimate = &estimate
+	}
+	if taskRow.DueDate.Valid {
+		detail.DueDate = &taskRow.DueDate.Time
 	}
 
 	return detail, nil
@@ -1229,6 +1262,13 @@ func (s *service) GetInProgressTasksByProject(ctx context.Context, projectID int
 		if row.AssigneeName.Valid {
 			name := row.AssigneeName.String
 			taskDetail.AssigneeName = &name
+		}
+		if row.Estimate.Valid {
+			estimate := row.Estimate.String
+			taskDetail.Estimate = &estimate
+		}
+		if row.DueDate.Valid {
+			taskDetail.DueDate = &row.DueDate.Time
 		}
 
 		// NOTE: Parent/child tasks and comments are NOT fetched here.

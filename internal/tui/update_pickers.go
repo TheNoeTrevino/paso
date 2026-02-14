@@ -3,6 +3,7 @@ package tui
 import (
 	"log/slog"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/models"
@@ -902,6 +903,108 @@ func (m Model) updateEstimateInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+}
+
+// updateDatePicker handles keyboard input in date picker mode
+func (m Model) updateDatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	key := keyMsg.String()
+	km := m.Config.KeyMappings
+
+	switch key {
+	case "esc":
+		// Cancel - don't update FormDueDate, just return to previous mode
+		m.UIState.Mode = m.Pickers.DatePicker.ReturnMode
+		return m, nil
+
+	case km.PrevTask, "up":
+		m.Pickers.DatePicker.MoveWeek(-1) // Move up 7 days
+		return m, nil
+
+	case km.NextTask, "down":
+		m.Pickers.DatePicker.MoveWeek(1) // Move down 7 days
+		return m, nil
+
+	case km.PrevColumn, "left":
+		m.Pickers.DatePicker.MoveDay(-1) // Previous day
+		return m, nil
+
+	case km.NextColumn, "right":
+		m.Pickers.DatePicker.MoveDay(1) // Next day
+		return m, nil
+
+	case km.ScrollViewportLeft:
+		m.Pickers.DatePicker.PrevMonth() // Previous month
+		return m, nil
+
+	case km.ScrollViewportRight:
+		m.Pickers.DatePicker.NextMonth() // Next month
+		return m, nil
+
+	case "backspace", "ctrl+h":
+		// Clear due date
+		m.Forms.Form.FormDueDate = nil
+
+		// If editing existing task, save immediately to database
+		if m.Forms.Form.EditingTaskID != 0 {
+			ctx, cancel := m.DBContext()
+			defer cancel()
+
+			err := m.App.TaskService.UpdateTaskDueDate(ctx, m.Forms.Form.EditingTaskID, nil)
+			if err != nil {
+				slog.Error("failed to clear task due date", "error", err)
+				m.UI.Notification.Add(state.LevelError, "Failed to clear due date")
+			} else {
+				m.UI.Notification.Add(state.LevelInfo, "Due date cleared")
+				m.reloadCurrentColumnTasks()
+			}
+		} else {
+			m.UI.Notification.Add(state.LevelInfo, "Due date cleared")
+		}
+
+		m.UIState.Mode = m.Pickers.DatePicker.ReturnMode
+		return m, nil
+
+	case "enter":
+		// Confirm selection - set selectedDate to current cursor position
+		selectedDate := time.Date(
+			m.Pickers.DatePicker.CurrentYear,
+			m.Pickers.DatePicker.CurrentMonth,
+			m.Pickers.DatePicker.CursorDay,
+			0, 0, 0, 0,
+			time.Local,
+		)
+		m.Pickers.DatePicker.SelectedDate = selectedDate
+
+		// Update form state
+		m.Forms.Form.FormDueDate = &selectedDate
+
+		// If editing existing task, save immediately to database
+		if m.Forms.Form.EditingTaskID != 0 {
+			ctx, cancel := m.DBContext()
+			defer cancel()
+
+			err := m.App.TaskService.UpdateTaskDueDate(ctx, m.Forms.Form.EditingTaskID, &selectedDate)
+			if err != nil {
+				slog.Error("failed to update task due date", "error", err)
+				m.UI.Notification.Add(state.LevelError, "Failed to update due date")
+			} else {
+				m.UI.Notification.Add(state.LevelInfo, "Due date set to "+selectedDate.Format("Jan 2, 2006"))
+				m.reloadCurrentColumnTasks()
+			}
+		} else {
+			m.UI.Notification.Add(state.LevelInfo, "Due date set to "+selectedDate.Format("Jan 2, 2006"))
+		}
+
+		m.UIState.Mode = m.Pickers.DatePicker.ReturnMode
+		return m, nil
+	}
+
+	return m, nil
 }
 
 // updateRelationTypePicker handles keyboard input in the relation type picker mode

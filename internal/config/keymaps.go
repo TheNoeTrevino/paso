@@ -15,6 +15,7 @@ type KeyMappings struct {
 	EditPriority   string `yaml:"edit_priority"`
 	EditAssignee   string `yaml:"edit_assignee"`
 	EditEstimate   string `yaml:"edit_estimate"`
+	EditDueDate    string `yaml:"edit_due_date"`
 	EditParentTask string `yaml:"edit_parent_task"`
 	EditChildTask  string `yaml:"edit_child_task"`
 
@@ -68,6 +69,7 @@ func DefaultKeyMappings() KeyMappings {
 		EditPriority:   "ctrl+r",
 		EditAssignee:   "ctrl+a",
 		EditEstimate:   "ctrl+e",
+		EditDueDate:    "ctrl+d",
 		EditParentTask: "p",
 		EditChildTask:  "c",
 		SaveForm:       "ctrl+s",
@@ -143,6 +145,9 @@ func (k *KeyMappings) applyDefaults() {
 	}
 	if k.EditEstimate == "" {
 		k.EditEstimate = defaults.EditEstimate
+	}
+	if k.EditDueDate == "" {
+		k.EditDueDate = defaults.EditDueDate
 	}
 	if k.EditParentTask == "" {
 		k.EditParentTask = defaults.EditParentTask

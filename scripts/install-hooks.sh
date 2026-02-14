@@ -12,36 +12,37 @@ NC='\033[0m' # No Color
 GIT_DIR=$(git rev-parse --git-common-dir)
 
 if [ ! -d "$GIT_DIR" ]; then
-    echo "Error: Not in a git repository"
-    exit 1
+  echo "Error: Not in a git repository"
+  exit 1
 fi
 
 HOOK_PATH="$GIT_DIR/hooks/pre-commit"
 
 # Create the pre-commit hook
-cat > "$HOOK_PATH" << 'EOF'
-#!/bin/sh
-# Pre-commit hook for formatting staged files
+cat >"$HOOK_PATH" <<'EOF'
+#!/bin/bash
+# Pre-commit hook for formatting staged Go files
 
-# Get the root directory of the git repository
-GIT_ROOT=$(git rev-parse --show-toplevel)
+set -e
 
-# Path to the pre-commit binary
-PRECOMMIT_BIN="$GIT_ROOT/bin/pre-commit"
+# Get staged Go files
+STAGED_GO_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || true)
 
-# Build the pre-commit binary if it doesn't exist
-if [ ! -f "$PRECOMMIT_BIN" ]; then
-    echo "Building pre-commit hook binary..."
-    if ! go build -o "$PRECOMMIT_BIN" "$GIT_ROOT/cmd/pre-commit"; then
-        echo "Error: Failed to build pre-commit hook" >&2
-        echo "Run 'go build -o bin/pre-commit ./cmd/pre-commit' to diagnose" >&2
-        exit 1
-    fi
-    echo "Pre-commit hook binary built successfully"
+if [ -z "$STAGED_GO_FILES" ]; then
+    exit 0
 fi
 
-# Run the pre-commit binary
-exec "$PRECOMMIT_BIN"
+echo "Formatting staged Go files..."
+
+# Format each file and re-stage it
+for file in $STAGED_GO_FILES; do
+    if [ -f "$file" ]; then
+        gofmt -w "$file"
+        git add "$file"
+    fi
+done
+
+echo "✓ All staged Go files formatted"
 EOF
 
 # Make the hook executable
@@ -52,11 +53,8 @@ echo ""
 echo "The hook will:"
 echo "  • Format staged Go files with gofmt"
 echo "  • Automatically re-stage formatted files"
-echo "  • Build on first commit (lazy build)"
 echo ""
 echo "Usage:"
 echo "  • Normal commit: ${YELLOW}git commit${NC}"
 echo "  • Bypass hook: ${YELLOW}git commit --no-verify${NC}"
 echo "  • Manual format: ${YELLOW}gofmt -w <file>${NC}"
-echo ""
-echo "The hook binary will be built automatically on your first commit."

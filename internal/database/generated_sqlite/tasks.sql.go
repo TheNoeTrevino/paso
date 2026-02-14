@@ -52,9 +52,10 @@ insert into tasks (
     position,
     ticket_number,
     assignee_id,
-    estimate)
-values (?, ?, ?, ?, ?, ?, ?)
-returning id, title, description, column_id, position, ticket_number, type_id, priority_id, created_at, updated_at, assignee_id, estimate
+    estimate,
+    due_date)
+values (?, ?, ?, ?, ?, ?, ?, ?)
+returning id, title, description, column_id, position, ticket_number, type_id, priority_id, created_at, updated_at, assignee_id, estimate, due_date
 `
 
 type CreateTaskParams struct {
@@ -65,6 +66,7 @@ type CreateTaskParams struct {
 	TicketNumber sql.NullInt64
 	AssigneeID   interface{}
 	Estimate     interface{}
+	DueDate      interface{}
 }
 
 // Creates a new task with title, description, position, ticket number, and assignee
@@ -77,6 +79,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		arg.TicketNumber,
 		arg.AssigneeID,
 		arg.Estimate,
+		arg.DueDate,
 	)
 	var i Task
 	err := row.Scan(
@@ -92,6 +95,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		&i.UpdatedAt,
 		&i.AssigneeID,
 		&i.Estimate,
+		&i.DueDate,
 	)
 	return i, err
 }
@@ -266,6 +270,7 @@ select
     t.created_at,
     t.updated_at,
     t.estimate,
+    t.due_date,
     c.name as column_name,
     proj.name as project_name,
     ty.description as type_description,
@@ -303,6 +308,7 @@ group by
     t.created_at,
     t.updated_at,
     t.estimate,
+    t.due_date,
     c.name,
     proj.name,
     ty.description,
@@ -323,6 +329,7 @@ type GetInProgressTaskDetailsRow struct {
 	CreatedAt           sql.NullTime
 	UpdatedAt           sql.NullTime
 	Estimate            interface{}
+	DueDate             interface{}
 	ColumnName          string
 	ProjectName         string
 	TypeDescription     sql.NullString
@@ -356,6 +363,7 @@ func (q *Queries) GetInProgressTaskDetails(ctx context.Context, id int64) ([]Get
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Estimate,
+			&i.DueDate,
 			&i.ColumnName,
 			&i.ProjectName,
 			&i.TypeDescription,
@@ -565,6 +573,7 @@ select
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -595,6 +604,7 @@ group by
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description,
     p.description,
     p.color,
@@ -609,6 +619,7 @@ type GetReadyTaskSummariesByProjectRow struct {
 	ColumnID            int64
 	Position            int64
 	Estimate            interface{}
+	DueDate             interface{}
 	TypeDescription     sql.NullString
 	PriorityDescription sql.NullString
 	PriorityColor       sql.NullString
@@ -636,6 +647,7 @@ func (q *Queries) GetReadyTaskSummariesByProject(ctx context.Context, projectID 
 			&i.ColumnID,
 			&i.Position,
 			&i.Estimate,
+			&i.DueDate,
 			&i.TypeDescription,
 			&i.PriorityDescription,
 			&i.PriorityColor,
@@ -772,6 +784,7 @@ select
     t.created_at,
     t.updated_at,
     t.estimate,
+    t.due_date,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -805,6 +818,7 @@ type GetTaskDetailRow struct {
 	CreatedAt           sql.NullTime
 	UpdatedAt           sql.NullTime
 	Estimate            interface{}
+	DueDate             interface{}
 	TypeDescription     sql.NullString
 	PriorityDescription sql.NullString
 	PriorityColor       sql.NullString
@@ -830,6 +844,7 @@ func (q *Queries) GetTaskDetail(ctx context.Context, id int64) (GetTaskDetailRow
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Estimate,
+		&i.DueDate,
 		&i.TypeDescription,
 		&i.PriorityDescription,
 		&i.PriorityColor,
@@ -1003,6 +1018,7 @@ select
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -1024,6 +1040,7 @@ group by
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description,
     p.description,
     p.color,
@@ -1038,6 +1055,7 @@ type GetTaskSummariesByColumnRow struct {
 	ColumnID            int64
 	Position            int64
 	Estimate            interface{}
+	DueDate             interface{}
 	TypeDescription     sql.NullString
 	PriorityDescription sql.NullString
 	PriorityColor       sql.NullString
@@ -1064,6 +1082,7 @@ func (q *Queries) GetTaskSummariesByColumn(ctx context.Context, columnID int64) 
 			&i.ColumnID,
 			&i.Position,
 			&i.Estimate,
+			&i.DueDate,
 			&i.TypeDescription,
 			&i.PriorityDescription,
 			&i.PriorityColor,
@@ -1093,6 +1112,7 @@ select
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -1123,6 +1143,7 @@ group by
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description,
     p.description,
     p.color,
@@ -1137,6 +1158,7 @@ type GetTaskSummariesByProjectRow struct {
 	ColumnID            int64
 	Position            int64
 	Estimate            interface{}
+	DueDate             interface{}
 	TypeDescription     sql.NullString
 	PriorityDescription sql.NullString
 	PriorityColor       sql.NullString
@@ -1165,6 +1187,7 @@ func (q *Queries) GetTaskSummariesByProject(ctx context.Context, projectID int64
 			&i.ColumnID,
 			&i.Position,
 			&i.Estimate,
+			&i.DueDate,
 			&i.TypeDescription,
 			&i.PriorityDescription,
 			&i.PriorityColor,
@@ -1195,6 +1218,7 @@ select
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -1225,6 +1249,7 @@ group by
     t.column_id,
     t.position,
     t.estimate,
+    t.due_date,
     ty.description,
     p.description,
     p.color,
@@ -1244,6 +1269,7 @@ type GetTaskSummariesByProjectFilteredRow struct {
 	ColumnID            int64
 	Position            int64
 	Estimate            interface{}
+	DueDate             interface{}
 	TypeDescription     sql.NullString
 	PriorityDescription sql.NullString
 	PriorityColor       sql.NullString
@@ -1271,6 +1297,7 @@ func (q *Queries) GetTaskSummariesByProjectFiltered(ctx context.Context, arg Get
 			&i.ColumnID,
 			&i.Position,
 			&i.Estimate,
+			&i.DueDate,
 			&i.TypeDescription,
 			&i.PriorityDescription,
 			&i.PriorityColor,
@@ -1537,6 +1564,23 @@ type UpdateTaskAssigneeParams struct {
 // Updates a task's assignee
 func (q *Queries) UpdateTaskAssignee(ctx context.Context, arg UpdateTaskAssigneeParams) error {
 	_, err := q.db.ExecContext(ctx, updateTaskAssignee, arg.AssigneeID, arg.ID)
+	return err
+}
+
+const updateTaskDueDate = `-- name: UpdateTaskDueDate :exec
+update tasks
+set due_date = ?, updated_at = current_timestamp
+where id = ?
+`
+
+type UpdateTaskDueDateParams struct {
+	DueDate interface{}
+	ID      int64
+}
+
+// Updates a task's due date
+func (q *Queries) UpdateTaskDueDate(ctx context.Context, arg UpdateTaskDueDateParams) error {
+	_, err := q.db.ExecContext(ctx, updateTaskDueDate, arg.DueDate, arg.ID)
 	return err
 }
 

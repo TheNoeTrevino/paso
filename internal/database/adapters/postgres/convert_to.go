@@ -13,6 +13,8 @@ func toGeneratedCreateTaskParams(t types.CreateTaskParams) generated_postgres.Cr
 		Position:     t.Position,
 		TicketNumber: t.TicketNumber.ToSQLNullInt64(),
 		AssigneeID:   t.AssigneeID.ToSQLNullInt32(),
+		Estimate:     t.Estimate.ToSQLNullString(),
+		DueDate:      t.DueDate.ToSQLNullTime(),
 	}
 }
 
@@ -107,6 +109,13 @@ func toGeneratedUpdateTaskEstimateParams(t types.UpdateTaskEstimateParams) gener
 	return generated_postgres.UpdateTaskEstimateParams{
 		Estimate: t.Estimate.ToSQLNullString(),
 		ID:       t.ID,
+	}
+}
+
+func toGeneratedUpdateTaskDueDateParams(t types.UpdateTaskDueDateParams) generated_postgres.UpdateTaskDueDateParams {
+	return generated_postgres.UpdateTaskDueDateParams{
+		DueDate: t.DueDate.ToSQLNullTime(),
+		ID:      t.ID,
 	}
 }
 

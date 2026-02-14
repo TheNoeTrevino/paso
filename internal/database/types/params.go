@@ -108,6 +108,8 @@ type CreateTaskParams struct {
 	Position     int64
 	TicketNumber NullInt64
 	AssigneeID   NullInt64
+	Estimate     NullString
+	DueDate      NullTime
 }
 
 type GetTaskAboveParams struct {
@@ -165,6 +167,11 @@ type UpdateTaskAssigneeParams struct {
 type UpdateTaskEstimateParams struct {
 	Estimate NullString
 	ID       int64
+}
+
+type UpdateTaskDueDateParams struct {
+	DueDate NullTime
+	ID      int64
 }
 
 // comments.sql.go params

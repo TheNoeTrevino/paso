@@ -45,6 +45,7 @@ const (
 	ProjectBranchConfirmMode               // Confirming git branch association for project
 	DeleteProjectConfirmMode               // Confirming project deletion
 	DeleteLabelConfirmMode                 // Confirming label deletion
+	DatePickerMode                         // Date picker modal for selecting dates
 )
 
 // UsesLayers returns true if this mode uses layer-based rendering.
@@ -83,6 +84,7 @@ func (m Mode) UsesLayers() bool {
 		DeleteProjectConfirmMode,
 		DeleteColumnConfirmMode,
 		DeleteLabelConfirmMode,
+		DatePickerMode,
 		DeleteConfirmMode:
 		return true
 	default:

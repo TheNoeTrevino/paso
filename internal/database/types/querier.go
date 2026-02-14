@@ -220,6 +220,8 @@ type Querier interface {
 	UpdateTaskAssignee(ctx context.Context, arg UpdateTaskAssigneeParams) error
 	// Updates a task's time estimate
 	UpdateTaskEstimate(ctx context.Context, arg UpdateTaskEstimateParams) error
+	// Updates a task's due date
+	UpdateTaskDueDate(ctx context.Context, arg UpdateTaskDueDateParams) error
 	// Updates a task's type classification
 	UpdateTaskType(ctx context.Context, arg UpdateTaskTypeParams) error
 	// Inserts a label or ignores if it already exists (for seeding)

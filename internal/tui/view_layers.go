@@ -457,6 +457,7 @@ QUICK ACTIONS
   Ctrl+T          Change task type
   Ctrl+A          Change assignee
   Ctrl+E          Change estimate
+  Ctrl+D          Set due date
 
 HELP
   Ctrl+/          Toggle this help menu
@@ -713,6 +714,28 @@ func (m Model) renderEstimateInputLayer() *lipgloss.Layer {
 				m.Pickers.Estimate.Buffer(),
 				m.Pickers.Estimate.Error(),
 				width-layers.PickerBorderPaddingWidth,
+			)
+		},
+		boxStyle: components.LabelPickerBoxStyle,
+	})
+}
+
+// renderDatePickerLayer renders the date picker as a centered modal overlay
+func (m Model) renderDatePickerLayer() *lipgloss.Layer {
+	// Calculate dynamic height based on current month
+	contentHeight := renderers.DatePickerContentHeight(m.Pickers.DatePicker.CurrentMonth, m.Pickers.DatePicker.CurrentYear)
+	totalHeight := contentHeight + layers.PickerBorderPaddingHeight
+
+	return m.createPickerLayer(pickerLayerConfig{
+		dimensionStrategy: fixedPickerDimensions{
+			width:  layers.DatePickerWidth,
+			height: totalHeight,
+		},
+		contentRenderer: func(width, height int) string {
+			return renderers.RenderDatePicker(
+				m.Pickers.DatePicker,
+				width-layers.PickerBorderPaddingWidth,
+				height-layers.PickerBorderPaddingHeight,
 			)
 		},
 		boxStyle: components.LabelPickerBoxStyle,
