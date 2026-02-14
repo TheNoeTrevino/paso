@@ -3,6 +3,8 @@ package fixtures
 import (
 	"database/sql"
 	"testing"
+
+	"github.com/thenoetrevino/paso/internal/database"
 )
 
 // DatabaseType represents a supported database type
@@ -12,6 +14,16 @@ const (
 	SQLiteType     DatabaseType = "sqlite"
 	PostgreSQLType DatabaseType = "postgres"
 )
+
+// DBTypeToDatabase maps fixture DatabaseType to database.DatabaseType used by services.
+func DBTypeToDatabase(dt DatabaseType) database.DatabaseType {
+	switch dt {
+	case PostgreSQLType:
+		return database.PostgreSQL
+	default:
+		return database.SQLite
+	}
+}
 
 // DatabaseTestCase represents a parameterized test case for both SQLite and PostgreSQL
 type DatabaseTestCase struct {
@@ -88,17 +100,20 @@ func PostgresqlDatabasesOnly() []DatabaseTestCase {
 	}
 }
 
-// RunDatabaseTests is a helper that runs a test function for each database
+// RunDatabaseTests is a helper that runs a test function for each database.
+// The callback receives the database connection, dialect, and database.DatabaseType
+// so services can be instantiated with the correct database type.
+//
 // Example:
 //
 //	func TestCreateLabel(t *testing.T) {
-//	    fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect) {
-//	        // Your test code here
-//	        label, err := svc.CreateLabel(ctx, req)
+//	    fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+//	        svc, err := label.NewService(db, dbType, nil)
 //	        require.NoError(t, err)
+//	        // Your test code here
 //	    })
 //	}
-func RunDatabaseTests(t *testing.T, testFunc func(t *testing.T, db *sql.DB, d Dialect)) {
+func RunDatabaseTests(t *testing.T, testFunc func(t *testing.T, db *sql.DB, d Dialect, dbType database.DatabaseType)) {
 	for _, tc := range AllDatabases() {
 		t.Run(tc.Name, func(t *testing.T) {
 			db := tc.SetupDB(t)
@@ -108,30 +123,30 @@ func RunDatabaseTests(t *testing.T, testFunc func(t *testing.T, db *sql.DB, d Di
 			}
 			defer tc.TearDown(db)
 
-			testFunc(t, db, tc.Dialect)
+			testFunc(t, db, tc.Dialect, DBTypeToDatabase(tc.DBType))
 		})
 	}
 }
 
-// RunDatabaseTestsWithSetup is like RunDatabaseTests but provides setup/teardown for each database
+// RunDatabaseTestsWithSetup is like RunDatabaseTests but provides a setup phase for each database.
+//
 // Example:
 //
 //	func TestCreateLabel(t *testing.T) {
 //	    fixtures.RunDatabaseTestsWithSetup(t,
-//	        func(t *testing.T, db *sql.DB, d fixtures.Dialect) any {
-//	            // Setup for this database type
+//	        func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) any {
 //	            projectID := fixtures.CreateTestProject(t, db, d, "Test Project")
 //	            return projectID
 //	        },
-//	        func(t *testing.T, db *sql.DB, d fixtures.Dialect, setupData any) {
+//	        func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType, setupData any) {
 //	            // Test function using setupData
 //	        },
 //	    )
 //	}
 func RunDatabaseTestsWithSetup(
 	t *testing.T,
-	setupFunc func(t *testing.T, db *sql.DB, d Dialect) any,
-	testFunc func(t *testing.T, db *sql.DB, d Dialect, setupData any),
+	setupFunc func(t *testing.T, db *sql.DB, d Dialect, dbType database.DatabaseType) any,
+	testFunc func(t *testing.T, db *sql.DB, d Dialect, dbType database.DatabaseType, setupData any),
 ) {
 	for _, tc := range AllDatabases() {
 		t.Run(tc.Name, func(t *testing.T) {
@@ -142,8 +157,9 @@ func RunDatabaseTestsWithSetup(
 			}
 			defer tc.TearDown(db)
 
-			setupData := setupFunc(t, db, tc.Dialect)
-			testFunc(t, db, tc.Dialect, setupData)
+			resolvedDBType := DBTypeToDatabase(tc.DBType)
+			setupData := setupFunc(t, db, tc.Dialect, resolvedDBType)
+			testFunc(t, db, tc.Dialect, resolvedDBType, setupData)
 		})
 	}
 }
