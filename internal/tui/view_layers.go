@@ -722,10 +722,14 @@ func (m Model) renderEstimateInputLayer() *lipgloss.Layer {
 
 // renderDatePickerLayer renders the date picker as a centered modal overlay
 func (m Model) renderDatePickerLayer() *lipgloss.Layer {
+	// Calculate dynamic height based on current month
+	contentHeight := renderers.DatePickerContentHeight(m.Pickers.DatePicker.CurrentMonth, m.Pickers.DatePicker.CurrentYear)
+	totalHeight := contentHeight + layers.PickerBorderPaddingHeight
+
 	return m.createPickerLayer(pickerLayerConfig{
 		dimensionStrategy: fixedPickerDimensions{
 			width:  layers.DatePickerWidth,
-			height: layers.DatePickerHeight,
+			height: totalHeight,
 		},
 		contentRenderer: func(width, height int) string {
 			return renderers.RenderDatePicker(

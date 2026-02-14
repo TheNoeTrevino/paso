@@ -18,6 +18,7 @@ var (
 	SelectedBg     string
 	TaskBg         string
 	ColumnBg       string
+	Title          string
 	InfoFg         string
 	InfoBg         string
 	WarningFg      string
@@ -43,6 +44,7 @@ func Init(colors colors.ColorScheme) {
 		SelectedBg = colors.SelectedBg
 		TaskBg = colors.TaskBackground
 		ColumnBg = colors.ColumnBackground
+		Title = colors.Title
 		InfoFg = colors.InfoFg
 		InfoBg = colors.InfoBg
 		WarningFg = colors.WarningFg

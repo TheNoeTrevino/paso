@@ -3,6 +3,7 @@ package renderers
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"charm.land/lipgloss/v2"
@@ -11,22 +12,34 @@ import (
 )
 
 var (
-	datePickerHeaderStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color(theme.Highlight))
-
-	datePickerWeekdayStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(theme.Subtle))
-
-	datePickerDayStyle = lipgloss.NewStyle().
-				Padding(0, 1)
-
-	datePickerCursorStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color(theme.SelectedBorder)).
-				Foreground(lipgloss.Color("#FFFFFF")).
-				Bold(true).
-				Padding(0, 1)
+	datePickerHeaderStyle  lipgloss.Style
+	datePickerWeekdayStyle lipgloss.Style
+	datePickerDayStyle     lipgloss.Style
+	datePickerCursorStyle  lipgloss.Style
+	datePickerOnce         sync.Once
 )
+
+// InitDatePickerStyles initializes date picker styles with theme colors
+// Thread-safe: uses sync.Once to ensure initialization happens exactly once
+func InitDatePickerStyles() {
+	datePickerOnce.Do(func() {
+		datePickerHeaderStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(theme.Title))
+
+		datePickerWeekdayStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(theme.Subtle))
+
+		datePickerDayStyle = lipgloss.NewStyle().
+			Padding(0, 1)
+
+		datePickerCursorStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color(theme.SelectedBg)).
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Bold(true).
+			Padding(0, 1)
+	})
+}
 
 // generateCalendarGrid generates a 6x7 grid representing a calendar month.
 // Each cell contains the day number (1-31), with 0 representing empty cells
@@ -79,6 +92,29 @@ func daysInMonth(month time.Month, year int) int {
 func monthStartWeekday(month time.Month, year int) int {
 	firstDay := time.Date(year, month, 1, 0, 0, 0, 0, time.Local)
 	return int(firstDay.Weekday())
+}
+
+// DatePickerContentHeight calculates the number of lines needed to render the date picker
+// for the given month and year. This includes header, weekday labels, and week rows.
+func DatePickerContentHeight(month time.Month, year int) int {
+	// Calculate number of weeks needed
+	grid := generateCalendarGrid(month, year)
+	lastWeekWithDays := 0
+	for i := len(grid) - 1; i >= 0; i-- {
+		for _, day := range grid[i] {
+			if day > 0 {
+				lastWeekWithDays = i
+				break
+			}
+		}
+		if lastWeekWithDays > 0 {
+			break
+		}
+	}
+	weekRows := lastWeekWithDays + 1
+
+	// Header (1 line) + blank line (1) + weekdays (1) + blank line (1) + week rows
+	return 2 + 2 + weekRows
 }
 
 // RenderDatePicker renders the complete calendar UI with Lipgloss styling.
