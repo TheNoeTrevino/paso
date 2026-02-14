@@ -645,6 +645,9 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 		estimate := taskRow.Estimate.String
 		detail.Estimate = &estimate
 	}
+	if taskRow.DueDate.Valid {
+		detail.DueDate = &taskRow.DueDate.Time
+	}
 
 	return detail, nil
 }
@@ -1259,6 +1262,13 @@ func (s *service) GetInProgressTasksByProject(ctx context.Context, projectID int
 		if row.AssigneeName.Valid {
 			name := row.AssigneeName.String
 			taskDetail.AssigneeName = &name
+		}
+		if row.Estimate.Valid {
+			estimate := row.Estimate.String
+			taskDetail.Estimate = &estimate
+		}
+		if row.DueDate.Valid {
+			taskDetail.DueDate = &row.DueDate.Time
 		}
 
 		// NOTE: Parent/child tasks and comments are NOT fetched here.

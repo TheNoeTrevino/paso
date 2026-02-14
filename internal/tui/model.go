@@ -1130,12 +1130,10 @@ func (m *Model) initDatePickerForForm() {
 
 func (m *Model) initDatePicker(mode state.Mode) bool {
 	var currentDueDate *time.Time
-	var taskID int
 
 	if mode == state.TicketFormMode {
 		// Form mode: use the form's due date
 		currentDueDate = m.Forms.Form.FormDueDate
-		taskID = m.Forms.Form.EditingTaskID
 	} else {
 		// Board mode: use current task's due date
 		task := m.getCurrentTask()
@@ -1145,8 +1143,7 @@ func (m *Model) initDatePicker(mode state.Mode) bool {
 		}
 
 		currentDueDate = task.DueDate
-		taskID = task.ID
-		m.Forms.Form.EditingTaskID = taskID // Set for board mode updates
+		m.Forms.Form.EditingTaskID = task.ID // Set for board mode updates
 	}
 
 	// Initialize DatePickerState

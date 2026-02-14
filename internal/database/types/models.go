@@ -72,6 +72,7 @@ type Task struct {
 	PriorityID   int64
 	CreatedAt    NullTime
 	UpdatedAt    NullTime
+	DueDate      NullTime
 }
 
 // TaskComment represents a comment on a task.

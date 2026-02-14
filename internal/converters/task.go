@@ -59,6 +59,9 @@ func TaskToModel(t types.Task) *models.Task {
 	if t.UpdatedAt.Valid {
 		task.UpdatedAt = t.UpdatedAt.Time
 	}
+	if t.DueDate.Valid {
+		task.DueDate = &t.DueDate.Time
+	}
 
 	return task
 }
@@ -152,6 +155,9 @@ func TaskSummaryFromRowToModel(row types.GetTaskSummariesByProjectRow) *models.T
 		estimate := row.Estimate.String
 		summary.Estimate = &estimate
 	}
+	if row.DueDate.Valid {
+		summary.DueDate = &row.DueDate.Time
+	}
 
 	return summary
 }
@@ -188,6 +194,9 @@ func ReadyTaskSummaryFromRowToModel(row types.GetReadyTaskSummariesByProjectRow)
 		estimate := row.Estimate.String
 		summary.Estimate = &estimate
 	}
+	if row.DueDate.Valid {
+		summary.DueDate = &row.DueDate.Time
+	}
 
 	return summary
 }
@@ -223,6 +232,9 @@ func FilteredTaskSummaryFromRowToModel(row types.GetTaskSummariesByProjectFilter
 	if row.Estimate.Valid {
 		estimate := row.Estimate.String
 		summary.Estimate = &estimate
+	}
+	if row.DueDate.Valid {
+		summary.DueDate = &row.DueDate.Time
 	}
 
 	return summary

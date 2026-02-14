@@ -94,24 +94,25 @@ func monthStartWeekday(month time.Month, year int) int {
 	return int(firstDay.Weekday())
 }
 
+// lastActiveWeek returns the index of the last week (row) in the grid that contains
+// at least one valid day number (> 0). Returns 0 if no days are found.
+func lastActiveWeek(grid [][]int) int {
+	for i := len(grid) - 1; i >= 0; i-- {
+		for _, day := range grid[i] {
+			if day > 0 {
+				return i
+			}
+		}
+	}
+	return 0
+}
+
 // DatePickerContentHeight calculates the number of lines needed to render the date picker
 // for the given month and year. This includes header, weekday labels, and week rows.
 func DatePickerContentHeight(month time.Month, year int) int {
 	// Calculate number of weeks needed
 	grid := generateCalendarGrid(month, year)
-	lastWeekWithDays := 0
-	for i := len(grid) - 1; i >= 0; i-- {
-		for _, day := range grid[i] {
-			if day > 0 {
-				lastWeekWithDays = i
-				break
-			}
-		}
-		if lastWeekWithDays > 0 {
-			break
-		}
-	}
-	weekRows := lastWeekWithDays + 1
+	weekRows := lastActiveWeek(grid) + 1
 
 	// Header (1 line) + blank line (1) + weekdays (1) + blank line (1) + week rows
 	return 2 + 2 + weekRows
@@ -138,32 +139,22 @@ func RenderDatePicker(pickerState *state.DatePickerState, width int, height int)
 
 	// Calendar grid - only render weeks that contain days
 	grid := generateCalendarGrid(pickerState.CurrentMonth, pickerState.CurrentYear)
-	lastWeekWithDays := 0
-	for i := len(grid) - 1; i >= 0; i-- {
-		for _, day := range grid[i] {
-			if day > 0 {
-				lastWeekWithDays = i
-				break
-			}
-		}
-		if lastWeekWithDays > 0 {
-			break
-		}
-	}
+	lastWeek := lastActiveWeek(grid)
 
 	for weekIdx, week := range grid {
-		if weekIdx > lastWeekWithDays {
+		if weekIdx > lastWeek {
 			break
 		}
 		var weekStr strings.Builder
 		for _, day := range week {
-			if day == 0 {
+			switch day {
+			case 0:
 				// Empty cell - 6 spaces to match styled cell width
 				weekStr.WriteString("      ")
-			} else if day == pickerState.CursorDay {
+			case pickerState.CursorDay:
 				// Cursor-highlighted day
 				weekStr.WriteString(datePickerCursorStyle.Render(fmt.Sprintf(" %2d ", day)))
-			} else {
+			default:
 				// Normal day
 				weekStr.WriteString(datePickerDayStyle.Render(fmt.Sprintf(" %2d ", day)))
 			}

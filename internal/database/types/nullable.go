@@ -122,6 +122,31 @@ func (n NullTime) ToInterface() any {
 	return n.Time
 }
 
+// NullTimeFromInterface converts any (SQLite representation) to types.NullTime.
+// Handles time.Time and string types that databases may return for nullable time columns.
+func NullTimeFromInterface(v any) NullTime {
+	if v == nil {
+		return NullTime{Valid: false}
+	}
+	switch t := v.(type) {
+	case time.Time:
+		return NullTime{Time: t, Valid: true}
+	case string:
+		// SQLite may return timestamps as ISO 8601 strings
+		parsed, err := time.Parse("2006-01-02 15:04:05", t)
+		if err != nil {
+			// Try RFC3339 format
+			parsed, err = time.Parse(time.RFC3339, t)
+			if err != nil {
+				return NullTime{Valid: false}
+			}
+		}
+		return NullTime{Time: parsed, Valid: true}
+	default:
+		return NullTime{Valid: false}
+	}
+}
+
 // ConvertSlice converts a slice of one type to another using the provided converter function.
 // This generic helper eliminates boilerplate slice conversion functions in adapters.
 //

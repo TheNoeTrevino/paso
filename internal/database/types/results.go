@@ -22,6 +22,8 @@ type GetInProgressTaskDetailsRow struct {
 	Position            int64
 	CreatedAt           NullTime
 	UpdatedAt           NullTime
+	Estimate            NullString
+	DueDate             NullTime
 	ColumnName          string
 	ProjectName         string
 	TypeDescription     NullString
@@ -64,6 +66,7 @@ type GetReadyTaskSummariesByProjectRow struct {
 	ColumnID            int64
 	Position            int64
 	Estimate            NullString
+	DueDate             NullTime
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
@@ -109,6 +112,7 @@ type GetTaskDetailRow struct {
 	CreatedAt           NullTime
 	UpdatedAt           NullTime
 	Estimate            NullString
+	DueDate             NullTime
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
@@ -149,6 +153,7 @@ type GetTaskSummariesByColumnRow struct {
 	ColumnID            int64
 	Position            int64
 	Estimate            NullString
+	DueDate             NullTime
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
@@ -166,6 +171,7 @@ type GetTaskSummariesByProjectRow struct {
 	ColumnID            int64
 	Position            int64
 	Estimate            NullString
+	DueDate             NullTime
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
@@ -184,6 +190,7 @@ type GetTaskSummariesByProjectFilteredRow struct {
 	ColumnID            int64
 	Position            int64
 	Estimate            NullString
+	DueDate             NullTime
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
