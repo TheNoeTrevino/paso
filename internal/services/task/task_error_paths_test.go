@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 )
 
@@ -15,13 +16,13 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		setupFn func(*sql.DB) CreateTaskRequest
+		setupFn func(*sql.DB, fixtures.Dialect, database.DatabaseType) CreateTaskRequest
 		wantErr bool
 		errType error
 	}{
 		{
 			name: "negative column ID",
-			setupFn: func(db *sql.DB) CreateTaskRequest {
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) CreateTaskRequest {
 				return CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: -1,
@@ -33,7 +34,7 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "non-existent column ID",
-			setupFn: func(db *sql.DB) CreateTaskRequest {
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) CreateTaskRequest {
 				return CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: 99999,
@@ -44,9 +45,9 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "position exceeds int64 max",
-			setupFn: func(db *sql.DB) CreateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) CreateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
 				return CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
@@ -57,9 +58,9 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "non-existent label IDs",
-			setupFn: func(db *sql.DB) CreateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) CreateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
 				return CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
@@ -71,10 +72,10 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "mixed valid and invalid label IDs",
-			setupFn: func(db *sql.DB) CreateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				labelID := fixtures.CreateTestLabel(t, db, testDialect, projectID, "Valid", fixtures.DefaultTestLabelColor)
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) CreateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				labelID := fixtures.CreateTestLabel(t, db, d, projectID, "Valid", fixtures.DefaultTestLabelColor)
 				return CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
@@ -86,9 +87,9 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "zero label ID",
-			setupFn: func(db *sql.DB) CreateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) CreateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
 				return CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
@@ -100,9 +101,9 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative label ID",
-			setupFn: func(db *sql.DB) CreateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) CreateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
 				return CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
@@ -114,9 +115,9 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "non-existent parent IDs",
-			setupFn: func(db *sql.DB) CreateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) CreateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
 				return CreateTaskRequest{
 					Title:     "Test Task",
 					ColumnID:  columnID,
@@ -128,9 +129,9 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "zero parent ID",
-			setupFn: func(db *sql.DB) CreateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) CreateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
 				return CreateTaskRequest{
 					Title:     "Test Task",
 					ColumnID:  columnID,
@@ -142,9 +143,9 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative parent ID",
-			setupFn: func(db *sql.DB) CreateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) CreateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
 				return CreateTaskRequest{
 					Title:     "Test Task",
 					ColumnID:  columnID,
@@ -156,9 +157,9 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "invalid priority ID negative",
-			setupFn: func(db *sql.DB) CreateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) CreateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
 				return CreateTaskRequest{
 					Title:      "Test Task",
 					ColumnID:   columnID,
@@ -171,9 +172,9 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "invalid priority ID too high - database constraint",
-			setupFn: func(db *sql.DB) CreateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) CreateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
 				return CreateTaskRequest{
 					Title:      "Test Task",
 					ColumnID:   columnID,
@@ -185,9 +186,9 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "invalid type ID negative",
-			setupFn: func(db *sql.DB) CreateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) CreateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
 				return CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
@@ -200,9 +201,9 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "invalid type ID too high - database constraint",
-			setupFn: func(db *sql.DB) CreateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) CreateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
 				return CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
@@ -216,20 +217,22 @@ func TestCreateTask_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			env := setupTestEnv(t)
-			req := tt.setupFn(env.DB)
+			fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+				env := setupTestEnv(t, db, d, dbType)
+				req := tt.setupFn(env.DB, d, dbType)
 
-			_, err := env.Svc.CreateTask(env.Ctx, req)
+				_, err := env.Svc.CreateTask(env.Ctx, req)
 
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 
-			if tt.errType != nil {
-				assert.ErrorIs(t, err, tt.errType)
-			}
+				if tt.errType != nil {
+					assert.ErrorIs(t, err, tt.errType)
+				}
+			})
 		})
 	}
 }
@@ -239,13 +242,13 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		setupFn func(*sql.DB) UpdateTaskRequest
+		setupFn func(*sql.DB, fixtures.Dialect, database.DatabaseType) UpdateTaskRequest
 		wantErr bool
 		errType error
 	}{
 		{
 			name: "negative task ID",
-			setupFn: func(db *sql.DB) UpdateTaskRequest {
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) UpdateTaskRequest {
 				title := "New Title"
 				return UpdateTaskRequest{
 					TaskID: -1,
@@ -257,7 +260,7 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "non-existent task ID",
-			setupFn: func(db *sql.DB) UpdateTaskRequest {
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) UpdateTaskRequest {
 				title := "New Title"
 				return UpdateTaskRequest{
 					TaskID: 99999,
@@ -268,10 +271,12 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "title too long (exactly 256 chars)",
-			setupFn: func(db *sql.DB) UpdateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				task, err := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) UpdateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				svc, err := NewService(db, dbType, nil, nil)
+				require.NoError(t, err)
+				task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Old Title",
 					ColumnID: columnID,
 					Position: 0,
@@ -288,10 +293,12 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "update with invalid priority ID - database constraint",
-			setupFn: func(db *sql.DB) UpdateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				task, err := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) UpdateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				svc, err := NewService(db, dbType, nil, nil)
+				require.NoError(t, err)
+				task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
 					Position: 0,
@@ -307,10 +314,12 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "update with invalid type ID - database constraint",
-			setupFn: func(db *sql.DB) UpdateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				task, err := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) UpdateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				svc, err := NewService(db, dbType, nil, nil)
+				require.NoError(t, err)
+				task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
 					Position: 0,
@@ -326,10 +335,12 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "whitespace-only title - may or may not be validated",
-			setupFn: func(db *sql.DB) UpdateTaskRequest {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				task, err := newTestService(t, db).CreateTask(context.Background(), CreateTaskRequest{
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) UpdateTaskRequest {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				svc, err := NewService(db, dbType, nil, nil)
+				require.NoError(t, err)
+				task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
 					Position: 0,
@@ -347,20 +358,22 @@ func TestUpdateTask_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			env := setupTestEnv(t)
-			req := tt.setupFn(env.DB)
+			fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+				env := setupTestEnv(t, db, d, dbType)
+				req := tt.setupFn(env.DB, d, dbType)
 
-			err := env.Svc.UpdateTask(env.Ctx, req)
+				err := env.Svc.UpdateTask(env.Ctx, req)
 
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 
-			if tt.errType != nil {
-				assert.ErrorIs(t, err, tt.errType)
-			}
+				if tt.errType != nil {
+					assert.ErrorIs(t, err, tt.errType)
+				}
+			})
 		})
 	}
 }
@@ -395,19 +408,21 @@ func TestDeleteTask_ErrorPaths(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			env := setupTestEnv(t)
+			fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+				env := setupTestEnv(t, db, d, dbType)
 
-			err := env.Svc.DeleteTask(env.Ctx, tt.taskID)
+				err := env.Svc.DeleteTask(env.Ctx, tt.taskID)
 
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 
-			if tt.errType != nil {
-				assert.ErrorIs(t, err, tt.errType)
-			}
+				if tt.errType != nil {
+					assert.ErrorIs(t, err, tt.errType)
+				}
+			})
 		})
 	}
 }
@@ -417,15 +432,15 @@ func TestAttachLabel_ErrorPaths(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		setupFn func(*sql.DB) (int, int)
+		setupFn func(*sql.DB, fixtures.Dialect, database.DatabaseType) (int, int)
 		wantErr bool
 		errType error
 	}{
 		{
 			name: "invalid task ID zero",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				labelID := fixtures.CreateTestLabel(t, db, testDialect, projectID, "Bug", fixtures.DefaultTestLabelColor)
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				labelID := fixtures.CreateTestLabel(t, db, d, projectID, "Bug", fixtures.DefaultTestLabelColor)
 				return 0, labelID
 			},
 			wantErr: true,
@@ -433,9 +448,9 @@ func TestAttachLabel_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative task ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				labelID := fixtures.CreateTestLabel(t, db, testDialect, projectID, "Bug", fixtures.DefaultTestLabelColor)
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				labelID := fixtures.CreateTestLabel(t, db, d, projectID, "Bug", fixtures.DefaultTestLabelColor)
 				return -1, labelID
 			},
 			wantErr: true,
@@ -443,10 +458,10 @@ func TestAttachLabel_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "invalid label ID zero",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Test Task")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Test Task")
 				return taskID, 0
 			},
 			wantErr: true,
@@ -454,10 +469,10 @@ func TestAttachLabel_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative label ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Test Task")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Test Task")
 				return taskID, -1
 			},
 			wantErr: true,
@@ -465,30 +480,31 @@ func TestAttachLabel_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "non-existent task ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				labelID := fixtures.CreateTestLabel(t, db, testDialect, projectID, "Bug", fixtures.DefaultTestLabelColor)
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				labelID := fixtures.CreateTestLabel(t, db, d, projectID, "Bug", fixtures.DefaultTestLabelColor)
 				return 99999, labelID
 			},
 			wantErr: true,
 		},
 		{
 			name: "non-existent label ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Test Task")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Test Task")
 				return taskID, 99999
 			},
 			wantErr: true,
 		},
 		{
 			name: "duplicate label attachment - may succeed silently",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				labelID := fixtures.CreateTestLabel(t, db, testDialect, projectID, "Bug", fixtures.DefaultTestLabelColor)
-				svc := newTestService(t, db)
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				labelID := fixtures.CreateTestLabel(t, db, d, projectID, "Bug", fixtures.DefaultTestLabelColor)
+				svc, err := NewService(db, dbType, nil, nil)
+				require.NoError(t, err)
 				task, err := svc.CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Test Task",
 					ColumnID: columnID,
@@ -504,20 +520,22 @@ func TestAttachLabel_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			env := setupTestEnv(t)
-			taskID, labelID := tt.setupFn(env.DB)
+			fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+				env := setupTestEnv(t, db, d, dbType)
+				taskID, labelID := tt.setupFn(env.DB, d, dbType)
 
-			err := env.Svc.AttachLabel(env.Ctx, taskID, labelID)
+				err := env.Svc.AttachLabel(env.Ctx, taskID, labelID)
 
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 
-			if tt.errType != nil {
-				assert.ErrorIs(t, err, tt.errType)
-			}
+				if tt.errType != nil {
+					assert.ErrorIs(t, err, tt.errType)
+				}
+			})
 		})
 	}
 }
@@ -527,15 +545,15 @@ func TestDetachLabel_ErrorPaths(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		setupFn func(*sql.DB) (int, int)
+		setupFn func(*sql.DB, fixtures.Dialect, database.DatabaseType) (int, int)
 		wantErr bool
 		errType error
 	}{
 		{
 			name: "invalid task ID zero",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				labelID := fixtures.CreateTestLabel(t, db, testDialect, projectID, "Bug", fixtures.DefaultTestLabelColor)
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				labelID := fixtures.CreateTestLabel(t, db, d, projectID, "Bug", fixtures.DefaultTestLabelColor)
 				return 0, labelID
 			},
 			wantErr: true,
@@ -543,9 +561,9 @@ func TestDetachLabel_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative task ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				labelID := fixtures.CreateTestLabel(t, db, testDialect, projectID, "Bug", fixtures.DefaultTestLabelColor)
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				labelID := fixtures.CreateTestLabel(t, db, d, projectID, "Bug", fixtures.DefaultTestLabelColor)
 				return -1, labelID
 			},
 			wantErr: true,
@@ -553,10 +571,10 @@ func TestDetachLabel_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "invalid label ID zero",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Test Task")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Test Task")
 				return taskID, 0
 			},
 			wantErr: true,
@@ -564,10 +582,10 @@ func TestDetachLabel_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative label ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Test Task")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Test Task")
 				return taskID, -1
 			},
 			wantErr: true,
@@ -575,30 +593,30 @@ func TestDetachLabel_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "non-existent task ID - may succeed",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				labelID := fixtures.CreateTestLabel(t, db, testDialect, projectID, "Bug", fixtures.DefaultTestLabelColor)
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				labelID := fixtures.CreateTestLabel(t, db, d, projectID, "Bug", fixtures.DefaultTestLabelColor)
 				return 99999, labelID
 			},
 			wantErr: false, // May succeed even if task doesn't exist
 		},
 		{
 			name: "non-existent label ID - may succeed",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Test Task")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Test Task")
 				return taskID, 99999
 			},
 			wantErr: false, // May succeed even if label doesn't exist
 		},
 		{
 			name: "label not attached to task - may succeed",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				labelID := fixtures.CreateTestLabel(t, db, testDialect, projectID, "Bug", fixtures.DefaultTestLabelColor)
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Test Task")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				labelID := fixtures.CreateTestLabel(t, db, d, projectID, "Bug", fixtures.DefaultTestLabelColor)
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Test Task")
 				return taskID, labelID
 			},
 			wantErr: false, // May succeed even if label not attached
@@ -607,20 +625,22 @@ func TestDetachLabel_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			env := setupTestEnv(t)
-			taskID, labelID := tt.setupFn(env.DB)
+			fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+				env := setupTestEnv(t, db, d, dbType)
+				taskID, labelID := tt.setupFn(env.DB, d, dbType)
 
-			err := env.Svc.DetachLabel(env.Ctx, taskID, labelID)
+				err := env.Svc.DetachLabel(env.Ctx, taskID, labelID)
 
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 
-			if tt.errType != nil {
-				assert.ErrorIs(t, err, tt.errType)
-			}
+				if tt.errType != nil {
+					assert.ErrorIs(t, err, tt.errType)
+				}
+			})
 		})
 	}
 }
@@ -630,16 +650,16 @@ func TestAddParentRelation_ErrorPaths(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		setupFn func(*sql.DB) (int, int)
+		setupFn func(*sql.DB, fixtures.Dialect, database.DatabaseType) (int, int)
 		wantErr bool
 		errType error
 	}{
 		{
 			name: "invalid child ID zero",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Parent")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Parent")
 				return 0, taskID
 			},
 			wantErr: true,
@@ -647,10 +667,10 @@ func TestAddParentRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative child ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Parent")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Parent")
 				return -1, taskID
 			},
 			wantErr: true,
@@ -658,10 +678,10 @@ func TestAddParentRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "invalid parent ID zero",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Child")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Child")
 				return taskID, 0
 			},
 			wantErr: true,
@@ -669,10 +689,10 @@ func TestAddParentRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative parent ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Child")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Child")
 				return taskID, -1
 			},
 			wantErr: true,
@@ -680,30 +700,31 @@ func TestAddParentRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "non-existent child task",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Parent")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Parent")
 				return 99999, taskID
 			},
 			wantErr: true,
 		},
 		{
 			name: "non-existent parent task",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Child")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Child")
 				return taskID, 99999
 			},
 			wantErr: true,
 		},
 		{
 			name: "duplicate parent relation - may succeed silently",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				svc := newTestService(t, db)
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				svc, err := NewService(db, dbType, nil, nil)
+				require.NoError(t, err)
 				parent, err := svc.CreateTask(context.Background(), CreateTaskRequest{
 					Title:    "Parent",
 					ColumnID: columnID,
@@ -725,20 +746,22 @@ func TestAddParentRelation_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			env := setupTestEnv(t)
-			childID, parentID := tt.setupFn(env.DB)
+			fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+				env := setupTestEnv(t, db, d, dbType)
+				childID, parentID := tt.setupFn(env.DB, d, dbType)
 
-			err := env.Svc.AddParentRelation(env.Ctx, childID, parentID, 1)
+				err := env.Svc.AddParentRelation(env.Ctx, childID, parentID, 1)
 
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 
-			if tt.errType != nil {
-				assert.ErrorIs(t, err, tt.errType)
-			}
+				if tt.errType != nil {
+					assert.ErrorIs(t, err, tt.errType)
+				}
+			})
 		})
 	}
 }
@@ -748,16 +771,16 @@ func TestAddChildRelation_ErrorPaths(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		setupFn func(*sql.DB) (int, int)
+		setupFn func(*sql.DB, fixtures.Dialect, database.DatabaseType) (int, int)
 		wantErr bool
 		errType error
 	}{
 		{
 			name: "invalid parent ID zero",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Child")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Child")
 				return 0, taskID
 			},
 			wantErr: true,
@@ -765,10 +788,10 @@ func TestAddChildRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative parent ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Child")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Child")
 				return -1, taskID
 			},
 			wantErr: true,
@@ -776,10 +799,10 @@ func TestAddChildRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "invalid child ID zero",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Parent")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Parent")
 				return taskID, 0
 			},
 			wantErr: true,
@@ -787,10 +810,10 @@ func TestAddChildRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative child ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Parent")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Parent")
 				return taskID, -1
 			},
 			wantErr: true,
@@ -798,20 +821,20 @@ func TestAddChildRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "non-existent parent task",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Child")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Child")
 				return 99999, taskID
 			},
 			wantErr: true,
 		},
 		{
 			name: "non-existent child task",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Parent")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Parent")
 				return taskID, 99999
 			},
 			wantErr: true,
@@ -820,20 +843,22 @@ func TestAddChildRelation_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			env := setupTestEnv(t)
-			parentID, childID := tt.setupFn(env.DB)
+			fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+				env := setupTestEnv(t, db, d, dbType)
+				parentID, childID := tt.setupFn(env.DB, d, dbType)
 
-			err := env.Svc.AddChildRelation(env.Ctx, parentID, childID, 1)
+				err := env.Svc.AddChildRelation(env.Ctx, parentID, childID, 1)
 
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 
-			if tt.errType != nil {
-				assert.ErrorIs(t, err, tt.errType)
-			}
+				if tt.errType != nil {
+					assert.ErrorIs(t, err, tt.errType)
+				}
+			})
 		})
 	}
 }
@@ -843,16 +868,16 @@ func TestRemoveParentRelation_ErrorPaths(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		setupFn func(*sql.DB) (int, int)
+		setupFn func(*sql.DB, fixtures.Dialect, database.DatabaseType) (int, int)
 		wantErr bool
 		errType error
 	}{
 		{
 			name: "invalid child ID zero",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Parent")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Parent")
 				return 0, taskID
 			},
 			wantErr: true,
@@ -860,10 +885,10 @@ func TestRemoveParentRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative child ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Parent")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Parent")
 				return -1, taskID
 			},
 			wantErr: true,
@@ -871,10 +896,10 @@ func TestRemoveParentRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "invalid parent ID zero",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Child")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Child")
 				return taskID, 0
 			},
 			wantErr: true,
@@ -882,10 +907,10 @@ func TestRemoveParentRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative parent ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Child")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Child")
 				return taskID, -1
 			},
 			wantErr: true,
@@ -893,31 +918,31 @@ func TestRemoveParentRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "non-existent relationship - may succeed silently",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				task1 := fixtures.CreateTestTask(t, db, testDialect, columnID, "Task 1")
-				task2 := fixtures.CreateTestTask(t, db, testDialect, columnID, "Task 2")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				task1 := fixtures.CreateTestTask(t, db, d, columnID, "Task 1")
+				task2 := fixtures.CreateTestTask(t, db, d, columnID, "Task 2")
 				return task1, task2
 			},
 			wantErr: false, // May succeed even if no relationship exists
 		},
 		{
 			name: "non-existent child task - may succeed silently",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Parent")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Parent")
 				return 99999, taskID
 			},
 			wantErr: false, // May succeed even if task doesn't exist
 		},
 		{
 			name: "non-existent parent task - may succeed silently",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Child")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Child")
 				return taskID, 99999
 			},
 			wantErr: false, // May succeed even if task doesn't exist
@@ -926,20 +951,22 @@ func TestRemoveParentRelation_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			env := setupTestEnv(t)
-			childID, parentID := tt.setupFn(env.DB)
+			fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+				env := setupTestEnv(t, db, d, dbType)
+				childID, parentID := tt.setupFn(env.DB, d, dbType)
 
-			err := env.Svc.RemoveParentRelation(env.Ctx, childID, parentID)
+				err := env.Svc.RemoveParentRelation(env.Ctx, childID, parentID)
 
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 
-			if tt.errType != nil {
-				assert.ErrorIs(t, err, tt.errType)
-			}
+				if tt.errType != nil {
+					assert.ErrorIs(t, err, tt.errType)
+				}
+			})
 		})
 	}
 }
@@ -949,16 +976,16 @@ func TestRemoveChildRelation_ErrorPaths(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		setupFn func(*sql.DB) (int, int)
+		setupFn func(*sql.DB, fixtures.Dialect, database.DatabaseType) (int, int)
 		wantErr bool
 		errType error
 	}{
 		{
 			name: "invalid parent ID zero",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Child")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Child")
 				return 0, taskID
 			},
 			wantErr: true,
@@ -966,10 +993,10 @@ func TestRemoveChildRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative parent ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Child")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Child")
 				return -1, taskID
 			},
 			wantErr: true,
@@ -977,10 +1004,10 @@ func TestRemoveChildRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "invalid child ID zero",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Parent")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Parent")
 				return taskID, 0
 			},
 			wantErr: true,
@@ -988,10 +1015,10 @@ func TestRemoveChildRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative child ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Parent")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Parent")
 				return taskID, -1
 			},
 			wantErr: true,
@@ -999,11 +1026,11 @@ func TestRemoveChildRelation_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "non-existent relationship - may succeed silently",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				task1 := fixtures.CreateTestTask(t, db, testDialect, columnID, "Task 1")
-				task2 := fixtures.CreateTestTask(t, db, testDialect, columnID, "Task 2")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				task1 := fixtures.CreateTestTask(t, db, d, columnID, "Task 1")
+				task2 := fixtures.CreateTestTask(t, db, d, columnID, "Task 2")
 				return task1, task2
 			},
 			wantErr: false, // May succeed even if no relationship exists
@@ -1012,20 +1039,22 @@ func TestRemoveChildRelation_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			env := setupTestEnv(t)
-			parentID, childID := tt.setupFn(env.DB)
+			fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+				env := setupTestEnv(t, db, d, dbType)
+				parentID, childID := tt.setupFn(env.DB, d, dbType)
 
-			err := env.Svc.RemoveChildRelation(env.Ctx, parentID, childID)
+				err := env.Svc.RemoveChildRelation(env.Ctx, parentID, childID)
 
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 
-			if tt.errType != nil {
-				assert.ErrorIs(t, err, tt.errType)
-			}
+				if tt.errType != nil {
+					assert.ErrorIs(t, err, tt.errType)
+				}
+			})
 		})
 	}
 }
@@ -1035,15 +1064,15 @@ func TestMoveTaskToColumn_ErrorPaths(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		setupFn func(*sql.DB) (int, int)
+		setupFn func(*sql.DB, fixtures.Dialect, database.DatabaseType) (int, int)
 		wantErr bool
 		errType error
 	}{
 		{
 			name: "invalid task ID zero",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
 				return 0, columnID
 			},
 			wantErr: true,
@@ -1051,9 +1080,9 @@ func TestMoveTaskToColumn_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative task ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
 				return -1, columnID
 			},
 			wantErr: true,
@@ -1061,10 +1090,10 @@ func TestMoveTaskToColumn_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "invalid column ID zero",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Test Task")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Test Task")
 				return taskID, 0
 			},
 			wantErr: true,
@@ -1072,10 +1101,10 @@ func TestMoveTaskToColumn_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "negative column ID",
-			setupFn: func(db *sql.DB) (int, int) {
-				projectID := fixtures.CreateBareProject(t, db, testDialect, "Test Project")
-				columnID := fixtures.CreateTestColumn(t, db, testDialect, projectID, "To Do")
-				taskID := fixtures.CreateTestTask(t, db, testDialect, columnID, "Test Task")
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
+				projectID := fixtures.CreateBareProject(t, db, d, "Test Project")
+				columnID := fixtures.CreateTestColumn(t, db, d, projectID, "To Do")
+				taskID := fixtures.CreateTestTask(t, db, d, columnID, "Test Task")
 				return taskID, -1
 			},
 			wantErr: true,
@@ -1083,7 +1112,7 @@ func TestMoveTaskToColumn_ErrorPaths(t *testing.T) {
 		},
 		{
 			name: "both task and column non-existent",
-			setupFn: func(db *sql.DB) (int, int) {
+			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (int, int) {
 				return 99999, 88888
 			},
 			wantErr: true,
@@ -1092,20 +1121,22 @@ func TestMoveTaskToColumn_ErrorPaths(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			env := setupTestEnv(t)
-			taskID, columnID := tt.setupFn(env.DB)
+			fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+				env := setupTestEnv(t, db, d, dbType)
+				taskID, columnID := tt.setupFn(env.DB, d, dbType)
 
-			err := env.Svc.MoveTaskToColumn(env.Ctx, taskID, columnID)
+				err := env.Svc.MoveTaskToColumn(env.Ctx, taskID, columnID)
 
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 
-			if tt.errType != nil {
-				assert.ErrorIs(t, err, tt.errType)
-			}
+				if tt.errType != nil {
+					assert.ErrorIs(t, err, tt.errType)
+				}
+			})
 		})
 	}
 }
@@ -1139,24 +1170,26 @@ func TestGetTaskSummariesByProject_ErrorPaths(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			env := setupTestEnv(t)
+			fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+				env := setupTestEnv(t, db, d, dbType)
 
-			result, err := env.Svc.GetTaskSummariesByProject(env.Ctx, tt.projectID)
+				result, err := env.Svc.GetTaskSummariesByProject(env.Ctx, tt.projectID)
 
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 
-			if tt.errType != nil {
-				assert.ErrorIs(t, err, tt.errType)
-			}
+				if tt.errType != nil {
+					assert.ErrorIs(t, err, tt.errType)
+				}
 
-			// For non-existent project, should return empty map
-			if !tt.wantErr && err == nil && tt.projectID == 99999 {
-				assert.Len(t, result, 0)
-			}
+				// For non-existent project, should return empty map
+				if !tt.wantErr && err == nil && tt.projectID == 99999 {
+					assert.Len(t, result, 0)
+				}
+			})
 		})
 	}
 }
@@ -1184,19 +1217,21 @@ func TestGetTaskReferencesForProject_ErrorPaths(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			env := setupTestEnv(t)
+			fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+				env := setupTestEnv(t, db, d, dbType)
 
-			_, err := env.Svc.GetTaskReferencesForProject(env.Ctx, tt.projectID)
+				_, err := env.Svc.GetTaskReferencesForProject(env.Ctx, tt.projectID)
 
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 
-			if tt.errType != nil {
-				assert.ErrorIs(t, err, tt.errType)
-			}
+				if tt.errType != nil {
+					assert.ErrorIs(t, err, tt.errType)
+				}
+			})
 		})
 	}
 }
@@ -1204,22 +1239,23 @@ func TestGetTaskReferencesForProject_ErrorPaths(t *testing.T) {
 // TestComment_BoundaryConditions tests boundary conditions for comments
 func TestComment_BoundaryConditions(t *testing.T) {
 	t.Parallel()
+	fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+		env := setupTestEnv(t, db, d, dbType)
+		taskID := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Test Task")
+		// Test exactly at max length (1000 chars)
+		maxMessage := strings.Repeat("a", 1000)
 
-	env := setupTestEnv(t)
-	taskID := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Test Task")
-	// Test exactly at max length (1000 chars)
-	maxMessage := strings.Repeat("a", 1000)
+		req := CreateCommentRequest{
+			TaskID:  taskID,
+			Message: maxMessage,
+			Author:  "testuser",
+		}
 
-	req := CreateCommentRequest{
-		TaskID:  taskID,
-		Message: maxMessage,
-		Author:  "testuser",
-	}
+		result, err := env.Svc.CreateComment(env.Ctx, req)
+		require.NoError(t, err)
 
-	result, err := env.Svc.CreateComment(env.Ctx, req)
-	require.NoError(t, err)
+		require.NotNil(t, result, "Expected comment result, got nil")
 
-	require.NotNil(t, result, "Expected comment result, got nil")
-
-	assert.Equal(t, 1000, len(result.Message))
+		assert.Equal(t, 1000, len(result.Message))
+	})
 }
