@@ -20,20 +20,17 @@ type testEnv struct {
 }
 
 // setupTestEnv creates a standard test environment with:
-// - Test database
 // - Test project (bare, no default columns)
 // - Label service
 // - Background context
-func setupTestEnv(tb testing.TB) *testEnv {
+func setupTestEnv(tb testing.TB, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) *testEnv {
 	tb.Helper()
-	db := fixtures.SetupTestDB(tb)
-	dialect := fixtures.SQLiteDialect()
-	projectID := fixtures.CreateBareProject(tb, db, dialect, "Test Project")
-	svc, err := NewService(db, database.SQLite, nil)
+	projectID := fixtures.CreateBareProject(tb, db, d, "Test Project")
+	svc, err := NewService(db, dbType, nil)
 	require.NoError(tb, err, "failed to create test service")
 	return &testEnv{
 		DB:        db,
-		Dialect:   dialect,
+		Dialect:   d,
 		Svc:       svc,
 		ProjectID: projectID,
 		Ctx:       context.Background(),
