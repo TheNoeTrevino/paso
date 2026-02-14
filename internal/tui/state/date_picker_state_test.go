@@ -857,3 +857,407 @@ func TestInitFromDate_OverwritesExistingState(t *testing.T) {
 		t.Errorf("SelectedDate: expected %v, got %v", newDate, state.SelectedDate)
 	}
 }
+
+func TestNavigateMonth_PositiveDelta(t *testing.T) {
+	tests := []struct {
+		name          string
+		startYear     int
+		startMonth    time.Month
+		startDay      int
+		delta         int
+		expectedYear  int
+		expectedMonth time.Month
+		expectedDay   int
+	}{
+		{
+			name:          "forward 1 month (basic)",
+			startYear:     2024,
+			startMonth:    time.January,
+			startDay:      15,
+			delta:         1,
+			expectedYear:  2024,
+			expectedMonth: time.February,
+			expectedDay:   15,
+		},
+		{
+			name:          "forward 3 months",
+			startYear:     2024,
+			startMonth:    time.January,
+			startDay:      15,
+			delta:         3,
+			expectedYear:  2024,
+			expectedMonth: time.April,
+			expectedDay:   15,
+		},
+		{
+			name:          "forward 12 months (1 year)",
+			startYear:     2024,
+			startMonth:    time.June,
+			startDay:      15,
+			delta:         12,
+			expectedYear:  2025,
+			expectedMonth: time.June,
+			expectedDay:   15,
+		},
+		{
+			name:          "forward 24 months (2 years)",
+			startYear:     2024,
+			startMonth:    time.March,
+			startDay:      10,
+			delta:         24,
+			expectedYear:  2026,
+			expectedMonth: time.March,
+			expectedDay:   10,
+		},
+		{
+			name:          "forward crossing year boundary (Oct → Feb)",
+			startYear:     2024,
+			startMonth:    time.October,
+			startDay:      20,
+			delta:         4,
+			expectedYear:  2025,
+			expectedMonth: time.February,
+			expectedDay:   20,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			state := &DatePickerState{
+				CurrentYear:  tt.startYear,
+				CurrentMonth: tt.startMonth,
+				CursorDay:    tt.startDay,
+				cursorWant:   tt.startDay,
+			}
+
+			state.navigateMonth(tt.delta)
+
+			if state.CurrentYear != tt.expectedYear {
+				t.Errorf("expected year %d, got %d", tt.expectedYear, state.CurrentYear)
+			}
+			if state.CurrentMonth != tt.expectedMonth {
+				t.Errorf("expected month %s, got %s", tt.expectedMonth, state.CurrentMonth)
+			}
+			if state.CursorDay != tt.expectedDay {
+				t.Errorf("expected day %d, got %d", tt.expectedDay, state.CursorDay)
+			}
+			if state.cursorWant != tt.startDay {
+				t.Errorf("cursorWant should remain %d, got %d", tt.startDay, state.cursorWant)
+			}
+		})
+	}
+}
+
+func TestNavigateMonth_NegativeDelta(t *testing.T) {
+	tests := []struct {
+		name          string
+		startYear     int
+		startMonth    time.Month
+		startDay      int
+		delta         int
+		expectedYear  int
+		expectedMonth time.Month
+		expectedDay   int
+	}{
+		{
+			name:          "backward 1 month (basic)",
+			startYear:     2024,
+			startMonth:    time.March,
+			startDay:      15,
+			delta:         -1,
+			expectedYear:  2024,
+			expectedMonth: time.February,
+			expectedDay:   15,
+		},
+		{
+			name:          "backward 3 months",
+			startYear:     2024,
+			startMonth:    time.June,
+			startDay:      20,
+			delta:         -3,
+			expectedYear:  2024,
+			expectedMonth: time.March,
+			expectedDay:   20,
+		},
+		{
+			name:          "backward 12 months (1 year)",
+			startYear:     2024,
+			startMonth:    time.August,
+			startDay:      10,
+			delta:         -12,
+			expectedYear:  2023,
+			expectedMonth: time.August,
+			expectedDay:   10,
+		},
+		{
+			name:          "backward 24 months (2 years)",
+			startYear:     2024,
+			startMonth:    time.November,
+			startDay:      5,
+			delta:         -24,
+			expectedYear:  2022,
+			expectedMonth: time.November,
+			expectedDay:   5,
+		},
+		{
+			name:          "backward crossing year boundary (Feb → Oct)",
+			startYear:     2024,
+			startMonth:    time.February,
+			startDay:      28,
+			delta:         -4,
+			expectedYear:  2023,
+			expectedMonth: time.October,
+			expectedDay:   28,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			state := &DatePickerState{
+				CurrentYear:  tt.startYear,
+				CurrentMonth: tt.startMonth,
+				CursorDay:    tt.startDay,
+				cursorWant:   tt.startDay,
+			}
+
+			state.navigateMonth(tt.delta)
+
+			if state.CurrentYear != tt.expectedYear {
+				t.Errorf("expected year %d, got %d", tt.expectedYear, state.CurrentYear)
+			}
+			if state.CurrentMonth != tt.expectedMonth {
+				t.Errorf("expected month %s, got %s", tt.expectedMonth, state.CurrentMonth)
+			}
+			if state.CursorDay != tt.expectedDay {
+				t.Errorf("expected day %d, got %d", tt.expectedDay, state.CursorDay)
+			}
+			if state.cursorWant != tt.startDay {
+				t.Errorf("cursorWant should remain %d, got %d", tt.startDay, state.cursorWant)
+			}
+		})
+	}
+}
+
+func TestNavigateMonth_DayClamping(t *testing.T) {
+	tests := []struct {
+		name          string
+		startYear     int
+		startMonth    time.Month
+		startDay      int
+		delta         int
+		expectedYear  int
+		expectedMonth time.Month
+		expectedDay   int
+	}{
+		{
+			name:          "Jan 31 → Feb 29 (leap year, delta=1)",
+			startYear:     2024,
+			startMonth:    time.January,
+			startDay:      31,
+			delta:         1,
+			expectedYear:  2024,
+			expectedMonth: time.February,
+			expectedDay:   29,
+		},
+		{
+			name:          "Jan 31 → Feb 28 (non-leap year, delta=1)",
+			startYear:     2023,
+			startMonth:    time.January,
+			startDay:      31,
+			delta:         1,
+			expectedYear:  2023,
+			expectedMonth: time.February,
+			expectedDay:   28,
+		},
+		{
+			name:          "Mar 31 → Jun 30 (delta=3)",
+			startYear:     2024,
+			startMonth:    time.March,
+			startDay:      31,
+			delta:         3,
+			expectedYear:  2024,
+			expectedMonth: time.June,
+			expectedDay:   30,
+		},
+		{
+			name:          "Aug 31 → Feb 29 (delta=6, crosses to leap year)",
+			startYear:     2023,
+			startMonth:    time.August,
+			startDay:      31,
+			delta:         6,
+			expectedYear:  2024,
+			expectedMonth: time.February,
+			expectedDay:   29,
+		},
+		{
+			name:          "May 31 → Feb 29 (delta=-3, leap year)",
+			startYear:     2024,
+			startMonth:    time.May,
+			startDay:      31,
+			delta:         -3,
+			expectedYear:  2024,
+			expectedMonth: time.February,
+			expectedDay:   29,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			state := &DatePickerState{
+				CurrentYear:  tt.startYear,
+				CurrentMonth: tt.startMonth,
+				CursorDay:    tt.startDay,
+				cursorWant:   tt.startDay,
+			}
+
+			state.navigateMonth(tt.delta)
+
+			if state.CurrentYear != tt.expectedYear {
+				t.Errorf("expected year %d, got %d", tt.expectedYear, state.CurrentYear)
+			}
+			if state.CurrentMonth != tt.expectedMonth {
+				t.Errorf("expected month %s, got %s", tt.expectedMonth, state.CurrentMonth)
+			}
+			if state.CursorDay != tt.expectedDay {
+				t.Errorf("expected day %d, got %d", tt.expectedDay, state.CursorDay)
+			}
+			if state.cursorWant != tt.startDay {
+				t.Errorf("cursorWant should remain %d (not be clamped), got %d", tt.startDay, state.cursorWant)
+			}
+		})
+	}
+}
+
+func TestNavigateMonth_PreservesCursorWant(t *testing.T) {
+	state := &DatePickerState{
+		CurrentYear:  2024,
+		CurrentMonth: time.January,
+		CursorDay:    31,
+		cursorWant:   31,
+	}
+
+	state.navigateMonth(1)
+	if state.CursorDay != 29 {
+		t.Errorf("Feb: expected day 29 (clamped), got %d", state.CursorDay)
+	}
+	if state.cursorWant != 31 {
+		t.Errorf("cursorWant should remain 31, got %d", state.cursorWant)
+	}
+
+	state.navigateMonth(1)
+	if state.CursorDay != 31 {
+		t.Errorf("Mar: expected day 31 (restored from cursorWant), got %d", state.CursorDay)
+	}
+	if state.cursorWant != 31 {
+		t.Errorf("cursorWant should remain 31, got %d", state.cursorWant)
+	}
+
+	state.navigateMonth(1)
+	if state.CursorDay != 30 {
+		t.Errorf("Apr: expected day 30 (clamped), got %d", state.CursorDay)
+	}
+	if state.cursorWant != 31 {
+		t.Errorf("cursorWant should remain 31, got %d", state.cursorWant)
+	}
+
+	state.navigateMonth(-1)
+	if state.CursorDay != 31 {
+		t.Errorf("Mar (back): expected day 31 (restored), got %d", state.CursorDay)
+	}
+	if state.cursorWant != 31 {
+		t.Errorf("cursorWant should remain 31, got %d", state.cursorWant)
+	}
+}
+
+func TestNavigateMonth_YearBoundaries(t *testing.T) {
+	tests := []struct {
+		name          string
+		startYear     int
+		startMonth    time.Month
+		startDay      int
+		delta         int
+		expectedYear  int
+		expectedMonth time.Month
+	}{
+		{
+			name:          "Dec → Jan (delta=1)",
+			startYear:     2024,
+			startMonth:    time.December,
+			startDay:      15,
+			delta:         1,
+			expectedYear:  2025,
+			expectedMonth: time.January,
+		},
+		{
+			name:          "Jan → Dec (delta=-1)",
+			startYear:     2024,
+			startMonth:    time.January,
+			startDay:      15,
+			delta:         -1,
+			expectedYear:  2023,
+			expectedMonth: time.December,
+		},
+		{
+			name:          "Dec → Dec (delta=12, full year forward)",
+			startYear:     2024,
+			startMonth:    time.December,
+			startDay:      15,
+			delta:         12,
+			expectedYear:  2025,
+			expectedMonth: time.December,
+		},
+		{
+			name:          "Jan → Jan (delta=-12, full year backward)",
+			startYear:     2024,
+			startMonth:    time.January,
+			startDay:      15,
+			delta:         -12,
+			expectedYear:  2023,
+			expectedMonth: time.January,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			state := &DatePickerState{
+				CurrentYear:  tt.startYear,
+				CurrentMonth: tt.startMonth,
+				CursorDay:    tt.startDay,
+				cursorWant:   tt.startDay,
+			}
+
+			state.navigateMonth(tt.delta)
+
+			if state.CurrentYear != tt.expectedYear {
+				t.Errorf("expected year %d, got %d", tt.expectedYear, state.CurrentYear)
+			}
+			if state.CurrentMonth != tt.expectedMonth {
+				t.Errorf("expected month %s, got %s", tt.expectedMonth, state.CurrentMonth)
+			}
+		})
+	}
+}
+
+func TestNavigateMonth_ZeroDelta(t *testing.T) {
+	state := &DatePickerState{
+		CurrentYear:  2024,
+		CurrentMonth: time.June,
+		CursorDay:    15,
+		cursorWant:   15,
+	}
+
+	state.navigateMonth(0)
+
+	if state.CurrentYear != 2024 {
+		t.Errorf("year should remain 2024, got %d", state.CurrentYear)
+	}
+	if state.CurrentMonth != time.June {
+		t.Errorf("month should remain June, got %s", state.CurrentMonth)
+	}
+	if state.CursorDay != 15 {
+		t.Errorf("day should remain 15, got %d", state.CursorDay)
+	}
+	if state.cursorWant != 15 {
+		t.Errorf("cursorWant should remain 15, got %d", state.cursorWant)
+	}
+}

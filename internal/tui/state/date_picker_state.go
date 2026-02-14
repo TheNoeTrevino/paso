@@ -83,22 +83,18 @@ func (s *DatePickerState) MoveWeek(delta int) {
 	s.MoveDay(7 * delta)
 }
 
-// NextMonth increments the month, wrapping Dec→Jan and incrementing year.
-// Uses cursorWant to maintain sticky navigation: if the user was on day 31
-// and moved to a shorter month (clamping to day 28), then back to a 31-day
-// month, they will return to day 31.
-// Does NOT update cursorWant (preserves the desired day position).
-func (s *DatePickerState) NextMonth() {
-	// Calculate next month and year
-	newMonth := s.CurrentMonth + 1
-	newYear := s.CurrentYear
+// navigateMonth moves the month by delta months (positive=forward, negative=backward).
+// Handles year wrapping automatically via time.Date normalization.
+// Clamps CursorDay to the last valid day of the new month using cursorWant.
+// Does NOT update cursorWant (preserves the desired day position for sticky navigation).
+func (s *DatePickerState) navigateMonth(delta int) {
+	// time.Date automatically normalizes out-of-range months
+	// (e.g., month 13 → Jan next year, month 0 → Dec prev year)
+	newDate := time.Date(s.CurrentYear, s.CurrentMonth+time.Month(delta), 1, 0, 0, 0, 0, time.Local)
+	newYear := newDate.Year()
+	newMonth := newDate.Month()
 
-	if newMonth > 12 {
-		newMonth = 1
-		newYear++
-	}
-
-	// Try to reach cursorWant, but clamp to the last valid day of the new month
+	// Clamp cursorWant to the last valid day of the new month
 	lastDayOfNewMonth := time.Date(newYear, newMonth+1, 0, 0, 0, 0, 0, time.Local).Day()
 	newDay := s.cursorWant
 	if newDay > lastDayOfNewMonth {
@@ -108,7 +104,15 @@ func (s *DatePickerState) NextMonth() {
 	s.CurrentYear = newYear
 	s.CurrentMonth = newMonth
 	s.CursorDay = newDay
-	// Do NOT update cursorWant - keep the desired position for future navigation
+}
+
+// NextMonth increments the month, wrapping Dec→Jan and incrementing year.
+// Uses cursorWant to maintain sticky navigation: if the user was on day 31
+// and moved to a shorter month (clamping to day 28), then back to a 31-day
+// month, they will return to day 31.
+// Does NOT update cursorWant (preserves the desired day position).
+func (s *DatePickerState) NextMonth() {
+	s.navigateMonth(1)
 }
 
 // PrevMonth decrements the month, wrapping Jan→Dec and decrementing year.
@@ -117,26 +121,7 @@ func (s *DatePickerState) NextMonth() {
 // month, they will return to day 31.
 // Does NOT update cursorWant (preserves the desired day position).
 func (s *DatePickerState) PrevMonth() {
-	// Calculate previous month and year
-	newMonth := s.CurrentMonth - 1
-	newYear := s.CurrentYear
-
-	if newMonth < 1 {
-		newMonth = 12
-		newYear--
-	}
-
-	// Try to reach cursorWant, but clamp to the last valid day of the new month
-	lastDayOfNewMonth := time.Date(newYear, newMonth+1, 0, 0, 0, 0, 0, time.Local).Day()
-	newDay := s.cursorWant
-	if newDay > lastDayOfNewMonth {
-		newDay = lastDayOfNewMonth
-	}
-
-	s.CurrentYear = newYear
-	s.CurrentMonth = newMonth
-	s.CursorDay = newDay
-	// Do NOT update cursorWant - keep the desired position for future navigation
+	s.navigateMonth(-1)
 }
 
 // InitFromDate initializes the picker to display and select the given date.
