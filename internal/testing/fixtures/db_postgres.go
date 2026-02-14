@@ -137,7 +137,7 @@ func dropTestDatabase(config PostgresTestConfig, dbName string) {
 	if err != nil {
 		return
 	}
-	defer adminDB.Close()
+	defer func() { _ = adminDB.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
