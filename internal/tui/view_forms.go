@@ -99,6 +99,17 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 	}
 	parts = append(parts, "")
 
+	// Due Date section
+	parts = append(parts, labelHeaderStyle.Render("Due Date"))
+	if m.Forms.Form.FormDueDate != nil {
+		dueDateText, dueDateColor := components.FormatRelativeDueDate(m.Forms.Form.FormDueDate)
+		dueDateStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(dueDateColor))
+		parts = append(parts, dueDateStyle.Render(dueDateText))
+	} else {
+		parts = append(parts, subtleStyle.Render("none"))
+	}
+	parts = append(parts, "")
+
 	// Created timestamp
 	parts = append(parts, labelHeaderStyle.Render("Created"))
 	parts = append(parts, createdStr)

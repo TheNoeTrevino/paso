@@ -476,6 +476,12 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.UIState.Mode = state.EstimateInputMode
 			return m, nil
 
+		case "ctrl+d":
+			// Open due date picker
+			m.initDatePickerForForm()
+			m.UIState.Mode = state.DatePickerMode
+			return m, nil
+
 		case "ctrl+h":
 			// Open task form help menu
 			m.UIState.Mode = state.TaskFormHelpMode

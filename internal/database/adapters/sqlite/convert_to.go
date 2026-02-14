@@ -114,6 +114,13 @@ func toGeneratedUpdateTaskEstimateParams(t types.UpdateTaskEstimateParams) gener
 	}
 }
 
+func toGeneratedUpdateTaskDueDateParams(t types.UpdateTaskDueDateParams) generated_sqlite.UpdateTaskDueDateParams {
+	return generated_sqlite.UpdateTaskDueDateParams{
+		DueDate: t.DueDate.ToInterface(),
+		ID:      t.ID,
+	}
+}
+
 func toGeneratedCreateProjectRecordParams(t types.CreateProjectRecordParams) generated_sqlite.CreateProjectRecordParams {
 	return generated_sqlite.CreateProjectRecordParams{
 		Name:        t.Name,

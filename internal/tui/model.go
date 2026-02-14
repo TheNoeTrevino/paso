@@ -1119,6 +1119,14 @@ func (m *Model) initEstimateInputForForm() {
 	m.initEstimateInput(state.TicketFormMode)
 }
 
+// initDatePickerForForm initializes the date picker for use in task form mode.
+// Pre-fills the picker with the current due date value from FormDueDate.
+// If FormDueDate is nil, defaults to today's date.
+func (m *Model) initDatePickerForForm() {
+	m.Pickers.DatePicker.InitFromDate(m.Forms.Form.FormDueDate)
+	m.Pickers.DatePicker.ReturnMode = state.TicketFormMode
+}
+
 // buildListViewRows creates a flat list of all tasks with their column names.
 // The list is sorted according to the current sort settings in listViewState.
 func (m Model) buildListViewRows() []renderers.ListViewRow {

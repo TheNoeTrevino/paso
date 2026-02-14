@@ -11,25 +11,21 @@ import (
 )
 
 var (
-	headerStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color(theme.Highlight))
+	datePickerHeaderStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color(theme.Highlight))
 
-	weekdayStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(theme.Subtle))
+	datePickerWeekdayStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(theme.Subtle))
 
-	dayStyle = lipgloss.NewStyle().
-			Padding(0, 1)
+	datePickerDayStyle = lipgloss.NewStyle().
+				Padding(0, 1)
 
-	cursorStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color(theme.Highlight)).
-			Foreground(lipgloss.Color("#FFFFFF")).
-			Bold(true).
-			Padding(0, 1)
-
-	borderStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color(theme.Highlight))
+	datePickerCursorStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color(theme.SelectedBorder)).
+				Foreground(lipgloss.Color("#FFFFFF")).
+				Bold(true).
+				Padding(0, 1)
 )
 
 // generateCalendarGrid generates a 6x7 grid representing a calendar month.
@@ -87,39 +83,57 @@ func monthStartWeekday(month time.Month, year int) int {
 
 // RenderDatePicker renders the complete calendar UI with Lipgloss styling.
 // It displays a header with month/year, weekday labels, and a calendar grid
-// with cursor highlighting and a rounded border.
+// with cursor highlighting. The border and padding are applied by the layer wrapper.
+// The calendar is self-sizing based on its content (7 columns x 6 chars per cell = 42 chars).
 func RenderDatePicker(pickerState *state.DatePickerState, width int, height int) string {
 	var content strings.Builder
 
+	// Calendar content width: 7 cells * 6 chars per cell = 42 chars
+	const calendarContentWidth = 42
+
 	// Header: "FEBRUARY 2026" (uppercase, bold, centered)
 	header := strings.ToUpper(fmt.Sprintf("%s %d", pickerState.CurrentMonth.String(), pickerState.CurrentYear))
-	headerWidth := width - 4 // Account for border
-	headerStyleWithWidth := headerStyle.Width(headerWidth)
+	headerStyleWithWidth := datePickerHeaderStyle.Width(calendarContentWidth)
 	content.WriteString(headerStyleWithWidth.Render(header) + "\n\n")
 
-	// Weekday labels: "Sun  Mon  Tue  Wed  Thu  Fri  Sat"
-	weekdays := " Sun  Mon  Tue  Wed  Thu  Fri  Sat"
-	content.WriteString(weekdayStyle.Render(weekdays) + "\n\n")
+	// Weekday labels: each label is 6 chars wide to match cell width
+	weekdays := "  Sun   Mon   Tue   Wed   Thu   Fri   Sat"
+	content.WriteString(datePickerWeekdayStyle.Render(weekdays) + "\n\n")
 
-	// Calendar grid
+	// Calendar grid - only render weeks that contain days
 	grid := generateCalendarGrid(pickerState.CurrentMonth, pickerState.CurrentYear)
-	for _, week := range grid {
+	lastWeekWithDays := 0
+	for i := len(grid) - 1; i >= 0; i-- {
+		for _, day := range grid[i] {
+			if day > 0 {
+				lastWeekWithDays = i
+				break
+			}
+		}
+		if lastWeekWithDays > 0 {
+			break
+		}
+	}
+
+	for weekIdx, week := range grid {
+		if weekIdx > lastWeekWithDays {
+			break
+		}
 		var weekStr strings.Builder
 		for _, day := range week {
 			if day == 0 {
-				// Empty cell - 5 spaces to maintain alignment
-				weekStr.WriteString("     ")
+				// Empty cell - 6 spaces to match styled cell width
+				weekStr.WriteString("      ")
 			} else if day == pickerState.CursorDay {
 				// Cursor-highlighted day
-				weekStr.WriteString(cursorStyle.Render(fmt.Sprintf(" %2d ", day)))
+				weekStr.WriteString(datePickerCursorStyle.Render(fmt.Sprintf(" %2d ", day)))
 			} else {
 				// Normal day
-				weekStr.WriteString(dayStyle.Render(fmt.Sprintf(" %2d ", day)))
+				weekStr.WriteString(datePickerDayStyle.Render(fmt.Sprintf(" %2d ", day)))
 			}
 		}
 		content.WriteString(weekStr.String() + "\n")
 	}
 
-	// Wrap in rounded border
-	return borderStyle.Render(content.String())
+	return content.String()
 }

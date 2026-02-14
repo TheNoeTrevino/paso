@@ -91,10 +91,7 @@ func (m Model) View() tea.View {
 		case state.EstimateInputMode:
 			layers = m.buildPickerLayers(layers, m.Pickers.Estimate.ReturnMode, m.renderEstimateInputLayer())
 		case state.DatePickerMode:
-			datePickerLayer := m.renderDatePickerLayer()
-			if datePickerLayer != nil {
-				layers = append(layers, datePickerLayer)
-			}
+			layers = m.buildPickerLayers(layers, m.Pickers.DatePicker.ReturnMode, m.renderDatePickerLayer())
 		case state.RelationTypePickerMode:
 			// RelationTypePicker is only accessible from ParentPicker or ChildPicker,
 			// so returnMode will always be one of those two modes (see update_pickers.go:329, 484).

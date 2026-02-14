@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/services/task"
@@ -48,6 +49,7 @@ type MockTaskService struct {
 	UpdateTaskErr         error
 	UpdateTaskAssigneeErr error
 	UpdateTaskEstimateErr error
+	UpdateTaskDueDateErr  error
 	DeleteTaskErr         error
 
 	// TaskWriter result injection
@@ -266,6 +268,15 @@ func (m *MockTaskService) UpdateTaskEstimate(_ context.Context, taskID int, esti
 		"estimate": estimate,
 	})
 	return m.UpdateTaskEstimateErr
+}
+
+func (m *MockTaskService) UpdateTaskDueDate(_ context.Context, taskID int, dueDate *time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.recordCall("UpdateTaskDueDate", taskID, map[string]interface{}{
+		"dueDate": dueDate,
+	})
+	return m.UpdateTaskDueDateErr
 }
 
 func (m *MockTaskService) DeleteTask(_ context.Context, taskID int) error {

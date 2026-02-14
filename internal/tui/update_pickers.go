@@ -912,35 +912,61 @@ func (m Model) updateDatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	switch keyMsg.String() {
+	key := keyMsg.String()
+	km := m.Config.KeyMappings
+
+	switch key {
 	case "esc":
-		// Cancel - return with zero time
-		m.Pickers.DatePicker.SelectedDate = time.Time{}
+		// Cancel - don't update FormDueDate, just return to previous mode
 		m.UIState.Mode = m.Pickers.DatePicker.ReturnMode
 		return m, nil
 
-	case "up", "k":
+	case km.PrevTask, "up":
 		m.Pickers.DatePicker.MoveWeek(-1) // Move up 7 days
 		return m, nil
 
-	case "down", "j":
+	case km.NextTask, "down":
 		m.Pickers.DatePicker.MoveWeek(1) // Move down 7 days
 		return m, nil
 
-	case "left", "h":
+	case km.PrevColumn, "left":
 		m.Pickers.DatePicker.MoveDay(-1) // Previous day
 		return m, nil
 
-	case "right", "l":
+	case km.NextColumn, "right":
 		m.Pickers.DatePicker.MoveDay(1) // Next day
 		return m, nil
 
-	case "[":
+	case km.ScrollViewportLeft:
 		m.Pickers.DatePicker.PrevMonth() // Previous month
 		return m, nil
 
-	case "]":
+	case km.ScrollViewportRight:
 		m.Pickers.DatePicker.NextMonth() // Next month
+		return m, nil
+
+	case "backspace", "ctrl+h":
+		// Clear due date
+		m.Forms.Form.FormDueDate = nil
+
+		// If editing existing task, save immediately to database
+		if m.Forms.Form.EditingTaskID != 0 {
+			ctx, cancel := m.DBContext()
+			defer cancel()
+
+			err := m.App.TaskService.UpdateTaskDueDate(ctx, m.Forms.Form.EditingTaskID, nil)
+			if err != nil {
+				slog.Error("failed to clear task due date", "error", err)
+				m.UI.Notification.Add(state.LevelError, "Failed to clear due date")
+			} else {
+				m.UI.Notification.Add(state.LevelInfo, "Due date cleared")
+				m.reloadCurrentColumnTasks()
+			}
+		} else {
+			m.UI.Notification.Add(state.LevelInfo, "Due date cleared")
+		}
+
+		m.UIState.Mode = m.Pickers.DatePicker.ReturnMode
 		return m, nil
 
 	case "enter":
@@ -953,6 +979,27 @@ func (m Model) updateDatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			time.Local,
 		)
 		m.Pickers.DatePicker.SelectedDate = selectedDate
+
+		// Update form state
+		m.Forms.Form.FormDueDate = &selectedDate
+
+		// If editing existing task, save immediately to database
+		if m.Forms.Form.EditingTaskID != 0 {
+			ctx, cancel := m.DBContext()
+			defer cancel()
+
+			err := m.App.TaskService.UpdateTaskDueDate(ctx, m.Forms.Form.EditingTaskID, &selectedDate)
+			if err != nil {
+				slog.Error("failed to update task due date", "error", err)
+				m.UI.Notification.Add(state.LevelError, "Failed to update due date")
+			} else {
+				m.UI.Notification.Add(state.LevelInfo, "Due date set to "+selectedDate.Format("Jan 2, 2006"))
+				m.reloadCurrentColumnTasks()
+			}
+		} else {
+			m.UI.Notification.Add(state.LevelInfo, "Due date set to "+selectedDate.Format("Jan 2, 2006"))
+		}
+
 		m.UIState.Mode = m.Pickers.DatePicker.ReturnMode
 		return m, nil
 	}

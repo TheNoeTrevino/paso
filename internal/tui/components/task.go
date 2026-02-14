@@ -104,6 +104,13 @@ func renderTaskSummaryMetadata(task *models.TaskSummary, bg string, maxWidth int
 		segments = append(segments, text.NewStyledSegment(*task.Estimate, estimateStyle, bg))
 	}
 
+	// Due Date
+	if task.DueDate != nil {
+		dueDateText, dueDateColor := FormatRelativeDueDate(task.DueDate)
+		dueDateStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(dueDateColor))
+		segments = append(segments, text.NewStyledSegment(dueDateText, dueDateStyle, bg))
+	}
+
 	// Blocked badge
 	if task.IsBlocked {
 		segments = append(segments, text.NewStyledSegment("blocked", BlockedStyle, bg))

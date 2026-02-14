@@ -457,6 +457,7 @@ QUICK ACTIONS
   Ctrl+T          Change task type
   Ctrl+A          Change assignee
   Ctrl+E          Change estimate
+  Ctrl+D          Set due date
 
 HELP
   Ctrl+/          Toggle this help menu
@@ -721,17 +722,20 @@ func (m Model) renderEstimateInputLayer() *lipgloss.Layer {
 
 // renderDatePickerLayer renders the date picker as a centered modal overlay
 func (m Model) renderDatePickerLayer() *lipgloss.Layer {
-	pickerContent := renderers.RenderDatePicker(
-		m.Pickers.DatePicker,
-		m.UIState.Width(),
-		m.UIState.Height,
-	)
-
-	return layers.CreateCenteredLayer(
-		pickerContent,
-		m.UIState.Width(),
-		m.UIState.Height,
-	)
+	return m.createPickerLayer(pickerLayerConfig{
+		dimensionStrategy: fixedPickerDimensions{
+			width:  layers.DatePickerWidth,
+			height: layers.DatePickerHeight,
+		},
+		contentRenderer: func(width, height int) string {
+			return renderers.RenderDatePicker(
+				m.Pickers.DatePicker,
+				width-layers.PickerBorderPaddingWidth,
+				height-layers.PickerBorderPaddingHeight,
+			)
+		},
+		boxStyle: components.LabelPickerBoxStyle,
+	})
 }
 
 // renderTypePickerLayer renders the type picker modal as a layer

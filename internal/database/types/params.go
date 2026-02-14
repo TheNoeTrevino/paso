@@ -169,6 +169,11 @@ type UpdateTaskEstimateParams struct {
 	ID       int64
 }
 
+type UpdateTaskDueDateParams struct {
+	DueDate NullTime
+	ID      int64
+}
+
 // comments.sql.go params
 type CreateCommentParams struct {
 	TaskID  int64

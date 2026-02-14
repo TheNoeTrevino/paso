@@ -161,6 +161,14 @@ func renderDetailMetadata(task *models.TaskDetail, width int) string {
 		parts = append(parts, estimateLine)
 	}
 
+	// Due Date
+	if task.DueDate != nil {
+		dueDateText, dueDateColor := FormatRelativeDueDate(task.DueDate)
+		dueDateStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(dueDateColor))
+		dueDateLine := labelStyle.Render("Due: ") + dueDateStyle.Render(dueDateText)
+		parts = append(parts, dueDateLine)
+	}
+
 	// Blocked status
 	if task.IsBlocked {
 		blockedStyle := lipgloss.NewStyle().

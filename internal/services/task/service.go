@@ -37,6 +37,7 @@ type TaskWriter interface {
 	UpdateTask(ctx context.Context, req UpdateTaskRequest) error
 	UpdateTaskAssignee(ctx context.Context, taskID int, assigneeID *int) error
 	UpdateTaskEstimate(ctx context.Context, taskID int, estimate *string) error
+	UpdateTaskDueDate(ctx context.Context, taskID int, dueDate *time.Time) error
 	DeleteTask(ctx context.Context, taskID int) error
 }
 
@@ -502,6 +503,32 @@ func (s *service) UpdateTaskEstimate(ctx context.Context, taskID int, estimate *
 		ID:       int64(taskID),
 	}); err != nil {
 		return fmt.Errorf("failed to update task estimate: %w", err)
+	}
+
+	s.publishTaskEvent(ctx, taskID)
+	return nil
+}
+
+// UpdateTaskDueDate updates the due date field for an existing task.
+// Pass nil to clear the due date.
+func (s *service) UpdateTaskDueDate(ctx context.Context, taskID int, dueDate *time.Time) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	if err := validateTaskID(taskID); err != nil {
+		return err
+	}
+
+	var nullDueDate types.NullTime
+	if dueDate != nil {
+		nullDueDate = types.NullTime{Time: *dueDate, Valid: true}
+	}
+
+	if err := s.queries.UpdateTaskDueDate(ctx, types.UpdateTaskDueDateParams{
+		DueDate: nullDueDate,
+		ID:      int64(taskID),
+	}); err != nil {
+		return fmt.Errorf("failed to update task due date: %w", err)
 	}
 
 	s.publishTaskEvent(ctx, taskID)

@@ -112,6 +112,13 @@ func toGeneratedUpdateTaskEstimateParams(t types.UpdateTaskEstimateParams) gener
 	}
 }
 
+func toGeneratedUpdateTaskDueDateParams(t types.UpdateTaskDueDateParams) generated_postgres.UpdateTaskDueDateParams {
+	return generated_postgres.UpdateTaskDueDateParams{
+		DueDate: t.DueDate.ToSQLNullTime(),
+		ID:      t.ID,
+	}
+}
+
 func toGeneratedCreateProjectRecordParams(t types.CreateProjectRecordParams) generated_postgres.CreateProjectRecordParams {
 	return generated_postgres.CreateProjectRecordParams{
 		Name:        t.Name,

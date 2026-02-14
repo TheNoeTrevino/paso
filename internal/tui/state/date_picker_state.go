@@ -138,3 +138,21 @@ func (s *DatePickerState) PrevMonth() {
 	s.CursorDay = newDay
 	// Do NOT update cursorWant - keep the desired position for future navigation
 }
+
+// InitFromDate initializes the picker to display and select the given date.
+// If date is nil, defaults to today's date.
+// This is useful when editing a task with an existing due date.
+func (s *DatePickerState) InitFromDate(date *time.Time) {
+	var d time.Time
+	if date == nil {
+		d = time.Now()
+	} else {
+		d = *date
+	}
+
+	s.CurrentMonth = d.Month()
+	s.CurrentYear = d.Year()
+	s.CursorDay = d.Day()
+	s.cursorWant = d.Day()
+	s.SelectedDate = d
+}
