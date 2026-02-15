@@ -1186,7 +1186,7 @@ func (m *Model) reloadCurrentColumnTasks() {
 
 	ctx, cancel := m.DBContext()
 	defer cancel()
-	tasksByColumn, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
+	tasksByColumn, err := m.fetchTasksForCurrentProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("failed to reloading tasks", "error", err)
 		return

@@ -201,6 +201,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case dataReloaded:
+		// Clear search when switching databases since it's a different context
+		m.UI.Search.Clear()
+		m.UI.Search.Deactivate()
+
 		m.AppState.SetProjects(msg.projects)
 		m.AppState.SetColumns(msg.columns)
 		m.AppState.SetTasks(msg.tasks)
