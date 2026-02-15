@@ -349,6 +349,26 @@ func fromGeneratedGetTaskSummariesByProjectFilteredRow(g generated_sqlite.GetTas
 	}
 }
 
+func fromGeneratedGetTaskSummariesWithFiltersRow(g generated_sqlite.GetTaskSummariesWithFiltersRow) types.GetTaskSummariesWithFiltersRow {
+	return types.GetTaskSummariesWithFiltersRow{
+		ID:                  g.ID,
+		Title:               g.Title,
+		ColumnID:            g.ColumnID,
+		Position:            g.Position,
+		Estimate:            types.NullStringFromInterface(g.Estimate),
+		DueDate:             types.NullTimeFromInterface(g.DueDate),
+		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
+		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
+		PriorityColor:       types.FromSQLNullString(g.PriorityColor),
+		AssigneeID:          types.NullInt64FromInterface(g.AssigneeID),
+		AssigneeName:        types.FromSQLNullString(g.AssigneeName),
+		LabelIds:            g.LabelIds,
+		LabelNames:          g.LabelNames,
+		LabelColors:         g.LabelColors,
+		IsBlocked:           g.IsBlocked != 0,
+	}
+}
+
 func fromGeneratedGetTasksByColumnRow(g generated_sqlite.GetTasksByColumnRow) types.GetTasksByColumnRow {
 	return types.GetTasksByColumnRow{
 		ID:          g.ID,

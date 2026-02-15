@@ -56,6 +56,17 @@ func toGeneratedGetTaskSummariesByProjectFilteredParams(t types.GetTaskSummaries
 	}
 }
 
+func toGeneratedGetTaskSummariesWithFiltersParams(t types.GetTaskSummariesWithFiltersParams) generated_sqlite.GetTaskSummariesWithFiltersParams {
+	return generated_sqlite.GetTaskSummariesWithFiltersParams{
+		ProjectID:   t.ProjectID,
+		TitleFilter: t.TitleFilter.ToInterface(),
+		PriorityID:  t.PriorityID.ToInterface(),
+		TypeID:      t.TypeID.ToInterface(),
+		AssigneeID:  t.AssigneeID.ToInterface(),
+		LabelIdsCsv: t.LabelIdsCsv,
+	}
+}
+
 func toGeneratedMoveTaskToColumnParams(t types.MoveTaskToColumnParams) generated_sqlite.MoveTaskToColumnParams {
 	return generated_sqlite.MoveTaskToColumnParams{
 		ColumnID: t.ColumnID,

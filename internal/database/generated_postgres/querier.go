@@ -163,6 +163,8 @@ type Querier interface {
 	GetTaskSummariesByProject(ctx context.Context, projectID int64) ([]GetTaskSummariesByProjectRow, error)
 	// Retrieves task summaries filtered by title search pattern with aggregated labels
 	GetTaskSummariesByProjectFiltered(ctx context.Context, arg GetTaskSummariesByProjectFilteredParams) ([]GetTaskSummariesByProjectFilteredRow, error)
+	// Retrieves task summaries filtered by multiple optional criteria with aggregated labels
+	GetTaskSummariesWithFilters(ctx context.Context, arg GetTaskSummariesWithFiltersParams) ([]GetTaskSummariesWithFiltersRow, error)
 	// Retrieves only the type_id and priority_id for a task (lightweight query)
 	GetTaskTypeAndPriorityIDs(ctx context.Context, id int64) (GetTaskTypeAndPriorityIDsRow, error)
 	// Retrieves all tasks in a column, ordered by position

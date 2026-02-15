@@ -1321,6 +1321,132 @@ func (q *Queries) GetTaskSummariesByProjectFiltered(ctx context.Context, arg Get
 	return items, nil
 }
 
+const getTaskSummariesWithFilters = `-- name: GetTaskSummariesWithFilters :many
+select
+    t.id,
+    t.title,
+    t.column_id,
+    t.position,
+    t.estimate,
+    t.due_date,
+    ty.description as type_description,
+    p.description as priority_description,
+    p.color as priority_color,
+    t.assignee_id,
+    a.name as assignee_name,
+    cast(coalesce(group_concat(l.id, char(31)), '') as text) as label_ids,
+    cast(coalesce(group_concat(l.name, char(31)), '') as text) as label_names,
+    cast(coalesce(group_concat(l.color, char(31)), '') as text) as label_colors,
+    exists(
+        select 1
+        from task_subtasks ts
+        inner join relation_types rt on ts.relation_type_id = rt.id
+        inner join tasks blocker on ts.child_id = blocker.id
+        inner join columns bc on blocker.column_id = bc.id
+        where ts.parent_id = t.id and rt.is_blocking = 1 and bc.holds_completed_tasks = 0
+    ) as is_blocked
+from tasks t
+inner join columns c on t.column_id = c.id
+left join types ty on t.type_id = ty.id
+left join priorities p on t.priority_id = p.id
+left join assignees a on t.assignee_id = a.id
+left join task_labels tl on t.id = tl.task_id
+left join labels l on tl.label_id = l.id
+where c.project_id = ?1
+    and (?2 is null or t.title like ?2)
+    and (?3 is null or p.id = ?3)
+    and (?4 is null or ty.id = ?4)
+    and (?5 is null or t.assignee_id = ?5 or (?5 = -1 and t.assignee_id is null))
+    and (?6 = '' or exists (select 1 from task_labels tl2 where tl2.task_id = t.id and instr(?6, ',' || cast(tl2.label_id as text) || ',') > 0))
+group by
+    t.id,
+    t.title,
+    t.column_id,
+    t.position,
+    t.estimate,
+    t.due_date,
+    ty.description,
+    p.description,
+    p.color,
+    t.assignee_id,
+    a.name
+order by t.position
+`
+
+type GetTaskSummariesWithFiltersParams struct {
+	ProjectID   int64
+	TitleFilter interface{}
+	PriorityID  interface{}
+	TypeID      interface{}
+	AssigneeID  interface{}
+	LabelIdsCsv interface{}
+}
+
+type GetTaskSummariesWithFiltersRow struct {
+	ID                  int64
+	Title               string
+	ColumnID            int64
+	Position            int64
+	Estimate            interface{}
+	DueDate             interface{}
+	TypeDescription     sql.NullString
+	PriorityDescription sql.NullString
+	PriorityColor       sql.NullString
+	AssigneeID          interface{}
+	AssigneeName        sql.NullString
+	LabelIds            string
+	LabelNames          string
+	LabelColors         string
+	IsBlocked           int64
+}
+
+// Retrieves task summaries with combined nullable filters and aggregated labels
+func (q *Queries) GetTaskSummariesWithFilters(ctx context.Context, arg GetTaskSummariesWithFiltersParams) ([]GetTaskSummariesWithFiltersRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTaskSummariesWithFilters,
+		arg.ProjectID,
+		arg.TitleFilter,
+		arg.PriorityID,
+		arg.TypeID,
+		arg.AssigneeID,
+		arg.LabelIdsCsv,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetTaskSummariesWithFiltersRow{}
+	for rows.Next() {
+		var i GetTaskSummariesWithFiltersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.ColumnID,
+			&i.Position,
+			&i.Estimate,
+			&i.DueDate,
+			&i.TypeDescription,
+			&i.PriorityDescription,
+			&i.PriorityColor,
+			&i.AssigneeID,
+			&i.AssigneeName,
+			&i.LabelIds,
+			&i.LabelNames,
+			&i.LabelColors,
+			&i.IsBlocked,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTaskTypeAndPriorityIDs = `-- name: GetTaskTypeAndPriorityIDs :one
 select
     type_id,

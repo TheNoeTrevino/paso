@@ -127,6 +127,15 @@ type GetTaskSummariesByProjectFilteredParams struct {
 	Title     string
 }
 
+type GetTaskSummariesWithFiltersParams struct {
+	ProjectID   int64
+	TitleFilter NullString
+	PriorityID  NullInt64
+	TypeID      NullInt64
+	AssigneeID  NullInt64
+	LabelIdsCsv string
+}
+
 type MoveTaskToColumnParams struct {
 	ColumnID int64
 	Position int64

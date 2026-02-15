@@ -202,6 +202,25 @@ type GetTaskSummariesByProjectFilteredRow struct {
 	IsBlocked           bool
 }
 
+// GetTaskSummariesWithFiltersRow represents the result of GetTaskSummariesWithFilters query
+type GetTaskSummariesWithFiltersRow struct {
+	ID                  int64
+	Title               string
+	ColumnID            int64
+	Position            int64
+	Estimate            NullString
+	DueDate             NullTime
+	TypeDescription     NullString
+	PriorityDescription NullString
+	PriorityColor       NullString
+	AssigneeID          NullInt64
+	AssigneeName        NullString
+	LabelIds            string
+	LabelNames          string
+	LabelColors         string
+	IsBlocked           bool
+}
+
 // GetTasksByColumnRow represents the result of GetTasksByColumn query
 type GetTasksByColumnRow struct {
 	ID          int64

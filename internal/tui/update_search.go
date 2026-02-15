@@ -4,7 +4,6 @@ import (
 	"log/slog"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -59,7 +58,7 @@ func (m Model) handleSearchCancel() (tea.Model, tea.Cmd) {
 }
 
 // executeSearch runs the search query and updates the task list.
-// Inlined from search.go (deleted to reduce duplication)
+// Delegates to fetchTasksForCurrentProject which handles both search and field filters.
 func (m Model) executeSearch() (tea.Model, tea.Cmd) {
 	project := m.getCurrentProject()
 	if project == nil {
@@ -68,22 +67,14 @@ func (m Model) executeSearch() (tea.Model, tea.Cmd) {
 
 	ctx, cancel := m.DBContext()
 	defer cancel()
-	var tasksByColumn map[int][]*models.TaskSummary
-	var err error
 
-	if m.UI.Search.Query == "" {
-		tasksByColumn, err = m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
-	} else {
-		tasksByColumn, err = m.App.TaskService.GetTaskSummariesByProjectFiltered(ctx, project.ID, m.UI.Search.Query)
-	}
-
+	tasksByColumn, err := m.fetchTasksForCurrentProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("failed to filtering tasks", "error", err)
+		slog.Error("failed to filter tasks", "error", err)
 		return m, nil
 	}
 
 	m.AppState.SetTasks(tasksByColumn)
-	// Reset task selection to 0 to avoid out-of-bounds
 	m.UIState.SelectedTask = 0
 
 	return m, nil

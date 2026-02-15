@@ -349,6 +349,26 @@ func fromGeneratedGetTaskSummariesByProjectFilteredRow(g generated_postgres.GetT
 	}
 }
 
+func fromGeneratedGetTaskSummariesWithFiltersRow(g generated_postgres.GetTaskSummariesWithFiltersRow) types.GetTaskSummariesWithFiltersRow {
+	return types.GetTaskSummariesWithFiltersRow{
+		ID:                  g.ID,
+		Title:               g.Title,
+		ColumnID:            g.ColumnID,
+		Position:            g.Position,
+		Estimate:            types.FromSQLNullString(g.Estimate),
+		DueDate:             types.FromSQLNullTime(g.DueDate),
+		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
+		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
+		PriorityColor:       types.FromSQLNullString(g.PriorityColor),
+		AssigneeID:          types.FromSQLNullInt32(g.AssigneeID),
+		AssigneeName:        types.FromSQLNullString(g.AssigneeName),
+		LabelIds:            g.LabelIds,
+		LabelNames:          g.LabelNames,
+		LabelColors:         g.LabelColors,
+		IsBlocked:           g.IsBlocked,
+	}
+}
+
 func fromGeneratedGetTasksByColumnRow(g generated_postgres.GetTasksByColumnRow) types.GetTasksByColumnRow {
 	return types.GetTasksByColumnRow{
 		ID:          g.ID,

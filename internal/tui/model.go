@@ -1361,13 +1361,37 @@ func (m *Model) reloadCurrentProject() {
 }
 
 // fetchTasksForCurrentProject fetches tasks for the given project ID,
-// respecting the active search filter if one is set.
-// If a search is active, it returns filtered results; otherwise all tasks.
+// respecting both the active search filter and field filters from the filter bar.
+// Uses the unified filter query so search + filters combine with AND logic.
 func (m *Model) fetchTasksForCurrentProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error) {
-	if m.UI.Search.IsActive && m.UI.Search.Query != "" {
-		return m.App.TaskService.GetTaskSummariesByProjectFiltered(ctx, projectID, m.UI.Search.Query)
+	hasSearch := m.UI.Search.Query != ""
+	hasFilters := m.UI.Filter.HasAnyFilter()
+
+	if !hasSearch && !hasFilters {
+		return m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
 	}
-	return m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
+
+	params := m.buildFilterParams(projectID)
+	return m.App.TaskService.GetTaskSummariesWithFilters(ctx, params)
+}
+
+// buildFilterParams constructs TaskFilterParams from the current search and filter state.
+func (m *Model) buildFilterParams(projectID int) tasksvc.TaskFilterParams {
+	params := tasksvc.TaskFilterParams{
+		ProjectID: projectID,
+	}
+
+	if m.UI.Search.Query != "" {
+		q := m.UI.Search.Query
+		params.Title = &q
+	}
+
+	params.PriorityID = m.UI.Filter.PriorityID
+	params.TypeID = m.UI.Filter.TypeID
+	params.AssigneeID = m.UI.Filter.AssigneeID
+	params.LabelIDs = m.UI.Filter.LabelIDs
+
+	return params
 }
 
 // calculateDescriptionLines calculates the number of lines for the

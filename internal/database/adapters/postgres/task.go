@@ -193,6 +193,14 @@ func (a *Adapter) GetTaskSummariesByProjectFiltered(ctx context.Context, arg typ
 	return types.ConvertSlice(results, fromGeneratedGetTaskSummariesByProjectFilteredRow), nil
 }
 
+func (a *Adapter) GetTaskSummariesWithFilters(ctx context.Context, arg types.GetTaskSummariesWithFiltersParams) ([]types.GetTaskSummariesWithFiltersRow, error) {
+	results, err := a.queries.GetTaskSummariesWithFilters(ctx, toGeneratedGetTaskSummariesWithFiltersParams(arg))
+	if err != nil {
+		return nil, err
+	}
+	return types.ConvertSlice(results, fromGeneratedGetTaskSummariesWithFiltersRow), nil
+}
+
 func (a *Adapter) GetTasksByColumn(ctx context.Context, columnID int64) ([]types.GetTasksByColumnRow, error) {
 	results, err := a.queries.GetTasksByColumn(ctx, columnID)
 	if err != nil {

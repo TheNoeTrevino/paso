@@ -23,6 +23,7 @@ type MockTaskService struct {
 	GetTaskActivitiesErr                 error
 	GetTaskSummariesByProjectErr         error
 	GetTaskSummariesByProjectFilteredErr error
+	GetTaskSummariesWithFiltersErr       error
 	GetReadyTaskSummariesByProjectErr    error
 	GetInProgressTasksByProjectErr       error
 	GetTaskReferencesForProjectErr       error
@@ -37,6 +38,7 @@ type MockTaskService struct {
 	GetTaskActivitiesResult                 []models.ActivityItem
 	GetTaskSummariesByProjectResult         map[int][]*models.TaskSummary
 	GetTaskSummariesByProjectFilteredResult map[int][]*models.TaskSummary
+	GetTaskSummariesWithFiltersResult       map[int][]*models.TaskSummary
 	GetReadyTaskSummariesByProjectResult    []*models.TaskSummary
 	GetInProgressTasksByProjectResult       []*models.TaskDetail
 	GetTaskReferencesForProjectResult       []*models.TaskReference
@@ -187,6 +189,15 @@ func (m *MockTaskService) GetTaskSummariesByProjectFiltered(_ context.Context, p
 		"searchQuery": searchQuery,
 	})
 	return m.GetTaskSummariesByProjectFilteredResult, m.GetTaskSummariesByProjectFilteredErr
+}
+
+func (m *MockTaskService) GetTaskSummariesWithFilters(_ context.Context, params task.TaskFilterParams) (map[int][]*models.TaskSummary, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.recordCall("GetTaskSummariesWithFilters", params.ProjectID, map[string]interface{}{
+		"params": params,
+	})
+	return m.GetTaskSummariesWithFiltersResult, m.GetTaskSummariesWithFiltersErr
 }
 
 func (m *MockTaskService) GetReadyTaskSummariesByProject(_ context.Context, projectID int) ([]*models.TaskSummary, error) {

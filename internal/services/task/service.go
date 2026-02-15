@@ -20,12 +20,24 @@ import (
 
 var ErrTaskAlreadyInTargetProject = errors.New("task is already in the target project")
 
+// TaskFilterParams holds optional filter criteria for the unified filter query.
+// Zero values / nil pointers mean "no filter" for that field.
+type TaskFilterParams struct {
+	ProjectID  int
+	Title      *string // nil = no title filter; non-nil = LIKE %value%
+	PriorityID *int    // nil = no filter; value = exact match
+	TypeID     *int    // nil = no filter; value = exact match
+	AssigneeID *int    // nil = no filter; -1 = unassigned; value = exact match
+	LabelIDs   []int   // empty = no filter; non-empty = OR match (task has ANY of these)
+}
+
 // TaskReader defines task reading operations
 type TaskReader interface {
 	GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error)
 	GetTaskActivities(ctx context.Context, taskID int) ([]models.ActivityItem, error)
 	GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error)
 	GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error)
+	GetTaskSummariesWithFilters(ctx context.Context, params TaskFilterParams) (map[int][]*models.TaskSummary, error)
 	GetReadyTaskSummariesByProject(ctx context.Context, projectID int) ([]*models.TaskSummary, error)
 	GetInProgressTasksByProject(ctx context.Context, projectID int) ([]*models.TaskDetail, error)
 	GetTaskReferencesForProject(ctx context.Context, projectID int) ([]*models.TaskReference, error)
@@ -759,6 +771,61 @@ func (s *service) GetTaskSummariesByProjectFiltered(ctx context.Context, project
 	}
 
 	return result, nil
+}
+
+// GetTaskSummariesWithFilters retrieves task summaries using the unified filter query.
+// All filter fields in params are optional — nil/zero values skip that filter.
+func (s *service) GetTaskSummariesWithFilters(ctx context.Context, params TaskFilterParams) (map[int][]*models.TaskSummary, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	dbParams := types.GetTaskSummariesWithFiltersParams{
+		ProjectID: int64(params.ProjectID),
+	}
+
+	if params.Title != nil {
+		dbParams.TitleFilter = types.NullString{String: "%" + *params.Title + "%", Valid: true}
+	}
+	if params.PriorityID != nil {
+		dbParams.PriorityID = types.NullInt64{Int64: int64(*params.PriorityID), Valid: true}
+	}
+	if params.TypeID != nil {
+		dbParams.TypeID = types.NullInt64{Int64: int64(*params.TypeID), Valid: true}
+	}
+	if params.AssigneeID != nil {
+		dbParams.AssigneeID = types.NullInt64{Int64: int64(*params.AssigneeID), Valid: true}
+	}
+	if len(params.LabelIDs) > 0 {
+		dbParams.LabelIdsCsv = buildLabelIdsCsv(params.LabelIDs)
+	}
+
+	rows, err := s.queries.GetTaskSummariesWithFilters(ctx, dbParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get filtered task summaries: %w", err)
+	}
+
+	result := make(map[int][]*models.TaskSummary)
+	for _, row := range rows {
+		summary := converters.WithFiltersTaskSummaryFromRowToModel(row)
+		columnID := int(row.ColumnID)
+		result[columnID] = append(result[columnID], summary)
+	}
+
+	return result, nil
+}
+
+// buildLabelIdsCsv constructs a comma-wrapped CSV string for SQL label matching.
+// Example: [1, 5, 12] -> ",1,5,12,"
+func buildLabelIdsCsv(ids []int) string {
+	csv := ","
+	for i, id := range ids {
+		if i > 0 {
+			csv += ","
+		}
+		csv += fmt.Sprintf("%d", id)
+	}
+	csv += ","
+	return csv
 }
 
 // GetReadyTaskSummariesByProject retrieves task summaries for tasks in ready columns (and not blocked)
