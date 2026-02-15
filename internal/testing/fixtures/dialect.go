@@ -56,13 +56,3 @@ func SQLiteDialect() Dialect { return sqliteDialect{} }
 
 // PostgresDialect returns a Dialect for PostgreSQL databases.
 func PostgresDialect() Dialect { return postgresDialect{} }
-
-// DialectFor returns the appropriate Dialect for the given database type.
-func DialectFor(dbType DatabaseType) Dialect {
-	switch dbType {
-	case PostgreSQLType:
-		return PostgresDialect()
-	default:
-		return SQLiteDialect()
-	}
-}
