@@ -50,7 +50,6 @@ type KeyMappings struct {
 	// Views
 	ToggleView        string `yaml:"toggle_view"`
 	MoveTaskToProject string `yaml:"move_task_to_project"`
-	SortList          string `yaml:"sort_list"`
 }
 
 // DefaultKeyMappings returns the default key mappings
@@ -102,7 +101,6 @@ func DefaultKeyMappings() KeyMappings {
 		// Views
 		ToggleView:        "v",
 		MoveTaskToProject: "s",
-		SortList:          "S",
 	}
 }
 
@@ -214,8 +212,5 @@ func (k *KeyMappings) applyDefaults() {
 	}
 	if k.MoveTaskToProject == "" {
 		k.MoveTaskToProject = defaults.MoveTaskToProject
-	}
-	if k.SortList == "" {
-		k.SortList = defaults.SortList
 	}
 }

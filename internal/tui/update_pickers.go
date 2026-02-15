@@ -800,6 +800,7 @@ func (m Model) updateProjectPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.Pickers.Project.ReturnMode == state.NormalMode {
 			m.Forms.Form.EditingTaskID = 0
 		}
+		m.Pickers.Project.Reset()
 		return m, nil
 	}
 
