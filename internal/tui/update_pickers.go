@@ -52,7 +52,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Pickers.Label.Filter = ""
 			m.Pickers.Label.Cursor = 0
 			m.UIState.Mode = state.FilterBarMode
-			return m.executeSearch()
+			return m.refreshFilteredTasks()
 		case state.TicketFormMode:
 			// In form mode: sync selections and return to form
 			m.syncLabelPickerToFormState()
@@ -651,7 +651,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				id := selectedPriority.ID
 				m.UI.Filter.SetPriority(&id)
 				m.UIState.Mode = state.FilterBarMode
-				return m.executeSearch()
+				return m.refreshFilteredTasks()
 			}
 
 			// If we're editing a task, update it in the database
@@ -739,7 +739,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				id := selectedType.ID
 				m.UI.Filter.SetType(&id)
 				m.UIState.Mode = state.FilterBarMode
-				return m.executeSearch()
+				return m.refreshFilteredTasks()
 			}
 
 			// If we're editing a task, update it in the database
@@ -877,7 +877,7 @@ func (m Model) updateAssigneePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.UI.Filter.SetAssignee(&id)
 			}
 			m.UIState.Mode = state.FilterBarMode
-			return m.executeSearch()
+			return m.refreshFilteredTasks()
 		}
 
 		if m.Pickers.Assignee.IsClearSelected() {

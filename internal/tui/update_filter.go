@@ -15,7 +15,7 @@ func (m Model) handleFilterBarMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if m.UI.Filter.FocusedChip == state.FilterChipClearAll {
 			m.UI.Filter.ClearAll()
-			return m.executeSearch()
+			return m.refreshFilteredTasks()
 		}
 		return m.openFilterPicker()
 
@@ -29,7 +29,7 @@ func (m Model) handleFilterBarMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "x", "delete", "backspace":
 		if m.UI.Filter.ClearFocusedChip() {
-			return m.executeSearch()
+			return m.refreshFilteredTasks()
 		}
 		return m, nil
 	}

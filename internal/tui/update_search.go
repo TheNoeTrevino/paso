@@ -26,14 +26,14 @@ func (m Model) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleSearchCancel()
 	case "backspace", "ctrl+h":
 		if m.UI.Search.Backspace() {
-			return m.executeSearch()
+			return m.refreshFilteredTasks()
 		}
 		return m, nil
 	default:
 		key := msg.String()
 		if len(key) == 1 {
 			if m.UI.Search.AppendChar(rune(key[0])) {
-				return m.executeSearch()
+				return m.refreshFilteredTasks()
 			}
 		}
 		return m, nil
@@ -54,12 +54,12 @@ func (m Model) handleSearchCancel() (tea.Model, tea.Cmd) {
 	m.UI.Search.Clear()
 	m.UI.Search.Deactivate()
 	m.UIState.Mode = state.NormalMode
-	return m.executeSearch()
+	return m.refreshFilteredTasks()
 }
 
-// executeSearch runs the search query and updates the task list.
+// refreshFilteredTasks runs the search query and updates the task list.
 // Delegates to fetchTasksForCurrentProject which handles both search and field filters.
-func (m Model) executeSearch() (tea.Model, tea.Cmd) {
+func (m Model) refreshFilteredTasks() (tea.Model, tea.Cmd) {
 	project := m.getCurrentProject()
 	if project == nil {
 		return m, nil
