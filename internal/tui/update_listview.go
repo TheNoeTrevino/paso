@@ -17,7 +17,11 @@ func (m Model) handleToggleView() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *Model) handleMoveTaskToProject() (tea.Model, tea.Cmd) {
+func (m Model) handleMoveTaskToProject() (tea.Model, tea.Cmd) {
+	if !m.initProjectPicker() {
+		return m, nil
+	}
+	m.UIState.Mode = state.ProjectPickerMode
 	return m, nil
 }
 

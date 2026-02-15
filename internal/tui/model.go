@@ -1078,6 +1078,53 @@ func (m *Model) initAssigneePicker(mode state.Mode) bool {
 	return true
 }
 
+// initProjectPicker initializes the project picker for moving a task to another project.
+// It loads all projects, filters out the current project, and sets up the picker state.
+// Returns false if there's a database error, no current project, no other projects, or no selected task.
+func (m *Model) initProjectPicker() bool {
+	ctx, cancel := m.DBContext()
+	defer cancel()
+
+	projects, err := m.App.ProjectService.GetAllProjects(ctx)
+	if err != nil {
+		slog.Error("failed to load projects for picker", "error", err)
+		m.UI.Notification.Add(state.LevelError, "Failed to load projects")
+		return false
+	}
+
+	currentProject := m.getCurrentProject()
+	if currentProject == nil {
+		m.UI.Notification.Add(state.LevelError, "No project selected")
+		return false
+	}
+
+	// Filter out the current project
+	filtered := make([]*models.Project, 0, len(projects))
+	for _, p := range projects {
+		if p.ID != currentProject.ID {
+			filtered = append(filtered, p)
+		}
+	}
+
+	if len(filtered) == 0 {
+		m.UI.Notification.Add(state.LevelInfo, "No other projects available")
+		return false
+	}
+
+	task := m.getCurrentTask()
+	if task == nil {
+		m.UI.Notification.Add(state.LevelError, "No task selected")
+		return false
+	}
+
+	m.Forms.Form.EditingTaskID = task.ID
+	m.Pickers.Project.SetProjects(filtered)
+	m.Pickers.Project.SetCursor(0)
+	m.Pickers.Project.ReturnMode = state.NormalMode
+
+	return true
+}
+
 // initEstimateInput initializes the estimate input for both form and board modes.
 // - In form mode: Uses FormEstimate from form state (edit or create)
 // - In board mode: Uses estimate from the currently selected task (quick edit)
