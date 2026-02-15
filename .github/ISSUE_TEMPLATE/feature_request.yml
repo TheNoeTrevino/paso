@@ -1,0 +1,50 @@
+name: Feature Request
+description: Suggest a new feature
+title: "feature: "
+labels: [enhancement]
+body:
+  - type: checkboxes
+    attributes:
+      label: Did you check the docs?
+      description: Make sure you read all the docs before submitting a feature request
+      options:
+        - label: I have read all the paso docs
+          required: true
+  - type: textarea
+    attributes:
+      label: Is your feature request related to a problem? Please describe.
+      description: A clear and concise description of what the problem is.
+      placeholder: |
+        I'm always frustrated when...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Describe the solution you'd like
+      description: A clear and concise description of what you want to happen.
+      placeholder: |
+        When I use <C-M>, I should be presented a picker for projects I can move a task to.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Acceptance Criteria
+      description: What must be available to the user for this to closed.
+      placeholder: |
+        The user must be able to move a task from one project to another without deleting data.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Describe alternatives/other solutions you've considered
+      description: A clear and concise description of any alternative solutions or features you've considered.
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add any other context or screenshots about the feature request here.
+      placeholder: |
+        I always put the task on the wrong project, I feel like others might have the same issue
+    validations:
+      required: false
