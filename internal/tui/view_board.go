@@ -133,6 +133,12 @@ func (m Model) viewKanbanBoard() string {
 	inlineNotification := m.getInlineNotification()
 	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UIState.Width(), inlineNotification)
 
+	filterBar := components.RenderFilterBar(components.FilterBarProps{
+		Filter:  m.UI.Filter,
+		Focused: m.UIState.Mode == state.FilterBarMode,
+		Width:   m.UIState.Width(),
+	})
+
 	footer := components.RenderStatusBar(components.StatusBarProps{
 		Width:            m.UIState.Width(),
 		SearchMode:       m.UIState.Mode == state.SearchMode || m.UI.Search.IsActive,
@@ -143,7 +149,7 @@ func (m Model) viewKanbanBoard() string {
 	})
 
 	// Build content (everything except footer)
-	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, board, "")
+	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, filterBar, board, "")
 
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
@@ -192,6 +198,12 @@ func (m Model) viewListView() string {
 	inlineNotification := m.getInlineNotification()
 	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UIState.Width(), inlineNotification)
 
+	filterBar := components.RenderFilterBar(components.FilterBarProps{
+		Filter:  m.UI.Filter,
+		Focused: m.UIState.Mode == state.FilterBarMode,
+		Width:   m.UIState.Width(),
+	})
+
 	// Render list content with sort indicator
 	listContent := renderers.RenderListView(
 		rows,
@@ -213,7 +225,7 @@ func (m Model) viewListView() string {
 	})
 
 	// Build content (everything except footer)
-	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, listContent, "")
+	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, filterBar, listContent, "")
 
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
