@@ -1098,7 +1098,7 @@ func (s *service) MoveTaskToColumn(ctx context.Context, taskID, columnID int) er
 	taskPos, err := s.queries.GetTaskPosition(ctx, int64(taskID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return err
+			return ErrTaskNotFound
 		}
 		return fmt.Errorf("failed to verify task exists: %w", err)
 	}
@@ -1157,7 +1157,7 @@ func (s *service) moveToSpecialColumn(ctx context.Context, taskID int, findColum
 	taskDetail, err := s.queries.GetTaskDetail(ctx, int64(taskID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return err
+			return ErrTaskNotFound
 		}
 		return fmt.Errorf("failed to get task: %w", err)
 	}
@@ -1224,7 +1224,7 @@ func (s *service) MoveTaskToProject(ctx context.Context, taskID int, targetProje
 	currentProjectID, err := s.queries.GetProjectIDFromTask(ctx, int64(taskID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return err
+			return ErrTaskNotFound
 		}
 		return fmt.Errorf("failed to get task: %w", err)
 	}
