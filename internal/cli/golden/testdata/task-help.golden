@@ -19,6 +19,7 @@ Available Commands:
   move        Move a task to another column
   ready       List tasks ready to work on
   show        Show task details
+  switch      Move a task to a different project
   to-ready    Move a task to the ready column
   update      Update a task
 
