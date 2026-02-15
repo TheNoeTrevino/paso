@@ -48,9 +48,9 @@ type KeyMappings struct {
 	Quit          string `yaml:"quit"`
 
 	// Views
-	ToggleView   string `yaml:"toggle_view"`
-	ChangeStatus string `yaml:"change_status"`
-	SortList     string `yaml:"sort_list"`
+	ToggleView        string `yaml:"toggle_view"`
+	MoveTaskToProject string `yaml:"move_task_to_project"`
+	SortList          string `yaml:"sort_list"`
 }
 
 // DefaultKeyMappings returns the default key mappings
@@ -100,9 +100,9 @@ func DefaultKeyMappings() KeyMappings {
 		Quit:          "q",
 
 		// Views
-		ToggleView:   "v",
-		ChangeStatus: "s",
-		SortList:     "S",
+		ToggleView:        "v",
+		MoveTaskToProject: "s",
+		SortList:          "S",
 	}
 }
 
@@ -212,8 +212,8 @@ func (k *KeyMappings) applyDefaults() {
 	if k.ToggleView == "" {
 		k.ToggleView = defaults.ToggleView
 	}
-	if k.ChangeStatus == "" {
-		k.ChangeStatus = defaults.ChangeStatus
+	if k.MoveTaskToProject == "" {
+		k.MoveTaskToProject = defaults.MoveTaskToProject
 	}
 	if k.SortList == "" {
 		k.SortList = defaults.SortList
