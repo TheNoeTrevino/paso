@@ -39,11 +39,25 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch keyMsg.String() {
 	case "esc":
 		// Close picker and return to appropriate mode
-		if m.Pickers.Label.ReturnMode == state.TicketFormMode {
+		switch m.Pickers.Label.ReturnMode {
+		case state.FilterBarMode:
+			// Filter mode: sync selected labels to filter state and re-fetch
+			var labelIDs []int
+			for _, item := range m.Pickers.Label.Items {
+				if item.Selected {
+					labelIDs = append(labelIDs, item.Label.ID)
+				}
+			}
+			m.UI.Filter.SetLabels(labelIDs)
+			m.Pickers.Label.Filter = ""
+			m.Pickers.Label.Cursor = 0
+			m.UIState.Mode = state.FilterBarMode
+			return m.executeSearch()
+		case state.TicketFormMode:
 			// In form mode: sync selections and return to form
 			m.syncLabelPickerToFormState()
 			m.UIState.Mode = state.TicketFormMode
-		} else {
+		default:
 			// In view mode: return to NormalMode
 			m.UIState.Mode = state.NormalMode
 			// Clear EditingTaskID when returning to board
@@ -76,8 +90,8 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Find the index in the unfiltered list
 			for i, pi := range m.Pickers.Label.Items {
 				if pi.Label.ID == item.Label.ID {
-					if m.Pickers.Label.ReturnMode == state.TicketFormMode {
-						// In form mode: just toggle selection state, don't update database
+					if m.Pickers.Label.ReturnMode == state.TicketFormMode || m.Pickers.Label.ReturnMode == state.FilterBarMode {
+						// In form/filter mode: just toggle selection state, don't update database
 						m.Pickers.Label.Items[i].Selected = !m.Pickers.Label.Items[i].Selected
 					} else {
 						// In view mode: update database immediately
@@ -108,8 +122,9 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
-		} else {
+		} else if m.Pickers.Label.ReturnMode != state.FilterBarMode {
 			// Create new label - switch to name input sub-mode (first step)
+			// Not available in filter mode — only existing labels can be filtered by
 			// Pre-populate name buffer with filter text if present
 			if strings.TrimSpace(m.Pickers.Label.Filter) != "" {
 				m.Pickers.Label.NameBuffer = strings.TrimSpace(m.Pickers.Label.Filter)
@@ -122,7 +137,8 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case "ctrl+d":
 		// Delete the label at cursor position (only if cursor is on a label, not "+ Create new label")
-		if m.Pickers.Label.Cursor < len(filteredItems) {
+		// Not available in filter mode
+		if m.Pickers.Label.ReturnMode != state.FilterBarMode && m.Pickers.Label.Cursor < len(filteredItems) {
 			item := filteredItems[m.Pickers.Label.Cursor]
 
 			// Count tasks using this label
@@ -630,6 +646,14 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cursorIdx >= 0 && cursorIdx < len(priorities) {
 			selectedPriority := priorities[cursorIdx]
 
+			if m.Pickers.Priority.ReturnMode == state.FilterBarMode {
+				// Filter mode: set filter and re-fetch tasks
+				id := selectedPriority.ID
+				m.UI.Filter.SetPriority(&id)
+				m.UIState.Mode = state.FilterBarMode
+				return m.executeSearch()
+			}
+
 			// If we're editing a task, update it in the database
 			if m.Forms.Form.EditingTaskID != 0 {
 				ctx, cancel := m.DBContext()
@@ -709,6 +733,14 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if cursorIdx >= 0 && cursorIdx < len(types) {
 			selectedType := types[cursorIdx]
+
+			if m.Pickers.Type.ReturnMode == state.FilterBarMode {
+				// Filter mode: set filter and re-fetch tasks
+				id := selectedType.ID
+				m.UI.Filter.SetType(&id)
+				m.UIState.Mode = state.FilterBarMode
+				return m.executeSearch()
+			}
 
 			// If we're editing a task, update it in the database
 			if m.Forms.Form.EditingTaskID != 0 {
@@ -834,6 +866,20 @@ func (m Model) updateAssigneePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "enter":
+		if m.Pickers.Assignee.ReturnMode == state.FilterBarMode {
+			// Filter mode: set assignee filter
+			if m.Pickers.Assignee.IsClearSelected() {
+				// First option = "Unassigned" sentinel (-1)
+				unassigned := -1
+				m.UI.Filter.SetAssignee(&unassigned)
+			} else if selected := m.Pickers.Assignee.SelectedAssignee(); selected != nil {
+				id := selected.ID
+				m.UI.Filter.SetAssignee(&id)
+			}
+			m.UIState.Mode = state.FilterBarMode
+			return m.executeSearch()
+		}
+
 		if m.Pickers.Assignee.IsClearSelected() {
 			// Clear assignee
 			if m.Forms.Form.EditingTaskID != 0 {

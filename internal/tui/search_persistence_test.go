@@ -308,11 +308,10 @@ func TestUnit_SearchPersistence_FetchTasksPassesCorrectQuery(t *testing.T) {
 		"search query should be passed exactly as-is to the filtered service call")
 }
 
-// TestUnit_SearchPersistence_CancelledSearchUsesUnfiltered verifies
-// that after pressing Esc to cancel search, the query is cleared and
-// the unfiltered path is used. In practice, handleSearchCancel() always
-// calls Clear() + Deactivate(), so Query is empty after cancel.
-func TestUnit_SearchPersistence_CancelledSearchUsesUnfiltered(t *testing.T) {
+// TestUnit_SearchPersistence_InactiveSearchWithQueryDoesNotFilter verifies
+// that if the search has a query but IsActive is false, it uses the unfiltered path.
+// This covers the case where the user typed a search but pressed Esc to cancel.
+func TestUnit_SearchPersistence_InactiveSearchWithQueryDoesNotFilter(t *testing.T) {
 	t.Parallel()
 	svc := NewDefaultMockServices()
 
@@ -328,11 +327,10 @@ func TestUnit_SearchPersistence_CancelledSearchUsesUnfiltered(t *testing.T) {
 	m.UIState.Height = 40
 	m.SubscriptionStarted = true
 
-	// Simulate cancel: query cleared and deactivated (matches handleSearchCancel behavior)
-	m.UI.Search.Clear()
+	// Set a query but don't activate it (user pressed Esc)
+	m.UI.Search.Query = "test"
 	m.UI.Search.Deactivate()
 	require.False(t, m.UI.Search.IsActive)
-	require.Equal(t, "", m.UI.Search.Query)
 
 	initialUnfilteredCalls := svc.Task.CallCount("GetTaskSummariesByProject")
 
@@ -348,7 +346,7 @@ func TestUnit_SearchPersistence_CancelledSearchUsesUnfiltered(t *testing.T) {
 	UpdateModelWithMessage(m, refreshMsg)
 
 	assert.Greater(t, svc.Task.CallCount("GetTaskSummariesByProject"), initialUnfilteredCalls,
-		"should use unfiltered query after search is cancelled")
+		"should use unfiltered query when search has a query but is not active")
 	assert.Equal(t, 0, svc.Task.CallCount("GetTaskSummariesWithFilters"),
-		"should NOT use filtered query after search is cancelled")
+		"should NOT use filtered query when search is not active")
 }

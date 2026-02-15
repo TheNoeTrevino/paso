@@ -1364,7 +1364,7 @@ func (m *Model) reloadCurrentProject() {
 // respecting both the active search filter and field filters from the filter bar.
 // Uses the unified filter query so search + filters combine with AND logic.
 func (m *Model) fetchTasksForCurrentProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error) {
-	hasSearch := m.UI.Search.Query != ""
+	hasSearch := m.UI.Search.IsActive && m.UI.Search.Query != ""
 	hasFilters := m.UI.Filter.HasAnyFilter()
 
 	if !hasSearch && !hasFilters {
@@ -1381,7 +1381,7 @@ func (m *Model) buildFilterParams(projectID int) tasksvc.TaskFilterParams {
 		ProjectID: projectID,
 	}
 
-	if m.UI.Search.Query != "" {
+	if m.UI.Search.IsActive && m.UI.Search.Query != "" {
 		q := m.UI.Search.Query
 		params.Title = &q
 	}
