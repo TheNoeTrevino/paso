@@ -201,45 +201,6 @@ func ReadyTaskSummaryFromRowToModel(row types.GetReadyTaskSummariesByProjectRow)
 	return summary
 }
 
-// FilteredTaskSummaryFromRowToModel converts a filtered task summary row to models.TaskSummary
-func FilteredTaskSummaryFromRowToModel(row types.GetTaskSummariesByProjectFilteredRow) *models.TaskSummary {
-	summary := &models.TaskSummary{
-		ID:        int(row.ID),
-		Title:     row.Title,
-		ColumnID:  int(row.ColumnID),
-		Position:  int(row.Position),
-		IsBlocked: row.IsBlocked,
-		Labels:    ParseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
-	}
-
-	if row.TypeDescription.Valid {
-		summary.TypeDescription = row.TypeDescription.String
-	}
-	if row.PriorityDescription.Valid {
-		summary.PriorityDescription = row.PriorityDescription.String
-	}
-	if row.PriorityColor.Valid {
-		summary.PriorityColor = row.PriorityColor.String
-	}
-	if row.AssigneeID.Valid {
-		id := int(row.AssigneeID.Int64)
-		summary.AssigneeID = &id
-	}
-	if row.AssigneeName.Valid {
-		name := row.AssigneeName.String
-		summary.AssigneeName = &name
-	}
-	if row.Estimate.Valid {
-		estimate := row.Estimate.String
-		summary.Estimate = &estimate
-	}
-	if row.DueDate.Valid {
-		summary.DueDate = &row.DueDate.Time
-	}
-
-	return summary
-}
-
 // WithFiltersTaskSummaryFromRowToModel converts a WithFilters task summary row to models.TaskSummary
 func WithFiltersTaskSummaryFromRowToModel(row types.GetTaskSummariesWithFiltersRow) *models.TaskSummary {
 	summary := &models.TaskSummary{

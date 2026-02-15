@@ -36,7 +36,6 @@ type TaskReader interface {
 	GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error)
 	GetTaskActivities(ctx context.Context, taskID int) ([]models.ActivityItem, error)
 	GetTaskSummariesByProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error)
-	GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error)
 	GetTaskSummariesWithFilters(ctx context.Context, params TaskFilterParams) (map[int][]*models.TaskSummary, error)
 	GetReadyTaskSummariesByProject(ctx context.Context, projectID int) ([]*models.TaskSummary, error)
 	GetInProgressTasksByProject(ctx context.Context, projectID int) ([]*models.TaskDetail, error)
@@ -739,33 +738,6 @@ func (s *service) GetTaskSummariesByProject(ctx context.Context, projectID int) 
 	result := make(map[int][]*models.TaskSummary)
 	for _, row := range rows {
 		summary := converters.TaskSummaryFromRowToModel(row)
-		columnID := int(row.ColumnID)
-		result[columnID] = append(result[columnID], summary)
-	}
-
-	return result, nil
-}
-
-// GetTaskSummariesByProjectFiltered retrieves filtered task summaries
-func (s *service) GetTaskSummariesByProjectFiltered(ctx context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	// Add wildcards for LIKE query
-	searchPattern := "%" + searchQuery + "%"
-
-	rows, err := s.queries.GetTaskSummariesByProjectFiltered(ctx, types.GetTaskSummariesByProjectFilteredParams{
-		ProjectID: int64(projectID),
-		Title:     searchPattern,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get filtered task summaries: %w", err)
-	}
-
-	// Group by column
-	result := make(map[int][]*models.TaskSummary)
-	for _, row := range rows {
-		summary := converters.FilteredTaskSummaryFromRowToModel(row)
 		columnID := int(row.ColumnID)
 		result[columnID] = append(result[columnID], summary)
 	}

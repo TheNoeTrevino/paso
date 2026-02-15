@@ -161,8 +161,6 @@ type Querier interface {
 	// Retrieves task summaries with aggregated labels and blocking status
 	// for all tasks in a project
 	GetTaskSummariesByProject(ctx context.Context, projectID int64) ([]GetTaskSummariesByProjectRow, error)
-	// Retrieves task summaries filtered by title search pattern with aggregated labels
-	GetTaskSummariesByProjectFiltered(ctx context.Context, arg GetTaskSummariesByProjectFilteredParams) ([]GetTaskSummariesByProjectFilteredRow, error)
 	// Retrieves task summaries filtered by multiple optional criteria with aggregated labels
 	GetTaskSummariesWithFilters(ctx context.Context, arg GetTaskSummariesWithFiltersParams) ([]GetTaskSummariesWithFiltersRow, error)
 	// Retrieves only the type_id and priority_id for a task (lightweight query)

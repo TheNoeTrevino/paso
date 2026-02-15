@@ -122,11 +122,6 @@ type GetTaskBelowParams struct {
 	Position int64
 }
 
-type GetTaskSummariesByProjectFilteredParams struct {
-	ProjectID int64
-	Title     string
-}
-
 type GetTaskSummariesWithFiltersParams struct {
 	ProjectID   int64
 	TitleFilter NullString
