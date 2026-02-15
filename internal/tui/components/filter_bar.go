@@ -21,6 +21,7 @@ type FilterBarProps struct {
 }
 
 // RenderFilterBar renders the filter bar with chip-style buttons.
+//  Label:  Priority: 󰉺 Type: task  Assignee  Clear All
 func RenderFilterBar(props FilterBarProps) string {
 	if props.Filter == nil {
 		return ""
@@ -28,11 +29,11 @@ func RenderFilterBar(props FilterBarProps) string {
 
 	chipTexts := make([]string, state.FilterChipCount)
 
-	chipTexts[state.FilterChipLabel] = buildChipText("Label", strings.Join(props.LabelNames, ", "))
-	chipTexts[state.FilterChipPriority] = buildChipText("Priority", props.PriorityName)
-	chipTexts[state.FilterChipType] = buildChipText("Type", props.TypeName)
-	chipTexts[state.FilterChipAssignee] = buildChipText("Assignee", props.AssigneeName)
-	chipTexts[state.FilterChipClearAll] = "Clear All"
+	chipTexts[state.FilterChipLabel] = buildChipText(" Label", strings.Join(props.LabelNames, ", "))
+	chipTexts[state.FilterChipPriority] = buildChipText(" Priority", props.PriorityName)
+	chipTexts[state.FilterChipType] = buildChipText("󰉺 Type", props.TypeName)
+	chipTexts[state.FilterChipAssignee] = buildChipText(" Assignee", props.AssigneeName)
+	chipTexts[state.FilterChipClearAll] = " Clear All"
 
 	var chips []string
 	for i := range int(state.FilterChipCount) {
@@ -42,13 +43,7 @@ func RenderFilterBar(props FilterBarProps) string {
 		chips = append(chips, styled)
 	}
 
-	row := strings.Join(chips, "  ")
-
-	prefix := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Subtle)).
-		Render("Filter: ")
-
-	line := prefix + row
+	line := strings.Join(chips, "  ")
 
 	barStyle := lipgloss.NewStyle().
 		Width(props.Width).
