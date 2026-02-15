@@ -3,11 +3,27 @@
 Paso is a dual-interface task management CLI/TUI
 
 ## Tech Stack
+
 - Go
 - BubbleTea (TUI Framework)
 - Cobra (CLI Framework)
 - Sqlite/Postgres (Database)
 - Sqlc (DB code generation)
+- Github
+
+## Workflow
+
+Before starting any work, make sure we are on a branch, and are tracking an issue.
+
+For example: `feature-123/your-feature`, where 123 is the issue number you are working on.
+
+If we are not on a branch like that, ask me what issue we are working on.
+Using `gh`, find that issue on github.
+If there is no issue, recommend the user to open one, and assign it to themselves. 
+
+Ask the user if they want to create and checkout a new branch for that issue.
+
+Follow the Git workflow outlined in the `CONTRIBUTING.md` file.
 
 ## Coding Practices
 
@@ -30,7 +46,7 @@ Avoid the N+1 query problem by fetching what you need in one query, never EVER f
 
 ## Docs
 
-In the docs folder, we have these entries:
+In the `./docs` folder, we have these entries:
 - `ARCHITECTURE.md`
 - `TESTING.md`
 

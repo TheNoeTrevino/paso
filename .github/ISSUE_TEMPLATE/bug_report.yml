@@ -1,0 +1,69 @@
+name: Bug Report
+description: File a bug/issue
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before** reporting an issue, make sure to read the [documentation](https://github.com/TheNoeTrevino/haunt.nvim)
+        and search [existing issues](https://github.com/TheNoeTrevino/haunt.nvim/issues).
+
+        Usage questions such as ***"How do I...?"*** belong in [Discussions](https://github.com/TheNoeTrevino/haunt.nvim/discussions) and will be closed.
+  - type: checkboxes
+    attributes:
+      label: Did you check docs and existing issues?
+      description: Make sure you checked all of the below before submitting an issue
+      options:
+        - label: I have read all the paso docs
+          required: true
+        - label: I have updated the package to the latest version before submitting this issue
+          required: true
+        - label: I have searched the existing issues of paso
+          required: true
+        - label: I have searched the existing issues of project related to this issue
+          required: true
+  - type: input
+    attributes:
+      label: "Paso version (paso -v)"
+      placeholder: "0.8.0 commit db1b0ee3b30f"
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: "Operating system/version"
+      placeholder: "Arch Linux"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is. Please include any related errors you see in paso.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps To Reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1.
+        2. 
+        3.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Acceptanced Criteria
+      description: What is your thoughts on what new behavior must be?
+      placeholder: |
+        The cli should no longer panic when this scenario descriped in the 'Steps to Reproduce' happens
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Potential cause
+      description: If you are technical, what do you think it might be? 
+      placeholder: |
+        Looks like a race condition between this and that
+    validations:
+      required: false
