@@ -39,7 +39,7 @@ func NewMockLabelService() *MockLabelService {
 	}
 }
 
-func (m *MockLabelService) recordCall(method string, args map[string]interface{}) {
+func (m *MockLabelService) recordCall(method string, args map[string]any) {
 	m.Calls = append(m.Calls, MockCall{
 		Method: method,
 		Args:   args,
@@ -90,7 +90,7 @@ func (m *MockLabelService) CallCount(method string) int {
 func (m *MockLabelService) GetLabelsByProject(ctx context.Context, projectID int) ([]*models.Label, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("GetLabelsByProject", map[string]interface{}{
+	m.recordCall("GetLabelsByProject", map[string]any{
 		"projectID": projectID,
 	})
 	if m.GetLabelsByProjectErr != nil {
@@ -102,7 +102,7 @@ func (m *MockLabelService) GetLabelsByProject(ctx context.Context, projectID int
 func (m *MockLabelService) GetLabelsForTask(ctx context.Context, taskID int) ([]*models.Label, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("GetLabelsForTask", map[string]interface{}{
+	m.recordCall("GetLabelsForTask", map[string]any{
 		"taskID": taskID,
 	})
 	if m.GetLabelsForTaskErr != nil {
@@ -114,7 +114,7 @@ func (m *MockLabelService) GetLabelsForTask(ctx context.Context, taskID int) ([]
 func (m *MockLabelService) CountTasksByLabel(ctx context.Context, labelID int) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CountTasksByLabel", map[string]interface{}{
+	m.recordCall("CountTasksByLabel", map[string]any{
 		"labelID": labelID,
 	})
 	if m.CountTasksByLabelErr != nil {
@@ -126,7 +126,7 @@ func (m *MockLabelService) CountTasksByLabel(ctx context.Context, labelID int) (
 func (m *MockLabelService) CreateLabel(ctx context.Context, req label.CreateLabelRequest) (*models.Label, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateLabel", map[string]interface{}{
+	m.recordCall("CreateLabel", map[string]any{
 		"projectID": req.ProjectID,
 		"name":      req.Name,
 		"color":     req.Color,
@@ -140,7 +140,7 @@ func (m *MockLabelService) CreateLabel(ctx context.Context, req label.CreateLabe
 func (m *MockLabelService) UpdateLabel(ctx context.Context, req label.UpdateLabelRequest) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("UpdateLabel", map[string]interface{}{
+	m.recordCall("UpdateLabel", map[string]any{
 		"id":    req.ID,
 		"name":  req.Name,
 		"color": req.Color,
@@ -151,7 +151,7 @@ func (m *MockLabelService) UpdateLabel(ctx context.Context, req label.UpdateLabe
 func (m *MockLabelService) DeleteLabel(ctx context.Context, id int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("DeleteLabel", map[string]interface{}{
+	m.recordCall("DeleteLabel", map[string]any{
 		"id": id,
 	})
 	return m.DeleteLabelErr

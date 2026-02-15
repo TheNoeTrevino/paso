@@ -58,7 +58,7 @@ func (m *MockGitDetector) ValidateBranchName(_ context.Context, branchName strin
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.recordCall("ValidateBranchName", map[string]interface{}{
+	m.recordCall("ValidateBranchName", map[string]any{
 		"branchName": branchName,
 	})
 
@@ -81,7 +81,7 @@ func (m *MockGitDetector) BranchExists(_ context.Context, branchName string) (bo
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.recordCall("BranchExists", map[string]interface{}{
+	m.recordCall("BranchExists", map[string]any{
 		"branchName": branchName,
 	})
 
@@ -147,7 +147,7 @@ func (m *MockGitDetector) CallCount(method string) int {
 }
 
 // recordCall records a method call. Must be called with lock held.
-func (m *MockGitDetector) recordCall(method string, args map[string]interface{}) {
+func (m *MockGitDetector) recordCall(method string, args map[string]any) {
 	m.calls = append(m.calls, MockCall{
 		Method: method,
 		Args:   args,

@@ -12,7 +12,7 @@ import (
 type EventCall struct {
 	Method string
 	TaskID int
-	Args   map[string]interface{}
+	Args   map[string]any
 }
 
 // MockService is a mock implementation of taskevent.Service for testing.
@@ -44,9 +44,9 @@ func NewMockService() *MockService {
 	}
 }
 
-func (m *MockService) recordCall(method string, taskID int, args map[string]interface{}) {
+func (m *MockService) recordCall(method string, taskID int, args map[string]any) {
 	if args == nil {
-		args = make(map[string]interface{})
+		args = make(map[string]any)
 	}
 	m.Calls = append(m.Calls, EventCall{
 		Method: method,
@@ -101,7 +101,7 @@ func (m *MockService) CallCount(method string) int {
 func (m *MockService) CreateTaskCreatedEvent(ctx context.Context, qtx types.Querier, taskID int, title, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateTaskCreatedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreateTaskCreatedEvent", taskID, map[string]any{
 		"title":  title,
 		"author": author,
 	})
@@ -111,7 +111,7 @@ func (m *MockService) CreateTaskCreatedEvent(ctx context.Context, qtx types.Quer
 func (m *MockService) CreateTaskMovedEvent(ctx context.Context, qtx types.Querier, taskID int, fromColumn, toColumn, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateTaskMovedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreateTaskMovedEvent", taskID, map[string]any{
 		"fromColumn": fromColumn,
 		"toColumn":   toColumn,
 		"author":     author,
@@ -122,7 +122,7 @@ func (m *MockService) CreateTaskMovedEvent(ctx context.Context, qtx types.Querie
 func (m *MockService) CreateTaskAssociatedEvent(ctx context.Context, qtx types.Querier, taskID, relatedTaskID int, relatedTitle, relationLabel, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateTaskAssociatedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreateTaskAssociatedEvent", taskID, map[string]any{
 		"relatedTaskID": relatedTaskID,
 		"relatedTitle":  relatedTitle,
 		"relationLabel": relationLabel,
@@ -134,7 +134,7 @@ func (m *MockService) CreateTaskAssociatedEvent(ctx context.Context, qtx types.Q
 func (m *MockService) CreateTaskDisassociatedEvent(ctx context.Context, qtx types.Querier, taskID, relatedTaskID int, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateTaskDisassociatedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreateTaskDisassociatedEvent", taskID, map[string]any{
 		"relatedTaskID": relatedTaskID,
 		"author":        author,
 	})
@@ -144,7 +144,7 @@ func (m *MockService) CreateTaskDisassociatedEvent(ctx context.Context, qtx type
 func (m *MockService) CreateLabelAddedEvent(ctx context.Context, qtx types.Querier, taskID int, labelName, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateLabelAddedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreateLabelAddedEvent", taskID, map[string]any{
 		"labelName": labelName,
 		"author":    author,
 	})
@@ -154,7 +154,7 @@ func (m *MockService) CreateLabelAddedEvent(ctx context.Context, qtx types.Queri
 func (m *MockService) CreateLabelRemovedEvent(ctx context.Context, qtx types.Querier, taskID int, labelName, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateLabelRemovedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreateLabelRemovedEvent", taskID, map[string]any{
 		"labelName": labelName,
 		"author":    author,
 	})
@@ -164,7 +164,7 @@ func (m *MockService) CreateLabelRemovedEvent(ctx context.Context, qtx types.Que
 func (m *MockService) CreatePriorityChangedEvent(ctx context.Context, qtx types.Querier, taskID int, oldPriority, newPriority, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreatePriorityChangedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreatePriorityChangedEvent", taskID, map[string]any{
 		"oldPriority": oldPriority,
 		"newPriority": newPriority,
 		"author":      author,
@@ -175,7 +175,7 @@ func (m *MockService) CreatePriorityChangedEvent(ctx context.Context, qtx types.
 func (m *MockService) CreateTypeChangedEvent(ctx context.Context, qtx types.Querier, taskID int, oldType, newType, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateTypeChangedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreateTypeChangedEvent", taskID, map[string]any{
 		"oldType": oldType,
 		"newType": newType,
 		"author":  author,

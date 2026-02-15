@@ -19,32 +19,30 @@ type MockTaskService struct {
 	Calls []MockCall
 
 	// TaskReader error injection
-	GetTaskDetailErr                     error
-	GetTaskActivitiesErr                 error
-	GetTaskSummariesByProjectErr         error
-	GetTaskSummariesByProjectFilteredErr error
-	GetTaskSummariesWithFiltersErr       error
-	GetReadyTaskSummariesByProjectErr    error
-	GetInProgressTasksByProjectErr       error
-	GetTaskReferencesForProjectErr       error
-	GetTaskTreeByProjectErr              error
-	GetTaskTypeAndPriorityIDsErr         error
+	GetTaskDetailErr                  error
+	GetTaskActivitiesErr              error
+	GetTaskSummariesByProjectErr      error
+	GetTaskSummariesWithFiltersErr    error
+	GetReadyTaskSummariesByProjectErr error
+	GetInProgressTasksByProjectErr    error
+	GetTaskReferencesForProjectErr    error
+	GetTaskTreeByProjectErr           error
+	GetTaskTypeAndPriorityIDsErr      error
 
 	// TaskReader function callbacks
 	GetTaskDetailFunc func(ctx context.Context, taskID int) (*models.TaskDetail, error)
 
 	// TaskReader result injection
-	GetTaskDetailResult                     *models.TaskDetail
-	GetTaskActivitiesResult                 []models.ActivityItem
-	GetTaskSummariesByProjectResult         map[int][]*models.TaskSummary
-	GetTaskSummariesByProjectFilteredResult map[int][]*models.TaskSummary
-	GetTaskSummariesWithFiltersResult       map[int][]*models.TaskSummary
-	GetReadyTaskSummariesByProjectResult    []*models.TaskSummary
-	GetInProgressTasksByProjectResult       []*models.TaskDetail
-	GetTaskReferencesForProjectResult       []*models.TaskReference
-	GetTaskTreeByProjectResult              []*models.TaskTreeNode
-	GetTaskTypeAndPriorityIDsTypeID         int
-	GetTaskTypeAndPriorityIDsPriorityID     int
+	GetTaskDetailResult                  *models.TaskDetail
+	GetTaskActivitiesResult              []models.ActivityItem
+	GetTaskSummariesByProjectResult      map[int][]*models.TaskSummary
+	GetTaskSummariesWithFiltersResult    map[int][]*models.TaskSummary
+	GetReadyTaskSummariesByProjectResult []*models.TaskSummary
+	GetInProgressTasksByProjectResult    []*models.TaskDetail
+	GetTaskReferencesForProjectResult    []*models.TaskReference
+	GetTaskTreeByProjectResult           []*models.TaskTreeNode
+	GetTaskTypeAndPriorityIDsTypeID      int
+	GetTaskTypeAndPriorityIDsPriorityID  int
 
 	// TaskWriter error injection
 	CreateTaskErr         error
@@ -96,9 +94,9 @@ func NewMockTaskService() *MockTaskService {
 	}
 }
 
-func (m *MockTaskService) recordCall(method string, taskID int, args map[string]interface{}) {
+func (m *MockTaskService) recordCall(method string, taskID int, args map[string]any) {
 	if args == nil {
-		args = make(map[string]interface{})
+		args = make(map[string]any)
 	}
 	args["taskID"] = taskID // Keep for backward compatibility
 	m.Calls = append(m.Calls, MockCall{
@@ -182,19 +180,10 @@ func (m *MockTaskService) GetTaskSummariesByProject(_ context.Context, projectID
 	return m.GetTaskSummariesByProjectResult, m.GetTaskSummariesByProjectErr
 }
 
-func (m *MockTaskService) GetTaskSummariesByProjectFiltered(_ context.Context, projectID int, searchQuery string) (map[int][]*models.TaskSummary, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.recordCall("GetTaskSummariesByProjectFiltered", projectID, map[string]interface{}{
-		"searchQuery": searchQuery,
-	})
-	return m.GetTaskSummariesByProjectFilteredResult, m.GetTaskSummariesByProjectFilteredErr
-}
-
 func (m *MockTaskService) GetTaskSummariesWithFilters(_ context.Context, params task.TaskFilterParams) (map[int][]*models.TaskSummary, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("GetTaskSummariesWithFilters", params.ProjectID, map[string]interface{}{
+	m.recordCall("GetTaskSummariesWithFilters", params.ProjectID, map[string]any{
 		"params": params,
 	})
 	return m.GetTaskSummariesWithFiltersResult, m.GetTaskSummariesWithFiltersErr
@@ -240,7 +229,7 @@ func (m *MockTaskService) GetTaskTypeAndPriorityIDs(_ context.Context, taskID in
 func (m *MockTaskService) CreateTask(_ context.Context, req task.CreateTaskRequest) (*models.Task, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateTask", 0, map[string]interface{}{
+	m.recordCall("CreateTask", 0, map[string]any{
 		"title":       req.Title,
 		"description": req.Description,
 		"columnID":    req.ColumnID,
@@ -255,7 +244,7 @@ func (m *MockTaskService) CreateTask(_ context.Context, req task.CreateTaskReque
 func (m *MockTaskService) UpdateTask(_ context.Context, req task.UpdateTaskRequest) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("UpdateTask", req.TaskID, map[string]interface{}{
+	m.recordCall("UpdateTask", req.TaskID, map[string]any{
 		"title":       req.Title,
 		"description": req.Description,
 		"priorityID":  req.PriorityID,
@@ -267,7 +256,7 @@ func (m *MockTaskService) UpdateTask(_ context.Context, req task.UpdateTaskReque
 func (m *MockTaskService) UpdateTaskAssignee(_ context.Context, taskID int, assigneeID *int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("UpdateTaskAssignee", taskID, map[string]interface{}{
+	m.recordCall("UpdateTaskAssignee", taskID, map[string]any{
 		"assigneeID": assigneeID,
 	})
 	return m.UpdateTaskAssigneeErr
@@ -276,7 +265,7 @@ func (m *MockTaskService) UpdateTaskAssignee(_ context.Context, taskID int, assi
 func (m *MockTaskService) UpdateTaskEstimate(_ context.Context, taskID int, estimate *string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("UpdateTaskEstimate", taskID, map[string]interface{}{
+	m.recordCall("UpdateTaskEstimate", taskID, map[string]any{
 		"estimate": estimate,
 	})
 	return m.UpdateTaskEstimateErr
@@ -285,7 +274,7 @@ func (m *MockTaskService) UpdateTaskEstimate(_ context.Context, taskID int, esti
 func (m *MockTaskService) UpdateTaskDueDate(_ context.Context, taskID int, dueDate *time.Time) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("UpdateTaskDueDate", taskID, map[string]interface{}{
+	m.recordCall("UpdateTaskDueDate", taskID, map[string]any{
 		"dueDate": dueDate,
 	})
 	return m.UpdateTaskDueDateErr
@@ -317,7 +306,7 @@ func (m *MockTaskService) MoveTaskToPrevColumn(_ context.Context, taskID int) er
 func (m *MockTaskService) MoveTaskToColumn(_ context.Context, taskID, columnID int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("MoveTaskToColumn", taskID, map[string]interface{}{
+	m.recordCall("MoveTaskToColumn", taskID, map[string]any{
 		"columnID": columnID,
 	})
 	return m.MoveTaskToColumnErr
@@ -347,7 +336,7 @@ func (m *MockTaskService) MoveTaskToInProgressColumn(_ context.Context, taskID i
 func (m *MockTaskService) MoveTaskToProject(_ context.Context, taskID int, targetProjectID int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("MoveTaskToProject", taskID, map[string]interface{}{
+	m.recordCall("MoveTaskToProject", taskID, map[string]any{
 		"targetProjectID": targetProjectID,
 	})
 	return m.MoveTaskToProjectErr
@@ -372,7 +361,7 @@ func (m *MockTaskService) MoveTaskDown(_ context.Context, taskID int) error {
 func (m *MockTaskService) AddParentRelation(_ context.Context, taskID, parentID int, relationTypeID int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("AddParentRelation", taskID, map[string]interface{}{
+	m.recordCall("AddParentRelation", taskID, map[string]any{
 		"parentID":       parentID,
 		"relationTypeID": relationTypeID,
 	})
@@ -382,7 +371,7 @@ func (m *MockTaskService) AddParentRelation(_ context.Context, taskID, parentID 
 func (m *MockTaskService) AddChildRelation(_ context.Context, taskID, childID int, relationTypeID int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("AddChildRelation", taskID, map[string]interface{}{
+	m.recordCall("AddChildRelation", taskID, map[string]any{
 		"childID":        childID,
 		"relationTypeID": relationTypeID,
 	})
@@ -392,7 +381,7 @@ func (m *MockTaskService) AddChildRelation(_ context.Context, taskID, childID in
 func (m *MockTaskService) RemoveParentRelation(_ context.Context, taskID, parentID int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("RemoveParentRelation", taskID, map[string]interface{}{
+	m.recordCall("RemoveParentRelation", taskID, map[string]any{
 		"parentID": parentID,
 	})
 	return m.RemoveParentRelationErr
@@ -401,7 +390,7 @@ func (m *MockTaskService) RemoveParentRelation(_ context.Context, taskID, parent
 func (m *MockTaskService) RemoveChildRelation(_ context.Context, taskID, childID int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("RemoveChildRelation", taskID, map[string]interface{}{
+	m.recordCall("RemoveChildRelation", taskID, map[string]any{
 		"childID": childID,
 	})
 	return m.RemoveChildRelationErr
@@ -412,7 +401,7 @@ func (m *MockTaskService) RemoveChildRelation(_ context.Context, taskID, childID
 func (m *MockTaskService) AttachLabel(_ context.Context, taskID, labelID int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("AttachLabel", taskID, map[string]interface{}{
+	m.recordCall("AttachLabel", taskID, map[string]any{
 		"labelID": labelID,
 	})
 	return m.AttachLabelErr
@@ -421,7 +410,7 @@ func (m *MockTaskService) AttachLabel(_ context.Context, taskID, labelID int) er
 func (m *MockTaskService) DetachLabel(_ context.Context, taskID, labelID int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("DetachLabel", taskID, map[string]interface{}{
+	m.recordCall("DetachLabel", taskID, map[string]any{
 		"labelID": labelID,
 	})
 	return m.DetachLabelErr
@@ -432,7 +421,7 @@ func (m *MockTaskService) DetachLabel(_ context.Context, taskID, labelID int) er
 func (m *MockTaskService) CreateComment(_ context.Context, req task.CreateCommentRequest) (*models.Comment, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateComment", req.TaskID, map[string]interface{}{
+	m.recordCall("CreateComment", req.TaskID, map[string]any{
 		"message": req.Message,
 		"author":  req.Author,
 	})
@@ -442,7 +431,7 @@ func (m *MockTaskService) CreateComment(_ context.Context, req task.CreateCommen
 func (m *MockTaskService) UpdateComment(_ context.Context, req task.UpdateCommentRequest) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("UpdateComment", 0, map[string]interface{}{
+	m.recordCall("UpdateComment", 0, map[string]any{
 		"commentID": req.CommentID,
 		"message":   req.Message,
 	})
@@ -452,7 +441,7 @@ func (m *MockTaskService) UpdateComment(_ context.Context, req task.UpdateCommen
 func (m *MockTaskService) DeleteComment(_ context.Context, commentID int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("DeleteComment", 0, map[string]interface{}{
+	m.recordCall("DeleteComment", 0, map[string]any{
 		"commentID": commentID,
 	})
 	return m.DeleteCommentErr

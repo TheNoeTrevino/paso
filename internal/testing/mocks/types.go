@@ -5,5 +5,5 @@ package mocks
 type MockCall struct {
 	Method string
 	TaskID int // Optional: 0 means not applicable. Used by task-related mocks for ergonomic access.
-	Args   map[string]interface{}
+	Args   map[string]any
 }
