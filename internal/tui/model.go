@@ -1253,21 +1253,6 @@ func (m *Model) syncListToKanbanSelection() {
 	}
 }
 
-// getTaskFromListRow returns the task at the given list row index.
-// Returns nil if the index is out of bounds or no tasks exist.
-func (m Model) getTaskFromListRow(rowIdx int) *models.TaskSummary {
-	rows := m.buildListViewRows()
-	if rowIdx < 0 || rowIdx >= len(rows) {
-		return nil
-	}
-	return rows[rowIdx].Task
-}
-
-// getSelectedListTask returns the currently selected task in list view
-func (m Model) getSelectedListTask() *models.TaskSummary {
-	return m.getTaskFromListRow(m.UI.ListView.SelectedRow())
-}
-
 // subscribeToEvents returns a command that listens for events from the daemon
 // and sends RefreshMsg when data changes
 func (m Model) subscribeToEvents() tea.Cmd {
