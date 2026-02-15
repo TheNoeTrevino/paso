@@ -700,6 +700,24 @@ func (m Model) renderAssigneePickerLayer() *lipgloss.Layer {
 	})
 }
 
+// renderProjectPickerLayer renders the project picker modal as a layer
+func (m Model) renderProjectPickerLayer() *lipgloss.Layer {
+	return m.createPickerLayer(pickerLayerConfig{
+		dimensionStrategy: fixedPickerDimensions{
+			width:  layers.PickerProjectWidth,
+			height: layers.PickerProjectHeight,
+		},
+		contentRenderer: func(width, height int) string {
+			return renderers.RenderProjectPicker(
+				m.Pickers.Project.Projects(),
+				m.Pickers.Project.Cursor(),
+				width-layers.PickerBorderPaddingWidth,
+			)
+		},
+		boxStyle: components.LabelPickerBoxStyle,
+	})
+}
+
 // renderEstimateInputLayer renders the estimate input overlay as a layer
 func (m Model) renderEstimateInputLayer() *lipgloss.Layer {
 	return m.createPickerLayer(pickerLayerConfig{
