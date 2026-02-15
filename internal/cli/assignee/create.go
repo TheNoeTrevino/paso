@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/handler"
+	"github.com/thenoetrevino/paso/internal/cli/styles"
+	"github.com/thenoetrevino/paso/internal/config/colors"
 )
 
 // CreateCmd returns the assignee create subcommand
@@ -86,6 +89,16 @@ type assigneeCreateResult struct {
 // GetID implements the GetID interface for quiet mode output
 func (r *assigneeCreateResult) GetID() int {
 	return r.ID
+}
+
+// PrettyPrint implements the PrettyPrintable interface for styled output
+func (r *assigneeCreateResult) PrettyPrint(colorScheme colors.ColorScheme) string {
+	details := []styles.Detail{
+		{Key: "ID", Value: strconv.Itoa(r.ID)},
+		{Key: "Name", Value: r.Name},
+	}
+
+	return styles.RenderSuccessWithDetails("Assignee created successfully", details, colorScheme)
 }
 
 func parseCreateFlags(cmd *cobra.Command) error {
