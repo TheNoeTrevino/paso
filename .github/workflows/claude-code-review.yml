@@ -39,23 +39,37 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Review this pull request and provide feedback on:
+            Review this pull request strictly for substantive issues in the following areas:
+
             - Code quality and best practices
-              - Guard pattern flattening, hardcore DRY violations
-              - Basically, things that would come out of the Refactoring book by Martin Fowler
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
-            - Following established code conventions
+              - Guard pattern flattening
+              - Clear DRY violations
+              - Refactoring principles aligned with Martin Fowler–style improvements
+            - Potential bugs or correctness issues
+            - Performance concerns
+            - Security risks
+            - Missing or insufficient test coverage
+            - Violations of established project conventions
 
-            DO NOT PRAISE
-            Only mention short coming of the new code. 
-            Adding praise is simply adding noise to the review, keep things extremely focused, and digestable.
+            Important rules:
 
-            Use `mcp__github_inline_comment__create_inline_comment` to post inline comments
-            on specific lines where issues are found.
-            Use `gh pr comment` for a top-level summary only if no inline issues are found.
+            - Only report real, concrete issues that are directly supported by the code in this PR.
+            - Do NOT speculate.
+            - Do NOT invent hypothetical issues.
+            - Do NOT suggest stylistic preferences unless they clearly violate an established convention.
+            - Do NOT praise.
+
+            If no meaningful issues are found:
+            - Do NOT create inline comments.
+            - Post a single top-level comment stating:
+              "No substantive issues found. 10/10."
+            - Do not add anything else.
+
+            If issues are found:
+            - Use `mcp__github_inline_comment__create_inline_comment` only on specific lines where problems exist.
+            - Keep comments concise and factual.
+            - At the end, provide a short overall summary and a score out of 10.
+            - The score must reflect only real deficiencies found.
+            - Do not lower the score unless an actual issue was identified.
 
           claude_args: '--allowed-tools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"'
-
