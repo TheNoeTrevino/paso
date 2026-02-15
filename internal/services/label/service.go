@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/thenoetrevino/paso/internal/converters"
@@ -123,7 +122,7 @@ func (s *service) CreateLabel(ctx context.Context, req CreateLabelRequest) (*mod
 	})
 	if err != nil {
 		// Check for unique constraint violation
-		if isUniqueConstraintError(err) {
+		if database.IsUniqueViolation(err) {
 			return nil, fmt.Errorf("failed to create label: label with name '%s' already exists in this project", req.Name)
 		}
 		return nil, fmt.Errorf("failed to create label: %w", err)
@@ -171,7 +170,7 @@ func (s *service) UpdateLabel(ctx context.Context, req UpdateLabelRequest) error
 		Color: color,
 	}); err != nil {
 		// Check for unique constraint violation
-		if isUniqueConstraintError(err) {
+		if database.IsUniqueViolation(err) {
 			return fmt.Errorf("failed to update label: label with name '%s' already exists in this project", name)
 		}
 		return fmt.Errorf("failed to update label: %w", err)
@@ -224,14 +223,4 @@ func (s *service) publishLabelEvent(ctx context.Context, labelID, projectID int)
 		Type:      events.EventDatabaseChanged,
 		ProjectID: projectID,
 	}, 3)
-}
-
-// isUniqueConstraintError checks if an error is a SQLite unique constraint violation
-func isUniqueConstraintError(err error) bool {
-	if err == nil {
-		return false
-	}
-	// SQLite returns "UNIQUE constraint failed" in the error message
-	errStr := err.Error()
-	return strings.Contains(errStr, "UNIQUE constraint failed") || strings.Contains(errStr, "constraint failed")
 }
