@@ -44,12 +44,14 @@ func (m Model) buildFilterBarProps() components.FilterBarProps {
 		if assigneeID == -1 {
 			props.AssigneeName = "Unassigned"
 		} else {
-			for _, a := range m.Pickers.Assignee.Assignees() {
-				if a.ID == assigneeID {
-					props.AssigneeName = a.Name
-					break
-				}
+			// Resolve assignee name directly from service to avoid dependency on picker state
+			ctx, cancel := m.DBContext()
+			defer cancel()
+			assignee, err := m.App.AssigneeService.GetByID(ctx, assigneeID)
+			if err == nil && assignee != nil {
+				props.AssigneeName = assignee.Name
 			}
+			// If error or not found, leave AssigneeName empty (filter ID is still active)
 		}
 	}
 
