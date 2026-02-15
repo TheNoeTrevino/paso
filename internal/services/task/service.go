@@ -18,6 +18,8 @@ import (
 	"github.com/thenoetrevino/paso/internal/user"
 )
 
+var ErrTaskAlreadyInTargetProject = errors.New("task is already in the target project")
+
 // TaskReader defines task reading operations
 type TaskReader interface {
 	GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error)
@@ -50,6 +52,9 @@ type TaskMover interface {
 	MoveTaskToReadyColumn(ctx context.Context, taskID int) error
 	MoveTaskToCompletedColumn(ctx context.Context, taskID int) error
 	MoveTaskToInProgressColumn(ctx context.Context, taskID int) error
+
+	// Cross-project movement
+	MoveTaskToProject(ctx context.Context, taskID int, targetProjectID int) error
 
 	// Position-based movement (ordering within column)
 	MoveTaskUp(ctx context.Context, taskID int) error
@@ -1203,6 +1208,57 @@ func (s *service) MoveTaskToInProgressColumn(ctx context.Context, taskID int) er
 		col, err := s.queries.GetInProgressColumnByProject(ctx, projectID)
 		return col.ID, err
 	}, "in-progress")
+}
+
+// MoveTaskToProject moves a task to the ready column of a different project.
+// Returns ErrTaskAlreadyInTargetProject if the task is already in that project.
+func (s *service) MoveTaskToProject(ctx context.Context, taskID int, targetProjectID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	if err := validateTaskID(taskID); err != nil {
+		return err
+	}
+
+	// Get task detail to find current project
+	taskDetail, err := s.queries.GetTaskDetail(ctx, int64(taskID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		return fmt.Errorf("failed to get task: %w", err)
+	}
+
+	// Get the column to find the current project ID
+	column, err := s.queries.GetColumnByID(ctx, taskDetail.ColumnID)
+	if err != nil {
+		return fmt.Errorf("failed to get column: %w", err)
+	}
+
+	// Verify the target project exists
+	if _, err := s.queries.GetProjectByID(ctx, int64(targetProjectID)); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("target project not found")
+		}
+		return fmt.Errorf("failed to get target project: %w", err)
+	}
+
+	// Check if task is already in the target project
+	if column.ProjectID == int64(targetProjectID) {
+		return ErrTaskAlreadyInTargetProject
+	}
+
+	// Get the ready column in the target project
+	readyColumn, err := s.queries.GetReadyColumnByProject(ctx, int64(targetProjectID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("no ready column configured for target project")
+		}
+		return fmt.Errorf("failed to get ready column for target project: %w", err)
+	}
+
+	// Move the task to the ready column of the target project
+	return s.MoveTaskToColumn(ctx, taskID, int(readyColumn.ID))
 }
 
 // GetInProgressTasksByProject retrieves all tasks in in-progress columns for a project
