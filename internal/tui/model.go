@@ -727,6 +727,10 @@ func (m Model) switchToProject(projectIndex int) {
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
 
+	// Clear filters when switching projects since they're project-scoped
+	m.UI.Filter.ClearAll()
+	m.UI.Filter.IsActive = false
+
 	m.UIState.ResetSelection()
 }
 

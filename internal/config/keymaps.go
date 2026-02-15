@@ -45,6 +45,7 @@ type KeyMappings struct {
 	// Other
 	ShowHelp      string `yaml:"show_help"`
 	ConnectRemote string `yaml:"connect_remote"`
+	FilterBar     string `yaml:"filter_bar"`
 	Quit          string `yaml:"quit"`
 
 	// Views
@@ -96,6 +97,7 @@ func DefaultKeyMappings() KeyMappings {
 		// Other
 		ShowHelp:      "?",
 		ConnectRemote: "ctrl+h",
+		FilterBar:     "ctrl+f",
 		Quit:          "q",
 
 		// Views
@@ -203,6 +205,9 @@ func (k *KeyMappings) applyDefaults() {
 	}
 	if k.ConnectRemote == "" {
 		k.ConnectRemote = defaults.ConnectRemote
+	}
+	if k.FilterBar == "" {
+		k.FilterBar = defaults.FilterBar
 	}
 	if k.Quit == "" {
 		k.Quit = defaults.Quit
