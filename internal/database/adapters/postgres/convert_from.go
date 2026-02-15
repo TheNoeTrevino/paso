@@ -78,8 +78,8 @@ func fromGeneratedColumn(g generated_postgres.Column) types.Column {
 	return types.Column{
 		ID:                   g.ID,
 		Name:                 g.Name,
-		PrevID:               types.NullInt64FromInterface(g.PrevID),
-		NextID:               types.NullInt64FromInterface(g.NextID),
+		PrevID:               types.FromSQLNullInt64(g.PrevID),
+		NextID:               types.FromSQLNullInt64(g.NextID),
 		ProjectID:            g.ProjectID,
 		HoldsReadyTasks:      g.HoldsReadyTasks,
 		HoldsCompletedTasks:  g.HoldsCompletedTasks,
@@ -377,8 +377,8 @@ func fromGeneratedGetColumnByIDRow(g generated_postgres.GetColumnByIDRow) types.
 		ID:                   g.ID,
 		Name:                 g.Name,
 		ProjectID:            g.ProjectID,
-		PrevID:               types.NullInt64FromInterface(g.PrevID),
-		NextID:               types.NullInt64FromInterface(g.NextID),
+		PrevID:               types.FromSQLNullInt64(g.PrevID),
+		NextID:               types.FromSQLNullInt64(g.NextID),
 		HoldsReadyTasks:      g.HoldsReadyTasks,
 		HoldsCompletedTasks:  g.HoldsCompletedTasks,
 		HoldsInProgressTasks: g.HoldsInProgressTasks,
@@ -387,8 +387,8 @@ func fromGeneratedGetColumnByIDRow(g generated_postgres.GetColumnByIDRow) types.
 
 func fromGeneratedGetColumnLinkedListInfoRow(g generated_postgres.GetColumnLinkedListInfoRow) types.GetColumnLinkedListInfoRow {
 	return types.GetColumnLinkedListInfoRow{
-		PrevID:    types.NullInt64FromInterface(g.PrevID),
-		NextID:    types.NullInt64FromInterface(g.NextID),
+		PrevID:    types.FromSQLNullInt64(g.PrevID),
+		NextID:    types.FromSQLNullInt64(g.NextID),
 		ProjectID: g.ProjectID,
 	}
 }
@@ -398,8 +398,8 @@ func fromGeneratedGetColumnsByProjectRow(g generated_postgres.GetColumnsByProjec
 		ID:                   g.ID,
 		Name:                 g.Name,
 		ProjectID:            g.ProjectID,
-		PrevID:               types.NullInt64FromInterface(g.PrevID),
-		NextID:               types.NullInt64FromInterface(g.NextID),
+		PrevID:               types.FromSQLNullInt64(g.PrevID),
+		NextID:               types.FromSQLNullInt64(g.NextID),
 		HoldsReadyTasks:      g.HoldsReadyTasks,
 		HoldsCompletedTasks:  g.HoldsCompletedTasks,
 		HoldsInProgressTasks: g.HoldsInProgressTasks,
@@ -408,12 +408,11 @@ func fromGeneratedGetColumnsByProjectRow(g generated_postgres.GetColumnsByProjec
 
 func fromGeneratedGetCompletedColumnByProjectRow(g generated_postgres.GetCompletedColumnByProjectRow) types.GetCompletedColumnByProjectRow {
 	return types.GetCompletedColumnByProjectRow{
-		ID:                  g.ID,
-		Name:                g.Name,
-		ProjectID:           g.ProjectID,
-		PrevID:              types.NullInt64FromInterface(g.PrevID),
-		NextID:              types.NullInt64FromInterface(g.NextID),
-		HoldsCompletedTasks: g.HoldsCompletedTasks,
+		ID:        g.ID,
+		Name:      g.Name,
+		ProjectID: g.ProjectID,
+		PrevID:    types.FromSQLNullInt64(g.PrevID),
+		NextID:    types.FromSQLNullInt64(g.NextID),
 	}
 }
 
@@ -422,8 +421,8 @@ func fromGeneratedGetInProgressColumnByProjectRow(g generated_postgres.GetInProg
 		ID:                   g.ID,
 		Name:                 g.Name,
 		ProjectID:            g.ProjectID,
-		PrevID:               types.NullInt64FromInterface(g.PrevID),
-		NextID:               types.NullInt64FromInterface(g.NextID),
+		PrevID:               types.FromSQLNullInt64(g.PrevID),
+		NextID:               types.FromSQLNullInt64(g.NextID),
 		HoldsInProgressTasks: g.HoldsInProgressTasks,
 	}
 }
@@ -433,8 +432,8 @@ func fromGeneratedGetReadyColumnByProjectRow(g generated_postgres.GetReadyColumn
 		ID:              g.ID,
 		Name:            g.Name,
 		ProjectID:       g.ProjectID,
-		PrevID:          types.NullInt64FromInterface(g.PrevID),
-		NextID:          types.NullInt64FromInterface(g.NextID),
+		PrevID:          types.FromSQLNullInt64(g.PrevID),
+		NextID:          types.FromSQLNullInt64(g.NextID),
 		HoldsReadyTasks: g.HoldsReadyTasks,
 	}
 }

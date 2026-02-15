@@ -20,13 +20,11 @@ type testEnv struct {
 	Ctx       context.Context
 }
 
-func setupTestEnv(tb testing.TB) *testEnv {
+func setupTestEnv(tb testing.TB, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) *testEnv {
 	tb.Helper()
-	d := fixtures.SQLiteDialect()
-	db := fixtures.SetupTestDB(tb)
 	projectID := fixtures.CreateBareProject(tb, db, d, "Test Project")
 	columnID := fixtures.CreateTestColumn(tb, db, d, projectID, "To Do")
-	svc, err := NewService(db, database.SQLite, nil, nil)
+	svc, err := NewService(db, dbType, nil, nil)
 	require.NoError(tb, err, "failed to create test service")
 	return &testEnv{
 		DB:        db,
@@ -38,12 +36,10 @@ func setupTestEnv(tb testing.TB) *testEnv {
 	}
 }
 
-func setupTestEnvWithEventMock(tb testing.TB) (*testEnv, *taskevent.MockService) {
+func setupTestEnvWithEventMock(tb testing.TB, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) (*testEnv, *taskevent.MockService) {
 	tb.Helper()
-	d := fixtures.SQLiteDialect()
-	db := fixtures.SetupTestDB(tb)
 	mock := taskevent.NewMockService()
-	svc, err := NewService(db, database.SQLite, nil, mock)
+	svc, err := NewService(db, dbType, nil, mock)
 	require.NoError(tb, err, "failed to create test service with mock")
 	projectID := fixtures.CreateBareProject(tb, db, d, "Test Project")
 	columnID := fixtures.CreateTestColumn(tb, db, d, projectID, "To Do")
@@ -57,15 +53,10 @@ func setupTestEnvWithEventMock(tb testing.TB) (*testEnv, *taskevent.MockService)
 	}, mock
 }
 
+// testDialect is a package-level SQLite dialect for benchmark tests that
+// don't use RunDatabaseTests (benchmarks stay SQLite-only).
 var testDialect = fixtures.SQLiteDialect()
 
 func ptrString(s string) *string {
 	return &s
-}
-
-func newTestService(t *testing.T, db *sql.DB) Service {
-	t.Helper()
-	svc, err := NewService(db, database.SQLite, nil, nil)
-	require.NoError(t, err, "failed to create test service")
-	return svc
 }

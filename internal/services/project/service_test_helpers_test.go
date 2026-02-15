@@ -22,16 +22,14 @@ type testEnv struct {
 }
 
 // setupTestEnv creates a new test environment with all necessary dependencies.
-func setupTestEnv(tb testing.TB) *testEnv {
+func setupTestEnv(tb testing.TB, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) *testEnv {
 	tb.Helper()
-	db := fixtures.SetupTestDB(tb)
-	dialect := fixtures.SQLiteDialect()
 	gitMock := newMockGitDetector()
-	svc, err := NewService(db, database.SQLite, nil, gitMock)
+	svc, err := NewService(db, dbType, nil, gitMock)
 	require.NoError(tb, err, "failed to create test service")
 	return &testEnv{
 		DB:      db,
-		Dialect: dialect,
+		Dialect: d,
 		Svc:     svc,
 		GitMock: gitMock,
 		Ctx:     context.Background(),
