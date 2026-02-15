@@ -4,6 +4,8 @@ First of all, thank you for considering contributing to this project!
 
 ## Some Ceremonial Stuff
 
+Run `./scripts/pre-commit.sh` before starting any work. This will install `gofmt` precommit hook.
+
 Before you start any work, make sure you have a issue open, and have it assigned to yourself.
 
 This will stop two people from working on the same issue, and will also give us a place to discuss the implementation details of your contribution.
