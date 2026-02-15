@@ -1220,8 +1220,8 @@ func (s *service) MoveTaskToProject(ctx context.Context, taskID int, targetProje
 		return err
 	}
 
-	// Get task detail to find current project
-	taskDetail, err := s.queries.GetTaskDetail(ctx, int64(taskID))
+	// Get current project ID for this task (single lightweight query)
+	currentProjectID, err := s.queries.GetProjectIDFromTask(ctx, int64(taskID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return err
@@ -1229,10 +1229,9 @@ func (s *service) MoveTaskToProject(ctx context.Context, taskID int, targetProje
 		return fmt.Errorf("failed to get task: %w", err)
 	}
 
-	// Get the column to find the current project ID
-	column, err := s.queries.GetColumnByID(ctx, taskDetail.ColumnID)
-	if err != nil {
-		return fmt.Errorf("failed to get column: %w", err)
+	// Check if task is already in the target project
+	if currentProjectID == int64(targetProjectID) {
+		return ErrTaskAlreadyInTargetProject
 	}
 
 	// Verify the target project exists
@@ -1241,11 +1240,6 @@ func (s *service) MoveTaskToProject(ctx context.Context, taskID int, targetProje
 			return fmt.Errorf("target project not found")
 		}
 		return fmt.Errorf("failed to get target project: %w", err)
-	}
-
-	// Check if task is already in the target project
-	if column.ProjectID == int64(targetProjectID) {
-		return ErrTaskAlreadyInTargetProject
 	}
 
 	// Get the ready column in the target project

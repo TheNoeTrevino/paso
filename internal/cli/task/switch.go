@@ -66,13 +66,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	// Verify task exists
-	_, err = cliInstance.App.TaskService.GetTaskDetail(ctx, input.TaskID)
-	if err != nil {
-		return formatter.Error(cli.ExitNotFound, "TASK_NOT_FOUND", fmt.Sprintf("task %d not found", input.TaskID))
-	}
-
-	// Verify project exists and get its name
+	// Verify project exists and get its name for output
 	project, err := cliInstance.App.ProjectService.GetProjectByID(ctx, input.ProjectID)
 	if err != nil {
 		return formatter.Error(cli.ExitNotFound, "PROJECT_NOT_FOUND", fmt.Sprintf("project %d not found", input.ProjectID))
@@ -85,7 +79,7 @@ func runSwitch(cmd *cobra.Command, args []string) error {
 			return formatter.Error(cli.ExitValidation, "ALREADY_IN_PROJECT",
 				fmt.Sprintf("task %d is already in project %s", input.TaskID, project.Name))
 		}
-		return formatter.Error(cli.ExitError, "SWITCH_ERROR", err.Error())
+		return formatter.Error(cli.ExitNotFound, "SWITCH_ERROR", err.Error())
 	}
 
 	result := &SwitchResult{
