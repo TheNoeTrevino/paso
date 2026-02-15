@@ -751,6 +751,61 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// updateProjectPicker handles keyboard input in the project picker mode.
+// This function processes navigation (up/down) and selection for moving a task to a different project.
+func (m Model) updateProjectPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	keyMsg, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return m, nil
+	}
+
+	switch keyMsg.String() {
+	case "esc":
+		m.UIState.Mode = m.Pickers.Project.ReturnMode
+		if m.Pickers.Project.ReturnMode == state.NormalMode {
+			m.Forms.Form.EditingTaskID = 0
+		}
+		m.Pickers.Project.Reset()
+		return m, nil
+
+	case "up", "k":
+		m.Pickers.Project.MoveUp()
+		return m, nil
+
+	case "down", "j":
+		m.Pickers.Project.MoveDown()
+		return m, nil
+
+	case "enter":
+		selected := m.Pickers.Project.SelectedProject()
+		if selected == nil {
+			return m, nil
+		}
+
+		if m.Forms.Form.EditingTaskID != 0 {
+			ctx, cancel := m.DBContext()
+			defer cancel()
+
+			err := m.App.TaskService.MoveTaskToProject(ctx, m.Forms.Form.EditingTaskID, selected.ID)
+			if err != nil {
+				slog.Error("failed to move task to project", "error", err)
+				m.UI.Notification.Add(state.LevelError, "Failed to move task to project")
+			} else {
+				m.UI.Notification.Add(state.LevelInfo, "Task moved to "+selected.Name)
+				m.reloadCurrentColumnTasks()
+			}
+		}
+
+		m.UIState.Mode = m.Pickers.Project.ReturnMode
+		if m.Pickers.Project.ReturnMode == state.NormalMode {
+			m.Forms.Form.EditingTaskID = 0
+		}
+		return m, nil
+	}
+
+	return m, nil
+}
+
 // updateAssigneePicker handles keyboard input in the assignee picker mode.
 // This function processes navigation (up/down) and selection, including a "clear" option.
 func (m Model) updateAssigneePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
