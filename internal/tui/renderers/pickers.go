@@ -612,6 +612,35 @@ func RenderRelationTypePicker(
 	return content.String()
 }
 
+// RenderProjectPicker renders the project picker popup for moving a task to another project
+func RenderProjectPicker(projects []*models.Project, cursorIdx int, width int) string {
+	var content strings.Builder
+
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.Highlight))
+	content.WriteString(titleStyle.Render("Move Task to Project") + "\n\n")
+
+	normalStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal))
+	selectedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Highlight)).Bold(true)
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle))
+
+	for i, project := range projects {
+		if i == cursorIdx {
+			content.WriteString(selectedStyle.Render("> "+project.Name) + "\n")
+		} else {
+			content.WriteString(normalStyle.Render("  "+project.Name) + "\n")
+		}
+	}
+
+	if len(projects) == 0 {
+		content.WriteString(dimStyle.Render("  No other projects available") + "\n")
+	}
+
+	content.WriteString("\n")
+	content.WriteString(dimStyle.Render(components.PickerFooterSelectConfirm) + "\n")
+
+	return content.String()
+}
+
 // RenderAssigneePicker renders the assignee picker popup
 func RenderAssigneePicker(
 	assignees []*models.Assignee,
