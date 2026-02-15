@@ -700,7 +700,7 @@ func (m Model) switchToProject(projectIndex int) {
 		columns = []*models.Column{}
 	}
 
-	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
+	tasks, err := m.fetchTasksForCurrentProject(ctx, project.ID)
 	if err != nil {
 		slog.Error("failed to loading tasks for project", "project_id", project.ID, "error", err)
 		tasks = make(map[int][]*models.TaskSummary)
@@ -1305,7 +1305,7 @@ func (m *Model) reloadCurrentProject() {
 		return
 	}
 
-	tasks, err := m.App.TaskService.GetTaskSummariesByProject(ctx, currentProject.ID)
+	tasks, err := m.fetchTasksForCurrentProject(ctx, currentProject.ID)
 	if err != nil {
 		slog.Error("failed to reloading tasks", "error", err)
 		m.HandleDBError(err, "reload tasks")
@@ -1322,6 +1322,16 @@ func (m *Model) reloadCurrentProject() {
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
+}
+
+// fetchTasksForCurrentProject fetches tasks for the given project ID,
+// respecting the active search filter if one is set.
+// If a search is active, it returns filtered results; otherwise all tasks.
+func (m *Model) fetchTasksForCurrentProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error) {
+	if m.UI.Search.IsActive && m.UI.Search.Query != "" {
+		return m.App.TaskService.GetTaskSummariesByProjectFiltered(ctx, projectID, m.UI.Search.Query)
+	}
+	return m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
 }
 
 // calculateDescriptionLines calculates the number of lines for the
