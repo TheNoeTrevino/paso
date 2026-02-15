@@ -152,7 +152,7 @@ func RenderListView(
 	helpStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Subtle)).
 		Italic(true)
-	helpText := "v: kanban  s: status  S: sort  j/k: navigate"
+	helpText := "v: kanban  s: move to project  j/k: navigate"
 	output.WriteString("\n")
 	output.WriteString(helpStyle.Render("  " + helpText))
 

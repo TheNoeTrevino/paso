@@ -62,6 +62,7 @@ type MockTaskService struct {
 	MoveTaskToReadyColumnErr      error
 	MoveTaskToCompletedColumnErr  error
 	MoveTaskToInProgressColumnErr error
+	MoveTaskToProjectErr          error
 	MoveTaskUpErr                 error
 	MoveTaskDownErr               error
 
@@ -330,6 +331,15 @@ func (m *MockTaskService) MoveTaskToInProgressColumn(_ context.Context, taskID i
 	defer m.mu.Unlock()
 	m.recordCall("MoveTaskToInProgressColumn", taskID, nil)
 	return m.MoveTaskToInProgressColumnErr
+}
+
+func (m *MockTaskService) MoveTaskToProject(_ context.Context, taskID int, targetProjectID int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.recordCall("MoveTaskToProject", taskID, map[string]interface{}{
+		"targetProjectID": targetProjectID,
+	})
+	return m.MoveTaskToProjectErr
 }
 
 func (m *MockTaskService) MoveTaskUp(_ context.Context, taskID int) error {

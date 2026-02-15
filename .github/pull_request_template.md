@@ -7,4 +7,9 @@
 - [ ] Updated `README.md` if applicable
 
 ## Summary
-<!-- What does this PR change and/or fix? -->
+<!--
+What does this PR change and/or fix? 
+Examples:
+Closes: 54
+Fixes: 67
+-->

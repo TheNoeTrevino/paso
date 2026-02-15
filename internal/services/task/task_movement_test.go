@@ -331,7 +331,7 @@ func TestMoveTaskToReadyColumn_InvalidTaskID(t *testing.T) {
 		err := env.Svc.MoveTaskToReadyColumn(env.Ctx, 999)
 
 		require.Error(t, err)
-		assert.True(t, errors.Is(err, ErrInvalidTaskID) || errors.Is(err, sql.ErrNoRows))
+		assert.True(t, errors.Is(err, ErrInvalidTaskID) || errors.Is(err, ErrTaskNotFound))
 	})
 }
 
@@ -351,7 +351,7 @@ func TestMoveTaskToReadyColumn_NoReadyColumn(t *testing.T) {
 		err = env.Svc.MoveTaskToReadyColumn(env.Ctx, task.ID)
 
 		require.Error(t, err)
-		assert.True(t, errors.Is(err, sql.ErrNoRows) || err.Error() == "no ready column configured for this project")
+		assert.Contains(t, err.Error(), "no ready column configured for this project")
 	})
 }
 
@@ -430,7 +430,7 @@ func TestMoveTaskToCompletedColumn_InvalidTaskID(t *testing.T) {
 		err := env.Svc.MoveTaskToCompletedColumn(env.Ctx, 999)
 
 		require.Error(t, err)
-		assert.True(t, errors.Is(err, ErrInvalidTaskID) || errors.Is(err, sql.ErrNoRows))
+		assert.True(t, errors.Is(err, ErrInvalidTaskID) || errors.Is(err, ErrTaskNotFound))
 	})
 }
 
@@ -450,7 +450,7 @@ func TestMoveTaskToCompletedColumn_NoCompletedColumn(t *testing.T) {
 		err = env.Svc.MoveTaskToCompletedColumn(env.Ctx, task.ID)
 
 		require.Error(t, err)
-		assert.True(t, errors.Is(err, sql.ErrNoRows) || err.Error() == "no completed column configured for this project")
+		assert.Contains(t, err.Error(), "no completed column configured for this project")
 	})
 }
 

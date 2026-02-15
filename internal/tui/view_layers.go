@@ -349,8 +349,7 @@ PROJECTS
 
 VIEW
   %s     Toggle between kanban and list view
-  %s     Change status (list view)
-  %s     Toggle sort order (list view)
+  %s     Move task to another project
   /         Search tasks
 
 OTHER
@@ -380,8 +379,7 @@ Press any key to close`,
 		km.CreateProject,
 		km.DeleteProject,
 		km.ToggleView,
-		km.ChangeStatus,
-		km.SortList,
+		km.MoveTaskToProject,
 		km.ShowHelp,
 		km.Quit,
 	)
@@ -695,6 +693,24 @@ func (m Model) renderAssigneePickerLayer() *lipgloss.Layer {
 				m.Pickers.Assignee.SelectedID(),
 				m.Pickers.Assignee.Cursor(),
 				true, // showClearOpt
+				width-layers.PickerBorderPaddingWidth,
+			)
+		},
+		boxStyle: components.LabelPickerBoxStyle,
+	})
+}
+
+// renderProjectPickerLayer renders the project picker modal as a layer
+func (m Model) renderProjectPickerLayer() *lipgloss.Layer {
+	return m.createPickerLayer(pickerLayerConfig{
+		dimensionStrategy: fixedPickerDimensions{
+			width:  layers.PickerProjectWidth,
+			height: layers.PickerProjectHeight,
+		},
+		contentRenderer: func(width, height int) string {
+			return renderers.RenderProjectPicker(
+				m.Pickers.Project.Projects(),
+				m.Pickers.Project.Cursor(),
 				width-layers.PickerBorderPaddingWidth,
 			)
 		},

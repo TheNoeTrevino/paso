@@ -14,6 +14,7 @@ type PickerStates struct {
 	Assignee     *AssigneePickerState     // Picker for selecting task assignee
 	Estimate     *EstimateInputState      // Input for entering task time estimate
 	DatePicker   *DatePickerState         // Date picker for selecting dates
+	Project      *ProjectPickerState      // Picker for moving tasks to a different project
 }
 
 // NewPickerStates creates a new PickerStates instance with all pickers initialized.
@@ -29,5 +30,6 @@ func NewPickerStates() *PickerStates {
 		Assignee:     NewAssigneePickerState(),
 		Estimate:     NewEstimateInputState(),
 		DatePicker:   NewDatePickerState(),
+		Project:      NewProjectPickerState(),
 	}
 }

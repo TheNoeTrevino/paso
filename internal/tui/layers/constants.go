@@ -35,6 +35,9 @@ const (
 	PickerAssigneeWidth  = 40
 	PickerAssigneeHeight = 14 // dynamic content + chrome
 
+	PickerProjectWidth  = 45
+	PickerProjectHeight = 14
+
 	EstimateInputWidth  = 40
 	EstimateInputHeight = 12 // input field + error + help text + chrome
 

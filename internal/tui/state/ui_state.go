@@ -46,6 +46,7 @@ const (
 	DeleteProjectConfirmMode               // Confirming project deletion
 	DeleteLabelConfirmMode                 // Confirming label deletion
 	DatePickerMode                         // Date picker modal for selecting dates
+	ProjectPickerMode                      // Project picker popup for moving tasks between projects
 )
 
 // UsesLayers returns true if this mode uses layer-based rendering.
@@ -85,6 +86,7 @@ func (m Mode) UsesLayers() bool {
 		DeleteColumnConfirmMode,
 		DeleteLabelConfirmMode,
 		DatePickerMode,
+		ProjectPickerMode,
 		DeleteConfirmMode:
 		return true
 	default:
