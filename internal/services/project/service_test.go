@@ -351,12 +351,12 @@ func TestCreateProject_ErrorCases(t *testing.T) {
 		},
 		{
 			name:        "name_exactly_100_chars",
-			req:         CreateProjectRequest{Name: "a" + string(make([]byte, 99)), Description: "Boundary test"},
+			req:         CreateProjectRequest{Name: strings.Repeat("a", 100), Description: "Boundary test"},
 			expectedErr: nil,
 		},
 		{
 			name:        "name_101_chars",
-			req:         CreateProjectRequest{Name: "a" + string(make([]byte, 100)), Description: "Boundary test"},
+			req:         CreateProjectRequest{Name: strings.Repeat("a", 101), Description: "Boundary test"},
 			expectedErr: ErrNameTooLong,
 		},
 		{
@@ -366,7 +366,7 @@ func TestCreateProject_ErrorCases(t *testing.T) {
 		},
 		{
 			name:        "very_long_description",
-			req:         CreateProjectRequest{Name: "Test Project", Description: string(make([]byte, 10000))},
+			req:         CreateProjectRequest{Name: "Test Project", Description: strings.Repeat("x", 10000)},
 			expectedErr: nil,
 		},
 	}
@@ -460,7 +460,7 @@ func TestUpdateProject_ErrorCases(t *testing.T) {
 			},
 			{
 				name:        "name_too_long",
-				req:         UpdateProjectRequest{ID: created.ID, Name: strPtr(string(make([]byte, 101)))},
+				req:         UpdateProjectRequest{ID: created.ID, Name: strPtr(strings.Repeat("a", 101))},
 				expectedErr: ErrNameTooLong,
 			},
 			{
@@ -475,7 +475,7 @@ func TestUpdateProject_ErrorCases(t *testing.T) {
 			},
 			{
 				name:        "very_long_description",
-				req:         UpdateProjectRequest{ID: created.ID, Description: strPtr(string(make([]byte, 10000)))},
+				req:         UpdateProjectRequest{ID: created.ID, Description: strPtr(strings.Repeat("x", 10000))},
 				expectedErr: nil,
 			},
 		}
