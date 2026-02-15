@@ -349,8 +349,7 @@ PROJECTS
 
 VIEW
   %s     Toggle between kanban and list view
-  %s     Change status (list view)
-  %s     Toggle sort order (list view)
+  %s     Move task to another project
   /         Search tasks
 
 OTHER
@@ -380,8 +379,7 @@ Press any key to close`,
 		km.CreateProject,
 		km.DeleteProject,
 		km.ToggleView,
-		km.ChangeStatus,
-		km.SortList,
+		km.MoveTaskToProject,
 		km.ShowHelp,
 		km.Quit,
 	)

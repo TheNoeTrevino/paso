@@ -17,36 +17,7 @@ func (m Model) handleToggleView() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) handleChangeStatus() (tea.Model, tea.Cmd) {
-	if !m.UI.ListView.IsListView() {
-		return m, nil
-	}
-
-	task := m.getSelectedListTask()
-	if task == nil {
-		m.UI.Notification.Add(state.LevelError, "No task selected")
-		return m, nil
-	}
-
-	m.Pickers.Status.SetTaskID(task.ID)
-	m.Pickers.Status.SetColumns(m.AppState.Columns())
-
-	for i, col := range m.AppState.Columns() {
-		if col.ID == task.ColumnID {
-			m.Pickers.Status.SetCursor(i)
-			break
-		}
-	}
-
-	m.UIState.Mode = state.StatusPickerMode
-	return m, nil
-}
-
-func (m Model) handleSortList() (tea.Model, tea.Cmd) {
-	if !m.UI.ListView.IsListView() {
-		return m, nil
-	}
-	m.UI.ListView.CycleSort()
+func (m *Model) handleMoveTaskToProject() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 

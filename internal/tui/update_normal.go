@@ -103,10 +103,8 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDeleteProject()
 	case km.ToggleView:
 		return m.handleToggleView()
-	case km.ChangeStatus:
-		return m.handleChangeStatus()
-	case km.SortList:
-		return m.handleSortList()
+	case km.MoveTaskToProject:
+		return m.handleMoveTaskToProject()
 	case km.ConnectRemote:
 		return m.handleConnectRemote()
 	case km.EditLabels:
