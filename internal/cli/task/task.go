@@ -26,5 +26,6 @@ func TaskCmd() *cobra.Command {
 	cmd.AddCommand(CommentCmd())
 	cmd.AddCommand(AssignCmd())
 	cmd.AddCommand(EstimateCmd())
+	cmd.AddCommand(SwitchCmd())
 	return cmd
 }
