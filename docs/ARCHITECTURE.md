@@ -25,8 +25,7 @@ paso/
 │   ├── cli/
 │   │   ├── {domain}/              # Task, project, column, label, assignee commands
 │   │   ├── handler/               # Handler pattern framework
-│   │   ├── styles/                # Lipgloss styling, success/error rendering
-│   │   └── golden/                # Help output golden tests
+│   │   └── styles/                # Lipgloss styling, success/error rendering
 │   ├── config/
 │   │   └── colors/                # 5 color scheme presets (default, monochrome, wave, dragon, lotus)
 │   ├── database/
@@ -42,7 +41,10 @@ paso/
 │   ├── testing/
 │   │   ├── cli/                   # Command execution harness
 │   │   ├── fixtures/              # DB setup, data helpers
-│   │   └── mocks/                 # Hand-rolled service mocks
+│   │   ├── mocks/                 # Hand-rolled service mocks
+│   │   └── snapshots/             # Centralized snapshot/golden file tests
+│   │       ├── cli/               # CLI help + styles golden tests
+│   │       └── tui/               # TUI rendering snapshot tests
 │   ├── events/                     # Event publisher for daemon communication
 │   ├── git/                        # Git detector (real + mock)
 │   ├── launcher/                   # TUI launcher
@@ -265,7 +267,7 @@ ExitValidation = 5  // Validation error
 **Tree characters** (`tree.go`):
 - `TreeBranch` (`├── `), `TreeLastBranch` (`└── `), `TreeVertical` (`│   `), `TreeSpace` (`    `)
 
-**Golden tests**: 80+ `.golden` files in `testdata/` verify styled output across all themes.
+**Golden tests**: 80+ `.golden` files in `internal/testing/snapshots/cli/testdata/styles/` verify styled output across all themes.
 
 **Files**: `styles.go` (144 lines), `success.go` (85 lines), `color.go` (50 lines), `tree.go` (13 lines)
 
@@ -738,10 +740,10 @@ type Service interface {
    - Test service methods with real database operations
    - Example: `internal/services/task/task_crud_test.go`
 
-3. **Golden tests**:
-   - `internal/cli/golden/golden_test.go` - Help output snapshots (5 `.golden` files)
-   - `internal/cli/styles/testdata/*.golden` - Styled output across all themes (80+ files)
-   - Run with `-update` flag to regenerate: `go test ./internal/cli/golden -update`
+3. **Snapshot / Golden tests** (all centralized in `internal/testing/snapshots/`):
+   - `internal/testing/snapshots/cli/` - CLI help output + styled output golden tests (80+ files)
+   - `internal/testing/snapshots/tui/` - TUI rendering snapshot tests (10 scenarios)
+   - Update with: `UPDATE_SNAPSHOTS=1 go test ./internal/testing/snapshots/...`
 
 4. **Acceptance tests**:
    - `tests/acceptance/cli_validation.sh` - Shell-based CLI validation
@@ -875,9 +877,9 @@ func TestParseAssignArgs(t *testing.T) { /* ... */ }
    go tool cover -func=coverage.out | grep my_command_logic
    ```
 
-7. **Update golden tests** (if command has help output):
+7. **Update snapshot tests** (if command output or help text changed):
    ```bash
-   go test ./internal/cli/golden -update
+   UPDATE_SNAPSHOTS=1 go test ./internal/testing/snapshots/...
    ```
 
 8. **Verify**: `go test ./...` passes, coverage on logic functions is 100%.

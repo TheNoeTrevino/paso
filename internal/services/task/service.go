@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/thenoetrevino/paso/internal/converters"
@@ -789,15 +791,16 @@ func (s *service) GetTaskSummariesWithFilters(ctx context.Context, params TaskFi
 // buildLabelIdsCsv constructs a comma-wrapped CSV string for SQL label matching.
 // Example: [1, 5, 12] -> ",1,5,12,"
 func buildLabelIdsCsv(ids []int) string {
-	csv := ","
+	var b strings.Builder
+	b.WriteByte(',')
 	for i, id := range ids {
 		if i > 0 {
-			csv += ","
+			b.WriteByte(',')
 		}
-		csv += fmt.Sprintf("%d", id)
+		b.WriteString(strconv.Itoa(id))
 	}
-	csv += ","
-	return csv
+	b.WriteByte(',')
+	return b.String()
 }
 
 // GetReadyTaskSummariesByProject retrieves task summaries for tasks in ready columns (and not blocked)

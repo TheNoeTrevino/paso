@@ -26,10 +26,10 @@ func RenderDetailPanel(task *models.TaskDetail, width, height int) string {
 	var sections []string
 
 	sections = append(sections, renderDetailHeader(task, contentWidth))
-	sections = append(sections, renderDetailMetadata(task, contentWidth))
+	sections = append(sections, renderDetailMetadata(task))
 
 	if len(task.Labels) > 0 {
-		sections = append(sections, renderDetailLabels(task.Labels, contentWidth))
+		sections = append(sections, renderDetailLabels(task.Labels))
 	}
 
 	if task.Description != "" {
@@ -122,7 +122,7 @@ func renderDetailHeader(task *models.TaskDetail, width int) string {
 }
 
 // renderDetailMetadata renders status, type, and priority
-func renderDetailMetadata(task *models.TaskDetail, width int) string {
+func renderDetailMetadata(task *models.TaskDetail) string {
 	labelStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Highlight)).
 		Bold(true)
@@ -181,7 +181,7 @@ func renderDetailMetadata(task *models.TaskDetail, width int) string {
 }
 
 // renderDetailLabels renders label chips
-func renderDetailLabels(labels []*models.Label, width int) string {
+func renderDetailLabels(labels []*models.Label) string {
 	labelStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Highlight)).
 		Bold(true)

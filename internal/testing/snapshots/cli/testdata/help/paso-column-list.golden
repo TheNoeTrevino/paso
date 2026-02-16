@@ -1,0 +1,28 @@
+List all columns in a project (in order).
+
+Examples:
+  # Using positional argument (recommended)
+  paso column list 1
+
+  # Using shorthand flag
+  paso column list -p 1
+
+  # Using git branch association
+  paso column list
+
+  # JSON output for agents
+  paso column list 1 -j
+
+  # Quiet mode (one ID per line)
+  paso column list 1 -q
+
+  # Long-form flags also supported
+  paso column list --project=1 --json
+
+Usage:
+  paso column list [project-id] [flags]
+
+Flags:
+  -j, --json          Output in JSON format
+  -p, --project int   Project ID (uses git branch association if not specified)
+  -q, --quiet         Minimal output (IDs only)

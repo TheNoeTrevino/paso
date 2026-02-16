@@ -1,0 +1,27 @@
+Set a time estimate on a task.
+
+Estimates use a compact format: combinations of numbers followed by units.
+Valid units: h (hours), d (days), w (weeks), m (months).
+
+Use --clear to remove the estimate from a task.
+
+Examples:
+  # Set a 2-day estimate
+  paso task estimate 42 2d
+
+  # Set a compound estimate
+  paso task estimate 42 1w2d
+
+  # Remove estimate
+  paso task estimate 42 --clear
+
+  # JSON output for agents
+  paso task estimate 42 2d -j
+
+Usage:
+  paso task estimate <task_id> [estimate] [flags]
+
+Flags:
+      --clear   Remove estimate from the task
+  -j, --json    Output in JSON format
+  -q, --quiet   Minimal output (ID only)

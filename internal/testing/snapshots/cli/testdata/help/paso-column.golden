@@ -1,0 +1,12 @@
+Manage columns
+
+Usage:
+  paso column [command]
+
+Available Commands:
+  create      Create a new column
+  delete      Delete a column
+  list        List columns in a project
+  update      Update a column
+
+Use "paso column [command] --help" for more information about a command.

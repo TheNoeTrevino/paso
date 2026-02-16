@@ -1,0 +1,24 @@
+Display all tasks in a project as a hierarchical tree structure.
+Subtasks are indented under their parent tasks. Blocking relationships
+are highlighted in red to show the blocking chain.
+
+Examples:
+  # Using positional argument
+  paso project tree 1
+
+  # Using shorthand flag
+  paso project tree -p 1
+
+  # JSON output
+  paso project tree 1 -j
+
+  # Long-form flags also supported
+  paso project tree --project=1 --json
+
+Usage:
+  paso project tree [project-id] [flags]
+
+Flags:
+  -j, --json          Output in JSON format
+  -p, --project int   Project ID (uses git branch association if not specified)
+  -q, --quiet         Minimal output (IDs with relation labels in tree order)

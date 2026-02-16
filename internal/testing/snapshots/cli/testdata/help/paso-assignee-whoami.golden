@@ -1,0 +1,19 @@
+Show the active assignee for the current session.
+Falls back to the system username if no active assignee is set.
+
+Examples:
+  # Show active assignee
+  paso assignee whoami
+
+  # JSON output
+  paso assignee whoami -j
+
+  # Quiet mode (name only)
+  paso assignee whoami -q
+
+Usage:
+  paso assignee whoami [flags]
+
+Flags:
+  -j, --json    Output in JSON format
+  -q, --quiet   Minimal output (name only)

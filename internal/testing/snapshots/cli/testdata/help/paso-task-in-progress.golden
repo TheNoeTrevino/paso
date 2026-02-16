@@ -1,0 +1,32 @@
+Move a task to the column designated as holding in-progress tasks,
+or list all in-progress tasks for a project.
+
+The in-progress column is marked with holds_in_progress_tasks = true.
+Use 'paso column update -i <column_id> -I' to designate an in-progress column.
+
+Note: When moving tasks, this command uses the column marked as in-progress 
+(see: paso column update --in-progress).
+
+Examples:
+  # Move task to in-progress column
+  paso task in-progress 42
+
+  # List all in-progress tasks for a project (shorthand)
+  paso task in-progress -p 1
+
+  # JSON output for agents
+  paso task in-progress -p 1 -j
+
+  # Quiet mode for bash capture
+  paso task in-progress 42 -q
+
+  # Long-form flags also supported
+  paso task in-progress --project=1 --json
+
+Usage:
+  paso task in-progress [<task_id>] [flags]
+
+Flags:
+  -j, --json          Output in JSON format
+  -p, --project int   Project ID (for listing in-progress tasks)
+  -q, --quiet         Minimal output (ID only)

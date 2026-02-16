@@ -1,0 +1,19 @@
+Unlink a project from its git branch.
+
+Positional argument and flag can be used interchangeably:
+  [project-id] can be provided as a positional argument or via --id/-i flag
+
+If project-id is not provided, defaults to the project associated with the current branch.
+
+Examples:
+  paso project git-unlink 5
+  paso project git-unlink -i 5
+  paso project git-unlink  # unlinks current project
+
+Usage:
+  paso project git-unlink [project-id] [flags]
+
+Flags:
+  -i, --id int   Project ID to unlink (can also be provided as positional argument)
+  -j, --json     Output in JSON format
+  -q, --quiet    Minimal output

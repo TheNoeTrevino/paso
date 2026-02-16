@@ -1,0 +1,26 @@
+Move a task to the column designated as holding ready tasks.
+
+The ready column is marked with holds_ready_tasks = true.
+Use 'paso column update -i <column_id> -r' to designate a ready column.
+
+Note: This command moves tasks to the column marked as ready (see: paso column update --ready)
+
+Examples:
+  # Move task to ready column
+  paso task to-ready 42
+
+  # JSON output for agents
+  paso task to-ready 42 -j
+
+  # Quiet mode for bash capture
+  paso task to-ready 42 -q
+
+  # Long-form flags also supported
+  paso task to-ready 42 --json
+
+Usage:
+  paso task to-ready <task_id> [flags]
+
+Flags:
+  -j, --json    Output in JSON format
+  -q, --quiet   Minimal output (ID only)

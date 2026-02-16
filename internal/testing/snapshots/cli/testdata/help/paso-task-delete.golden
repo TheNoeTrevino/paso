@@ -1,0 +1,14 @@
+Delete a task by ID (requires confirmation unless --force/-f or --quiet/-q).
+
+Examples:
+  paso task delete 42
+  paso task delete 42 -f
+  paso task delete 42 --force --json
+
+Usage:
+  paso task delete <id> [flags]
+
+Flags:
+  -f, --force   Skip confirmation
+  -j, --json    Output in JSON format
+  -q, --quiet   Minimal output

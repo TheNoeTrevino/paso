@@ -1,0 +1,33 @@
+Create a relationship between two tasks.
+
+Relationship Types:
+  (default)    Parent-Child: Non-blocking hierarchical relationship
+  --blocker/-b Blocked By/Blocker: Blocking relationship (parent blocked by child)
+  --related/-R Related To: Non-blocking associative relationship
+
+The --blocker/-b and --related/-R flags are mutually exclusive. If neither is specified,
+a parent-child relationship is created.
+
+Examples:
+  # Parent-child relationship (shorthand)
+  paso task link -P 5 -C 3
+
+  # Blocking relationship (task 5 blocked by task 3)
+  paso task link -P 5 -C 3 -b
+
+  # Related relationship
+  paso task link -P 5 -C 3 -R
+
+  # Long-form flags also supported
+  paso task link --parent=5 --child=3 --blocker
+
+Usage:
+  paso task link [flags]
+
+Flags:
+  -b, --blocker      Create blocking relationship (Blocked By/Blocker)
+  -C, --child int    Child task ID (required)
+  -j, --json         Output in JSON format
+  -P, --parent int   Parent task ID (required)
+  -q, --quiet        Minimal output
+  -R, --related      Create related relationship (Related To)

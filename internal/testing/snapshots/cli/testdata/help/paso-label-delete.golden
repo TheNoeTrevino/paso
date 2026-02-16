@@ -1,0 +1,22 @@
+Delete a label by ID (requires confirmation unless --force/-f or --quiet/-q).
+
+Examples:
+  # Delete with confirmation
+  paso label delete 1
+
+  # Skip confirmation
+  paso label delete 1 -f
+
+  # Quiet mode (no confirmation)
+  paso label delete 1 -q
+
+  # Long-form flags also supported
+  paso label delete 1 --force
+
+Usage:
+  paso label delete <id> [flags]
+
+Flags:
+  -f, --force   Skip confirmation
+  -j, --json    Output in JSON format
+  -q, --quiet   Minimal output

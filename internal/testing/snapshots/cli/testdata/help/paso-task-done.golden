@@ -1,0 +1,26 @@
+Move a task to the column designated as holding completed tasks.
+
+The completed column is marked with holds_completed_tasks = true.
+Use 'paso column update -i <column_id> -c' to designate a completed column.
+
+Note: This command moves tasks to the column marked as completed (see: paso column update --completed)
+
+Examples:
+  # Move task to completed column
+  paso task done 42
+
+  # JSON output for agents
+  paso task done 42 -j
+
+  # Quiet mode for bash capture
+  paso task done 42 -q
+
+  # Long-form flags also supported
+  paso task done 42 --json
+
+Usage:
+  paso task done <task_id> [flags]
+
+Flags:
+  -j, --json    Output in JSON format
+  -q, --quiet   Minimal output (ID only)

@@ -1,0 +1,18 @@
+List all assignees in the database.
+
+Examples:
+  # Human-readable list
+  paso assignee list
+
+  # JSON output for agents
+  paso assignee list -j
+
+  # Quiet mode (one ID per line)
+  paso assignee list -q
+
+Usage:
+  paso assignee list [flags]
+
+Flags:
+  -j, --json    Output in JSON format
+  -q, --quiet   Minimal output (IDs only)

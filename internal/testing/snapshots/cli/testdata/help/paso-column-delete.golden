@@ -1,0 +1,25 @@
+Delete a column by ID (requires confirmation unless --force/-f or --quiet/-q).
+
+Warning: Deleting a column will move all tasks in that column to the project's first column.
+
+Examples:
+  # Delete with confirmation
+  paso column delete 1
+
+  # Skip confirmation
+  paso column delete 1 -f
+
+  # Quiet mode (no confirmation)
+  paso column delete 1 -q
+
+  # Long-form flags also supported
+  paso column delete 1 --force
+
+Usage:
+  paso column delete <id> [flags]
+
+Flags:
+      --dry-run   Show what would be deleted without actually deleting
+  -f, --force     Skip confirmation
+  -j, --json      Output in JSON format
+  -q, --quiet     Minimal output

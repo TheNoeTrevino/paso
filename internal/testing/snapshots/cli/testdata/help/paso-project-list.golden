@@ -1,0 +1,14 @@
+List all projects with their details.
+
+Examples:
+  paso project list
+  paso project list -j
+  paso project list -q
+  paso project list --json
+
+Usage:
+  paso project list [flags]
+
+Flags:
+  -j, --json    Output in JSON format
+  -q, --quiet   Minimal output (IDs only)

@@ -1,0 +1,27 @@
+╭──────────────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│  MyProject-0: Write unit tests                                               │
+│                                                                              │
+│   BLOCKED                                                                    │
+│                                                                              │
+│                                                                              │
+│  Description                                                                 │
+│    Cover all edge cases                                                      │
+│                                                                              │
+│  Type: task  Priority: medium                                                │
+│  Column: Todo                                                                │
+│  Assignee: None                                                              │
+│  Estimate: None                                                              │
+│  Created: [TIMESTAMP]                                               │
+│  Updated: [TIMESTAMP]                                               │
+│                                                                              │
+│                                                                              │
+│  Labels                                                                      │
+│    [bug]                                                                     │
+│                                                                              │
+│                                                                              │
+│  Blocked By                                                                  │
+│    • MyProject-0 - Update documentation                                      │
+│                                                                              │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯

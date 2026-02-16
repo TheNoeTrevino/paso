@@ -1,0 +1,25 @@
+List all tasks that have no blocking dependencies.
+
+These are tasks that can be started immediately as they are not
+waiting on any other tasks to be completed.
+
+Examples:
+  # Human-readable output (shorthand)
+  paso task ready -p 1
+
+  # JSON output for agents
+  paso task ready -p 1 -j
+
+  # Quiet mode for bash capture
+  TASK_IDS=$(paso task ready -p 1 -q)
+
+  # Long-form flags also supported
+  paso task ready --project=1 --json
+
+Usage:
+  paso task ready [flags]
+
+Flags:
+  -j, --json          Output in JSON format
+  -p, --project int   Project ID (uses git branch association if not specified)
+  -q, --quiet         Minimal output (ID only)

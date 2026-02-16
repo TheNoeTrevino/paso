@@ -1,0 +1,12 @@
+Manage database connections
+
+Usage:
+  paso db [command]
+
+Available Commands:
+  add         Add a database connection
+  connect     Switch to a saved database connection
+  list        List configured databases
+  remove      Remove a saved database connection
+
+Use "paso db [command] --help" for more information about a command.

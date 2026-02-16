@@ -1,0 +1,15 @@
+Switch the active database to a previously saved connection and verify connectivity.
+
+Examples:
+  # Connect to a saved database
+  paso db connect cloud
+
+  # Connect with JSON output
+  paso db connect local --json
+
+Usage:
+  paso db connect <name> [flags]
+
+Flags:
+      --json    Output in JSON format
+      --quiet   Minimal output

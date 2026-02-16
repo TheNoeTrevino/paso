@@ -1,0 +1,7 @@
+Output essential paso workflow context in AI-optimized markdown format.
+
+Designed for Claude Code hooks (SessionStart, PreCompact) to prevent
+agents from forgetting paso workflow after context compaction.
+
+Usage:
+  paso tutorial

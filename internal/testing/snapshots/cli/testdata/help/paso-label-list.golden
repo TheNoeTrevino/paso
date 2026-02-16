@@ -1,0 +1,28 @@
+List all labels in a project.
+
+Examples:
+  # Using positional argument (recommended)
+  paso label list 1
+
+  # Using shorthand flag
+  paso label list -p 1
+
+  # Using git branch association
+  paso label list
+
+  # JSON output for agents
+  paso label list 1 -j
+
+  # Quiet mode (one ID per line)
+  paso label list 1 -q
+
+  # Long-form flags also supported
+  paso label list --project=1 --json
+
+Usage:
+  paso label list [project-id] [flags]
+
+Flags:
+  -j, --json          Output in JSON format
+  -p, --project int   Project ID (uses git branch association if not specified)
+  -q, --quiet         Minimal output (IDs only)

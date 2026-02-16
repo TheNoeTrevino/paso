@@ -1,0 +1,28 @@
+Move a task to another column by direction or column name.
+
+Examples:
+  # Move to next/previous column (shorthand)
+  paso task move -i 1 next
+  paso task move -i 1 prev
+
+  # Move to specific column by name (case-insensitive)
+  paso task move -i 1 "In Progress"
+  paso task move -i 1 done
+
+  # JSON output for agents
+  paso task move -i 1 next -j
+
+  # Quiet mode for bash capture
+  paso task move -i 1 next -q
+
+  # Long-form flags also supported
+  paso task move --id 1 next --json
+
+Usage:
+  paso task move [flags]
+
+Flags:
+      --dry-run   Show what would change without moving the task
+  -i, --id int    Task ID (required)
+  -j, --json      Output in JSON format
+  -q, --quiet     Minimal output (ID only)

@@ -1,0 +1,26 @@
+Create a new project with specified attributes.
+
+Examples:
+  # Simple project using shorthand flags
+  paso project create -t "Backend API"
+
+  # With description
+  paso project create -t "Backend API" -d "REST API for mobile app"
+
+  # JSON output for agents
+  paso project create -t "Backend API" -j
+
+  # Quiet mode for bash capture
+  PROJECT_ID=$(paso project create -t "Backend API" -q)
+
+  # Long-form flags also supported
+  paso project create --title="Backend API" --description="REST API for mobile app"
+
+Usage:
+  paso project create [flags]
+
+Flags:
+  -d, --description string   Project description
+  -j, --json                 Output in JSON format
+  -q, --quiet                Minimal output (ID only)
+  -t, --title string         Project title (required)

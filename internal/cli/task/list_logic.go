@@ -2,6 +2,7 @@ package task
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -49,11 +50,18 @@ func ParseListProjectID(args []string) (*ListInput, error) {
 	}, nil
 }
 
-// FlattenTasksByColumn flattens a map of tasks by column into a single slice
+// FlattenTasksByColumn flattens a map of tasks by column into a single slice.
+// Columns are iterated in ascending ID order for deterministic output.
 func FlattenTasksByColumn(tasksByColumn map[int][]*models.TaskSummary) []*models.TaskSummary {
+	columnIDs := make([]int, 0, len(tasksByColumn))
+	for colID := range tasksByColumn {
+		columnIDs = append(columnIDs, colID)
+	}
+	sort.Ints(columnIDs)
+
 	var allTasks []*models.TaskSummary
-	for _, columnTasks := range tasksByColumn {
-		allTasks = append(allTasks, columnTasks...)
+	for _, colID := range columnIDs {
+		allTasks = append(allTasks, tasksByColumn[colID]...)
 	}
 	return allTasks
 }

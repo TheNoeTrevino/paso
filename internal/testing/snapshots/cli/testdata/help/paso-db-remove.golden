@@ -1,0 +1,18 @@
+Remove a saved database connection by name.
+
+Requires confirmation unless --force or --quiet is specified.
+
+Examples:
+  # Remove with confirmation prompt
+  paso db remove cloud
+
+  # Remove without confirmation
+  paso db remove cloud --force
+
+Usage:
+  paso db remove <name> [flags]
+
+Flags:
+      --force   Skip confirmation
+      --json    Output in JSON format
+      --quiet   Minimal output

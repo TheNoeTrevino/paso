@@ -1,0 +1,21 @@
+Delete an assignee by ID (requires confirmation unless --force/-f or --quiet/-q).
+Tasks assigned to this assignee will have their assignee set to NULL.
+
+Examples:
+  # Delete with confirmation
+  paso assignee delete -i 1
+
+  # Skip confirmation
+  paso assignee delete -i 1 -f
+
+  # Quiet mode (no confirmation)
+  paso assignee delete -i 1 -q
+
+Usage:
+  paso assignee delete [flags]
+
+Flags:
+  -f, --force    Skip confirmation
+  -i, --id int   Assignee ID (required)
+  -j, --json     Output in JSON format
+  -q, --quiet    Minimal output
