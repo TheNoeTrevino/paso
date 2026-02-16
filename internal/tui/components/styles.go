@@ -99,9 +99,6 @@ var (
 	// StatusBarStyle defines the base style for the status bar
 	StatusBarStyle lipgloss.Style
 
-	// StatusBarSearchStyle defines the style for the search section in the status bar
-	StatusBarSearchStyle lipgloss.Style
-
 	// SubtleStyle defines a base style for subtle text
 	SubtleStyle lipgloss.Style
 
@@ -219,9 +216,6 @@ func InitStyles(colors colors.ColorScheme) {
 		StatusBarStyle = lipgloss.NewStyle().
 			Background(lipgloss.Color(colors.StatusBarBg)).
 			Foreground(lipgloss.Color(colors.StatusBarText))
-
-		StatusBarSearchStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color(colors.Background))
 
 		StatusBarTipStyle = lipgloss.NewStyle().
 			Background(lipgloss.Color(colors.Background)).

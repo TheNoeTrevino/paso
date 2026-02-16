@@ -11,8 +11,6 @@ import (
 
 type StatusBarProps struct {
 	Width            int
-	SearchMode       bool
-	SearchQuery      string
 	ConnectionStatus state.ConnectionStatus
 	DatabaseName     string // Current database connection name (e.g., "Local", "Production")
 	Tip              string
@@ -20,13 +18,13 @@ type StatusBarProps struct {
 
 // RenderStatusBar renders a status bar with left and right aligned text
 // Left side: connection status
-// Middle: "/search-query" when searching (takes space from gap)
+// Middle: tip (if available)
 // Right side: "press ? for help"
 //
 // Layout:
 //
 //	┌─────────────────────────────────────────────────────────┐
-//	│ ● Connected       /search-query(or tip)     ? for help  │
+//	│ ● Connected            Tip: ...              ? for help  │
 //	└─────────────────────────────────────────────────────────┘
 func RenderStatusBar(props StatusBarProps) string {
 	var leftText string
@@ -59,32 +57,24 @@ func RenderStatusBar(props StatusBarProps) string {
 
 	leftStyle := StatusBarStyle.Foreground(lipgloss.Color(leftColor))
 	rightStyle := StatusBarStyle
-	searchStyle := StatusBarSearchStyle
 	tipStyle := StatusBarTipStyle
 
 	leftRendered := leftStyle.Render(" " + leftText + " ")
 	rightRendered := rightStyle.Render(" " + rightText + " ")
 
-	// Calculate space between left and right text
 	leftWidth := lipgloss.Width(leftRendered)
 	rightWidth := lipgloss.Width(rightRendered)
 
-	// If searching, render search query and subtract its width from gap
-	// Otherwise, render tip if available
 	var middleRendered string
 	var middleWidth int
-	if props.SearchMode {
-		searchText := "/" + props.SearchQuery
-		middleRendered = searchStyle.Render(searchText)
-		middleWidth = lipgloss.Width(middleRendered)
-	} else if props.Tip != "" {
+	if props.Tip != "" {
 		middleRendered = tipStyle.Render(" Tip: " + props.Tip)
 		middleWidth = lipgloss.Width(middleRendered)
 	}
 
 	gapWidth := max(props.Width-leftWidth-rightWidth-middleWidth, 1)
 
-	gap := StatusBarSearchStyle.Render(strings.Repeat(" ", gapWidth))
+	gap := StatusBarStyle.Render(strings.Repeat(" ", gapWidth))
 
 	if middleRendered != "" {
 		return lipgloss.JoinHorizontal(lipgloss.Top, leftRendered, middleRendered, gap, rightRendered)

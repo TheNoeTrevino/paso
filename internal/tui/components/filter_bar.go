@@ -11,18 +11,20 @@ import (
 
 // FilterBarProps contains the data needed to render the filter bar.
 type FilterBarProps struct {
-	Filter       *state.FilterState
-	Focused      bool     // Whether the filter bar has keyboard focus
-	Width        int      // Total available width
-	PriorityName string   // e.g. "High", empty if no filter
-	TypeName     string   // e.g. "Bug", empty if no filter
-	AssigneeName string   // e.g. "John", empty if no filter
-	LabelNames   []string // e.g. ["bug", "frontend"], empty if no filter
+	Filter            *state.FilterState
+	Focused           bool     // Whether the filter bar has keyboard focus
+	Width             int      // Total available width
+	PriorityName      string   // e.g. "High", empty if no filter
+	TypeName          string   // e.g. "Bug", empty if no filter
+	AssigneeName      string   // e.g. "John", empty if no filter
+	LabelNames        []string // e.g. ["bug", "frontend"], empty if no filter
+	SearchQuery       string   // Current search query text
+	SearchInputActive bool     // Whether the search chip is in text input mode
 }
 
 // RenderFilterBar renders the filter bar with chip-style buttons.
 //
-//  Label:  Priority: 󰉺 Type: task  Assignee  Clear All
+//	Search:  Label:  Priority: 󰉺 Type: task  Assignee  Clear All
 func RenderFilterBar(props FilterBarProps) string {
 	if props.Filter == nil {
 		return ""
@@ -69,6 +71,7 @@ func buildArchivedComponents(isArchived bool) archivedComponents {
 func buildAllChipTexts(props FilterBarProps) []string {
 	chipTexts := make([]string, state.FilterChipCount)
 
+	chipTexts[state.FilterChipSearch] = " " + buildSearchChipText(props.SearchQuery, props.SearchInputActive)
 	chipTexts[state.FilterChipLabel] = buildChipText(" Label", strings.Join(props.LabelNames, ", "))
 	chipTexts[state.FilterChipPriority] = buildChipText(" Priority", props.PriorityName)
 	chipTexts[state.FilterChipType] = buildChipText("󰉺 Type", props.TypeName)
@@ -79,6 +82,15 @@ func buildAllChipTexts(props FilterBarProps) []string {
 	chipTexts[state.FilterChipArchived] = buildChipText(archivedComponents.prefix+"Archived", archivedComponents.value)
 
 	return chipTexts
+}
+
+// buildSearchChipText creates the display text for the search chip.
+// When in input mode, shows a cursor indicator after the query text.
+func buildSearchChipText(query string, inputActive bool) string {
+	if inputActive {
+		return fmt.Sprintf("Search: %s▎", query)
+	}
+	return buildChipText("Search", query)
 }
 
 // buildChipText creates the display text for a filter chip.
@@ -121,6 +133,8 @@ func styleChip(text string, chip state.FilterChip, props FilterBarProps) string 
 // chipHasValue returns true if the given chip has an active filter value.
 func chipHasValue(chip state.FilterChip, props FilterBarProps) bool {
 	switch chip {
+	case state.FilterChipSearch:
+		return props.SearchQuery != ""
 	case state.FilterChipLabel:
 		return len(props.LabelNames) > 0
 	case state.FilterChipPriority:

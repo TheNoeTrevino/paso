@@ -727,8 +727,9 @@ func (m Model) switchToProject(projectIndex int) {
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
 
-	// Clear filters when switching projects since they're project-scoped
-	m.UI.Filter.ClearAll()
+	// Clear field filters when switching projects since they're project-scoped.
+	// Search query persists across project switches.
+	m.UI.Filter.ClearFieldFilters()
 	m.UI.Filter.IsActive = false
 
 	m.UIState.ResetSelection()
@@ -1361,13 +1362,10 @@ func (m *Model) reloadCurrentProject() {
 }
 
 // fetchTasksForCurrentProject fetches tasks for the given project ID,
-// respecting both the active search filter and field filters from the filter bar.
+// respecting all active filters from the filter bar (including search query).
 // Uses the unified filter query so search + filters combine with AND logic.
 func (m *Model) fetchTasksForCurrentProject(ctx context.Context, projectID int) (map[int][]*models.TaskSummary, error) {
-	hasSearch := m.UI.Search.IsActive && m.UI.Search.Query != ""
-	hasFilters := m.UI.Filter.HasAnyFilter()
-
-	if !hasSearch && !hasFilters {
+	if !m.UI.Filter.HasAnyFilter() {
 		return m.App.TaskService.GetTaskSummariesByProject(ctx, projectID)
 	}
 
@@ -1375,14 +1373,14 @@ func (m *Model) fetchTasksForCurrentProject(ctx context.Context, projectID int) 
 	return m.App.TaskService.GetTaskSummariesWithFilters(ctx, params)
 }
 
-// buildFilterParams constructs TaskFilterParams from the current search and filter state.
+// buildFilterParams constructs TaskFilterParams from the current filter state (including search).
 func (m *Model) buildFilterParams(projectID int) tasksvc.TaskFilterParams {
 	params := tasksvc.TaskFilterParams{
 		ProjectID: projectID,
 	}
 
-	if m.UI.Search.IsActive && m.UI.Search.Query != "" {
-		q := m.UI.Search.Query
+	if m.UI.Filter.SearchQuery != "" {
+		q := m.UI.Filter.SearchQuery
 		params.Title = &q
 	}
 

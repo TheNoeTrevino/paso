@@ -201,9 +201,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case dataReloaded:
-		// Clear search when switching databases since it's a different context
-		m.UI.Search.Clear()
-		m.UI.Search.Deactivate()
+		// Clear all filters (including search) when switching databases since it's a different context
+		m.UI.Filter.ClearAll()
 
 		m.AppState.SetProjects(msg.projects)
 		m.AppState.SetColumns(msg.columns)
@@ -387,8 +386,6 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateDatabaseDeleteConfirm(msg)
 	case state.FilterBarMode:
 		return m.handleFilterBarMode(msg)
-	case state.SearchMode:
-		return m.handleSearchMode(msg)
 	case state.StatusPickerMode:
 		return m.handleStatusPickerMode(msg)
 	}

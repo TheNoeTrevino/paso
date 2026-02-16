@@ -16,9 +16,11 @@ import (
 // for the currently active filter IDs.
 func (m Model) buildFilterBarProps() components.FilterBarProps {
 	props := components.FilterBarProps{
-		Filter:  m.UI.Filter,
-		Focused: m.UIState.Mode == state.FilterBarMode,
-		Width:   m.UIState.Width(),
+		Filter:            m.UI.Filter,
+		Focused:           m.UIState.Mode == state.FilterBarMode,
+		Width:             m.UIState.Width(),
+		SearchQuery:       m.UI.Filter.SearchQuery,
+		SearchInputActive: m.UI.Filter.SearchInputActive,
 	}
 
 	if m.UI.Filter.PriorityID != nil {
@@ -183,8 +185,6 @@ func (m Model) viewKanbanBoard() string {
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
 		Width:            m.UIState.Width(),
-		SearchMode:       m.UIState.Mode == state.SearchMode || m.UI.Search.IsActive,
-		SearchQuery:      m.UI.Search.Query,
 		ConnectionStatus: m.ConnectionState.Status(),
 		DatabaseName:     m.CurrentDBName,
 		Tip:              m.UI.CurrentTip,
@@ -255,8 +255,6 @@ func (m Model) viewListView() string {
 
 	statusBar := components.RenderStatusBar(components.StatusBarProps{
 		Width:            m.UIState.Width(),
-		SearchMode:       m.UIState.Mode == state.SearchMode || m.UI.Search.IsActive,
-		SearchQuery:      m.UI.Search.Query,
 		ConnectionStatus: m.ConnectionState.Status(),
 		DatabaseName:     m.CurrentDBName,
 		Tip:              m.UI.CurrentTip,
