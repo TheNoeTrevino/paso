@@ -22,23 +22,34 @@ UPDATE_SNAPSHOTS=1 go test ./internal/testing/snapshots/cli/... -run TestGolden_
 UPDATE_SNAPSHOTS=1 go test ./internal/testing/snapshots/cli/... -run TestGolden_E2E
 ```
 
-## Help Output Tests (`help_test.go`)
+## Test Categories
+
+### Help Output Tests (`help_test.go`)
 
 Tests the `--help` output for every CLI command and subcommand. Uses auto-discovery: `buildRootCmd()` reconstructs the full command tree and `collectCommands()` recursively walks it to generate a test case for each command. When a new command is added to paso, the test picks it up automatically on the next run.
 
 Golden files are named by the full command path: `paso-task-create.golden`, `paso-setup-claude.golden`, etc.
 
-## Style Tests (`styles_test.go`)
+**51 golden files** in `testdata/help/`.
 
-Tests styled success messages across all color schemes (default, monochrome, wave, dragon, lotus) to ensure consistent formatting.
+### Style Tests (`styles_test.go`)
 
-## E2E Command Output Tests (`e2e_test.go`)
+Tests styled success messages across all 5 color schemes (default, monochrome, wave, dragon, lotus) to ensure consistent formatting.
+
+Two test functions:
+
+- `TestRenderSuccess_GoldenOutput` — 11 message variants x 5 schemes = 55 golden files
+- `TestRenderSuccessWithDetails_GoldenOutput` — 5 message variants x 5 schemes = 25 golden files
+
+**80 golden files** in `testdata/styles/`.
+
+### E2E Command Output Tests (`e2e_test.go`)
 
 Executes real CLI commands against an in-memory SQLite database and snapshots the full human-readable output users see. Each test group gets its own isolated database, seeds the required data, runs commands through the real handler pipeline, and compares captured output against golden files.
 
-Covers 35 scenarios across all entity types:
+Covers 36 scenarios across all entity types:
 
-- **Task** (19 tests): create, create with description, list, show, update, assign, estimate, comment, ready list, blocked list, in-progress list, move, in-progress move, to-ready, done, link, switch, delete
+- **Task** (18 tests): create, create with description, list, show, update, assign, estimate, comment, ready list, blocked list, in-progress list, move, in-progress move, to-ready, done, link, switch, delete
 - **Project** (5 tests): create, create with description, list, tree, delete
 - **Column** (4 tests): create, list, update, delete
 - **Label** (6 tests): create, list, update, attach, detach, delete
@@ -46,11 +57,21 @@ Covers 35 scenarios across all entity types:
 
 `task show` output includes timestamps which are normalized to `[TIMESTAMP]` before comparison for determinism.
 
-### Commands Not Covered
+**36 golden files** in `testdata/e2e/`.
+
+## Test Infrastructure
+
+- `main_test.go` — `TestMain` entry point with goroutine leak detection via `goleak`
+- `snapshots.NewHelper(t, dir)` — shared helper from `internal/testing/snapshots/snapshot.go` that handles golden file read/write and diff output
+- `cli.SetupCLITest()` — creates an isolated in-memory SQLite database and returns a test `App` instance
+- `cli.ExecuteCLICommandWithContext()` — runs a CLI command with a test `App` injected via context, capturing stdout/stderr
+- `cli.CaptureOutputFunc()` — captures output from functions that write directly to `os.Stdout`/`os.Stderr` (uses a global mutex for safety)
+
+## Commands Not Covered by E2E Tests
 
 These commands depend on external state (filesystem, config files, user environment) and are not suitable for deterministic snapshot testing:
 
-- `setup claude`, `setup opencode` -- read/write real filesystem paths
-- `db add`, `db connect`, `db list`, `db remove` -- depend on paso config file
-- `assignee set`, `assignee whoami` -- depend on paso config file
-- `project git-link`, `project git-unlink` -- require mock git detector wiring (tested in integration tests instead)
+- `setup claude`, `setup opencode` — read/write real filesystem paths
+- `db add`, `db connect`, `db list`, `db remove` — depend on paso config file
+- `assignee set`, `assignee whoami` — depend on paso config file
+- `project git-link`, `project git-unlink` — require mock git detector wiring (tested in integration tests instead)
