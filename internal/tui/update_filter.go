@@ -17,6 +17,10 @@ func (m Model) handleFilterBarMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.UI.Filter.ClearAll()
 			return m.refreshFilteredTasks()
 		}
+		if m.UI.Filter.FocusedChip == state.FilterChipArchived {
+			m.UI.Filter.ShowArchived = !m.UI.Filter.ShowArchived
+			return m.refreshFilteredTasks()
+		}
 		return m.openFilterPicker()
 
 	case "h", "left":

@@ -8,6 +8,7 @@ const (
 	FilterChipPriority                   // Priority filter chip
 	FilterChipType                       // Type filter chip
 	FilterChipAssignee                   // Assignee filter chip
+	FilterChipArchived                   // Archived filter chip (toggle)
 	FilterChipClearAll                   // Clear All pseudo-chip
 	FilterChipCount                      // Total number of chips (used for bounds)
 )
@@ -20,6 +21,7 @@ type FilterState struct {
 	AssigneeID   *int       // Selected assignee ID, nil = no filter (-1 = "Unassigned")
 	AssigneeName string     // Resolved display name for the assignee filter
 	LabelIDs     []int      // Selected label IDs (OR logic), empty = no filter
+	ShowArchived bool       // Show archived tasks (false = hide archived, true = show all)
 	FocusedChip  FilterChip // Currently focused chip in the filter bar
 	IsActive     bool       // Whether the filter bar is focused for keyboard navigation
 }
@@ -33,7 +35,7 @@ func NewFilterState() *FilterState {
 
 // HasAnyFilter returns true if any filter is currently applied.
 func (f *FilterState) HasAnyFilter() bool {
-	return f.PriorityID != nil || f.TypeID != nil || f.AssigneeID != nil || len(f.LabelIDs) > 0
+	return f.PriorityID != nil || f.TypeID != nil || f.AssigneeID != nil || len(f.LabelIDs) > 0 || f.ShowArchived
 }
 
 // ClearAll resets all filter selections to their default (unfiltered) state.
@@ -43,6 +45,7 @@ func (f *FilterState) ClearAll() {
 	f.AssigneeID = nil
 	f.AssigneeName = ""
 	f.LabelIDs = nil
+	f.ShowArchived = false
 }
 
 // MoveFocusLeft moves the focused chip one position to the left.
@@ -88,6 +91,11 @@ func (f *FilterState) ClearFocusedChip() bool {
 		if f.AssigneeID != nil {
 			f.AssigneeID = nil
 			f.AssigneeName = ""
+			return true
+		}
+	case FilterChipArchived:
+		if f.ShowArchived {
+			f.ShowArchived = false
 			return true
 		}
 	case FilterChipClearAll:

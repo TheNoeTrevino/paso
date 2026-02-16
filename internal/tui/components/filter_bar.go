@@ -35,6 +35,9 @@ func RenderFilterBar(props FilterBarProps) string {
 	chipTexts[state.FilterChipAssignee] = buildChipText(" Assignee", props.AssigneeName)
 	chipTexts[state.FilterChipClearAll] = " Clear All"
 
+	archivedComponents := buildArchivedComponents(props.Filter.ShowArchived)
+	chipTexts[state.FilterChipArchived] = buildChipText(archivedComponents.prefix+"Archived", archivedComponents.value)
+
 	var chips []string
 	for i := range int(state.FilterChipCount) {
 		chip := state.FilterChip(i)
@@ -49,13 +52,30 @@ func RenderFilterBar(props FilterBarProps) string {
 		Width(props.Width).
 		PaddingLeft(1)
 
-	return barStyle.Render(line)
+	return barStyle.Render(" " + line)
+}
+
+type archivedComponents struct {
+	prefix string
+	value  string
+}
+
+// buildArchivedComponents creats a struct that holds the prefix and value for the
+// archived filter chip based on whether archived items are shown or not.
+func buildArchivedComponents(isArchived bool) archivedComponents {
+	archivedPrefix := "󱝋 "
+	archivedValue := "Off"
+	if isArchived {
+		archivedPrefix = "󱝍 "
+		archivedValue = "On"
+	}
+	return archivedComponents{prefix: archivedPrefix, value: archivedValue}
 }
 
 // buildChipText creates the display text for a filter chip.
 func buildChipText(field string, value string) string {
 	if value == "" {
-		return field
+		return fmt.Sprintf("%s: %s", field, "All")
 	}
 	return fmt.Sprintf("%s: %s", field, value)
 }
@@ -100,6 +120,8 @@ func chipHasValue(chip state.FilterChip, props FilterBarProps) bool {
 		return props.TypeName != ""
 	case state.FilterChipAssignee:
 		return props.AssigneeName != ""
+	case state.FilterChipArchived:
+		return props.Filter.ShowArchived
 	case state.FilterChipClearAll:
 		return props.Filter.HasAnyFilter()
 	}
