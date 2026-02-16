@@ -75,6 +75,7 @@ type Task struct {
 	AssigneeID   interface{}
 	Estimate     interface{}
 	DueDate      interface{}
+	Archived     int64
 }
 
 type TaskComment struct {

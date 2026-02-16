@@ -209,6 +209,7 @@ left join assignees a on t.assignee_id = a.id
 left join task_labels tl on t.id = tl.task_id
 left join labels l on tl.label_id = l.id
 where c.project_id = ?
+    and t.archived = 0
 group by
     t.id,
     t.title,
@@ -383,6 +384,7 @@ where c.project_id = sqlc.arg('project_id')
     and (sqlc.narg('type_id') is null or ty.id = sqlc.narg('type_id'))
     and (sqlc.narg('assignee_id') is null or t.assignee_id = sqlc.narg('assignee_id') or (sqlc.narg('assignee_id') = -1 and t.assignee_id is null))
     and (sqlc.arg('label_ids_csv') = '' or exists (select 1 from task_labels tl2 where tl2.task_id = t.id and instr(sqlc.arg('label_ids_csv'), ',' || cast(tl2.label_id as text) || ',') > 0))
+    and (sqlc.arg('show_archived') = 1 or t.archived = 0)
 group by
     t.id,
     t.title,

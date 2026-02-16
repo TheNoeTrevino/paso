@@ -56,7 +56,7 @@ insert into tasks (
     estimate,
     due_date)
 values ($1, $2, $3, $4, $5, $6, $7, $8)
-returning id, title, description, column_id, position, ticket_number, type_id, priority_id, created_at, updated_at, assignee_id, estimate, due_date
+returning id, title, description, column_id, position, ticket_number, type_id, priority_id, created_at, updated_at, assignee_id, estimate, due_date, archived
 `
 
 type CreateTaskParams struct {
@@ -97,6 +97,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		&i.AssigneeID,
 		&i.Estimate,
 		&i.DueDate,
+		&i.Archived,
 	)
 	return i, err
 }
@@ -1138,6 +1139,7 @@ left join assignees a on t.assignee_id = a.id
 left join task_labels tl on t.id = tl.task_id
 left join labels l on tl.label_id = l.id
 where c.project_id = $1
+    and t.archived = false
 group by
     t.id,
     t.title,
@@ -1249,6 +1251,7 @@ where c.project_id = $1
     and ($4::bigint is null or ty.id = $4)
     and ($5::bigint is null or t.assignee_id = $5 or ($5 = -1 and t.assignee_id is null))
     and ($6::text = '' or exists (select 1 from task_labels tl2 where tl2.task_id = t.id and position(',' || cast(tl2.label_id as text) || ',' in $6) > 0))
+    and ($7::boolean = true or t.archived = false)
 group by
     t.id,
     t.title,
@@ -1265,12 +1268,13 @@ order by t.position
 `
 
 type GetTaskSummariesWithFiltersParams struct {
-	ProjectID   int64
-	TitleFilter sql.NullString
-	PriorityID  sql.NullInt64
-	TypeID      sql.NullInt64
-	AssigneeID  sql.NullInt64
-	LabelIdsCsv string
+	ProjectID    int64
+	TitleFilter  sql.NullString
+	PriorityID   sql.NullInt64
+	TypeID       sql.NullInt64
+	AssigneeID   sql.NullInt64
+	LabelIdsCsv  string
+	ShowArchived bool
 }
 
 type GetTaskSummariesWithFiltersRow struct {
@@ -1300,6 +1304,7 @@ func (q *Queries) GetTaskSummariesWithFilters(ctx context.Context, arg GetTaskSu
 		arg.TypeID,
 		arg.AssigneeID,
 		arg.LabelIdsCsv,
+		arg.ShowArchived,
 	)
 	if err != nil {
 		return nil, err

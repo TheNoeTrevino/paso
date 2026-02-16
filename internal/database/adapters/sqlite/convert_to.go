@@ -50,13 +50,21 @@ func toGeneratedGetTaskBelowParams(t types.GetTaskBelowParams) generated_sqlite.
 }
 
 func toGeneratedGetTaskSummariesWithFiltersParams(t types.GetTaskSummariesWithFiltersParams) generated_sqlite.GetTaskSummariesWithFiltersParams {
+	var showArchived interface{}
+	if t.ShowArchived {
+		showArchived = int64(1)
+	} else {
+		showArchived = int64(0)
+	}
+
 	return generated_sqlite.GetTaskSummariesWithFiltersParams{
-		ProjectID:   t.ProjectID,
-		TitleFilter: t.TitleFilter.ToInterface(),
-		PriorityID:  t.PriorityID.ToInterface(),
-		TypeID:      t.TypeID.ToInterface(),
-		AssigneeID:  t.AssigneeID.ToInterface(),
-		LabelIdsCsv: t.LabelIdsCsv,
+		ProjectID:    t.ProjectID,
+		TitleFilter:  t.TitleFilter.ToInterface(),
+		PriorityID:   t.PriorityID.ToInterface(),
+		TypeID:       t.TypeID.ToInterface(),
+		AssigneeID:   t.AssigneeID.ToInterface(),
+		LabelIdsCsv:  t.LabelIdsCsv,
+		ShowArchived: showArchived,
 	}
 }
 
