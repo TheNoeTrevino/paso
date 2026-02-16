@@ -52,7 +52,7 @@ type archivedComponents struct {
 	value  string
 }
 
-// buildArchivedComponents creats a struct that holds the prefix and value for the
+// buildArchivedComponents creates a struct that holds the prefix and value for the
 // archived filter chip based on whether archived items are shown or not.
 func buildArchivedComponents(isArchived bool) archivedComponents {
 	archivedPrefix := "󱝋 "
