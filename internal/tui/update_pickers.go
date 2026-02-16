@@ -48,7 +48,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 					labelIDs = append(labelIDs, item.Label.ID)
 				}
 			}
-			m.UI.Filter.SetLabels(labelIDs)
+			m.UI.Filter.LabelIDs = labelIDs
 			m.Pickers.Label.Filter = ""
 			m.Pickers.Label.Cursor = 0
 			m.UIState.Mode = state.FilterBarMode
@@ -649,7 +649,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Pickers.Priority.ReturnMode == state.FilterBarMode {
 				// Filter mode: set filter and re-fetch tasks
 				id := selectedPriority.ID
-				m.UI.Filter.SetPriority(&id)
+				m.UI.Filter.PriorityID = &id
 				m.UIState.Mode = state.FilterBarMode
 				return m.refreshFilteredTasks()
 			}
@@ -737,7 +737,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Pickers.Type.ReturnMode == state.FilterBarMode {
 				// Filter mode: set filter and re-fetch tasks
 				id := selectedType.ID
-				m.UI.Filter.SetType(&id)
+				m.UI.Filter.TypeID = &id
 				m.UIState.Mode = state.FilterBarMode
 				return m.refreshFilteredTasks()
 			}
@@ -867,14 +867,15 @@ func (m Model) updateAssigneePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case "enter":
 		if m.Pickers.Assignee.ReturnMode == state.FilterBarMode {
-			// Filter mode: set assignee filter
+			// Filter mode: set assignee filter and resolve display name
 			if m.Pickers.Assignee.IsClearSelected() {
-				// First option = "Unassigned" sentinel (-1)
 				unassigned := -1
-				m.UI.Filter.SetAssignee(&unassigned)
+				m.UI.Filter.AssigneeID = &unassigned
+				m.UI.Filter.AssigneeName = "Unassigned"
 			} else if selected := m.Pickers.Assignee.SelectedAssignee(); selected != nil {
 				id := selected.ID
-				m.UI.Filter.SetAssignee(&id)
+				m.UI.Filter.AssigneeID = &id
+				m.UI.Filter.AssigneeName = selected.Name
 			}
 			m.UIState.Mode = state.FilterBarMode
 			return m.refreshFilteredTasks()

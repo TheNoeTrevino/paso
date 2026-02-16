@@ -15,12 +15,13 @@ const (
 // FilterState manages the filter bar selections and focus state.
 // Each filter field is nullable — nil means "no filter applied".
 type FilterState struct {
-	PriorityID  *int       // Selected priority ID, nil = no filter
-	TypeID      *int       // Selected type ID, nil = no filter
-	AssigneeID  *int       // Selected assignee ID, nil = no filter (use -1 for "Unassigned" later)
-	LabelIDs    []int      // Selected label IDs (OR logic), empty = no filter
-	FocusedChip FilterChip // Currently focused chip in the filter bar
-	IsActive    bool       // Whether the filter bar is focused for keyboard navigation
+	PriorityID   *int       // Selected priority ID, nil = no filter
+	TypeID       *int       // Selected type ID, nil = no filter
+	AssigneeID   *int       // Selected assignee ID, nil = no filter (-1 = "Unassigned")
+	AssigneeName string     // Resolved display name for the assignee filter
+	LabelIDs     []int      // Selected label IDs (OR logic), empty = no filter
+	FocusedChip  FilterChip // Currently focused chip in the filter bar
+	IsActive     bool       // Whether the filter bar is focused for keyboard navigation
 }
 
 // NewFilterState creates a new FilterState with default values.
@@ -40,46 +41,7 @@ func (f *FilterState) ClearAll() {
 	f.PriorityID = nil
 	f.TypeID = nil
 	f.AssigneeID = nil
-	f.LabelIDs = nil
-}
-
-// SetPriority sets the priority filter. Pass nil to clear.
-func (f *FilterState) SetPriority(id *int) {
-	f.PriorityID = id
-}
-
-// ClearPriority clears the priority filter.
-func (f *FilterState) ClearPriority() {
-	f.PriorityID = nil
-}
-
-// SetType sets the type filter. Pass nil to clear.
-func (f *FilterState) SetType(id *int) {
-	f.TypeID = id
-}
-
-// ClearType clears the type filter.
-func (f *FilterState) ClearType() {
-	f.TypeID = nil
-}
-
-// SetAssignee sets the assignee filter. Pass nil to clear.
-func (f *FilterState) SetAssignee(id *int) {
-	f.AssigneeID = id
-}
-
-// ClearAssignee clears the assignee filter.
-func (f *FilterState) ClearAssignee() {
-	f.AssigneeID = nil
-}
-
-// SetLabels sets the label IDs filter. Pass nil or empty to clear.
-func (f *FilterState) SetLabels(ids []int) {
-	f.LabelIDs = ids
-}
-
-// ClearLabels clears the label filter.
-func (f *FilterState) ClearLabels() {
+	f.AssigneeName = ""
 	f.LabelIDs = nil
 }
 
@@ -109,22 +71,23 @@ func (f *FilterState) ClearFocusedChip() bool {
 	switch f.FocusedChip {
 	case FilterChipLabel:
 		if len(f.LabelIDs) > 0 {
-			f.ClearLabels()
+			f.LabelIDs = nil
 			return true
 		}
 	case FilterChipPriority:
 		if f.PriorityID != nil {
-			f.ClearPriority()
+			f.PriorityID = nil
 			return true
 		}
 	case FilterChipType:
 		if f.TypeID != nil {
-			f.ClearType()
+			f.TypeID = nil
 			return true
 		}
 	case FilterChipAssignee:
 		if f.AssigneeID != nil {
-			f.ClearAssignee()
+			f.AssigneeID = nil
+			f.AssigneeName = ""
 			return true
 		}
 	case FilterChipClearAll:

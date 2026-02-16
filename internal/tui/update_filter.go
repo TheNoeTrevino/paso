@@ -41,13 +41,15 @@ func (m Model) handleFilterBarMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) openFilterPicker() (tea.Model, tea.Cmd) {
 	switch m.UI.Filter.FocusedChip {
 	case state.FilterChipPriority:
-		m.initPriorityPickerForFilter()
-		m.UIState.Mode = state.PriorityPickerMode
+		if m.initPriorityPickerForFilter() {
+			m.UIState.Mode = state.PriorityPickerMode
+		}
 		return m, nil
 
 	case state.FilterChipType:
-		m.initTypePickerForFilter()
-		m.UIState.Mode = state.TypePickerMode
+		if m.initTypePickerForFilter() {
+			m.UIState.Mode = state.TypePickerMode
+		}
 		return m, nil
 
 	case state.FilterChipAssignee:
@@ -67,7 +69,7 @@ func (m Model) openFilterPicker() (tea.Model, tea.Cmd) {
 }
 
 // initPriorityPickerForFilter initializes the priority picker for filter bar mode.
-func (m *Model) initPriorityPickerForFilter() {
+func (m *Model) initPriorityPickerForFilter() bool {
 	cursorPos := 0
 
 	if m.UI.Filter.PriorityID != nil {
@@ -80,10 +82,12 @@ func (m *Model) initPriorityPickerForFilter() {
 	m.Pickers.Priority.SetSelectedPriorityID(0)
 	m.Pickers.Priority.SetCursor(cursorPos)
 	m.Pickers.Priority.ReturnMode = state.FilterBarMode
+
+	return true
 }
 
 // initTypePickerForFilter initializes the type picker for filter bar mode.
-func (m *Model) initTypePickerForFilter() {
+func (m *Model) initTypePickerForFilter() bool {
 	cursorPos := 0
 
 	if m.UI.Filter.TypeID != nil {
@@ -96,6 +100,8 @@ func (m *Model) initTypePickerForFilter() {
 	m.Pickers.Type.SetSelectedTypeID(0)
 	m.Pickers.Type.SetCursor(cursorPos)
 	m.Pickers.Type.ReturnMode = state.FilterBarMode
+
+	return true
 }
 
 // initAssigneePickerForFilter initializes the assignee picker for filter bar mode.
