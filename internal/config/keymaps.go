@@ -47,6 +47,7 @@ type KeyMappings struct {
 	ConnectRemote string `yaml:"connect_remote"`
 	FilterBar     string `yaml:"filter_bar"`
 	Quit          string `yaml:"quit"`
+	Suspend       string `yaml:"suspend"`
 
 	// Views
 	ToggleView        string `yaml:"toggle_view"`
@@ -99,6 +100,7 @@ func DefaultKeyMappings() KeyMappings {
 		ConnectRemote: "ctrl+h",
 		FilterBar:     "ctrl+f",
 		Quit:          "q",
+		Suspend:       "ctrl+z",
 
 		// Views
 		ToggleView:        "v",
@@ -211,6 +213,9 @@ func (k *KeyMappings) applyDefaults() {
 	}
 	if k.Quit == "" {
 		k.Quit = defaults.Quit
+	}
+	if k.Suspend == "" {
+		k.Suspend = defaults.Suspend
 	}
 	if k.ToggleView == "" {
 		k.ToggleView = defaults.ToggleView
