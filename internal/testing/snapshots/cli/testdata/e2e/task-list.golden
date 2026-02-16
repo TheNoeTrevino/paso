@@ -2,9 +2,9 @@ Found 5 tasks:
 ╭────┬──────────────────────┬──────────┬─────────┬─────┬────────┬─────────╮
 │ ID │ TITLE                │ PRIORITY │ TYPE    │ EST │ LABELS │         │
 ├────┼──────────────────────┼──────────┼─────────┼─────┼────────┼─────────┤
-│ 5  │ Refactor auth module │ medium   │ task    │ -   │ -      │         │
 │ 1  │ Fix login bug        │ high     │ task    │ -   │ -      │         │
 │ 2  │ Add dark mode        │ medium   │ feature │ -   │ -      │         │
 │ 3  │ Write unit tests     │ medium   │ task    │ -   │ bug    │ BLOCKED │
 │ 4  │ Update documentation │ medium   │ task    │ -   │ -      │         │
+│ 5  │ Refactor auth module │ medium   │ task    │ -   │ -      │         │
 ╰────┴──────────────────────┴──────────┴─────────┴─────┴────────┴─────────╯
