@@ -183,8 +183,8 @@ type GetTaskSummariesByProjectRow struct {
 	IsBlocked           bool
 }
 
-// GetTaskSummariesByProjectFilteredRow represents the result of GetTaskSummariesByProjectFiltered query
-type GetTaskSummariesByProjectFilteredRow struct {
+// GetTaskSummariesWithFiltersRow represents the result of GetTaskSummariesWithFilters query
+type GetTaskSummariesWithFiltersRow struct {
 	ID                  int64
 	Title               string
 	ColumnID            int64

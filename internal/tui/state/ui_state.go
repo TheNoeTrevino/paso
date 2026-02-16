@@ -47,6 +47,7 @@ const (
 	DeleteLabelConfirmMode                 // Confirming label deletion
 	DatePickerMode                         // Date picker modal for selecting dates
 	ProjectPickerMode                      // Project picker popup for moving tasks between projects
+	FilterBarMode                          // Filter bar chip navigation mode
 )
 
 // UsesLayers returns true if this mode uses layer-based rendering.
@@ -87,6 +88,7 @@ func (m Mode) UsesLayers() bool {
 		DeleteLabelConfirmMode,
 		DatePickerMode,
 		ProjectPickerMode,
+		FilterBarMode,
 		DeleteConfirmMode:
 		return true
 	default:
@@ -164,7 +166,7 @@ func (s *UIState) SetWidth(width int) {
 func (s *UIState) ContentHeight() int {
 	const tabBarHeight = 3    // tabs + gap line
 	const statusBarHeight = 2 // status bar + gap line
-	return max(s.Height-tabBarHeight-statusBarHeight, 5)
+	return max(s.Height-tabBarHeight-statusBarHeight-layout.FilterBarHeight, 5)
 }
 
 // ViewportSize returns the number of columns that fit on screen.

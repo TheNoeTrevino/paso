@@ -40,7 +40,7 @@ func NewMockAssigneeService() *MockAssigneeService {
 	}
 }
 
-func (m *MockAssigneeService) recordCall(method string, args map[string]interface{}) {
+func (m *MockAssigneeService) recordCall(method string, args map[string]any) {
 	m.Calls = append(m.Calls, MockCall{
 		Method: method,
 		Args:   args,
@@ -101,7 +101,7 @@ func (m *MockAssigneeService) List(ctx context.Context) ([]*models.Assignee, err
 func (m *MockAssigneeService) GetByName(ctx context.Context, name string) (*models.Assignee, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("GetByName", map[string]interface{}{
+	m.recordCall("GetByName", map[string]any{
 		"name": name,
 	})
 	if m.GetByNameErr != nil {
@@ -113,7 +113,7 @@ func (m *MockAssigneeService) GetByName(ctx context.Context, name string) (*mode
 func (m *MockAssigneeService) GetByID(ctx context.Context, id int) (*models.Assignee, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("GetByID", map[string]interface{}{
+	m.recordCall("GetByID", map[string]any{
 		"id": id,
 	})
 	if m.GetByIDErr != nil {
@@ -125,7 +125,7 @@ func (m *MockAssigneeService) GetByID(ctx context.Context, id int) (*models.Assi
 func (m *MockAssigneeService) Create(ctx context.Context, name string) (*models.Assignee, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("Create", map[string]interface{}{
+	m.recordCall("Create", map[string]any{
 		"name": name,
 	})
 	if m.CreateErr != nil {
@@ -137,7 +137,7 @@ func (m *MockAssigneeService) Create(ctx context.Context, name string) (*models.
 func (m *MockAssigneeService) GetOrCreate(ctx context.Context, name string) (*models.Assignee, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("GetOrCreate", map[string]interface{}{
+	m.recordCall("GetOrCreate", map[string]any{
 		"name": name,
 	})
 	if m.GetOrCreateErr != nil {
@@ -149,7 +149,7 @@ func (m *MockAssigneeService) GetOrCreate(ctx context.Context, name string) (*mo
 func (m *MockAssigneeService) Delete(ctx context.Context, id int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("Delete", map[string]interface{}{
+	m.recordCall("Delete", map[string]any{
 		"id": id,
 	})
 	return m.DeleteErr

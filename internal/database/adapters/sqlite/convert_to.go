@@ -49,10 +49,14 @@ func toGeneratedGetTaskBelowParams(t types.GetTaskBelowParams) generated_sqlite.
 	}
 }
 
-func toGeneratedGetTaskSummariesByProjectFilteredParams(t types.GetTaskSummariesByProjectFilteredParams) generated_sqlite.GetTaskSummariesByProjectFilteredParams {
-	return generated_sqlite.GetTaskSummariesByProjectFilteredParams{
-		ProjectID: t.ProjectID,
-		Title:     t.Title,
+func toGeneratedGetTaskSummariesWithFiltersParams(t types.GetTaskSummariesWithFiltersParams) generated_sqlite.GetTaskSummariesWithFiltersParams {
+	return generated_sqlite.GetTaskSummariesWithFiltersParams{
+		ProjectID:   t.ProjectID,
+		TitleFilter: t.TitleFilter.ToInterface(),
+		PriorityID:  t.PriorityID.ToInterface(),
+		TypeID:      t.TypeID.ToInterface(),
+		AssigneeID:  t.AssigneeID.ToInterface(),
+		LabelIdsCsv: t.LabelIdsCsv,
 	}
 }
 

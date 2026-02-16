@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/models"
+	tasksvc "github.com/thenoetrevino/paso/internal/services/task"
 )
 
 // TestUnit_SearchPersistence_RefreshMsgUsesFilteredQuery verifies that when
@@ -25,7 +26,7 @@ func TestUnit_SearchPersistence_RefreshMsgUsesFilteredQuery(t *testing.T) {
 		{ID: 10, Name: "Todo", ProjectID: 1},
 	}
 	svc.Task.GetTaskSummariesByProjectResult = make(map[int][]*models.TaskSummary)
-	svc.Task.GetTaskSummariesByProjectFilteredResult = map[int][]*models.TaskSummary{
+	svc.Task.GetTaskSummariesWithFiltersResult = map[int][]*models.TaskSummary{
 		10: {{ID: 1, Title: "Bug fix", ColumnID: 10, Position: 0, Labels: []*models.Label{}, PriorityColor: "#FF0000"}},
 	}
 
@@ -38,7 +39,7 @@ func TestUnit_SearchPersistence_RefreshMsgUsesFilteredQuery(t *testing.T) {
 	m.UI.Search.Query = "bug"
 	m.UI.Search.Activate()
 
-	initialFilteredCalls := svc.Task.CallCount("GetTaskSummariesByProjectFiltered")
+	initialFilteredCalls := svc.Task.CallCount("GetTaskSummariesWithFilters")
 	initialUnfilteredCalls := svc.Task.CallCount("GetTaskSummariesByProject")
 
 	// Send a RefreshMsg (simulating a daemon event)
@@ -52,7 +53,7 @@ func TestUnit_SearchPersistence_RefreshMsgUsesFilteredQuery(t *testing.T) {
 	}
 	updated := UpdateModelWithMessage(m, refreshMsg)
 
-	assert.Greater(t, svc.Task.CallCount("GetTaskSummariesByProjectFiltered"), initialFilteredCalls,
+	assert.Greater(t, svc.Task.CallCount("GetTaskSummariesWithFilters"), initialFilteredCalls,
 		"RefreshMsg should use filtered query when search is active")
 	assert.Equal(t, initialUnfilteredCalls, svc.Task.CallCount("GetTaskSummariesByProject"),
 		"RefreshMsg should NOT call unfiltered query when search is active")
@@ -98,7 +99,7 @@ func TestUnit_SearchPersistence_RefreshMsgWithoutSearchUsesUnfiltered(t *testing
 
 	assert.Greater(t, svc.Task.CallCount("GetTaskSummariesByProject"), initialUnfilteredCalls,
 		"RefreshMsg should use unfiltered query when no search is active")
-	assert.Equal(t, 0, svc.Task.CallCount("GetTaskSummariesByProjectFiltered"),
+	assert.Equal(t, 0, svc.Task.CallCount("GetTaskSummariesWithFilters"),
 		"RefreshMsg should NOT call filtered query when no search is active")
 }
 
@@ -115,7 +116,7 @@ func TestUnit_SearchPersistence_ProjectSwitchCarriesSearchFilter(t *testing.T) {
 	svc.Column.GetColumnsByProjectResult = []*models.Column{
 		{ID: 10, Name: "Todo", ProjectID: 1},
 	}
-	svc.Task.GetTaskSummariesByProjectFilteredResult = map[int][]*models.TaskSummary{
+	svc.Task.GetTaskSummariesWithFiltersResult = map[int][]*models.TaskSummary{
 		20: {{ID: 100, Title: "Beta bug", ColumnID: 20, Position: 0, Labels: []*models.Label{}, PriorityColor: "#00FF00"}},
 	}
 
@@ -128,7 +129,7 @@ func TestUnit_SearchPersistence_ProjectSwitchCarriesSearchFilter(t *testing.T) {
 	m.UI.Search.Activate()
 
 	// Reset call counts after init
-	initialFilteredCalls := svc.Task.CallCount("GetTaskSummariesByProjectFiltered")
+	initialFilteredCalls := svc.Task.CallCount("GetTaskSummariesWithFilters")
 
 	// Set up what the second project should return
 	svc.Column.GetColumnsByProjectResult = []*models.Column{
@@ -140,7 +141,7 @@ func TestUnit_SearchPersistence_ProjectSwitchCarriesSearchFilter(t *testing.T) {
 	updated := UpdateModelWithMessage(m, keyMsg)
 
 	// Verify filtered query was called for the new project
-	assert.Greater(t, svc.Task.CallCount("GetTaskSummariesByProjectFiltered"), initialFilteredCalls,
+	assert.Greater(t, svc.Task.CallCount("GetTaskSummariesWithFilters"), initialFilteredCalls,
 		"project switch should use filtered query when search is active")
 
 	// Verify the search state is still active
@@ -151,14 +152,14 @@ func TestUnit_SearchPersistence_ProjectSwitchCarriesSearchFilter(t *testing.T) {
 	calls := svc.Task.GetCalls()
 	foundFilteredCall := false
 	for _, call := range calls {
-		if call.Method == "GetTaskSummariesByProjectFiltered" {
-			if query, ok := call.Args["searchQuery"].(string); ok && query == "bug" {
+		if call.Method == "GetTaskSummariesWithFilters" {
+			if params, ok := call.Args["params"].(tasksvc.TaskFilterParams); ok && params.Title != nil && *params.Title == "bug" {
 				foundFilteredCall = true
 			}
 		}
 	}
 	assert.True(t, foundFilteredCall,
-		"project switch should pass the search query 'bug' to GetTaskSummariesByProjectFiltered")
+		"project switch should pass the search query 'bug' to GetTaskSummariesWithFilters")
 }
 
 // TestUnit_SearchPersistence_ProjectSwitchWithoutSearchUsesUnfiltered verifies
@@ -190,7 +191,7 @@ func TestUnit_SearchPersistence_ProjectSwitchWithoutSearchUsesUnfiltered(t *test
 
 	assert.Greater(t, svc.Task.CallCount("GetTaskSummariesByProject"), initialUnfilteredCalls,
 		"project switch should use unfiltered query when no search is active")
-	assert.Equal(t, 0, svc.Task.CallCount("GetTaskSummariesByProjectFiltered"),
+	assert.Equal(t, 0, svc.Task.CallCount("GetTaskSummariesWithFilters"),
 		"project switch should NOT call filtered query when no search is active")
 }
 
@@ -245,7 +246,7 @@ func TestUnit_SearchPersistence_ReloadCurrentColumnTasksUsesFilter(t *testing.T)
 	svc.Task.GetTaskSummariesByProjectResult = map[int][]*models.TaskSummary{
 		10: {{ID: 1, Title: "Task 1", ColumnID: 10, Position: 0, Labels: []*models.Label{}, PriorityColor: "#FF0000"}},
 	}
-	svc.Task.GetTaskSummariesByProjectFilteredResult = map[int][]*models.TaskSummary{
+	svc.Task.GetTaskSummariesWithFiltersResult = map[int][]*models.TaskSummary{
 		10: {{ID: 1, Title: "Bug task", ColumnID: 10, Position: 0, Labels: []*models.Label{}, PriorityColor: "#FF0000"}},
 	}
 
@@ -257,13 +258,13 @@ func TestUnit_SearchPersistence_ReloadCurrentColumnTasksUsesFilter(t *testing.T)
 	m.UI.Search.Query = "bug"
 	m.UI.Search.Activate()
 
-	initialFilteredCalls := svc.Task.CallCount("GetTaskSummariesByProjectFiltered")
+	initialFilteredCalls := svc.Task.CallCount("GetTaskSummariesWithFilters")
 	initialUnfilteredCalls := svc.Task.CallCount("GetTaskSummariesByProject")
 
 	// Call reloadCurrentColumnTasks directly (simulates what pickers do)
 	m.reloadCurrentColumnTasks()
 
-	assert.Greater(t, svc.Task.CallCount("GetTaskSummariesByProjectFiltered"), initialFilteredCalls,
+	assert.Greater(t, svc.Task.CallCount("GetTaskSummariesWithFilters"), initialFilteredCalls,
 		"reloadCurrentColumnTasks should use filtered query when search is active")
 	assert.Equal(t, initialUnfilteredCalls, svc.Task.CallCount("GetTaskSummariesByProject"),
 		"reloadCurrentColumnTasks should NOT call unfiltered query when search is active")
@@ -281,7 +282,7 @@ func TestUnit_SearchPersistence_FetchTasksPassesCorrectQuery(t *testing.T) {
 	svc.Column.GetColumnsByProjectResult = []*models.Column{
 		{ID: 10, Name: "Todo", ProjectID: 1},
 	}
-	svc.Task.GetTaskSummariesByProjectFilteredResult = make(map[int][]*models.TaskSummary)
+	svc.Task.GetTaskSummariesWithFiltersResult = make(map[int][]*models.TaskSummary)
 
 	m := SetupTestModelWithMocks(t, svc)
 
@@ -294,16 +295,16 @@ func TestUnit_SearchPersistence_FetchTasksPassesCorrectQuery(t *testing.T) {
 
 	// Find the filtered call and verify the exact query
 	calls := svc.Task.GetCalls()
-	var matchingCalls []string
+	var matchingQueries []string
 	for _, call := range calls {
-		if call.Method == "GetTaskSummariesByProjectFiltered" {
-			if query, ok := call.Args["searchQuery"].(string); ok {
-				matchingCalls = append(matchingCalls, query)
+		if call.Method == "GetTaskSummariesWithFilters" {
+			if params, ok := call.Args["params"].(tasksvc.TaskFilterParams); ok && params.Title != nil {
+				matchingQueries = append(matchingQueries, *params.Title)
 			}
 		}
 	}
-	require.NotEmpty(t, matchingCalls, "expected at least one filtered call")
-	assert.Equal(t, "ci pipeline", matchingCalls[len(matchingCalls)-1],
+	require.NotEmpty(t, matchingQueries, "expected at least one filtered call")
+	assert.Equal(t, "ci pipeline", matchingQueries[len(matchingQueries)-1],
 		"search query should be passed exactly as-is to the filtered service call")
 }
 
@@ -346,6 +347,6 @@ func TestUnit_SearchPersistence_InactiveSearchWithQueryDoesNotFilter(t *testing.
 
 	assert.Greater(t, svc.Task.CallCount("GetTaskSummariesByProject"), initialUnfilteredCalls,
 		"should use unfiltered query when search has a query but is not active")
-	assert.Equal(t, 0, svc.Task.CallCount("GetTaskSummariesByProjectFiltered"),
+	assert.Equal(t, 0, svc.Task.CallCount("GetTaskSummariesWithFilters"),
 		"should NOT use filtered query when search is not active")
 }

@@ -4,7 +4,6 @@ import (
 	"log/slog"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
@@ -27,14 +26,14 @@ func (m Model) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleSearchCancel()
 	case "backspace", "ctrl+h":
 		if m.UI.Search.Backspace() {
-			return m.executeSearch()
+			return m.refreshFilteredTasks()
 		}
 		return m, nil
 	default:
 		key := msg.String()
 		if len(key) == 1 {
 			if m.UI.Search.AppendChar(rune(key[0])) {
-				return m.executeSearch()
+				return m.refreshFilteredTasks()
 			}
 		}
 		return m, nil
@@ -55,12 +54,12 @@ func (m Model) handleSearchCancel() (tea.Model, tea.Cmd) {
 	m.UI.Search.Clear()
 	m.UI.Search.Deactivate()
 	m.UIState.Mode = state.NormalMode
-	return m.executeSearch()
+	return m.refreshFilteredTasks()
 }
 
-// executeSearch runs the search query and updates the task list.
-// Inlined from search.go (deleted to reduce duplication)
-func (m Model) executeSearch() (tea.Model, tea.Cmd) {
+// refreshFilteredTasks runs the search query and updates the task list.
+// Delegates to fetchTasksForCurrentProject which handles both search and field filters.
+func (m Model) refreshFilteredTasks() (tea.Model, tea.Cmd) {
 	project := m.getCurrentProject()
 	if project == nil {
 		return m, nil
@@ -68,22 +67,14 @@ func (m Model) executeSearch() (tea.Model, tea.Cmd) {
 
 	ctx, cancel := m.DBContext()
 	defer cancel()
-	var tasksByColumn map[int][]*models.TaskSummary
-	var err error
 
-	if m.UI.Search.Query == "" {
-		tasksByColumn, err = m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
-	} else {
-		tasksByColumn, err = m.App.TaskService.GetTaskSummariesByProjectFiltered(ctx, project.ID, m.UI.Search.Query)
-	}
-
+	tasksByColumn, err := m.fetchTasksForCurrentProject(ctx, project.ID)
 	if err != nil {
-		slog.Error("failed to filtering tasks", "error", err)
+		slog.Error("failed to filter tasks", "error", err)
 		return m, nil
 	}
 
 	m.AppState.SetTasks(tasksByColumn)
-	// Reset task selection to 0 to avoid out-of-bounds
 	m.UIState.SelectedTask = 0
 
 	return m, nil

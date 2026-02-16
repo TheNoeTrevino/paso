@@ -385,6 +385,8 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateDatabaseConnectConfirm(msg)
 	case state.DatabaseDeleteConfirmMode:
 		return m.updateDatabaseDeleteConfirm(msg)
+	case state.FilterBarMode:
+		return m.handleFilterBarMode(msg)
 	case state.SearchMode:
 		return m.handleSearchMode(msg)
 	case state.StatusPickerMode:

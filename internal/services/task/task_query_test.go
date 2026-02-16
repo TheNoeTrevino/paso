@@ -14,102 +14,306 @@ import (
 	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 )
 
-func TestGetTaskSummariesByProjectFiltered(t *testing.T) {
+func TestGetTaskSummariesWithFilters_NoFilters(t *testing.T) {
 	t.Parallel()
 	fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
 		env := setupTestEnv(t, db, d, dbType)
-		// Create tasks with different titles
-		_, err := env.Svc.CreateTask(env.Ctx, CreateTaskRequest{
-			Title:    "Fix bug in login",
-			ColumnID: env.ColumnID,
-			Position: 0,
-		})
+		_, err := env.Svc.CreateTask(env.Ctx, CreateTaskRequest{Title: "Task A", ColumnID: env.ColumnID, Position: 0})
+		require.NoError(t, err)
+		_, err = env.Svc.CreateTask(env.Ctx, CreateTaskRequest{Title: "Task B", ColumnID: env.ColumnID, Position: 1})
 		require.NoError(t, err)
 
-		_, err = env.Svc.CreateTask(env.Ctx, CreateTaskRequest{
-			Title:    "Add new feature",
-			ColumnID: env.ColumnID,
-			Position: 1,
-		})
+		results, err := env.Svc.GetTaskSummariesWithFilters(env.Ctx, TaskFilterParams{ProjectID: env.ProjectID})
 		require.NoError(t, err)
 
-		_, err = env.Svc.CreateTask(env.Ctx, CreateTaskRequest{
-			Title:    "Fix bug in signup",
-			ColumnID: env.ColumnID,
-			Position: 2,
-		})
-		require.NoError(t, err)
-
-		// Filter by "bug"
-		results, err := env.Svc.GetTaskSummariesByProjectFiltered(env.Ctx, env.ProjectID, "bug")
-		require.NoError(t, err, "Operation failed")
-
-		// Should return 2 tasks with "bug" in title
-		totalTasks := 0
+		total := 0
 		for _, tasks := range results {
-			totalTasks += len(tasks)
+			total += len(tasks)
 		}
-
-		assert.Equal(t, 2, totalTasks)
+		assert.Equal(t, 2, total, "should return all tasks when no filters applied")
 	})
 }
 
-func TestGetTaskSummariesByProjectFiltered_NoResults(t *testing.T) {
+func TestGetTaskSummariesWithFilters_TitleFilter(t *testing.T) {
 	t.Parallel()
 	fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
 		env := setupTestEnv(t, db, d, dbType)
-		// Create task
-		_, err := env.Svc.CreateTask(env.Ctx, CreateTaskRequest{
-			Title:    "Test Task",
-			ColumnID: env.ColumnID,
-			Position: 0,
+		_, err := env.Svc.CreateTask(env.Ctx, CreateTaskRequest{Title: "Fix login bug", ColumnID: env.ColumnID, Position: 0})
+		require.NoError(t, err)
+		_, err = env.Svc.CreateTask(env.Ctx, CreateTaskRequest{Title: "Add feature", ColumnID: env.ColumnID, Position: 1})
+		require.NoError(t, err)
+		_, err = env.Svc.CreateTask(env.Ctx, CreateTaskRequest{Title: "Fix signup bug", ColumnID: env.ColumnID, Position: 2})
+		require.NoError(t, err)
+
+		query := "bug"
+		results, err := env.Svc.GetTaskSummariesWithFilters(env.Ctx, TaskFilterParams{
+			ProjectID: env.ProjectID,
+			Title:     &query,
 		})
 		require.NoError(t, err)
 
-		// Filter by non-existent term
-		results, err := env.Svc.GetTaskSummariesByProjectFiltered(env.Ctx, env.ProjectID, "nonexistent")
-		require.NoError(t, err, "Operation failed")
-
-		// Should return empty map
-		totalTasks := 0
+		total := 0
 		for _, tasks := range results {
-			totalTasks += len(tasks)
+			total += len(tasks)
 		}
-
-		assert.Equal(t, 0, totalTasks)
+		assert.Equal(t, 2, total, "should return only tasks matching title filter")
 	})
 }
 
-func TestGetTaskSummariesByProjectFiltered_EmptyQuery(t *testing.T) {
+func TestGetTaskSummariesWithFilters_PriorityFilter(t *testing.T) {
 	t.Parallel()
 	fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
 		env := setupTestEnv(t, db, d, dbType)
-		// Create tasks
-		_, err := env.Svc.CreateTask(env.Ctx, CreateTaskRequest{
-			Title:    "Task 1",
-			ColumnID: env.ColumnID,
-			Position: 0,
+
+		// Create tasks with different priorities
+		taskID1 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "High priority task")
+		_, err := env.DB.ExecContext(env.Ctx,
+			fmt.Sprintf("UPDATE tasks SET priority_id = 4 WHERE id = %s", d.Placeholder(1)), taskID1)
+		require.NoError(t, err)
+
+		fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Medium priority task") // default priority_id = 3
+
+		priorityHigh := 4
+		results, err := env.Svc.GetTaskSummariesWithFilters(env.Ctx, TaskFilterParams{
+			ProjectID:  env.ProjectID,
+			PriorityID: &priorityHigh,
 		})
 		require.NoError(t, err)
 
-		_, err = env.Svc.CreateTask(env.Ctx, CreateTaskRequest{
-			Title:    "Task 2",
-			ColumnID: env.ColumnID,
-			Position: 1,
-		})
-		require.NoError(t, err)
-
-		// Filter with empty query (should return all)
-		results, err := env.Svc.GetTaskSummariesByProjectFiltered(env.Ctx, env.ProjectID, "")
-		require.NoError(t, err, "Operation failed")
-
-		// Should return all tasks
-		totalTasks := 0
+		total := 0
 		for _, tasks := range results {
-			totalTasks += len(tasks)
+			total += len(tasks)
 		}
+		assert.Equal(t, 1, total, "should return only tasks with high priority")
+	})
+}
 
-		assert.Equal(t, 2, totalTasks)
+func TestGetTaskSummariesWithFilters_TypeFilter(t *testing.T) {
+	t.Parallel()
+	fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+		env := setupTestEnv(t, db, d, dbType)
+
+		// Create tasks: default type_id = 1 (task)
+		fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Regular task")
+
+		taskID2 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Feature request")
+		_, err := env.DB.ExecContext(env.Ctx,
+			fmt.Sprintf("UPDATE tasks SET type_id = 2 WHERE id = %s", d.Placeholder(1)), taskID2)
+		require.NoError(t, err)
+
+		typeFeature := 2
+		results, err := env.Svc.GetTaskSummariesWithFilters(env.Ctx, TaskFilterParams{
+			ProjectID: env.ProjectID,
+			TypeID:    &typeFeature,
+		})
+		require.NoError(t, err)
+
+		total := 0
+		for _, tasks := range results {
+			total += len(tasks)
+		}
+		assert.Equal(t, 1, total, "should return only feature-type tasks")
+	})
+}
+
+func TestGetTaskSummariesWithFilters_AssigneeFilter(t *testing.T) {
+	t.Parallel()
+	fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+		env := setupTestEnv(t, db, d, dbType)
+
+		assigneeID := fixtures.CreateTestAssignee(t, env.DB, env.Dialect, "alice")
+
+		taskID1 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Alice's task")
+		_, err := env.DB.ExecContext(env.Ctx,
+			fmt.Sprintf("UPDATE tasks SET assignee_id = %s WHERE id = %s", d.Placeholder(1), d.Placeholder(2)),
+			assigneeID, taskID1)
+		require.NoError(t, err)
+
+		fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Unassigned task")
+
+		results, err := env.Svc.GetTaskSummariesWithFilters(env.Ctx, TaskFilterParams{
+			ProjectID:  env.ProjectID,
+			AssigneeID: &assigneeID,
+		})
+		require.NoError(t, err)
+
+		total := 0
+		for _, tasks := range results {
+			total += len(tasks)
+		}
+		assert.Equal(t, 1, total, "should return only tasks assigned to alice")
+	})
+}
+
+func TestGetTaskSummariesWithFilters_AssigneeUnassigned(t *testing.T) {
+	t.Parallel()
+	fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+		env := setupTestEnv(t, db, d, dbType)
+
+		assigneeID := fixtures.CreateTestAssignee(t, env.DB, env.Dialect, "bob")
+
+		taskID1 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Bob's task")
+		_, err := env.DB.ExecContext(env.Ctx,
+			fmt.Sprintf("UPDATE tasks SET assignee_id = %s WHERE id = %s", d.Placeholder(1), d.Placeholder(2)),
+			assigneeID, taskID1)
+		require.NoError(t, err)
+
+		fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Unassigned task")
+
+		unassigned := -1
+		results, err := env.Svc.GetTaskSummariesWithFilters(env.Ctx, TaskFilterParams{
+			ProjectID:  env.ProjectID,
+			AssigneeID: &unassigned,
+		})
+		require.NoError(t, err)
+
+		total := 0
+		for _, tasks := range results {
+			total += len(tasks)
+		}
+		assert.Equal(t, 1, total, "should return only unassigned tasks")
+	})
+}
+
+func TestGetTaskSummariesWithFilters_LabelFilter(t *testing.T) {
+	t.Parallel()
+	fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+		env := setupTestEnv(t, db, d, dbType)
+
+		labelBug := fixtures.CreateTestLabel(t, env.DB, env.Dialect, env.ProjectID, "bug", "#FF0000")
+		labelFeature := fixtures.CreateTestLabel(t, env.DB, env.Dialect, env.ProjectID, "feature", "#00FF00")
+
+		taskID1 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Bug task")
+		taskID2 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Feature task")
+		fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "No label task")
+
+		err := env.Svc.AttachLabel(env.Ctx, taskID1, labelBug)
+		require.NoError(t, err)
+		err = env.Svc.AttachLabel(env.Ctx, taskID2, labelFeature)
+		require.NoError(t, err)
+
+		// Filter by bug label only
+		results, err := env.Svc.GetTaskSummariesWithFilters(env.Ctx, TaskFilterParams{
+			ProjectID: env.ProjectID,
+			LabelIDs:  []int{labelBug},
+		})
+		require.NoError(t, err)
+
+		total := 0
+		for _, tasks := range results {
+			total += len(tasks)
+		}
+		assert.Equal(t, 1, total, "should return only tasks with bug label")
+	})
+}
+
+func TestGetTaskSummariesWithFilters_LabelORLogic(t *testing.T) {
+	t.Parallel()
+	fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+		env := setupTestEnv(t, db, d, dbType)
+
+		labelBug := fixtures.CreateTestLabel(t, env.DB, env.Dialect, env.ProjectID, "bug", "#FF0000")
+		labelUrgent := fixtures.CreateTestLabel(t, env.DB, env.Dialect, env.ProjectID, "urgent", "#FF6600")
+
+		taskID1 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Bug task")
+		taskID2 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Urgent task")
+		fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "No label task")
+
+		err := env.Svc.AttachLabel(env.Ctx, taskID1, labelBug)
+		require.NoError(t, err)
+		err = env.Svc.AttachLabel(env.Ctx, taskID2, labelUrgent)
+		require.NoError(t, err)
+
+		// Filter by bug OR urgent (should match 2 tasks)
+		results, err := env.Svc.GetTaskSummariesWithFilters(env.Ctx, TaskFilterParams{
+			ProjectID: env.ProjectID,
+			LabelIDs:  []int{labelBug, labelUrgent},
+		})
+		require.NoError(t, err)
+
+		total := 0
+		for _, tasks := range results {
+			total += len(tasks)
+		}
+		assert.Equal(t, 2, total, "should return tasks matching ANY of the selected labels (OR logic)")
+	})
+}
+
+func TestGetTaskSummariesWithFilters_CombinedFilters(t *testing.T) {
+	t.Parallel()
+	fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+		env := setupTestEnv(t, db, d, dbType)
+
+		// Task 1: "Fix login bug", high priority, assigned to alice
+		assigneeID := fixtures.CreateTestAssignee(t, env.DB, env.Dialect, "alice")
+		taskID1 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Fix login bug")
+		_, err := env.DB.ExecContext(env.Ctx,
+			fmt.Sprintf("UPDATE tasks SET priority_id = 4, assignee_id = %s WHERE id = %s",
+				d.Placeholder(1), d.Placeholder(2)), assigneeID, taskID1)
+		require.NoError(t, err)
+
+		// Task 2: "Fix signup bug", medium priority, assigned to alice
+		taskID2 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Fix signup bug")
+		_, err = env.DB.ExecContext(env.Ctx,
+			fmt.Sprintf("UPDATE tasks SET assignee_id = %s WHERE id = %s",
+				d.Placeholder(1), d.Placeholder(2)), assigneeID, taskID2)
+		require.NoError(t, err)
+
+		// Task 3: "Add feature", high priority, unassigned
+		taskID3 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Add feature")
+		_, err = env.DB.ExecContext(env.Ctx,
+			fmt.Sprintf("UPDATE tasks SET priority_id = 4 WHERE id = %s", d.Placeholder(1)), taskID3)
+		require.NoError(t, err)
+
+		// Filter: title contains "bug" AND high priority AND assigned to alice
+		query := "bug"
+		priorityHigh := 4
+		results, err := env.Svc.GetTaskSummariesWithFilters(env.Ctx, TaskFilterParams{
+			ProjectID:  env.ProjectID,
+			Title:      &query,
+			PriorityID: &priorityHigh,
+			AssigneeID: &assigneeID,
+		})
+		require.NoError(t, err)
+
+		total := 0
+		for _, tasks := range results {
+			total += len(tasks)
+		}
+		assert.Equal(t, 1, total, "combined filters should AND together: only task1 matches all criteria")
+	})
+}
+
+func TestGetTaskSummariesWithFilters_SearchAndLabelCombined(t *testing.T) {
+	t.Parallel()
+	fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
+		env := setupTestEnv(t, db, d, dbType)
+
+		labelBug := fixtures.CreateTestLabel(t, env.DB, env.Dialect, env.ProjectID, "bug", "#FF0000")
+
+		taskID1 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Fix login bug")
+		taskID2 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Fix signup bug")
+		fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Add feature")
+
+		// Only task1 gets the bug label
+		err := env.Svc.AttachLabel(env.Ctx, taskID1, labelBug)
+		require.NoError(t, err)
+		_ = taskID2
+
+		// Filter: title "Fix" + label "bug" = only task1
+		query := "Fix"
+		results, err := env.Svc.GetTaskSummariesWithFilters(env.Ctx, TaskFilterParams{
+			ProjectID: env.ProjectID,
+			Title:     &query,
+			LabelIDs:  []int{labelBug},
+		})
+		require.NoError(t, err)
+
+		total := 0
+		for _, tasks := range results {
+			total += len(tasks)
+		}
+		assert.Equal(t, 1, total, "search + label filter should AND together")
 	})
 }
 

@@ -82,7 +82,7 @@ func (m *MockProjectService) CallCount(method string) int {
 	return count
 }
 
-func (m *MockProjectService) recordCall(method string, args map[string]interface{}) {
+func (m *MockProjectService) recordCall(method string, args map[string]any) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Calls = append(m.Calls, MockCall{
@@ -100,7 +100,7 @@ func (m *MockProjectService) GetAllProjects(ctx context.Context) ([]*models.Proj
 }
 
 func (m *MockProjectService) GetProjectByID(ctx context.Context, id int) (*models.Project, error) {
-	m.recordCall("GetProjectByID", map[string]interface{}{
+	m.recordCall("GetProjectByID", map[string]any{
 		"id": id,
 	})
 	if m.GetProjectByIDErr != nil {
@@ -110,7 +110,7 @@ func (m *MockProjectService) GetProjectByID(ctx context.Context, id int) (*model
 }
 
 func (m *MockProjectService) GetProjectByGitBranch(ctx context.Context, gitBranch string) (*models.Project, error) {
-	m.recordCall("GetProjectByGitBranch", map[string]interface{}{
+	m.recordCall("GetProjectByGitBranch", map[string]any{
 		"gitBranch": gitBranch,
 	})
 	if m.GetProjectByGitBranchErr != nil {
@@ -120,7 +120,7 @@ func (m *MockProjectService) GetProjectByGitBranch(ctx context.Context, gitBranc
 }
 
 func (m *MockProjectService) GetTaskCount(ctx context.Context, projectID int) (int, error) {
-	m.recordCall("GetTaskCount", map[string]interface{}{
+	m.recordCall("GetTaskCount", map[string]any{
 		"projectID": projectID,
 	})
 	if m.GetTaskCountErr != nil {
@@ -130,7 +130,7 @@ func (m *MockProjectService) GetTaskCount(ctx context.Context, projectID int) (i
 }
 
 func (m *MockProjectService) CreateProject(ctx context.Context, req project.CreateProjectRequest) (*models.Project, error) {
-	m.recordCall("CreateProject", map[string]interface{}{
+	m.recordCall("CreateProject", map[string]any{
 		"name":        req.Name,
 		"description": req.Description,
 		"gitBranch":   req.GitBranch,
@@ -142,7 +142,7 @@ func (m *MockProjectService) CreateProject(ctx context.Context, req project.Crea
 }
 
 func (m *MockProjectService) UpdateProject(ctx context.Context, req project.UpdateProjectRequest) error {
-	m.recordCall("UpdateProject", map[string]interface{}{
+	m.recordCall("UpdateProject", map[string]any{
 		"id":          req.ID,
 		"name":        req.Name,
 		"description": req.Description,
@@ -152,7 +152,7 @@ func (m *MockProjectService) UpdateProject(ctx context.Context, req project.Upda
 }
 
 func (m *MockProjectService) DeleteProject(ctx context.Context, id int, force bool) error {
-	m.recordCall("DeleteProject", map[string]interface{}{
+	m.recordCall("DeleteProject", map[string]any{
 		"id":    id,
 		"force": force,
 	})

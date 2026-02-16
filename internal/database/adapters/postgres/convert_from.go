@@ -329,8 +329,8 @@ func fromGeneratedGetTaskSummariesByProjectRow(g generated_postgres.GetTaskSumma
 	}
 }
 
-func fromGeneratedGetTaskSummariesByProjectFilteredRow(g generated_postgres.GetTaskSummariesByProjectFilteredRow) types.GetTaskSummariesByProjectFilteredRow {
-	return types.GetTaskSummariesByProjectFilteredRow{
+func fromGeneratedGetTaskSummariesWithFiltersRow(g generated_postgres.GetTaskSummariesWithFiltersRow) types.GetTaskSummariesWithFiltersRow {
+	return types.GetTaskSummariesWithFiltersRow{
 		ID:                  g.ID,
 		Title:               g.Title,
 		ColumnID:            g.ColumnID,

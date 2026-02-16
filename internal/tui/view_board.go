@@ -12,6 +12,52 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
+// buildFilterBarProps constructs the FilterBarProps with resolved display names
+// for the currently active filter IDs.
+func (m Model) buildFilterBarProps() components.FilterBarProps {
+	props := components.FilterBarProps{
+		Filter:  m.UI.Filter,
+		Focused: m.UIState.Mode == state.FilterBarMode,
+		Width:   m.UIState.Width(),
+	}
+
+	if m.UI.Filter.PriorityID != nil {
+		for _, p := range renderers.GetPriorityOptions() {
+			if p.ID == *m.UI.Filter.PriorityID {
+				props.PriorityName = p.Description
+				break
+			}
+		}
+	}
+
+	if m.UI.Filter.TypeID != nil {
+		for _, t := range renderers.GetTypeOptions() {
+			if t.ID == *m.UI.Filter.TypeID {
+				props.TypeName = t.Description
+				break
+			}
+		}
+	}
+
+	if m.UI.Filter.AssigneeID != nil {
+		props.AssigneeName = m.UI.Filter.AssigneeName
+	}
+
+	if len(m.UI.Filter.LabelIDs) > 0 {
+		labelMap := make(map[int]string)
+		for _, l := range m.AppState.Labels() {
+			labelMap[l.ID] = l.Name
+		}
+		for _, id := range m.UI.Filter.LabelIDs {
+			if name, ok := labelMap[id]; ok {
+				props.LabelNames = append(props.LabelNames, name)
+			}
+		}
+	}
+
+	return props
+}
+
 // getInlineNotification returns the inline notification content for the tab bar
 // Returns empty string if no notifications
 func (m Model) getInlineNotification() string {
@@ -133,6 +179,8 @@ func (m Model) viewKanbanBoard() string {
 	inlineNotification := m.getInlineNotification()
 	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UIState.Width(), inlineNotification)
 
+	filterBar := components.RenderFilterBar(m.buildFilterBarProps())
+
 	footer := components.RenderStatusBar(components.StatusBarProps{
 		Width:            m.UIState.Width(),
 		SearchMode:       m.UIState.Mode == state.SearchMode || m.UI.Search.IsActive,
@@ -143,7 +191,7 @@ func (m Model) viewKanbanBoard() string {
 	})
 
 	// Build content (everything except footer)
-	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, board, "")
+	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, filterBar, board, "")
 
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")
@@ -192,6 +240,8 @@ func (m Model) viewListView() string {
 	inlineNotification := m.getInlineNotification()
 	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UIState.Width(), inlineNotification)
 
+	filterBar := components.RenderFilterBar(m.buildFilterBarProps())
+
 	// Render list content with sort indicator
 	listContent := renderers.RenderListView(
 		rows,
@@ -213,7 +263,7 @@ func (m Model) viewListView() string {
 	})
 
 	// Build content (everything except footer)
-	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, listContent, "")
+	content := lipgloss.JoinVertical(lipgloss.Left, tabBar, filterBar, listContent, "")
 
 	// Constrain content to fit terminal height, leaving room for footer
 	contentLines := strings.Split(content, "\n")

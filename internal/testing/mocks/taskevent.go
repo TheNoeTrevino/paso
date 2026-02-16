@@ -43,9 +43,9 @@ func NewMockTaskEventService() *MockTaskEventService {
 	}
 }
 
-func (m *MockTaskEventService) recordCall(method string, taskID int, args map[string]interface{}) {
+func (m *MockTaskEventService) recordCall(method string, taskID int, args map[string]any) {
 	if args == nil {
-		args = make(map[string]interface{})
+		args = make(map[string]any)
 	}
 	args["taskID"] = taskID // Keep for backward compatibility
 	m.Calls = append(m.Calls, MockCall{
@@ -101,7 +101,7 @@ func (m *MockTaskEventService) CallCount(method string) int {
 func (m *MockTaskEventService) CreateTaskCreatedEvent(ctx context.Context, qtx types.Querier, taskID int, title, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateTaskCreatedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreateTaskCreatedEvent", taskID, map[string]any{
 		"title":  title,
 		"author": author,
 	})
@@ -111,7 +111,7 @@ func (m *MockTaskEventService) CreateTaskCreatedEvent(ctx context.Context, qtx t
 func (m *MockTaskEventService) CreateTaskMovedEvent(ctx context.Context, qtx types.Querier, taskID int, fromColumn, toColumn, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateTaskMovedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreateTaskMovedEvent", taskID, map[string]any{
 		"fromColumn": fromColumn,
 		"toColumn":   toColumn,
 		"author":     author,
@@ -122,7 +122,7 @@ func (m *MockTaskEventService) CreateTaskMovedEvent(ctx context.Context, qtx typ
 func (m *MockTaskEventService) CreateTaskAssociatedEvent(ctx context.Context, qtx types.Querier, taskID, relatedTaskID int, relatedTitle, relationLabel, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateTaskAssociatedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreateTaskAssociatedEvent", taskID, map[string]any{
 		"relatedTaskID": relatedTaskID,
 		"relatedTitle":  relatedTitle,
 		"relationLabel": relationLabel,
@@ -134,7 +134,7 @@ func (m *MockTaskEventService) CreateTaskAssociatedEvent(ctx context.Context, qt
 func (m *MockTaskEventService) CreateTaskDisassociatedEvent(ctx context.Context, qtx types.Querier, taskID, relatedTaskID int, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateTaskDisassociatedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreateTaskDisassociatedEvent", taskID, map[string]any{
 		"relatedTaskID": relatedTaskID,
 		"author":        author,
 	})
@@ -144,7 +144,7 @@ func (m *MockTaskEventService) CreateTaskDisassociatedEvent(ctx context.Context,
 func (m *MockTaskEventService) CreateLabelAddedEvent(ctx context.Context, qtx types.Querier, taskID int, labelName, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateLabelAddedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreateLabelAddedEvent", taskID, map[string]any{
 		"labelName": labelName,
 		"author":    author,
 	})
@@ -154,7 +154,7 @@ func (m *MockTaskEventService) CreateLabelAddedEvent(ctx context.Context, qtx ty
 func (m *MockTaskEventService) CreateLabelRemovedEvent(ctx context.Context, qtx types.Querier, taskID int, labelName, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateLabelRemovedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreateLabelRemovedEvent", taskID, map[string]any{
 		"labelName": labelName,
 		"author":    author,
 	})
@@ -164,7 +164,7 @@ func (m *MockTaskEventService) CreateLabelRemovedEvent(ctx context.Context, qtx 
 func (m *MockTaskEventService) CreatePriorityChangedEvent(ctx context.Context, qtx types.Querier, taskID int, oldPriority, newPriority, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreatePriorityChangedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreatePriorityChangedEvent", taskID, map[string]any{
 		"oldPriority": oldPriority,
 		"newPriority": newPriority,
 		"author":      author,
@@ -175,7 +175,7 @@ func (m *MockTaskEventService) CreatePriorityChangedEvent(ctx context.Context, q
 func (m *MockTaskEventService) CreateTypeChangedEvent(ctx context.Context, qtx types.Querier, taskID int, oldType, newType, author string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateTypeChangedEvent", taskID, map[string]interface{}{
+	m.recordCall("CreateTypeChangedEvent", taskID, map[string]any{
 		"oldType": oldType,
 		"newType": newType,
 		"author":  author,

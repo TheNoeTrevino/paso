@@ -84,7 +84,7 @@ func (m *MockColumnService) CallCount(method string) int {
 	return count
 }
 
-func (m *MockColumnService) recordCall(method string, args map[string]interface{}) {
+func (m *MockColumnService) recordCall(method string, args map[string]any) {
 	m.Calls = append(m.Calls, MockCall{
 		Method: method,
 		Args:   args,
@@ -94,7 +94,7 @@ func (m *MockColumnService) recordCall(method string, args map[string]interface{
 func (m *MockColumnService) GetColumnsByProject(ctx context.Context, projectID int) ([]*models.Column, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("GetColumnsByProject", map[string]interface{}{
+	m.recordCall("GetColumnsByProject", map[string]any{
 		"projectID": projectID,
 	})
 	if m.GetColumnsByProjectErr != nil {
@@ -106,7 +106,7 @@ func (m *MockColumnService) GetColumnsByProject(ctx context.Context, projectID i
 func (m *MockColumnService) GetColumnByID(ctx context.Context, id int) (*models.Column, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("GetColumnByID", map[string]interface{}{
+	m.recordCall("GetColumnByID", map[string]any{
 		"id": id,
 	})
 	if m.GetColumnByIDErr != nil {
@@ -118,7 +118,7 @@ func (m *MockColumnService) GetColumnByID(ctx context.Context, id int) (*models.
 func (m *MockColumnService) CreateColumn(ctx context.Context, req column.CreateColumnRequest) (*models.Column, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("CreateColumn", map[string]interface{}{
+	m.recordCall("CreateColumn", map[string]any{
 		"name":                 req.Name,
 		"projectID":            req.ProjectID,
 		"afterID":              req.AfterID,
@@ -135,7 +135,7 @@ func (m *MockColumnService) CreateColumn(ctx context.Context, req column.CreateC
 func (m *MockColumnService) UpdateColumnName(ctx context.Context, id int, name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("UpdateColumnName", map[string]interface{}{
+	m.recordCall("UpdateColumnName", map[string]any{
 		"id":   id,
 		"name": name,
 	})
@@ -145,7 +145,7 @@ func (m *MockColumnService) UpdateColumnName(ctx context.Context, id int, name s
 func (m *MockColumnService) SetHoldsReadyTasks(ctx context.Context, columnID int) (*models.Column, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("SetHoldsReadyTasks", map[string]interface{}{
+	m.recordCall("SetHoldsReadyTasks", map[string]any{
 		"columnID": columnID,
 	})
 	if m.SetHoldsReadyTasksErr != nil {
@@ -157,7 +157,7 @@ func (m *MockColumnService) SetHoldsReadyTasks(ctx context.Context, columnID int
 func (m *MockColumnService) SetHoldsCompletedTasks(ctx context.Context, columnID int, force bool) (*models.Column, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("SetHoldsCompletedTasks", map[string]interface{}{
+	m.recordCall("SetHoldsCompletedTasks", map[string]any{
 		"columnID": columnID,
 		"force":    force,
 	})
@@ -170,7 +170,7 @@ func (m *MockColumnService) SetHoldsCompletedTasks(ctx context.Context, columnID
 func (m *MockColumnService) SetHoldsInProgressTasks(ctx context.Context, columnID int) (*models.Column, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("SetHoldsInProgressTasks", map[string]interface{}{
+	m.recordCall("SetHoldsInProgressTasks", map[string]any{
 		"columnID": columnID,
 	})
 	if m.SetHoldsInProgressTasksErr != nil {
@@ -182,7 +182,7 @@ func (m *MockColumnService) SetHoldsInProgressTasks(ctx context.Context, columnI
 func (m *MockColumnService) DeleteColumn(ctx context.Context, id int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.recordCall("DeleteColumn", map[string]interface{}{
+	m.recordCall("DeleteColumn", map[string]any{
 		"id": id,
 	})
 	return m.DeleteColumnErr

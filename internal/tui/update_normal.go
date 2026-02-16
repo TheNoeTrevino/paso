@@ -119,8 +119,17 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleQuickEditDueDate()
 	case "/":
 		return m.handleEnterSearch()
+	case km.FilterBar:
+		return m.handleEnterFilterBar()
 	}
 
+	return m, nil
+}
+
+func (m Model) handleEnterFilterBar() (tea.Model, tea.Cmd) {
+	m.UI.Filter.IsActive = true
+	m.UI.Filter.FocusedChip = state.FilterChipLabel
+	m.UIState.Mode = state.FilterBarMode
 	return m, nil
 }
 

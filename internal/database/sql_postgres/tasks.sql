@@ -345,8 +345,8 @@ group by
     a.name
 order by t.position;
 
--- name: GetTaskSummariesByProjectFiltered :many
--- Retrieves task summaries filtered by title search pattern with aggregated labels
+-- name: GetTaskSummariesWithFilters :many
+-- Retrieves task summaries filtered by multiple optional criteria with aggregated labels
 select
     t.id,
     t.title,
@@ -377,7 +377,12 @@ left join priorities p on t.priority_id = p.id
 left join assignees a on t.assignee_id = a.id
 left join task_labels tl on t.id = tl.task_id
 left join labels l on tl.label_id = l.id
-where c.project_id = $1 and t.title like $2
+where c.project_id = sqlc.arg('project_id')
+    and (sqlc.narg('title_filter')::text is null or t.title like sqlc.narg('title_filter'))
+    and (sqlc.narg('priority_id')::bigint is null or p.id = sqlc.narg('priority_id'))
+    and (sqlc.narg('type_id')::bigint is null or ty.id = sqlc.narg('type_id'))
+    and (sqlc.narg('assignee_id')::bigint is null or t.assignee_id = sqlc.narg('assignee_id') or (sqlc.narg('assignee_id') = -1 and t.assignee_id is null))
+    and (sqlc.arg('label_ids_csv')::text = '' or exists (select 1 from task_labels tl2 where tl2.task_id = t.id and position(',' || cast(tl2.label_id as text) || ',' in sqlc.arg('label_ids_csv')) > 0))
 group by
     t.id,
     t.title,

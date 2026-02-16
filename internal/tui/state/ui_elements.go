@@ -6,6 +6,7 @@ package state
 type UIElements struct {
 	Notification *NotificationState // Notification state (for displaying user messages)
 	Search       *SearchState       // Search state (for filtering/searching tasks)
+	Filter       *FilterState       // Filter state (for filter bar chip selections)
 	ListView     *ListViewState     // List view state (for rendering tasks in list format)
 	CurrentTip   string             // Current tip to display in statusbar
 }
@@ -15,6 +16,7 @@ func NewUIElements() *UIElements {
 	return &UIElements{
 		Notification: NewNotificationState(),
 		Search:       NewSearchState(),
+		Filter:       NewFilterState(),
 		ListView:     NewListViewState(),
 	}
 }

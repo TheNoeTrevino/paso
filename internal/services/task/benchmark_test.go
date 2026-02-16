@@ -146,29 +146,6 @@ func BenchmarkGetTaskSummariesByProject(b *testing.B) {
 	}
 }
 
-func BenchmarkGetTaskSummariesByProjectFiltered(b *testing.B) {
-	db := fixtures.SetupTestDB(b)
-
-	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
-	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
-
-	for i := 0; i < 100; i++ {
-		title := "Database Migration Task " + string(rune(i%10))
-		fixtures.CreateTestTask(b, db, testDialect, columnID, title)
-	}
-
-	service := newBenchmarkService(b, db)
-	ctx := context.Background()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := service.GetTaskSummariesByProjectFiltered(ctx, projectID, "Database")
-		if err != nil {
-			b.Fatalf("GetTaskSummariesByProjectFiltered failed: %v", err)
-		}
-	}
-}
-
 func BenchmarkGetTaskTreeByProject(b *testing.B) {
 	db := fixtures.SetupTestDB(b)
 

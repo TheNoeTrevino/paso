@@ -329,8 +329,8 @@ func fromGeneratedGetTaskSummariesByProjectRow(g generated_sqlite.GetTaskSummari
 	}
 }
 
-func fromGeneratedGetTaskSummariesByProjectFilteredRow(g generated_sqlite.GetTaskSummariesByProjectFilteredRow) types.GetTaskSummariesByProjectFilteredRow {
-	return types.GetTaskSummariesByProjectFilteredRow{
+func fromGeneratedGetTaskSummariesWithFiltersRow(g generated_sqlite.GetTaskSummariesWithFiltersRow) types.GetTaskSummariesWithFiltersRow {
+	return types.GetTaskSummariesWithFiltersRow{
 		ID:                  g.ID,
 		Title:               g.Title,
 		ColumnID:            g.ColumnID,

@@ -53,7 +53,7 @@ func NewMockEventPublisher() *MockEventPublisher {
 	}
 }
 
-func (m *MockEventPublisher) recordCall(method string, args map[string]interface{}) {
+func (m *MockEventPublisher) recordCall(method string, args map[string]any) {
 	m.Calls = append(m.Calls, MockCall{
 		Method: method,
 		Args:   args,
@@ -182,7 +182,7 @@ func (m *MockEventPublisher) SendEvent(event events.Event) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.SentEvents = append(m.SentEvents, event)
-	m.recordCall("SendEvent", map[string]interface{}{
+	m.recordCall("SendEvent", map[string]any{
 		"event": event,
 	})
 	if m.SendEventFunc != nil {
@@ -213,7 +213,7 @@ func (m *MockEventPublisher) Subscribe(projectID int) error {
 	m.SubscribeCalled = true
 	m.SubscriptionHistory = append(m.SubscriptionHistory, projectID)
 	m.CurrentSubscription = projectID
-	m.recordCall("Subscribe", map[string]interface{}{
+	m.recordCall("Subscribe", map[string]any{
 		"projectID": projectID,
 	})
 	return m.SubscribeErr

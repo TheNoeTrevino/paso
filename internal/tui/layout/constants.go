@@ -22,4 +22,7 @@ const (
 
 	// Viewport
 	MinViewportColumns = 3 // Minimum visible columns
+
+	// Filter bar height (chip row + border/padding)
+	FilterBarHeight = 2
 )

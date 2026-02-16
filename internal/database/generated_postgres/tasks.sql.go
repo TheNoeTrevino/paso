@@ -1212,7 +1212,7 @@ func (q *Queries) GetTaskSummariesByProject(ctx context.Context, projectID int64
 	return items, nil
 }
 
-const getTaskSummariesByProjectFiltered = `-- name: GetTaskSummariesByProjectFiltered :many
+const getTaskSummariesWithFilters = `-- name: GetTaskSummariesWithFilters :many
 select
     t.id,
     t.title,
@@ -1243,7 +1243,12 @@ left join priorities p on t.priority_id = p.id
 left join assignees a on t.assignee_id = a.id
 left join task_labels tl on t.id = tl.task_id
 left join labels l on tl.label_id = l.id
-where c.project_id = $1 and t.title like $2
+where c.project_id = $1
+    and ($2::text is null or t.title like $2)
+    and ($3::bigint is null or p.id = $3)
+    and ($4::bigint is null or ty.id = $4)
+    and ($5::bigint is null or t.assignee_id = $5 or ($5 = -1 and t.assignee_id is null))
+    and ($6::text = '' or exists (select 1 from task_labels tl2 where tl2.task_id = t.id and position(',' || cast(tl2.label_id as text) || ',' in $6) > 0))
 group by
     t.id,
     t.title,
@@ -1259,12 +1264,16 @@ group by
 order by t.position
 `
 
-type GetTaskSummariesByProjectFilteredParams struct {
-	ProjectID int64
-	Title     string
+type GetTaskSummariesWithFiltersParams struct {
+	ProjectID   int64
+	TitleFilter sql.NullString
+	PriorityID  sql.NullInt64
+	TypeID      sql.NullInt64
+	AssigneeID  sql.NullInt64
+	LabelIdsCsv string
 }
 
-type GetTaskSummariesByProjectFilteredRow struct {
+type GetTaskSummariesWithFiltersRow struct {
 	ID                  int64
 	Title               string
 	ColumnID            int64
@@ -1282,16 +1291,23 @@ type GetTaskSummariesByProjectFilteredRow struct {
 	IsBlocked           bool
 }
 
-// Retrieves task summaries filtered by title search pattern with aggregated labels
-func (q *Queries) GetTaskSummariesByProjectFiltered(ctx context.Context, arg GetTaskSummariesByProjectFilteredParams) ([]GetTaskSummariesByProjectFilteredRow, error) {
-	rows, err := q.db.QueryContext(ctx, getTaskSummariesByProjectFiltered, arg.ProjectID, arg.Title)
+// Retrieves task summaries filtered by multiple optional criteria with aggregated labels
+func (q *Queries) GetTaskSummariesWithFilters(ctx context.Context, arg GetTaskSummariesWithFiltersParams) ([]GetTaskSummariesWithFiltersRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTaskSummariesWithFilters,
+		arg.ProjectID,
+		arg.TitleFilter,
+		arg.PriorityID,
+		arg.TypeID,
+		arg.AssigneeID,
+		arg.LabelIdsCsv,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []GetTaskSummariesByProjectFilteredRow{}
+	items := []GetTaskSummariesWithFiltersRow{}
 	for rows.Next() {
-		var i GetTaskSummariesByProjectFilteredRow
+		var i GetTaskSummariesWithFiltersRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Title,

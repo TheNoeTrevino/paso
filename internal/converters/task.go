@@ -201,8 +201,8 @@ func ReadyTaskSummaryFromRowToModel(row types.GetReadyTaskSummariesByProjectRow)
 	return summary
 }
 
-// FilteredTaskSummaryFromRowToModel converts a filtered task summary row to models.TaskSummary
-func FilteredTaskSummaryFromRowToModel(row types.GetTaskSummariesByProjectFilteredRow) *models.TaskSummary {
+// WithFiltersTaskSummaryFromRowToModel converts a WithFilters task summary row to models.TaskSummary
+func WithFiltersTaskSummaryFromRowToModel(row types.GetTaskSummariesWithFiltersRow) *models.TaskSummary {
 	summary := &models.TaskSummary{
 		ID:        int(row.ID),
 		Title:     row.Title,
