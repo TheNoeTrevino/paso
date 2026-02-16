@@ -1,4 +1,4 @@
-package tui
+package tui_test
 
 import (
 	"context"
@@ -16,78 +16,80 @@ import (
 	"github.com/thenoetrevino/paso/internal/services/project"
 	"github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/testing/fixtures"
+	"github.com/thenoetrevino/paso/internal/testing/snapshots"
+	"github.com/thenoetrevino/paso/internal/tui"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
 // NOTE:
 // If you are here bc you changed the ui layout and tests are failing,
 // run the following command to update snapshots:
-// UPDATE_SNAPSHOTS=1 go test ./internal/tui -run TestSnapshots
+// UPDATE_SNAPSHOTS=1 go test ./internal/testing/snapshots/tui -run TestSnapshots
 
 // TestSnapshots verifies TUI rendering consistency across different application states
 func TestSnapshots(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name  string
-		setup func(*testing.T, *sql.DB) Model
+		setup func(*testing.T, *sql.DB) tui.Model
 	}{
 		{
 			name: "empty_project_board",
-			setup: func(t *testing.T, db *sql.DB) Model {
+			setup: func(t *testing.T, db *sql.DB) tui.Model {
 				return setupEmptyProject(t, db)
 			},
 		},
 		{
 			name: "board_with_tasks",
-			setup: func(t *testing.T, db *sql.DB) Model {
+			setup: func(t *testing.T, db *sql.DB) tui.Model {
 				return setupBoardWithTasks(t, db)
 			},
 		},
 		{
 			name: "board_with_multiple_tasks",
-			setup: func(t *testing.T, db *sql.DB) Model {
+			setup: func(t *testing.T, db *sql.DB) tui.Model {
 				return setupBoardWithMultipleTasks(t, db)
 			},
 		},
 		{
 			name: "board_with_labels",
-			setup: func(t *testing.T, db *sql.DB) Model {
+			setup: func(t *testing.T, db *sql.DB) tui.Model {
 				return setupBoardWithLabels(t, db)
 			},
 		},
 		{
 			name: "no_projects",
-			setup: func(t *testing.T, db *sql.DB) Model {
+			setup: func(t *testing.T, db *sql.DB) tui.Model {
 				return setupNoProjects(t, db)
 			},
 		},
 		{
 			name: "project_no_columns",
-			setup: func(t *testing.T, db *sql.DB) Model {
+			setup: func(t *testing.T, db *sql.DB) tui.Model {
 				return setupProjectNoColumns(t, db)
 			},
 		},
 		{
 			name: "connection_disconnected",
-			setup: func(t *testing.T, db *sql.DB) Model {
+			setup: func(t *testing.T, db *sql.DB) tui.Model {
 				return setupConnectionDisconnected(t, db)
 			},
 		},
 		{
 			name: "connection_reconnecting",
-			setup: func(t *testing.T, db *sql.DB) Model {
+			setup: func(t *testing.T, db *sql.DB) tui.Model {
 				return setupConnectionReconnecting(t, db)
 			},
 		},
 		{
 			name: "notification_error",
-			setup: func(t *testing.T, db *sql.DB) Model {
+			setup: func(t *testing.T, db *sql.DB) tui.Model {
 				return setupNotificationError(t, db)
 			},
 		},
 		{
 			name: "notification_warning",
-			setup: func(t *testing.T, db *sql.DB) Model {
+			setup: func(t *testing.T, db *sql.DB) tui.Model {
 				return setupNotificationWarning(t, db)
 			},
 		},
@@ -109,23 +111,20 @@ func TestSnapshots(t *testing.T) {
 			output := view.Content
 
 			// Compare against golden file
-			helper := NewSnapshotHelper(t)
+			helper := snapshots.NewHelper(t, "testdata")
 			helper.Compare(tt.name, output)
 		})
 	}
 }
 
-// setupEmptyProject creates a model with an empty project and default columns
-func setupEmptyProject(t *testing.T, db *sql.DB) Model {
+func setupEmptyProject(t *testing.T, db *sql.DB) tui.Model {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Create project and services
 	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Test Project")
 	appContainer := createAppContainer(t, db)
 
-	// Load project data
 	_, err := appContainer.ProjectService.GetProjectByID(ctx, projectID)
 	require.NoError(t, err, "Failed to get project")
 
@@ -139,21 +138,18 @@ func setupEmptyProject(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil, db)
+	m := tui.InitialModel(ctx, appContainer, cfg, nil, db)
 
-	// Override with loaded data
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
 
-	// Set fixed tip for deterministic snapshot tests
 	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
 
-// setupBoardWithTasks creates a model with tasks across columns
-func setupBoardWithTasks(t *testing.T, db *sql.DB) Model {
+func setupBoardWithTasks(t *testing.T, db *sql.DB) tui.Model {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -161,13 +157,11 @@ func setupBoardWithTasks(t *testing.T, db *sql.DB) Model {
 	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Test Project")
 	appContainer := createAppContainer(t, db)
 
-	// Get columns
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err)
 
 	require.GreaterOrEqual(t, len(columns), 3, "Expected at least 3 columns")
 
-	// Create tasks in different columns
 	fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[0].ID, "Setup database")
 	fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[0].ID, "Configure service")
 	fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[1].ID, "Implement API endpoints")
@@ -180,20 +174,18 @@ func setupBoardWithTasks(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil, db)
+	m := tui.InitialModel(ctx, appContainer, cfg, nil, db)
 
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
 
-	// Set fixed tip for deterministic snapshot tests
 	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
 
-// setupBoardWithMultipleTasks creates a model with many tasks for testing rendering at scale
-func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) Model {
+func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) tui.Model {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -204,7 +196,6 @@ func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) Model {
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err)
 
-	// Create multiple tasks per column
 	for i := range 5 {
 		fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[0].ID, "Task "+string(rune(65+i)))
 	}
@@ -222,20 +213,18 @@ func setupBoardWithMultipleTasks(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil, db)
+	m := tui.InitialModel(ctx, appContainer, cfg, nil, db)
 
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
 
-	// Set fixed tip for deterministic snapshot tests
 	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
 
-// setupBoardWithLabels creates a model with labeled tasks
-func setupBoardWithLabels(t *testing.T, db *sql.DB) Model {
+func setupBoardWithLabels(t *testing.T, db *sql.DB) tui.Model {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -243,7 +232,6 @@ func setupBoardWithLabels(t *testing.T, db *sql.DB) Model {
 	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Test Project")
 	appContainer := createAppContainer(t, db)
 
-	// Create labels
 	labelBug := fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "bug", "#FF0000")
 	labelFeature := fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "feature", "#00FF00")
 	labelDoc := fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "documentation", "#0000FF")
@@ -251,12 +239,10 @@ func setupBoardWithLabels(t *testing.T, db *sql.DB) Model {
 	columns, err := appContainer.ColumnService.GetColumnsByProject(ctx, projectID)
 	require.NoError(t, err)
 
-	// Create tasks with labels
 	task1ID := fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[0].ID, "Fix critical bug")
 	task2ID := fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[0].ID, "Implement new feature")
 	task3ID := fixtures.CreateTestTask(t, db, fixtures.SQLiteDialect(), columns[1].ID, "Write API docs")
 
-	// Attach labels
 	_, err = db.ExecContext(ctx, "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", task1ID, labelBug)
 	require.NoError(t, err)
 	_, err = db.ExecContext(ctx, "INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)", task2ID, labelFeature)
@@ -273,74 +259,63 @@ func setupBoardWithLabels(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil, db)
+	m := tui.InitialModel(ctx, appContainer, cfg, nil, db)
 
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
 
-	// Set fixed tip for deterministic snapshot tests
 	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
 
-// setupNoProjects creates a model with no projects at all
-func setupNoProjects(t *testing.T, db *sql.DB) Model {
+func setupNoProjects(t *testing.T, db *sql.DB) tui.Model {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Create app container but don't create any projects
 	appContainer := createAppContainer(t, db)
 
 	cfg, err := config.Load()
 	require.NoError(t, err, "Failed to load config")
 
-	m := InitialModel(ctx, appContainer, cfg, nil, db)
+	m := tui.InitialModel(ctx, appContainer, cfg, nil, db)
 
-	// Explicitly set empty state
 	m.AppState.SetColumns([]*models.Column{})
 	m.AppState.SetTasks(make(map[int][]*models.TaskSummary))
 	m.AppState.SetLabels([]*models.Label{})
 
-	// Set fixed tip for deterministic snapshot tests
 	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
 
-// setupProjectNoColumns creates a model with a project but no columns
-func setupProjectNoColumns(t *testing.T, db *sql.DB) Model {
+func setupProjectNoColumns(t *testing.T, db *sql.DB) tui.Model {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Create project but don't create any columns
 	projectID := fixtures.CreateTestProject(t, db, fixtures.SQLiteDialect(), "Empty Project")
 	appContainer := createAppContainer(t, db)
 
-	// Delete default columns that were auto-created
 	_, err := db.ExecContext(ctx, "DELETE FROM columns WHERE project_id = ?", projectID)
 	require.NoError(t, err)
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil, db)
+	m := tui.InitialModel(ctx, appContainer, cfg, nil, db)
 
-	// Set empty columns
 	m.AppState.SetColumns([]*models.Column{})
 	m.AppState.SetTasks(make(map[int][]*models.TaskSummary))
 	m.AppState.SetLabels([]*models.Label{})
 
-	// Set fixed tip for deterministic snapshot tests
 	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
 
-// setupConnectionDisconnected creates a model with disconnected daemon status
-func setupConnectionDisconnected(t *testing.T, db *sql.DB) Model {
+func setupConnectionDisconnected(t *testing.T, db *sql.DB) tui.Model {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -357,24 +332,20 @@ func setupConnectionDisconnected(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	// Pass nil for eventClient to simulate disconnected state
-	m := InitialModel(ctx, appContainer, cfg, nil, db)
+	m := tui.InitialModel(ctx, appContainer, cfg, nil, db)
 
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
 
-	// Explicitly set disconnected status
 	m.ConnectionState.SetStatus(state.Disconnected)
 
-	// Set fixed tip for deterministic snapshot tests
 	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
 
-// setupConnectionReconnecting creates a model in reconnecting state
-func setupConnectionReconnecting(t *testing.T, db *sql.DB) Model {
+func setupConnectionReconnecting(t *testing.T, db *sql.DB) tui.Model {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -391,23 +362,20 @@ func setupConnectionReconnecting(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil, db)
+	m := tui.InitialModel(ctx, appContainer, cfg, nil, db)
 
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
 
-	// Explicitly set reconnecting status
 	m.ConnectionState.SetStatus(state.Reconnecting)
 
-	// Set fixed tip for deterministic snapshot tests
 	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
 
-// setupNotificationError creates a model with an error notification
-func setupNotificationError(t *testing.T, db *sql.DB) Model {
+func setupNotificationError(t *testing.T, db *sql.DB) tui.Model {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -424,24 +392,21 @@ func setupNotificationError(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil, db)
+	m := tui.InitialModel(ctx, appContainer, cfg, nil, db)
 
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
 
-	// Add error notification
 	m.UI.Notification.SetWindowSize(80, 24)
 	m.UI.Notification.Add(state.LevelError, "Failed to save task: database connection lost")
 
-	// Set fixed tip for deterministic snapshot tests
 	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
 
-// setupNotificationWarning creates a model with a warning notification
-func setupNotificationWarning(t *testing.T, db *sql.DB) Model {
+func setupNotificationWarning(t *testing.T, db *sql.DB) tui.Model {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -458,23 +423,20 @@ func setupNotificationWarning(t *testing.T, db *sql.DB) Model {
 
 	cfg, err := config.Load()
 	require.NoError(t, err)
-	m := InitialModel(ctx, appContainer, cfg, nil, db)
+	m := tui.InitialModel(ctx, appContainer, cfg, nil, db)
 
 	m.AppState.SetColumns(columns)
 	m.AppState.SetTasks(tasks)
 	m.AppState.SetLabels(labels)
 
-	// Add warning notification
 	m.UI.Notification.SetWindowSize(80, 24)
 	m.UI.Notification.Add(state.LevelWarning, "Daemon connection unstable - some features may be limited")
 
-	// Set fixed tip for deterministic snapshot tests
 	m.UI.CurrentTip = "Press 'p' to create a new project, 'n'/'N' to switch projects"
 
 	return m
 }
 
-// createAppContainer creates an app container with all services
 func createAppContainer(t *testing.T, db *sql.DB) *app.App {
 	t.Helper()
 	dbType := database.SQLite
@@ -494,18 +456,16 @@ func createAppContainer(t *testing.T, db *sql.DB) *app.App {
 	}
 }
 
-// TestSnapshotRegressions verifies that snapshot files exist and match baseline
+// TestSnapshotRegressions verifies that snapshot golden files are properly maintained
 func TestSnapshotRegressions(t *testing.T) {
 	t.Parallel()
-	// This test verifies that snapshot golden files are properly maintained
-	helper := NewSnapshotHelper(t)
+	helper := snapshots.NewHelper(t, "testdata")
 
 	snapshotNames := []string{
 		"empty_project_board",
 		"board_with_tasks",
 		"board_with_multiple_tasks",
 		"board_with_labels",
-		// New snapshots for error, empty, and connection states
 		"no_projects",
 		"project_no_columns",
 		"connection_disconnected",
@@ -517,7 +477,7 @@ func TestSnapshotRegressions(t *testing.T) {
 	for _, name := range snapshotNames {
 		t.Run("verify_"+name, func(t *testing.T) {
 			t.Parallel()
-			_, err := helper.ReadSnapshot(name)
+			_, err := helper.Read(name)
 			if err != nil {
 				t.Logf("Snapshot %s not found. Run UPDATE_SNAPSHOTS=1 to create", name)
 			}
