@@ -21,19 +21,14 @@ type FilterBarProps struct {
 }
 
 // RenderFilterBar renders the filter bar with chip-style buttons.
+//
 //  Label:  Priority: 󰉺 Type: task  Assignee  Clear All
 func RenderFilterBar(props FilterBarProps) string {
 	if props.Filter == nil {
 		return ""
 	}
 
-	chipTexts := make([]string, state.FilterChipCount)
-
-	chipTexts[state.FilterChipLabel] = buildChipText(" Label", strings.Join(props.LabelNames, ", "))
-	chipTexts[state.FilterChipPriority] = buildChipText(" Priority", props.PriorityName)
-	chipTexts[state.FilterChipType] = buildChipText("󰉺 Type", props.TypeName)
-	chipTexts[state.FilterChipAssignee] = buildChipText(" Assignee", props.AssigneeName)
-	chipTexts[state.FilterChipClearAll] = " Clear All"
+	chipTexts := buildAllChipTexts(props)
 
 	var chips []string
 	for i := range int(state.FilterChipCount) {
@@ -49,13 +44,47 @@ func RenderFilterBar(props FilterBarProps) string {
 		Width(props.Width).
 		PaddingLeft(1)
 
-	return barStyle.Render(line)
+	return barStyle.Render(" " + line)
+}
+
+type archivedComponents struct {
+	prefix string
+	value  string
+}
+
+// buildArchivedComponents creates a struct that holds the prefix and value for the
+// archived filter chip based on whether archived items are shown or not.
+func buildArchivedComponents(isArchived bool) archivedComponents {
+	archivedPrefix := "󱝋 "
+	archivedValue := "Off"
+	if isArchived {
+		archivedPrefix = "󱝍 "
+		archivedValue = "On"
+	}
+	return archivedComponents{prefix: archivedPrefix, value: archivedValue}
+}
+
+// buildAllChipTexts constructs the display text for all filter chips.
+// This is a pure function that maps FilterBarProps to an array of chip text strings.
+func buildAllChipTexts(props FilterBarProps) []string {
+	chipTexts := make([]string, state.FilterChipCount)
+
+	chipTexts[state.FilterChipLabel] = buildChipText(" Label", strings.Join(props.LabelNames, ", "))
+	chipTexts[state.FilterChipPriority] = buildChipText(" Priority", props.PriorityName)
+	chipTexts[state.FilterChipType] = buildChipText("󰉺 Type", props.TypeName)
+	chipTexts[state.FilterChipAssignee] = buildChipText(" Assignee", props.AssigneeName)
+	chipTexts[state.FilterChipClearAll] = " Clear All"
+
+	archivedComponents := buildArchivedComponents(props.Filter.ShowArchived)
+	chipTexts[state.FilterChipArchived] = buildChipText(archivedComponents.prefix+"Archived", archivedComponents.value)
+
+	return chipTexts
 }
 
 // buildChipText creates the display text for a filter chip.
 func buildChipText(field string, value string) string {
 	if value == "" {
-		return field
+		return fmt.Sprintf("%s: %s", field, "All")
 	}
 	return fmt.Sprintf("%s: %s", field, value)
 }
@@ -100,6 +129,8 @@ func chipHasValue(chip state.FilterChip, props FilterBarProps) bool {
 		return props.TypeName != ""
 	case state.FilterChipAssignee:
 		return props.AssigneeName != ""
+	case state.FilterChipArchived:
+		return props.Filter.ShowArchived
 	case state.FilterChipClearAll:
 		return props.Filter.HasAnyFilter()
 	}

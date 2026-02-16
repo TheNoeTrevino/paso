@@ -95,4 +95,6 @@ UPDATE_SNAPSHOTS=1 go test ./internal/testing/snapshots/tui/...
 ```
 
 When a snapshot test fails, it means the output has changed. Either update the golden
-file (if the change is intentional) or fix the regression.
+file with the env var(if the change is intentional) or fix the regression.
+
+DO NOT fix by hand. For your own sake.

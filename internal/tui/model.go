@@ -1390,6 +1390,7 @@ func (m *Model) buildFilterParams(projectID int) tasksvc.TaskFilterParams {
 	params.TypeID = m.UI.Filter.TypeID
 	params.AssigneeID = m.UI.Filter.AssigneeID
 	params.LabelIDs = m.UI.Filter.LabelIDs
+	params.ShowArchived = m.UI.Filter.ShowArchived
 
 	return params
 }

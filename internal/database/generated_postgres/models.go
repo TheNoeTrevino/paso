@@ -75,6 +75,7 @@ type Task struct {
 	AssigneeID   sql.NullInt32
 	Estimate     sql.NullString
 	DueDate      sql.NullTime
+	Archived     bool
 }
 
 type TaskComment struct {

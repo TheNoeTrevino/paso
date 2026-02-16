@@ -49,12 +49,13 @@ func toGeneratedGetTaskBelowParams(t types.GetTaskBelowParams) generated_postgre
 
 func toGeneratedGetTaskSummariesWithFiltersParams(t types.GetTaskSummariesWithFiltersParams) generated_postgres.GetTaskSummariesWithFiltersParams {
 	return generated_postgres.GetTaskSummariesWithFiltersParams{
-		ProjectID:   t.ProjectID,
-		TitleFilter: t.TitleFilter.ToSQLNullString(),
-		PriorityID:  t.PriorityID.ToSQLNullInt64(),
-		TypeID:      t.TypeID.ToSQLNullInt64(),
-		AssigneeID:  t.AssigneeID.ToSQLNullInt64(),
-		LabelIdsCsv: t.LabelIdsCsv,
+		ProjectID:    t.ProjectID,
+		TitleFilter:  t.TitleFilter.ToSQLNullString(),
+		PriorityID:   t.PriorityID.ToSQLNullInt64(),
+		TypeID:       t.TypeID.ToSQLNullInt64(),
+		AssigneeID:   t.AssigneeID.ToSQLNullInt64(),
+		LabelIdsCsv:  t.LabelIdsCsv,
+		ShowArchived: t.ShowArchived,
 	}
 }
 

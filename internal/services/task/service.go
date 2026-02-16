@@ -25,12 +25,13 @@ var ErrTaskAlreadyInTargetProject = errors.New("task is already in the target pr
 // TaskFilterParams holds optional filter criteria for the unified filter query.
 // Zero values / nil pointers mean "no filter" for that field.
 type TaskFilterParams struct {
-	ProjectID  int
-	Title      *string // nil = no title filter; non-nil = LIKE %value%
-	PriorityID *int    // nil = no filter; value = exact match
-	TypeID     *int    // nil = no filter; value = exact match
-	AssigneeID *int    // nil = no filter; -1 = unassigned; value = exact match
-	LabelIDs   []int   // empty = no filter; non-empty = OR match (task has ANY of these)
+	ProjectID    int
+	Title        *string // nil = no title filter; non-nil = LIKE %value%
+	PriorityID   *int    // nil = no filter; value = exact match
+	TypeID       *int    // nil = no filter; value = exact match
+	AssigneeID   *int    // nil = no filter; -1 = unassigned; value = exact match
+	LabelIDs     []int   // empty = no filter; non-empty = OR match (task has ANY of these)
+	ShowArchived bool    // false = hide archived tasks (default); true = show all including archived
 }
 
 // TaskReader defines task reading operations
@@ -754,7 +755,8 @@ func (s *service) GetTaskSummariesWithFilters(ctx context.Context, params TaskFi
 	defer cancel()
 
 	dbParams := types.GetTaskSummariesWithFiltersParams{
-		ProjectID: int64(params.ProjectID),
+		ProjectID:    int64(params.ProjectID),
+		ShowArchived: params.ShowArchived,
 	}
 
 	if params.Title != nil {
