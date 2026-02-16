@@ -1,0 +1,23 @@
+Detach a label from a task by their IDs.
+
+Examples:
+  # Detach label from task (shorthand)
+  paso label detach -t 5 -l 2
+
+  # JSON output
+  paso label detach -t 5 -l 2 -j
+
+  # Quiet mode
+  paso label detach -t 5 -l 2 -q
+
+  # Long-form flags also supported
+  paso label detach --task=5 --label=2 --json
+
+Usage:
+  paso label detach [flags]
+
+Flags:
+  -j, --json        Output in JSON format
+  -l, --label int   Label ID (required)
+  -q, --quiet       Minimal output
+  -t, --task int    Task ID (required)

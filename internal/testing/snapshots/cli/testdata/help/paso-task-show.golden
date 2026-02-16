@@ -1,0 +1,15 @@
+Display all details of a task including description, relationships, labels, and metadata.
+
+Examples:
+  paso task show 42
+  paso task show -i 42
+  paso task show -i 42 -j
+  paso task show --id=42 --json
+
+Usage:
+  paso task show [id] [flags]
+
+Flags:
+  -i, --id int   Task ID (can also be provided as positional argument)
+  -j, --json     Output in JSON format
+  -q, --quiet    Minimal output (ID only)

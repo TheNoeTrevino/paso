@@ -1,0 +1,22 @@
+Create a new assignee with a name.
+
+Examples:
+  # Create assignee using shorthand flags
+  paso assignee create -n "john"
+
+  # JSON output for agents
+  paso assignee create -n "john" -j
+
+  # Quiet mode for bash capture
+  ASSIGNEE_ID=$(paso assignee create -n "john" -q)
+
+  # Long-form flags also supported
+  paso assignee create --name="john"
+
+Usage:
+  paso assignee create [flags]
+
+Flags:
+  -j, --json          Output in JSON format
+  -n, --name string   Assignee name (required)
+  -q, --quiet         Minimal output (ID only)

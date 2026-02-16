@@ -1,0 +1,25 @@
+List all tasks that are blocked by dependencies.
+
+These are tasks that cannot be started until their blocking
+dependencies are completed.
+
+Examples:
+  # Human-readable output (shorthand)
+  paso task blocked -p 1
+
+  # JSON output for agents
+  paso task blocked -p 1 -j
+
+  # Quiet mode for bash capture
+  TASK_IDS=$(paso task blocked -p 1 -q)
+
+  # Long-form flags also supported
+  paso task blocked --project=1 --json
+
+Usage:
+  paso task blocked [flags]
+
+Flags:
+  -j, --json          Output in JSON format
+  -p, --project int   Project ID (uses git branch association if not specified)
+  -q, --quiet         Minimal output (ID only)

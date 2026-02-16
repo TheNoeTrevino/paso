@@ -1,0 +1,26 @@
+Update a label's name and/or color.
+
+Examples:
+  # Update both name and color
+  paso label update 1 -n "critical-bug" -c "#FF0000"
+
+  # Update only name (keeps existing color)
+  paso label update 1 -n "critical-bug"
+
+  # Update only color (keeps existing name)
+  paso label update 1 -c "#FF0000"
+
+  # JSON output
+  paso label update 1 -n "urgent" -j
+
+  # Long-form flags also supported
+  paso label update 1 --name="urgent" --json
+
+Usage:
+  paso label update <id> [flags]
+
+Flags:
+  -c, --color string   New label color in hex format #RRGGBB
+  -j, --json           Output in JSON format
+  -n, --name string    New label name
+  -q, --quiet          Minimal output

@@ -1,0 +1,23 @@
+Attach a label to a task by their IDs.
+
+Examples:
+  # Attach label to task (shorthand)
+  paso label attach -t 5 -l 2
+
+  # JSON output
+  paso label attach -t 5 -l 2 -j
+
+  # Quiet mode
+  paso label attach -t 5 -l 2 -q
+
+  # Long-form flags also supported
+  paso label attach --task=5 --label=2 --json
+
+Usage:
+  paso label attach [flags]
+
+Flags:
+  -j, --json        Output in JSON format
+  -l, --label int   Label ID (required)
+  -q, --quiet       Minimal output
+  -t, --task int    Task ID (required)

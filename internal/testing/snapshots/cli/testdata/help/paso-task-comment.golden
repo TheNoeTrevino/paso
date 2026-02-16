@@ -1,0 +1,29 @@
+Add a comment to a task.
+
+Comments are limited to 1000 characters and are displayed in the task detail view.
+
+Examples:
+  # Add a comment using shorthand flags
+  paso task comment -i 42 -m "Need to follow up with team"
+
+  # With author
+  paso task comment -i 42 -m "Blocked by API changes in PR #123" -a "noe"
+
+  # JSON output for agents
+  paso task comment -i 42 -m "Investigation complete" -j
+
+  # Quiet mode for bash capture
+  COMMENT_ID=$(paso task comment -i 42 -m "Fixed" -q)
+
+  # Long-form flags also supported
+  paso task comment --id=42 --message="Fixed" --quiet
+
+Usage:
+  paso task comment [flags]
+
+Flags:
+  -a, --author string    Comment author (defaults to current user)
+  -i, --id int           Task ID (required)
+  -j, --json             Output in JSON format
+  -m, --message string   Comment message (required, max 1000 chars)
+  -q, --quiet            Minimal output (comment ID only)

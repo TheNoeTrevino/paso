@@ -1,0 +1,29 @@
+Link a project to a git branch.
+
+Positional arguments and flags can be used interchangeably:
+  [project-id] can be provided as a positional argument or via --id/-i flag
+  [branch] can be provided as a positional argument or via --branch/-b flag
+
+If project-id is not provided, defaults to the project associated with the current branch.
+If branch is not provided, defaults to the current git branch.
+
+Examples:
+  paso project git-link 5 feature/auth
+  paso project git-link 5                     # uses current branch
+  paso project git-link -i 5 -b feature/auth
+  paso project git-link -b feature/new        # uses current project
+  paso project git-link -i 5                  # uses current branch
+  paso project git-link                       # uses current project and branch
+
+  # Force transfer branch from another project
+  paso project git-link 5 feature/auth -f
+
+Usage:
+  paso project git-link [project-id] [branch] [flags]
+
+Flags:
+  -b, --branch string   Branch name to link (can also be provided as positional argument)
+  -f, --force           Transfer branch from another project if already linked
+  -i, --id int          Project ID to link (can also be provided as positional argument)
+  -j, --json            Output in JSON format
+  -q, --quiet           Minimal output

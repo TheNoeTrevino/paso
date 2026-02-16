@@ -1,0 +1,13 @@
+Manage assignees
+
+Usage:
+  paso assignee [command]
+
+Available Commands:
+  create      Create a new assignee
+  delete      Delete an assignee
+  list        List all assignees
+  set         Set the active assignee
+  whoami      Show the active assignee
+
+Use "paso assignee [command] --help" for more information about a command.

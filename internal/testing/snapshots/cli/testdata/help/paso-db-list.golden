@@ -1,0 +1,7 @@
+List configured databases
+
+Usage:
+  paso db list [flags]
+
+Flags:
+      --json   Output in JSON format

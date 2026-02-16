@@ -1,0 +1,51 @@
+Create a new column in a project.
+
+Special Column Flags:
+  Columns can be marked with special properties to control task workflow:
+  
+  --ready       Mark this column as holding ready tasks. When tasks are marked
+                as ready, they will automatically move to this column.
+  
+  --completed   Mark this column as holding completed tasks. When tasks are 
+                marked as done, they will automatically move to this column.
+  
+  --in-progress Mark this column as holding in-progress tasks. When tasks are
+                started, they will automatically move to this column.
+  
+  Note: Only one column per project can have each special property. Setting a 
+  special property on a new column will automatically remove it from other columns.
+
+Examples:
+  # Create column using shorthand flags
+  paso column create -n "Review" -p 1
+
+  # Create column with special property
+  paso column create -n "Done" -p 1 -c
+
+  # Create column after specific column
+  paso column create -n "Done" -p 1 -a 3
+
+  # Mark as ready or completed column
+  paso column create -n "Backlog" -p 1 -r
+  paso column create -n "Done" -p 1 -c
+
+  # JSON output for agents
+  paso column create -n "Review" -p 1 -j
+
+  # Quiet mode for bash capture
+  COLUMN_ID=$(paso column create -n "Review" -p 1 -q)
+
+  # Long-form flags also supported
+  paso column create --name="Review" --project=1 --json
+
+Usage:
+  paso column create [flags]
+
+Flags:
+  -a, --after int     Insert after column ID (0 = append to end)
+  -c, --completed     Mark this column as holding completed tasks
+  -j, --json          Output in JSON format
+  -n, --name string   Column name (required)
+  -p, --project int   Project ID (uses git branch association if not specified)
+  -q, --quiet         Minimal output (ID only)
+  -r, --ready         Mark this column as holding ready tasks

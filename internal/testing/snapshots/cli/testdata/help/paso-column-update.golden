@@ -1,0 +1,43 @@
+Update a column's name and special properties.
+
+Special column flags control which columns are used by task movement commands:
+  --ready: Sets this column for the 'paso task to-ready' command
+  --in-progress: Sets this column for the 'paso task in-progress move' command
+  --completed: Sets this column for the 'paso task done' command
+
+Note: Only one column per project can have each special property. Setting a flag
+on one column automatically removes it from any other column that had it.
+
+Examples:
+  # Update column name
+  paso column update 1 -n "Completed"
+
+  # Set a column as the ready column
+  paso column update 2 -r
+
+  # Set a column as the in-progress column
+  paso column update 3 -I
+
+  # Set a column as the completed column
+  paso column update 4 -c
+
+  # Force completed column override
+  paso column update 3 -c -f
+
+  # JSON output for agents
+  paso column update 1 -n "Completed" -j
+
+  # Long-form flags also supported
+  paso column update 1 --name="Completed" --json
+
+Usage:
+  paso column update <id> [flags]
+
+Flags:
+  -c, --completed     Set this column as holding completed tasks
+  -f, --force         Force setting completed column even if one already exists
+  -I, --in-progress   Set this column as holding in-progress tasks
+  -j, --json          Output in JSON format
+  -n, --name string   New column name
+  -q, --quiet         Minimal output
+  -r, --ready         Set this column as holding ready tasks

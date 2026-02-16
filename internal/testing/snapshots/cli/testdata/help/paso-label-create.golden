@@ -1,0 +1,24 @@
+Create a new label with a name and color.
+
+Examples:
+  # Create label using shorthand flags
+  paso label create -n "bug" -c "#FF0000" -p 1
+
+  # JSON output for agents
+  paso label create -n "bug" -c "#FF0000" -p 1 -j
+
+  # Quiet mode for bash capture
+  LABEL_ID=$(paso label create -n "bug" -c "#FF0000" -p 1 -q)
+
+  # Long-form flags also supported
+  paso label create --name="bug" --color="#FF0000" --project=1
+
+Usage:
+  paso label create [flags]
+
+Flags:
+  -c, --color string   Label color in hex format #RRGGBB (required)
+  -j, --json           Output in JSON format
+  -n, --name string    Label name (required)
+  -p, --project int    Project ID (uses git branch association if not specified)
+  -q, --quiet          Minimal output (ID only)

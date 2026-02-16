@@ -1,0 +1,19 @@
+Set the active assignee for the current session.
+
+Examples:
+  # Set active assignee
+  paso assignee set -n "john"
+
+  # JSON output
+  paso assignee set -n "john" -j
+
+  # Quiet mode
+  paso assignee set -n "john" -q
+
+Usage:
+  paso assignee set [flags]
+
+Flags:
+  -j, --json          Output in JSON format
+  -n, --name string   Assignee name (required)
+  -q, --quiet         Minimal output

@@ -1,0 +1,35 @@
+Create a new task with specified attributes.
+
+Examples:
+  # Simple task using shorthand flags
+  paso task create -t "Fix bug" -p 1 -b 15 -B 20
+
+  # Full example with all options (shorthand)
+  paso task create -t "Add authentication" -d "Implement JWT auth" -T feature -r high -P 3 -p 1
+
+  # JSON output for agents
+  paso task create -t "Fix bug" -p 1 -j
+
+  # Quiet mode for bash capture
+  TASK_ID=$(paso task create -t "Fix bug" -p 1 -q)
+
+  # Long-form flags also supported
+  paso task create --title="Fix bug" --project=1 --blocked-by 15 --blocks 20
+
+Usage:
+  paso task create [flags]
+
+Flags:
+  -a, --assignee string      Assignee name (defaults to active assignee)
+  -b, --blocked-by int       Task ID that blocks this task
+  -B, --blocks int           Task ID that is blocked by this task
+  -c, --column string        Column name (defaults to first column)
+  -d, --description string   Task description (use - for stdin)
+  -e, --estimate string      Time estimate (e.g. 2h, 30m, 1d)
+  -j, --json                 Output in JSON format
+  -P, --parent int           Parent task ID (creates dependency)
+  -r, --priority string      Priority: trivial, low, medium, high, critical (default "medium")
+  -p, --project int          Project ID (uses git branch association if not specified)
+  -q, --quiet                Minimal output (ID only)
+  -t, --title string         Task title (required)
+  -T, --type string          Task type: task or feature (default "task")

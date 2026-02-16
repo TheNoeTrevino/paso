@@ -1,19 +1,14 @@
 Manage labels
 
 Usage:
-  label [command]
+  paso label [command]
 
 Available Commands:
   attach      Attach a label to a task
-  completion  Generate the autocompletion script for the specified shell
   create      Create a new label
   delete      Delete a label
   detach      Detach a label from a task
-  help        Help about any command
   list        List labels in a project
   update      Update a label
 
-Flags:
-  -h, --help   help for label
-
-Use "label [command] --help" for more information about a command.
+Use "paso label [command] --help" for more information about a command.

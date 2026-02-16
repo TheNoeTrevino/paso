@@ -1,0 +1,20 @@
+Delete a project by ID (requires confirmation unless --force/-f or --quiet/-q).
+
+Examples:
+  # Delete with confirmation
+  paso project delete 1
+
+  # Skip confirmation
+  paso project delete 1 -f
+
+  # Long-form flags also supported
+  paso project delete 1 --force
+
+Usage:
+  paso project delete <id> [flags]
+
+Flags:
+      --dry-run   Show what would be deleted without actually deleting
+  -f, --force     Skip confirmation
+  -j, --json      Output in JSON format
+  -q, --quiet     Minimal output

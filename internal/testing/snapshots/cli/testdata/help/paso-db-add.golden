@@ -1,0 +1,23 @@
+Add a new database connection to paso.
+
+The connection string is provided as a positional argument.
+Use -r/--remote for PostgreSQL or -l/--local for SQLite.
+
+If a connection with the same name already exists, it will be updated.
+
+Examples:
+  # Add a remote PostgreSQL database
+  paso db add "postgresql://user:pass@host:5432/dbname" -n cloud -r
+
+  # Add a local SQLite database
+  paso db add ~/.paso/tasks.db -n local -l
+
+Usage:
+  paso db add <connection-string> [flags]
+
+Flags:
+      --json          Output in JSON format
+  -l, --local         Treat as SQLite connection
+  -n, --name string   Name for this connection (required)
+      --quiet         Minimal output
+  -r, --remote        Treat as PostgreSQL connection

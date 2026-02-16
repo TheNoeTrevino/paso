@@ -1,0 +1,25 @@
+List all tasks in a project.
+
+Examples:
+  # Using positional argument (recommended)
+  paso task list 2
+
+  # Using shorthand flag
+  paso task list -p 2
+
+  # Using git branch association
+  paso task list
+
+  # JSON output
+  paso task list 2 -j
+
+  # Long-form flags also supported
+  paso task list --project=2 --json
+
+Usage:
+  paso task list [project-id] [flags]
+
+Flags:
+  -j, --json          Output in JSON format
+  -p, --project int   Project ID (uses git branch association if not specified)
+  -q, --quiet         Minimal output (ID only)

@@ -1,0 +1,21 @@
+Update task title, description, or priority.
+
+Examples:
+  # Update title and priority
+  paso task update 42 -t "New title" -r high
+
+  # Update description
+  paso task update 42 -d "Updated description"
+
+  # Long-form flags also supported
+  paso task update 42 --title="New title" --priority=high
+
+Usage:
+  paso task update <id> [flags]
+
+Flags:
+  -d, --description string   New task description
+  -j, --json                 Output in JSON format
+  -r, --priority string      New priority: trivial, low, medium, high, critical
+  -q, --quiet                Minimal output (ID only)
+  -t, --title string         New task title

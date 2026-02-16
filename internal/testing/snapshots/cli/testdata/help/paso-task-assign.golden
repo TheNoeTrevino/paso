@@ -1,0 +1,25 @@
+Assign a task to an assignee by name.
+
+If no assignee name is given, defaults to the active assignee.
+Use --clear to remove the assignee from a task.
+
+Examples:
+  # Assign to a specific person
+  paso task assign 42 alice
+
+  # Assign to active assignee (yourself)
+  paso task assign 42
+
+  # Remove assignee
+  paso task assign 42 --clear
+
+  # JSON output for agents
+  paso task assign 42 alice -j
+
+Usage:
+  paso task assign <task_id> [assignee_name] [flags]
+
+Flags:
+      --clear   Remove assignee from the task
+  -j, --json    Output in JSON format
+  -q, --quiet   Minimal output (ID only)

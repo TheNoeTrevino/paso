@@ -1,0 +1,21 @@
+Move a task to a different project's ready column.
+
+The task will be placed into the target project's ready column
+(the column marked with holds_created_tasks = true).
+
+Examples:
+  # Move task 42 to project 5
+  paso task switch 42 5
+
+  # JSON output for agents
+  paso task switch 42 5 -j
+
+  # Quiet mode for bash capture
+  paso task switch 42 5 -q
+
+Usage:
+  paso task switch <task_id> <project_id> [flags]
+
+Flags:
+  -j, --json    Output in JSON format
+  -q, --quiet   Minimal output (ID only)
