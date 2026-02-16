@@ -21,22 +21,14 @@ type FilterBarProps struct {
 }
 
 // RenderFilterBar renders the filter bar with chip-style buttons.
+//
 //  Label:  Priority: 󰉺 Type: task  Assignee  Clear All
 func RenderFilterBar(props FilterBarProps) string {
 	if props.Filter == nil {
 		return ""
 	}
 
-	chipTexts := make([]string, state.FilterChipCount)
-
-	chipTexts[state.FilterChipLabel] = buildChipText(" Label", strings.Join(props.LabelNames, ", "))
-	chipTexts[state.FilterChipPriority] = buildChipText(" Priority", props.PriorityName)
-	chipTexts[state.FilterChipType] = buildChipText("󰉺 Type", props.TypeName)
-	chipTexts[state.FilterChipAssignee] = buildChipText(" Assignee", props.AssigneeName)
-	chipTexts[state.FilterChipClearAll] = " Clear All"
-
-	archivedComponents := buildArchivedComponents(props.Filter.ShowArchived)
-	chipTexts[state.FilterChipArchived] = buildChipText(archivedComponents.prefix+"Archived", archivedComponents.value)
+	chipTexts := buildAllChipTexts(props)
 
 	var chips []string
 	for i := range int(state.FilterChipCount) {
@@ -70,6 +62,23 @@ func buildArchivedComponents(isArchived bool) archivedComponents {
 		archivedValue = "On"
 	}
 	return archivedComponents{prefix: archivedPrefix, value: archivedValue}
+}
+
+// buildAllChipTexts constructs the display text for all filter chips.
+// This is a pure function that maps FilterBarProps to an array of chip text strings.
+func buildAllChipTexts(props FilterBarProps) []string {
+	chipTexts := make([]string, state.FilterChipCount)
+
+	chipTexts[state.FilterChipLabel] = buildChipText(" Label", strings.Join(props.LabelNames, ", "))
+	chipTexts[state.FilterChipPriority] = buildChipText(" Priority", props.PriorityName)
+	chipTexts[state.FilterChipType] = buildChipText("󰉺 Type", props.TypeName)
+	chipTexts[state.FilterChipAssignee] = buildChipText(" Assignee", props.AssigneeName)
+	chipTexts[state.FilterChipClearAll] = " Clear All"
+
+	archivedComponents := buildArchivedComponents(props.Filter.ShowArchived)
+	chipTexts[state.FilterChipArchived] = buildChipText(archivedComponents.prefix+"Archived", archivedComponents.value)
+
+	return chipTexts
 }
 
 // buildChipText creates the display text for a filter chip.
