@@ -1,5 +1,5 @@
-i  Associating project with git branch: test-80/cli-e2e-snapshots
-^  Warning: Branch 'test-80/cli-e2e-snapshots' is already associated with project 'WebApp' (ID: 1)
+i  Associating project with git branch: test/e2e-snapshots
+^  Warning: Branch 'test/e2e-snapshots' is already associated with project 'WebApp' (ID: 1)
 Creating new project without branch association...
 ✓ Project created successfully
   ID: 2

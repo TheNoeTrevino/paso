@@ -11,6 +11,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/cli/label"
 	"github.com/thenoetrevino/paso/internal/cli/project"
 	"github.com/thenoetrevino/paso/internal/cli/task"
+	"github.com/thenoetrevino/paso/internal/git"
 	cli "github.com/thenoetrevino/paso/internal/testing/cli"
 	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 	"github.com/thenoetrevino/paso/internal/testing/snapshots"
@@ -256,7 +257,12 @@ func TestGolden_E2E_Task(t *testing.T) {
 
 func TestGolden_E2E_Project(t *testing.T) {
 	t.Parallel()
-	db, app := cli.SetupCLITest(t)
+	db, app, gitMock := cli.SetupCLITestWithGit(t)
+	gitMock.Info = git.GitInfo{
+		IsRepo:        true,
+		CurrentBranch: "test/e2e-snapshots",
+		HasCommits:    true,
+	}
 
 	t.Run("create", func(t *testing.T) {
 		cmd := project.CreateCmd()
