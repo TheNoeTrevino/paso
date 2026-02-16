@@ -50,7 +50,7 @@ func toGeneratedGetTaskBelowParams(t types.GetTaskBelowParams) generated_sqlite.
 }
 
 func toGeneratedGetTaskSummariesWithFiltersParams(t types.GetTaskSummariesWithFiltersParams) generated_sqlite.GetTaskSummariesWithFiltersParams {
-	var showArchived interface{}
+	var showArchived int64
 	if t.ShowArchived {
 		showArchived = int64(1)
 	} else {
