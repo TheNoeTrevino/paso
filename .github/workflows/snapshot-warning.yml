@@ -1,0 +1,108 @@
+name: Snapshot Change Warning
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - "internal/testing/snapshots/**/*.golden"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  warn-snapshot-changes:
+    name: Flag Snapshot Changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get changed snapshot files
+        id: changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          FILES=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/files" \
+            --paginate \
+            --jq '.[] | select(.filename | test("internal/testing/snapshots/.*\\.golden$")) | .filename')
+
+          if [ -z "$FILES" ]; then
+            echo "No snapshot files changed"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+
+          COUNT=$(echo "$FILES" | wc -l)
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+          FILE_LIST=""
+          while IFS= read -r file; do
+            FILE_LIST="${FILE_LIST}- \`${file}\`\n"
+          done <<< "$FILES"
+
+          {
+            echo "file_list<<GOLDEN_EOF"
+            echo -e "$FILE_LIST"
+            echo "GOLDEN_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Find existing warning comment
+        if: steps.changed.outputs.has_changes == 'true'
+        id: find_comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          COMMENT_ID=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --paginate \
+            --jq '.[] | select(.body | contains("<!-- snapshot-warning -->")) | .id' \
+            | head -1)
+
+          if [ -n "$COMMENT_ID" ]; then
+            echo "comment_id=$COMMENT_ID" >> "$GITHUB_OUTPUT"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create or update warning comment
+        if: steps.changed.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          FILE_LIST: ${{ steps.changed.outputs.file_list }}
+          FILE_COUNT: ${{ steps.changed.outputs.count }}
+          COMMENT_EXISTS: ${{ steps.find_comment.outputs.exists }}
+          COMMENT_ID: ${{ steps.find_comment.outputs.comment_id }}
+        run: |
+          BODY="<!-- snapshot-warning -->
+          **Informational Warning:**
+
+          The snapshot tests have been changed.
+          Please add a screenshot showing what has been changed, and a description of why it was changed.
+
+          If you do not provide an explanation and screenshot in 3 days, this PR will be closed.
+
+          @TheNoeTrevino
+
+          <details>
+          <summary>Changed snapshot files (${FILE_COUNT} files)</summary>
+
+          ${FILE_LIST}
+          </details>"
+
+          if [ "$COMMENT_EXISTS" = "true" ]; then
+            gh api "repos/${REPO}/issues/comments/${COMMENT_ID}" \
+              --method PATCH \
+              --field body="$BODY"
+            echo "Updated existing comment ${COMMENT_ID}"
+          else
+            gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+              --method POST \
+              --field body="$BODY"
+            echo "Created new warning comment"
+          fi
