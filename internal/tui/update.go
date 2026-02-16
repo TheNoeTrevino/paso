@@ -309,6 +309,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if msg.String() == m.Config.KeyMappings.Suspend {
+		return m, tea.Suspend
+	}
+
 	switch m.UIState.Mode {
 	case state.NormalMode:
 		return m.handleNormalMode(msg)

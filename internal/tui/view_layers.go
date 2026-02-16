@@ -354,6 +354,7 @@ VIEW
 
 OTHER
   %s     Show this help
+  %s     Suspend (resume with fg)
   %s     Quit
 
 Press any key to close`,
@@ -381,6 +382,7 @@ Press any key to close`,
 		km.ToggleView,
 		km.MoveTaskToProject,
 		km.ShowHelp,
+		km.Suspend,
 		km.Quit,
 	)
 }
