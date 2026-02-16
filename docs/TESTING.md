@@ -60,3 +60,39 @@ func TestUpdateLabel_InvalidLabelID_Errors(t *testing.T) {
 	}
 }
 ```
+
+## Snapshot / Golden File Tests
+
+All snapshot and golden file tests live under `internal/testing/snapshots/`:
+
+```
+internal/testing/snapshots/
+  snapshot.go               -- Shared Helper (package snapshots)
+
+internal/testing/snapshots/cli/
+  help_test.go              -- CLI help output golden tests
+  styles_test.go            -- CLI styled output golden tests (all color themes)
+  testdata/help/*.golden    -- Help output golden files
+  testdata/styles/*.golden  -- Styled output golden files
+
+internal/testing/snapshots/tui/
+  snapshots_test.go         -- TUI rendering snapshot tests
+  testdata/*.golden         -- TUI rendering golden files
+```
+
+All snapshot tests use a single shared helper (`snapshots.NewHelper`) and a unified
+environment variable for updating golden files:
+
+```bash
+# Update all snapshots
+UPDATE_SNAPSHOTS=1 go test ./internal/testing/snapshots/...
+
+# Update only CLI snapshots
+UPDATE_SNAPSHOTS=1 go test ./internal/testing/snapshots/cli/...
+
+# Update only TUI snapshots
+UPDATE_SNAPSHOTS=1 go test ./internal/testing/snapshots/tui/...
+```
+
+When a snapshot test fails, it means the output has changed. Either update the golden
+file (if the change is intentional) or fix the regression.
