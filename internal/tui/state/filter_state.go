@@ -1,5 +1,7 @@
 package state
 
+import "github.com/mattn/go-runewidth"
+
 // FilterChip represents the index of each chip in the filter bar.
 type FilterChip int
 
@@ -136,7 +138,7 @@ func (f *FilterState) ClearFocusedChip() bool {
 // AppendSearchChar appends a character to the search query.
 // Returns true if the character was added, false if query is at max length.
 func (f *FilterState) AppendSearchChar(c rune) bool {
-	if len(f.SearchQuery) >= maxSearchQueryLength {
+	if runewidth.StringWidth(f.SearchQuery) >= maxSearchQueryLength {
 		return false
 	}
 	f.SearchQuery += string(c)
@@ -149,7 +151,8 @@ func (f *FilterState) SearchBackspace() bool {
 	if len(f.SearchQuery) == 0 {
 		return false
 	}
-	f.SearchQuery = f.SearchQuery[:len(f.SearchQuery)-1]
+	runes := []rune(f.SearchQuery)
+	f.SearchQuery = string(runes[:len(runes)-1])
 	return true
 }
 

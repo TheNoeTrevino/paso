@@ -38,8 +38,9 @@ func TestBuildAllChipTexts(t *testing.T) {
 		{
 			name: "search query active",
 			props: FilterBarProps{
-				Filter:       state.NewFilterState(),
-				SearchQuery:  "bug fix",
+				Filter: &state.FilterState{
+					SearchQuery: "bug fix",
+				},
 				PriorityName: "",
 				TypeName:     "",
 				AssigneeName: "",
@@ -58,13 +59,14 @@ func TestBuildAllChipTexts(t *testing.T) {
 		{
 			name: "search input active shows cursor",
 			props: FilterBarProps{
-				Filter:            state.NewFilterState(),
-				SearchQuery:       "hel",
-				SearchInputActive: true,
-				PriorityName:      "",
-				TypeName:          "",
-				AssigneeName:      "",
-				LabelNames:        []string{},
+				Filter: &state.FilterState{
+					SearchQuery:       "hel",
+					SearchInputActive: true,
+				},
+				PriorityName: "",
+				TypeName:     "",
+				AssigneeName: "",
+				LabelNames:   []string{},
 			},
 			expected: map[state.FilterChip]string{
 				state.FilterChipSearch:   " Search: hel▎",
@@ -79,13 +81,13 @@ func TestBuildAllChipTexts(t *testing.T) {
 		{
 			name: "search input active empty query shows cursor only",
 			props: FilterBarProps{
-				Filter:            state.NewFilterState(),
-				SearchQuery:       "",
-				SearchInputActive: true,
-				PriorityName:      "",
-				TypeName:          "",
-				AssigneeName:      "",
-				LabelNames:        []string{},
+				Filter: &state.FilterState{
+					SearchInputActive: true,
+				},
+				PriorityName: "",
+				TypeName:     "",
+				AssigneeName: "",
+				LabelNames:   []string{},
 			},
 			expected: map[state.FilterChip]string{
 				state.FilterChipSearch:   " Search: ▎",
@@ -218,8 +220,8 @@ func TestBuildAllChipTexts(t *testing.T) {
 			props: FilterBarProps{
 				Filter: &state.FilterState{
 					ShowArchived: true,
+					SearchQuery:  "deploy",
 				},
-				SearchQuery:  "deploy",
 				PriorityName: "Critical",
 				TypeName:     "Feature",
 				AssigneeName: "Jane Smith",

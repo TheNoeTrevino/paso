@@ -16,11 +16,9 @@ import (
 // for the currently active filter IDs.
 func (m Model) buildFilterBarProps() components.FilterBarProps {
 	props := components.FilterBarProps{
-		Filter:            m.UI.Filter,
-		Focused:           m.UIState.Mode == state.FilterBarMode,
-		Width:             m.UIState.Width(),
-		SearchQuery:       m.UI.Filter.SearchQuery,
-		SearchInputActive: m.UI.Filter.SearchInputActive,
+		Filter:  m.UI.Filter,
+		Focused: m.UIState.Mode == state.FilterBarMode,
+		Width:   m.UIState.Width(),
 	}
 
 	if m.UI.Filter.PriorityID != nil {
