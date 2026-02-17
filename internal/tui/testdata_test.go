@@ -113,7 +113,7 @@ func createTestModelWithProjects(numProjects int, columnsPerProject int, tasksPe
 		},
 		UI: &state.UIElements{
 			Notification: state.NewNotificationState(),
-			Search:       state.NewSearchState(),
+			Filter:       state.NewFilterState(),
 			ListView:     state.NewListViewState(),
 		},
 	}

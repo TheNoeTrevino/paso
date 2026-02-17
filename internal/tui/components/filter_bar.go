@@ -71,7 +71,7 @@ func buildArchivedComponents(isArchived bool) archivedComponents {
 func buildAllChipTexts(props FilterBarProps) []string {
 	chipTexts := make([]string, state.FilterChipCount)
 
-	chipTexts[state.FilterChipSearch] = " " + buildSearchChipText(props.SearchQuery, props.SearchInputActive)
+	chipTexts[state.FilterChipSearch] = buildSearchChipText(props.SearchQuery, props.SearchInputActive)
 	chipTexts[state.FilterChipLabel] = buildChipText(" Label", strings.Join(props.LabelNames, ", "))
 	chipTexts[state.FilterChipPriority] = buildChipText(" Priority", props.PriorityName)
 	chipTexts[state.FilterChipType] = buildChipText("󰉺 Type", props.TypeName)
@@ -87,10 +87,11 @@ func buildAllChipTexts(props FilterBarProps) []string {
 // buildSearchChipText creates the display text for the search chip.
 // When in input mode, shows a cursor indicator after the query text.
 func buildSearchChipText(query string, inputActive bool) string {
+	prefix := " "
 	if inputActive {
-		return fmt.Sprintf("Search: %s▎", query)
+		return fmt.Sprintf(prefix+"Search: %s▎", query)
 	}
-	return buildChipText("Search", query)
+	return buildChipText(prefix+"Search", query)
 }
 
 // buildChipText creates the display text for a filter chip.
