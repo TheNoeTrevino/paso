@@ -12,6 +12,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/app"
 	"github.com/thenoetrevino/paso/internal/appcontext"
 	"github.com/thenoetrevino/paso/internal/git"
+	"github.com/thenoetrevino/paso/internal/github"
 	assigneeservice "github.com/thenoetrevino/paso/internal/services/assignee"
 	columnservice "github.com/thenoetrevino/paso/internal/services/column"
 	labelservice "github.com/thenoetrevino/paso/internal/services/label"
@@ -104,6 +105,7 @@ type MockServices struct {
 	LabelService    labelservice.Service
 	AssigneeService assigneeservice.Service
 	GitDetector     git.Detector
+	GitHubFetcher   github.IssueFetcher
 }
 
 // ExecuteCLICommandWithMocks executes a CLI command with mock services injected.
@@ -119,6 +121,7 @@ func ExecuteCLICommandWithMocks(t *testing.T, services MockServices, cmd *cobra.
 		LabelService:    services.LabelService,
 		AssigneeService: services.AssigneeService,
 		GitDetector:     services.GitDetector,
+		GitHubFetcher:   services.GitHubFetcher,
 	}
 
 	return ExecuteCLICommand(t, testApp, cmd, args)
