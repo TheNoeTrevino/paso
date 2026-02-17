@@ -74,7 +74,7 @@ func RenderStatusBar(props StatusBarProps) string {
 
 	gapWidth := max(props.Width-leftWidth-rightWidth-middleWidth, 1)
 
-	gap := StatusBarStyle.Render(strings.Repeat(" ", gapWidth))
+	gap := StatusBarTipStyle.Render(strings.Repeat(" ", gapWidth))
 
 	if middleRendered != "" {
 		return lipgloss.JoinHorizontal(lipgloss.Top, leftRendered, middleRendered, gap, rightRendered)
