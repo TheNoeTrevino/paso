@@ -114,11 +114,11 @@ func styleChip(text string, chip state.FilterChip, props FilterBarProps) string 
 		style = style.
 			Bold(true).
 			Foreground(lipgloss.Color(theme.Highlight)).
-			Underline(true)
+			Background(lipgloss.Color(theme.SelectedBg))
 	case isFocused:
 		style = style.
 			Foreground(lipgloss.Color(theme.Normal)).
-			Underline(true)
+			Background(lipgloss.Color(theme.SelectedBg))
 	case hasValue:
 		style = style.
 			Bold(true).
