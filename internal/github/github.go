@@ -26,6 +26,15 @@ type Comment struct {
 	CreatedAt time.Time
 }
 
+// CheckInstalled verifies that the gh CLI is available on the system PATH.
+func CheckInstalled() error {
+	_, err := exec.LookPath("gh")
+	if err != nil {
+		return fmt.Errorf("gh CLI is not installed: install it from https://cli.github.com")
+	}
+	return nil
+}
+
 // IssueFetcher defines the interface for fetching GitHub issues.
 type IssueFetcher interface {
 	FetchIssue(ctx context.Context, issueNumber int) (*Issue, error)
