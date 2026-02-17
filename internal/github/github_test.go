@@ -1,6 +1,8 @@
 package github
 
 import (
+	"fmt"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -131,4 +133,29 @@ func TestParseIssueJSON_NullComments(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Empty(t, issue.Comments)
+}
+
+func TestCheckInstalled_GHExists(t *testing.T) {
+	original := lookPath
+	t.Cleanup(func() { lookPath = original })
+
+	lookPath = exec.LookPath // real lookup — gh is installed in dev/CI
+
+	err := CheckInstalled()
+	require.NoError(t, err)
+}
+
+func TestCheckInstalled_GHMissing(t *testing.T) {
+	original := lookPath
+	t.Cleanup(func() { lookPath = original })
+
+	lookPath = func(file string) (string, error) {
+		return "", fmt.Errorf("executable file not found in $PATH")
+	}
+
+	err := CheckInstalled()
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "gh CLI is not installed")
+	assert.Contains(t, err.Error(), "https://cli.github.com")
 }

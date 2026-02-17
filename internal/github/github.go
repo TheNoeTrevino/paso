@@ -26,9 +26,13 @@ type Comment struct {
 	CreatedAt time.Time
 }
 
+// lookPath is the function used to find executables on PATH.
+// Exported as a variable so tests can override it.
+var lookPath = exec.LookPath
+
 // CheckInstalled verifies that the gh CLI is available on the system PATH.
 func CheckInstalled() error {
-	_, err := exec.LookPath("gh")
+	_, err := lookPath("gh")
 	if err != nil {
 		return fmt.Errorf("gh CLI is not installed: install it from https://cli.github.com")
 	}
