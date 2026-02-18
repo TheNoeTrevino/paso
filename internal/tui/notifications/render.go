@@ -5,8 +5,8 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
-// Render renders a notification banner based on severity level
-func Render(severity Severity, message string) string {
+// render renders a notification banner based on severity level
+func render(severity Severity, message string) string {
 	style := severity.style()
 
 	// Calculate max width needed
@@ -47,13 +47,13 @@ func Render(severity Severity, message string) string {
 func RenderFromState(n state.Notification) string {
 	switch n.Level {
 	case state.LevelInfo:
-		return Render(Info, n.Message)
+		return render(Info, n.Message)
 	case state.LevelWarning:
-		return Render(Warning, n.Message)
+		return render(Warning, n.Message)
 	case state.LevelError:
-		return Render(Error, n.Message)
+		return render(Error, n.Message)
 	default:
-		return Render(Info, n.Message)
+		return render(Info, n.Message)
 	}
 }
 

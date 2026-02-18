@@ -97,6 +97,10 @@ func renderColumnWithTasksContent(
 	availableHeight := height - columnOverhead
 	maxVisibleTasks := max(availableHeight/TaskCardHeight, 1)
 
+	// Clamp scrollOffset to prevent slicing past the end of the task list.
+	// This can happen when filtering/search reduces task count while a stale offset persists.
+	scrollOffset = min(scrollOffset, len(tasks))
+
 	content += renderScrollIndicator(scrollOffset > 0, "▲ more above")
 
 	endIdx := min(scrollOffset+maxVisibleTasks, len(tasks))

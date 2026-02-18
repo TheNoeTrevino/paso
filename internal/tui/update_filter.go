@@ -100,6 +100,7 @@ func (m Model) refreshFilteredTasks() (tea.Model, tea.Cmd) {
 
 	m.AppState.SetTasks(tasksByColumn)
 	m.UIState.SelectedTask = 0
+	m.UIState.ResetTaskScrollOffsets()
 
 	return m, nil
 }
