@@ -99,7 +99,8 @@ func FormatListHuman(result *ListInProgressResult) string {
 		return "No in-progress tasks found"
 	}
 
-	output := fmt.Sprintf("Found %d in-progress tasks:\n\n", result.Count)
+	var output strings.Builder
+	output.WriteString(fmt.Sprintf("Found %d in-progress tasks:\n\n", result.Count))
 	for _, task := range result.Tasks {
 		priorityInfo := ""
 		if ShouldDisplayPriority(task.PriorityDescription) {
@@ -111,10 +112,10 @@ func FormatListHuman(result *ListInProgressResult) string {
 			blockedInfo = " ▲ BLOCKED"
 		}
 
-		output += fmt.Sprintf("  [%d] %s%s%s\n", task.ID, task.Title, priorityInfo, blockedInfo)
+		output.WriteString(fmt.Sprintf("  [%d] %s%s%s\n", task.ID, task.Title, priorityInfo, blockedInfo))
 	}
 
-	return output
+	return output.String()
 }
 
 // FormatMoveQuiet generates quiet output for moving (task ID only)

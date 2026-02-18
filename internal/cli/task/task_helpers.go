@@ -33,7 +33,7 @@ func DisplayOrDefault(ptr *string, defaultVal string) string {
 
 // WriteIndentedLines writes text to a builder with each line indented and styled
 func WriteIndentedLines(builder *strings.Builder, text string, indent string, style lipgloss.Style) {
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		builder.WriteString(indent + style.Render(line) + "\n")
 	}
 }

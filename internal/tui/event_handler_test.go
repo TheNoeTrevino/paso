@@ -230,7 +230,7 @@ func TestEventHandler_ConnectionMessages(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name           string
-		msg            interface{}
+		msg            any
 		expectedStatus state.ConnectionStatus
 	}{
 		{

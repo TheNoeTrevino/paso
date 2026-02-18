@@ -238,7 +238,7 @@ func TestCreateProject_MultipleProjectsNoBranch(t *testing.T) {
 
 	t.Run("multiple projects without branches allowed", func(t *testing.T) {
 		// Create multiple projects outside git repos
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			cmd := project.CreateCmd()
 
 			output, err := cli.ExecuteCLICommand(t, app, cmd, []string{

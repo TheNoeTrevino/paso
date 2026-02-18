@@ -225,7 +225,7 @@ func TestStateIndependence_ColumnAndTaskSelection(t *testing.T) {
 func TestViewportState_CalculatesCorrectly(t *testing.T) {
 	t.Parallel()
 	columns := make([]*models.Column, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		columns[i] = &models.Column{ID: i + 1, Name: "Col"}
 	}
 	m := setupTestModel(columns, nil)

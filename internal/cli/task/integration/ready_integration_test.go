@@ -3,6 +3,7 @@ package task_test
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -115,11 +116,8 @@ func TestReadyTask_Integration(t *testing.T) {
 			taskData := taskItem.(map[string]any)
 			// Note: JSON fields are capitalized (ID, Title, etc.)
 			taskID := int(taskData["ID"].(float64))
-			for _, expectedID := range taskIDs {
-				if taskID == expectedID {
-					foundCount++
-					break
-				}
+			if slices.Contains(taskIDs, taskID) {
+				foundCount++
 			}
 		}
 		assert.Equal(t, 2, foundCount, "Should find both tasks in JSON output")
@@ -237,8 +235,8 @@ func TestReadyTask_Integration(t *testing.T) {
 
 		// Medium priority should NOT have priority label (it's the default)
 		// Verify the medium task line doesn't have a priority tag
-		lines := strings.Split(output, "\n")
-		for _, line := range lines {
+		lines := strings.SplitSeq(output, "\n")
+		for line := range lines {
 			if strings.Contains(line, "Medium Priority Task") {
 				assert.NotContains(t, line, "[medium]")
 			}

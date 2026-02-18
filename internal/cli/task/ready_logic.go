@@ -19,16 +19,17 @@ func FormatReadyOutput(result *ReadyResult) string {
 		return "No ready tasks found"
 	}
 
-	output := fmt.Sprintf("Found %d ready tasks:\n\n", result.Count)
+	var output strings.Builder
+	output.WriteString(fmt.Sprintf("Found %d ready tasks:\n\n", result.Count))
 	for _, t := range result.Tasks {
 		priorityInfo := ""
 		if ShouldDisplayPriority(t.PriorityDescription) {
 			priorityInfo = fmt.Sprintf(" [%s]", t.PriorityDescription)
 		}
-		output += fmt.Sprintf("  [%d] %s%s\n", t.ID, t.Title, priorityInfo)
+		output.WriteString(fmt.Sprintf("  [%d] %s%s\n", t.ID, t.Title, priorityInfo))
 	}
 
-	return output
+	return output.String()
 }
 
 // FormatReadyJSON formats the ready result as a JSON-serializable map

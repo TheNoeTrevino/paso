@@ -340,7 +340,7 @@ func BenchmarkLabelsToModels(b *testing.B) {
 func BenchmarkLabelsToModels_Large(b *testing.B) {
 	// Create a large slice of labels
 	labels := make([]types.Label, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		labels[i] = types.Label{
 			ID:        int64(i + 1),
 			Name:      "label-" + string(rune('0'+i%10)),

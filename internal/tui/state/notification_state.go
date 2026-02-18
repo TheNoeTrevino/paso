@@ -142,10 +142,7 @@ func (s *NotificationState) GetLayers(renderFunc func(Notification) string) []*l
 			row += lipgloss.Height(prevNotif) + 1
 		}
 
-		col := s.windowWidth - notifWidth - 1
-		if col < 0 {
-			col = 0
-		}
+		col := max(s.windowWidth-notifWidth-1, 0)
 		if row+notifHeight >= s.windowHeight {
 			break
 		}

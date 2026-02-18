@@ -51,17 +51,15 @@ func TestGetOrCreateConcurrent(t *testing.T) {
 		results := make(chan int, goroutines)
 		errors := make(chan error, goroutines)
 
-		for i := 0; i < goroutines; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+		for range goroutines {
+			wg.Go(func() {
 				assignee, err := svc.GetOrCreate(context.Background(), name)
 				if err != nil {
 					errors <- err
 					return
 				}
 				results <- assignee.ID
-			}()
+			})
 		}
 
 		wg.Wait()

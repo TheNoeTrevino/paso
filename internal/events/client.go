@@ -234,7 +234,7 @@ func (c *Client) sendEventWithRetry(event Event) error {
 	maxRetries := 3
 	baseDelay := 50 * time.Millisecond
 
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := range maxRetries {
 		// Log queue saturation at WARN level (only on first saturation)
 		if attempt == 0 {
 			slog.Warn("event queue saturated, applying backpressure",

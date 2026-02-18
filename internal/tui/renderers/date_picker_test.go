@@ -88,7 +88,7 @@ func TestGenerateCalendarGrid(t *testing.T) {
 				}
 
 				// First 4 cells (Sun-Wed) should be 0
-				for i := 0; i < 4; i++ {
+				for i := range 4 {
 					if grid[0][i] != 0 {
 						t.Errorf("grid[0][%d] should be 0, got %d", i, grid[0][i])
 					}
@@ -111,8 +111,8 @@ func TestGenerateCalendarGrid(t *testing.T) {
 
 				// Check that we have exactly 31 days
 				dayCount := 0
-				for week := 0; week < 6; week++ {
-					for day := 0; day < 7; day++ {
+				for week := range 6 {
+					for day := range 7 {
 						if grid[week][day] > 0 {
 							dayCount++
 						}
@@ -138,7 +138,7 @@ func TestGenerateCalendarGrid(t *testing.T) {
 				// Should have 29 days (leap year)
 
 				// First 4 cells should be 0
-				for i := 0; i < 4; i++ {
+				for i := range 4 {
 					if grid[0][i] != 0 {
 						t.Errorf("grid[0][%d] should be 0, got %d", i, grid[0][i])
 					}
@@ -151,8 +151,8 @@ func TestGenerateCalendarGrid(t *testing.T) {
 
 				// Check that we have exactly 29 days
 				dayCount := 0
-				for week := 0; week < 6; week++ {
-					for day := 0; day < 7; day++ {
+				for week := range 6 {
+					for day := range 7 {
 						if grid[week][day] > 0 {
 							dayCount++
 						}
@@ -189,8 +189,8 @@ func TestGenerateCalendarGrid(t *testing.T) {
 
 				// Check that we have exactly 28 days
 				dayCount := 0
-				for week := 0; week < 6; week++ {
-					for day := 0; day < 7; day++ {
+				for week := range 6 {
+					for day := range 7 {
 						if grid[week][day] > 0 {
 							dayCount++
 						}

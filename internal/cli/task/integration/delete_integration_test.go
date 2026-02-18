@@ -238,7 +238,7 @@ func TestDeleteTask_Integration(t *testing.T) {
 	t.Run("delete multiple tasks", func(t *testing.T) {
 		// Create multiple tasks
 		taskIDs := make([]int, 3)
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			taskIDs[i] = cli.CreateTestTask(t, db, columnID, fmt.Sprintf("Task to Delete %d", i+1))
 		}
 

@@ -96,10 +96,7 @@ func (s *DatePickerState) navigateMonth(delta int) {
 
 	// Clamp cursorWant to the last valid day of the new month
 	lastDayOfNewMonth := time.Date(newYear, newMonth+1, 0, 0, 0, 0, 0, time.Local).Day()
-	newDay := s.cursorWant
-	if newDay > lastDayOfNewMonth {
-		newDay = lastDayOfNewMonth
-	}
+	newDay := min(s.cursorWant, lastDayOfNewMonth)
 
 	s.CurrentYear = newYear
 	s.CurrentMonth = newMonth

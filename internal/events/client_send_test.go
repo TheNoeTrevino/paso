@@ -103,7 +103,7 @@ func TestSendEvent_Batching(t *testing.T) {
 
 	// Send multiple events rapidly
 	numEvents := 5
-	for i := 0; i < numEvents; i++ {
+	for i := range numEvents {
 		testEvent := Event{
 			Type:      EventDatabaseChanged,
 			ProjectID: i,

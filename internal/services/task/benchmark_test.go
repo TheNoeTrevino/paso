@@ -74,7 +74,7 @@ func BenchmarkGetInProgressTasksByProject(b *testing.B) {
 	label2 := fixtures.CreateTestLabel(b, db, testDialect, projectID, "backend", "#00FF00")
 	label3 := fixtures.CreateTestLabel(b, db, testDialect, projectID, "database", "#FFFF00")
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		title := "In Progress Task " + string(rune(i))
 		var labelIDs []int
 		switch i % 3 {
@@ -88,7 +88,7 @@ func BenchmarkGetInProgressTasksByProject(b *testing.B) {
 		createBenchmarkTaskWithLabels(b, db, inProgressColumnID, title, labelIDs)
 	}
 
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		title := "Other Task " + string(rune(i))
 		fixtures.CreateTestTask(b, db, testDialect, normalColumnID, title)
 	}
@@ -111,19 +111,19 @@ func BenchmarkGetTaskSummariesByProject(b *testing.B) {
 	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
 
 	columns := make([]int, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		colName := "Column " + string(rune('A'+i))
 		columns[i] = fixtures.CreateTestColumn(b, db, testDialect, projectID, colName)
 	}
 
 	labels := make([]int, 4)
 	labelColors := []string{"#FF0000", "#00FF00", "#0000FF", "#FFFF00"}
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		labels[i] = fixtures.CreateTestLabel(b, db, testDialect, projectID, "label"+string(rune('a'+i)), labelColors[i])
 	}
 
-	for col := 0; col < 5; col++ {
-		for i := 0; i < 40; i++ {
+	for col := range 5 {
+		for i := range 40 {
 			title := "Task " + string(rune(col)) + "-" + string(rune(i%10))
 			labelCount := (i + col) % 4
 			var labelIDs []int
@@ -153,15 +153,15 @@ func BenchmarkGetTaskTreeByProject(b *testing.B) {
 	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
 
 	rootTasks := make([]int, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		rootTasks[i] = fixtures.CreateTestTask(b, db, testDialect, columnID, "Root Task "+string(rune(i)))
 
 		childTasks := make([]int, 3)
-		for j := 0; j < 3; j++ {
+		for j := range 3 {
 			childTasks[j] = fixtures.CreateTestTask(b, db, testDialect, columnID, "Child "+string(rune(i))+"-"+string(rune(j)))
 			fixtures.AddTaskSubtask(b, db, testDialect, rootTasks[i], childTasks[j], 1)
 
-			for k := 0; k < 2; k++ {
+			for k := range 2 {
 				grandchildID := fixtures.CreateTestTask(b, db, testDialect, columnID, "Grandchild "+string(rune(i))+"-"+string(rune(j))+"-"+string(rune(k)))
 				fixtures.AddTaskSubtask(b, db, testDialect, childTasks[j], grandchildID, 1)
 			}
@@ -339,12 +339,12 @@ func BenchmarkGetReadyTaskSummariesByProject(b *testing.B) {
 	readyColumnID := fixtures.CreateColumnWithFlags(b, db, testDialect, projectID, "Ready", true, false, false)
 	normalColumnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		title := "Ready Task " + string(rune(i%10))
 		fixtures.CreateTestTask(b, db, testDialect, readyColumnID, title)
 	}
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		title := "Normal Task " + string(rune(i%10))
 		fixtures.CreateTestTask(b, db, testDialect, normalColumnID, title)
 	}
@@ -392,7 +392,7 @@ func BenchmarkGetTaskReferencesForProject(b *testing.B) {
 	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
 	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
 
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		title := "Task " + string(rune(i%10))
 		fixtures.CreateTestTask(b, db, testDialect, columnID, title)
 	}

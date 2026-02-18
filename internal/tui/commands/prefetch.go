@@ -134,7 +134,7 @@ func fetchTasksInParallel(ctx context.Context, svc task.Service, ids []int) (map
 func fetchWithRetry(ctx context.Context, svc task.Service, taskID int, maxRetries int) (*models.TaskDetail, error) {
 	var lastErr error
 
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := range maxRetries {
 		// Check context before each attempt
 		select {
 		case <-ctx.Done():

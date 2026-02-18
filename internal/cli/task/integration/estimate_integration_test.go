@@ -226,7 +226,6 @@ func TestEstimateTask(t *testing.T) {
 		formats := []string{"4h", "30m", "1w", "2d", "1w2d", "3m"}
 
 		for _, format := range formats {
-			format := format // capture loop variable
 			t.Run(format, func(t *testing.T) {
 				taskID := cli.CreateTestTask(t, db, columnID, fmt.Sprintf("Task for %s", format))
 

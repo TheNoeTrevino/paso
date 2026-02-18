@@ -93,10 +93,11 @@ func parseURLConnectionString(connStr string) (string, error) {
 	}
 
 	// Build normalized connection string in key-value format
-	normalized := fmt.Sprintf(
+	var normalized strings.Builder
+	normalized.WriteString(fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=require",
 		host, port, user, password, database,
-	)
+	))
 
 	// Preserve query parameters from the original URL (except those we already handle)
 	query := u.Query()
@@ -107,11 +108,11 @@ func parseURLConnectionString(connStr string) (string, error) {
 		}
 		// Add other query parameters
 		if len(values) > 0 {
-			normalized += " " + key + "=" + values[0]
+			normalized.WriteString(" " + key + "=" + values[0])
 		}
 	}
 
-	return normalized, nil
+	return normalized.String(), nil
 }
 
 // parseKeyValueConnectionString parses a PostgreSQL key-value connection string

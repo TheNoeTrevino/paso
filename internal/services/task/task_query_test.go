@@ -748,7 +748,7 @@ func TestGetTaskActivities_LargeNumberOfActivities(t *testing.T) {
 		taskID := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Test Task")
 		// Create mock with many events
 		events := make([]models.TaskEvent, 50)
-		for i := 0; i < 50; i++ {
+		for i := range 50 {
 			events[i] = models.TaskEvent{
 				ID:        i + 1,
 				TaskID:    taskID,
@@ -759,7 +759,7 @@ func TestGetTaskActivities_LargeNumberOfActivities(t *testing.T) {
 		}
 		mock.GetEventsByTaskResult = events
 		// Create many comments
-		for i := 0; i < 50; i++ {
+		for i := range 50 {
 			fixtures.CreateTestComment(t, env.DB, env.Dialect, taskID, "Comment "+string(rune('A'+i%26)), "user")
 		}
 		activities, err := env.Svc.GetTaskActivities(env.Ctx, taskID)

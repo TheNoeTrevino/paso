@@ -639,7 +639,7 @@ func TestFetchTaskDetailsCmd_ConcurrencySafety(t *testing.T) {
 		cachedIDs := []int{}
 
 		// Run multiple times to catch potential race conditions
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			cmd := FetchTaskDetailsCmd(mock, adjacent, cachedIDs)
 			msg := cmd()
 

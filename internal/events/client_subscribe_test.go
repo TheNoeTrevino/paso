@@ -107,7 +107,7 @@ func TestSubscribe_MultipleProjects(t *testing.T) {
 	receivedProjects := make(map[int]bool)
 	timeout := time.After(2 * time.Second)
 
-	for i := 0; i < len(projects); i++ {
+	for range projects {
 		select {
 		case msg := <-messages:
 			if msg.Type == "subscribe" && msg.Subscribe != nil {

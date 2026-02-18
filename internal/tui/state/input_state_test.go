@@ -32,7 +32,7 @@ func TestAppendChar_AtMaxLength(t *testing.T) {
 	state := NewInputState()
 
 	// Add exactly 100 characters
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		added := state.AppendChar('a')
 		require.True(t, added, "AppendChar() failed at character %d, want success until 100", i+1)
 	}
@@ -59,7 +59,7 @@ func TestBackspace_EmptyBuffer(t *testing.T) {
 	assert.Equal(t, "", state.Buffer)
 
 	// Try multiple backspaces to ensure stability
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		removed = state.Backspace()
 		assert.False(t, removed, "Backspace() call %d on empty buffer returned true, want false", i+1)
 	}
