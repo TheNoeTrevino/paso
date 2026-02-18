@@ -33,7 +33,7 @@ func RenderSuccessWithDetails(message string, details []Detail, colorScheme colo
 
 	// Render header with checkmark
 	checkmark := renderCheckmark(colorScheme)
-	out.WriteString(fmt.Sprintf("%s %s\n", checkmark, message))
+	fmt.Fprintf(&out, "%s %s\n", checkmark, message)
 
 	// Render details with indentation
 	normalStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(colorScheme.Normal))

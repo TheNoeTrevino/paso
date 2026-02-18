@@ -79,7 +79,7 @@ func ParseInProgressArgs(args []string, projectID int) (*InProgressInput, error)
 func FormatListQuiet(result *ListInProgressResult) string {
 	var output strings.Builder
 	for _, task := range result.Tasks {
-		output.WriteString(fmt.Sprintf("%d\n", task.ID))
+		fmt.Fprintf(&output, "%d\n", task.ID)
 	}
 	return output.String()
 }
@@ -100,7 +100,7 @@ func FormatListHuman(result *ListInProgressResult) string {
 	}
 
 	var output strings.Builder
-	output.WriteString(fmt.Sprintf("Found %d in-progress tasks:\n\n", result.Count))
+	fmt.Fprintf(&output, "Found %d in-progress tasks:\n\n", result.Count)
 	for _, task := range result.Tasks {
 		priorityInfo := ""
 		if ShouldDisplayPriority(task.PriorityDescription) {
@@ -112,7 +112,7 @@ func FormatListHuman(result *ListInProgressResult) string {
 			blockedInfo = " ▲ BLOCKED"
 		}
 
-		output.WriteString(fmt.Sprintf("  [%d] %s%s%s\n", task.ID, task.Title, priorityInfo, blockedInfo))
+		fmt.Fprintf(&output, "  [%d] %s%s%s\n", task.ID, task.Title, priorityInfo, blockedInfo)
 	}
 
 	return output.String()

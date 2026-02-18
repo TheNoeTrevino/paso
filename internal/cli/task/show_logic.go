@@ -160,35 +160,35 @@ func FormatShowHuman(task *models.TaskDetail, colorScheme colors.ColorScheme) st
 	content.WriteString(metaLine + "\n")
 
 	// Column
-	content.WriteString(fmt.Sprintf("%s %s\n",
+	fmt.Fprintf(&content, "%s %s\n",
 		styles.LabelStyle.Render("Column:"),
 		styles.ValueStyle.Render(task.ColumnName),
-	))
+	)
 
 	// Assignee
-	content.WriteString(fmt.Sprintf("%s %s\n",
+	fmt.Fprintf(&content, "%s %s\n",
 		styles.LabelStyle.Render("Assignee:"),
 		styles.ValueStyle.Render(DisplayOrDefault(task.AssigneeName, "None")),
-	))
+	)
 
 	// Estimate
-	content.WriteString(fmt.Sprintf("%s %s\n",
+	fmt.Fprintf(&content, "%s %s\n",
 		styles.LabelStyle.Render("Estimate:"),
 		styles.ValueStyle.Render(DisplayOrDefault(task.Estimate, "None")),
-	))
+	)
 
 	// Timestamps
 	if !task.CreatedAt.IsZero() {
-		content.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&content, "%s %s\n",
 			styles.LabelStyle.Render("Created:"),
 			styles.SubtitleStyle.Render(task.CreatedAt.Format("Jan 2, 2006 3:04 PM")),
-		))
+		)
 	}
 	if !task.UpdatedAt.IsZero() {
-		content.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&content, "%s %s\n",
 			styles.LabelStyle.Render("Updated:"),
 			styles.SubtitleStyle.Render(task.UpdatedAt.Format("Jan 2, 2006 3:04 PM")),
-		))
+		)
 	}
 
 	// Labels

@@ -25,85 +25,85 @@ func TestValidateEstimate(t *testing.T) {
 		},
 		{
 			name:     "empty string is allowed",
-			estimate: strPtr(""),
+			estimate: new(""),
 			wantErr:  false,
 		},
 		{
 			name:     "whitespace only is allowed",
-			estimate: strPtr("   "),
+			estimate: new("   "),
 			wantErr:  false,
 		},
 		{
 			name:     "valid single hour",
-			estimate: strPtr("1h"),
+			estimate: new("1h"),
 			wantErr:  false,
 		},
 		{
 			name:     "valid single day",
-			estimate: strPtr("2d"),
+			estimate: new("2d"),
 			wantErr:  false,
 		},
 		{
 			name:     "valid single week",
-			estimate: strPtr("3w"),
+			estimate: new("3w"),
 			wantErr:  false,
 		},
 		{
 			name:     "valid single month",
-			estimate: strPtr("4m"),
+			estimate: new("4m"),
 			wantErr:  false,
 		},
 		{
 			name:     "valid multiple units - weeks and days",
-			estimate: strPtr("1w2d"),
+			estimate: new("1w2d"),
 			wantErr:  false,
 		},
 		{
 			name:     "valid multiple units - weeks days hours",
-			estimate: strPtr("1w2d3h"),
+			estimate: new("1w2d3h"),
 			wantErr:  false,
 		},
 		{
 			name:     "valid multiple units - all units",
-			estimate: strPtr("1w2d3h4m"),
+			estimate: new("1w2d3h4m"),
 			wantErr:  false,
 		},
 		{
 			name:     "valid multi-digit numbers",
-			estimate: strPtr("10h"),
+			estimate: new("10h"),
 			wantErr:  false,
 		},
 		{
 			name:     "valid complex estimate",
-			estimate: strPtr("2w5d8h"),
+			estimate: new("2w5d8h"),
 			wantErr:  false,
 		},
 
 		// Invalid cases - wrong units
 		{
 			name:     "invalid unit x",
-			estimate: strPtr("1x"),
+			estimate: new("1x"),
 			wantErr:  true,
 			errType:  ErrInvalidEstimateFormat,
 			errMsg:   "no valid components",
 		},
 		{
 			name:     "invalid unit abc",
-			estimate: strPtr("abc"),
+			estimate: new("abc"),
 			wantErr:  true,
 			errType:  ErrInvalidEstimateFormat,
 			errMsg:   "no valid components",
 		},
 		{
 			name:     "invalid unit y",
-			estimate: strPtr("5y"),
+			estimate: new("5y"),
 			wantErr:  true,
 			errType:  ErrInvalidEstimateFormat,
 			errMsg:   "no valid components",
 		},
 		{
 			name:     "invalid unit s",
-			estimate: strPtr("10s"),
+			estimate: new("10s"),
 			wantErr:  true,
 			errType:  ErrInvalidEstimateFormat,
 			errMsg:   "no valid components",
@@ -112,21 +112,21 @@ func TestValidateEstimate(t *testing.T) {
 		// Invalid cases - wrong format
 		{
 			name:     "unit before number",
-			estimate: strPtr("d1"),
+			estimate: new("d1"),
 			wantErr:  true,
 			errType:  ErrInvalidEstimateFormat,
 			errMsg:   "no valid components",
 		},
 		{
 			name:     "number without unit",
-			estimate: strPtr("1"),
+			estimate: new("1"),
 			wantErr:  true,
 			errType:  ErrInvalidEstimateFormat,
 			errMsg:   "no valid components",
 		},
 		{
 			name:     "multiple numbers without units",
-			estimate: strPtr("12"),
+			estimate: new("12"),
 			wantErr:  true,
 			errType:  ErrInvalidEstimateFormat,
 			errMsg:   "no valid components",
@@ -135,28 +135,28 @@ func TestValidateEstimate(t *testing.T) {
 		// Invalid cases - duplicate units
 		{
 			name:     "duplicate week units",
-			estimate: strPtr("1w2w"),
+			estimate: new("1w2w"),
 			wantErr:  true,
 			errType:  ErrDuplicateEstimateUnit,
 			errMsg:   "'w' appears multiple times",
 		},
 		{
 			name:     "duplicate day units",
-			estimate: strPtr("1d2d"),
+			estimate: new("1d2d"),
 			wantErr:  true,
 			errType:  ErrDuplicateEstimateUnit,
 			errMsg:   "'d' appears multiple times",
 		},
 		{
 			name:     "duplicate hour units",
-			estimate: strPtr("1h2h"),
+			estimate: new("1h2h"),
 			wantErr:  true,
 			errType:  ErrDuplicateEstimateUnit,
 			errMsg:   "'h' appears multiple times",
 		},
 		{
 			name:     "duplicate month units",
-			estimate: strPtr("1m2m"),
+			estimate: new("1m2m"),
 			wantErr:  true,
 			errType:  ErrDuplicateEstimateUnit,
 			errMsg:   "'m' appears multiple times",
@@ -165,21 +165,21 @@ func TestValidateEstimate(t *testing.T) {
 		// Invalid cases - mixed issues
 		{
 			name:     "valid unit then invalid unit",
-			estimate: strPtr("1w2x"),
+			estimate: new("1w2x"),
 			wantErr:  true,
 			errType:  ErrInvalidEstimateFormat,
 			errMsg:   "invalid characters",
 		},
 		{
 			name:     "space in estimate",
-			estimate: strPtr("1w 2d"),
+			estimate: new("1w 2d"),
 			wantErr:  true,
 			errType:  ErrInvalidEstimateFormat,
 			errMsg:   "invalid characters",
 		},
 		{
 			name:     "special characters",
-			estimate: strPtr("1w-2d"),
+			estimate: new("1w-2d"),
 			wantErr:  true,
 			errType:  ErrInvalidEstimateFormat,
 			errMsg:   "invalid characters",
@@ -205,9 +205,4 @@ func TestValidateEstimate(t *testing.T) {
 			}
 		})
 	}
-}
-
-// strPtr is a helper function to create a pointer to a string
-func strPtr(s string) *string {
-	return &s
 }

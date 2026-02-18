@@ -1,6 +1,6 @@
 module github.com/thenoetrevino/paso
 
-go 1.25.0
+go 1.26.0
 
 require (
 	charm.land/bubbles/v2 v2.0.0-rc.1
@@ -8,6 +8,7 @@ require (
 	charm.land/huh/v2 v2.0.0-20251118172832-2c1322d36358
 	charm.land/lipgloss/v2 v2.0.0-beta.3.0.20251117163933-ca12a5a8a7a3
 	github.com/lib/pq v1.10.9
+	github.com/mattn/go-runewidth v0.0.19
 	github.com/muesli/reflow v0.3.0
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/spf13/cobra v1.10.2
@@ -40,7 +41,6 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-runewidth v0.0.19 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect

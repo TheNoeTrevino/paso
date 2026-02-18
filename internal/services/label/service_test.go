@@ -352,14 +352,14 @@ func TestUpdateLabel_Validation(t *testing.T) {
 	}{
 		{
 			name:      "empty name",
-			newName:   ptrStr(""),
+			newName:   new(""),
 			wantErr:   true,
 			errType:   ErrEmptyName,
 			needsReal: true,
 		},
 		{
 			name:      "invalid color",
-			newColor:  ptrStr("FF5733"),
+			newColor:  new("FF5733"),
 			wantErr:   true,
 			errType:   ErrInvalidColor,
 			needsReal: true,
@@ -367,7 +367,7 @@ func TestUpdateLabel_Validation(t *testing.T) {
 		{
 			name:    "invalid ID",
 			labelID: 0,
-			newName: ptrStr("Updated Bug"),
+			newName: new("Updated Bug"),
 			wantErr: true,
 			errType: ErrInvalidLabelID,
 		},
@@ -412,10 +412,6 @@ func TestUpdateLabel_Validation(t *testing.T) {
 			})
 		})
 	}
-}
-
-func ptrStr(s string) *string {
-	return &s
 }
 
 func TestDeleteLabel(t *testing.T) {
@@ -729,13 +725,13 @@ func TestUpdateLabel_InvalidLabelID_Errors(t *testing.T) {
 		{
 			name:    "negative label ID",
 			labelID: -1,
-			newName: ptrStr("Updated Bug"),
+			newName: new("Updated Bug"),
 			wantErr: ErrInvalidLabelID,
 		},
 		{
 			name:    "zero label ID",
 			labelID: 0,
-			newName: ptrStr("Updated Bug"),
+			newName: new("Updated Bug"),
 			wantErr: ErrInvalidLabelID,
 		},
 	}
@@ -768,7 +764,7 @@ func TestUpdateLabel_NonExistentLabel(t *testing.T) {
 
 		req := UpdateLabelRequest{
 			ID:   999999,
-			Name: ptrStr("Updated Bug"),
+			Name: new("Updated Bug"),
 		}
 
 		err = svc.UpdateLabel(context.Background(), req)
