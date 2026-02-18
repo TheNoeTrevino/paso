@@ -94,10 +94,10 @@ func parseURLConnectionString(connStr string) (string, error) {
 
 	// Build normalized connection string in key-value format
 	var normalized strings.Builder
-	normalized.WriteString(fmt.Sprintf(
+	fmt.Fprintf(&normalized,
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=require",
 		host, port, user, password, database,
-	))
+	)
 
 	// Preserve query parameters from the original URL (except those we already handle)
 	query := u.Query()

@@ -39,10 +39,7 @@ func (m Model) renderCommentsViewContent(width, height int) string {
 	}
 
 	// Calculate card dimensions (80% of width, responsive)
-	cardWidth := max((width*8)/10, 60)
-	if cardWidth > 100 {
-		cardWidth = 100
-	}
+	cardWidth := min(max((width*8)/10, 60), 100)
 
 	// Calculate which comments to render based on scroll position
 	availableHeight := height - 4 // Reserve for title + help

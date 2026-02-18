@@ -288,7 +288,7 @@ func TestUpdateTask_Validation(t *testing.T) {
 	}{
 		{
 			name:    "empty title",
-			title:   ptrString(""),
+			title:   new(""),
 			wantErr: true,
 			errType: ErrEmptyTitle,
 			setupFn: func(db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) int {
@@ -308,7 +308,7 @@ func TestUpdateTask_Validation(t *testing.T) {
 		{
 			name:    "invalid ID",
 			taskID:  0,
-			title:   ptrString("New Title"),
+			title:   new("New Title"),
 			wantErr: true,
 			errType: ErrInvalidTaskID,
 		},

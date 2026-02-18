@@ -450,32 +450,32 @@ func TestUpdateProject_ErrorCases(t *testing.T) {
 		}{
 			{
 				name:        "negative_id",
-				req:         UpdateProjectRequest{ID: -1, Name: strPtr("New Name")},
+				req:         UpdateProjectRequest{ID: -1, Name: new("New Name")},
 				expectedErr: ErrInvalidProjectID,
 			},
 			{
 				name:     "nonexistent_project",
-				req:      UpdateProjectRequest{ID: 999999, Name: strPtr("New Name")},
+				req:      UpdateProjectRequest{ID: 999999, Name: new("New Name")},
 				checkErr: func(err error) bool { return err != nil && err.Error() != "" },
 			},
 			{
 				name:        "name_too_long",
-				req:         UpdateProjectRequest{ID: created.ID, Name: strPtr(strings.Repeat("a", 101))},
+				req:         UpdateProjectRequest{ID: created.ID, Name: new(strings.Repeat("a", 101))},
 				expectedErr: ErrNameTooLong,
 			},
 			{
 				name:        "unicode_name",
-				req:         UpdateProjectRequest{ID: created.ID, Name: strPtr("\u30d7\u30ed\u30b8\u30a7\u30af\u30c8\u66f4\u65b0")},
+				req:         UpdateProjectRequest{ID: created.ID, Name: new("\u30d7\u30ed\u30b8\u30a7\u30af\u30c8\u66f4\u65b0")},
 				expectedErr: nil,
 			},
 			{
 				name:        "empty_description",
-				req:         UpdateProjectRequest{ID: created.ID, Description: strPtr("")},
+				req:         UpdateProjectRequest{ID: created.ID, Description: new("")},
 				expectedErr: nil,
 			},
 			{
 				name:        "very_long_description",
-				req:         UpdateProjectRequest{ID: created.ID, Description: strPtr(strings.Repeat("x", 10000))},
+				req:         UpdateProjectRequest{ID: created.ID, Description: new(strings.Repeat("x", 10000))},
 				expectedErr: nil,
 			},
 		}
@@ -653,10 +653,6 @@ func TestGetAllProjects_AfterDelete(t *testing.T) {
 		require.Len(t, results, 1)
 		assert.Equal(t, proj2.ID, results[0].ID)
 	})
-}
-
-func strPtr(s string) *string {
-	return &s
 }
 
 func TestGetProjectByGitBranch_Found(t *testing.T) {

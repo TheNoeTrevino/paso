@@ -23,8 +23,8 @@ func TestFindNextColumnName(t *testing.T) {
 			name: "find next column in middle",
 			columns: []*models.Column{
 				{ID: 1, Name: "Todo", NextID: &next2ID},
-				{ID: 2, Name: "In Progress", NextID: &next3ID, PrevID: intPtr(1)},
-				{ID: 3, Name: "Done", PrevID: intPtr(2)},
+				{ID: 2, Name: "In Progress", NextID: &next3ID, PrevID: new(1)},
+				{ID: 3, Name: "Done", PrevID: new(2)},
 			},
 			currentColumnID: 1,
 			expected:        "In Progress",
@@ -33,7 +33,7 @@ func TestFindNextColumnName(t *testing.T) {
 			name: "last column has no next",
 			columns: []*models.Column{
 				{ID: 1, Name: "Todo", NextID: &next2ID},
-				{ID: 2, Name: "Done", PrevID: intPtr(1)},
+				{ID: 2, Name: "Done", PrevID: new(1)},
 			},
 			currentColumnID: 2,
 			expected:        "Unknown",
@@ -50,8 +50,8 @@ func TestFindNextColumnName(t *testing.T) {
 			name: "next column from second to third",
 			columns: []*models.Column{
 				{ID: 1, Name: "Todo", NextID: &next2ID},
-				{ID: 2, Name: "In Progress", NextID: &next3ID, PrevID: intPtr(1)},
-				{ID: 3, Name: "Done", PrevID: intPtr(2)},
+				{ID: 2, Name: "In Progress", NextID: &next3ID, PrevID: new(1)},
+				{ID: 3, Name: "Done", PrevID: new(2)},
 			},
 			currentColumnID: 2,
 			expected:        "Done",
@@ -66,7 +66,7 @@ func TestFindNextColumnName(t *testing.T) {
 			name: "column ID not found",
 			columns: []*models.Column{
 				{ID: 1, Name: "Todo", NextID: &next2ID},
-				{ID: 2, Name: "Done", PrevID: intPtr(1)},
+				{ID: 2, Name: "Done", PrevID: new(1)},
 			},
 			currentColumnID: 999,
 			expected:        "Unknown",
@@ -99,8 +99,8 @@ func TestFindPrevColumnName(t *testing.T) {
 			name: "find previous column in middle",
 			columns: []*models.Column{
 				{ID: 1, Name: "Todo", NextID: &next2ID},
-				{ID: 2, Name: "In Progress", NextID: &next3ID, PrevID: intPtr(1)},
-				{ID: 3, Name: "Done", PrevID: intPtr(2)},
+				{ID: 2, Name: "In Progress", NextID: &next3ID, PrevID: new(1)},
+				{ID: 3, Name: "Done", PrevID: new(2)},
 			},
 			currentColumnID: 2,
 			expected:        "Todo",
@@ -109,7 +109,7 @@ func TestFindPrevColumnName(t *testing.T) {
 			name: "first column has no previous",
 			columns: []*models.Column{
 				{ID: 1, Name: "Todo", NextID: &next2ID},
-				{ID: 2, Name: "Done", PrevID: intPtr(1)},
+				{ID: 2, Name: "Done", PrevID: new(1)},
 			},
 			currentColumnID: 1,
 			expected:        "Unknown",
@@ -126,8 +126,8 @@ func TestFindPrevColumnName(t *testing.T) {
 			name: "previous column from third to second",
 			columns: []*models.Column{
 				{ID: 1, Name: "Todo", NextID: &next2ID},
-				{ID: 2, Name: "In Progress", NextID: &next3ID, PrevID: intPtr(1)},
-				{ID: 3, Name: "Done", PrevID: intPtr(2)},
+				{ID: 2, Name: "In Progress", NextID: &next3ID, PrevID: new(1)},
+				{ID: 3, Name: "Done", PrevID: new(2)},
 			},
 			currentColumnID: 3,
 			expected:        "In Progress",
@@ -142,7 +142,7 @@ func TestFindPrevColumnName(t *testing.T) {
 			name: "column ID not found",
 			columns: []*models.Column{
 				{ID: 1, Name: "Todo", NextID: &next2ID},
-				{ID: 2, Name: "Done", PrevID: intPtr(1)},
+				{ID: 2, Name: "Done", PrevID: new(1)},
 			},
 			currentColumnID: 999,
 			expected:        "Unknown",
@@ -157,11 +157,6 @@ func TestFindPrevColumnName(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
-}
-
-// Helper function to create int pointers
-func intPtr(i int) *int {
-	return &i
 }
 
 func TestParseMoveTarget(t *testing.T) {

@@ -939,7 +939,7 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 				ID:       500,
 				Title:    "Task with due date",
 				ColumnID: 1,
-				DueDate:  ptrTime(time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)),
+				DueDate:  new(time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)),
 				Labels:   []*models.Label{},
 			},
 		},
@@ -983,10 +983,6 @@ func TestTaskSummaryFromRowToModel(t *testing.T) {
 			}
 		})
 	}
-}
-
-func ptrTime(t time.Time) *time.Time {
-	return &t
 }
 
 // TEST CASES - ReadyTaskSummaryFromRowToModel

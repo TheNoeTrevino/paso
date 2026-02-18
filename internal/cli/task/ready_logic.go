@@ -20,13 +20,13 @@ func FormatReadyOutput(result *ReadyResult) string {
 	}
 
 	var output strings.Builder
-	output.WriteString(fmt.Sprintf("Found %d ready tasks:\n\n", result.Count))
+	fmt.Fprintf(&output, "Found %d ready tasks:\n\n", result.Count)
 	for _, t := range result.Tasks {
 		priorityInfo := ""
 		if ShouldDisplayPriority(t.PriorityDescription) {
 			priorityInfo = fmt.Sprintf(" [%s]", t.PriorityDescription)
 		}
-		output.WriteString(fmt.Sprintf("  [%d] %s%s\n", t.ID, t.Title, priorityInfo))
+		fmt.Fprintf(&output, "  [%d] %s%s\n", t.ID, t.Title, priorityInfo)
 	}
 
 	return output.String()
@@ -45,7 +45,7 @@ func FormatReadyJSON(result *ReadyResult) map[string]any {
 func FormatReadyQuiet(result *ReadyResult) string {
 	var output strings.Builder
 	for _, t := range result.Tasks {
-		output.WriteString(fmt.Sprintf("%d\n", t.ID))
+		fmt.Fprintf(&output, "%d\n", t.ID)
 	}
 	return output.String()
 }

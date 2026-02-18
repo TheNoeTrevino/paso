@@ -56,7 +56,3 @@ func setupTestEnvWithEventMock(tb testing.TB, db *sql.DB, d fixtures.Dialect, db
 // testDialect is a package-level SQLite dialect for benchmark tests that
 // don't use RunDatabaseTests (benchmarks stay SQLite-only).
 var testDialect = fixtures.SQLiteDialect()
-
-func ptrString(s string) *string {
-	return &s
-}

@@ -91,7 +91,7 @@ func TestParseUpdateFlags(t *testing.T) {
 				require.NoError(t, cmd.Flags().Set("title", "New Title"))
 			},
 			want: &UpdateInput{
-				Title: stringPtr("New Title"),
+				Title: new("New Title"),
 			},
 		},
 		{
@@ -100,7 +100,7 @@ func TestParseUpdateFlags(t *testing.T) {
 				require.NoError(t, cmd.Flags().Set("description", "New Description"))
 			},
 			want: &UpdateInput{
-				Description: stringPtr("New Description"),
+				Description: new("New Description"),
 			},
 		},
 		{
@@ -109,7 +109,7 @@ func TestParseUpdateFlags(t *testing.T) {
 				require.NoError(t, cmd.Flags().Set("priority", "high"))
 			},
 			want: &UpdateInput{
-				Priority: stringPtr("high"),
+				Priority: new("high"),
 			},
 		},
 		{
@@ -119,8 +119,8 @@ func TestParseUpdateFlags(t *testing.T) {
 				require.NoError(t, cmd.Flags().Set("description", "New Description"))
 			},
 			want: &UpdateInput{
-				Title:       stringPtr("New Title"),
-				Description: stringPtr("New Description"),
+				Title:       new("New Title"),
+				Description: new("New Description"),
 			},
 		},
 		{
@@ -130,8 +130,8 @@ func TestParseUpdateFlags(t *testing.T) {
 				require.NoError(t, cmd.Flags().Set("priority", "critical"))
 			},
 			want: &UpdateInput{
-				Title:    stringPtr("New Title"),
-				Priority: stringPtr("critical"),
+				Title:    new("New Title"),
+				Priority: new("critical"),
 			},
 		},
 		{
@@ -141,8 +141,8 @@ func TestParseUpdateFlags(t *testing.T) {
 				require.NoError(t, cmd.Flags().Set("priority", "low"))
 			},
 			want: &UpdateInput{
-				Description: stringPtr("New Description"),
-				Priority:    stringPtr("low"),
+				Description: new("New Description"),
+				Priority:    new("low"),
 			},
 		},
 		{
@@ -153,9 +153,9 @@ func TestParseUpdateFlags(t *testing.T) {
 				require.NoError(t, cmd.Flags().Set("priority", "medium"))
 			},
 			want: &UpdateInput{
-				Title:       stringPtr("New Title"),
-				Description: stringPtr("New Description"),
-				Priority:    stringPtr("medium"),
+				Title:       new("New Title"),
+				Description: new("New Description"),
+				Priority:    new("medium"),
 			},
 		},
 		{
@@ -164,7 +164,7 @@ func TestParseUpdateFlags(t *testing.T) {
 				require.NoError(t, cmd.Flags().Set("title", ""))
 			},
 			want: &UpdateInput{
-				Title: stringPtr(""),
+				Title: new(""),
 			},
 		},
 		{
@@ -173,7 +173,7 @@ func TestParseUpdateFlags(t *testing.T) {
 				require.NoError(t, cmd.Flags().Set("description", ""))
 			},
 			want: &UpdateInput{
-				Description: stringPtr(""),
+				Description: new(""),
 			},
 		},
 		{
@@ -182,7 +182,7 @@ func TestParseUpdateFlags(t *testing.T) {
 				require.NoError(t, cmd.Flags().Set("priority", ""))
 			},
 			want: &UpdateInput{
-				Priority: stringPtr(""),
+				Priority: new(""),
 			},
 		},
 		{
@@ -223,29 +223,29 @@ func TestHasContentUpdate(t *testing.T) {
 		{
 			name: "has title",
 			input: &UpdateInput{
-				Title: stringPtr("New Title"),
+				Title: new("New Title"),
 			},
 			want: true,
 		},
 		{
 			name: "has description",
 			input: &UpdateInput{
-				Description: stringPtr("New Description"),
+				Description: new("New Description"),
 			},
 			want: true,
 		},
 		{
 			name: "has both title and description",
 			input: &UpdateInput{
-				Title:       stringPtr("New Title"),
-				Description: stringPtr("New Description"),
+				Title:       new("New Title"),
+				Description: new("New Description"),
 			},
 			want: true,
 		},
 		{
 			name: "has only priority",
 			input: &UpdateInput{
-				Priority: stringPtr("high"),
+				Priority: new("high"),
 			},
 			want: false,
 		},
@@ -257,14 +257,14 @@ func TestHasContentUpdate(t *testing.T) {
 		{
 			name: "has empty title",
 			input: &UpdateInput{
-				Title: stringPtr(""),
+				Title: new(""),
 			},
 			want: true,
 		},
 		{
 			name: "has empty description",
 			input: &UpdateInput{
-				Description: stringPtr(""),
+				Description: new(""),
 			},
 			want: true,
 		},
@@ -287,28 +287,28 @@ func TestHasPriorityUpdate(t *testing.T) {
 		{
 			name: "has priority",
 			input: &UpdateInput{
-				Priority: stringPtr("high"),
+				Priority: new("high"),
 			},
 			want: true,
 		},
 		{
 			name: "has empty priority",
 			input: &UpdateInput{
-				Priority: stringPtr(""),
+				Priority: new(""),
 			},
 			want: true,
 		},
 		{
 			name: "has only title",
 			input: &UpdateInput{
-				Title: stringPtr("New Title"),
+				Title: new("New Title"),
 			},
 			want: false,
 		},
 		{
 			name: "has only description",
 			input: &UpdateInput{
-				Description: stringPtr("New Description"),
+				Description: new("New Description"),
 			},
 			want: false,
 		},
@@ -320,8 +320,8 @@ func TestHasPriorityUpdate(t *testing.T) {
 		{
 			name: "has title and description but no priority",
 			input: &UpdateInput{
-				Title:       stringPtr("New Title"),
-				Description: stringPtr("New Description"),
+				Title:       new("New Title"),
+				Description: new("New Description"),
 			},
 			want: false,
 		},
@@ -433,9 +433,4 @@ func TestFormatUpdateJSON(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
-}
-
-// Helper function to create string pointers
-func stringPtr(s string) *string {
-	return &s
 }

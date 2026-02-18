@@ -38,7 +38,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GO_VERSION: "1.25.0"
+  GO_VERSION: "1.26.0"
   SQLC_VERSION: "v1.30.0"
 
 jobs:
@@ -81,14 +81,19 @@ jobs:
           fi
           echo "All files are properly formatted"
 
+      - name: Check go fix
+        run: |
+          go fix ./...
+          if ! git diff --exit-code; then
+            echo "go fix produced changes. Run: go fix ./..."
+            exit 1
+          fi
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.7.2
+          version: v2.10.1
           args: --timeout=5m
-          skip-cache: false
-          skip-pkg-cache: false
-          skip-build-cache: false
 
       - name: Regenerate adapters
         run: go generate ./internal/database/adapters/...

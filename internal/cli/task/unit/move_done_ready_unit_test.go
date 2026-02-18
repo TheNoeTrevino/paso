@@ -14,13 +14,11 @@ import (
 	"github.com/thenoetrevino/paso/internal/testing/mocks"
 )
 
-func intPtr(v int) *int { return &v }
-
 func setupMoveColumns() []*models.Column {
 	return []*models.Column{
-		{ID: 10, Name: "Todo", ProjectID: 1, PrevID: nil, NextID: intPtr(11)},
-		{ID: 11, Name: "In Progress", ProjectID: 1, PrevID: intPtr(10), NextID: intPtr(12)},
-		{ID: 12, Name: "Done", ProjectID: 1, PrevID: intPtr(11), NextID: nil},
+		{ID: 10, Name: "Todo", ProjectID: 1, PrevID: nil, NextID: new(11)},
+		{ID: 11, Name: "In Progress", ProjectID: 1, PrevID: new(10), NextID: new(12)},
+		{ID: 12, Name: "Done", ProjectID: 1, PrevID: new(11), NextID: nil},
 	}
 }
 
