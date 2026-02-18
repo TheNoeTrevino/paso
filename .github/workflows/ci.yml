@@ -94,9 +94,6 @@ jobs:
         with:
           version: v2.7.2
           args: --timeout=5m
-          skip-cache: false
-          skip-pkg-cache: false
-          skip-build-cache: false
 
       - name: Regenerate adapters
         run: go generate ./internal/database/adapters/...
