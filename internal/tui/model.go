@@ -295,8 +295,12 @@ const notificationDuration = 1 * time.Second
 
 // addNotification adds a notification and returns a tea.Cmd that will fire
 // a NotificationExpiredMsg after the notification duration elapses.
+// Returns nil if the notification was suppressed by debouncing.
 func (m *Model) addNotification(level state.NotificationLevel, message string) tea.Cmd {
 	id := m.UI.Notification.Add(level, message)
+	if id == 0 {
+		return nil
+	}
 	return tea.Tick(notificationDuration, func(t time.Time) tea.Msg {
 		return NotificationExpiredMsg{ID: id}
 	})
