@@ -133,11 +133,13 @@ func (h *importHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		return nil, fmt.Errorf("failed to create task: %w", err)
 	}
 
+	defaultAuthor := resolveDefaultAuthor()
+
 	commentsImported := 0
 	for _, comment := range issue.Comments {
 		author := comment.Author
 		if author == "" {
-			author = resolveDefaultAuthor()
+			author = defaultAuthor
 		}
 		_, err := cliInstance.App.TaskService.CreateComment(ctx, taskservice.CreateCommentRequest{
 			TaskID:  task.ID,
