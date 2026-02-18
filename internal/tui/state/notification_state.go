@@ -1,8 +1,6 @@
 package state
 
 import (
-	"time"
-
 	"charm.land/lipgloss/v2"
 )
 
@@ -22,10 +20,9 @@ const maxNotifications = 3
 
 // Notification represents a single notification message with a severity level.
 type Notification struct {
-	ID        int
-	Level     NotificationLevel
-	Message   string
-	CreatedAt time.Time
+	ID      int
+	Level   NotificationLevel
+	Message string
 }
 
 // NotificationState manages notification display state.
@@ -61,10 +58,9 @@ func NewNotificationState() *NotificationState {
 func (s *NotificationState) Add(level NotificationLevel, message string) int {
 	id := s.nextID
 	s.notifications = append(s.notifications, Notification{
-		ID:        id,
-		Level:     level,
-		Message:   message,
-		CreatedAt: time.Now(),
+		ID:      id,
+		Level:   level,
+		Message: message,
 	})
 	s.nextID++
 
