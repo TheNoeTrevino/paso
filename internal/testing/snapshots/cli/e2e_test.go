@@ -3,6 +3,7 @@ package cli_test
 import (
 	"fmt"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -35,7 +36,12 @@ func cleanOutput(output string) string {
 }
 
 func cleanOutputWithTimestamps(output string) string {
-	return normalizeTimestamps(fixtures.StripANSI(output))
+	normalized := normalizeTimestamps(fixtures.StripANSI(output))
+	lines := strings.Split(normalized, "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimRight(line, " ")
+	}
+	return strings.Join(lines, "\n")
 }
 
 func TestGolden_E2E_Task(t *testing.T) {
