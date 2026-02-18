@@ -7,6 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/thenoetrevino/paso/internal/models"
+	"github.com/thenoetrevino/paso/internal/spinner"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
 
@@ -58,10 +59,8 @@ func RenderDetailPanel(task *models.TaskDetail, width, height int) string {
 
 // RenderDetailPanelLoading renders the detail panel in a loading state
 func RenderDetailPanelLoading(width, height int, spinnerFrame int) string {
-	spinnerFrame = spinnerFrame % GetSpinnerFrameCount()
-	spinnerIcon := []string{
-		"󰋙", "󰫃", "󰫄", "󰫅", "󰫆", "󰫇", "󰫈", "󰫇", "󰫆", "󰫅", "󰫄", "󰫃",
-	}[spinnerFrame]
+	spinnerFrame = spinnerFrame % spinner.FrameCount()
+	spinnerIcon := spinner.Frames[spinnerFrame]
 
 	loadingStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Highlight)).

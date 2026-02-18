@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"charm.land/lipgloss/v2"
+	"github.com/thenoetrevino/paso/internal/spinner"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/layers"
 	"github.com/thenoetrevino/paso/internal/tui/renderers"
@@ -105,10 +106,7 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 
 // renderTicketFormLoadingLayer renders a loading indicator while task details are being fetched
 func (m Model) renderTicketFormLoadingLayer() *lipgloss.Layer {
-	spinnerFrames := []string{
-		"󰋙", "󰫃", "󰫄", "󰫅", "󰫆", "󰫇", "󰫈", "󰫇", "󰫆", "󰫅", "󰫄", "󰫃",
-	}
-	spinnerIcon := spinnerFrames[m.SpinnerFrame%len(spinnerFrames)]
+	spinnerIcon := spinner.Frames[m.SpinnerFrame%spinner.FrameCount()]
 
 	loadingText := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Highlight)).
@@ -132,10 +130,7 @@ func (m Model) renderProjectFormLoadingLayer() *lipgloss.Layer {
 		title = "New Project"
 	}
 
-	spinnerFrames := []string{
-		"󰋙", "󰫃", "󰫄", "󰫅", "󰫆", "󰫇", "󰫈", "󰫇", "󰫆", "󰫅", "󰫄", "󰫃",
-	}
-	spinnerIcon := spinnerFrames[m.SpinnerFrame%len(spinnerFrames)]
+	spinnerIcon := spinner.Frames[m.SpinnerFrame%spinner.FrameCount()]
 
 	loadingText := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Highlight)).

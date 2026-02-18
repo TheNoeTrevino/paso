@@ -10,6 +10,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/cli/assignee"
 	"github.com/thenoetrevino/paso/internal/cli/column"
 	"github.com/thenoetrevino/paso/internal/cli/db"
+	"github.com/thenoetrevino/paso/internal/cli/gh"
 	"github.com/thenoetrevino/paso/internal/cli/label"
 	"github.com/thenoetrevino/paso/internal/cli/project"
 	"github.com/thenoetrevino/paso/internal/cli/setup"
@@ -63,6 +64,7 @@ func init() {
 	rootCmd.AddCommand(tutorial.TutorialCmd())
 	rootCmd.AddCommand(setup.SetupCmd())
 	rootCmd.AddCommand(db.DbCmd())
+	rootCmd.AddCommand(gh.GhCmd())
 
 	// Add TUI subcommand
 	tuiCmd := &cobra.Command{
