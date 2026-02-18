@@ -38,7 +38,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GO_VERSION: "1.25.0"
+  GO_VERSION: "1.26.0"
   SQLC_VERSION: "v1.30.0"
 
 jobs:
@@ -80,6 +80,14 @@ jobs:
             exit 1
           fi
           echo "All files are properly formatted"
+
+      - name: Check go fix
+        run: |
+          go fix ./...
+          if ! git diff --exit-code; then
+            echo "go fix produced changes. Run: go fix ./..."
+            exit 1
+          fi
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
