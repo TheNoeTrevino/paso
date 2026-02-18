@@ -89,7 +89,7 @@ func TestRenderListViewScrolling(t *testing.T) {
 	t.Parallel()
 	// Create many rows
 	rows := make([]ListViewRow, 50)
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		rows[i] = ListViewRow{
 			Task: &models.TaskSummary{
 				ID:    i + 1,
@@ -192,8 +192,8 @@ func TestRenderListViewNarrowWidth(t *testing.T) {
 	require.NotEmpty(t, output)
 
 	// Should still be reasonable length (truncated)
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		if len(line) > 40 { // Should be reasonably constrained
 			t.Logf("Line length %d (may be due to color codes): %q", len(line), line)
 		}
@@ -224,7 +224,7 @@ func TestRenderListViewLargeWidth(t *testing.T) {
 func TestRenderListViewManyRows(t *testing.T) {
 	t.Parallel()
 	rows := make([]ListViewRow, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		rows[i] = ListViewRow{
 			Task: &models.TaskSummary{
 				ID:    i + 1,
@@ -272,7 +272,7 @@ func TestRenderListViewScrollBehavior(t *testing.T) {
 	t.Parallel()
 	// Create rows
 	rows := make([]ListViewRow, 30)
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		rows[i] = ListViewRow{
 			Task: &models.TaskSummary{
 				ID:    i + 1,

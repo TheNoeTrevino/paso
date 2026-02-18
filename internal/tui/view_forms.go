@@ -216,7 +216,7 @@ func (m *Model) renderFormCommentsPreview(width, height int) string {
 		displayCount := min(activityCount, maxActivities)
 
 		// Activities are already sorted newest first by MergeActivities
-		for i := 0; i < displayCount; i++ {
+		for i := range displayCount {
 			activity := m.Forms.Form.FormActivities[i]
 
 			// Truncate content to fit preview

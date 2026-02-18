@@ -46,7 +46,7 @@ func TestClientConnection_Multiple(t *testing.T) {
 	numClients := 5
 
 	// Connect multiple clients
-	for i := 0; i < numClients; i++ {
+	for range numClients {
 		_, encoder, _ := connectRawClient(t, socketPath)
 		sendSubscribeMessage(t, encoder, 0)
 	}

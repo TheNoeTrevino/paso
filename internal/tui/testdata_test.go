@@ -12,7 +12,7 @@ import (
 // createTestProjects creates a slice of test projects for testing.
 func createTestProjects(count int) []*models.Project {
 	projects := make([]*models.Project, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		projects[i] = &models.Project{
 			ID:          i + 1,
 			Name:        "Project " + string(rune('A'+i)),
@@ -27,7 +27,7 @@ func createTestProjects(count int) []*models.Project {
 // createTestColumns creates test columns for a given project ID.
 func createTestColumns(projectID int, count int) []*models.Column {
 	columns := make([]*models.Column, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		var prevID, nextID *int
 		if i > 0 {
 			prev := (projectID * 100) + i - 1
@@ -52,7 +52,7 @@ func createTestColumns(projectID int, count int) []*models.Column {
 // createTestTasks creates test tasks for a given column ID.
 func createTestTasks(columnID int, count int) []*models.TaskSummary {
 	tasks := make([]*models.TaskSummary, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		tasks[i] = &models.TaskSummary{
 			ID:                  (columnID * 100) + i + 1,
 			Title:               "Task " + string(rune('A'+i)),

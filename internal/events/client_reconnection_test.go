@@ -336,7 +336,7 @@ func TestClient_RestoresSubscriptionAfterReconnect(t *testing.T) {
 	// Retry if daemon isn't fully ready yet
 	t.Logf("Testing reconnect() with subscription restoration...")
 	var success bool
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		success = client.reconnect(ctx)
 		if success {
 			break

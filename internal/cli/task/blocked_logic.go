@@ -32,15 +32,16 @@ func FormatBlockedOutput(result *BlockedResult) string {
 		return "No blocked tasks found"
 	}
 
-	output := fmt.Sprintf("Found %d blocked tasks:\n\n", result.Count)
+	var output strings.Builder
+	output.WriteString(fmt.Sprintf("Found %d blocked tasks:\n\n", result.Count))
 	for _, t := range result.Tasks {
 		priorityInfo := ""
 		if ShouldDisplayPriority(t.PriorityDescription) {
 			priorityInfo = fmt.Sprintf(" [%s]", t.PriorityDescription)
 		}
-		output += fmt.Sprintf("  [%d] %s%s (BLOCKED)\n", t.ID, t.Title, priorityInfo)
+		output.WriteString(fmt.Sprintf("  [%d] %s%s (BLOCKED)\n", t.ID, t.Title, priorityInfo))
 	}
-	return output
+	return output.String()
 }
 
 // FormatBlockedJSON generates the JSON output structure

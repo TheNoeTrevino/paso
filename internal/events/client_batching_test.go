@@ -83,7 +83,7 @@ func TestClient_EventBatchingDuringNetworkFailure(t *testing.T) {
 	numEventsWhileDown := 5
 	t.Logf("Queueing %d events while daemon is down...", numEventsWhileDown)
 
-	for i := 0; i < numEventsWhileDown; i++ {
+	for i := range numEventsWhileDown {
 		event := Event{
 			Type:      EventDatabaseChanged,
 			ProjectID: i + 1, // Projects 1-5
@@ -252,7 +252,7 @@ collectLoop:
 	startTime := time.Now()
 
 	// Send 3 events rapidly
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		event := Event{
 			Type:      EventDatabaseChanged,
 			ProjectID: 10,
@@ -286,7 +286,7 @@ collectLoop:
 	queueTestEvents := 50 // Well within capacity of 100
 	successCount := 0
 
-	for i := 0; i < queueTestEvents; i++ {
+	for range queueTestEvents {
 		event := Event{
 			Type:      EventDatabaseChanged,
 			ProjectID: 20,

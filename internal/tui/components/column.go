@@ -91,7 +91,8 @@ func renderColumnWithTasksContent(
 	scrollOffset int,
 	taskCardWidth int,
 ) string {
-	content := header + "\n"
+	var content strings.Builder
+	content.WriteString(header + "\n")
 
 	columnOverhead := columnBorderOverhead + headerLines + topIndicatorLines
 	availableHeight := height - columnOverhead
@@ -101,7 +102,7 @@ func renderColumnWithTasksContent(
 	// This can happen when filtering/search reduces task count while a stale offset persists.
 	scrollOffset = min(scrollOffset, len(tasks))
 
-	content += renderScrollIndicator(scrollOffset > 0, "▲ more above")
+	content.WriteString(renderScrollIndicator(scrollOffset > 0, "▲ more above"))
 
 	endIdx := min(scrollOffset+maxVisibleTasks, len(tasks))
 	visibleTasks := tasks[scrollOffset:endIdx]
@@ -109,13 +110,13 @@ func renderColumnWithTasksContent(
 	for i, task := range visibleTasks {
 		actualIdx := scrollOffset + i
 		isTaskSelected := selected && actualIdx == selectedTaskIdx
-		content += RenderTask(task, isTaskSelected, taskCardWidth)
+		content.WriteString(RenderTask(task, isTaskSelected, taskCardWidth))
 	}
 
 	showBottomIndicator := endIdx < len(tasks)
-	content += strings.TrimRight(renderScrollIndicator(showBottomIndicator, "▼ more below"), "\n")
+	content.WriteString(strings.TrimRight(renderScrollIndicator(showBottomIndicator, "▼ more below"), "\n"))
 
-	return content
+	return content.String()
 }
 
 // applyColumnStyle applies border, selection highlighting, dimensions to content

@@ -158,7 +158,7 @@ func TestBackspaceFilter_Empty(t *testing.T) {
 	assert.Equal(t, "", state.Filter)
 
 	// Multiple backspaces should be safe
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		removed = state.BackspaceFilter()
 		assert.False(t, removed, "BackspaceFilter() call %d on empty returned true, want false", i+1)
 	}

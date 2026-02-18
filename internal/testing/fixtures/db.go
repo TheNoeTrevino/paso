@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/thenoetrevino/paso/internal/database"
@@ -435,14 +436,14 @@ func LinkProjectGitBranch(tb testing.TB, db *sql.DB, d Dialect, projectID int, b
 }
 
 func joinStrings(strs []string, sep string) string {
-	result := ""
+	var result strings.Builder
 	for i, s := range strs {
 		if i > 0 {
-			result += sep
+			result.WriteString(sep)
 		}
-		result += s
+		result.WriteString(s)
 	}
-	return result
+	return result.String()
 }
 
 // AssertRelationExists verifies that a specific relation exists in the database

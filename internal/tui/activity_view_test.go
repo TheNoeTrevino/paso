@@ -16,7 +16,7 @@ import (
 func createTestActivityItems(count int, activityType models.ActivityType) []models.ActivityItem {
 	items := make([]models.ActivityItem, count)
 	baseTime := time.Now()
-	for i := 0; i < count; i++ {
+	for i := range count {
 		items[i] = models.ActivityItem{
 			ID:        i + 1,
 			TaskID:    1,

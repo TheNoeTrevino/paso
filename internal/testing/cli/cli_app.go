@@ -56,22 +56,18 @@ func CaptureOutputFunc(t *testing.T, fn func()) string {
 	errC := make(chan string, 1)
 
 	// Goroutine to read stdout
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		var buf bytes.Buffer
 		_, _ = io.Copy(&buf, rOut)
 		outC <- buf.String()
-	}()
+	})
 
 	// Goroutine to read stderr
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		var buf bytes.Buffer
 		_, _ = io.Copy(&buf, rErr)
 		errC <- buf.String()
-	}()
+	})
 
 	// Execute function
 	fn()

@@ -40,7 +40,7 @@ func TestSendEvent_QueueFullWithBackpressure(t *testing.T) {
 	// the 101st triggers backpressure/retry logic
 	numEvents := 101
 	var lastErr error
-	for i := 0; i < numEvents; i++ {
+	for i := range numEvents {
 		event := Event{
 			Type:      EventDatabaseChanged,
 			ProjectID: i % 5,
@@ -109,7 +109,7 @@ func TestSendEvent_HighThroughputReliability(t *testing.T) {
 	// Send a burst of events rapidly
 	numEvents := 50
 	var sendErrors int
-	for i := 0; i < numEvents; i++ {
+	for i := range numEvents {
 		event := Event{
 			Type:      EventDatabaseChanged,
 			ProjectID: i % 3,
@@ -180,7 +180,7 @@ func TestSendEvent_BackpressureQueueRecovery(t *testing.T) {
 	}
 
 	// First batch: fill queue
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		event := Event{
 			Type:      EventDatabaseChanged,
 			ProjectID: 0,
@@ -198,7 +198,7 @@ func TestSendEvent_BackpressureQueueRecovery(t *testing.T) {
 	// Second batch: should now be able to send without excessive retry
 	// If recovery works, these should succeed quickly
 	successCount := 0
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		event := Event{
 			Type:      EventDatabaseChanged,
 			ProjectID: 0,
@@ -239,7 +239,7 @@ func TestSendEvent_ErrorMessageClarity(t *testing.T) {
 	var lastErr error
 	// Send events until queue is full
 	// The queue starts with capacity 100
-	for i := 0; i < 120; i++ {
+	for range 120 {
 		err := client.SendEvent(event)
 		if err != nil {
 			lastErr = err

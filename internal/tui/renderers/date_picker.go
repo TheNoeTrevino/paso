@@ -58,8 +58,8 @@ func generateCalendarGrid(month time.Month, year int) [][]int {
 
 	// Fill the grid with day numbers
 	day := 1
-	for week := 0; week < 6; week++ {
-		for dayOfWeek := 0; dayOfWeek < 7; dayOfWeek++ {
+	for week := range 6 {
+		for dayOfWeek := range 7 {
 			// Skip empty cells before the month starts
 			if week == 0 && dayOfWeek < weekdayOffset {
 				grid[week][dayOfWeek] = 0

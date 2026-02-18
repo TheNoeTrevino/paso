@@ -99,12 +99,12 @@ func TestGetTaskTreeByProject_DeepNesting(t *testing.T) {
 		env := setupTestEnv(t, db, d, dbType)
 		// Create a deep hierarchy: Task1 -> Task2 -> Task3 -> Task4 -> Task5
 		tasks := make([]int, 5)
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			tasks[i] = fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Task "+string(rune('1'+i)))
 		}
 
 		// Link them in a chain
-		for i := 0; i < 4; i++ {
+		for i := range 4 {
 			_, err := env.DB.ExecContext(env.Ctx,
 				fmt.Sprintf("INSERT INTO task_subtasks (parent_id, child_id, relation_type_id) VALUES (%s, %s, 1)",
 					d.Placeholder(1), d.Placeholder(2)),

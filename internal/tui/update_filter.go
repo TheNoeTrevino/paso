@@ -141,10 +141,7 @@ func (m *Model) initPriorityPickerForFilter() bool {
 	cursorPos := 0
 
 	if m.UI.Filter.PriorityID != nil {
-		cursorPos = *m.UI.Filter.PriorityID - 1
-		if cursorPos < 0 {
-			cursorPos = 0
-		}
+		cursorPos = max(*m.UI.Filter.PriorityID-1, 0)
 	}
 
 	m.Pickers.Priority.SetSelectedPriorityID(0)
@@ -159,10 +156,7 @@ func (m *Model) initTypePickerForFilter() bool {
 	cursorPos := 0
 
 	if m.UI.Filter.TypeID != nil {
-		cursorPos = *m.UI.Filter.TypeID - 1
-		if cursorPos < 0 {
-			cursorPos = 0
-		}
+		cursorPos = max(*m.UI.Filter.TypeID-1, 0)
 	}
 
 	m.Pickers.Type.SetSelectedTypeID(0)

@@ -814,7 +814,7 @@ func TestCreateProject_MultipleProjectsWithoutBranch(t *testing.T) {
 	fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
 		env := setupTestEnv(t, db, d, dbType)
 
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			_, err := env.Svc.CreateProject(env.Ctx, CreateProjectRequest{
 				Name:        fmt.Sprintf("Project %d", i),
 				Description: "No branch",

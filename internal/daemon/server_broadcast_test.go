@@ -57,7 +57,7 @@ func TestBroadcast_MultipleClients(t *testing.T) {
 
 	// Connect multiple clients
 	waiter := expectSubscriptions(t, server, numClients)
-	for i := 0; i < numClients; i++ {
+	for range numClients {
 		client := setupTestClient(t, socketPath)
 
 		eventChan, err := client.Listen(context.Background())
@@ -184,7 +184,7 @@ func TestBroadcast_SequenceNumbers(t *testing.T) {
 
 	// Send 10 events
 	numEvents := 10
-	for i := 0; i < numEvents; i++ {
+	for range numEvents {
 		testEvent := events.Event{
 			Type:      events.EventDatabaseChanged,
 			ProjectID: 1,
@@ -196,7 +196,7 @@ func TestBroadcast_SequenceNumbers(t *testing.T) {
 
 	// Collect all events
 	var sequences []int64
-	for i := 0; i < numEvents; i++ {
+	for range numEvents {
 		event := waitForEvent(t, eventChan, 2*time.Second)
 		sequences = append(sequences, event.SequenceID)
 	}

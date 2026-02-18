@@ -236,12 +236,12 @@ func TestCache_Concurrent(t *testing.T) {
 	numGoroutines := 100
 	numOperations := 50
 
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
 
-			for j := 0; j < numOperations; j++ {
+			for j := range numOperations {
 				switch j % 4 {
 				case 0:
 					info := GitInfo{
@@ -274,7 +274,7 @@ func TestCache_ConcurrentDifferentKeys(t *testing.T) {
 	var wg sync.WaitGroup
 	numKeys := 50
 
-	for i := 0; i < numKeys; i++ {
+	for i := range numKeys {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()

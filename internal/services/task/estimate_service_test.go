@@ -101,7 +101,6 @@ func TestUpdateTaskEstimate(t *testing.T) {
 			compoundFormats := []string{"1w2d", "2d3h", "1w2d3h", "1w2d3h4m"}
 
 			for _, format := range compoundFormats {
-				format := format
 				t.Run(format, func(t *testing.T) {
 					taskID := fixtures.CreateTestTask(t, db, d, columnID, "Task for "+format)
 
@@ -122,7 +121,6 @@ func TestUpdateTaskEstimate(t *testing.T) {
 			formats := []string{"4h", "30m", "1w", "2d", "3m"}
 
 			for _, format := range formats {
-				format := format
 				t.Run(format, func(t *testing.T) {
 					taskID := fixtures.CreateTestTask(t, db, d, columnID, "Task for "+format)
 

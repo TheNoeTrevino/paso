@@ -37,7 +37,7 @@ func TestIncEventsSent(t *testing.T) {
 	assert.Equal(t, int64(1), m.GetEventsSent())
 
 	// Increment multiple times
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		m.IncEventsSent()
 	}
 	assert.Equal(t, int64(11), m.GetEventsSent())
@@ -52,7 +52,7 @@ func TestIncEventsReceived(t *testing.T) {
 	m.IncEventsReceived()
 	assert.Equal(t, int64(1), m.GetEventsReceived())
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		m.IncEventsReceived()
 	}
 	assert.Equal(t, int64(6), m.GetEventsReceived())
@@ -67,7 +67,7 @@ func TestIncReconnections(t *testing.T) {
 	m.IncReconnections()
 	assert.Equal(t, int64(1), m.GetReconnections())
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		m.IncReconnections()
 	}
 	assert.Equal(t, int64(4), m.GetReconnections())
@@ -82,7 +82,7 @@ func TestIncRefreshesTotal(t *testing.T) {
 	m.IncRefreshesTotal()
 	assert.Equal(t, int64(1), m.GetRefreshesTotal())
 
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		m.IncRefreshesTotal()
 	}
 	assert.Equal(t, int64(21), m.GetRefreshesTotal())
@@ -158,50 +158,50 @@ func TestMetricsConcurrency_AllOperations(t *testing.T) {
 	wg.Add(numGoroutines * 5) // 5 different operations
 
 	// Concurrently increment EventsSent
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
-			for j := 0; j < opsPerGoroutine; j++ {
+			for range opsPerGoroutine {
 				m.IncEventsSent()
 			}
 		}()
 	}
 
 	// Concurrently increment EventsReceived
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
-			for j := 0; j < opsPerGoroutine; j++ {
+			for range opsPerGoroutine {
 				m.IncEventsReceived()
 			}
 		}()
 	}
 
 	// Concurrently increment Reconnections
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
-			for j := 0; j < opsPerGoroutine; j++ {
+			for range opsPerGoroutine {
 				m.IncReconnections()
 			}
 		}()
 	}
 
 	// Concurrently increment RefreshesTotal
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
-			for j := 0; j < opsPerGoroutine; j++ {
+			for range opsPerGoroutine {
 				m.IncRefreshesTotal()
 			}
 		}()
 	}
 
 	// Concurrently set ConnectedClients
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		go func(val int32) {
 			defer wg.Done()
-			for j := 0; j < opsPerGoroutine; j++ {
+			for range opsPerGoroutine {
 				m.SetConnectedClients(val)
 			}
 		}(int32(i))
@@ -234,7 +234,7 @@ func TestMetricsConcurrency_ReadWhileWrite(t *testing.T) {
 
 	// Start writers
 	wg.Add(10)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
 			defer wg.Done()
 			for {
@@ -253,7 +253,7 @@ func TestMetricsConcurrency_ReadWhileWrite(t *testing.T) {
 
 	// Start readers
 	wg.Add(10)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
 			defer wg.Done()
 			for {
