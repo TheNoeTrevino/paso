@@ -12,6 +12,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/github"
 	"github.com/thenoetrevino/paso/internal/models"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
+	"github.com/thenoetrevino/paso/internal/spinner"
 	"github.com/thenoetrevino/paso/internal/user"
 )
 
@@ -67,6 +68,12 @@ func (h *importHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 
 	if err := github.CheckInstalled(); err != nil {
 		return nil, err
+	}
+
+	if !args.GetBool("json") && !args.GetBool("quiet") {
+		sp := spinner.New(fmt.Sprintf("Importing GitHub issue #%d...", issueNumber))
+		sp.Start()
+		defer sp.Stop()
 	}
 
 	columnName := args.GetString("column", "")

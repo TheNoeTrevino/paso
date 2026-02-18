@@ -1,6 +1,9 @@
 package state
 
-import "github.com/thenoetrevino/paso/internal/config"
+import (
+	"github.com/thenoetrevino/paso/internal/config"
+	"github.com/thenoetrevino/paso/internal/spinner"
+)
 
 // DatabasePickerState manages the state of the database connection picker
 type DatabasePickerState struct {
@@ -104,8 +107,7 @@ func (s *DatabasePickerState) StopConnecting() {
 
 // AdvanceSpinnerFrame increments the frame index, wrapping at frameCount
 func (s *DatabasePickerState) AdvanceSpinnerFrame() {
-	const frameCount = 12 // Match spinnerFrames length
-	s.SpinnerFrame = (s.SpinnerFrame + 1) % frameCount
+	s.SpinnerFrame = (s.SpinnerFrame + 1) % spinner.FrameCount()
 }
 
 // IsConnecting returns true if currently connecting
