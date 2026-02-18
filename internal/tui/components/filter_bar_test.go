@@ -26,6 +26,71 @@ func TestBuildAllChipTexts(t *testing.T) {
 				LabelNames:   []string{},
 			},
 			expected: map[state.FilterChip]string{
+				state.FilterChipSearch:   " Search: All",
+				state.FilterChipLabel:    " Label: All",
+				state.FilterChipPriority: " Priority: All",
+				state.FilterChipType:     "󰉺 Type: All",
+				state.FilterChipAssignee: " Assignee: All",
+				state.FilterChipArchived: "󱝋 Archived: Off",
+				state.FilterChipClearAll: " Clear All",
+			},
+		},
+		{
+			name: "search query active",
+			props: FilterBarProps{
+				Filter: &state.FilterState{
+					SearchQuery: "bug fix",
+				},
+				PriorityName: "",
+				TypeName:     "",
+				AssigneeName: "",
+				LabelNames:   []string{},
+			},
+			expected: map[state.FilterChip]string{
+				state.FilterChipSearch:   " Search: bug fix",
+				state.FilterChipLabel:    " Label: All",
+				state.FilterChipPriority: " Priority: All",
+				state.FilterChipType:     "󰉺 Type: All",
+				state.FilterChipAssignee: " Assignee: All",
+				state.FilterChipArchived: "󱝋 Archived: Off",
+				state.FilterChipClearAll: " Clear All",
+			},
+		},
+		{
+			name: "search input active shows cursor",
+			props: FilterBarProps{
+				Filter: &state.FilterState{
+					SearchQuery:       "hel",
+					SearchInputActive: true,
+				},
+				PriorityName: "",
+				TypeName:     "",
+				AssigneeName: "",
+				LabelNames:   []string{},
+			},
+			expected: map[state.FilterChip]string{
+				state.FilterChipSearch:   " Search: hel▎",
+				state.FilterChipLabel:    " Label: All",
+				state.FilterChipPriority: " Priority: All",
+				state.FilterChipType:     "󰉺 Type: All",
+				state.FilterChipAssignee: " Assignee: All",
+				state.FilterChipArchived: "󱝋 Archived: Off",
+				state.FilterChipClearAll: " Clear All",
+			},
+		},
+		{
+			name: "search input active empty query shows cursor only",
+			props: FilterBarProps{
+				Filter: &state.FilterState{
+					SearchInputActive: true,
+				},
+				PriorityName: "",
+				TypeName:     "",
+				AssigneeName: "",
+				LabelNames:   []string{},
+			},
+			expected: map[state.FilterChip]string{
+				state.FilterChipSearch:   " Search: ▎",
 				state.FilterChipLabel:    " Label: All",
 				state.FilterChipPriority: " Priority: All",
 				state.FilterChipType:     "󰉺 Type: All",
@@ -44,6 +109,7 @@ func TestBuildAllChipTexts(t *testing.T) {
 				LabelNames:   []string{"bug"},
 			},
 			expected: map[state.FilterChip]string{
+				state.FilterChipSearch:   " Search: All",
 				state.FilterChipLabel:    " Label: bug",
 				state.FilterChipPriority: " Priority: All",
 				state.FilterChipType:     "󰉺 Type: All",
@@ -62,6 +128,7 @@ func TestBuildAllChipTexts(t *testing.T) {
 				LabelNames:   []string{"bug", "frontend", "urgent"},
 			},
 			expected: map[state.FilterChip]string{
+				state.FilterChipSearch:   " Search: All",
 				state.FilterChipLabel:    " Label: bug, frontend, urgent",
 				state.FilterChipPriority: " Priority: All",
 				state.FilterChipType:     "󰉺 Type: All",
@@ -80,6 +147,7 @@ func TestBuildAllChipTexts(t *testing.T) {
 				LabelNames:   []string{},
 			},
 			expected: map[state.FilterChip]string{
+				state.FilterChipSearch:   " Search: All",
 				state.FilterChipLabel:    " Label: All",
 				state.FilterChipPriority: " Priority: High",
 				state.FilterChipType:     "󰉺 Type: All",
@@ -98,6 +166,7 @@ func TestBuildAllChipTexts(t *testing.T) {
 				LabelNames:   []string{},
 			},
 			expected: map[state.FilterChip]string{
+				state.FilterChipSearch:   " Search: All",
 				state.FilterChipLabel:    " Label: All",
 				state.FilterChipPriority: " Priority: All",
 				state.FilterChipType:     "󰉺 Type: Bug",
@@ -116,6 +185,7 @@ func TestBuildAllChipTexts(t *testing.T) {
 				LabelNames:   []string{},
 			},
 			expected: map[state.FilterChip]string{
+				state.FilterChipSearch:   " Search: All",
 				state.FilterChipLabel:    " Label: All",
 				state.FilterChipPriority: " Priority: All",
 				state.FilterChipType:     "󰉺 Type: All",
@@ -136,6 +206,7 @@ func TestBuildAllChipTexts(t *testing.T) {
 				LabelNames:   []string{},
 			},
 			expected: map[state.FilterChip]string{
+				state.FilterChipSearch:   " Search: All",
 				state.FilterChipLabel:    " Label: All",
 				state.FilterChipPriority: " Priority: All",
 				state.FilterChipType:     "󰉺 Type: All",
@@ -149,6 +220,7 @@ func TestBuildAllChipTexts(t *testing.T) {
 			props: FilterBarProps{
 				Filter: &state.FilterState{
 					ShowArchived: true,
+					SearchQuery:  "deploy",
 				},
 				PriorityName: "Critical",
 				TypeName:     "Feature",
@@ -156,6 +228,7 @@ func TestBuildAllChipTexts(t *testing.T) {
 				LabelNames:   []string{"backend", "database"},
 			},
 			expected: map[state.FilterChip]string{
+				state.FilterChipSearch:   " Search: deploy",
 				state.FilterChipLabel:    " Label: backend, database",
 				state.FilterChipPriority: " Priority: Critical",
 				state.FilterChipType:     "󰉺 Type: Feature",
@@ -177,6 +250,53 @@ func TestBuildAllChipTexts(t *testing.T) {
 			for chip, expectedText := range tt.expected {
 				assert.Equal(t, expectedText, result[chip], "chip %d text mismatch", chip)
 			}
+		})
+	}
+}
+
+// TestBuildSearchChipText tests the search chip text construction.
+func TestBuildSearchChipText(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		query       string
+		inputActive bool
+		expected    string
+	}{
+		{
+			name:        "empty query not active",
+			query:       "",
+			inputActive: false,
+			expected:    " Search: All",
+		},
+		{
+			name:        "query set not in input mode",
+			query:       "bug",
+			inputActive: false,
+			expected:    " Search: bug",
+		},
+		{
+			name:        "empty query in input mode shows cursor",
+			query:       "",
+			inputActive: true,
+			expected:    " Search: ▎",
+		},
+		{
+			name:        "query in input mode shows cursor after text",
+			query:       "hello",
+			inputActive: true,
+			expected:    " Search: hello▎",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := buildSearchChipText(tt.query, tt.inputActive)
+
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

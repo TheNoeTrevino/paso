@@ -272,7 +272,7 @@ func TestModeUsesLayers(t *testing.T) {
 		{state.TicketFormMode, true},
 		{state.AddColumnFormMode, true},
 		{state.LabelPickerMode, true},
-		{state.SearchMode, true},
+		{state.FilterBarMode, true},
 		{state.HelpMode, true},
 	}
 

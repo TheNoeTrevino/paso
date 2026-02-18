@@ -183,8 +183,6 @@ func (m Model) viewKanbanBoard() string {
 
 	footer := components.RenderStatusBar(components.StatusBarProps{
 		Width:            m.UIState.Width(),
-		SearchMode:       m.UIState.Mode == state.SearchMode || m.UI.Search.IsActive,
-		SearchQuery:      m.UI.Search.Query,
 		ConnectionStatus: m.ConnectionState.Status(),
 		DatabaseName:     m.CurrentDBName,
 		Tip:              m.UI.CurrentTip,
@@ -255,8 +253,6 @@ func (m Model) viewListView() string {
 
 	statusBar := components.RenderStatusBar(components.StatusBarProps{
 		Width:            m.UIState.Width(),
-		SearchMode:       m.UIState.Mode == state.SearchMode || m.UI.Search.IsActive,
-		SearchQuery:      m.UI.Search.Query,
 		ConnectionStatus: m.ConnectionState.Status(),
 		DatabaseName:     m.CurrentDBName,
 		Tip:              m.UI.CurrentTip,

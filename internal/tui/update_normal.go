@@ -118,7 +118,7 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case km.EditDueDate:
 		return m.handleQuickEditDueDate()
 	case "/":
-		return m.handleEnterSearch()
+		return m.handleEnterSearchChip()
 	case km.FilterBar:
 		return m.handleEnterFilterBar()
 	}
@@ -126,9 +126,19 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleEnterSearchChip jumps directly into the filter bar with the search chip in input mode.
+func (m Model) handleEnterSearchChip() (tea.Model, tea.Cmd) {
+	m.UI.Filter.IsActive = true
+	m.UI.Filter.FocusedChip = state.FilterChipSearch
+	m.UI.Filter.SearchInputActive = true
+	m.UI.Filter.SearchQuery = ""
+	m.UIState.Mode = state.FilterBarMode
+	return m, nil
+}
+
 func (m Model) handleEnterFilterBar() (tea.Model, tea.Cmd) {
 	m.UI.Filter.IsActive = true
-	m.UI.Filter.FocusedChip = state.FilterChipLabel
+	m.UI.Filter.FocusedChip = state.FilterChipSearch
 	m.UIState.Mode = state.FilterBarMode
 	return m, nil
 }

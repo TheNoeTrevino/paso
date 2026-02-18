@@ -1,11 +1,17 @@
 package tui
 
 import (
+	"log/slog"
+
 	tea "charm.land/bubbletea/v2"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
 func (m Model) handleFilterBarMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.UI.Filter.SearchInputActive {
+		return m.handleSearchInput(msg)
+	}
+
 	switch msg.String() {
 	case "esc", "q":
 		m.UI.Filter.IsActive = false
@@ -13,6 +19,10 @@ func (m Model) handleFilterBarMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "enter":
+		if m.UI.Filter.FocusedChip == state.FilterChipSearch {
+			m.UI.Filter.SearchInputActive = true
+			return m, nil
+		}
 		if m.UI.Filter.FocusedChip == state.FilterChipClearAll {
 			m.UI.Filter.ClearAll()
 			return m.refreshFilteredTasks()
@@ -37,6 +47,59 @@ func (m Model) handleFilterBarMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+
+	return m, nil
+}
+
+// handleSearchInput handles keyboard input when the search chip is in text input mode.
+func (m Model) handleSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		m.UI.Filter.SearchInputActive = false
+		return m.refreshFilteredTasks()
+	case "esc":
+		m.UI.Filter.SearchInputActive = false
+		return m, nil
+	case "backspace", "ctrl+h":
+		if m.UI.Filter.SearchBackspace() {
+			return m.refreshFilteredTasks()
+		}
+		return m, nil
+	case "space":
+		if m.UI.Filter.AppendSearchChar(' ') {
+			return m.refreshFilteredTasks()
+		}
+		return m, nil
+	default:
+		key := msg.String()
+		if len(key) == 1 {
+			if m.UI.Filter.AppendSearchChar(rune(key[0])) {
+				return m.refreshFilteredTasks()
+			}
+		}
+		return m, nil
+	}
+}
+
+// refreshFilteredTasks runs the current filters and updates the task list.
+// Delegates to fetchTasksForCurrentProject which handles both search and field filters.
+func (m Model) refreshFilteredTasks() (tea.Model, tea.Cmd) {
+	project := m.getCurrentProject()
+	if project == nil {
+		return m, nil
+	}
+
+	ctx, cancel := m.DBContext()
+	defer cancel()
+
+	tasksByColumn, err := m.fetchTasksForCurrentProject(ctx, project.ID)
+	if err != nil {
+		slog.Error("failed to filter tasks", "error", err)
+		return m, nil
+	}
+
+	m.AppState.SetTasks(tasksByColumn)
+	m.UIState.SelectedTask = 0
 
 	return m, nil
 }

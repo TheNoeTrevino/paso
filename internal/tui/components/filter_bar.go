@@ -22,7 +22,7 @@ type FilterBarProps struct {
 
 // RenderFilterBar renders the filter bar with chip-style buttons.
 //
-//  Label:  Priority: 󰉺 Type: task  Assignee  Clear All
+//	Search:  Label:  Priority: 󰉺 Type: task  Assignee  Clear All
 func RenderFilterBar(props FilterBarProps) string {
 	if props.Filter == nil {
 		return ""
@@ -69,6 +69,7 @@ func buildArchivedComponents(isArchived bool) archivedComponents {
 func buildAllChipTexts(props FilterBarProps) []string {
 	chipTexts := make([]string, state.FilterChipCount)
 
+	chipTexts[state.FilterChipSearch] = buildSearchChipText(props.Filter.SearchQuery, props.Filter.SearchInputActive)
 	chipTexts[state.FilterChipLabel] = buildChipText(" Label", strings.Join(props.LabelNames, ", "))
 	chipTexts[state.FilterChipPriority] = buildChipText(" Priority", props.PriorityName)
 	chipTexts[state.FilterChipType] = buildChipText("󰉺 Type", props.TypeName)
@@ -79,6 +80,16 @@ func buildAllChipTexts(props FilterBarProps) []string {
 	chipTexts[state.FilterChipArchived] = buildChipText(archivedComponents.prefix+"Archived", archivedComponents.value)
 
 	return chipTexts
+}
+
+// buildSearchChipText creates the display text for the search chip.
+// When in input mode, shows a cursor indicator after the query text.
+func buildSearchChipText(query string, inputActive bool) string {
+	prefix := " "
+	if inputActive {
+		return fmt.Sprintf(prefix+"Search: %s▎", query)
+	}
+	return buildChipText(prefix+"Search", query)
 }
 
 // buildChipText creates the display text for a filter chip.
@@ -101,11 +112,11 @@ func styleChip(text string, chip state.FilterChip, props FilterBarProps) string 
 		style = style.
 			Bold(true).
 			Foreground(lipgloss.Color(theme.Highlight)).
-			Underline(true)
+			Background(lipgloss.Color(theme.SelectedBg))
 	case isFocused:
 		style = style.
 			Foreground(lipgloss.Color(theme.Normal)).
-			Underline(true)
+			Background(lipgloss.Color(theme.SelectedBg))
 	case hasValue:
 		style = style.
 			Bold(true).
@@ -121,6 +132,8 @@ func styleChip(text string, chip state.FilterChip, props FilterBarProps) string 
 // chipHasValue returns true if the given chip has an active filter value.
 func chipHasValue(chip state.FilterChip, props FilterBarProps) bool {
 	switch chip {
+	case state.FilterChipSearch:
+		return props.Filter.SearchQuery != ""
 	case state.FilterChipLabel:
 		return len(props.LabelNames) > 0
 	case state.FilterChipPriority:

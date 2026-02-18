@@ -33,7 +33,6 @@ const (
 	CommentEditMode                        // Comment editing mode (list navigation)
 	CommentFormMode                        // Comment form (huh form for creating/editing individual comment)
 	CommentsViewMode                       // Dedicated comments list view for a task
-	SearchMode                             // Vim-style search mode (/)
 	StatusPickerMode                       // Status picker popup for list view
 	AssigneePickerMode                     // Assignee picker popup
 	EstimateInputMode                      // Estimate input overlay
@@ -77,7 +76,6 @@ func (m Mode) UsesLayers() bool {
 		EstimateInputMode,
 		DiscardConfirmMode,
 		NormalMode,
-		SearchMode,
 		DatabaseSelectMode,
 		DatabaseCreateMode,
 		DatabaseConnectConfirmMode,

@@ -5,8 +5,7 @@ package state
 // UI elements manage the presentation and interaction state of various UI components.
 type UIElements struct {
 	Notification *NotificationState // Notification state (for displaying user messages)
-	Search       *SearchState       // Search state (for filtering/searching tasks)
-	Filter       *FilterState       // Filter state (for filter bar chip selections)
+	Filter       *FilterState       // Filter state (for filter bar chip selections and search)
 	ListView     *ListViewState     // List view state (for rendering tasks in list format)
 	CurrentTip   string             // Current tip to display in statusbar
 }
@@ -15,7 +14,6 @@ type UIElements struct {
 func NewUIElements() *UIElements {
 	return &UIElements{
 		Notification: NewNotificationState(),
-		Search:       NewSearchState(),
 		Filter:       NewFilterState(),
 		ListView:     NewListViewState(),
 	}
