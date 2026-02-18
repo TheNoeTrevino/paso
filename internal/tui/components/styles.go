@@ -81,15 +81,6 @@ var (
 	// LabelPickerCreateBoxStyle defines the style for label creation mode (green border)
 	LabelPickerCreateBoxStyle lipgloss.Style
 
-	// InfoBannerStyle defines the appearance of info notifications (blue)
-	InfoBannerStyle lipgloss.Style
-
-	// WarningBannerStyle defines the appearance of warning notifications (yellow)
-	WarningBannerStyle lipgloss.Style
-
-	// ErrorBannerStyle defines the appearance of error messages (red)
-	ErrorBannerStyle lipgloss.Style
-
 	// IndicatorStyle defines the appearance of scroll indicators
 	IndicatorStyle lipgloss.Style
 
@@ -190,24 +181,6 @@ func InitStyles(colors colors.ColorScheme) {
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color(colors.Create)).
 			Padding(1, 2)
-
-		InfoBannerStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(colors.InfoFg)).
-			Background(lipgloss.Color(colors.InfoBg)).
-			Bold(true).
-			Padding(0, 1)
-
-		WarningBannerStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(colors.WarningFg)).
-			Background(lipgloss.Color(colors.WarningBg)).
-			Bold(true).
-			Padding(0, 1)
-
-		ErrorBannerStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(colors.ErrorFg)).
-			Background(lipgloss.Color(colors.ErrorBg)).
-			Bold(true).
-			Padding(0, 1)
 
 		IndicatorStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color(theme.Subtle)).

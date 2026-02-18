@@ -254,6 +254,14 @@ func (s *UIState) ResetSelection() {
 	s.SelectedColumn = 0
 	s.SelectedTask = 0
 	s.ViewportOffset = 0
+	s.ResetTaskScrollOffsets()
+}
+
+// ResetTaskScrollOffsets clears all per-column task scroll offsets.
+// This should be called when the task list changes significantly (e.g. filtering, search, project switch)
+// to prevent stale offsets from pointing past the end of a reduced task list.
+func (s *UIState) ResetTaskScrollOffsets() {
+	s.taskScrollOffsets = make(map[int]int)
 }
 
 // TaskScrollOffset returns the vertical scroll offset for a given column.

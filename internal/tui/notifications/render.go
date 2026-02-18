@@ -5,8 +5,8 @@ import (
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
 
-// Render renders a notification banner based on severity level
-func Render(severity Severity, message string) string {
+// render renders a notification banner based on severity level
+func render(severity Severity, message string) string {
 	style := severity.style()
 
 	// Calculate max width needed
@@ -47,41 +47,12 @@ func Render(severity Severity, message string) string {
 func RenderFromState(n state.Notification) string {
 	switch n.Level {
 	case state.LevelInfo:
-		return Render(Info, n.Message)
+		return render(Info, n.Message)
 	case state.LevelWarning:
-		return Render(Warning, n.Message)
+		return render(Warning, n.Message)
 	case state.LevelError:
-		return Render(Error, n.Message)
+		return render(Error, n.Message)
 	default:
-		return Render(Info, n.Message)
-	}
-}
-
-// RenderInline renders a compact inline notification (for tab bar)
-func RenderInline(severity Severity, message string) string {
-	style := severity.style()
-
-	// Icon + message on single line
-	content := style.icon + " " + message
-
-	return lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
-		Foreground(lipgloss.Color(style.foreground)).
-		Background(lipgloss.Color(style.background)).
-		Padding(0, 1).
-		Render(content)
-}
-
-// RenderInlineFromState renders a compact inline notification from state
-func RenderInlineFromState(n state.Notification) string {
-	switch n.Level {
-	case state.LevelInfo:
-		return RenderInline(Info, n.Message)
-	case state.LevelWarning:
-		return RenderInline(Warning, n.Message)
-	case state.LevelError:
-		return RenderInline(Error, n.Message)
-	default:
-		return RenderInline(Info, n.Message)
+		return render(Info, n.Message)
 	}
 }

@@ -290,6 +290,18 @@ func (m *Model) HandleDBError(err error, operation string) {
 	m.UI.Notification.Add(state.LevelError, fmt.Sprintf("%s failed: %v", operation, err))
 }
 
+// notificationDuration is how long notifications are visible before auto-dismissing
+const notificationDuration = 1 * time.Second
+
+// addNotification adds a notification and returns a tea.Cmd that will fire
+// a NotificationExpiredMsg after the notification duration elapses.
+func (m *Model) addNotification(level state.NotificationLevel, message string) tea.Cmd {
+	id := m.UI.Notification.Add(level, message)
+	return tea.Tick(notificationDuration, func(t time.Time) tea.Msg {
+		return NotificationExpiredMsg{ID: id}
+	})
+}
+
 // Init initializes the Bubble Tea application
 // Required by tea.Model interface
 func (m Model) Init() tea.Cmd {

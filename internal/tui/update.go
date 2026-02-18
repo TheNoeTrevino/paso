@@ -53,6 +53,12 @@ type dataReloaded struct {
 	labels   []*models.Label
 }
 
+// NotificationExpiredMsg is sent when a notification's auto-dismiss timer fires.
+// The ID identifies which notification to remove.
+type NotificationExpiredMsg struct {
+	ID int
+}
+
 // Git operation messages
 type gitInfoFetched struct {
 	gitInfo     git.GitInfo
@@ -185,20 +191,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Stop spinner animation and show success
 		m.DatabasePicker.StopConnecting()
-		m.UI.Notification.Add(state.LevelInfo, fmt.Sprintf("Connected to %s", msg.dbName))
+		notifCmd := m.addNotification(state.LevelInfo, fmt.Sprintf("Connected to %s", msg.dbName))
 
 		slog.Info("database switched successfully", "name", msg.dbName, "type", msg.dbType)
 
 		// Reload all data from new database
-		return m, m.reloadAllData()
+		return m, tea.Batch(notifCmd, m.reloadAllData())
 
 	case databaseConnectionError:
 		m.UIState.Mode = state.NormalMode
 		m.DatabasePicker.Reset()
 		// Stop spinner animation and show error
 		m.DatabasePicker.StopConnecting()
-		m.UI.Notification.Add(state.LevelError, "Database connection failed: "+msg.err.Error())
-		return m, nil
+		cmd := m.addNotification(state.LevelError, "Database connection failed: "+msg.err.Error())
+		return m, cmd
 
 	case dataReloaded:
 		// Clear all filters (including search) when switching databases since it's a different context
@@ -219,6 +225,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tickConnectingSpinner()
 		}
 		// If not connecting anymore, stop animation
+		return m, nil
+
+	case NotificationExpiredMsg:
+		m.UI.Notification.Remove(msg.ID)
 		return m, nil
 
 	case GitSpinnerTickMsg:
@@ -247,17 +257,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LoadingGitInfo = false
 		m.LoadingBranches = false
 
+		var notifCmd tea.Cmd
 		if errors.Is(msg.err, context.Canceled) {
 			slog.Info("git info fetch cancelled", "forEdit", msg.forEdit)
 		} else if errors.Is(msg.err, context.DeadlineExceeded) {
 			slog.Warn("git info fetch timed out", "forEdit", msg.forEdit)
-			m.UI.Notification.Add(state.LevelWarning, "Git operation timed out. Creating form without branch list.")
+			notifCmd = m.addNotification(state.LevelWarning, "Git operation timed out. Creating form without branch list.")
 		} else {
 			slog.Warn("failed to fetch git info", "error", msg.err, "forEdit", msg.forEdit)
-			m.UI.Notification.Add(state.LevelWarning, "Could not load git branches. Creating form without branch list.")
+			notifCmd = m.addNotification(state.LevelWarning, "Could not load git branches. Creating form without branch list.")
 		}
 
-		return m.createProjectFormWithoutGit(msg.forEdit)
+		model, formCmd := m.createProjectFormWithoutGit(msg.forEdit)
+		return model, tea.Batch(notifCmd, formCmd)
 
 	case connectionConfirmation:
 		if msg.connect {
@@ -422,11 +434,11 @@ func (m Model) handleNotificationMsg(msg events.NotificationMsg) (tea.Model, tea
 	case "warning":
 		level = state.LevelWarning
 	}
-	m.UI.Notification.Add(level, msg.Message)
+	notifCmd := m.addNotification(level, msg.Message)
 
 	m.updateConnectionStateFromMessage(msg.Message)
 
-	return m, m.listenForNotifications()
+	return m, tea.Batch(notifCmd, m.listenForNotifications())
 }
 
 func (m *Model) updateConnectionStateFromMessage(message string) {
@@ -562,10 +574,10 @@ func (m Model) createNewProjectFormWithGit(gitInfo git.GitInfo, gitBranches []gi
 func (m Model) createEditProjectFormWithGit(gitInfo git.GitInfo, gitBranches []git.BranchInfo) (tea.Model, tea.Cmd) {
 	currentProject := m.AppState.GetCurrentProject()
 	if currentProject == nil {
-		m.UI.Notification.Add(state.LevelWarning, "No project selected")
+		cmd := m.addNotification(state.LevelWarning, "No project selected")
 		m.LoadingGitInfo = false
 		m.LoadingBranches = false
-		return m, nil
+		return m, cmd
 	}
 
 	m.Forms.Form.Git.EditingProjectID = currentProject.ID

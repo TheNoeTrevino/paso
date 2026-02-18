@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/thenoetrevino/paso/internal/tui/notifications"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
 )
@@ -137,10 +138,25 @@ func (m Model) View() tea.View {
 			}
 		}
 
+		// Add floating notification layers on top of everything
+		notifLayers := m.UI.Notification.GetLayers(notifications.RenderFromState)
+		layers = append(layers, notifLayers...)
+
 		canvas := lipgloss.NewCanvas(layers...)
 		view.Content = canvas.Render()
 	} else {
-		view.Content = m.viewKanbanBoard()
+		baseView := m.viewKanbanBoard()
+		if m.UI.Notification.HasAny() {
+			layers := []*lipgloss.Layer{
+				lipgloss.NewLayer(baseView),
+			}
+			notifLayers := m.UI.Notification.GetLayers(notifications.RenderFromState)
+			layers = append(layers, notifLayers...)
+			canvas := lipgloss.NewCanvas(layers...)
+			view.Content = canvas.Render()
+		} else {
+			view.Content = baseView
+		}
 	}
 
 	return view

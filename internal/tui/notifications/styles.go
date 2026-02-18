@@ -17,32 +17,32 @@ func (s Severity) style() style {
 			icon:             "ⓘ",
 			title:            "Info",
 			foreground:       theme.InfoFg,
-			background:       theme.InfoBg,
-			borderForeground: theme.InfoBg,
+			background:       theme.Background,
+			borderForeground: theme.InfoFg,
 		}
 	case Warning:
 		return style{
 			icon:             "⚠",
 			title:            "Warning",
 			foreground:       theme.WarningFg,
-			background:       theme.WarningBg,
-			borderForeground: theme.WarningBg,
+			background:       theme.Background,
+			borderForeground: theme.WarningFg,
 		}
 	case Error:
 		return style{
 			icon:             "✕",
 			title:            "Error",
 			foreground:       theme.ErrorFg,
-			background:       theme.ErrorBg,
-			borderForeground: theme.ErrorBg,
+			background:       theme.Background,
+			borderForeground: theme.ErrorFg,
 		}
 	default:
 		return style{
 			icon:             "ⓘ",
 			title:            "Info",
 			foreground:       theme.InfoFg,
-			background:       theme.InfoBg,
-			borderForeground: theme.InfoBg,
+			background:       theme.Background,
+			borderForeground: theme.InfoFg,
 		}
 	}
 }
