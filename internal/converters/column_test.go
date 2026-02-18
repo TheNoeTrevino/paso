@@ -606,13 +606,6 @@ func TestColumnsFromRowsToModels(t *testing.T) {
 	}
 }
 
-// intPtr returns a pointer to an int value
-//
-//go:fix inline
-func intPtr(i int) *int {
-	return new(i)
-}
-
 // intPtrEqual compares two *int pointers for equality
 func intPtrEqual(a, b *int) bool {
 	if a == nil && b == nil {
