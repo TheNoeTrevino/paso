@@ -47,8 +47,6 @@ func loadTaskDetailForEditCmd(ctx context.Context, svc task.Service, taskID int)
 }
 
 func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	m.UI.Notification.Clear()
-
 	key := msg.String()
 	km := m.Config.KeyMappings
 
@@ -154,8 +152,7 @@ func (m Model) handleShowHelp() (tea.Model, tea.Cmd) {
 
 func (m Model) handleNavigateLeft() (tea.Model, tea.Cmd) {
 	if m.UIState.SelectedColumn == 0 {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the first column")
-		return m, nil
+		return m, m.addNotification(state.LevelInfo, "Already at the first column")
 	}
 	m.UIState.SelectedColumn = m.UIState.SelectedColumn - 1
 	m.UIState.SelectedTask = 0
@@ -165,8 +162,7 @@ func (m Model) handleNavigateLeft() (tea.Model, tea.Cmd) {
 
 func (m Model) handleNavigateRight() (tea.Model, tea.Cmd) {
 	if m.UIState.SelectedColumn >= len(m.AppState.Columns())-1 {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the last column")
-		return m, nil
+		return m, m.addNotification(state.LevelInfo, "Already at the last column")
 	}
 	m.UIState.SelectedColumn = m.UIState.SelectedColumn + 1
 	m.UIState.SelectedTask = 0
@@ -184,14 +180,13 @@ func (m Model) handleNavigateUp() (tea.Model, tea.Cmd) {
 			visibleRows := max(listHeight-reservedHeight, 1)
 			m.UI.ListView.EnsureRowVisible(visibleRows)
 		} else {
-			m.UI.Notification.Add(state.LevelInfo, "Already at the first task")
+			return m, m.addNotification(state.LevelInfo, "Already at the first task")
 		}
 		return m, nil
 	}
 
 	if m.UIState.SelectedTask == 0 {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the first task")
-		return m, nil
+		return m, m.addNotification(state.LevelInfo, "Already at the first task")
 	}
 
 	m.UIState.SelectedTask = m.UIState.SelectedTask - 1
@@ -210,7 +205,7 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 			visibleRows := max(listHeight-reservedHeight, 1)
 			m.UI.ListView.EnsureRowVisible(visibleRows)
 		} else if len(rows) > 0 {
-			m.UI.Notification.Add(state.LevelInfo, "Already at the last task")
+			return m, m.addNotification(state.LevelInfo, "Already at the last task")
 		}
 		return m, nil
 	}
@@ -218,7 +213,7 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 	currentTasks := m.getCurrentTasks()
 	if len(currentTasks) == 0 || m.UIState.SelectedTask >= len(currentTasks)-1 {
 		if len(currentTasks) > 0 {
-			m.UI.Notification.Add(state.LevelInfo, "Already at the last task")
+			return m, m.addNotification(state.LevelInfo, "Already at the last task")
 		}
 		return m, nil
 	}
@@ -230,8 +225,7 @@ func (m Model) handleNavigateDown() (tea.Model, tea.Cmd) {
 
 func (m Model) handleScrollRight() (tea.Model, tea.Cmd) {
 	if m.UIState.ViewportOffset+m.UIState.ViewportSize() >= len(m.AppState.Columns()) {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the rightmost view")
-		return m, nil
+		return m, m.addNotification(state.LevelInfo, "Already at the rightmost view")
 	}
 	m.UIState.ViewportOffset = m.UIState.ViewportOffset + 1
 	if m.UIState.SelectedColumn < m.UIState.ViewportOffset {
@@ -243,8 +237,7 @@ func (m Model) handleScrollRight() (tea.Model, tea.Cmd) {
 
 func (m Model) handleScrollLeft() (tea.Model, tea.Cmd) {
 	if m.UIState.ViewportOffset == 0 {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the leftmost view")
-		return m, nil
+		return m, m.addNotification(state.LevelInfo, "Already at the leftmost view")
 	}
 	m.UIState.ViewportOffset = m.UIState.ViewportOffset - 1
 	if m.UIState.SelectedColumn >= m.UIState.ViewportOffset+m.UIState.ViewportSize() {
@@ -256,8 +249,7 @@ func (m Model) handleScrollLeft() (tea.Model, tea.Cmd) {
 
 func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 	if len(m.AppState.Columns()) == 0 {
-		m.UI.Notification.Add(state.LevelError, "Cannot add task: No columns exist. Create a column first with 'C'")
-		return m, nil
+		return m, m.addNotification(state.LevelError, "Cannot add task: No columns exist. Create a column first with 'C'")
 	}
 	m.Forms.Form.FormTitle = ""
 	m.Forms.Form.FormDescription = ""
@@ -286,8 +278,7 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 	task := m.getCurrentTask()
 	if task == nil {
-		m.UI.Notification.Add(state.LevelError, "No task selected to edit")
-		return m, nil
+		return m, m.addNotification(state.LevelError, "No task selected to edit")
 	}
 
 	// Enter loading state and fetch task details asynchronously
@@ -303,8 +294,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 
 func (m Model) handleDeleteTask() (tea.Model, tea.Cmd) {
 	if m.getCurrentTask() == nil {
-		m.UI.Notification.Add(state.LevelError, "No task selected to delete")
-		return m, nil
+		return m, m.addNotification(state.LevelError, "No task selected to delete")
 	}
 	m.UIState.Mode = state.DeleteConfirmMode
 	return m, nil
@@ -350,8 +340,7 @@ func (m Model) handleCreateColumn() (tea.Model, tea.Cmd) {
 func (m Model) handleRenameColumn() (tea.Model, tea.Cmd) {
 	column := m.getCurrentColumn()
 	if column == nil {
-		m.UI.Notification.Add(state.LevelError, "No column selected to rename")
-		return m, nil
+		return m, m.addNotification(state.LevelError, "No column selected to rename")
 	}
 	m.Forms.Form.FormColumnName = column.Name
 	m.Forms.Form.EditingColumnID = column.ID
@@ -364,8 +353,7 @@ func (m Model) handleRenameColumn() (tea.Model, tea.Cmd) {
 func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 	column := m.getCurrentColumn()
 	if column == nil {
-		m.UI.Notification.Add(state.LevelError, "No column selected to delete")
-		return m, nil
+		return m, m.addNotification(state.LevelError, "No column selected to delete")
 	}
 	// Count tasks in the column from current state
 	taskCount := len(m.AppState.Tasks()[column.ID])
@@ -376,8 +364,7 @@ func (m Model) handleDeleteColumn() (tea.Model, tea.Cmd) {
 
 func (m Model) handlePrevProject() (tea.Model, tea.Cmd) {
 	if m.AppState.SelectedProject() == 0 {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the first project")
-		return m, nil
+		return m, m.addNotification(state.LevelInfo, "Already at the first project")
 	}
 	newIndex := m.AppState.SelectedProject() - 1
 	slog.Info("navigating to previous project", "current_index", m.AppState.SelectedProject(), "new_index", newIndex)
@@ -387,8 +374,7 @@ func (m Model) handlePrevProject() (tea.Model, tea.Cmd) {
 
 func (m Model) handleNextProject() (tea.Model, tea.Cmd) {
 	if m.AppState.SelectedProject() >= len(m.AppState.Projects())-1 {
-		m.UI.Notification.Add(state.LevelInfo, "Already at the last project")
-		return m, nil
+		return m, m.addNotification(state.LevelInfo, "Already at the last project")
 	}
 	newIndex := m.AppState.SelectedProject() + 1
 	slog.Info("navigating to next project", "current_index", m.AppState.SelectedProject(), "new_index", newIndex)
@@ -416,8 +402,7 @@ func (m Model) handleCreateProject() (tea.Model, tea.Cmd) {
 func (m Model) handleEditProject() (tea.Model, tea.Cmd) {
 	currentProject := m.AppState.GetCurrentProject()
 	if currentProject == nil {
-		m.UI.Notification.Add(state.LevelWarning, "No project selected")
-		return m, nil
+		return m, m.addNotification(state.LevelWarning, "No project selected")
 	}
 
 	m.Forms.Form.Git.EditingProjectID = currentProject.ID
@@ -439,8 +424,7 @@ func (m Model) handleEditProject() (tea.Model, tea.Cmd) {
 func (m Model) handleDeleteProject() (tea.Model, tea.Cmd) {
 	currentProject := m.AppState.GetCurrentProject()
 	if currentProject == nil {
-		m.UI.Notification.Add(state.LevelError, "No project selected to delete")
-		return m, nil
+		return m, m.addNotification(state.LevelError, "No project selected to delete")
 	}
 
 	ctx, cancel := m.DBContext()

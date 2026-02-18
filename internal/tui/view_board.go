@@ -7,7 +7,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/helpers"
-	"github.com/thenoetrevino/paso/internal/tui/notifications"
 	"github.com/thenoetrevino/paso/internal/tui/renderers"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
@@ -56,20 +55,6 @@ func (m Model) buildFilterBarProps() components.FilterBarProps {
 	}
 
 	return props
-}
-
-// getInlineNotification returns the inline notification content for the tab bar
-// Returns empty string if no notifications
-func (m Model) getInlineNotification() string {
-	if !m.UI.Notification.HasAny() {
-		return ""
-	}
-	// Get the first (most recent) notification
-	allNotifications := m.UI.Notification.All()
-	if len(allNotifications) == 0 {
-		return ""
-	}
-	return notifications.RenderInlineFromState(allNotifications[0])
 }
 
 // viewKanbanBoard renders the main kanban board (normal mode)
@@ -175,9 +160,7 @@ func (m Model) viewKanbanBoard() string {
 	if len(projectTabs) == 0 {
 		projectTabs = []string{"No Projects"}
 	}
-	// Get inline notification for tab bar
-	inlineNotification := m.getInlineNotification()
-	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UIState.Width(), inlineNotification)
+	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UIState.Width())
 
 	filterBar := components.RenderFilterBar(m.buildFilterBarProps())
 
@@ -204,18 +187,7 @@ func (m Model) viewKanbanBoard() string {
 	// Build base view with constrained content and footer always visible
 	baseView := constrainedContent + "\n" + footer
 
-	// If no notifications, return base view directly
-	if !m.UI.Notification.HasAny() {
-		return baseView
-	}
-
-	// Start layer stack with base view
-	layers := []*lipgloss.Layer{
-		lipgloss.NewLayer(baseView),
-	}
-
-	canvas := lipgloss.NewCanvas(layers...)
-	return canvas.Render()
+	return baseView
 }
 
 // viewListView renders the list/table view of all tasks.
@@ -234,9 +206,7 @@ func (m Model) viewListView() string {
 	if len(projectTabs) == 0 {
 		projectTabs = []string{"No Projects"}
 	}
-	// Get inline notification for tab bar
-	inlineNotification := m.getInlineNotification()
-	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UIState.Width(), inlineNotification)
+	tabBar := components.RenderTabs(projectTabs, m.AppState.SelectedProject(), m.UIState.Width())
 
 	filterBar := components.RenderFilterBar(m.buildFilterBarProps())
 

@@ -12,10 +12,10 @@ import (
 //
 // Layout:
 //
-//	╭──────╮ ╭──────╮                      [Notification]
+//	╭──────╮ ╭──────╮
 //	│ Tab1 │ │ Tab2 │──────────────────────
 //	      active    inactive
-func RenderTabs(tabs []string, selectedIdx int, width int, notificationContent string) string {
+func RenderTabs(tabs []string, selectedIdx int, width int) string {
 	var renderedTabs []string
 
 	for i, tabName := range tabs {
@@ -28,14 +28,8 @@ func RenderTabs(tabs []string, selectedIdx int, width int, notificationContent s
 
 	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
 
-	// Calculate gap width accounting for notification if present
-	notificationWidth := lipgloss.Width(notificationContent)
-	gapWidth := max(width-lipgloss.Width(row)-notificationWidth-2, 0)
+	gapWidth := max(width-lipgloss.Width(row)-2, 0)
 	gap := TabGapStyle.Render(strings.Repeat(" ", gapWidth))
 
-	// Join: tabs + gap + notification
-	if notificationContent != "" {
-		return lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap, notificationContent)
-	}
 	return lipgloss.JoinHorizontal(lipgloss.Bottom, row, gap)
 }

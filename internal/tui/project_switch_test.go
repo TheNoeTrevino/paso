@@ -234,12 +234,11 @@ func TestHandleNextProject_AtLastProject_NoOp(t *testing.T) {
 	require.NotEmpty(t, notifications)
 	assert.Equal(t, expectedMsg, notifications[0].Message)
 
-	// Assert: Returned cmd is nil (no prefetch needed)
-	assert.Nil(t, cmd, "handleNextProject at last project should return nil tea.Cmd")
+	// Assert: Returned cmd is non-nil (notification auto-dismiss timer)
+	assert.NotNil(t, cmd, "handleNextProject at last project should return notification timer cmd")
 
 	t.Logf("No project switch occurred")
 	t.Logf("Notification shown: %q", expectedMsg)
-	t.Logf("No prefetch command returned (nil)")
 }
 
 // TestHandlePrevProject_AtFirstProject_NoOp verifies that attempting to switch to the previous
@@ -266,12 +265,11 @@ func TestHandlePrevProject_AtFirstProject_NoOp(t *testing.T) {
 	require.NotEmpty(t, notifications)
 	assert.Equal(t, expectedMsg, notifications[0].Message)
 
-	// Assert: Returned cmd is nil (no prefetch needed)
-	assert.Nil(t, cmd, "handlePrevProject at first project should return nil tea.Cmd")
+	// Assert: Returned cmd is non-nil (notification auto-dismiss timer)
+	assert.NotNil(t, cmd, "handlePrevProject at first project should return notification timer cmd")
 
 	t.Logf("No project switch occurred")
 	t.Logf("Notification shown: %q", expectedMsg)
-	t.Logf("No prefetch command returned (nil)")
 }
 
 // TestProjectSwitch_MultipleProjectsRoundTrip verifies that switching back and forth
