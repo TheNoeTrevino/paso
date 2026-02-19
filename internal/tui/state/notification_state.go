@@ -1,6 +1,9 @@
 package state
 
 import (
+	"fmt"
+	"time"
+
 	"charm.land/lipgloss/v2"
 )
 
@@ -18,6 +21,10 @@ const (
 
 const maxNotifications = 3
 
+// DefaultDebounceDuration is the default time window during which duplicate
+// notifications (same level + message) are suppressed.
+const DefaultDebounceDuration = 500 * time.Millisecond
+
 // Notification represents a single notification message with a severity level.
 type Notification struct {
 	ID      int
@@ -28,6 +35,9 @@ type Notification struct {
 // NotificationState manages notification display state.
 // This provides a centralized way to handle user-facing notifications
 // of different severity levels throughout the application.
+//
+// It includes per-message debouncing: if the same level+message is added
+// within the debounce window, the duplicate is suppressed (Add returns 0).
 type NotificationState struct {
 	// notifications contains the list of current notifications to display
 	notifications []Notification
@@ -37,25 +47,45 @@ type NotificationState struct {
 	windowWidth int
 	// windowHeight tracks the current window height for positioning
 	windowHeight int
+	// lastSeen tracks when each notification key (level:message) was last added,
+	// used for per-message debouncing to suppress rapid duplicate notifications.
+	lastSeen map[string]time.Time
+	// debounceDuration is the time window during which duplicate notifications are suppressed.
+	debounceDuration time.Duration
 }
 
 // NewNotificationState creates a new NotificationState with no notifications.
 func NewNotificationState() *NotificationState {
 	return &NotificationState{
-		notifications: []Notification{},
-		nextID:        1,
-		windowWidth:   0,
-		windowHeight:  0,
+		notifications:    []Notification{},
+		nextID:           1,
+		windowWidth:      0,
+		windowHeight:     0,
+		lastSeen:         make(map[string]time.Time),
+		debounceDuration: DefaultDebounceDuration,
 	}
 }
 
 // Add adds a new notification with the specified level and message.
-// Returns the ID assigned to the new notification.
+// Returns the ID assigned to the new notification, or 0 if the notification
+// was suppressed by debouncing (same level+message added within the debounce window).
 //
 // Parameters:
 //   - level: the severity level of the notification
 //   - message: the notification message to display
 func (s *NotificationState) Add(level NotificationLevel, message string) int {
+	now := time.Now()
+	key := fmt.Sprintf("%d:%s", level, message)
+
+	// Debounce: suppress if the same notification was added recently
+	if lastTime, ok := s.lastSeen[key]; ok {
+		if now.Sub(lastTime) < s.debounceDuration {
+			return 0
+		}
+	}
+
+	s.lastSeen[key] = now
+
 	id := s.nextID
 	s.notifications = append(s.notifications, Notification{
 		ID:      id,
@@ -73,7 +103,11 @@ func (s *NotificationState) Add(level NotificationLevel, message string) int {
 }
 
 // Remove removes a notification by its ID. Used for auto-dismiss expiration.
+// ID 0 is a no-op (0 is the sentinel for debounce-suppressed notifications).
 func (s *NotificationState) Remove(id int) {
+	if id == 0 {
+		return
+	}
 	for i, n := range s.notifications {
 		if n.ID == id {
 			s.notifications = append(s.notifications[:i], s.notifications[i+1:]...)
