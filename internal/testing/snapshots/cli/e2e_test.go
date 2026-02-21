@@ -20,10 +20,21 @@ import (
 
 // timestampRegex matches timestamps in the format "Jan 2, 2006 3:04 PM"
 // used by task show output. We normalize these to [TIMESTAMP] for deterministic snapshots.
+// The regex uses a capture group to preserve the original timestamp length for consistent spacing.
 var timestampRegex = regexp.MustCompile(`[A-Z][a-z]{2} \d{1,2}, \d{4} \d{1,2}:\d{2} [AP]M`)
 
 func normalizeTimestamps(s string) string {
-	return timestampRegex.ReplaceAllString(s, "[TIMESTAMP]")
+	return timestampRegex.ReplaceAllStringFunc(s, func(timestamp string) string {
+		// Replace with a fixed-width placeholder (22 chars) to match the max timestamp width
+		// Max width example: "Dec 31, 2006 12:04 PM" = 22 chars
+		placeholder := "[TIMESTAMP]"
+		// Pad with spaces on the right to maintain column alignment
+		padding := len(timestamp) - len(placeholder)
+		if padding > 0 {
+			placeholder += strings.Repeat(" ", padding)
+		}
+		return placeholder
+	})
 }
 
 func e2eHelper(t *testing.T) *snapshots.Helper {
