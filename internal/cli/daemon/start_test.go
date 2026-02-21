@@ -80,24 +80,3 @@ func TestRunDaemon_CreatesSocketAndShutdown(t *testing.T) {
 		t.Fatal("server did not shut down within timeout")
 	}
 }
-
-// TestRunDaemon_PasoDirCreatedWithCorrectPermissions verifies that the .paso
-// directory is created with 0700 permissions when it doesn't exist.
-func TestRunDaemon_PasoDirCreatedWithCorrectPermissions(t *testing.T) {
-	fakeHome := t.TempDir()
-	t.Setenv("HOME", fakeHome)
-
-	pasoDir := filepath.Join(fakeHome, ".paso")
-
-	// Directory should not exist yet
-	_, err := os.Stat(pasoDir)
-	require.True(t, os.IsNotExist(err))
-
-	// MkdirAll with 0700 (mirrors runDaemon)
-	require.NoError(t, os.MkdirAll(pasoDir, 0700))
-
-	info, err := os.Stat(pasoDir)
-	require.NoError(t, err)
-	assert.True(t, info.IsDir())
-	assert.Equal(t, os.FileMode(0700), info.Mode().Perm())
-}

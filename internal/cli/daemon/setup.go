@@ -13,7 +13,6 @@ import (
 
 const serviceTemplate = `[Unit]
 Description=Paso Daemon - Terminal Kanban Board Real-time Sync
-After=network.target
 
 [Service]
 Type=simple
@@ -66,9 +65,16 @@ Examples:
 	return cmd
 }
 
-func installDaemonService(ctx context.Context) error {
+func requireSystemctl() error {
 	if _, err := exec.LookPath("systemctl"); err != nil {
-		return cli.NewExitErr(cli.ExitError, "systemctl not found; systemd is required for daemon setup")
+		return cli.NewExitErr(cli.ExitError, "systemctl not found; systemd is required")
+	}
+	return nil
+}
+
+func installDaemonService(ctx context.Context) error {
+	if err := requireSystemctl(); err != nil {
+		return err
 	}
 
 	binaryPath, err := os.Executable()
@@ -133,8 +139,8 @@ func installDaemonService(ctx context.Context) error {
 }
 
 func removeDaemonService(ctx context.Context) error {
-	if _, err := exec.LookPath("systemctl"); err != nil {
-		return cli.NewExitErr(cli.ExitError, "systemctl not found; systemd is required")
+	if err := requireSystemctl(); err != nil {
+		return err
 	}
 
 	// Stop the service (ignore errors -- may not be running)

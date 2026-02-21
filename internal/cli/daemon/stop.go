@@ -2,7 +2,6 @@ package daemon
 
 import (
 	"fmt"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
@@ -21,8 +20,8 @@ func StopCmd() *cobra.Command {
 }
 
 func stopDaemon(cmd *cobra.Command) error {
-	if _, err := exec.LookPath("systemctl"); err != nil {
-		return cli.NewExitErr(cli.ExitError, "systemctl not found; cannot stop service without systemd")
+	if err := requireSystemctl(); err != nil {
+		return err
 	}
 
 	if err := runSystemctl(cmd.Context(), "stop", "paso.service"); err != nil {
