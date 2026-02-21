@@ -1,4 +1,4 @@
-name: Claude Code Review
+name: Claude Review
 
 on:
   pull_request:
@@ -30,7 +30,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Run Claude Code Review
+      - name: Run Claude Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
