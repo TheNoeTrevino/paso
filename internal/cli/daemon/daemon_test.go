@@ -1,10 +1,12 @@
 package daemon
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thenoetrevino/paso/internal/cli"
 )
 
 func TestDaemonCmd_SubcommandRegistration(t *testing.T) {
@@ -60,6 +62,53 @@ func TestDaemonCmd_SubcommandMetadata(t *testing.T) {
 			require.True(t, found, "subcommand %q not found", tt.name)
 		})
 	}
+}
+
+func TestDaemonCmd_HasPersistentPreRunE(t *testing.T) {
+	t.Parallel()
+
+	cmd := DaemonCmd()
+	assert.NotNil(t, cmd.PersistentPreRunE, "daemon command should have a PersistentPreRunE")
+}
+
+func TestCheckOS_Linux(t *testing.T) {
+	t.Parallel()
+
+	err := checkOS("linux")
+	assert.NoError(t, err)
+}
+
+func TestCheckOS_UnsupportedSystems(t *testing.T) {
+	t.Parallel()
+
+	unsupported := []string{"darwin", "windows", "freebsd", "openbsd", "plan9"}
+
+	for _, goos := range unsupported {
+		t.Run(goos, func(t *testing.T) {
+			t.Parallel()
+
+			err := checkOS(goos)
+			require.Error(t, err)
+
+			var exitErr *cli.ExitErr
+			require.True(t, errors.As(err, &exitErr))
+			assert.Equal(t, cli.ExitError, exitErr.Code)
+			assert.Contains(t, exitErr.Message, goos)
+			assert.Contains(t, exitErr.Message, "paso daemon")
+			assert.Contains(t, exitErr.Message, "Supported: linux")
+		})
+	}
+}
+
+func TestCheckOS_EmptyString(t *testing.T) {
+	t.Parallel()
+
+	err := checkOS("")
+	require.Error(t, err)
+
+	var exitErr *cli.ExitErr
+	require.True(t, errors.As(err, &exitErr))
+	assert.Equal(t, cli.ExitError, exitErr.Code)
 }
 
 func TestSetupCmd_RemoveFlag(t *testing.T) {

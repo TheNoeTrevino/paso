@@ -40,13 +40,11 @@ func TestGetPasoDir_WithHomeEnv(t *testing.T) {
 }
 
 func TestGetPasoDir_FallsBackToUserHomeDir(t *testing.T) {
-	originalHome := os.Getenv("HOME")
 	t.Setenv("HOME", "")
 
 	// os.UserHomeDir() may fail when HOME is unset depending on the OS;
 	// skip in that case since the fallback path is platform-dependent.
 	if _, err := os.UserHomeDir(); err != nil {
-		os.Setenv("HOME", originalHome) // restore so Setenv cleanup doesn't break
 		t.Skip("os.UserHomeDir() unavailable without HOME set on this platform")
 	}
 

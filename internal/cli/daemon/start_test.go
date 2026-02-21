@@ -65,7 +65,8 @@ func TestRunDaemon_CreatesSocketAndShutdown(t *testing.T) {
 	require.NoError(t, err, "daemon socket was never created")
 
 	// Verify we can connect
-	conn, err := net.DialTimeout("unix", socketPath, 2*time.Second)
+	dialer := net.Dialer{Timeout: 2 * time.Second}
+	conn, err := dialer.DialContext(ctx, "unix", socketPath)
 	require.NoError(t, err, "could not connect to daemon socket")
 	_ = conn.Close()
 
