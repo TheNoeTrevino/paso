@@ -2,8 +2,6 @@ package cli_test
 
 import (
 	"fmt"
-	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,25 +16,9 @@ import (
 	"github.com/thenoetrevino/paso/internal/testing/snapshots"
 )
 
-// timestampRegex matches timestamps in the format "Jan 2, 2006 3:04 PM"
-// used by task show output. We normalize these to [TIMESTAMP] for deterministic snapshots.
-// The regex uses a capture group to preserve the original timestamp length for consistent spacing.
-var timestampRegex = regexp.MustCompile(`[A-Z][a-z]{2} \d{1,2}, \d{4} \d{1,2}:\d{2} [AP]M`)
-
-func normalizeTimestamps(s string) string {
-	return timestampRegex.ReplaceAllStringFunc(s, func(timestamp string) string {
-		// Always pad to max timestamp width (22 chars) so the placeholder is
-		// the same length regardless of when the test runs.
-		// Max: "Dec 31, 2006 12:04 PM" = 22 chars
-		const maxTimestampLen = 22
-		placeholder := "[TIMESTAMP]"
-		padding := maxTimestampLen - len(placeholder)
-		if padding > 0 {
-			placeholder += strings.Repeat(" ", padding)
-		}
-		return placeholder
-	})
-}
+// fixedTimestamp is a deterministic timestamp used in snapshot tests to avoid
+// flaky whitespace issues caused by variable-width formatted dates.
+const fixedTimestamp = "2006-01-02 15:04:05"
 
 func e2eHelper(t *testing.T) *snapshots.Helper {
 	t.Helper()
@@ -45,15 +27,6 @@ func e2eHelper(t *testing.T) *snapshots.Helper {
 
 func cleanOutput(output string) string {
 	return fixtures.StripANSI(output)
-}
-
-func cleanOutputWithTimestamps(output string) string {
-	normalized := normalizeTimestamps(fixtures.StripANSI(output))
-	lines := strings.Split(normalized, "\n")
-	for i, line := range lines {
-		lines[i] = strings.TrimRight(line, " ")
-	}
-	return strings.Join(lines, "\n")
 }
 
 func TestGolden_E2E_Task(t *testing.T) {
@@ -106,6 +79,12 @@ func TestGolden_E2E_Task(t *testing.T) {
 	// Block task2 by task1
 	cli.AddTaskSubtask(t, db, task1, task2, 2)
 
+	// Pin timestamps on task1 so task-show snapshots are deterministic.
+	cli.UpdateTaskFields(t, db, task1, map[string]any{
+		"created_at": fixedTimestamp,
+		"updated_at": fixedTimestamp,
+	})
+
 	t.Run("list", func(t *testing.T) {
 		cmd := task.ListCmd()
 		output, err := cli.ExecuteCLICommand(t, app, cmd, []string{
@@ -121,7 +100,7 @@ func TestGolden_E2E_Task(t *testing.T) {
 			fmt.Sprintf("%d", task1),
 		})
 		require.NoError(t, err)
-		e2eHelper(t).Compare("task-show", cleanOutputWithTimestamps(output))
+		e2eHelper(t).Compare("task-show", cleanOutput(output))
 	})
 
 	t.Run("update", func(t *testing.T) {
