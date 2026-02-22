@@ -12,8 +12,10 @@ func (m Model) handleFilterBarMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleSearchInput(msg)
 	}
 
+	km := m.Config.KeyMappings
+
 	switch msg.String() {
-	case "esc", "q":
+	case "esc", km.General.Quit:
 		m.UI.Filter.IsActive = false
 		m.UIState.Mode = state.NormalMode
 		return m, nil
@@ -33,11 +35,11 @@ func (m Model) handleFilterBarMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m.openFilterPicker()
 
-	case "h", "left":
+	case km.Navigation.MoveLeft, "left":
 		m.UI.Filter.MoveFocusLeft()
 		return m, nil
 
-	case "l", "right":
+	case km.Navigation.MoveRight, "right":
 		m.UI.Filter.MoveFocusRight()
 		return m, nil
 

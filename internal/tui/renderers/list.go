@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
@@ -34,6 +35,7 @@ func RenderListView(
 	sortOrder state.SortOrder,
 	width int,
 	height int,
+	km config.KeyMappings,
 ) string {
 	var output strings.Builder
 
@@ -152,7 +154,8 @@ func RenderListView(
 	helpStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Subtle)).
 		Italic(true)
-	helpText := "v: kanban  s: move to project  j/k: navigate"
+	helpText := fmt.Sprintf("%s: kanban  %s: move to project  %s/%s: navigate",
+		km.General.ToggleView, km.Tasks.MoveTaskToProject, km.Navigation.MoveDown, km.Navigation.MoveUp)
 	output.WriteString("\n")
 	output.WriteString(helpStyle.Render("  " + helpText))
 

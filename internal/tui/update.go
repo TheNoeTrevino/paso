@@ -320,7 +320,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if msg.String() == m.Config.KeyMappings.Suspend {
+	if msg.String() == m.Config.KeyMappings.General.Suspend {
 		return m, tea.Suspend
 	}
 
@@ -341,7 +341,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleProjectBranchConfirm(msg)
 	case state.TicketFormLoadingMode:
 		switch msg.String() {
-		case "esc", m.Config.KeyMappings.Quit:
+		case "esc", m.Config.KeyMappings.General.Quit:
 			m.LoadingGitInfo = false
 			m.SpinnerFrame = 0
 			m.UIState.Mode = state.NormalMode
@@ -350,7 +350,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case state.ProjectFormLoadingMode:
 		switch msg.String() {
-		case "esc", m.Config.KeyMappings.Quit:
+		case "esc", m.Config.KeyMappings.General.Quit:
 			m.LoadingGitInfo = false
 			m.LoadingBranches = false
 			m.Forms.Form.ClearProjectForm()
@@ -362,14 +362,14 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleCommentsViewInput(msg)
 	case state.HelpMode:
 		switch msg.String() {
-		case m.Config.KeyMappings.ShowHelp, m.Config.KeyMappings.Quit, "esc", "enter", " ":
+		case m.Config.KeyMappings.General.ShowHelp, m.Config.KeyMappings.General.Quit, "esc", "enter", " ":
 			m.UIState.Mode = state.NormalMode
 			return m, nil
 		}
 		return m, nil
 	case state.TaskFormHelpMode:
 		switch msg.String() {
-		case "ctrl+h", "esc":
+		case m.Config.KeyMappings.Forms.ShowHelp, "esc":
 			m.UIState.Mode = state.TicketFormMode
 			return m, nil
 		}

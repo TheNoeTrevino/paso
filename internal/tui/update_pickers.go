@@ -36,6 +36,8 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	filteredItems := m.getFilteredLabelPickerItems()
 	maxIdx := len(filteredItems) // +1 for "create new label" option
 
+	km := m.Config.KeyMappings
+
 	switch keyMsg.String() {
 	case "esc":
 		// Close picker and return to appropriate mode
@@ -67,14 +69,14 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Pickers.Label.Cursor = 0
 		return m, nil
 
-	case "up", "k":
+	case km.Navigation.MoveUp, "up":
 		// Move cursor up
 		if m.Pickers.Label.Cursor > 0 {
 			m.Pickers.Label.Cursor--
 		}
 		return m, nil
 
-	case "down", "j":
+	case km.Navigation.MoveDown, "down":
 		// Move cursor down
 		if m.Pickers.Label.Cursor < maxIdx {
 			m.Pickers.Label.Cursor++
@@ -135,7 +137,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case "ctrl+d":
+	case km.Pickers.DeleteLabel:
 		// Delete the label at cursor position (only if cursor is on a label, not "+ Create new label")
 		// Not available in filter mode
 		if m.Pickers.Label.ReturnMode != state.FilterBarMode && m.Pickers.Label.Cursor < len(filteredItems) {
@@ -229,6 +231,7 @@ func (m Model) updateLabelNameInput(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	colors := renderers.GetDefaultLabelColors()
 	maxIdx := len(colors) - 1
+	km := m.Config.KeyMappings
 
 	switch keyMsg.String() {
 	case "esc":
@@ -237,13 +240,13 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Pickers.Label.NameBuffer = ""
 		return m, nil
 
-	case "up", "k":
+	case km.Navigation.MoveUp, "up":
 		if m.Pickers.Label.ColorIdx > 0 {
 			m.Pickers.Label.ColorIdx--
 		}
 		return m, nil
 
-	case "down", "j":
+	case km.Navigation.MoveDown, "down":
 		if m.Pickers.Label.ColorIdx < maxIdx {
 			m.Pickers.Label.ColorIdx++
 		}
@@ -322,6 +325,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Get filtered items to determine bounds
 	filteredItems := m.Pickers.Parent.GetFilteredItems()
 	maxIdx := len(filteredItems) - 1
+	km := m.Config.KeyMappings
 
 	switch keyMsg.String() {
 	case "esc":
@@ -341,12 +345,12 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Pickers.Parent.Cursor = 0
 		return m, nil
 
-	case "up", "k":
+	case km.Navigation.MoveUp, "up":
 		// Move cursor up
 		m.Pickers.Parent.MoveCursorUp()
 		return m, nil
 
-	case "down", "j":
+	case km.Navigation.MoveDown, "down":
 		// Move cursor down
 		m.Pickers.Parent.MoveCursorDown(maxIdx)
 		return m, nil
@@ -477,6 +481,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Get filtered items to determine bounds
 	filteredItems := m.Pickers.Child.GetFilteredItems()
 	maxIdx := len(filteredItems) - 1
+	km := m.Config.KeyMappings
 
 	switch keyMsg.String() {
 	case "esc":
@@ -496,12 +501,12 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Pickers.Child.Cursor = 0
 		return m, nil
 
-	case "up", "k":
+	case km.Navigation.MoveUp, "up":
 		// Move cursor up
 		m.Pickers.Child.MoveCursorUp()
 		return m, nil
 
-	case "down", "j":
+	case km.Navigation.MoveDown, "down":
 		// Move cursor down
 		m.Pickers.Child.MoveCursorDown(maxIdx)
 		return m, nil
@@ -621,6 +626,8 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	km := m.Config.KeyMappings
+
 	switch keyMsg.String() {
 	case "esc":
 		// Return to ticket form mode without changing priority
@@ -628,12 +635,12 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Pickers.Priority.Reset()
 		return m, nil
 
-	case "up", "k":
+	case km.Navigation.MoveUp, "up":
 		// Move cursor up
 		m.Pickers.Priority.MoveUp()
 		return m, nil
 
-	case "down", "j":
+	case km.Navigation.MoveDown, "down":
 		// Move cursor down
 		m.Pickers.Priority.MoveDown()
 		return m, nil
@@ -709,6 +716,8 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	km := m.Config.KeyMappings
+
 	switch keyMsg.String() {
 	case "esc":
 		// Return to ticket form mode without changing type
@@ -716,12 +725,12 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Pickers.Type.Reset()
 		return m, nil
 
-	case "up", "k":
+	case km.Navigation.MoveUp, "up":
 		// Move cursor up
 		m.Pickers.Type.MoveUp()
 		return m, nil
 
-	case "down", "j":
+	case km.Navigation.MoveDown, "down":
 		// Move cursor down
 		m.Pickers.Type.MoveDown()
 		return m, nil
@@ -791,6 +800,8 @@ func (m Model) updateProjectPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	km := m.Config.KeyMappings
+
 	switch keyMsg.String() {
 	case "esc":
 		m.UIState.Mode = m.Pickers.Project.ReturnMode
@@ -800,11 +811,11 @@ func (m Model) updateProjectPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Pickers.Project.Reset()
 		return m, nil
 
-	case "up", "k":
+	case km.Navigation.MoveUp, "up":
 		m.Pickers.Project.MoveUp()
 		return m, nil
 
-	case "down", "j":
+	case km.Navigation.MoveDown, "down":
 		m.Pickers.Project.MoveDown()
 		return m, nil
 
@@ -847,6 +858,8 @@ func (m Model) updateAssigneePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	km := m.Config.KeyMappings
+
 	switch keyMsg.String() {
 	case "esc":
 		m.UIState.Mode = m.Pickers.Assignee.ReturnMode
@@ -857,11 +870,11 @@ func (m Model) updateAssigneePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Pickers.Assignee.Reset()
 		return m, nil
 
-	case "up", "k":
+	case km.Navigation.MoveUp, "up":
 		m.Pickers.Assignee.MoveUp()
 		return m, nil
 
-	case "down", "j":
+	case km.Navigation.MoveDown, "down":
 		m.Pickers.Assignee.MoveDown()
 		return m, nil
 
@@ -1024,27 +1037,27 @@ func (m Model) updateDatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.UIState.Mode = m.Pickers.DatePicker.ReturnMode
 		return m, nil
 
-	case km.PrevTask, "up":
+	case km.Navigation.MoveUp, "up":
 		m.Pickers.DatePicker.MoveWeek(-1) // Move up 7 days
 		return m, nil
 
-	case km.NextTask, "down":
+	case km.Navigation.MoveDown, "down":
 		m.Pickers.DatePicker.MoveWeek(1) // Move down 7 days
 		return m, nil
 
-	case km.PrevColumn, "left":
+	case km.Navigation.MoveLeft, "left":
 		m.Pickers.DatePicker.MoveDay(-1) // Previous day
 		return m, nil
 
-	case km.NextColumn, "right":
+	case km.Navigation.MoveRight, "right":
 		m.Pickers.DatePicker.MoveDay(1) // Next day
 		return m, nil
 
-	case km.ScrollViewportLeft:
+	case km.Navigation.ScrollViewportLeft:
 		m.Pickers.DatePicker.PrevMonth() // Previous month
 		return m, nil
 
-	case km.ScrollViewportRight:
+	case km.Navigation.ScrollViewportRight:
 		m.Pickers.DatePicker.NextMonth() // Next month
 		return m, nil
 
@@ -1117,6 +1130,8 @@ func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	km := m.Config.KeyMappings
+
 	switch keyMsg.String() {
 	case "esc":
 		// Return to previous picker (parent or child) without changing relation type
@@ -1124,12 +1139,12 @@ func (m Model) updateRelationTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Pickers.RelationType.Reset()
 		return m, nil
 
-	case "up", "k":
+	case km.Navigation.MoveUp, "up":
 		// Move cursor up
 		m.Pickers.RelationType.MoveUp()
 		return m, nil
 
-	case "down", "j":
+	case km.Navigation.MoveDown, "down":
 		// Move cursor down
 		m.Pickers.RelationType.MoveDown()
 		return m, nil

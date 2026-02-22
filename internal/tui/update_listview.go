@@ -26,6 +26,8 @@ func (m Model) handleMoveTaskToProject() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleStatusPickerMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	km := m.Config.KeyMappings
+
 	switch msg.String() {
 	case "esc":
 		m.Pickers.Status.Reset()
@@ -33,10 +35,10 @@ func (m Model) handleStatusPickerMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "enter":
 		return m.confirmStatusChange()
-	case "j", "down":
+	case km.Navigation.MoveDown, "down":
 		m.Pickers.Status.MoveDown()
 		return m, nil
-	case "k", "up":
+	case km.Navigation.MoveUp, "up":
 		m.Pickers.Status.MoveUp()
 		return m, nil
 	}

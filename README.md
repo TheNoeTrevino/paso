@@ -115,17 +115,9 @@ You can also override individual colors or point to an external theme file with 
 
 ### Keybindings
 
-All TUI keys are remappable. For example:
+All TUI keys are remappable. 
 
-```yaml
-key_mappings:
-  add_task: "a"
-  edit_task: "e"
-  delete_task: "d"
-  prev_column: "h"
-  next_column: "l"
-  show_help: "?"
-```
+See [`example_config.yaml`](example_config.yaml) for every available option with defaults.
 
 ### Database Connections
 

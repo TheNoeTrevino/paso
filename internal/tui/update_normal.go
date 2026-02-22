@@ -51,73 +51,73 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	km := m.Config.KeyMappings
 
 	switch key {
-	case km.Quit, "ctrl+c":
+	case km.General.Quit, "ctrl+c":
 		return m.handleQuit()
-	case km.ShowHelp:
+	case km.General.ShowHelp:
 		return m.handleShowHelp()
-	case km.AddTask:
+	case km.Tasks.AddTask:
 		return m.handleAddTask()
-	case km.EditTask:
+	case km.Tasks.EditTask:
 		return m.handleEditTask()
-	case km.DeleteTask:
+	case km.Tasks.DeleteTask:
 		return m.handleDeleteTask()
-	case km.ViewTask:
+	case km.Tasks.ViewTask:
 		return m.handleEditTask()
-	case km.CreateColumn:
+	case km.Kanban.CreateColumn:
 		return m.handleCreateColumn()
-	case km.RenameColumn:
+	case km.Kanban.RenameColumn:
 		return m.handleRenameColumn()
-	case km.DeleteColumn:
+	case km.Kanban.DeleteColumn:
 		return m.handleDeleteColumn()
-	case km.ScrollViewportRight:
+	case km.Navigation.ScrollViewportRight:
 		return m.handleScrollRight()
-	case km.ScrollViewportLeft:
+	case km.Navigation.ScrollViewportLeft:
 		return m.handleScrollLeft()
-	case km.PrevColumn, "left":
+	case km.Navigation.MoveLeft, "left":
 		return m.handleNavigateLeft()
-	case km.NextColumn, "right":
+	case km.Navigation.MoveRight, "right":
 		return m.handleNavigateRight()
-	case km.NextTask, "down":
+	case km.Navigation.MoveDown, "down":
 		return m.handleNavigateDown()
-	case km.PrevTask, "up":
+	case km.Navigation.MoveUp, "up":
 		return m.handleNavigateUp()
-	case km.MoveTaskRight:
+	case km.Kanban.MoveTaskRight:
 		return m.handleMoveTaskRight()
-	case km.MoveTaskLeft:
+	case km.Kanban.MoveTaskLeft:
 		return m.handleMoveTaskLeft()
-	case km.MoveTaskUp:
+	case km.Kanban.MoveTaskUp:
 		return m.handleMoveTaskUp()
-	case km.MoveTaskDown:
+	case km.Kanban.MoveTaskDown:
 		return m.handleMoveTaskDown()
-	case km.PrevProject:
+	case km.Navigation.PrevProject:
 		return m.handlePrevProject()
-	case km.NextProject:
+	case km.Navigation.NextProject:
 		return m.handleNextProject()
-	case km.CreateProject:
+	case km.Projects.CreateProject:
 		return m.handleCreateProject()
-	case km.EditProject:
+	case km.Projects.EditProject:
 		return m.handleEditProject()
-	case km.DeleteProject:
+	case km.Projects.DeleteProject:
 		return m.handleDeleteProject()
-	case km.ToggleView:
+	case km.General.ToggleView:
 		return m.handleToggleView()
-	case km.MoveTaskToProject:
+	case km.Tasks.MoveTaskToProject:
 		return m.handleMoveTaskToProject()
-	case km.ConnectRemote:
+	case km.General.ConnectRemote:
 		return m.handleConnectRemote()
-	case km.EditLabels:
+	case km.Tasks.EditLabels:
 		return m.handleQuickEditLabels()
-	case km.EditPriority:
+	case km.Tasks.EditPriority:
 		return m.handleQuickEditPriority()
-	case km.EditAssignee:
+	case km.Tasks.EditAssignee:
 		return m.handleQuickEditAssignee()
-	case km.EditEstimate:
+	case km.Tasks.EditEstimate:
 		return m.handleQuickEditEstimate()
-	case km.EditDueDate:
+	case km.Tasks.EditDueDate:
 		return m.handleQuickEditDueDate()
-	case "/":
+	case km.General.Search:
 		return m.handleEnterSearchChip()
-	case km.FilterBar:
+	case km.General.FilterBar:
 		return m.handleEnterFilterBar()
 	}
 

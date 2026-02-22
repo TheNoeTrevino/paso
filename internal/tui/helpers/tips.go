@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"strings"
 
 	"github.com/thenoetrevino/paso/internal/config"
 )
@@ -12,9 +13,9 @@ import (
 type Tip struct {
 	// Template is format string
 	Template string
-	// KeyFields are the names of KeyMappings struct fields to substitute
+	// KeyFields are dot-separated paths into the nested KeyMappings struct.
 	//
-	// Example: []string{"CreateProject", "NextProject"}
+	// Example: []string{"Projects.CreateProject", "Navigation.NextProject"}
 	KeyFields []string
 }
 
@@ -31,35 +32,35 @@ func NewTipGenerator(keyMappings *config.KeyMappings) *TipGenerator {
 		tips: []Tip{
 			{
 				Template:  "Press '%s' to create a new project, '%s'/'%s' to switch projects",
-				KeyFields: []string{"CreateProject", "NextProject", "PrevProject"},
+				KeyFields: []string{"Projects.CreateProject", "Navigation.NextProject", "Navigation.PrevProject"},
 			},
 			{
 				Template:  "Press '%s' to add task, '%s' to edit, '%s' to delete",
-				KeyFields: []string{"AddTask", "EditTask", "DeleteTask"},
+				KeyFields: []string{"Tasks.AddTask", "Tasks.EditTask", "Tasks.DeleteTask"},
 			},
 			{
 				Template:  "Navigate with '%s'/'%s' (columns), '%s'/'%s' (tasks)",
-				KeyFields: []string{"PrevColumn", "NextColumn", "PrevTask", "NextTask"},
+				KeyFields: []string{"Navigation.MoveLeft", "Navigation.MoveRight", "Navigation.MoveUp", "Navigation.MoveDown"},
 			},
 			{
 				Template:  "Move tasks with '%s'/'%s' (horizontal), '%s'/'%s' (vertical)",
-				KeyFields: []string{"MoveTaskLeft", "MoveTaskRight", "MoveTaskUp", "MoveTaskDown"},
+				KeyFields: []string{"Kanban.MoveTaskLeft", "Kanban.MoveTaskRight", "Kanban.MoveTaskUp", "Kanban.MoveTaskDown"},
 			},
 			{
 				Template:  "Press '%s' to create column, '%s' to rename, '%s' to delete",
-				KeyFields: []string{"CreateColumn", "RenameColumn", "DeleteColumn"},
+				KeyFields: []string{"Kanban.CreateColumn", "Kanban.RenameColumn", "Kanban.DeleteColumn"},
 			},
 			{
 				Template:  "Press '%s' to view task details, '%s' to toggle view mode",
-				KeyFields: []string{"ViewTask", "ToggleView"},
+				KeyFields: []string{"Tasks.ViewTask", "General.ToggleView"},
 			},
 			{
 				Template:  "Use '%s'/'%s' to scroll viewport when many columns exist",
-				KeyFields: []string{"ScrollViewportLeft", "ScrollViewportRight"},
+				KeyFields: []string{"Navigation.ScrollViewportLeft", "Navigation.ScrollViewportRight"},
 			},
 			{
 				Template:  "Press '%s' for help screen with all keyboard shortcuts",
-				KeyFields: []string{"ShowHelp"},
+				KeyFields: []string{"General.ShowHelp"},
 			},
 		},
 	}
@@ -81,12 +82,17 @@ func (tg *TipGenerator) generateTipText(tip Tip) string {
 	return fmt.Sprintf(tip.Template, keys...)
 }
 
-// getKeyBinding retrieves keybinding value by field name using reflection
-func (tg *TipGenerator) getKeyBinding(fieldName string) string {
+// getKeyBinding retrieves a keybinding value by a dot-separated path
+// into the nested KeyMappings struct (e.g. "Navigation.MoveUp").
+func (tg *TipGenerator) getKeyBinding(path string) string {
 	v := reflect.ValueOf(tg.keyMappings).Elem()
-	field := v.FieldByName(fieldName)
-	if !field.IsValid() {
-		return "?"
+
+	for segment := range strings.SplitSeq(path, ".") {
+		v = v.FieldByName(segment)
+		if !v.IsValid() {
+			return "?"
+		}
 	}
-	return field.String()
+
+	return v.String()
 }

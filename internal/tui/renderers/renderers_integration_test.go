@@ -6,9 +6,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/state"
 )
+
+// defaultKM returns default key mappings for test convenience.
+func defaultKM() config.KeyMappings {
+	return config.DefaultKeyMappings()
+}
 
 // TestRenderListViewBasic tests basic list view rendering
 func TestRenderListViewBasic(t *testing.T) {
@@ -32,7 +38,7 @@ func TestRenderListViewBasic(t *testing.T) {
 		},
 	}
 
-	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20)
+	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20, defaultKM())
 
 	require.NotEmpty(t, output)
 	assert.True(t, strings.Contains(output, "Task 1") || strings.Contains(output, "Task"))
@@ -43,7 +49,7 @@ func TestRenderListViewEmpty(t *testing.T) {
 	t.Parallel()
 	var rows []ListViewRow
 
-	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20)
+	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20, defaultKM())
 
 	require.NotEmpty(t, output)
 }
@@ -79,7 +85,7 @@ func TestRenderListViewSelectedRow(t *testing.T) {
 	}
 
 	// Select the middle row
-	output := RenderListView(rows, 1, 0, state.SortByTitle, state.SortAsc, 100, 20)
+	output := RenderListView(rows, 1, 0, state.SortByTitle, state.SortAsc, 100, 20, defaultKM())
 
 	require.NotEmpty(t, output)
 }
@@ -101,7 +107,7 @@ func TestRenderListViewScrolling(t *testing.T) {
 	}
 
 	// Test with scroll offset
-	output := RenderListView(rows, 10, 5, state.SortByTitle, state.SortAsc, 100, 20)
+	output := RenderListView(rows, 10, 5, state.SortByTitle, state.SortAsc, 100, 20, defaultKM())
 
 	require.NotEmpty(t, output)
 }
@@ -136,7 +142,7 @@ func TestRenderListViewDifferentSorts(t *testing.T) {
 	for _, sortField := range sorts {
 		t.Run("sort", func(t *testing.T) {
 			t.Parallel()
-			output := RenderListView(rows, 0, 0, sortField, state.SortAsc, 100, 20)
+			output := RenderListView(rows, 0, 0, sortField, state.SortAsc, 100, 20, defaultKM())
 
 			assert.NotEmpty(t, output)
 		})
@@ -165,8 +171,8 @@ func TestRenderListViewSortOrders(t *testing.T) {
 		},
 	}
 
-	ascOutput := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20)
-	descOutput := RenderListView(rows, 0, 0, state.SortByTitle, state.SortDesc, 100, 20)
+	ascOutput := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20, defaultKM())
+	descOutput := RenderListView(rows, 0, 0, state.SortByTitle, state.SortDesc, 100, 20, defaultKM())
 
 	require.NotEmpty(t, ascOutput)
 	require.NotEmpty(t, descOutput)
@@ -187,7 +193,7 @@ func TestRenderListViewNarrowWidth(t *testing.T) {
 	}
 
 	// Very narrow width
-	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 30, 10)
+	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 30, 10, defaultKM())
 
 	require.NotEmpty(t, output)
 
@@ -215,7 +221,7 @@ func TestRenderListViewLargeWidth(t *testing.T) {
 	}
 
 	// Very large width
-	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 500, 50)
+	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 500, 50, defaultKM())
 
 	require.NotEmpty(t, output)
 }
@@ -235,7 +241,7 @@ func TestRenderListViewManyRows(t *testing.T) {
 		}
 	}
 
-	output := RenderListView(rows, 50, 10, state.SortByTitle, state.SortAsc, 100, 20)
+	output := RenderListView(rows, 50, 10, state.SortByTitle, state.SortAsc, 100, 20, defaultKM())
 
 	require.NotEmpty(t, output)
 }
@@ -262,7 +268,7 @@ func TestRenderListViewUnicodeContent(t *testing.T) {
 		},
 	}
 
-	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20)
+	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20, defaultKM())
 
 	require.NotEmpty(t, output)
 }
@@ -284,15 +290,15 @@ func TestRenderListViewScrollBehavior(t *testing.T) {
 	}
 
 	// Test with scroll at top
-	outputTop := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 10)
+	outputTop := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 10, defaultKM())
 	require.NotEmpty(t, outputTop)
 
 	// Test with scroll in middle
-	outputMid := RenderListView(rows, 10, 10, state.SortByTitle, state.SortAsc, 100, 10)
+	outputMid := RenderListView(rows, 10, 10, state.SortByTitle, state.SortAsc, 100, 10, defaultKM())
 	require.NotEmpty(t, outputMid)
 
 	// Test with scroll at bottom
-	outputBot := RenderListView(rows, 20, 20, state.SortByTitle, state.SortAsc, 100, 10)
+	outputBot := RenderListView(rows, 20, 20, state.SortByTitle, state.SortAsc, 100, 10, defaultKM())
 	require.NotEmpty(t, outputBot)
 }
 
@@ -311,7 +317,7 @@ func TestRenderListViewMinimalSize(t *testing.T) {
 	}
 
 	// Minimal space
-	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 20, 3)
+	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 20, 3, defaultKM())
 
 	require.NotEmpty(t, output)
 }
@@ -330,7 +336,7 @@ func TestRenderListViewHeaderPresent(t *testing.T) {
 		},
 	}
 
-	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20) // Will have table header
+	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20, defaultKM()) // Will have table header
 
 	// Should have multiple lines (header + separator + rows)
 	lines := strings.Split(strings.TrimSpace(output), "\n")
@@ -351,8 +357,8 @@ func TestRenderListViewConsistency(t *testing.T) {
 		},
 	}
 
-	output1 := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20)
-	output2 := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20)
+	output1 := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20, defaultKM())
+	output2 := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 20, defaultKM())
 
 	assert.Equal(t, output1, output2)
 }
@@ -389,7 +395,7 @@ func TestRenderListViewEdgeCases(t *testing.T) {
 		},
 	}
 
-	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 0)
+	output := RenderListView(rows, 0, 0, state.SortByTitle, state.SortAsc, 100, 0, defaultKM())
 
 	require.NotEmpty(t, output)
 }

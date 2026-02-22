@@ -12,20 +12,22 @@ import (
 // updateCommentEdit handles keyboard input in the comment editing mode.
 // This function processes navigation (up/down), opening forms for editing, and comment deletion.
 func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	km := m.Config.KeyMappings
+
 	switch msg.String() {
 	case "esc":
 		// Return to ticket form mode
 		m.UIState.Mode = state.TicketFormMode
 		return m, nil
 
-	case "j", "down":
+	case km.Navigation.MoveDown, "down":
 		// Move cursor down
 		if len(m.Forms.Comment.Items) > 0 {
 			m.Forms.Comment.MoveCursorDown(len(m.Forms.Comment.Items) - 1)
 		}
 		return m, nil
 
-	case "k", "up":
+	case km.Navigation.MoveUp, "up":
 		// Move cursor up
 		m.Forms.Comment.MoveCursorUp()
 		return m, nil
@@ -49,7 +51,7 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case "ctrl+n", "n":
+	case km.Forms.OpenCommentsView:
 		// Open form to create a new comment
 		m.Forms.Form.FormCommentMessage = ""
 		m.Forms.Form.EditingCommentID = 0
@@ -59,7 +61,7 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.UIState.Mode = state.CommentFormMode
 		return m, m.Forms.Form.CommentForm.Init()
 
-	case "delete", "d":
+	case "delete", km.Tasks.DeleteTask:
 		// Delete the selected activity (only comments are deletable)
 		if len(m.Forms.Comment.Items) > 0 && m.Forms.Comment.Cursor < len(m.Forms.Comment.Items) {
 			activity := m.Forms.Comment.Items[m.Forms.Comment.Cursor].Activity
