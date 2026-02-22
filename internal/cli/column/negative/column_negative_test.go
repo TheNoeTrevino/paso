@@ -294,8 +294,8 @@ func TestUpdateColumn_InvalidTransition(t *testing.T) {
 	t.Parallel()
 	db, app := cli.SetupCLITest(t)
 
-	// Create test project and column
-	projectID := cli.CreateTestProject(t, db, "Test Project")
+	// Create bare project (no default columns with flags) to avoid conflicts
+	projectID := cli.CreateBareProject(t, db, "Test Project")
 	columnID := cli.CreateTestColumn(t, db, projectID, "Test Column")
 
 	// Set the column as completed

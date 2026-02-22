@@ -18,8 +18,9 @@ func TestCreateColumn_Integration(t *testing.T) {
 	// Setup test DB and App
 	db, app := cli.SetupCLITest(t)
 
-	// Create test project with default columns (Todo, In Progress, Done)
-	projectID := cli.CreateTestProject(t, db, "Test Project")
+	// Create bare project (no default columns with flags) to avoid conflicts
+	// when testing flag assignment on newly created columns
+	projectID := cli.CreateBareProject(t, db, "Test Project")
 
 	tests := []struct {
 		name          string
@@ -222,7 +223,7 @@ func TestCreateColumn_FlagCombinations(t *testing.T) {
 	db, app := cli.SetupCLITest(t)
 	ctx := context.Background()
 
-	projectID := cli.CreateTestProject(t, db, "Combo Test Project")
+	projectID := cli.CreateBareProject(t, db, "Combo Test Project")
 
 	t.Run("create column with ready and quiet flags", func(t *testing.T) {
 		cmd := column.CreateCmd()

@@ -504,13 +504,13 @@ func TestReadyTask_Integration_Errors(t *testing.T) {
 	})
 
 	t.Run("project with no ready column", func(t *testing.T) {
-		// Create project but don't mark any column as ready column
-		projectID := cli.CreateTestProject(t, db, "No Ready Column Project")
+		// Create bare project without default column flags
+		projectID := cli.CreateBareProject(t, db, "No Ready Column Project")
 
-		// Get Todo column and create a task (but don't mark column as ready)
-		todoColumnID := cli.GetColumnIDByName(t, db, projectID, "Todo")
+		// Create a column without the ready flag
+		todoColumnID := cli.CreateTestColumn(t, db, projectID, "Todo")
 
-		// Create task in Todo column (but it's not marked as ready column)
+		// Create task in column (not marked as ready column)
 		cli.CreateTestTask(t, db, todoColumnID, "Task in Non-Ready Column")
 
 		cmd := task.ReadyCmd()

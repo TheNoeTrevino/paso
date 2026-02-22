@@ -25,9 +25,8 @@ func TestInProgressTask(t *testing.T) {
 	// Get the default "Todo" column ID
 	todoColumnID := cli.GetColumnIDByName(t, db, projectID, "Todo")
 
-	// Create an "In Progress" column and mark it
-	inProgressColumnID := cli.CreateTestColumn(t, db, projectID, "In Progress")
-	cli.SetColumnHoldsInProgressTasks(t, db, inProgressColumnID)
+	// Get the default "In Progress" column (already marked with holds_in_progress_tasks)
+	inProgressColumnID := cli.GetColumnIDByName(t, db, projectID, "In Progress")
 
 	t.Run("mark task as in-progress", func(t *testing.T) {
 		// Create task in todo column
@@ -327,12 +326,8 @@ func TestInProgressTask(t *testing.T) {
 	})
 
 	t.Run("list empty in-progress tasks", func(t *testing.T) {
-		// Create a new project with no in-progress tasks
+		// Create a new project with default columns (In Progress already marked)
 		newProjectID := cli.CreateTestProject(t, db, "Empty Project")
-		emptyInProgressColumnID := cli.CreateTestColumn(t, db, newProjectID, "In Progress")
-
-		// Mark as in-progress column
-		cli.SetColumnHoldsInProgressTasks(t, db, emptyInProgressColumnID)
 
 		cmd := task.InProgressCmd()
 
