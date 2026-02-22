@@ -86,7 +86,7 @@ func openEditor(ctx context.Context) (string, error) {
 
 	// Strip comment lines and trim
 	var lines []string
-	for _, line := range strings.Split(string(content), "\n") {
+	for line := range strings.SplitSeq(string(content), "\n") {
 		if !strings.HasPrefix(strings.TrimSpace(line), "#") {
 			lines = append(lines, line)
 		}

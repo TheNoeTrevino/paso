@@ -60,7 +60,7 @@ func FormatListHuman(logs []models.StandupLog, colorScheme colors.ColorScheme) s
 		out.WriteString("\n")
 
 		// Indent content lines
-		for _, line := range strings.Split(l.Content, "\n") {
+		for line := range strings.SplitSeq(l.Content, "\n") {
 			out.WriteString("  ")
 			out.WriteString(contentStyle.Render(line))
 			out.WriteString("\n")

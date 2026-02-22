@@ -133,7 +133,7 @@ func FormatGenerateHuman(logs []models.StandupLog, since, until time.Time, color
 			out.WriteString(timeStyle.Render(timestamp))
 			out.WriteString("\n")
 
-			for _, line := range strings.Split(l.Content, "\n") {
+			for line := range strings.SplitSeq(l.Content, "\n") {
 				out.WriteString("    ")
 				out.WriteString(contentStyle.Render(line))
 				out.WriteString("\n")
