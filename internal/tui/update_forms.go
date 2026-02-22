@@ -37,11 +37,11 @@ func (m Model) extractTaskFormValues() taskFormValues {
 }
 
 // createNewTaskWithLabelsAndRelationships creates a new task, sets labels, and applies parent/child relationships
-func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
+func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) tea.Cmd {
 	currentCol := m.getCurrentColumn()
 	if currentCol == nil {
 		m.UI.Notification.Add(state.LevelError, "No column selected")
-		return
+		return nil
 	}
 
 	// Create context for database operations
@@ -64,7 +64,6 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 		}
 	}
 
-	// 1. Create the task with all data in one call
 	task, err := m.App.TaskService.CreateTask(ctx, taskService.CreateTaskRequest{
 		Title:       values.title,
 		Description: values.description,
@@ -80,29 +79,31 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) {
 	if err != nil {
 		slog.Error("failed to creating task", "error", err)
 		m.UI.Notification.Add(state.LevelError, "Error creating task")
-		return
+		return nil
 	}
 
-	// 2. Apply parent relationships with correct relation types
 	m.applyParentRelationships(ctx, task.ID)
-
-	// 3. Apply child relationships with correct relation types
 	m.applyChildRelationships(ctx, task.ID)
 
-	// 4. Reload all tasks for the project to keep state consistent
 	project := m.getCurrentProject()
 	if project != nil {
-		tasksByColumn, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
+		tasksByColumn, err := m.fetchTasksForCurrentProject(ctx, project.ID)
 		if err != nil {
 			slog.Error("failed to reloading tasks", "error", err)
 		} else {
 			m.AppState.SetTasks(tasksByColumn)
 		}
 	}
+
+	// Notify user if the new task is hidden by active filters
+	if m.UI.Filter.HasAnyFilter() {
+		return m.addNotification(state.LevelWarning, "Task created but hidden by active filters")
+	}
+	return nil
 }
 
 // updateExistingTaskWithLabelsAndRelationships updates task, labels, and parent/child relationships
-func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValues) {
+func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValues) tea.Cmd {
 	// create context for database operations
 	ctx, cancel := m.DBContext()
 	defer cancel()
@@ -124,7 +125,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 	if err != nil {
 		slog.Error("failed to updating task", "error", err)
 		m.UI.Notification.Add(state.LevelError, "Error updating task")
-		return
+		return nil
 	}
 
 	// update labels - need to handle this through detaching old and attaching new
@@ -168,16 +169,22 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 
 	m.syncChildRelationships(ctx, taskID)
 
-	// reload all tasks for the project to keep state consistent
+	// reload tasks respecting active filters
 	project := m.getCurrentProject()
 	if project != nil {
-		tasksByColumn, err := m.App.TaskService.GetTaskSummariesByProject(ctx, project.ID)
+		tasksByColumn, err := m.fetchTasksForCurrentProject(ctx, project.ID)
 		if err != nil {
 			slog.Error("failed to reloading tasks", "error", err)
 		} else {
 			m.AppState.SetTasks(tasksByColumn)
 		}
 	}
+
+	// Notify user if the updated task is hidden by active filters
+	if m.UI.Filter.HasAnyFilter() {
+		return m.addNotification(state.LevelWarning, "Task updated but hidden by active filters")
+	}
+	return nil
 }
 
 // applyParentRelationships applies parent relationships from ParentPickerState to a task
@@ -323,8 +330,8 @@ type formConfig struct {
 	form       *huh.Form
 	setForm    func(*huh.Form)
 	clearForm  func()
-	onComplete func() // Called when form completes successfully
-	confirmPtr *bool  // Pointer to confirmation field for quick save
+	onComplete func() tea.Cmd // Called when form completes successfully, may return a cmd (e.g. notification)
+	confirmPtr *bool          // Pointer to confirmation field for quick save
 }
 
 // handleFormUpdate processes form messages generically
@@ -341,15 +348,19 @@ func (m Model) handleFormUpdate(msg tea.Msg, cfg formConfig) (tea.Model, tea.Cmd
 	// Check completion
 	if cfg.form.State == huh.StateCompleted {
 		modeBeforeComplete := m.UIState.Mode
-		cfg.onComplete()
+		completeCmd := cfg.onComplete()
 
 		if m.UIState.Mode != modeBeforeComplete {
-			return m, nil
+			return m, completeCmd
 		}
 
 		m.UIState.Mode = state.NormalMode
 		cfg.setForm(nil)
 		cfg.clearForm()
+
+		if completeCmd != nil {
+			return m, tea.Batch(tea.ClearScreen, completeCmd)
+		}
 		return m, tea.ClearScreen
 	}
 
@@ -376,13 +387,16 @@ func (m Model) handleFormSave(cfg formConfig) (tea.Model, tea.Cmd) {
 	cfg.form.State = huh.StateCompleted
 
 	// Trigger the save logic
-	cfg.onComplete()
+	completeCmd := cfg.onComplete()
 
 	// Clean up and return to normal mode
 	m.UIState.Mode = state.NormalMode
 	cfg.setForm(nil)
 	cfg.clearForm()
 
+	if completeCmd != nil {
+		return m, tea.Batch(tea.ClearScreen, completeCmd)
+	}
 	return m, tea.ClearScreen
 }
 
@@ -524,18 +538,18 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.Forms.Form.ClearTaskForm()
 					m.Forms.Form.EditingTaskID = 0
 				},
-				onComplete: func() {
+				onComplete: func() tea.Cmd {
 					values := m.extractTaskFormValues()
 					if !values.confirm {
-						return
+						return nil
 					}
 					if values.title != "" {
 						if m.Forms.Form.EditingTaskID == 0 {
-							m.createNewTaskWithLabelsAndRelationships(values)
-						} else {
-							m.updateExistingTaskWithLabelsAndRelationships(values)
+							return m.createNewTaskWithLabelsAndRelationships(values)
 						}
+						return m.updateExistingTaskWithLabelsAndRelationships(values)
 					}
+					return nil
 				},
 				confirmPtr: &m.Forms.Form.FormConfirm,
 			})
@@ -552,22 +566,22 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Forms.Form.ClearTaskForm()
 			m.Forms.Form.EditingTaskID = 0
 		},
-		onComplete: func() {
+		onComplete: func() tea.Cmd {
 			values := m.extractTaskFormValues()
 
 			// Form submitted - check confirmation and save the task
 			if !values.confirm {
 				// User selected "No" on confirmation
-				return
+				return nil
 			}
 
 			if values.title != "" {
 				if m.Forms.Form.EditingTaskID == 0 {
-					m.createNewTaskWithLabelsAndRelationships(values)
-				} else {
-					m.updateExistingTaskWithLabelsAndRelationships(values)
+					return m.createNewTaskWithLabelsAndRelationships(values)
 				}
+				return m.updateExistingTaskWithLabelsAndRelationships(values)
 			}
+			return nil
 		},
 		confirmPtr: &m.Forms.Form.FormConfirm,
 	})
@@ -607,8 +621,9 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				clearForm: func() {
 					m.Forms.Form.ClearProjectForm()
 				},
-				onComplete: func() {
+				onComplete: func() tea.Cmd {
 					m.submitProjectForm()
+					return nil
 				},
 				confirmPtr: &m.Forms.Form.FormProjectConfirm,
 			})
@@ -626,8 +641,9 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		clearForm: func() {
 			m.Forms.Form.ClearProjectForm()
 		},
-		onComplete: func() {
+		onComplete: func() tea.Cmd {
 			m.submitProjectForm()
+			return nil
 		},
 	})
 }
@@ -795,12 +811,12 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		clearForm: func() {
 			m.Forms.Form.ClearColumnForm()
 		},
-		onComplete: func() {
+		onComplete: func() tea.Cmd {
 			// Read values from form state (forms update pointers in place)
 			name := strings.TrimSpace(m.Forms.Form.FormColumnName)
 
 			if name == "" {
-				return
+				return nil
 			}
 
 			ctx, cancel := m.DBContext()
@@ -811,7 +827,7 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				project := m.getCurrentProject()
 				if project == nil {
 					m.UI.Notification.Add(state.LevelError, "No project selected")
-					return
+					return nil
 				}
 
 				_, err := m.App.ColumnService.CreateColumn(ctx, columnService.CreateColumnRequest{
@@ -822,7 +838,7 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					slog.Error("failed to creating column", "error", err)
 					m.UI.Notification.Add(state.LevelError, "Error creating column")
-					return
+					return nil
 				}
 
 				// Reload columns
@@ -833,12 +849,13 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					slog.Error("failed to renaming column", "error", err)
 					m.UI.Notification.Add(state.LevelError, "Error renaming column")
-					return
+					return nil
 				}
 
 				// Reload columns
 				m.reloadCurrentProject()
 			}
+			return nil
 		},
 		confirmPtr: nil, // Column forms don't have confirmation field
 	})
@@ -890,12 +907,12 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		clearForm: func() {
 			m.Forms.Form.ClearCommentForm()
 		},
-		onComplete: func() {
+		onComplete: func() tea.Cmd {
 			// Read values from form state (forms update pointers in place)
 			message := strings.TrimSpace(m.Forms.Form.FormCommentMessage)
 
 			if message == "" {
-				return
+				return nil
 			}
 
 			ctx, cancel := m.DBContext()
@@ -906,7 +923,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				taskID := m.Forms.Form.EditingTaskID
 				if taskID == 0 {
 					m.UI.Notification.Add(state.LevelError, "No task selected")
-					return
+					return nil
 				}
 
 				_, err := m.App.TaskService.CreateComment(ctx, taskService.CreateCommentRequest{
@@ -917,7 +934,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					slog.Error("failed to creating comment", "error", err)
 					m.UI.Notification.Add(state.LevelError, "Error creating comment")
-					return
+					return nil
 				}
 
 				m.UI.Notification.Add(state.LevelInfo, "Comment added")
@@ -930,7 +947,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					slog.Error("failed to updating comment", "error", err)
 					m.UI.Notification.Add(state.LevelError, "Error updating comment")
-					return
+					return nil
 				}
 
 				m.UI.Notification.Add(state.LevelInfo, "Comment updated")
@@ -960,6 +977,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.UIState.Mode = state.TicketFormMode
 			}
+			return nil
 		},
 		confirmPtr: nil, // Comment forms don't have confirmation field
 	})

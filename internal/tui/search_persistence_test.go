@@ -338,3 +338,174 @@ func TestUnit_SearchPersistence_EmptySearchQueryDoesNotFilter(t *testing.T) {
 	assert.Equal(t, 0, svc.Task.CallCount("GetTaskSummariesWithFilters"),
 		"should NOT use filtered query when search query is empty")
 }
+
+// TestUnit_SearchPersistence_CreateTaskRespectsActiveFilters verifies that
+// creating a new task reloads with GetTaskSummariesWithFilters when filters are active.
+func TestUnit_SearchPersistence_CreateTaskRespectsActiveFilters(t *testing.T) {
+	t.Parallel()
+	svc := NewDefaultMockServices()
+
+	svc.Project.GetAllProjectsResult = []*models.Project{
+		{ID: 1, Name: "Alpha"},
+	}
+	svc.Column.GetColumnsByProjectResult = []*models.Column{
+		{ID: 10, Name: "Todo", ProjectID: 1},
+	}
+	svc.Task.GetTaskSummariesByProjectResult = make(map[int][]*models.TaskSummary)
+	svc.Task.GetTaskSummariesWithFiltersResult = map[int][]*models.TaskSummary{
+		10: {{ID: 99, Title: "Filtered task", ColumnID: 10, Position: 0, Labels: []*models.Label{}, PriorityColor: "#FF0000"}},
+	}
+	svc.Task.CreateTaskResult = &models.Task{ID: 50, Title: "New task"}
+
+	m := SetupTestModelWithMocks(t, svc)
+	m.UIState.SetWidth(120)
+	m.UIState.Height = 40
+
+	// Activate a search filter before creating a task
+	m.UI.Filter.SearchQuery = "bug"
+
+	initialFilteredCalls := svc.Task.CallCount("GetTaskSummariesWithFilters")
+	initialUnfilteredCalls := svc.Task.CallCount("GetTaskSummariesByProject")
+
+	// Create a task
+	m.createNewTaskWithLabelsAndRelationships(taskFormValues{
+		title:       "New task",
+		description: "A new task",
+		confirm:     true,
+	})
+
+	assert.Greater(t, svc.Task.CallCount("GetTaskSummariesWithFilters"), initialFilteredCalls,
+		"createNewTask should use filtered query when search is active")
+	assert.Equal(t, initialUnfilteredCalls, svc.Task.CallCount("GetTaskSummariesByProject"),
+		"createNewTask should NOT call unfiltered query when search is active")
+}
+
+// TestUnit_SearchPersistence_CreateTaskWithoutFiltersUsesUnfiltered verifies that
+// creating a task without active filters uses the unfiltered query.
+func TestUnit_SearchPersistence_CreateTaskWithoutFiltersUsesUnfiltered(t *testing.T) {
+	t.Parallel()
+	svc := NewDefaultMockServices()
+
+	svc.Project.GetAllProjectsResult = []*models.Project{
+		{ID: 1, Name: "Alpha"},
+	}
+	svc.Column.GetColumnsByProjectResult = []*models.Column{
+		{ID: 10, Name: "Todo", ProjectID: 1},
+	}
+	svc.Task.GetTaskSummariesByProjectResult = make(map[int][]*models.TaskSummary)
+	svc.Task.CreateTaskResult = &models.Task{ID: 50, Title: "New task"}
+
+	m := SetupTestModelWithMocks(t, svc)
+	m.UIState.SetWidth(120)
+	m.UIState.Height = 40
+
+	// No filters active
+	initialUnfilteredCalls := svc.Task.CallCount("GetTaskSummariesByProject")
+
+	m.createNewTaskWithLabelsAndRelationships(taskFormValues{
+		title:       "New task",
+		description: "A new task",
+		confirm:     true,
+	})
+
+	assert.Greater(t, svc.Task.CallCount("GetTaskSummariesByProject"), initialUnfilteredCalls,
+		"createNewTask should use unfiltered query when no filters are active")
+	assert.Equal(t, 0, svc.Task.CallCount("GetTaskSummariesWithFilters"),
+		"createNewTask should NOT call filtered query when no filters are active")
+}
+
+// TestUnit_SearchPersistence_UpdateTaskRespectsActiveFilters verifies that
+// updating an existing task reloads with GetTaskSummariesWithFilters when filters are active.
+func TestUnit_SearchPersistence_UpdateTaskRespectsActiveFilters(t *testing.T) {
+	t.Parallel()
+	svc := NewDefaultMockServices()
+
+	svc.Project.GetAllProjectsResult = []*models.Project{
+		{ID: 1, Name: "Alpha"},
+	}
+	svc.Column.GetColumnsByProjectResult = []*models.Column{
+		{ID: 10, Name: "Todo", ProjectID: 1},
+	}
+	svc.Task.GetTaskSummariesByProjectResult = make(map[int][]*models.TaskSummary)
+	svc.Task.GetTaskSummariesWithFiltersResult = map[int][]*models.TaskSummary{
+		10: {{ID: 1, Title: "Filtered task", ColumnID: 10, Position: 0, Labels: []*models.Label{}, PriorityColor: "#FF0000"}},
+	}
+	svc.Task.GetTaskDetailResult = &models.TaskDetail{
+		ID:     1,
+		Title:  "Existing task",
+		Labels: []*models.Label{},
+	}
+
+	m := SetupTestModelWithMocks(t, svc)
+	m.UIState.SetWidth(120)
+	m.UIState.Height = 40
+	m.Forms.Form.EditingTaskID = 1
+
+	// Activate a search filter before updating a task
+	m.UI.Filter.SearchQuery = "bug"
+
+	initialFilteredCalls := svc.Task.CallCount("GetTaskSummariesWithFilters")
+	initialUnfilteredCalls := svc.Task.CallCount("GetTaskSummariesByProject")
+
+	m.updateExistingTaskWithLabelsAndRelationships(taskFormValues{
+		title:       "Updated task",
+		description: "Updated description",
+		confirm:     true,
+	})
+
+	assert.Greater(t, svc.Task.CallCount("GetTaskSummariesWithFilters"), initialFilteredCalls,
+		"updateExistingTask should use filtered query when search is active")
+	assert.Equal(t, initialUnfilteredCalls, svc.Task.CallCount("GetTaskSummariesByProject"),
+		"updateExistingTask should NOT call unfiltered query when search is active")
+}
+
+// TestUnit_SearchPersistence_CreateTaskRespectsFieldFilters verifies that
+// creating a task respects non-search filters (e.g. priority, label filters).
+func TestUnit_SearchPersistence_CreateTaskRespectsFieldFilters(t *testing.T) {
+	t.Parallel()
+	svc := NewDefaultMockServices()
+
+	svc.Project.GetAllProjectsResult = []*models.Project{
+		{ID: 1, Name: "Alpha"},
+	}
+	svc.Column.GetColumnsByProjectResult = []*models.Column{
+		{ID: 10, Name: "Todo", ProjectID: 1},
+	}
+	svc.Task.GetTaskSummariesByProjectResult = make(map[int][]*models.TaskSummary)
+	svc.Task.GetTaskSummariesWithFiltersResult = make(map[int][]*models.TaskSummary)
+	svc.Task.CreateTaskResult = &models.Task{ID: 50, Title: "New task"}
+
+	m := SetupTestModelWithMocks(t, svc)
+	m.UIState.SetWidth(120)
+	m.UIState.Height = 40
+
+	// Activate a priority filter (no search query)
+	priorityID := 2
+	m.UI.Filter.PriorityID = &priorityID
+
+	initialFilteredCalls := svc.Task.CallCount("GetTaskSummariesWithFilters")
+	initialUnfilteredCalls := svc.Task.CallCount("GetTaskSummariesByProject")
+
+	m.createNewTaskWithLabelsAndRelationships(taskFormValues{
+		title:       "New task",
+		description: "A new task",
+		confirm:     true,
+	})
+
+	assert.Greater(t, svc.Task.CallCount("GetTaskSummariesWithFilters"), initialFilteredCalls,
+		"createNewTask should use filtered query when priority filter is active")
+	assert.Equal(t, initialUnfilteredCalls, svc.Task.CallCount("GetTaskSummariesByProject"),
+		"createNewTask should NOT call unfiltered query when priority filter is active")
+
+	// Verify the filter params included the priority
+	calls := svc.Task.GetCalls()
+	for i := len(calls) - 1; i >= 0; i-- {
+		if calls[i].Method == "GetTaskSummariesWithFilters" {
+			params, ok := calls[i].Args["params"].(tasksvc.TaskFilterParams)
+			require.True(t, ok, "expected TaskFilterParams in call args")
+			require.NotNil(t, params.PriorityID, "expected PriorityID to be set")
+			assert.Equal(t, 2, *params.PriorityID, "PriorityID should match active filter")
+			break
+		}
+	}
+}
