@@ -136,7 +136,10 @@ func ParseIssueJSON(data []byte) (*Issue, error) {
 	issue.Comments = make([]Comment, 0, len(raw.Fields.Comment.Comments))
 
 	for _, c := range raw.Fields.Comment.Comments {
-		createdAt, err := time.Parse("2006-01-02T15:04:05.000-0700", c.Created)
+		createdAt, err := time.Parse(time.RFC3339, c.Created)
+		if err != nil {
+			createdAt, err = time.Parse("2006-01-02T15:04:05.000-0700", c.Created)
+		}
 		if err != nil {
 			createdAt = time.Time{}
 		}

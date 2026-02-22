@@ -172,6 +172,34 @@ func TestParseIssueJSON_MalformedCreatedAt(t *testing.T) {
 	assert.True(t, issue.Comments[0].CreatedAt.IsZero(), "malformed date should result in zero time")
 }
 
+func TestParseIssueJSON_UTCZuluTimestamp(t *testing.T) {
+	t.Parallel()
+
+	data := []byte(`{
+		"key": "PROJ-99",
+		"fields": {
+			"summary": "Zulu time issue",
+			"description": "body",
+			"comment": {
+				"comments": [
+					{
+						"author": {"displayName": "user"},
+						"body": "zulu timestamp",
+						"created": "2026-02-16T10:00:00Z"
+					}
+				]
+			}
+		}
+	}`)
+
+	issue, err := ParseIssueJSON(data)
+
+	require.NoError(t, err)
+	require.Len(t, issue.Comments, 1)
+	expected := time.Date(2026, 2, 16, 10, 0, 0, 0, time.UTC)
+	assert.Equal(t, expected, issue.Comments[0].CreatedAt.UTC())
+}
+
 func TestCheckInstalled_JiraExists(t *testing.T) {
 	original := lookPath
 	t.Cleanup(func() { lookPath = original })

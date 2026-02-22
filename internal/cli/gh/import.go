@@ -54,10 +54,6 @@ Examples:
 type importHandler struct{}
 
 func (h *importHandler) Execute(ctx context.Context, args *handler.Arguments) (any, error) {
-	if len(args.Args) == 0 {
-		return nil, fmt.Errorf("issue number is required")
-	}
-
 	issueNumber, err := ValidateIssueNumber(args.Args[0])
 	if err != nil {
 		return nil, err
