@@ -12,6 +12,7 @@ import (
 	columnservice "github.com/thenoetrevino/paso/internal/services/column"
 	labelservice "github.com/thenoetrevino/paso/internal/services/label"
 	projectservice "github.com/thenoetrevino/paso/internal/services/project"
+	standuplogservice "github.com/thenoetrevino/paso/internal/services/standuplog"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/services/taskevent"
 )
@@ -29,11 +30,12 @@ type App struct {
 	GitDetector git.Detector
 
 	// Service layer (business logic) - ONLY public interface
-	TaskService     taskservice.Service
-	ProjectService  projectservice.Service
-	ColumnService   columnservice.Service
-	LabelService    labelservice.Service
-	AssigneeService assigneeservice.Service
+	TaskService       taskservice.Service
+	ProjectService    projectservice.Service
+	ColumnService     columnservice.Service
+	LabelService      labelservice.Service
+	AssigneeService   assigneeservice.Service
+	StandupLogService standuplogservice.Service
 
 	// External integrations
 	GitHubFetcher github.IssueFetcher
@@ -97,17 +99,23 @@ func New(db *sql.DB, opts ...Option) (*App, error) {
 		return nil, err
 	}
 
+	standupLogSvc, err := standuplogservice.NewService(db, cfg.dbType)
+	if err != nil {
+		return nil, err
+	}
+
 	return &App{
-		eventClient:     cfg.eventClient,
-		dbType:          cfg.dbType,
-		GitDetector:     gitDetector,
-		TaskService:     taskSvc,
-		ProjectService:  projectSvc,
-		ColumnService:   columnSvc,
-		LabelService:    labelSvc,
-		AssigneeService: assigneeSvc,
-		GitHubFetcher:   github.NewIssueFetcher(),
-		JiraFetcher:     jira.NewIssueFetcher(),
+		eventClient:       cfg.eventClient,
+		dbType:            cfg.dbType,
+		GitDetector:       gitDetector,
+		TaskService:       taskSvc,
+		ProjectService:    projectSvc,
+		ColumnService:     columnSvc,
+		LabelService:      labelSvc,
+		AssigneeService:   assigneeSvc,
+		StandupLogService: standupLogSvc,
+		GitHubFetcher:     github.NewIssueFetcher(),
+		JiraFetcher:       jira.NewIssueFetcher(),
 	}, nil
 }
 

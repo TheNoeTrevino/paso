@@ -16,6 +16,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/cli/label"
 	"github.com/thenoetrevino/paso/internal/cli/project"
 	"github.com/thenoetrevino/paso/internal/cli/setup"
+	"github.com/thenoetrevino/paso/internal/cli/standup"
 	"github.com/thenoetrevino/paso/internal/cli/task"
 	"github.com/thenoetrevino/paso/internal/cli/tutorial"
 	"github.com/thenoetrevino/paso/internal/launcher"
@@ -69,6 +70,7 @@ func init() {
 	rootCmd.AddCommand(gh.GhCmd())
 	rootCmd.AddCommand(clidaemon.DaemonCmd())
 	rootCmd.AddCommand(jiracli.JiraCmd())
+	rootCmd.AddCommand(standup.StandupCmd())
 
 	// Add TUI subcommand
 	tuiCmd := &cobra.Command{

@@ -1,5 +1,7 @@
 package types
 
+import "time"
+
 // labels.sql.go params
 type AddLabelToTaskParams struct {
 	TaskID  int64
@@ -197,4 +199,16 @@ type CreateTaskEventParams struct {
 	TaskID  int64
 	Content string
 	Author  string
+}
+
+// standup_logs.sql.go params
+type CreateStandupLogParams struct {
+	ProjectID int64
+	Content   string
+}
+
+type GetStandupLogsByProjectAndDateRangeParams struct {
+	ProjectID int64
+	Since     time.Time
+	Until     time.Time
 }

@@ -22,7 +22,7 @@ select id, name, created_at, updated_at
 from assignees
 order by name;
 
--- name: DeleteAssignee :exec
+-- name: DeleteAssignee :execrows
 -- Deletes an assignee by ID
 -- Note: Tasks will have assignee_id set to null via on delete set null
 delete from assignees

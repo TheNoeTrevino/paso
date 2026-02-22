@@ -113,6 +113,14 @@ type Type struct {
 	Description string
 }
 
+// StandupLog represents an immutable standup log entry for a project.
+type StandupLog struct {
+	ID        int64
+	ProjectID int64
+	Content   string
+	CreatedAt NullTime
+}
+
 // GetTaskTypeAndPriorityIDsRow represents the result of fetching type and priority IDs.
 type GetTaskTypeAndPriorityIDsRow struct {
 	TypeID     int64

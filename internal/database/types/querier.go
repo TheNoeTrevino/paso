@@ -226,4 +226,14 @@ type Querier interface {
 	UpdateTaskType(ctx context.Context, arg UpdateTaskTypeParams) error
 	// Inserts a label or ignores if it already exists (for seeding)
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
+	// Creates a new standup log entry for a project
+	CreateStandupLog(ctx context.Context, arg CreateStandupLogParams) (StandupLog, error)
+	// Retrieves a single standup log by ID
+	GetStandupLog(ctx context.Context, id int64) (StandupLog, error)
+	// Retrieves all standup logs for a project, ordered by creation time (newest first)
+	GetStandupLogsByProject(ctx context.Context, projectID int64) ([]StandupLog, error)
+	// Retrieves standup logs for a project within a date range, ordered by creation time (newest first)
+	GetStandupLogsByProjectAndDateRange(ctx context.Context, arg GetStandupLogsByProjectAndDateRangeParams) ([]StandupLog, error)
+	// Deletes a standup log by ID
+	DeleteStandupLog(ctx context.Context, id int64) error
 }

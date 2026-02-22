@@ -1,6 +1,8 @@
 package postgres
 
 import (
+	"database/sql"
+
 	"github.com/thenoetrevino/paso/internal/database/generated_postgres"
 	"github.com/thenoetrevino/paso/internal/database/types"
 )
@@ -252,5 +254,28 @@ func toGeneratedUpdateCommentParams(t types.UpdateCommentParams) generated_postg
 	return generated_postgres.UpdateCommentParams{
 		Content: t.Content,
 		ID:      t.ID,
+	}
+}
+
+func toGeneratedCreateTaskEventParams(t types.CreateTaskEventParams) generated_postgres.CreateTaskEventParams {
+	return generated_postgres.CreateTaskEventParams{
+		TaskID:  t.TaskID,
+		Content: t.Content,
+		Author:  t.Author,
+	}
+}
+
+func toGeneratedCreateStandupLogParams(t types.CreateStandupLogParams) generated_postgres.CreateStandupLogParams {
+	return generated_postgres.CreateStandupLogParams{
+		ProjectID: t.ProjectID,
+		Content:   t.Content,
+	}
+}
+
+func toGeneratedGetStandupLogsByProjectAndDateRangeParams(t types.GetStandupLogsByProjectAndDateRangeParams) generated_postgres.GetStandupLogsByProjectAndDateRangeParams {
+	return generated_postgres.GetStandupLogsByProjectAndDateRangeParams{
+		ProjectID:   t.ProjectID,
+		CreatedAt:   sql.NullTime{Time: t.Since, Valid: true},
+		CreatedAt_2: sql.NullTime{Time: t.Until, Valid: true},
 	}
 }

@@ -437,3 +437,22 @@ func fromGeneratedGetReadyColumnByProjectRow(g generated_postgres.GetReadyColumn
 		HoldsReadyTasks: g.HoldsReadyTasks,
 	}
 }
+
+func fromGeneratedTaskEvent(g generated_postgres.TaskEvent) types.TaskEvent {
+	return types.TaskEvent{
+		ID:        g.ID,
+		TaskID:    g.TaskID,
+		Content:   g.Content,
+		Author:    g.Author,
+		CreatedAt: types.FromSQLNullTime(g.CreatedAt),
+	}
+}
+
+func fromGeneratedStandupLog(g generated_postgres.StandupLog) types.StandupLog {
+	return types.StandupLog{
+		ID:        g.ID,
+		ProjectID: g.ProjectID,
+		Content:   g.Content,
+		CreatedAt: types.FromSQLNullTime(g.CreatedAt),
+	}
+}

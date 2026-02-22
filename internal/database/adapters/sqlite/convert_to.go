@@ -264,5 +264,28 @@ func toGeneratedUpdateCommentParams(t types.UpdateCommentParams) generated_sqlit
 	}
 }
 
+func toGeneratedCreateTaskEventParams(t types.CreateTaskEventParams) generated_sqlite.CreateTaskEventParams {
+	return generated_sqlite.CreateTaskEventParams{
+		TaskID:  t.TaskID,
+		Content: t.Content,
+		Author:  t.Author,
+	}
+}
+
+func toGeneratedCreateStandupLogParams(t types.CreateStandupLogParams) generated_sqlite.CreateStandupLogParams {
+	return generated_sqlite.CreateStandupLogParams{
+		ProjectID: t.ProjectID,
+		Content:   t.Content,
+	}
+}
+
+func toGeneratedGetStandupLogsByProjectAndDateRangeParams(t types.GetStandupLogsByProjectAndDateRangeParams) generated_sqlite.GetStandupLogsByProjectAndDateRangeParams {
+	return generated_sqlite.GetStandupLogsByProjectAndDateRangeParams{
+		ProjectID:   t.ProjectID,
+		CreatedAt:   sql.NullTime{Time: t.Since, Valid: true},
+		CreatedAt_2: sql.NullTime{Time: t.Until, Valid: true},
+	}
+}
+
 // Suppress unused import warning
 var _ = sql.ErrNoRows

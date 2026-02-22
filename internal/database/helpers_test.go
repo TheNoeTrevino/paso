@@ -68,6 +68,7 @@ func setupPostgresTestDB(tb testing.TB) *sql.DB {
 
 	// Drop all tables and goose state for a clean slate
 	drops := `
+	drop table if exists standup_logs cascade;
 	drop table if exists task_events cascade;
 	drop table if exists task_comments cascade;
 	drop table if exists task_labels cascade;
