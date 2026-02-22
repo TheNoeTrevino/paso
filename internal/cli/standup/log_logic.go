@@ -1,6 +1,7 @@
 package standup
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -49,7 +50,7 @@ func FormatLogHuman(result *LogResult, colorScheme colors.ColorScheme) string {
 }
 
 // openEditor opens the user's preferred editor and returns the content written.
-func openEditor() (string, error) {
+func openEditor(ctx context.Context) (string, error) {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
 		editor = os.Getenv("VISUAL")
@@ -63,13 +64,13 @@ func openEditor() (string, error) {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
-	defer os.Remove(tmpPath)
+	defer func() { _ = os.Remove(tmpPath) }()
 
 	// Write a hint comment
 	_, _ = tmpFile.WriteString("\n# Enter your standup log above. Lines starting with # are ignored.\n")
 	_ = tmpFile.Close()
 
-	cmd := exec.Command(editor, tmpPath)
+	cmd := exec.CommandContext(ctx, editor, tmpPath)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

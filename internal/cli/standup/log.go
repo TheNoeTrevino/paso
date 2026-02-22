@@ -57,7 +57,7 @@ func runLog(cmd *cobra.Command, _ []string) error {
 	// If no message flag, open editor
 	if message == "" {
 		var err error
-		message, err = openEditor()
+		message, err = openEditor(ctx)
 		if err != nil {
 			return formatter.Error(cli.ExitError, "EDITOR_ERROR", err.Error())
 		}

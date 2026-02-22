@@ -9,8 +9,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/models"
 )
 
-const listContentTruncateLength = 60
-
 // FormatListQuiet returns a slice of log IDs as strings
 func FormatListQuiet(logs []models.StandupLog) []string {
 	ids := make([]string, len(logs))
