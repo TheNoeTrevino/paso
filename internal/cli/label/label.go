@@ -17,6 +17,7 @@ func LabelCmd() *cobra.Command {
 	cmd.AddCommand(DeleteCmd())
 	cmd.AddCommand(AttachCmd())
 	cmd.AddCommand(DetachCmd())
+	cmd.AddCommand(PickCmd())
 
 	return cmd
 }

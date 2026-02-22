@@ -15,6 +15,7 @@ Available Commands:
   link        Link tasks with relationships
   list        List tasks
   move        Move a task to another column
+  pick        Interactively pick a task
   ready       List tasks ready to work on
   show        Show task details
   switch      Move a task to a different project

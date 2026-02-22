@@ -10,6 +10,7 @@ Available Commands:
   git-link    Link a project to a git branch
   git-unlink  Unlink a project from its git branch
   list        List all projects
+  pick        Interactively pick a project
   tree        Display tasks in a tree structure
 
 Flags:

@@ -29,6 +29,7 @@ func ProjectCmd() *cobra.Command {
 	cmd.AddCommand(TreeCmd())
 	cmd.AddCommand(GitLinkCmd())
 	cmd.AddCommand(GitUnlinkCmd())
+	cmd.AddCommand(PickCmd())
 
 	return cmd
 }

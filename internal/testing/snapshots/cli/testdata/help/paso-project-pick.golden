@@ -1,0 +1,13 @@
+Interactively pick a project from a filterable list and output its ID.
+
+Designed for command chaining with other paso commands.
+
+Examples:
+  # Pick a project and list its tasks
+  paso task list $(paso project pick)
+
+  # Pick a project and view its tree
+  paso project tree $(paso project pick)
+
+Usage:
+  paso project pick

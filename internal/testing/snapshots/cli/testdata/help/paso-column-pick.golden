@@ -1,0 +1,16 @@
+Interactively pick a column from a filterable list and output its ID.
+
+Designed for command chaining with other paso commands.
+
+Examples:
+  # Pick a column to move a task to
+  paso task move -i 42 $(paso column pick)
+
+  # Pick from a specific project
+  paso column pick 2
+
+Usage:
+  paso column pick [project-id] [flags]
+
+Flags:
+  -p, --project int   Project ID (uses git branch association if not specified)
