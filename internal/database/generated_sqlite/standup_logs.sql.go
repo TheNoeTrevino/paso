@@ -7,6 +7,7 @@ package generated_sqlite
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createStandupLog = `-- name: CreateStandupLog :one
@@ -72,6 +73,50 @@ order by created_at desc
 // Retrieves all standup logs for a project, ordered by creation time (newest first)
 func (q *Queries) GetStandupLogsByProject(ctx context.Context, projectID int64) ([]StandupLog, error) {
 	rows, err := q.db.QueryContext(ctx, getStandupLogsByProject, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []StandupLog{}
+	for rows.Next() {
+		var i StandupLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Content,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getStandupLogsByProjectAndDateRange = `-- name: GetStandupLogsByProjectAndDateRange :many
+select id, project_id, content, created_at
+from standup_logs
+where project_id = ?
+  and created_at >= ?
+  and created_at < ?
+order by created_at desc
+`
+
+type GetStandupLogsByProjectAndDateRangeParams struct {
+	ProjectID   int64
+	CreatedAt   sql.NullTime
+	CreatedAt_2 sql.NullTime
+}
+
+// Retrieves standup logs for a project within a date range, ordered by creation time (newest first)
+func (q *Queries) GetStandupLogsByProjectAndDateRange(ctx context.Context, arg GetStandupLogsByProjectAndDateRangeParams) ([]StandupLog, error) {
+	rows, err := q.db.QueryContext(ctx, getStandupLogsByProjectAndDateRange, arg.ProjectID, arg.CreatedAt, arg.CreatedAt_2)
 	if err != nil {
 		return nil, err
 	}

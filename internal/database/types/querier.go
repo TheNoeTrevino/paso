@@ -232,6 +232,8 @@ type Querier interface {
 	GetStandupLog(ctx context.Context, id int64) (StandupLog, error)
 	// Retrieves all standup logs for a project, ordered by creation time (newest first)
 	GetStandupLogsByProject(ctx context.Context, projectID int64) ([]StandupLog, error)
+	// Retrieves standup logs for a project within a date range, ordered by creation time (newest first)
+	GetStandupLogsByProjectAndDateRange(ctx context.Context, arg GetStandupLogsByProjectAndDateRangeParams) ([]StandupLog, error)
 	// Deletes a standup log by ID
 	DeleteStandupLog(ctx context.Context, id int64) error
 }

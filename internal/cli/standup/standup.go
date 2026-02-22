@@ -21,12 +21,19 @@ Examples:
   paso standup log
 
   # List recent logs
-  paso standup list`,
+  paso standup list
+
+  # Generate a standup report for the last week
+  paso standup generate
+
+  # Generate for the last 3 days
+  paso standup generate -d 3`,
 	}
 
 	cmd.AddCommand(LogCmd())
 	cmd.AddCommand(ListCmd())
 	cmd.AddCommand(DeleteCmd())
+	cmd.AddCommand(GenerateCmd())
 
 	return cmd
 }

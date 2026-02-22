@@ -11,6 +11,7 @@ import (
 const createStandupLogSQL = `INSERT INTO standup_logs (project_id, content) VALUES ($1, $2) RETURNING id, project_id, content, created_at`
 const getStandupLogSQL = `SELECT id, project_id, content, created_at FROM standup_logs WHERE id = $1`
 const getStandupLogsByProjectSQL = `SELECT id, project_id, content, created_at FROM standup_logs WHERE project_id = $1 ORDER BY created_at DESC`
+const getStandupLogsByProjectAndDateRangeSQL = `SELECT id, project_id, content, created_at FROM standup_logs WHERE project_id = $1 AND created_at >= $2 AND created_at < $3 ORDER BY created_at DESC`
 const deleteStandupLogSQL = `DELETE FROM standup_logs WHERE id = $1`
 
 func (a *Adapter) CreateStandupLog(ctx context.Context, arg types.CreateStandupLogParams) (types.StandupLog, error) {
@@ -55,6 +56,28 @@ func (a *Adapter) GetStandupLogsByProject(ctx context.Context, projectID int64) 
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate standup logs for project %d: %w", projectID, err)
+	}
+	return logs, nil
+}
+
+func (a *Adapter) GetStandupLogsByProjectAndDateRange(ctx context.Context, arg types.GetStandupLogsByProjectAndDateRangeParams) ([]types.StandupLog, error) {
+	rows, err := a.db.QueryContext(ctx, getStandupLogsByProjectAndDateRangeSQL, arg.ProjectID, arg.Since, arg.Until)
+	if err != nil {
+		return nil, fmt.Errorf("get standup logs for project %d in date range: %w", arg.ProjectID, err)
+	}
+	defer func() { _ = rows.Close() }()
+	var logs []types.StandupLog
+	for rows.Next() {
+		var s types.StandupLog
+		var createdAt sql.NullTime
+		if err := rows.Scan(&s.ID, &s.ProjectID, &s.Content, &createdAt); err != nil {
+			return nil, fmt.Errorf("scan standup log for project %d in date range: %w", arg.ProjectID, err)
+		}
+		s.CreatedAt = types.FromSQLNullTime(createdAt)
+		logs = append(logs, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate standup logs for project %d in date range: %w", arg.ProjectID, err)
 	}
 	return logs, nil
 }

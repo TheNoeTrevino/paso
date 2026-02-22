@@ -15,6 +15,7 @@ import (
 type Service interface {
 	Create(ctx context.Context, projectID int, content string) (*models.StandupLog, error)
 	ListByProject(ctx context.Context, projectID int) ([]models.StandupLog, error)
+	ListByProjectInRange(ctx context.Context, projectID int, since, until time.Time) ([]models.StandupLog, error)
 	GetByID(ctx context.Context, id int) (*models.StandupLog, error)
 	Delete(ctx context.Context, id int) error
 }
@@ -67,6 +68,30 @@ func (s *service) ListByProject(ctx context.Context, projectID int) ([]models.St
 	logs, err := s.queries.GetStandupLogsByProject(ctx, int64(projectID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to list standup logs: %w", err)
+	}
+
+	return converters.StandupLogsToModels(logs), nil
+}
+
+func (s *service) ListByProjectInRange(ctx context.Context, projectID int, since, until time.Time) ([]models.StandupLog, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	if projectID <= 0 {
+		return nil, ErrInvalidProjectID
+	}
+
+	if !since.Before(until) {
+		return nil, ErrInvalidDateRange
+	}
+
+	logs, err := s.queries.GetStandupLogsByProjectAndDateRange(ctx, types.GetStandupLogsByProjectAndDateRangeParams{
+		ProjectID: int64(projectID),
+		Since:     since,
+		Until:     until,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list standup logs in range: %w", err)
 	}
 
 	return converters.StandupLogsToModels(logs), nil

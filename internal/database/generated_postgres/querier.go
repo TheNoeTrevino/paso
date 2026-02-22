@@ -142,6 +142,8 @@ type Querier interface {
 	GetStandupLog(ctx context.Context, id int64) (StandupLog, error)
 	// Retrieves all standup logs for a project, ordered by creation time (newest first)
 	GetStandupLogsByProject(ctx context.Context, projectID int64) ([]StandupLog, error)
+	// Retrieves standup logs for a project within a date range, ordered by creation time (newest first)
+	GetStandupLogsByProjectAndDateRange(ctx context.Context, arg GetStandupLogsByProjectAndDateRangeParams) ([]StandupLog, error)
 	// Retrieves the last column in a project's linked list (where next_id is null)
 	GetTailColumnForProject(ctx context.Context, projectID int64) (int64, error)
 	// Retrieves basic task information by ID
