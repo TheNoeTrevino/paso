@@ -31,14 +31,13 @@ Expose struct fields directly opening visibility if needed, unless you need vali
 Then you can create getter and setter methods for those fields, and make them private.
 Prefer public fields if needed outside of the package and they don't required complex validation/error handling. 
 
-Use `any` instead of `interface{}` for fields that can hold any type, it is a new go feature
-
-Use interfaces to avoid coupling packages together, and to allow for easier testing and mocking. 
-Define interfaces in the package that uses them, not in the package that implements them. (idiomatic to go)
+Go interfaces generally belong in the package that uses values of the interface type, not the package that implements those values. The implementing package should return concrete (usually pointer or struct) types: that way, new methods can be added to implementations without requiring extensive refactoring.
 
 Run `golangci-lint run ./...` to maintain code quality and catch potential issues early
 
 Run `go test ./...` to ensure your code is working as expected and to catch any regressions
+
+Run `go fix ./...` to ensure your code is modernized.
 
 Use practices like the guard pattern, early returns, fail fasts, to ensure our code is easy to read. 
 
