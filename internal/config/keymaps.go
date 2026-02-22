@@ -162,8 +162,7 @@ func DefaultKeyMappings() KeyMappings {
 	}
 }
 
-func (n *NavigationKeys) applyDefaults() {
-	defaults := DefaultKeyMappings().Navigation
+func (n *NavigationKeys) applyDefaultsFrom(defaults NavigationKeys) {
 	if n.MoveLeft == "" {
 		n.MoveLeft = defaults.MoveLeft
 	}
@@ -190,8 +189,7 @@ func (n *NavigationKeys) applyDefaults() {
 	}
 }
 
-func (t *TaskKeys) applyDefaults() {
-	defaults := DefaultKeyMappings().Tasks
+func (t *TaskKeys) applyDefaultsFrom(defaults TaskKeys) {
 	if t.AddTask == "" {
 		t.AddTask = defaults.AddTask
 	}
@@ -233,8 +231,7 @@ func (t *TaskKeys) applyDefaults() {
 	}
 }
 
-func (k *KanbanKeys) applyDefaults() {
-	defaults := DefaultKeyMappings().Kanban
+func (k *KanbanKeys) applyDefaultsFrom(defaults KanbanKeys) {
 	if k.CreateColumn == "" {
 		k.CreateColumn = defaults.CreateColumn
 	}
@@ -258,8 +255,7 @@ func (k *KanbanKeys) applyDefaults() {
 	}
 }
 
-func (p *ProjectKeys) applyDefaults() {
-	defaults := DefaultKeyMappings().Projects
+func (p *ProjectKeys) applyDefaultsFrom(defaults ProjectKeys) {
 	if p.CreateProject == "" {
 		p.CreateProject = defaults.CreateProject
 	}
@@ -271,8 +267,7 @@ func (p *ProjectKeys) applyDefaults() {
 	}
 }
 
-func (f *FormKeys) applyDefaults() {
-	defaults := DefaultKeyMappings().Forms
+func (f *FormKeys) applyDefaultsFrom(defaults FormKeys) {
 	if f.SaveForm == "" {
 		f.SaveForm = defaults.SaveForm
 	}
@@ -311,15 +306,13 @@ func (f *FormKeys) applyDefaults() {
 	}
 }
 
-func (p *PickerKeys) applyDefaults() {
-	defaults := DefaultKeyMappings().Pickers
+func (p *PickerKeys) applyDefaultsFrom(defaults PickerKeys) {
 	if p.DeleteLabel == "" {
 		p.DeleteLabel = defaults.DeleteLabel
 	}
 }
 
-func (g *GeneralKeys) applyDefaults() {
-	defaults := DefaultKeyMappings().General
+func (g *GeneralKeys) applyDefaultsFrom(defaults GeneralKeys) {
 	if g.ShowHelp == "" {
 		g.ShowHelp = defaults.ShowHelp
 	}
@@ -345,11 +338,12 @@ func (g *GeneralKeys) applyDefaults() {
 
 // applyDefaults fills in missing key mappings with defaults.
 func (k *KeyMappings) applyDefaults() {
-	k.Navigation.applyDefaults()
-	k.Tasks.applyDefaults()
-	k.Kanban.applyDefaults()
-	k.Projects.applyDefaults()
-	k.Forms.applyDefaults()
-	k.Pickers.applyDefaults()
-	k.General.applyDefaults()
+	d := DefaultKeyMappings()
+	k.Navigation.applyDefaultsFrom(d.Navigation)
+	k.Tasks.applyDefaultsFrom(d.Tasks)
+	k.Kanban.applyDefaultsFrom(d.Kanban)
+	k.Projects.applyDefaultsFrom(d.Projects)
+	k.Forms.applyDefaultsFrom(d.Forms)
+	k.Pickers.applyDefaultsFrom(d.Pickers)
+	k.General.applyDefaultsFrom(d.General)
 }
