@@ -1,10 +1,12 @@
 package column
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
 
+	"charm.land/huh/v2"
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 )
@@ -75,7 +77,10 @@ func runPick(cmd *cobra.Command, args []string) error {
 
 	selected, err := cli.RunPick("Pick a column", columns)
 	if err != nil {
-		return formatter.Error(cli.ExitError, "PICK_CANCELLED", "Selection cancelled")
+		if errors.Is(err, huh.ErrUserAborted) {
+			return formatter.Error(cli.ExitUsage, "PICK_CANCELLED", "Selection cancelled")
+		}
+		return formatter.Error(cli.ExitError, "PICK_ERROR", err.Error())
 	}
 
 	fmt.Println(selected)
