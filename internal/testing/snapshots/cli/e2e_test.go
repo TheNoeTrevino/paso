@@ -25,11 +25,12 @@ var timestampRegex = regexp.MustCompile(`[A-Z][a-z]{2} \d{1,2}, \d{4} \d{1,2}:\d
 
 func normalizeTimestamps(s string) string {
 	return timestampRegex.ReplaceAllStringFunc(s, func(timestamp string) string {
-		// Replace with a fixed-width placeholder (22 chars) to match the max timestamp width
-		// Max width example: "Dec 31, 2006 12:04 PM" = 22 chars
+		// Always pad to max timestamp width (22 chars) so the placeholder is
+		// the same length regardless of when the test runs.
+		// Max: "Dec 31, 2006 12:04 PM" = 22 chars
+		const maxTimestampLen = 22
 		placeholder := "[TIMESTAMP]"
-		// Pad with spaces on the right to maintain column alignment
-		padding := len(timestamp) - len(placeholder)
+		padding := maxTimestampLen - len(placeholder)
 		if padding > 0 {
 			placeholder += strings.Repeat(" ", padding)
 		}
