@@ -10,19 +10,20 @@ import (
 // handleCommentsViewInput processes input in comments view mode
 func (m Model) handleCommentsViewInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
+	km := m.Config.KeyMappings
 
 	switch key {
-	case "up", "k":
+	case km.Navigation.MoveUp, "up":
 		return m.handleCommentsViewUp()
-	case "down", "j":
+	case km.Navigation.MoveDown, "down":
 		return m.handleCommentsViewDown()
-	case "enter", "e":
+	case "enter", km.Tasks.EditTask:
 		return m.handleCommentsViewEdit()
-	case "a":
+	case km.Tasks.AddTask:
 		return m.handleCommentsViewAdd()
-	case "d":
+	case km.Tasks.DeleteTask:
 		return m.handleCommentsViewDelete()
-	case "esc", "q":
+	case "esc", km.General.Quit:
 		return m.handleCommentsViewClose()
 	}
 

@@ -317,22 +317,31 @@ TASKS
   %s     Add new task
   %s     Edit selected task
   %s     Delete selected task
+  %s     Edit task details
+  %s     Edit labels
+  %s     Edit priority
+  %s     Edit assignee
+  %s     Edit estimate
+  %s     Edit due date
+  %s     Edit type
+  %s     Edit parent task
+  %s     Edit child task
+  %s     Move task to another project
+
+KANBAN
+  %s     Create new column (after current)
+  %s     Rename current column
+  %s     Delete current column
   %s     Move task to previous column
   %s     Move task to next column
   %s     Move task up in column
   %s     Move task down in column
-  %s     Edit task details
-
-COLUMNS
-  %s     Create new column (after current)
-  %s     Rename current column
-  %s     Delete current column
 
 NAVIGATION
-  %s     Move to previous column
-  %s     Move to next column
-  %s     Move to previous task
-  %s     Move to next task
+  %s     Move left
+  %s     Move right
+  %s     Move up
+  %s     Move down
   %s     Scroll viewport left
   %s     Scroll viewport right
 
@@ -340,45 +349,85 @@ PROJECTS
   %s     Switch to previous project
   %s     Switch to next project
   %s     Create new project
+  %s     Edit current project
   %s     Delete current project
 
 VIEW
   %s     Toggle between kanban and list view
-  %s     Move task to another project
-  /         Search tasks
+  %s     Search tasks
+  %s     Open filter bar
+
+FORMS
+  %s     Save form
+  %s     Open comments view
+  %s     Refresh git data
+  %s     Edit labels
+  %s     Edit parent task
+  %s     Edit child task
+  %s     Edit priority
+  %s     Edit type
+  %s     Edit assignee
+  %s     Edit estimate
+  %s     Edit due date
+  %s     Show form help
 
 OTHER
   %s     Show this help
+  %s     Connect to remote database
   %s     Suspend (resume with fg)
   %s     Quit
 
 Press any key to close`,
-		km.AddTask,
-		km.EditTask,
-		km.DeleteTask,
-		km.MoveTaskLeft,
-		km.MoveTaskRight,
-		km.MoveTaskUp,
-		km.MoveTaskDown,
-		km.ViewTask,
-		km.CreateColumn,
-		km.RenameColumn,
-		km.DeleteColumn,
-		km.PrevColumn,
-		km.NextColumn,
-		km.PrevTask,
-		km.NextTask,
-		km.ScrollViewportLeft,
-		km.ScrollViewportRight,
-		km.PrevProject,
-		km.NextProject,
-		km.CreateProject,
-		km.DeleteProject,
-		km.ToggleView,
-		km.MoveTaskToProject,
-		km.ShowHelp,
-		km.Suspend,
-		km.Quit,
+		km.Tasks.AddTask,
+		km.Tasks.EditTask,
+		km.Tasks.DeleteTask,
+		km.Tasks.ViewTask,
+		km.Tasks.EditLabels,
+		km.Tasks.EditPriority,
+		km.Tasks.EditAssignee,
+		km.Tasks.EditEstimate,
+		km.Tasks.EditDueDate,
+		km.Tasks.EditType,
+		km.Tasks.EditParentTask,
+		km.Tasks.EditChildTask,
+		km.Tasks.MoveTaskToProject,
+		km.Kanban.CreateColumn,
+		km.Kanban.RenameColumn,
+		km.Kanban.DeleteColumn,
+		km.Kanban.MoveTaskLeft,
+		km.Kanban.MoveTaskRight,
+		km.Kanban.MoveTaskUp,
+		km.Kanban.MoveTaskDown,
+		km.Navigation.MoveLeft,
+		km.Navigation.MoveRight,
+		km.Navigation.MoveUp,
+		km.Navigation.MoveDown,
+		km.Navigation.ScrollViewportLeft,
+		km.Navigation.ScrollViewportRight,
+		km.Navigation.PrevProject,
+		km.Navigation.NextProject,
+		km.Projects.CreateProject,
+		km.Projects.EditProject,
+		km.Projects.DeleteProject,
+		km.General.ToggleView,
+		km.General.Search,
+		km.General.FilterBar,
+		km.Forms.SaveForm,
+		km.Forms.OpenCommentsView,
+		km.Forms.RefreshGitData,
+		km.Forms.EditLabels,
+		km.Forms.EditParentTask,
+		km.Forms.EditChildTask,
+		km.Forms.EditPriority,
+		km.Forms.EditType,
+		km.Forms.EditAssignee,
+		km.Forms.EditEstimate,
+		km.Forms.EditDueDate,
+		km.Forms.ShowHelp,
+		km.General.ShowHelp,
+		km.General.ConnectRemote,
+		km.General.Suspend,
+		km.General.Quit,
 	)
 }
 
@@ -422,12 +471,13 @@ func (m Model) renderCommentFormLayer() *lipgloss.Layer {
 
 // renderTaskFormHelpLayer renders the task form keyboard shortcuts help screen as a layer
 func (m Model) renderTaskFormHelpLayer() *lipgloss.Layer {
-	helpContent := `TASK FORM - Keyboard Shortcuts
+	km := m.Config.KeyMappings
+	helpContent := fmt.Sprintf(`TASK FORM - Keyboard Shortcuts
 
 FORM NAVIGATION
   Tab             Navigate between form fields
   Shift+Tab       Navigate backwards
-  Ctrl+S          Save task and close form
+  %-15s Save task and close form
   Esc             Close form (will prompt if unsaved)
 
 TEXT EDITING (Title/Description)
@@ -444,21 +494,34 @@ COMMENTS SECTION
   Tab/Shift+Tab   Return to form fields
 
 QUICK ACTIONS
-  Ctrl+N          Create new comment
-  Ctrl+L          Manage labels
-  Ctrl+P          Select parent tasks
-  Ctrl+C          Select child tasks
-  Ctrl+R          Change priority
-  Ctrl+T          Change task type
-  Ctrl+A          Change assignee
-  Ctrl+E          Change estimate
-  Ctrl+D          Set due date
+  %-15s Create new comment
+  %-15s Manage labels
+  %-15s Select parent tasks
+  %-15s Select child tasks
+  %-15s Change priority
+  %-15s Change task type
+  %-15s Change assignee
+  %-15s Change estimate
+  %-15s Set due date
 
 HELP
-  Ctrl+/          Toggle this help menu
+  %-15s Toggle this help menu
   Esc             Close help menu
 
-Press Ctrl+/ or Esc to close`
+Press %s or Esc to close`,
+		km.Forms.SaveForm,
+		km.Forms.OpenCommentsView,
+		km.Forms.EditLabels,
+		km.Forms.EditParentTask,
+		km.Forms.EditChildTask,
+		km.Forms.EditPriority,
+		km.Forms.EditType,
+		km.Forms.EditAssignee,
+		km.Forms.EditEstimate,
+		km.Forms.EditDueDate,
+		km.Forms.ShowHelp,
+		km.Forms.ShowHelp,
+	)
 
 	helpBox := components.HelpBoxStyle.
 		Width(m.UIState.Width() * 3 / 8).

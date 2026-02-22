@@ -12,10 +12,26 @@ import (
 func TestDefaultKeyMappings(t *testing.T) {
 	defaults := DefaultKeyMappings()
 
-	// Test a few key bindings
-	assert.Equal(t, "q", defaults.Quit)
-	assert.Equal(t, "a", defaults.AddTask)
-	assert.Equal(t, " ", defaults.ViewTask)
+	assert.Equal(t, "q", defaults.General.Quit)
+	assert.Equal(t, "a", defaults.Tasks.AddTask)
+	assert.Equal(t, " ", defaults.Tasks.ViewTask)
+	assert.Equal(t, "j", defaults.Navigation.MoveDown)
+	assert.Equal(t, "C", defaults.Kanban.CreateColumn)
+	assert.Equal(t, "P", defaults.Projects.CreateProject)
+	assert.Equal(t, "ctrl+s", defaults.Forms.SaveForm)
+	assert.Equal(t, "ctrl+d", defaults.Pickers.DeleteLabel)
+	assert.Equal(t, "/", defaults.General.Search)
+	assert.Equal(t, "ctrl+t", defaults.Tasks.EditType)
+	assert.Equal(t, "ctrl+n", defaults.Forms.OpenCommentsView)
+	assert.Equal(t, "f5", defaults.Forms.RefreshGitData)
+	assert.Equal(t, "ctrl+l", defaults.Forms.EditLabels)
+	assert.Equal(t, "ctrl+p", defaults.Forms.EditParentTask)
+	assert.Equal(t, "ctrl+c", defaults.Forms.EditChildTask)
+	assert.Equal(t, "ctrl+r", defaults.Forms.EditPriority)
+	assert.Equal(t, "ctrl+a", defaults.Forms.EditAssignee)
+	assert.Equal(t, "ctrl+e", defaults.Forms.EditEstimate)
+	assert.Equal(t, "ctrl+d", defaults.Forms.EditDueDate)
+	assert.Equal(t, "ctrl+/", defaults.Forms.ShowHelp)
 }
 
 func TestLoadConfigWithoutFile(t *testing.T) {
@@ -26,7 +42,7 @@ func TestLoadConfigWithoutFile(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should return default config
-	assert.Equal(t, "q", cfg.KeyMappings.Quit)
+	assert.Equal(t, "q", cfg.KeyMappings.General.Quit)
 }
 
 func TestLoadConfigWithFile(t *testing.T) {
@@ -37,11 +53,13 @@ func TestLoadConfigWithFile(t *testing.T) {
 	configDir := filepath.Join(tempDir, "paso")
 	require.NoError(t, os.MkdirAll(configDir, 0755))
 
-	// Write custom config
+	// Write custom config with nested structure
 	configContent := `key_mappings:
-  quit: "x"
-  add_task: "n"
-  view_task: "v"
+  general:
+    quit: "x"
+  tasks:
+    add_task: "n"
+    view_task: "v"
 `
 	configPath := filepath.Join(configDir, "config.yaml")
 	require.NoError(t, os.WriteFile(configPath, []byte(configContent), 0644))
@@ -50,12 +68,17 @@ func TestLoadConfigWithFile(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should load custom values
-	assert.Equal(t, "x", cfg.KeyMappings.Quit)
-	assert.Equal(t, "n", cfg.KeyMappings.AddTask)
-	assert.Equal(t, "v", cfg.KeyMappings.ViewTask)
+	assert.Equal(t, "x", cfg.KeyMappings.General.Quit)
+	assert.Equal(t, "n", cfg.KeyMappings.Tasks.AddTask)
+	assert.Equal(t, "v", cfg.KeyMappings.Tasks.ViewTask)
 
 	// Unspecified values should use defaults
-	assert.Equal(t, "e", cfg.KeyMappings.EditTask)
+	assert.Equal(t, "e", cfg.KeyMappings.Tasks.EditTask)
+	assert.Equal(t, "j", cfg.KeyMappings.Navigation.MoveDown)
+	assert.Equal(t, "C", cfg.KeyMappings.Kanban.CreateColumn)
+	assert.Equal(t, "P", cfg.KeyMappings.Projects.CreateProject)
+	assert.Equal(t, "ctrl+s", cfg.KeyMappings.Forms.SaveForm)
+	assert.Equal(t, "ctrl+d", cfg.KeyMappings.Pickers.DeleteLabel)
 }
 
 func TestSaveConfig(t *testing.T) {
@@ -65,9 +88,13 @@ func TestSaveConfig(t *testing.T) {
 
 	cfg := &Config{
 		KeyMappings: KeyMappings{
-			Quit:     "x",
-			AddTask:  "n",
-			ViewTask: "v",
+			General: GeneralKeys{
+				Quit: "x",
+			},
+			Tasks: TaskKeys{
+				AddTask:  "n",
+				ViewTask: "v",
+			},
 		},
 	}
 
@@ -87,6 +114,6 @@ func TestSaveConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify values match
-	assert.Equal(t, "x", cfg2.KeyMappings.Quit)
-	assert.Equal(t, "n", cfg2.KeyMappings.AddTask)
+	assert.Equal(t, "x", cfg2.KeyMappings.General.Quit)
+	assert.Equal(t, "n", cfg2.KeyMappings.Tasks.AddTask)
 }

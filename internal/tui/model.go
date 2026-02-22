@@ -1013,34 +1013,55 @@ func (m *Model) initPriorityPicker(mode state.Mode) bool {
 	return true
 }
 
-// initTypePickerForForm initializes the type picker for use in task form mode.
-// Loads the current type from the form state.
-func (m *Model) initTypePickerForForm() bool {
-	// Get current type ID from form state
-	// If we're editing a task, get it from the task detail
-	// Otherwise, default to task (id=1)
-	currentTypeID := 1 // Default to task
+// initTypePicker initializes the type picker for both form and board modes.
+// - In form mode: Defaults to task (id=1) for new tasks, loads from DB for editing
+// - In board mode: Loads type from the currently selected task
+//
+// Returns false if there's a database error or (in board mode) no selected task.
+func (m *Model) initTypePicker(mode state.Mode) bool {
+	var currentTypeID int
+	var taskID int
 
-	// If editing an existing task, get the current type ID directly from database
-	if m.Forms.Form.EditingTaskID != 0 {
+	if mode == state.TicketFormMode {
+		currentTypeID = 1 // Default to task
+		taskID = m.Forms.Form.EditingTaskID
+
+		if taskID != 0 {
+			ctx, cancel := m.DBContext()
+			defer cancel()
+
+			typeID, _, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, taskID)
+			if err != nil {
+				slog.Error("failed to get task type ID for type picker", "error", err)
+				return false
+			}
+			currentTypeID = typeID
+		}
+	} else {
+		task := m.getCurrentTask()
+		if task == nil {
+			m.UI.Notification.Add(state.LevelError, "No task selected")
+			return false
+		}
+
 		ctx, cancel := m.DBContext()
 		defer cancel()
 
-		typeID, _, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, m.Forms.Form.EditingTaskID)
+		typeID, _, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, task.ID)
 		if err != nil {
-			slog.Error("failed to get task type ID for type picker", "error", err)
+			slog.Error("failed to get task type ID for board picker", "error", err)
+			m.UI.Notification.Add(state.LevelError, "Failed to load task type")
 			return false
 		}
 
 		currentTypeID = typeID
+		taskID = task.ID
+		m.Forms.Form.EditingTaskID = taskID
 	}
 
-	// init to current type
 	m.Pickers.Type.SetSelectedTypeID(currentTypeID)
-
-	// set cursor to match the selected type, 0-indexed
 	m.Pickers.Type.SetCursor(currentTypeID - 1)
-	m.Pickers.Type.ReturnMode = state.TicketFormMode
+	m.Pickers.Type.ReturnMode = mode
 
 	return true
 }

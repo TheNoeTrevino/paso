@@ -19,16 +19,18 @@ func (m Model) handleConnectRemote() (tea.Model, tea.Cmd) {
 
 // updateDatabaseSelect handles keyboard input while in DatabaseSelectMode
 func (m Model) updateDatabaseSelect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	km := m.Config.KeyMappings
+
 	switch msg.String() {
-	case "up", "k":
+	case km.Navigation.MoveUp, "up":
 		m.DatabasePicker.MoveCursorUp()
 		return m, nil
 
-	case "down", "j":
+	case km.Navigation.MoveDown, "down":
 		m.DatabasePicker.MoveCursorDown()
 		return m, nil
 
-	case "d", "D":
+	case km.Tasks.DeleteTask:
 		// Only allow delete on saved databases (not Local or Create New)
 		if m.DatabasePicker.IsSelectedSavedDatabase() {
 			selectedDB := m.DatabasePicker.SavedDatabases[m.DatabasePicker.Cursor]

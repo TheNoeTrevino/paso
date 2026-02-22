@@ -219,6 +219,7 @@ func (m Model) viewListView() string {
 		m.UI.ListView.SortOrder(),
 		m.UIState.Width(),
 		listHeight,
+		m.Config.KeyMappings,
 	)
 
 	statusBar := components.RenderStatusBar(components.StatusBarProps{

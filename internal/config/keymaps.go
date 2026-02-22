@@ -1,125 +1,245 @@
 package config
 
-// KeyMappings defines all configurable key bindings
+// KeyMappings defines all configurable key bindings, organized by context.
 type KeyMappings struct {
-	// Tasks
-	AddTask        string `yaml:"add_task"`
-	EditTask       string `yaml:"edit_task"`
-	DeleteTask     string `yaml:"delete_task"`
-	MoveTaskLeft   string `yaml:"move_task_left"`
-	MoveTaskRight  string `yaml:"move_task_right"`
-	MoveTaskUp     string `yaml:"move_task_up"`
-	MoveTaskDown   string `yaml:"move_task_down"`
-	ViewTask       string `yaml:"view_task"`
-	EditLabels     string `yaml:"edit_labels"`
-	EditPriority   string `yaml:"edit_priority"`
-	EditAssignee   string `yaml:"edit_assignee"`
-	EditEstimate   string `yaml:"edit_estimate"`
-	EditDueDate    string `yaml:"edit_due_date"`
-	EditParentTask string `yaml:"edit_parent_task"`
-	EditChildTask  string `yaml:"edit_child_task"`
+	Navigation NavigationKeys `yaml:"navigation"`
+	Tasks      TaskKeys       `yaml:"tasks"`
+	Kanban     KanbanKeys     `yaml:"kanban"`
+	Projects   ProjectKeys    `yaml:"projects"`
+	Forms      FormKeys       `yaml:"forms"`
+	Pickers    PickerKeys     `yaml:"pickers"`
+	General    GeneralKeys    `yaml:"general"`
+}
 
-	// Forms
-	SaveForm string `yaml:"save_form"`
-
-	// Columns
-	CreateColumn string `yaml:"create_column"`
-	RenameColumn string `yaml:"rename_column"`
-	DeleteColumn string `yaml:"delete_column"`
-
-	// Projects
-	CreateProject string `yaml:"create_project"`
-	EditProject   string `yaml:"edit_project"`
-	DeleteProject string `yaml:"delete_project"`
-
-	// Navigation
-	PrevColumn          string `yaml:"prev_column"`
-	NextColumn          string `yaml:"next_column"`
-	PrevTask            string `yaml:"prev_task"`
-	NextTask            string `yaml:"next_task"`
+// NavigationKeys defines keybindings for moving around the UI.
+type NavigationKeys struct {
+	MoveLeft            string `yaml:"move_left"`
+	MoveRight           string `yaml:"move_right"`
+	MoveUp              string `yaml:"move_up"`
+	MoveDown            string `yaml:"move_down"`
 	ScrollViewportLeft  string `yaml:"scroll_viewport_left"`
 	ScrollViewportRight string `yaml:"scroll_viewport_right"`
 	NextProject         string `yaml:"next_project"`
 	PrevProject         string `yaml:"prev_project"`
+}
 
-	// Other
+// TaskKeys defines keybindings for task actions.
+type TaskKeys struct {
+	AddTask           string `yaml:"add_task"`
+	EditTask          string `yaml:"edit_task"`
+	DeleteTask        string `yaml:"delete_task"`
+	ViewTask          string `yaml:"view_task"`
+	EditLabels        string `yaml:"edit_labels"`
+	EditPriority      string `yaml:"edit_priority"`
+	EditAssignee      string `yaml:"edit_assignee"`
+	EditEstimate      string `yaml:"edit_estimate"`
+	EditDueDate       string `yaml:"edit_due_date"`
+	EditParentTask    string `yaml:"edit_parent_task"`
+	EditChildTask     string `yaml:"edit_child_task"`
+	EditType          string `yaml:"edit_type"`
+	MoveTaskToProject string `yaml:"move_task_to_project"`
+}
+
+// KanbanKeys defines keybindings specific to the kanban board view.
+type KanbanKeys struct {
+	CreateColumn  string `yaml:"create_column"`
+	RenameColumn  string `yaml:"rename_column"`
+	DeleteColumn  string `yaml:"delete_column"`
+	MoveTaskLeft  string `yaml:"move_task_left"`
+	MoveTaskRight string `yaml:"move_task_right"`
+	MoveTaskUp    string `yaml:"move_task_up"`
+	MoveTaskDown  string `yaml:"move_task_down"`
+}
+
+// ProjectKeys defines keybindings for project management.
+type ProjectKeys struct {
+	CreateProject string `yaml:"create_project"`
+	EditProject   string `yaml:"edit_project"`
+	DeleteProject string `yaml:"delete_project"`
+}
+
+// FormKeys defines keybindings used within form contexts.
+// These use ctrl+ modifiers to avoid conflicting with text input.
+type FormKeys struct {
+	SaveForm         string `yaml:"save_form"`
+	OpenCommentsView string `yaml:"open_comments_view"`
+	RefreshGitData   string `yaml:"refresh_git_data"`
+	EditLabels       string `yaml:"edit_labels"`
+	EditParentTask   string `yaml:"edit_parent_task"`
+	EditChildTask    string `yaml:"edit_child_task"`
+	EditPriority     string `yaml:"edit_priority"`
+	EditType         string `yaml:"edit_type"`
+	EditAssignee     string `yaml:"edit_assignee"`
+	EditEstimate     string `yaml:"edit_estimate"`
+	EditDueDate      string `yaml:"edit_due_date"`
+	ShowHelp         string `yaml:"show_help"`
+}
+
+// PickerKeys defines keybindings used within picker overlays.
+type PickerKeys struct {
+	DeleteLabel string `yaml:"delete_label"`
+}
+
+// GeneralKeys defines global keybindings.
+type GeneralKeys struct {
 	ShowHelp      string `yaml:"show_help"`
 	ConnectRemote string `yaml:"connect_remote"`
 	FilterBar     string `yaml:"filter_bar"`
 	Quit          string `yaml:"quit"`
 	Suspend       string `yaml:"suspend"`
-
-	// Views
-	ToggleView        string `yaml:"toggle_view"`
-	MoveTaskToProject string `yaml:"move_task_to_project"`
+	ToggleView    string `yaml:"toggle_view"`
+	Search        string `yaml:"search"`
 }
 
-// DefaultKeyMappings returns the default key mappings
+// DefaultKeyMappings returns the default key mappings.
 func DefaultKeyMappings() KeyMappings {
 	return KeyMappings{
-		// Tasks
-		AddTask:        "a",
-		EditTask:       "e",
-		DeleteTask:     "d",
-		MoveTaskLeft:   "H",
-		MoveTaskRight:  "L",
-		MoveTaskUp:     "K",
-		MoveTaskDown:   "J",
-		ViewTask:       " ",
-		EditLabels:     "ctrl+l",
-		EditPriority:   "ctrl+r",
-		EditAssignee:   "ctrl+a",
-		EditEstimate:   "ctrl+e",
-		EditDueDate:    "ctrl+d",
-		EditParentTask: "p",
-		EditChildTask:  "c",
-		SaveForm:       "ctrl+s",
-
-		// Columns
-		CreateColumn: "C",
-		RenameColumn: "R",
-		DeleteColumn: "X",
-
-		// Projects
-		CreateProject: "P",
-		EditProject:   "E",
-		DeleteProject: "D",
-
-		// Navigation
-		PrevColumn:          "h",
-		NextColumn:          "l",
-		PrevTask:            "k",
-		NextTask:            "j",
-		ScrollViewportLeft:  "[",
-		ScrollViewportRight: "]",
-		NextProject:         "}",
-		PrevProject:         "{",
-
-		// Other
-		ShowHelp:      "?",
-		ConnectRemote: "ctrl+h",
-		FilterBar:     "ctrl+f",
-		Quit:          "q",
-		Suspend:       "ctrl+z",
-
-		// Views
-		ToggleView:        "v",
-		MoveTaskToProject: "s",
+		Navigation: NavigationKeys{
+			MoveLeft:            "h",
+			MoveRight:           "l",
+			MoveUp:              "k",
+			MoveDown:            "j",
+			ScrollViewportLeft:  "[",
+			ScrollViewportRight: "]",
+			NextProject:         "}",
+			PrevProject:         "{",
+		},
+		Tasks: TaskKeys{
+			AddTask:           "a",
+			EditTask:          "e",
+			DeleteTask:        "d",
+			ViewTask:          " ",
+			EditLabels:        "ctrl+l",
+			EditPriority:      "ctrl+r",
+			EditAssignee:      "ctrl+a",
+			EditEstimate:      "ctrl+e",
+			EditDueDate:       "ctrl+d",
+			EditParentTask:    "p",
+			EditChildTask:     "c",
+			EditType:          "ctrl+t",
+			MoveTaskToProject: "s",
+		},
+		Kanban: KanbanKeys{
+			CreateColumn:  "C",
+			RenameColumn:  "R",
+			DeleteColumn:  "X",
+			MoveTaskLeft:  "H",
+			MoveTaskRight: "L",
+			MoveTaskUp:    "K",
+			MoveTaskDown:  "J",
+		},
+		Projects: ProjectKeys{
+			CreateProject: "P",
+			EditProject:   "E",
+			DeleteProject: "D",
+		},
+		Forms: FormKeys{
+			SaveForm:         "ctrl+s",
+			OpenCommentsView: "ctrl+n",
+			RefreshGitData:   "f5",
+			EditLabels:       "ctrl+l",
+			EditParentTask:   "ctrl+p",
+			EditChildTask:    "ctrl+c",
+			EditPriority:     "ctrl+r",
+			EditType:         "ctrl+t",
+			EditAssignee:     "ctrl+a",
+			EditEstimate:     "ctrl+e",
+			EditDueDate:      "ctrl+d",
+			ShowHelp:         "ctrl+/",
+		},
+		Pickers: PickerKeys{
+			DeleteLabel: "ctrl+d",
+		},
+		General: GeneralKeys{
+			ShowHelp:      "?",
+			ConnectRemote: "ctrl+h",
+			FilterBar:     "ctrl+f",
+			Quit:          "q",
+			Suspend:       "ctrl+z",
+			ToggleView:    "v",
+			Search:        "/",
+		},
 	}
 }
 
-// applyDefaults fills in missing key mappings with defaults
-func (k *KeyMappings) applyDefaults() {
-	defaults := DefaultKeyMappings()
+func (n *NavigationKeys) applyDefaultsFrom(defaults NavigationKeys) {
+	if n.MoveLeft == "" {
+		n.MoveLeft = defaults.MoveLeft
+	}
+	if n.MoveRight == "" {
+		n.MoveRight = defaults.MoveRight
+	}
+	if n.MoveUp == "" {
+		n.MoveUp = defaults.MoveUp
+	}
+	if n.MoveDown == "" {
+		n.MoveDown = defaults.MoveDown
+	}
+	if n.ScrollViewportLeft == "" {
+		n.ScrollViewportLeft = defaults.ScrollViewportLeft
+	}
+	if n.ScrollViewportRight == "" {
+		n.ScrollViewportRight = defaults.ScrollViewportRight
+	}
+	if n.NextProject == "" {
+		n.NextProject = defaults.NextProject
+	}
+	if n.PrevProject == "" {
+		n.PrevProject = defaults.PrevProject
+	}
+}
 
-	if k.AddTask == "" {
-		k.AddTask = defaults.AddTask
+func (t *TaskKeys) applyDefaultsFrom(defaults TaskKeys) {
+	if t.AddTask == "" {
+		t.AddTask = defaults.AddTask
 	}
-	if k.EditTask == "" {
-		k.EditTask = defaults.EditTask
+	if t.EditTask == "" {
+		t.EditTask = defaults.EditTask
 	}
-	if k.DeleteTask == "" {
-		k.DeleteTask = defaults.DeleteTask
+	if t.DeleteTask == "" {
+		t.DeleteTask = defaults.DeleteTask
+	}
+	if t.ViewTask == "" {
+		t.ViewTask = defaults.ViewTask
+	}
+	if t.EditLabels == "" {
+		t.EditLabels = defaults.EditLabels
+	}
+	if t.EditPriority == "" {
+		t.EditPriority = defaults.EditPriority
+	}
+	if t.EditAssignee == "" {
+		t.EditAssignee = defaults.EditAssignee
+	}
+	if t.EditEstimate == "" {
+		t.EditEstimate = defaults.EditEstimate
+	}
+	if t.EditDueDate == "" {
+		t.EditDueDate = defaults.EditDueDate
+	}
+	if t.EditParentTask == "" {
+		t.EditParentTask = defaults.EditParentTask
+	}
+	if t.EditChildTask == "" {
+		t.EditChildTask = defaults.EditChildTask
+	}
+	if t.EditType == "" {
+		t.EditType = defaults.EditType
+	}
+	if t.MoveTaskToProject == "" {
+		t.MoveTaskToProject = defaults.MoveTaskToProject
+	}
+}
+
+func (k *KanbanKeys) applyDefaultsFrom(defaults KanbanKeys) {
+	if k.CreateColumn == "" {
+		k.CreateColumn = defaults.CreateColumn
+	}
+	if k.RenameColumn == "" {
+		k.RenameColumn = defaults.RenameColumn
+	}
+	if k.DeleteColumn == "" {
+		k.DeleteColumn = defaults.DeleteColumn
 	}
 	if k.MoveTaskLeft == "" {
 		k.MoveTaskLeft = defaults.MoveTaskLeft
@@ -133,94 +253,97 @@ func (k *KeyMappings) applyDefaults() {
 	if k.MoveTaskDown == "" {
 		k.MoveTaskDown = defaults.MoveTaskDown
 	}
-	if k.ViewTask == "" {
-		k.ViewTask = defaults.ViewTask
+}
+
+func (p *ProjectKeys) applyDefaultsFrom(defaults ProjectKeys) {
+	if p.CreateProject == "" {
+		p.CreateProject = defaults.CreateProject
 	}
-	if k.EditLabels == "" {
-		k.EditLabels = defaults.EditLabels
+	if p.EditProject == "" {
+		p.EditProject = defaults.EditProject
 	}
-	if k.EditPriority == "" {
-		k.EditPriority = defaults.EditPriority
+	if p.DeleteProject == "" {
+		p.DeleteProject = defaults.DeleteProject
 	}
-	if k.EditAssignee == "" {
-		k.EditAssignee = defaults.EditAssignee
+}
+
+func (f *FormKeys) applyDefaultsFrom(defaults FormKeys) {
+	if f.SaveForm == "" {
+		f.SaveForm = defaults.SaveForm
 	}
-	if k.EditEstimate == "" {
-		k.EditEstimate = defaults.EditEstimate
+	if f.OpenCommentsView == "" {
+		f.OpenCommentsView = defaults.OpenCommentsView
 	}
-	if k.EditDueDate == "" {
-		k.EditDueDate = defaults.EditDueDate
+	if f.RefreshGitData == "" {
+		f.RefreshGitData = defaults.RefreshGitData
 	}
-	if k.EditParentTask == "" {
-		k.EditParentTask = defaults.EditParentTask
+	if f.EditLabels == "" {
+		f.EditLabels = defaults.EditLabels
 	}
-	if k.EditChildTask == "" {
-		k.EditChildTask = defaults.EditChildTask
+	if f.EditParentTask == "" {
+		f.EditParentTask = defaults.EditParentTask
 	}
-	if k.SaveForm == "" {
-		k.SaveForm = defaults.SaveForm
+	if f.EditChildTask == "" {
+		f.EditChildTask = defaults.EditChildTask
 	}
-	if k.CreateColumn == "" {
-		k.CreateColumn = defaults.CreateColumn
+	if f.EditPriority == "" {
+		f.EditPriority = defaults.EditPriority
 	}
-	if k.RenameColumn == "" {
-		k.RenameColumn = defaults.RenameColumn
+	if f.EditType == "" {
+		f.EditType = defaults.EditType
 	}
-	if k.DeleteColumn == "" {
-		k.DeleteColumn = defaults.DeleteColumn
+	if f.EditAssignee == "" {
+		f.EditAssignee = defaults.EditAssignee
 	}
-	if k.CreateProject == "" {
-		k.CreateProject = defaults.CreateProject
+	if f.EditEstimate == "" {
+		f.EditEstimate = defaults.EditEstimate
 	}
-	if k.EditProject == "" {
-		k.EditProject = defaults.EditProject
+	if f.EditDueDate == "" {
+		f.EditDueDate = defaults.EditDueDate
 	}
-	if k.DeleteProject == "" {
-		k.DeleteProject = defaults.DeleteProject
+	if f.ShowHelp == "" {
+		f.ShowHelp = defaults.ShowHelp
 	}
-	if k.PrevColumn == "" {
-		k.PrevColumn = defaults.PrevColumn
+}
+
+func (p *PickerKeys) applyDefaultsFrom(defaults PickerKeys) {
+	if p.DeleteLabel == "" {
+		p.DeleteLabel = defaults.DeleteLabel
 	}
-	if k.NextColumn == "" {
-		k.NextColumn = defaults.NextColumn
+}
+
+func (g *GeneralKeys) applyDefaultsFrom(defaults GeneralKeys) {
+	if g.ShowHelp == "" {
+		g.ShowHelp = defaults.ShowHelp
 	}
-	if k.PrevTask == "" {
-		k.PrevTask = defaults.PrevTask
+	if g.ConnectRemote == "" {
+		g.ConnectRemote = defaults.ConnectRemote
 	}
-	if k.NextTask == "" {
-		k.NextTask = defaults.NextTask
+	if g.FilterBar == "" {
+		g.FilterBar = defaults.FilterBar
 	}
-	if k.ScrollViewportLeft == "" {
-		k.ScrollViewportLeft = defaults.ScrollViewportLeft
+	if g.Quit == "" {
+		g.Quit = defaults.Quit
 	}
-	if k.ScrollViewportRight == "" {
-		k.ScrollViewportRight = defaults.ScrollViewportRight
+	if g.Suspend == "" {
+		g.Suspend = defaults.Suspend
 	}
-	if k.NextProject == "" {
-		k.NextProject = defaults.NextProject
+	if g.ToggleView == "" {
+		g.ToggleView = defaults.ToggleView
 	}
-	if k.PrevProject == "" {
-		k.PrevProject = defaults.PrevProject
+	if g.Search == "" {
+		g.Search = defaults.Search
 	}
-	if k.ShowHelp == "" {
-		k.ShowHelp = defaults.ShowHelp
-	}
-	if k.ConnectRemote == "" {
-		k.ConnectRemote = defaults.ConnectRemote
-	}
-	if k.FilterBar == "" {
-		k.FilterBar = defaults.FilterBar
-	}
-	if k.Quit == "" {
-		k.Quit = defaults.Quit
-	}
-	if k.Suspend == "" {
-		k.Suspend = defaults.Suspend
-	}
-	if k.ToggleView == "" {
-		k.ToggleView = defaults.ToggleView
-	}
-	if k.MoveTaskToProject == "" {
-		k.MoveTaskToProject = defaults.MoveTaskToProject
-	}
+}
+
+// applyDefaults fills in missing key mappings with defaults.
+func (k *KeyMappings) applyDefaults() {
+	d := DefaultKeyMappings()
+	k.Navigation.applyDefaultsFrom(d.Navigation)
+	k.Tasks.applyDefaultsFrom(d.Tasks)
+	k.Kanban.applyDefaultsFrom(d.Kanban)
+	k.Projects.applyDefaultsFrom(d.Projects)
+	k.Forms.applyDefaultsFrom(d.Forms)
+	k.Pickers.applyDefaultsFrom(d.Pickers)
+	k.General.applyDefaultsFrom(d.General)
 }

@@ -1,0 +1,93 @@
+# Paso Configuration
+# Copy this file to ~/.config/paso/config.yaml
+# All fields are optional — unset values use the defaults shown below.
+
+# Theme preset: default, monochrome, wave, dragon, lotus
+theme:
+  preset: default
+
+# Key mappings — organized by context.
+# Only override the keys you want to change; the rest keep their defaults.
+key_mappings:
+
+  # Navigation keys for moving around the UI
+  navigation:
+    move_left: "h"
+    move_right: "l"
+    move_up: "k"
+    move_down: "j"
+    scroll_viewport_left: "["
+    scroll_viewport_right: "]"
+    next_project: "}"
+    prev_project: "{"
+
+  # Task actions in normal mode (single-key shortcuts)
+  tasks:
+    add_task: "a"
+    edit_task: "e"
+    delete_task: "d"
+    view_task: " "              # space
+    edit_labels: "ctrl+l"
+    edit_priority: "ctrl+r"
+    edit_assignee: "ctrl+a"
+    edit_estimate: "ctrl+e"
+    edit_due_date: "ctrl+d"
+    edit_parent_task: "p"
+    edit_child_task: "c"
+    edit_type: "ctrl+t"
+    move_task_to_project: "s"
+
+  # Kanban board actions (uppercase = Shift held)
+  kanban:
+    create_column: "C"
+    rename_column: "R"
+    delete_column: "X"
+    move_task_left: "H"
+    move_task_right: "L"
+    move_task_up: "K"
+    move_task_down: "J"
+
+  # Project management
+  projects:
+    create_project: "P"
+    edit_project: "E"
+    delete_project: "D"
+
+  # Form shortcuts (ctrl+ modifiers so they don't conflict with text input)
+  forms:
+    save_form: "ctrl+s"
+    open_comments_view: "ctrl+n"
+    refresh_git_data: "f5"
+    edit_labels: "ctrl+l"
+    edit_parent_task: "ctrl+p"
+    edit_child_task: "ctrl+c"
+    edit_priority: "ctrl+r"
+    edit_type: "ctrl+t"
+    edit_assignee: "ctrl+a"
+    edit_estimate: "ctrl+e"
+    edit_due_date: "ctrl+d"
+    show_help: "ctrl+/"
+
+  # Picker overlay shortcuts
+  pickers:
+    delete_label: "ctrl+d"
+
+  # Global shortcuts
+  general:
+    show_help: "?"
+    connect_remote: "ctrl+h"
+    filter_bar: "ctrl+f"
+    quit: "q"
+    suspend: "ctrl+z"
+    toggle_view: "v"
+    search: "/"
+
+# Database connections (managed via `paso db` commands)
+# databases:
+#   - name: local
+#     connection_string: "~/.local/share/paso/tasks.db"
+#     type: sqlite
+#   - name: remote
+#     connection_string: "postgres://user:pass@host/db"
+#     type: postgres
+# active_database: local

@@ -410,6 +410,7 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Check for keyboard shortcuts before passing to form
+	km := m.Config.KeyMappings
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		switch keyMsg.String() {
 		case "esc":
@@ -428,61 +429,61 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Forms.Form.ClearTaskForm()
 			return m, tea.ClearScreen
 
-		case "ctrl+p":
+		case km.Forms.EditParentTask:
 			// Open parent picker
 			if m.initParentPickerForForm() {
 				m.UIState.Mode = state.ParentPickerMode
 			}
 			return m, nil
 
-		case "ctrl+c":
+		case km.Forms.EditChildTask:
 			// Open child picker
 			if m.initChildPickerForForm() {
 				m.UIState.Mode = state.ChildPickerMode
 			}
 			return m, nil
 
-		case "ctrl+l":
+		case km.Forms.EditLabels:
 			// Open label picker
 			if m.initLabelPicker(state.TicketFormMode) {
 				m.UIState.Mode = state.LabelPickerMode
 			}
 			return m, nil
 
-		case "ctrl+r":
+		case km.Forms.EditPriority:
 			// Open priority picker
 			if m.initPriorityPicker(state.TicketFormMode) {
 				m.UIState.Mode = state.PriorityPickerMode
 			}
 			return m, nil
 
-		case "ctrl+t":
+		case km.Forms.EditType:
 			// Open type picker
-			if m.initTypePickerForForm() {
+			if m.initTypePicker(state.TicketFormMode) {
 				m.UIState.Mode = state.TypePickerMode
 			}
 			return m, nil
 
-		case "ctrl+a":
+		case km.Forms.EditAssignee:
 			// Open assignee picker
 			if m.initAssigneePicker(state.TicketFormMode) {
 				m.UIState.Mode = state.AssigneePickerMode
 			}
 			return m, nil
 
-		case "ctrl+e":
+		case km.Forms.EditEstimate:
 			// Open estimate input layer
 			m.initEstimateInputForForm()
 			m.UIState.Mode = state.EstimateInputMode
 			return m, nil
 
-		case "ctrl+d":
+		case km.Forms.EditDueDate:
 			// Open due date picker
 			m.initDatePickerForForm()
 			m.UIState.Mode = state.DatePickerMode
 			return m, nil
 
-		case "ctrl+h":
+		case km.Forms.ShowHelp:
 			// Open task form help menu
 			m.UIState.Mode = state.TaskFormHelpMode
 			return m, nil
@@ -508,11 +509,11 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Otherwise let form handle it
 
-		case "ctrl+n":
+		case km.Forms.OpenCommentsView:
 			// Open comments view
 			return m.handleOpenCommentsView()
 
-		case m.Config.KeyMappings.SaveForm:
+		case km.Forms.SaveForm:
 			// Quick save via C-s
 			return m.handleFormSave(formConfig{
 				form: m.Forms.Form.TaskForm,
@@ -597,7 +598,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Forms.Form.ClearProjectForm()
 			return m, tea.ClearScreen
 
-		case m.Config.KeyMappings.SaveForm:
+		case m.Config.KeyMappings.Forms.SaveForm:
 			return m.handleFormSave(formConfig{
 				form: m.Forms.Form.ProjectForm,
 				setForm: func(f *huh.Form) {
@@ -612,7 +613,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				confirmPtr: &m.Forms.Form.FormProjectConfirm,
 			})
 
-		case "f5":
+		case m.Config.KeyMappings.Forms.RefreshGitData:
 			return m.handleRefreshGitData()
 		}
 	}
