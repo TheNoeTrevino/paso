@@ -16,7 +16,6 @@ NC='\033[0m' # No Color
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 DATA_DIR="$HOME/.paso"
 CONFIG_DIR="$HOME/.config/paso"
-SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
 echo ""
 echo -e "${BOLD}${GREEN}╔════════════════════════════════════════╗${NC}"
@@ -55,7 +54,7 @@ echo ""
 # Step 2: Build Binaries
 # ============================================================================
 
-echo -e "${BLUE}[2/7] Building binaries...${NC}"
+echo -e "${BLUE}[2/7] Building paso...${NC}"
 echo ""
 
 # Get version info from git
@@ -63,7 +62,7 @@ VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo 'dev')
 COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo 'none')
 BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-echo "Building paso CLI..."
+echo "Building paso..."
 go build -o bin/paso \
   -ldflags "-X main.version=$VERSION -X main.commit=$COMMIT -X main.date=$BUILD_DATE" \
   .
@@ -72,26 +71,7 @@ if [ $? -ne 0 ]; then
   echo -e "${RED}✗ Build failed${NC}"
   exit 1
 fi
-echo -e "${GREEN}✓ Built paso CLI${NC}"
-
-# Build the daemon
-if [ -d "cmd/daemon" ]; then
-  echo "Building paso-daemon..."
-  go build -o bin/paso-daemon \
-    -ldflags "-X main.version=$VERSION -X main.commit=$COMMIT -X main.date=$BUILD_DATE" \
-    ./cmd/daemon
-
-  if [ $? -ne 0 ]; then
-    echo -e "${YELLOW}⚠ Daemon build failed (optional component)${NC}"
-    DAEMON_BUILT=false
-  else
-    echo -e "${GREEN}✓ Built paso-daemon${NC}"
-    DAEMON_BUILT=true
-  fi
-else
-  echo -e "${YELLOW}⚠ Daemon source not found (skipping)${NC}"
-  DAEMON_BUILT=false
-fi
+echo -e "${GREEN}✓ Built paso${NC}"
 
 echo ""
 
@@ -115,13 +95,13 @@ fi
 # Step 3: Install Binaries
 # ============================================================================
 
-echo -e "${BLUE}[3/7] Installing binaries to $INSTALL_DIR...${NC}"
+echo -e "${BLUE}[3/7] Installing paso to $INSTALL_DIR...${NC}"
 echo ""
 
 # Create installation directory
 mkdir -p "$INSTALL_DIR"
 
-# Install paso CLI
+# Install paso binary
 if [ -f "bin/paso" ]; then
   cp bin/paso "$INSTALL_DIR/"
   chmod +x "$INSTALL_DIR/paso"
@@ -129,13 +109,6 @@ if [ -f "bin/paso" ]; then
 else
   echo -e "${RED}✗ Failed to find bin/paso${NC}"
   exit 1
-fi
-
-# Install daemon if it was built
-if [ "$DAEMON_BUILT" = true ] && [ -f "bin/paso-daemon" ]; then
-  cp bin/paso-daemon "$INSTALL_DIR/"
-  chmod +x "$INSTALL_DIR/paso-daemon"
-  echo -e "${GREEN}✓ Installed paso-daemon to $INSTALL_DIR/paso-daemon${NC}"
 fi
 
 # Check if installation directory is in PATH
@@ -240,9 +213,9 @@ echo ""
 echo -e "${BLUE}[6/7] Systemd service setup...${NC}"
 echo ""
 
-if [ "$SYSTEMD_AVAILABLE" = true ] && [ "$DAEMON_BUILT" = true ]; then
+if [ "$SYSTEMD_AVAILABLE" = true ]; then
   echo "The systemd service will:"
-  echo "  • Start paso-daemon automatically on login"
+  echo "  • Start the paso daemon automatically on login"
   echo "  • Enable real-time updates across terminal sessions"
   echo "  • Restart the daemon automatically if it crashes"
   echo ""
@@ -252,71 +225,7 @@ if [ "$SYSTEMD_AVAILABLE" = true ] && [ "$DAEMON_BUILT" = true ]; then
 
   if [[ ! $REPLY =~ ^[Nn]$ ]]; then
     echo ""
-    echo -e "${YELLOW}Setting up systemd user service...${NC}"
-    echo "This will:"
-    echo "  1. Create service file in $SYSTEMD_USER_DIR"
-    echo "  2. Enable the service to start on login"
-    echo "  3. Start the service immediately"
-    echo ""
-
-    # Create systemd user directory
-    mkdir -p "$SYSTEMD_USER_DIR"
-
-    # Write the service file with dynamic ExecStart path
-    SERVICE_FILE="$SYSTEMD_USER_DIR/paso.service"
-    cat >"$SERVICE_FILE" <<EOF
-[Unit]
-Description=Paso Daemon - Terminal Kanban Board Real-time Sync
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=$INSTALL_DIR/paso-daemon
-Restart=on-failure
-RestartSec=5
-
-# Security hardening
-PrivateTmp=yes
-NoNewPrivileges=yes
-ProtectSystem=strict
-ReadWritePaths=$DATA_DIR
-
-# Logging
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=default.target
-EOF
-
-    echo -e "${GREEN}✓ Created service file: $SERVICE_FILE${NC}"
-
-    # Reload systemd daemon
-    systemctl --user daemon-reload
-    echo -e "${GREEN}✓ Reloaded systemd daemon${NC}"
-
-    # Enable the service
-    systemctl --user enable paso.service
-    echo -e "${GREEN}✓ Enabled paso.service (will start on login)${NC}"
-
-    # Start or restart the service
-    if [ "$SERVICE_WAS_RUNNING" = true ]; then
-      systemctl --user start paso.service
-      echo -e "${GREEN}✓ Restarted paso.service${NC}"
-    else
-      systemctl --user start paso.service
-      echo -e "${GREEN}✓ Started paso.service${NC}"
-    fi
-
-    echo ""
-    echo -e "${GREEN}Systemd service installed successfully!${NC}"
-    echo ""
-    echo "Useful commands:"
-    echo "  systemctl --user status paso      # View status"
-    echo "  journalctl --user -u paso -f      # View logs"
-    echo "  systemctl --user restart paso     # Restart service"
-    echo "  systemctl --user stop paso        # Stop service"
-    echo "  systemctl --user disable paso     # Disable autostart"
+    "$INSTALL_DIR/paso" daemon setup
   else
     echo "Skipping systemd service"
 
@@ -329,16 +238,14 @@ EOF
     fi
 
     echo ""
-    echo "To start the daemon manually, run:"
-    echo "  paso-daemon &"
+    echo "To set up the daemon later, run:"
+    echo "  paso daemon setup"
   fi
-elif [ "$DAEMON_BUILT" = false ]; then
-  echo "Daemon not available, skipping systemd setup"
 else
   echo "systemd not available, skipping service setup"
   echo ""
   echo "To start the daemon manually, run:"
-  echo "  paso-daemon &"
+  echo "  paso daemon start"
 fi
 
 echo ""
