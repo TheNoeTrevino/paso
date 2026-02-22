@@ -51,7 +51,7 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case km.Forms.OpenCommentsView:
+	case km.Forms.OpenCommentsView, "n":
 		// Open form to create a new comment
 		m.Forms.Form.FormCommentMessage = ""
 		m.Forms.Form.EditingCommentID = 0
