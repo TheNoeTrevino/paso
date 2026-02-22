@@ -67,6 +67,10 @@ func (m *MockGitHubFetcher) CallCount(method string) int {
 	return count
 }
 
+func (m *MockGitHubFetcher) CheckInstalled() error {
+	return nil
+}
+
 func (m *MockGitHubFetcher) FetchIssue(_ context.Context, issueNumber int) (*github.Issue, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

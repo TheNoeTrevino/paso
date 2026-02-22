@@ -67,6 +67,10 @@ func (m *MockJiraFetcher) CallCount(method string) int {
 	return count
 }
 
+func (m *MockJiraFetcher) CheckInstalled() error {
+	return nil
+}
+
 func (m *MockJiraFetcher) FetchIssue(_ context.Context, issueKey string) (*jira.Issue, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

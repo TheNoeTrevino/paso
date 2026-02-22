@@ -40,6 +40,7 @@ func CheckInstalled() error {
 
 // IssueFetcher defines the interface for fetching Jira issues.
 type IssueFetcher interface {
+	CheckInstalled() error
 	FetchIssue(ctx context.Context, issueKey string) (*Issue, error)
 }
 
@@ -49,6 +50,11 @@ type jiraIssueFetcher struct{}
 // NewIssueFetcher returns a real IssueFetcher backed by the jira CLI.
 func NewIssueFetcher() IssueFetcher {
 	return &jiraIssueFetcher{}
+}
+
+// CheckInstalled verifies that the jira CLI is available on the system PATH.
+func (f *jiraIssueFetcher) CheckInstalled() error {
+	return CheckInstalled()
 }
 
 // FetchIssue fetches a Jira issue by key using the jira CLI.

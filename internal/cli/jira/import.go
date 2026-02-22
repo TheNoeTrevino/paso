@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/handler"
-	"github.com/thenoetrevino/paso/internal/jira"
 	"github.com/thenoetrevino/paso/internal/models"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/spinner"
@@ -64,7 +63,17 @@ func (h *importHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		return nil, err
 	}
 
-	if err := jira.CheckInstalled(); err != nil {
+	cliInstance, err := cli.GetCLIFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize CLI: %w", err)
+	}
+	defer func() {
+		if err := cliInstance.Close(); err != nil {
+			slog.Error("failed to close CLI", "error", err)
+		}
+	}()
+
+	if err := cliInstance.App.JiraFetcher.CheckInstalled(); err != nil {
 		return nil, err
 	}
 
@@ -75,16 +84,6 @@ func (h *importHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 	}
 
 	columnName := args.GetString("column", "")
-
-	cliInstance, err := cli.GetCLIFromContext(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize CLI: %w", err)
-	}
-	defer func() {
-		if err := cliInstance.Close(); err != nil {
-			slog.Error("failed to close CLI", "error", err)
-		}
-	}()
 
 	cmd := args.GetCmd()
 	projectID, err := cli.GetProjectIDWithCLI(cmd, cliInstance)
