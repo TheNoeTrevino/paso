@@ -92,7 +92,7 @@ func runLog(cmd *cobra.Command, _ []string) error {
 		ID:        log.ID,
 		ProjectID: log.ProjectID,
 		Content:   log.Content,
-		CreatedAt: log.CreatedAt.Format("2006-01-02 15:04:05"),
+		CreatedAt: log.CreatedAt.UTC().Format(time.RFC3339),
 	}
 
 	if quietMode {
