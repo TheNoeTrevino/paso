@@ -8,12 +8,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/thenoetrevino/paso/internal/cli"
 	"github.com/thenoetrevino/paso/internal/cli/handler"
-	"github.com/thenoetrevino/paso/internal/config"
 	"github.com/thenoetrevino/paso/internal/github"
 	"github.com/thenoetrevino/paso/internal/models"
 	taskservice "github.com/thenoetrevino/paso/internal/services/task"
 	"github.com/thenoetrevino/paso/internal/spinner"
-	"github.com/thenoetrevino/paso/internal/user"
 )
 
 // ImportCmd returns the gh import subcommand.
@@ -133,7 +131,7 @@ func (h *importHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		return nil, fmt.Errorf("failed to create task: %w", err)
 	}
 
-	defaultAuthor := resolveDefaultAuthor()
+	defaultAuthor := cli.ResolveDefaultAuthor()
 
 	commentsImported := 0
 	for _, comment := range issue.Comments {
@@ -161,16 +159,6 @@ func (h *importHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		IssueNumber:   issueNumber,
 		CommentsCount: commentsImported,
 	}, nil
-}
-
-func resolveDefaultAuthor() string {
-	cfg, err := config.Load()
-	if err == nil {
-		if name := cfg.GetActiveAssignee(); name != "" {
-			return name
-		}
-	}
-	return user.GetCurrentUsername()
 }
 
 func parseImportFlags(_ *cobra.Command) error {
