@@ -198,3 +198,9 @@ type CreateTaskEventParams struct {
 	Content string
 	Author  string
 }
+
+// standup_logs.sql.go params
+type CreateStandupLogParams struct {
+	ProjectID int64
+	Content   string
+}
