@@ -55,7 +55,7 @@ Covers 36 scenarios across all entity types:
 - **Label** (6 tests): create, list, update, attach, detach, delete
 - **Assignee** (3 tests): create, list, delete
 
-`task show` output includes timestamps which are normalized to `[TIMESTAMP]` before comparison for determinism.
+`task show` uses fixed timestamps pinned via `UpdateTaskFields` so snapshots are deterministic regardless of when the test runs.
 
 **36 golden files** in `testdata/e2e/`.
 

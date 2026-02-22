@@ -18,8 +18,9 @@ func TestUpdateColumn_Integration(t *testing.T) {
 	db, app := cliutil.SetupCLITest(t)
 	ctx := context.Background()
 
-	// Create test project - this creates default columns (Todo, In Progress, Done)
-	projectID := cliutil.CreateTestProject(t, db, "Test Project")
+	// Create bare project (no default columns with flags) to avoid conflicts
+	// when testing flag assignment on columns
+	projectID := cliutil.CreateBareProject(t, db, "Test Project")
 
 	t.Run("update column name only", func(t *testing.T) {
 		// Create a test column
@@ -111,8 +112,8 @@ func TestUpdateColumn_Integration(t *testing.T) {
 	})
 
 	t.Run("update name and in-progress flag together", func(t *testing.T) {
-		// Create a separate test project to avoid conflicts with other tests' in-progress flags
-		testProjectID := cliutil.CreateTestProject(t, db, "Test Project for In-Progress")
+		// Create a separate bare project to avoid conflicts with other tests' in-progress flags
+		testProjectID := cliutil.CreateBareProject(t, db, "Test Project for In-Progress")
 		testColumnID := cliutil.CreateTestColumn(t, db, testProjectID, "Original Name")
 
 		cmd := column.UpdateCmd()
@@ -220,8 +221,8 @@ func TestUpdateColumn_Integration(t *testing.T) {
 	})
 
 	t.Run("verify unchanged fields remain intact", func(t *testing.T) {
-		// Create a separate test project to avoid conflicts
-		testProjectID := cliutil.CreateTestProject(t, db, "Test Project for Unchanged Fields")
+		// Create a separate bare project to avoid conflicts
+		testProjectID := cliutil.CreateBareProject(t, db, "Test Project for Unchanged Fields")
 		testColumnID := cliutil.CreateTestColumn(t, db, testProjectID, "Original Name")
 
 		// First, enable in-progress flag
@@ -315,8 +316,9 @@ func TestUpdateColumn_EdgeCases(t *testing.T) {
 	db, app := cliutil.SetupCLITest(t)
 	ctx := context.Background()
 
-	// Create test project
-	projectID := cliutil.CreateTestProject(t, db, "Test Project")
+	// Create bare project (no default columns with flags) to avoid conflicts
+	// when testing flag assignment on columns
+	projectID := cliutil.CreateBareProject(t, db, "Test Project")
 
 	t.Run("update column name to same name", func(t *testing.T) {
 		// Create a test column
