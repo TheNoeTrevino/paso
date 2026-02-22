@@ -79,7 +79,7 @@ func FormatGenerateJSON(logs []models.StandupLog, since, until time.Time) map[st
 				"id":         l.ID,
 				"project_id": l.ProjectID,
 				"content":    l.Content,
-				"created_at": l.CreatedAt.Format("2006-01-02T15:04:05Z"),
+				"created_at": l.CreatedAt.UTC().Format(time.RFC3339),
 			}
 		}
 		jsonGroups[i] = map[string]any{
@@ -90,8 +90,8 @@ func FormatGenerateJSON(logs []models.StandupLog, since, until time.Time) map[st
 
 	return map[string]any{
 		"success": true,
-		"since":   since.Format("2006-01-02T15:04:05Z"),
-		"until":   until.Format("2006-01-02T15:04:05Z"),
+		"since":   since.UTC().Format(time.RFC3339),
+		"until":   until.UTC().Format(time.RFC3339),
 		"count":   len(logs),
 		"groups":  jsonGroups,
 	}

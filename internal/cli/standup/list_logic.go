@@ -3,6 +3,7 @@ package standup
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/thenoetrevino/paso/internal/config/colors"
@@ -26,7 +27,7 @@ func FormatListJSON(logs []models.StandupLog) map[string]any {
 			"id":         l.ID,
 			"project_id": l.ProjectID,
 			"content":    l.Content,
-			"created_at": l.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			"created_at": l.CreatedAt.UTC().Format(time.RFC3339),
 		}
 	}
 	return map[string]any{
