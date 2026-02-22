@@ -257,5 +257,5 @@ func TestEstimateInputState_Reset(t *testing.T) {
 
 	assert.Equal(t, "", s.buffer)
 	assert.Equal(t, "", s.error)
-	assert.Equal(t, TicketFormMode, s.ReturnMode)
+	assert.Equal(t, TaskFormMode, s.ReturnMode)
 }

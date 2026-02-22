@@ -95,7 +95,7 @@ func CreateTestProject(tb testing.TB, db *sql.DB, d Dialect, name string) int {
 
 	// Initialize project counter
 	counterQuery := fmt.Sprintf(
-		"INSERT INTO project_counters (project_id, next_ticket_number) VALUES (%s, 1)",
+		"INSERT INTO project_counters (project_id, next_task_number) VALUES (%s, 1)",
 		d.Placeholder(1))
 	_, err = db.ExecContext(ctx, counterQuery, projectID)
 	if err != nil {
@@ -138,7 +138,7 @@ func CreateBareProject(tb testing.TB, db *sql.DB, d Dialect, name string) int {
 	}
 
 	counterQuery := fmt.Sprintf(
-		"INSERT INTO project_counters (project_id, next_ticket_number) VALUES (%s, 1)",
+		"INSERT INTO project_counters (project_id, next_task_number) VALUES (%s, 1)",
 		d.Placeholder(1))
 	_, err = db.ExecContext(ctx, counterQuery, projectID)
 	if err != nil {
@@ -398,7 +398,7 @@ func UpdateTaskDescription(tb testing.TB, db *sql.DB, d Dialect, taskID int, des
 }
 
 // UpdateTaskFields updates multiple fields on a task at once.
-// Pass a map of column names to values (e.g., {"description": "new desc", "ticket_number": 5}).
+// Pass a map of column names to values (e.g., {"description": "new desc", "task_number": 5}).
 func UpdateTaskFields(tb testing.TB, db *sql.DB, d Dialect, taskID int, fields map[string]any) {
 	tb.Helper()
 	if len(fields) == 0 {

@@ -15,10 +15,10 @@ func TestModeTransition_NormalToForm(t *testing.T) {
 	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
 	m.UIState.Mode = state.NormalMode
 
-	// Simulate mode transition to TicketFormMode
-	m.UIState.Mode = state.TicketFormMode
+	// Simulate mode transition to TaskFormMode
+	m.UIState.Mode = state.TaskFormMode
 
-	assert.Equal(t, state.TicketFormMode, m.UIState.Mode)
+	assert.Equal(t, state.TaskFormMode, m.UIState.Mode)
 
 	// Verify mode can be tracked back
 	assert.NotEqual(t, state.NormalMode, m.UIState.Mode, "Mode should have changed from NormalMode")
@@ -31,8 +31,8 @@ func TestModeTransition_FormToNormal(t *testing.T) {
 	m := setupTestModel([]*models.Column{{ID: 1, Name: "Todo"}}, nil)
 
 	// Start in form mode
-	m.UIState.Mode = state.TicketFormMode
-	assert.Equal(t, state.TicketFormMode, m.UIState.Mode, "Failed to set mode to TicketFormMode")
+	m.UIState.Mode = state.TaskFormMode
+	assert.Equal(t, state.TaskFormMode, m.UIState.Mode, "Failed to set mode to TaskFormMode")
 
 	// Transition back to normal
 	m.UIState.Mode = state.NormalMode
@@ -49,7 +49,7 @@ func TestModeTransition_MultipleTransitions(t *testing.T) {
 
 	// Series of transitions
 	modes := []state.Mode{
-		state.TicketFormMode,
+		state.TaskFormMode,
 		state.NormalMode,
 		state.LabelPickerMode,
 		state.NormalMode,
@@ -193,8 +193,8 @@ func TestEmptyState_HandlesEmptyTasks(t *testing.T) {
 	assert.Equal(t, 0, m.UIState.SelectedTask)
 
 	// Mode should still work in empty column
-	m.UIState.Mode = state.TicketFormMode
-	assert.Equal(t, state.TicketFormMode, m.UIState.Mode, "Should allow mode transitions in empty column")
+	m.UIState.Mode = state.TaskFormMode
+	assert.Equal(t, state.TaskFormMode, m.UIState.Mode, "Should allow mode transitions in empty column")
 }
 
 // TestStateIndependence_ColumnAndTaskSelection verifies column and task selection are independent.
@@ -269,7 +269,7 @@ func TestModeUsesLayers(t *testing.T) {
 		wantLayers bool
 	}{
 		{state.NormalMode, true},
-		{state.TicketFormMode, true},
+		{state.TaskFormMode, true},
 		{state.AddColumnFormMode, true},
 		{state.LabelPickerMode, true},
 		{state.FilterBarMode, true},

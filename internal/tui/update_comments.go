@@ -142,6 +142,6 @@ func (m Model) handleCommentsViewDelete() (tea.Model, tea.Cmd) {
 // handleCommentsViewClose closes the comments view and returns to task form
 func (m Model) handleCommentsViewClose() (tea.Model, tea.Cmd) {
 	// Return to task form mode
-	m.UIState.Mode = state.TicketFormMode
+	m.UIState.Mode = state.TaskFormMode
 	return m, nil
 }

@@ -18,7 +18,7 @@ func NewTypePickerState() *TypePickerState {
 	return &TypePickerState{
 		selectedTypeID: 1, // Default to task (id=1)
 		cursor:         0,
-		ReturnMode:     TicketFormMode,
+		ReturnMode:     TaskFormMode,
 	}
 }
 
@@ -62,5 +62,5 @@ func (s *TypePickerState) MoveDown() {
 func (s *TypePickerState) Reset() {
 	s.selectedTypeID = 1 // Default to task
 	s.cursor = 0
-	s.ReturnMode = TicketFormMode
+	s.ReturnMode = TaskFormMode
 }

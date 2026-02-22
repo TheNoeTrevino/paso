@@ -37,7 +37,7 @@ func TestCreateTask(t *testing.T) {
 		assert.Equal(t, env.ColumnID, result.ColumnID)
 		assert.NotZero(t, result.ID)
 
-		// Note: models.Task doesn't include TicketNumber (only TaskDetail does)
+		// Note: models.Task doesn't include TaskNumber (only TaskDetail does)
 		// We could verify it via GetTaskDetail if needed, but basic task creation is sufficient here
 	})
 }

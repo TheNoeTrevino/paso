@@ -115,13 +115,13 @@ func TestRenderDetailPanel_MinimalTask(t *testing.T) {
 	t.Parallel()
 
 	task := &models.TaskDetail{
-		ID:           1,
-		Title:        "Test Task",
-		TicketNumber: 42,
-		ProjectName:  "PROJ",
-		ColumnName:   "Todo",
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		ID:          1,
+		Title:       "Test Task",
+		TaskNumber:  42,
+		ProjectName: "PROJ",
+		ColumnName:  "Todo",
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	result := RenderDetailPanel(task, 80, 40)
@@ -140,7 +140,7 @@ func TestRenderDetailPanel_FullTask(t *testing.T) {
 		ID:                  1,
 		Title:               "Full Feature Task",
 		Description:         "This is a detailed description of the task that explains what needs to be done.",
-		TicketNumber:        123,
+		TaskNumber:          123,
 		ProjectName:         "TEST",
 		ColumnName:          "In Progress",
 		TypeDescription:     "Feature",
@@ -154,7 +154,7 @@ func TestRenderDetailPanel_FullTask(t *testing.T) {
 		ParentTasks: []*models.TaskReference{
 			{
 				ID:            10,
-				TicketNumber:  100,
+				TaskNumber:    100,
 				Title:         "Parent Task",
 				ProjectName:   "TEST",
 				RelationLabel: "Blocks",
@@ -165,7 +165,7 @@ func TestRenderDetailPanel_FullTask(t *testing.T) {
 		ChildTasks: []*models.TaskReference{
 			{
 				ID:            20,
-				TicketNumber:  200,
+				TaskNumber:    200,
 				Title:         "Child Task",
 				ProjectName:   "TEST",
 				RelationLabel: "Blocked by",
@@ -202,11 +202,11 @@ func TestRenderDetailPanel_WithoutOptionalSections(t *testing.T) {
 	t.Parallel()
 
 	task := &models.TaskDetail{
-		ID:           1,
-		Title:        "Simple Task",
-		TicketNumber: 1,
-		ProjectName:  "PROJ",
-		ColumnName:   "Done",
+		ID:          1,
+		Title:       "Simple Task",
+		TaskNumber:  1,
+		ProjectName: "PROJ",
+		ColumnName:  "Done",
 		// No description, labels, relations, or comments
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -224,11 +224,11 @@ func TestRenderDetailPanel_SingleComment(t *testing.T) {
 	t.Parallel()
 
 	task := &models.TaskDetail{
-		ID:           1,
-		Title:        "Task with one comment",
-		TicketNumber: 1,
-		ProjectName:  "PROJ",
-		ColumnName:   "Todo",
+		ID:          1,
+		Title:       "Task with one comment",
+		TaskNumber:  1,
+		ProjectName: "PROJ",
+		ColumnName:  "Todo",
 		Comments: []*models.Comment{
 			{ID: 1, Author: "Alice", Message: "Only comment"},
 		},
@@ -248,14 +248,14 @@ func TestRenderDetailPanel_LongDescription(t *testing.T) {
 	longDescription := strings.Repeat("This is a long line of text that will wrap. ", 20)
 
 	task := &models.TaskDetail{
-		ID:           1,
-		Title:        "Task",
-		Description:  longDescription,
-		TicketNumber: 1,
-		ProjectName:  "PROJ",
-		ColumnName:   "Todo",
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		ID:          1,
+		Title:       "Task",
+		Description: longDescription,
+		TaskNumber:  1,
+		ProjectName: "PROJ",
+		ColumnName:  "Todo",
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	result := RenderDetailPanel(task, 80, 60)
@@ -270,11 +270,11 @@ func TestRenderDetailPanel_LongCommentPreview(t *testing.T) {
 	longMessage := strings.Repeat("a", 100)
 
 	task := &models.TaskDetail{
-		ID:           1,
-		Title:        "Task",
-		TicketNumber: 1,
-		ProjectName:  "PROJ",
-		ColumnName:   "Todo",
+		ID:          1,
+		Title:       "Task",
+		TaskNumber:  1,
+		ProjectName: "PROJ",
+		ColumnName:  "Todo",
 		Comments: []*models.Comment{
 			{ID: 1, Author: "Alice", Message: longMessage},
 		},
@@ -317,13 +317,13 @@ func TestRenderDetailPanel_NarrowWidth(t *testing.T) {
 	t.Parallel()
 
 	task := &models.TaskDetail{
-		ID:           1,
-		Title:        "This is a very long task title that should wrap properly in narrow panels",
-		TicketNumber: 999,
-		ProjectName:  "PROJECT",
-		ColumnName:   "In Progress",
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		ID:          1,
+		Title:       "This is a very long task title that should wrap properly in narrow panels",
+		TaskNumber:  999,
+		ProjectName: "PROJECT",
+		ColumnName:  "In Progress",
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	// Very narrow width
@@ -337,13 +337,13 @@ func TestRenderDetailPanel_VerySmallDimensions(t *testing.T) {
 	t.Parallel()
 
 	task := &models.TaskDetail{
-		ID:           1,
-		Title:        "Task",
-		TicketNumber: 1,
-		ProjectName:  "P",
-		ColumnName:   "Todo",
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		ID:          1,
+		Title:       "Task",
+		TaskNumber:  1,
+		ProjectName: "P",
+		ColumnName:  "Todo",
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	// Minimum viable dimensions
@@ -356,15 +356,15 @@ func TestRenderDetailPanel_RelationsWithBlockingParent(t *testing.T) {
 	t.Parallel()
 
 	task := &models.TaskDetail{
-		ID:           1,
-		Title:        "Blocked Task",
-		TicketNumber: 1,
-		ProjectName:  "PROJ",
-		ColumnName:   "Todo",
+		ID:          1,
+		Title:       "Blocked Task",
+		TaskNumber:  1,
+		ProjectName: "PROJ",
+		ColumnName:  "Todo",
 		ParentTasks: []*models.TaskReference{
 			{
 				ID:            10,
-				TicketNumber:  10,
+				TaskNumber:    10,
 				Title:         "Blocking Parent",
 				ProjectName:   "PROJ",
 				RelationLabel: "Blocked by",
@@ -386,15 +386,15 @@ func TestRenderDetailPanel_RelationsWithChild(t *testing.T) {
 	t.Parallel()
 
 	task := &models.TaskDetail{
-		ID:           1,
-		Title:        "Parent Task",
-		TicketNumber: 1,
-		ProjectName:  "PROJ",
-		ColumnName:   "Todo",
+		ID:          1,
+		Title:       "Parent Task",
+		TaskNumber:  1,
+		ProjectName: "PROJ",
+		ColumnName:  "Todo",
 		ChildTasks: []*models.TaskReference{
 			{
 				ID:            20,
-				TicketNumber:  20,
+				TaskNumber:    20,
 				Title:         "Child Task",
 				ProjectName:   "PROJ",
 				RelationLabel: "Blocks",
@@ -415,11 +415,11 @@ func TestRenderDetailPanel_MultipleLabels(t *testing.T) {
 	t.Parallel()
 
 	task := &models.TaskDetail{
-		ID:           1,
-		Title:        "Task with many labels",
-		TicketNumber: 1,
-		ProjectName:  "PROJ",
-		ColumnName:   "Todo",
+		ID:          1,
+		Title:       "Task with many labels",
+		TaskNumber:  1,
+		ProjectName: "PROJ",
+		ColumnName:  "Todo",
 		Labels: []*models.Label{
 			{ID: 1, Name: "bug", Color: "#FF0000"},
 			{ID: 2, Name: "urgent", Color: "#FFA500"},
@@ -448,13 +448,13 @@ func TestRenderDetailPanel_Timestamps(t *testing.T) {
 	updatedAt := time.Date(2024, 6, 20, 14, 45, 0, 0, time.UTC)
 
 	task := &models.TaskDetail{
-		ID:           1,
-		Title:        "Task",
-		TicketNumber: 1,
-		ProjectName:  "PROJ",
-		ColumnName:   "Done",
-		CreatedAt:    createdAt,
-		UpdatedAt:    updatedAt,
+		ID:          1,
+		Title:       "Task",
+		TaskNumber:  1,
+		ProjectName: "PROJ",
+		ColumnName:  "Done",
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
 	}
 
 	result := RenderDetailPanel(task, 100, 50)
@@ -467,14 +467,14 @@ func TestRenderDetailPanel_NotBlocked(t *testing.T) {
 	t.Parallel()
 
 	task := &models.TaskDetail{
-		ID:           1,
-		Title:        "Normal Task",
-		TicketNumber: 1,
-		ProjectName:  "PROJ",
-		ColumnName:   "Todo",
-		IsBlocked:    false,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+		ID:          1,
+		Title:       "Normal Task",
+		TaskNumber:  1,
+		ProjectName: "PROJ",
+		ColumnName:  "Todo",
+		IsBlocked:   false,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	result := RenderDetailPanel(task, 100, 50)
@@ -488,7 +488,7 @@ func TestRenderDetailPanel_WithTypeOnly(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:              1,
 		Title:           "Typed Task",
-		TicketNumber:    1,
+		TaskNumber:      1,
 		ProjectName:     "PROJ",
 		ColumnName:      "Todo",
 		TypeDescription: "Bug",
@@ -508,7 +508,7 @@ func TestRenderDetailPanel_WithPriorityOnly(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:                  1,
 		Title:               "Priority Task",
-		TicketNumber:        1,
+		TaskNumber:          1,
 		ProjectName:         "PROJ",
 		ColumnName:          "Todo",
 		PriorityDescription: "Critical",

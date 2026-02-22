@@ -50,33 +50,33 @@ insert into tasks (
     description,
     column_id,
     position,
-    ticket_number,
+    task_number,
     assignee_id,
     estimate,
     due_date)
 values (?, ?, ?, ?, ?, ?, ?, ?)
-returning id, title, description, column_id, position, ticket_number, type_id, priority_id, created_at, updated_at, assignee_id, estimate, due_date, archived
+returning id, title, description, column_id, position, task_number, type_id, priority_id, created_at, updated_at, assignee_id, estimate, due_date, archived
 `
 
 type CreateTaskParams struct {
-	Title        string
-	Description  sql.NullString
-	ColumnID     int64
-	Position     int64
-	TicketNumber sql.NullInt64
-	AssigneeID   interface{}
-	Estimate     interface{}
-	DueDate      interface{}
+	Title       string
+	Description sql.NullString
+	ColumnID    int64
+	Position    int64
+	TaskNumber  sql.NullInt64
+	AssigneeID  interface{}
+	Estimate    interface{}
+	DueDate     interface{}
 }
 
-// Creates a new task with title, description, position, ticket number, and assignee
+// Creates a new task with title, description, position, task number, and assignee
 func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error) {
 	row := q.db.QueryRowContext(ctx, createTask,
 		arg.Title,
 		arg.Description,
 		arg.ColumnID,
 		arg.Position,
-		arg.TicketNumber,
+		arg.TaskNumber,
 		arg.AssigneeID,
 		arg.Estimate,
 		arg.DueDate,
@@ -88,7 +88,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		&i.Description,
 		&i.ColumnID,
 		&i.Position,
-		&i.TicketNumber,
+		&i.TaskNumber,
 		&i.TypeID,
 		&i.PriorityID,
 		&i.CreatedAt,
@@ -205,7 +205,7 @@ func (q *Queries) GetAllTypes(ctx context.Context) ([]Type, error) {
 }
 
 const getChildTasks = `-- name: GetChildTasks :many
-select t.id, t.ticket_number, t.title, p.name,
+select t.id, t.task_number, t.title, p.name,
 rt.id, rt.c_to_p_label, rt.color, rt.is_blocking
 from tasks t
 inner join task_subtasks ts on t.id = ts.child_id
@@ -213,18 +213,18 @@ inner join relation_types rt on ts.relation_type_id = rt.id
 inner join columns c on t.column_id = c.id
 inner join projects p on c.project_id = p.id
 where ts.parent_id = ?
-order by p.name, t.ticket_number
+order by p.name, t.task_number
 `
 
 type GetChildTasksRow struct {
-	ID           int64
-	TicketNumber sql.NullInt64
-	Title        string
-	Name         string
-	ID_2         int64
-	CToPLabel    string
-	Color        string
-	IsBlocking   bool
+	ID         int64
+	TaskNumber sql.NullInt64
+	Title      string
+	Name       string
+	ID_2       int64
+	CToPLabel  string
+	Color      string
+	IsBlocking bool
 }
 
 // Retrieves all child tasks for a given parent task with relationship details
@@ -239,7 +239,7 @@ func (q *Queries) GetChildTasks(ctx context.Context, parentID int64) ([]GetChild
 		var i GetChildTasksRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.TicketNumber,
+			&i.TaskNumber,
 			&i.Title,
 			&i.Name,
 			&i.ID_2,
@@ -263,7 +263,7 @@ func (q *Queries) GetChildTasks(ctx context.Context, parentID int64) ([]GetChild
 const getInProgressTaskDetails = `-- name: GetInProgressTaskDetails :many
 select
     t.id,
-    t.ticket_number,
+    t.task_number,
     t.title,
     t.description,
     t.column_id,
@@ -301,7 +301,7 @@ left join labels l on tl.label_id = l.id
 where proj.id = ? and c.holds_in_progress_tasks = 1
 group by
     t.id,
-    t.ticket_number,
+    t.task_number,
     t.title,
     t.description,
     t.column_id,
@@ -322,7 +322,7 @@ order by t.position
 
 type GetInProgressTaskDetailsRow struct {
 	ID                  int64
-	TicketNumber        sql.NullInt64
+	TaskNumber          sql.NullInt64
 	Title               string
 	Description         sql.NullString
 	ColumnID            int64
@@ -356,7 +356,7 @@ func (q *Queries) GetInProgressTaskDetails(ctx context.Context, id int64) ([]Get
 		var i GetInProgressTaskDetailsRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.TicketNumber,
+			&i.TaskNumber,
 			&i.Title,
 			&i.Description,
 			&i.ColumnID,
@@ -393,7 +393,7 @@ func (q *Queries) GetInProgressTaskDetails(ctx context.Context, id int64) ([]Get
 const getInProgressTasksByProject = `-- name: GetInProgressTasksByProject :many
 select
     t.id,
-    t.ticket_number,
+    t.task_number,
     t.title,
     t.description,
     c.name as column_name,
@@ -406,12 +406,12 @@ order by t.position
 `
 
 type GetInProgressTasksByProjectRow struct {
-	ID           int64
-	TicketNumber sql.NullInt64
-	Title        string
-	Description  sql.NullString
-	ColumnName   string
-	ProjectName  string
+	ID          int64
+	TaskNumber  sql.NullInt64
+	Title       string
+	Description sql.NullString
+	ColumnName  string
+	ProjectName string
 }
 
 // Retrieves basic information for tasks currently in progress for a project
@@ -426,7 +426,7 @@ func (q *Queries) GetInProgressTasksByProject(ctx context.Context, id int64) ([]
 		var i GetInProgressTasksByProjectRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.TicketNumber,
+			&i.TaskNumber,
 			&i.Title,
 			&i.Description,
 			&i.ColumnName,
@@ -458,21 +458,21 @@ func (q *Queries) GetNextColumnID(ctx context.Context, id int64) (interface{}, e
 	return next_id, err
 }
 
-const getNextTicketNumber = `-- name: GetNextTicketNumber :one
-select next_ticket_number
+const getNextTaskNumber = `-- name: GetNextTaskNumber :one
+select next_task_number
 from project_counters where project_id = ?
 `
 
-// Retrieves the next available ticket number for a project
-func (q *Queries) GetNextTicketNumber(ctx context.Context, projectID int64) (sql.NullInt64, error) {
-	row := q.db.QueryRowContext(ctx, getNextTicketNumber, projectID)
-	var next_ticket_number sql.NullInt64
-	err := row.Scan(&next_ticket_number)
-	return next_ticket_number, err
+// Retrieves the next available task number for a project
+func (q *Queries) GetNextTaskNumber(ctx context.Context, projectID int64) (sql.NullInt64, error) {
+	row := q.db.QueryRowContext(ctx, getNextTaskNumber, projectID)
+	var next_task_number sql.NullInt64
+	err := row.Scan(&next_task_number)
+	return next_task_number, err
 }
 
 const getParentTasks = `-- name: GetParentTasks :many
-select t.id, t.ticket_number, t.title, p.name,
+select t.id, t.task_number, t.title, p.name,
 rt.id, rt.p_to_c_label, rt.color, rt.is_blocking
 from tasks t
 inner join task_subtasks ts on t.id = ts.parent_id
@@ -480,18 +480,18 @@ inner join relation_types rt on ts.relation_type_id = rt.id
 inner join columns c on t.column_id = c.id
 inner join projects p on c.project_id = p.id
 where ts.child_id = ?
-order by p.name, t.ticket_number
+order by p.name, t.task_number
 `
 
 type GetParentTasksRow struct {
-	ID           int64
-	TicketNumber sql.NullInt64
-	Title        string
-	Name         string
-	ID_2         int64
-	PToCLabel    string
-	Color        string
-	IsBlocking   bool
+	ID         int64
+	TaskNumber sql.NullInt64
+	Title      string
+	Name       string
+	ID_2       int64
+	PToCLabel  string
+	Color      string
+	IsBlocking bool
 }
 
 // Retrieves all parent tasks for a given child task with relationship details
@@ -506,7 +506,7 @@ func (q *Queries) GetParentTasks(ctx context.Context, childID int64) ([]GetParen
 		var i GetParentTasksRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.TicketNumber,
+			&i.TaskNumber,
 			&i.Title,
 			&i.Name,
 			&i.ID_2,
@@ -781,7 +781,7 @@ select
     t.description,
     t.column_id,
     t.position,
-    t.ticket_number,
+    t.task_number,
     t.created_at,
     t.updated_at,
     t.estimate,
@@ -815,7 +815,7 @@ type GetTaskDetailRow struct {
 	Description         sql.NullString
 	ColumnID            int64
 	Position            int64
-	TicketNumber        sql.NullInt64
+	TaskNumber          sql.NullInt64
 	CreatedAt           sql.NullTime
 	UpdatedAt           sql.NullTime
 	Estimate            interface{}
@@ -841,7 +841,7 @@ func (q *Queries) GetTaskDetail(ctx context.Context, id int64) (GetTaskDetailRow
 		&i.Description,
 		&i.ColumnID,
 		&i.Position,
-		&i.TicketNumber,
+		&i.TaskNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Estimate,
@@ -915,19 +915,19 @@ func (q *Queries) GetTaskPosition(ctx context.Context, id int64) (GetTaskPositio
 }
 
 const getTaskReferencesForProject = `-- name: GetTaskReferencesForProject :many
-select t.id, t.ticket_number, t.title, p.name
+select t.id, t.task_number, t.title, p.name
 from tasks t
 inner join columns c on t.column_id = c.id
 inner join projects p on c.project_id = p.id
 where p.id = ?
-order by p.name, t.ticket_number
+order by p.name, t.task_number
 `
 
 type GetTaskReferencesForProjectRow struct {
-	ID           int64
-	TicketNumber sql.NullInt64
-	Title        string
-	Name         string
+	ID         int64
+	TaskNumber sql.NullInt64
+	Title      string
+	Name       string
 }
 
 // Retrieves basic task references for all tasks in a project
@@ -942,7 +942,7 @@ func (q *Queries) GetTaskReferencesForProject(ctx context.Context, id int64) ([]
 		var i GetTaskReferencesForProjectRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.TicketNumber,
+			&i.TaskNumber,
 			&i.Title,
 			&i.Name,
 		); err != nil {
@@ -1422,7 +1422,7 @@ func (q *Queries) GetTasksByColumn(ctx context.Context, columnID int64) ([]GetTa
 const getTasksForTree = `-- name: GetTasksForTree :many
 select
     t.id,
-    t.ticket_number,
+    t.task_number,
     t.title,
     c.name as column_name,
     proj.name as project_name,
@@ -1431,16 +1431,16 @@ from tasks t
 inner join columns c on t.column_id = c.id
 inner join projects proj on c.project_id = proj.id
 where proj.id = ?
-order by t.ticket_number
+order by t.task_number
 `
 
 type GetTasksForTreeRow struct {
-	ID           int64
-	TicketNumber sql.NullInt64
-	Title        string
-	ColumnName   string
-	ProjectName  string
-	IsCompleted  bool
+	ID          int64
+	TaskNumber  sql.NullInt64
+	Title       string
+	ColumnName  string
+	ProjectName string
+	IsCompleted bool
 }
 
 // Retrieves all tasks in a project with column
@@ -1456,7 +1456,7 @@ func (q *Queries) GetTasksForTree(ctx context.Context, id int64) ([]GetTasksForT
 		var i GetTasksForTreeRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.TicketNumber,
+			&i.TaskNumber,
 			&i.Title,
 			&i.ColumnName,
 			&i.ProjectName,
@@ -1475,15 +1475,15 @@ func (q *Queries) GetTasksForTree(ctx context.Context, id int64) ([]GetTasksForT
 	return items, nil
 }
 
-const incrementTicketNumber = `-- name: IncrementTicketNumber :exec
+const incrementTaskNumber = `-- name: IncrementTaskNumber :exec
 update project_counters
-set next_ticket_number = next_ticket_number + 1
+set next_task_number = next_task_number + 1
 where project_id = ?
 `
 
-// Increments the ticket counter for a project after assigning a ticket number
-func (q *Queries) IncrementTicketNumber(ctx context.Context, projectID int64) error {
-	_, err := q.db.ExecContext(ctx, incrementTicketNumber, projectID)
+// Increments the task counter for a project after assigning a task number
+func (q *Queries) IncrementTaskNumber(ctx context.Context, projectID int64) error {
+	_, err := q.db.ExecContext(ctx, incrementTaskNumber, projectID)
 	return err
 }
 

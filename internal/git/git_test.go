@@ -579,7 +579,7 @@ func TestSanitizeBranchName_TableDriven(t *testing.T) {
 			expectError: false,
 			minLength:   1,
 			maxLength:   255,
-			description: "Branch with JIRA-style ticket prefix",
+			description: "Branch with JIRA-style task prefix",
 		},
 		{
 			name:        "release_branch",

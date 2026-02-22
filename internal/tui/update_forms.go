@@ -432,7 +432,7 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Forms.Form.HasTaskFormChanges() {
 				// Show discard confirmation
 				m.UIState.DiscardContext = &state.DiscardContext{
-					SourceMode: state.TicketFormMode,
+					SourceMode: state.TaskFormMode,
 					Message:    "This task has unsaved changes. Discard?",
 				}
 				m.UIState.Mode = state.DiscardConfirmMode
@@ -459,28 +459,28 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case km.Forms.EditLabels:
 			// Open label picker
-			if m.initLabelPicker(state.TicketFormMode) {
+			if m.initLabelPicker(state.TaskFormMode) {
 				m.UIState.Mode = state.LabelPickerMode
 			}
 			return m, nil
 
 		case km.Forms.EditPriority:
 			// Open priority picker
-			if m.initPriorityPicker(state.TicketFormMode) {
+			if m.initPriorityPicker(state.TaskFormMode) {
 				m.UIState.Mode = state.PriorityPickerMode
 			}
 			return m, nil
 
 		case km.Forms.EditType:
 			// Open type picker
-			if m.initTypePicker(state.TicketFormMode) {
+			if m.initTypePicker(state.TaskFormMode) {
 				m.UIState.Mode = state.TypePickerMode
 			}
 			return m, nil
 
 		case km.Forms.EditAssignee:
 			// Open assignee picker
-			if m.initAssigneePicker(state.TicketFormMode) {
+			if m.initAssigneePicker(state.TaskFormMode) {
 				m.UIState.Mode = state.AssigneePickerMode
 			}
 			return m, nil
@@ -892,7 +892,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.UIState.Mode = state.CommentsViewMode
 			} else {
-				m.UIState.Mode = state.TicketFormMode
+				m.UIState.Mode = state.TaskFormMode
 			}
 			m.Forms.Form.ClearCommentForm()
 			return m, tea.ClearScreen
@@ -975,7 +975,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if returnMode == state.CommentsViewMode {
 				m.UIState.Mode = state.CommentsViewMode
 			} else {
-				m.UIState.Mode = state.TicketFormMode
+				m.UIState.Mode = state.TaskFormMode
 			}
 			return nil
 		},

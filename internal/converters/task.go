@@ -79,8 +79,8 @@ func ParentTasksToReferences(rows []types.GetParentTasksRow) []*models.TaskRefer
 			RelationColor:  row.Color,
 			IsBlocking:     row.IsBlocking,
 		}
-		if row.TicketNumber.Valid {
-			ref.TicketNumber = int(row.TicketNumber.Int64)
+		if row.TaskNumber.Valid {
+			ref.TaskNumber = int(row.TaskNumber.Int64)
 		}
 		result = append(result, ref)
 	}
@@ -100,8 +100,8 @@ func ChildTasksToReferences(rows []types.GetChildTasksRow) []*models.TaskReferen
 			RelationColor:  row.Color,
 			IsBlocking:     row.IsBlocking,
 		}
-		if row.TicketNumber.Valid {
-			ref.TicketNumber = int(row.TicketNumber.Int64)
+		if row.TaskNumber.Valid {
+			ref.TaskNumber = int(row.TaskNumber.Int64)
 		}
 		result = append(result, ref)
 	}

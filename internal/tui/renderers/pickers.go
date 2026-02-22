@@ -368,7 +368,7 @@ func RenderTaskPicker(
 		}
 
 		// not adding project key as all tasks are from the same project
-		taskID := fmt.Sprintf("%d", item.TaskRef.TicketNumber)
+		taskID := fmt.Sprintf("%d", item.TaskRef.TaskNumber)
 
 		// For selected items, show relation type
 		var relationLabel string

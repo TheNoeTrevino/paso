@@ -70,7 +70,7 @@ func InitParentPickerForForm(m *tui.Model) bool {
 	m.Pickers.Parent.Cursor = 0
 	m.Pickers.Parent.Filter = ""
 	m.Pickers.Parent.PickerType = "parent"
-	m.Pickers.Parent.ReturnMode = state.TicketFormMode
+	m.Pickers.Parent.ReturnMode = state.TaskFormMode
 
 	return true
 }
@@ -135,7 +135,7 @@ func InitChildPickerForForm(m *tui.Model) bool {
 	m.Pickers.Child.Cursor = 0
 	m.Pickers.Child.Filter = ""
 	m.Pickers.Child.PickerType = "child"
-	m.Pickers.Child.ReturnMode = state.TicketFormMode
+	m.Pickers.Child.ReturnMode = state.TaskFormMode
 
 	return true
 }
@@ -171,7 +171,7 @@ func InitLabelPickerForForm(m *tui.Model) bool {
 	m.Pickers.Label.TaskID = m.Forms.Form.EditingTaskID // 0 for create mode
 	m.Pickers.Label.Cursor = 0
 	m.Pickers.Label.Filter = ""
-	m.Pickers.Label.ReturnMode = state.TicketFormMode
+	m.Pickers.Label.ReturnMode = state.TaskFormMode
 
 	return true
 }
@@ -216,7 +216,7 @@ func InitPriorityPickerForForm(m *tui.Model) bool {
 	m.Pickers.Priority.SetSelectedPriorityID(currentPriorityID)
 	// Set cursor to match the selected priority (adjust for 0-indexing)
 	m.Pickers.Priority.SetCursor(currentPriorityID - 1)
-	m.Pickers.Priority.ReturnMode = state.TicketFormMode
+	m.Pickers.Priority.ReturnMode = state.TaskFormMode
 
 	return true
 }
@@ -255,7 +255,7 @@ func InitTypePickerForForm(m *tui.Model) bool {
 	m.Pickers.Type.SetSelectedTypeID(currentTypeID)
 	// Set cursor to match the selected type (adjust for 0-indexing)
 	m.Pickers.Type.SetCursor(currentTypeID - 1)
-	m.Pickers.Type.ReturnMode = state.TicketFormMode
+	m.Pickers.Type.ReturnMode = state.TaskFormMode
 
 	return true
 }

@@ -43,7 +43,7 @@ type TaskPickerState struct {
 	PickerType string
 
 	// ReturnMode specifies which mode to return to when closing picker
-	// Can be ViewTaskMode or TicketFormMode
+	// Can be ViewTaskMode or TaskFormMode
 	ReturnMode Mode
 }
 
@@ -61,7 +61,7 @@ func NewTaskPickerState() *TaskPickerState {
 
 // GetFilteredItems returns task picker items filtered by the current filter text.
 // If no filter is set, returns all items.
-// Filters by both ticket number (PROJ-123 format) and title (case-insensitive substring match).
+// Filters by both task number (PROJ-123 format) and title (case-insensitive substring match).
 func (s *TaskPickerState) GetFilteredItems() []TaskPickerItem {
 	if s.Filter == "" {
 		return s.Items
@@ -81,11 +81,11 @@ func (s *TaskPickerState) GetFilteredItems() []TaskPickerItem {
 			continue
 		}
 
-		// Match on ticket number (PROJ-123 format)
+		// Match on task number (PROJ-123 format)
 		// Use string concatenation instead of fmt.Sprintf to reduce allocations
 		// Only convert to lowercase once
-		ticketNum := item.TaskRef.ProjectName + "-" + fmt.Sprintf("%d", item.TaskRef.TicketNumber)
-		if strings.Contains(strings.ToLower(ticketNum), lowerFilter) {
+		taskNum := item.TaskRef.ProjectName + "-" + fmt.Sprintf("%d", item.TaskRef.TaskNumber)
+		if strings.Contains(strings.ToLower(taskNum), lowerFilter) {
 			filtered = append(filtered, item)
 		}
 	}

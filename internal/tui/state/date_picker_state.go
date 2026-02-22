@@ -43,7 +43,7 @@ func NewDatePickerState() *DatePickerState {
 		SelectedDate: now,
 		CursorDay:    now.Day(),
 		cursorWant:   now.Day(),
-		ReturnMode:   TicketFormMode,
+		ReturnMode:   TaskFormMode,
 	}
 }
 
@@ -55,7 +55,7 @@ func (s *DatePickerState) Reset() {
 	s.SelectedDate = now
 	s.CursorDay = now.Day()
 	s.cursorWant = now.Day()
-	s.ReturnMode = TicketFormMode
+	s.ReturnMode = TaskFormMode
 }
 
 // MoveDay moves the cursor by delta days (positive or negative).

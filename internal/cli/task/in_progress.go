@@ -109,7 +109,7 @@ func listInProgressTasks(ctx context.Context, projectID int, formatter *cli.Outp
 	for i, t := range tasks {
 		displayTasks[i] = TaskDisplay{
 			ID:                  t.ID,
-			TicketNumber:        t.TicketNumber,
+			TaskNumber:          t.TaskNumber,
 			Title:               t.Title,
 			TypeDescription:     t.TypeDescription,
 			PriorityDescription: t.PriorityDescription,

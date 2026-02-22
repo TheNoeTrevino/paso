@@ -178,7 +178,7 @@ func TestFormatListJSON(t *testing.T) {
 				Tasks: []TaskDisplay{
 					{
 						ID:                  42,
-						TicketNumber:        1,
+						TaskNumber:          1,
 						Title:               "Test task",
 						TypeDescription:     "feature",
 						PriorityDescription: "high",
@@ -193,7 +193,7 @@ func TestFormatListJSON(t *testing.T) {
 				"tasks": []TaskDisplay{
 					{
 						ID:                  42,
-						TicketNumber:        1,
+						TaskNumber:          1,
 						Title:               "Test task",
 						TypeDescription:     "feature",
 						PriorityDescription: "high",
@@ -210,7 +210,7 @@ func TestFormatListJSON(t *testing.T) {
 				Tasks: []TaskDisplay{
 					{
 						ID:                  1,
-						TicketNumber:        1,
+						TaskNumber:          1,
 						Title:               "Task 1",
 						TypeDescription:     "bug",
 						PriorityDescription: "critical",
@@ -219,7 +219,7 @@ func TestFormatListJSON(t *testing.T) {
 					},
 					{
 						ID:                  2,
-						TicketNumber:        2,
+						TaskNumber:          2,
 						Title:               "Task 2",
 						TypeDescription:     "feature",
 						PriorityDescription: "medium",
@@ -234,7 +234,7 @@ func TestFormatListJSON(t *testing.T) {
 				"tasks": []TaskDisplay{
 					{
 						ID:                  1,
-						TicketNumber:        1,
+						TaskNumber:          1,
 						Title:               "Task 1",
 						TypeDescription:     "bug",
 						PriorityDescription: "critical",
@@ -243,7 +243,7 @@ func TestFormatListJSON(t *testing.T) {
 					},
 					{
 						ID:                  2,
-						TicketNumber:        2,
+						TaskNumber:          2,
 						Title:               "Task 2",
 						TypeDescription:     "feature",
 						PriorityDescription: "medium",

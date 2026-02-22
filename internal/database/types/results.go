@@ -2,20 +2,20 @@ package types
 
 // GetChildTasksRow represents the result of GetChildTasks query
 type GetChildTasksRow struct {
-	ID           int64
-	TicketNumber NullInt64
-	Title        string
-	Name         string
-	ID_2         int64
-	CToPLabel    string
-	Color        string
-	IsBlocking   bool
+	ID         int64
+	TaskNumber NullInt64
+	Title      string
+	Name       string
+	ID_2       int64
+	CToPLabel  string
+	Color      string
+	IsBlocking bool
 }
 
 // GetInProgressTaskDetailsRow represents the result of GetInProgressTaskDetails query
 type GetInProgressTaskDetailsRow struct {
 	ID                  int64
-	TicketNumber        NullInt64
+	TaskNumber          NullInt64
 	Title               string
 	Description         NullString
 	ColumnID            int64
@@ -39,24 +39,24 @@ type GetInProgressTaskDetailsRow struct {
 
 // GetInProgressTasksByProjectRow represents the result of GetInProgressTasksByProject query
 type GetInProgressTasksByProjectRow struct {
-	ID           int64
-	TicketNumber NullInt64
-	Title        string
-	Description  NullString
-	ColumnName   string
-	ProjectName  string
+	ID          int64
+	TaskNumber  NullInt64
+	Title       string
+	Description NullString
+	ColumnName  string
+	ProjectName string
 }
 
 // GetParentTasksRow represents the result of GetParentTasks query
 type GetParentTasksRow struct {
-	ID           int64
-	TicketNumber NullInt64
-	Title        string
-	Name         string
-	ID_2         int64
-	PToCLabel    string
-	Color        string
-	IsBlocking   bool
+	ID         int64
+	TaskNumber NullInt64
+	Title      string
+	Name       string
+	ID_2       int64
+	PToCLabel  string
+	Color      string
+	IsBlocking bool
 }
 
 // GetReadyTaskSummariesByProjectRow represents the result of GetReadyTaskSummariesByProject query
@@ -108,7 +108,7 @@ type GetTaskDetailRow struct {
 	Description         NullString
 	ColumnID            int64
 	Position            int64
-	TicketNumber        NullInt64
+	TaskNumber          NullInt64
 	CreatedAt           NullTime
 	UpdatedAt           NullTime
 	Estimate            NullString
@@ -131,10 +131,10 @@ type GetTaskPositionRow struct {
 
 // GetTaskReferencesForProjectRow represents the result of GetTaskReferencesForProject query
 type GetTaskReferencesForProjectRow struct {
-	ID           int64
-	TicketNumber NullInt64
-	Title        string
-	Name         string
+	ID         int64
+	TaskNumber NullInt64
+	Title      string
+	Name       string
 }
 
 // GetTaskRelationsForProjectRow represents the result of GetTaskRelationsForProject query
@@ -215,12 +215,12 @@ type GetTasksByColumnRow struct {
 
 // GetTasksForTreeRow represents the result of GetTasksForTree query
 type GetTasksForTreeRow struct {
-	ID           int64
-	TicketNumber NullInt64
-	Title        string
-	ColumnName   string
-	ProjectName  string
-	IsCompleted  bool
+	ID          int64
+	TaskNumber  NullInt64
+	Title       string
+	ColumnName  string
+	ProjectName string
+	IsCompleted bool
 }
 
 // GetColumnByIDRow represents the result of GetColumnByID query

@@ -5747,8 +5747,8 @@ ok  	github.com/thenoetrevino/paso/internal/services/project	0.490s
 === PAUSE TestGetTaskTreeByProject_DeepNesting
 === RUN   TestGetTaskTreeByProject_BlockingRelationship
 === PAUSE TestGetTaskTreeByProject_BlockingRelationship
-=== RUN   TestGetTaskTreeByProject_SortedByTicketNumber
-=== PAUSE TestGetTaskTreeByProject_SortedByTicketNumber
+=== RUN   TestGetTaskTreeByProject_SortedByTaskNumber
+=== PAUSE TestGetTaskTreeByProject_SortedByTaskNumber
 === RUN   TestGetTaskTreeByProject_MultipleRootsWithChildren
 === PAUSE TestGetTaskTreeByProject_MultipleRootsWithChildren
 === RUN   TestGetTaskTreeByProject_SingleTask
@@ -5820,7 +5820,7 @@ ok  	github.com/thenoetrevino/paso/internal/services/project	0.490s
 2026/02/11 20:56:53 OK   00008_fix_assignee_name_uniqueness.sql (1.79ms)
 2026/02/11 20:56:53 goose: successfully migrated database to version: 8
 --- PASS: TestGetTaskTreeByProject_SelfDependency (0.07s)
-=== CONT  TestGetTaskTreeByProject_SortedByTicketNumber
+=== CONT  TestGetTaskTreeByProject_SortedByTaskNumber
 2026/02/11 20:56:53 OK   00001_initial_schema.sql (2.11ms)
 2026/02/11 20:56:53 OK   00002_add_performance_indexes.sql (829.08µs)
 2026/02/11 20:56:53 OK   00003_add_git_branch_to_projects.sql (540.3µs)
@@ -5889,7 +5889,7 @@ ok  	github.com/thenoetrevino/paso/internal/services/project	0.490s
 2026/02/11 20:56:54 OK   00007_add_task_assignee.sql (3.68ms)
 2026/02/11 20:56:54 OK   00008_fix_assignee_name_uniqueness.sql (1.86ms)
 2026/02/11 20:56:54 goose: successfully migrated database to version: 8
---- PASS: TestGetTaskTreeByProject_SortedByTicketNumber (0.06s)
+--- PASS: TestGetTaskTreeByProject_SortedByTaskNumber (0.06s)
 === CONT  TestAddParentRelation_SelfRelationPrevention
 2026/02/11 20:56:54 OK   00001_initial_schema.sql (2.63ms)
 2026/02/11 20:56:54 OK   00002_add_performance_indexes.sql (904.33µs)
