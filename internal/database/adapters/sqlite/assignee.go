@@ -39,9 +39,5 @@ func (a *Adapter) ListAssignees(ctx context.Context) ([]types.Assignee, error) {
 }
 
 func (a *Adapter) DeleteAssignee(ctx context.Context, id int64) (int64, error) {
-	result, err := a.db.ExecContext(ctx, "delete from assignees where id = ?", id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
+	return a.queries.DeleteAssignee(ctx, id)
 }
