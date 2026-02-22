@@ -264,6 +264,14 @@ func toGeneratedUpdateCommentParams(t types.UpdateCommentParams) generated_sqlit
 	}
 }
 
+func toGeneratedCreateTaskEventParams(t types.CreateTaskEventParams) generated_sqlite.CreateTaskEventParams {
+	return generated_sqlite.CreateTaskEventParams{
+		TaskID:  t.TaskID,
+		Content: t.Content,
+		Author:  t.Author,
+	}
+}
+
 func toGeneratedCreateStandupLogParams(t types.CreateStandupLogParams) generated_sqlite.CreateStandupLogParams {
 	return generated_sqlite.CreateStandupLogParams{
 		ProjectID: t.ProjectID,

@@ -257,6 +257,14 @@ func toGeneratedUpdateCommentParams(t types.UpdateCommentParams) generated_postg
 	}
 }
 
+func toGeneratedCreateTaskEventParams(t types.CreateTaskEventParams) generated_postgres.CreateTaskEventParams {
+	return generated_postgres.CreateTaskEventParams{
+		TaskID:  t.TaskID,
+		Content: t.Content,
+		Author:  t.Author,
+	}
+}
+
 func toGeneratedCreateStandupLogParams(t types.CreateStandupLogParams) generated_postgres.CreateStandupLogParams {
 	return generated_postgres.CreateStandupLogParams{
 		ProjectID: t.ProjectID,

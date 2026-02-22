@@ -439,6 +439,16 @@ func fromGeneratedGetReadyColumnByProjectRow(g generated_sqlite.GetReadyColumnBy
 	}
 }
 
+func fromGeneratedTaskEvent(g generated_sqlite.TaskEvent) types.TaskEvent {
+	return types.TaskEvent{
+		ID:        g.ID,
+		TaskID:    g.TaskID,
+		Content:   g.Content,
+		Author:    g.Author,
+		CreatedAt: types.FromSQLNullTime(g.CreatedAt),
+	}
+}
+
 func fromGeneratedStandupLog(g generated_sqlite.StandupLog) types.StandupLog {
 	return types.StandupLog{
 		ID:        g.ID,
