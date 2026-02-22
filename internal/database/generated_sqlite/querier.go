@@ -37,6 +37,8 @@ type Querier interface {
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
 	// Creates a new project with name and description
 	CreateProjectRecord(ctx context.Context, arg CreateProjectRecordParams) (Project, error)
+	// Creates a new standup log entry for a project
+	CreateStandupLog(ctx context.Context, arg CreateStandupLogParams) (StandupLog, error)
 	// Creates a new task with title, description, position, ticket number, and assignee
 	CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error)
 	// Creates a new event for a task
@@ -60,6 +62,8 @@ type Querier interface {
 	DeleteProject(ctx context.Context, id int64) error
 	// Deletes the ticket counter for a project
 	DeleteProjectCounter(ctx context.Context, projectID int64) error
+	// Deletes a standup log by ID
+	DeleteStandupLog(ctx context.Context, id int64) error
 	// Permanently deletes a task by ID
 	DeleteTask(ctx context.Context, id int64) error
 	// Deletes all tasks within a specific column
@@ -134,6 +138,10 @@ type Querier interface {
 	GetReadyColumnByProject(ctx context.Context, projectID int64) (GetReadyColumnByProjectRow, error)
 	// Retrieves task summaries for ready tasks (tasks in columns marked as holds_ready_tasks)
 	GetReadyTaskSummariesByProject(ctx context.Context, projectID int64) ([]GetReadyTaskSummariesByProjectRow, error)
+	// Retrieves a single standup log by ID
+	GetStandupLog(ctx context.Context, id int64) (StandupLog, error)
+	// Retrieves all standup logs for a project, ordered by creation time (newest first)
+	GetStandupLogsByProject(ctx context.Context, projectID int64) ([]StandupLog, error)
 	// Retrieves the last column in a project's linked list (where next_id is null)
 	GetTailColumnForProject(ctx context.Context, projectID int64) (int64, error)
 	// Retrieves basic task information by ID

@@ -61,6 +61,13 @@ type RelationType struct {
 	IsBlocking bool
 }
 
+type StandupLog struct {
+	ID        int64
+	ProjectID int64
+	Content   string
+	CreatedAt sql.NullTime
+}
+
 type Task struct {
 	ID           int64
 	Title        string
