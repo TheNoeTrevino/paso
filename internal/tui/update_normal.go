@@ -115,6 +115,8 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleQuickEditEstimate()
 	case km.Tasks.EditDueDate:
 		return m.handleQuickEditDueDate()
+	case km.Tasks.EditType:
+		return m.handleQuickEditType()
 	case km.General.Search:
 		return m.handleEnterSearchChip()
 	case km.General.FilterBar:
@@ -583,5 +585,13 @@ func (m Model) handleQuickEditDueDate() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.UIState.Mode = state.DatePickerMode
+	return m, nil
+}
+
+func (m Model) handleQuickEditType() (tea.Model, tea.Cmd) {
+	if !m.initTypePicker(state.NormalMode) {
+		return m, nil
+	}
+	m.UIState.Mode = state.TypePickerMode
 	return m, nil
 }

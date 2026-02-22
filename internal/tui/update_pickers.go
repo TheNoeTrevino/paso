@@ -784,8 +784,10 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Pickers.Type.SetSelectedTypeID(selectedType.ID)
 		}
 
-		// Return to ticket form mode
 		m.UIState.Mode = m.Pickers.Type.ReturnMode
+		if m.Pickers.Type.ReturnMode == state.NormalMode {
+			m.Forms.Form.EditingTaskID = 0
+		}
 		return m, nil
 	}
 

@@ -459,7 +459,7 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case km.Forms.EditType:
 			// Open type picker
-			if m.initTypePickerForForm() {
+			if m.initTypePicker(state.TicketFormMode) {
 				m.UIState.Mode = state.TypePickerMode
 			}
 			return m, nil
