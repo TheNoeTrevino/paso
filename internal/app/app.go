@@ -7,6 +7,7 @@ import (
 	"github.com/thenoetrevino/paso/internal/events"
 	"github.com/thenoetrevino/paso/internal/git"
 	"github.com/thenoetrevino/paso/internal/github"
+	"github.com/thenoetrevino/paso/internal/jira"
 	assigneeservice "github.com/thenoetrevino/paso/internal/services/assignee"
 	columnservice "github.com/thenoetrevino/paso/internal/services/column"
 	labelservice "github.com/thenoetrevino/paso/internal/services/label"
@@ -36,6 +37,7 @@ type App struct {
 
 	// External integrations
 	GitHubFetcher github.IssueFetcher
+	JiraFetcher   jira.IssueFetcher
 }
 
 // New creates a new App with all services initialized.
@@ -105,6 +107,7 @@ func New(db *sql.DB, opts ...Option) (*App, error) {
 		LabelService:    labelSvc,
 		AssigneeService: assigneeSvc,
 		GitHubFetcher:   github.NewIssueFetcher(),
+		JiraFetcher:     jira.NewIssueFetcher(),
 	}, nil
 }
 

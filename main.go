@@ -12,6 +12,7 @@ import (
 	clidaemon "github.com/thenoetrevino/paso/internal/cli/daemon"
 	"github.com/thenoetrevino/paso/internal/cli/db"
 	"github.com/thenoetrevino/paso/internal/cli/gh"
+	jiracli "github.com/thenoetrevino/paso/internal/cli/jira"
 	"github.com/thenoetrevino/paso/internal/cli/label"
 	"github.com/thenoetrevino/paso/internal/cli/project"
 	"github.com/thenoetrevino/paso/internal/cli/setup"
@@ -67,6 +68,7 @@ func init() {
 	rootCmd.AddCommand(db.DbCmd())
 	rootCmd.AddCommand(gh.GhCmd())
 	rootCmd.AddCommand(clidaemon.DaemonCmd())
+	rootCmd.AddCommand(jiracli.JiraCmd())
 
 	// Add TUI subcommand
 	tuiCmd := &cobra.Command{

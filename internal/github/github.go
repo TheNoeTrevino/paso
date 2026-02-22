@@ -41,6 +41,7 @@ func CheckInstalled() error {
 
 // IssueFetcher defines the interface for fetching GitHub issues.
 type IssueFetcher interface {
+	CheckInstalled() error
 	FetchIssue(ctx context.Context, issueNumber int) (*Issue, error)
 }
 
@@ -50,6 +51,11 @@ type ghIssueFetcher struct{}
 // NewIssueFetcher returns a real IssueFetcher backed by the gh CLI.
 func NewIssueFetcher() IssueFetcher {
 	return &ghIssueFetcher{}
+}
+
+// CheckInstalled verifies that the gh CLI is available on the system PATH.
+func (f *ghIssueFetcher) CheckInstalled() error {
+	return CheckInstalled()
 }
 
 // FetchIssue fetches a GitHub issue by number using the gh CLI.

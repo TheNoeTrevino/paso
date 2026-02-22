@@ -1,4 +1,4 @@
-package gh
+package jira
 
 import (
 	"context"
@@ -13,30 +13,30 @@ import (
 	"github.com/thenoetrevino/paso/internal/spinner"
 )
 
-// ImportCmd returns the gh import subcommand.
+// ImportCmd returns the jira import subcommand.
 func ImportCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "import <issue-number>",
-		Short: "Import a GitHub issue as a paso task",
-		Long: `Import a GitHub issue as a paso task, including its title, body, and comments.
+		Use:   "import <issue-key>",
+		Short: "Import a Jira issue as a paso task",
+		Long: `Import a Jira issue as a paso task, including its title, description, and comments.
 
-Requires the GitHub CLI (gh) to be installed and authenticated.
+Requires the jira CLI (ankitpokhrel/jira-cli) to be installed and authenticated.
 
 Examples:
-  # Import issue #101 into the current project
-  paso gh import 101
+  # Import issue PROJ-123 into the current project
+  paso jira import PROJ-123
 
   # Import into a specific project
-  paso gh import 101 -p 1
+  paso jira import PROJ-123 -p 1
 
   # Import into a specific column
-  paso gh import 101 -p 1 -c "In Progress"
+  paso jira import PROJ-123 -p 1 -c "In Progress"
 
   # JSON output for agents
-  paso gh import 101 -j
+  paso jira import PROJ-123 -j
 
   # Quiet mode for bash capture
-  TASK_ID=$(paso gh import 101 -q)
+  TASK_ID=$(paso jira import PROJ-123 -q)
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: handler.Command(&importHandler{}, parseImportFlags),
@@ -54,7 +54,7 @@ Examples:
 type importHandler struct{}
 
 func (h *importHandler) Execute(ctx context.Context, args *handler.Arguments) (any, error) {
-	issueNumber, err := ValidateIssueNumber(args.Args[0])
+	issueKey, err := ValidateIssueKey(args.Args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -69,12 +69,12 @@ func (h *importHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		}
 	}()
 
-	if err := cliInstance.App.GitHubFetcher.CheckInstalled(); err != nil {
+	if err := cliInstance.App.JiraFetcher.CheckInstalled(); err != nil {
 		return nil, err
 	}
 
 	if !args.GetBool("json") && !args.GetBool("quiet") {
-		sp := spinner.New(fmt.Sprintf("Importing GitHub issue #%d...", issueNumber))
+		sp := spinner.New(fmt.Sprintf("Importing Jira issue %s...", issueKey))
 		sp.Start()
 		defer sp.Stop()
 	}
@@ -111,9 +111,9 @@ func (h *importHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		targetColumnID = col.ID
 	}
 
-	issue, err := cliInstance.App.GitHubFetcher.FetchIssue(ctx, issueNumber)
+	issue, err := cliInstance.App.JiraFetcher.FetchIssue(ctx, issueKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch GitHub issue: %w", err)
+		return nil, fmt.Errorf("failed to fetch Jira issue: %w", err)
 	}
 
 	task, err := cliInstance.App.TaskService.CreateTask(ctx, taskservice.CreateTaskRequest{
@@ -140,7 +140,7 @@ func (h *importHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 			Author:  author,
 		})
 		if err != nil {
-			slog.Warn("failed to import comment", "issue", issueNumber, "error", err)
+			slog.Warn("failed to import comment", "issue", issueKey, "error", err)
 			continue
 		}
 		commentsImported++
@@ -151,7 +151,7 @@ func (h *importHandler) Execute(ctx context.Context, args *handler.Arguments) (a
 		Title:         task.Title,
 		Description:   task.Description,
 		Project:       project.Name,
-		IssueNumber:   issueNumber,
+		IssueKey:      issueKey,
 		CommentsCount: commentsImported,
 	}, nil
 }

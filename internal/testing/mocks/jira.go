@@ -4,37 +4,37 @@ import (
 	"context"
 	"sync"
 
-	"github.com/thenoetrevino/paso/internal/github"
+	"github.com/thenoetrevino/paso/internal/jira"
 )
 
 // Compile-time interface verification
-var _ github.IssueFetcher = (*MockGitHubFetcher)(nil)
+var _ jira.IssueFetcher = (*MockJiraFetcher)(nil)
 
-// MockGitHubFetcher is a mock implementation of github.IssueFetcher for testing.
-type MockGitHubFetcher struct {
+// MockJiraFetcher is a mock implementation of jira.IssueFetcher for testing.
+type MockJiraFetcher struct {
 	mu    sync.Mutex
 	Calls []MockCall
 
 	FetchIssueErr    error
-	FetchIssueResult *github.Issue
+	FetchIssueResult *jira.Issue
 }
 
-// NewMockGitHubFetcher creates a new mock GitHub fetcher.
-func NewMockGitHubFetcher() *MockGitHubFetcher {
-	return &MockGitHubFetcher{
+// NewMockJiraFetcher creates a new mock Jira fetcher.
+func NewMockJiraFetcher() *MockJiraFetcher {
+	return &MockJiraFetcher{
 		Calls: make([]MockCall, 0),
 	}
 }
 
 // Reset clears all recorded calls.
-func (m *MockGitHubFetcher) Reset() {
+func (m *MockJiraFetcher) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Calls = make([]MockCall, 0)
 }
 
 // GetCalls returns a copy of all recorded calls.
-func (m *MockGitHubFetcher) GetCalls() []MockCall {
+func (m *MockJiraFetcher) GetCalls() []MockCall {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	result := make([]MockCall, len(m.Calls))
@@ -43,7 +43,7 @@ func (m *MockGitHubFetcher) GetCalls() []MockCall {
 }
 
 // HasCall checks if a method was called.
-func (m *MockGitHubFetcher) HasCall(method string) bool {
+func (m *MockJiraFetcher) HasCall(method string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, call := range m.Calls {
@@ -55,7 +55,7 @@ func (m *MockGitHubFetcher) HasCall(method string) bool {
 }
 
 // CallCount returns the number of times a method was called.
-func (m *MockGitHubFetcher) CallCount(method string) int {
+func (m *MockJiraFetcher) CallCount(method string) int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	count := 0
@@ -67,17 +67,17 @@ func (m *MockGitHubFetcher) CallCount(method string) int {
 	return count
 }
 
-func (m *MockGitHubFetcher) CheckInstalled() error {
+func (m *MockJiraFetcher) CheckInstalled() error {
 	return nil
 }
 
-func (m *MockGitHubFetcher) FetchIssue(_ context.Context, issueNumber int) (*github.Issue, error) {
+func (m *MockJiraFetcher) FetchIssue(_ context.Context, issueKey string) (*jira.Issue, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Calls = append(m.Calls, MockCall{
 		Method: "FetchIssue",
 		Args: map[string]any{
-			"issueNumber": issueNumber,
+			"issueKey": issueKey,
 		},
 	})
 	return m.FetchIssueResult, m.FetchIssueErr
