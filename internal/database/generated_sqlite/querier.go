@@ -47,7 +47,7 @@ type Querier interface {
 	DeleteAllLabelsFromTask(ctx context.Context, taskID int64) error
 	// Deletes an assignee by ID
 	// Note: Tasks will have assignee_id set to null via on delete set null
-	DeleteAssignee(ctx context.Context, id int64) error
+	DeleteAssignee(ctx context.Context, id int64) (int64, error)
 	// Permanently deletes a column by ID
 	DeleteColumn(ctx context.Context, id int64) error
 	// Deletes all columns belonging to a project

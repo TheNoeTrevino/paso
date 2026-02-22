@@ -28,16 +28,19 @@ func (q *Queries) CreateAssignee(ctx context.Context, name string) (Assignee, er
 	return i, err
 }
 
-const deleteAssignee = `-- name: DeleteAssignee :exec
+const deleteAssignee = `-- name: DeleteAssignee :execrows
 delete from assignees
 where id = $1
 `
 
 // Deletes an assignee by ID
 // Note: Tasks will have assignee_id set to null via on delete set null
-func (q *Queries) DeleteAssignee(ctx context.Context, id int32) error {
-	_, err := q.db.ExecContext(ctx, deleteAssignee, id)
-	return err
+func (q *Queries) DeleteAssignee(ctx context.Context, id int32) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteAssignee, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const getAssigneeByID = `-- name: GetAssigneeByID :one
