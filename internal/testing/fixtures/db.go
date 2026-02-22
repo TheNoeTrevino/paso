@@ -102,10 +102,10 @@ func CreateTestProject(tb testing.TB, db *sql.DB, d Dialect, name string) int {
 		tb.Fatalf("Failed to initialize project counter: %v", err)
 	}
 
-	// Create default columns
-	CreateTestColumn(tb, db, d, projectID, "Todo")
-	CreateTestColumn(tb, db, d, projectID, "In Progress")
-	CreateTestColumn(tb, db, d, projectID, "Done")
+	// Create default columns with proper flags
+	CreateColumnWithFlags(tb, db, d, projectID, "Todo", true, false, false)
+	CreateColumnWithFlags(tb, db, d, projectID, "In Progress", false, false, true)
+	CreateColumnWithFlags(tb, db, d, projectID, "Done", false, true, false)
 
 	return projectID
 }

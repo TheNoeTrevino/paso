@@ -167,14 +167,15 @@ func CreateDefaultColumns(ctx context.Context, q Querier, projectID int64) error
 		return fmt.Errorf("failed to create Todo column: %w", err)
 	}
 
-	// Create "In Progress" column (middle of list)
+	// Create "In Progress" column (middle of list, holds in-progress tasks)
 	inProgressCol, err := q.CreateColumn(ctx, CreateColumnParams{
-		Name:                "In Progress",
-		ProjectID:           projectID,
-		PrevID:              NullInt64{Int64: todoCol.ID, Valid: true},
-		NextID:              NullInt64{Valid: false},
-		HoldsReadyTasks:     false,
-		HoldsCompletedTasks: false,
+		Name:                 "In Progress",
+		ProjectID:            projectID,
+		PrevID:               NullInt64{Int64: todoCol.ID, Valid: true},
+		NextID:               NullInt64{Valid: false},
+		HoldsReadyTasks:      false,
+		HoldsCompletedTasks:  false,
+		HoldsInProgressTasks: true,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create In Progress column: %w", err)
