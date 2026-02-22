@@ -437,3 +437,12 @@ func fromGeneratedGetReadyColumnByProjectRow(g generated_postgres.GetReadyColumn
 		HoldsReadyTasks: g.HoldsReadyTasks,
 	}
 }
+
+func fromGeneratedStandupLog(g generated_postgres.StandupLog) types.StandupLog {
+	return types.StandupLog{
+		ID:        g.ID,
+		ProjectID: g.ProjectID,
+		Content:   g.Content,
+		CreatedAt: types.FromSQLNullTime(g.CreatedAt),
+	}
+}

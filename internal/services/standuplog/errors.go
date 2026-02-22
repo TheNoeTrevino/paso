@@ -7,4 +7,5 @@ var (
 	ErrInvalidProjectID = errors.New("project ID must be positive")
 	ErrInvalidLogID     = errors.New("standup log ID must be positive")
 	ErrInvalidDateRange = errors.New("since must be before until")
+	ErrLogNotFound      = errors.New("standup log not found")
 )

@@ -438,3 +438,12 @@ func fromGeneratedGetReadyColumnByProjectRow(g generated_sqlite.GetReadyColumnBy
 		HoldsReadyTasks: g.HoldsReadyTasks,
 	}
 }
+
+func fromGeneratedStandupLog(g generated_sqlite.StandupLog) types.StandupLog {
+	return types.StandupLog{
+		ID:        g.ID,
+		ProjectID: g.ProjectID,
+		Content:   g.Content,
+		CreatedAt: types.FromSQLNullTime(g.CreatedAt),
+	}
+}

@@ -3,6 +3,7 @@ package standuplog
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -121,9 +122,20 @@ func (s *service) Delete(ctx context.Context, id int) error {
 		return ErrInvalidLogID
 	}
 
-	if err := s.queries.DeleteStandupLog(ctx, int64(id)); err != nil {
-		return fmt.Errorf("failed to delete standup log: %w", err)
-	}
+	return database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		qtx := database.MustNewQuerier(tx, s.dbType)
 
-	return nil
+		if _, err := qtx.GetStandupLog(ctx, int64(id)); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrLogNotFound
+			}
+			return fmt.Errorf("failed to get standup log: %w", err)
+		}
+
+		if err := qtx.DeleteStandupLog(ctx, int64(id)); err != nil {
+			return fmt.Errorf("failed to delete standup log: %w", err)
+		}
+
+		return nil
+	})
 }
