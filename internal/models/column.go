@@ -1,5 +1,10 @@
 package models
 
+import (
+	"fmt"
+	"strconv"
+)
+
 // Column represents a kanban board column (e.g., "Todo", "In Progress", "Done")
 // Columns are organized as a doubly-linked list using PrevID and NextID pointers
 // Each column belongs to a specific project
@@ -12,4 +17,12 @@ type Column struct {
 	HoldsReadyTasks      bool   // Whether tasks in this column are considered "ready" for work
 	HoldsCompletedTasks  bool   // Whether tasks in this column are considered "completed"
 	HoldsInProgressTasks bool   // Whether tasks in this column are considered "in progress"
+}
+
+func (c *Column) PickerLabel() string {
+	return fmt.Sprintf("%s (#%d)", c.Name, c.ID)
+}
+
+func (c *Column) PickerValue() string {
+	return strconv.Itoa(c.ID)
 }

@@ -1,6 +1,11 @@
 package models
 
-import "time"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+)
 
 // Task represents a single task in the kanban board
 type Task struct {
@@ -14,6 +19,29 @@ type Task struct {
 	DueDate     *time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+}
+
+// PickerLabel returns a display label for the interactive picker.
+// Format: "Title (#ID) — priority, type"
+func (t *TaskSummary) PickerLabel() string {
+	var parts []string
+	if t.PriorityDescription != "" {
+		parts = append(parts, t.PriorityDescription)
+	}
+	if t.TypeDescription != "" {
+		parts = append(parts, t.TypeDescription)
+	}
+
+	label := fmt.Sprintf("%s (#%d)", t.Title, t.ID)
+	if len(parts) > 0 {
+		label += " — " + strings.Join(parts, ", ")
+	}
+	return label
+}
+
+// PickerValue returns the task ID as a string for the interactive picker.
+func (t *TaskSummary) PickerValue() string {
+	return strconv.Itoa(t.ID)
 }
 
 // TaskReference is a lightweight reference to a related task
