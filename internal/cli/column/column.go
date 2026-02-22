@@ -15,6 +15,7 @@ func ColumnCmd() *cobra.Command {
 	cmd.AddCommand(ListCmd())
 	cmd.AddCommand(UpdateCmd())
 	cmd.AddCommand(DeleteCmd())
+	cmd.AddCommand(PickCmd())
 
 	return cmd
 }

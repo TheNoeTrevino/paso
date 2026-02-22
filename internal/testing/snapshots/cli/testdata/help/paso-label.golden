@@ -9,6 +9,7 @@ Available Commands:
   delete      Delete a label
   detach      Detach a label from a task
   list        List labels in a project
+  pick        Interactively pick a label
   update      Update a label
 
 Use "paso label [command] --help" for more information about a command.

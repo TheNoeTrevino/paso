@@ -1,0 +1,13 @@
+Interactively pick an assignee from a filterable list and output its ID.
+
+Designed for command chaining with other paso commands.
+
+Examples:
+  # Pick an assignee and assign them to a task
+  paso task assign 42 $(paso assignee pick)
+
+  # Pick an assignee and set as active
+  paso assignee set -n $(paso assignee pick)
+
+Usage:
+  paso assignee pick

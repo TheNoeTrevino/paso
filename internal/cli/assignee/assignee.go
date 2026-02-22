@@ -16,6 +16,7 @@ func AssigneeCmd() *cobra.Command {
 	cmd.AddCommand(SetCmd())
 	cmd.AddCommand(WhoAmICmd())
 	cmd.AddCommand(DeleteCmd())
+	cmd.AddCommand(PickCmd())
 
 	return cmd
 }

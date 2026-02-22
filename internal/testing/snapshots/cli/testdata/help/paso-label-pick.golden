@@ -1,0 +1,16 @@
+Interactively pick a label from a filterable list and output its ID.
+
+Designed for command chaining with other paso commands.
+
+Examples:
+  # Pick a label and attach it to a task
+  paso label attach --task=42 --label=$(paso label pick)
+
+  # Pick from a specific project
+  paso label pick 2
+
+Usage:
+  paso label pick [project-id] [flags]
+
+Flags:
+  -p, --project int   Project ID (uses git branch association if not specified)

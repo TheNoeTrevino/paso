@@ -7,6 +7,7 @@ Available Commands:
   create      Create a new assignee
   delete      Delete an assignee
   list        List all assignees
+  pick        Interactively pick an assignee
   set         Set the active assignee
   whoami      Show the active assignee
 

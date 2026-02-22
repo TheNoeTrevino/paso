@@ -1,0 +1,19 @@
+Interactively pick a task from a filterable list and output its ID.
+
+Designed for command chaining with other paso commands.
+
+Examples:
+  # Pick a task and mark it in-progress
+  paso task in-progress $(paso task pick)
+
+  # Pick a task from a specific project
+  paso task done $(paso task pick 2)
+
+  # Pick a task and assign someone
+  paso task assign $(paso task pick) alice
+
+Usage:
+  paso task pick [project-id] [flags]
+
+Flags:
+  -p, --project int   Project ID (uses git branch association if not specified)
