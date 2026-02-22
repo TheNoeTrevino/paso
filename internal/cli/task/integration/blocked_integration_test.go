@@ -30,11 +30,11 @@ func TestBlockedTask(t *testing.T) {
 	t.Run("list blocked tasks with blocking relationships", func(t *testing.T) {
 		// Create parent task
 		parentID := cli.CreateTestTask(t, db, todoColumnID, "Parent Task")
-		cli.UpdateTaskFields(t, db, parentID, map[string]any{"ticket_number": 1})
+		cli.UpdateTaskFields(t, db, parentID, map[string]any{"task_number": 1})
 
 		// Create child task (blocker)
 		childID := cli.CreateTestTask(t, db, todoColumnID, "Child Task (Blocker)")
-		cli.UpdateTaskFields(t, db, childID, map[string]any{"ticket_number": 2})
+		cli.UpdateTaskFields(t, db, childID, map[string]any{"task_number": 2})
 
 		// Create blocking relationship (parentID blocked by childID)
 		linkCmd := task.LinkCmd()
@@ -79,10 +79,10 @@ func TestBlockedTask(t *testing.T) {
 		blocked2 := cli.CreateTestTask(t, db, todoColumnID, "Blocked Task 2")
 		blocker2 := cli.CreateTestTask(t, db, todoColumnID, "Blocker Task 2")
 
-		cli.UpdateTaskFields(t, db, blocked1, map[string]any{"ticket_number": 10})
-		cli.UpdateTaskFields(t, db, blocker1, map[string]any{"ticket_number": 11})
-		cli.UpdateTaskFields(t, db, blocked2, map[string]any{"ticket_number": 12})
-		cli.UpdateTaskFields(t, db, blocker2, map[string]any{"ticket_number": 13})
+		cli.UpdateTaskFields(t, db, blocked1, map[string]any{"task_number": 10})
+		cli.UpdateTaskFields(t, db, blocker1, map[string]any{"task_number": 11})
+		cli.UpdateTaskFields(t, db, blocked2, map[string]any{"task_number": 12})
+		cli.UpdateTaskFields(t, db, blocker2, map[string]any{"task_number": 13})
 
 		// Create blocking relationships
 		linkCmd1 := task.LinkCmd()
@@ -111,9 +111,9 @@ func TestBlockedTask(t *testing.T) {
 		blockedID := cli.CreateTestTask(t, db, todoColumnID, "JSON Blocked Task")
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "JSON Blocker Task")
 
-		// Assign ticket numbers
-		cli.UpdateTaskFields(t, db, blockedID, map[string]any{"ticket_number": 20})
-		cli.UpdateTaskFields(t, db, blockerID, map[string]any{"ticket_number": 21})
+		// Assign task numbers
+		cli.UpdateTaskFields(t, db, blockedID, map[string]any{"task_number": 20})
+		cli.UpdateTaskFields(t, db, blockerID, map[string]any{"task_number": 21})
 
 		// Create blocking relationship
 		linkCmd := task.LinkCmd()
@@ -160,9 +160,9 @@ func TestBlockedTask(t *testing.T) {
 		blockedID := cli.CreateTestTask(t, db, todoColumnID, "Quiet Blocked Task")
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "Quiet Blocker Task")
 
-		// Assign ticket numbers
-		cli.UpdateTaskFields(t, db, blockedID, map[string]any{"ticket_number": 30})
-		cli.UpdateTaskFields(t, db, blockerID, map[string]any{"ticket_number": 31})
+		// Assign task numbers
+		cli.UpdateTaskFields(t, db, blockedID, map[string]any{"task_number": 30})
+		cli.UpdateTaskFields(t, db, blockerID, map[string]any{"task_number": 31})
 
 		// Create blocking relationship
 		linkCmd := task.LinkCmd()
@@ -198,10 +198,10 @@ func TestBlockedTask(t *testing.T) {
 		blockedTask := cli.CreateTestTask(t, db, todoColumnID, "Should Be Blocked")
 		blockerTask := cli.CreateTestTask(t, db, todoColumnID, "Blocker For Test")
 
-		// Assign ticket numbers
-		cli.UpdateTaskFields(t, db, normalTask, map[string]any{"ticket_number": 40})
-		cli.UpdateTaskFields(t, db, blockedTask, map[string]any{"ticket_number": 41})
-		cli.UpdateTaskFields(t, db, blockerTask, map[string]any{"ticket_number": 42})
+		// Assign task numbers
+		cli.UpdateTaskFields(t, db, normalTask, map[string]any{"task_number": 40})
+		cli.UpdateTaskFields(t, db, blockedTask, map[string]any{"task_number": 41})
+		cli.UpdateTaskFields(t, db, blockerTask, map[string]any{"task_number": 42})
 
 		// Create blocking relationship for only one task
 		linkCmd := task.LinkCmd()
@@ -240,12 +240,12 @@ func TestBlockedTask(t *testing.T) {
 		highPriorityBlocked := cli.CreateTestTask(t, db, todoColumnID, "High Priority Blocked")
 		highBlocker := cli.CreateTestTask(t, db, todoColumnID, "High Blocker")
 
-		// Assign ticket numbers and priorities
+		// Assign task numbers and priorities
 		// priority_id: 2=low, 3=medium, 4=high, 5=critical
-		cli.UpdateTaskFields(t, db, lowPriorityBlocked, map[string]any{"ticket_number": 50, "priority_id": 2})
-		cli.UpdateTaskFields(t, db, lowBlocker, map[string]any{"ticket_number": 51})
-		cli.UpdateTaskFields(t, db, highPriorityBlocked, map[string]any{"ticket_number": 52, "priority_id": 4})
-		cli.UpdateTaskFields(t, db, highBlocker, map[string]any{"ticket_number": 53})
+		cli.UpdateTaskFields(t, db, lowPriorityBlocked, map[string]any{"task_number": 50, "priority_id": 2})
+		cli.UpdateTaskFields(t, db, lowBlocker, map[string]any{"task_number": 51})
+		cli.UpdateTaskFields(t, db, highPriorityBlocked, map[string]any{"task_number": 52, "priority_id": 4})
+		cli.UpdateTaskFields(t, db, highBlocker, map[string]any{"task_number": 53})
 
 		// Create blocking relationships
 		linkCmd1 := task.LinkCmd()
@@ -278,11 +278,11 @@ func TestBlockedTask(t *testing.T) {
 		inProgressBlocked := cli.CreateTestTask(t, db, inProgressColumnID, "In Progress Blocked")
 		inProgressBlocker := cli.CreateTestTask(t, db, inProgressColumnID, "In Progress Blocker")
 
-		// Assign ticket numbers
-		cli.UpdateTaskFields(t, db, todoBlocked, map[string]any{"ticket_number": 70})
-		cli.UpdateTaskFields(t, db, todoBlocker, map[string]any{"ticket_number": 71})
-		cli.UpdateTaskFields(t, db, inProgressBlocked, map[string]any{"ticket_number": 72})
-		cli.UpdateTaskFields(t, db, inProgressBlocker, map[string]any{"ticket_number": 73})
+		// Assign task numbers
+		cli.UpdateTaskFields(t, db, todoBlocked, map[string]any{"task_number": 70})
+		cli.UpdateTaskFields(t, db, todoBlocker, map[string]any{"task_number": 71})
+		cli.UpdateTaskFields(t, db, inProgressBlocked, map[string]any{"task_number": 72})
+		cli.UpdateTaskFields(t, db, inProgressBlocker, map[string]any{"task_number": 73})
 
 		// Create blocking relationships
 		linkCmd1 := task.LinkCmd()
@@ -311,9 +311,9 @@ func TestBlockedTask(t *testing.T) {
 		blockedID := cli.CreateTestTask(t, db, todoColumnID, "Blocked With Labels")
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "Label Blocker")
 
-		// Assign ticket numbers
-		cli.UpdateTaskFields(t, db, blockedID, map[string]any{"ticket_number": 80})
-		cli.UpdateTaskFields(t, db, blockerID, map[string]any{"ticket_number": 81})
+		// Assign task numbers
+		cli.UpdateTaskFields(t, db, blockedID, map[string]any{"task_number": 80})
+		cli.UpdateTaskFields(t, db, blockerID, map[string]any{"task_number": 81})
 
 		// Create and attach labels
 		labelID1 := fixtures.CreateTestLabel(t, db, fixtures.SQLiteDialect(), projectID, "blocked", "#EF4444")
@@ -360,9 +360,9 @@ func TestBlockedTask(t *testing.T) {
 		blockedID := cli.CreateTestTask(t, db, todoColumnID, "Structure Test")
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "Structure Blocker")
 
-		// Assign ticket numbers
-		cli.UpdateTaskFields(t, db, blockedID, map[string]any{"ticket_number": 90})
-		cli.UpdateTaskFields(t, db, blockerID, map[string]any{"ticket_number": 91})
+		// Assign task numbers
+		cli.UpdateTaskFields(t, db, blockedID, map[string]any{"task_number": 90})
+		cli.UpdateTaskFields(t, db, blockerID, map[string]any{"task_number": 91})
 
 		// Create blocking relationship
 		linkCmd := task.LinkCmd()
@@ -411,9 +411,9 @@ func TestBlockedTask(t *testing.T) {
 		criticalBlocked := cli.CreateTestTask(t, db, todoColumnID, "Critical Blocked Task")
 		criticalBlocker := cli.CreateTestTask(t, db, todoColumnID, "Critical Blocker")
 
-		// Assign ticket numbers and critical priority (priority_id = 5)
-		cli.UpdateTaskFields(t, db, criticalBlocked, map[string]any{"ticket_number": 100, "priority_id": 5})
-		cli.UpdateTaskFields(t, db, criticalBlocker, map[string]any{"ticket_number": 101})
+		// Assign task numbers and critical priority (priority_id = 5)
+		cli.UpdateTaskFields(t, db, criticalBlocked, map[string]any{"task_number": 100, "priority_id": 5})
+		cli.UpdateTaskFields(t, db, criticalBlocker, map[string]any{"task_number": 101})
 
 		// Create blocking relationship
 		linkCmd := task.LinkCmd()

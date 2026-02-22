@@ -50,7 +50,7 @@ type Project struct {
 
 type ProjectCounter struct {
 	ProjectID        int64
-	NextTicketNumber sql.NullInt64
+	NextTaskNumber sql.NullInt64
 }
 
 type RelationType struct {
@@ -74,7 +74,7 @@ type Task struct {
 	Description  sql.NullString
 	ColumnID     int64
 	Position     int64
-	TicketNumber sql.NullInt64
+	TaskNumber sql.NullInt64
 	TypeID       int64
 	PriorityID   int64
 	CreatedAt    sql.NullTime

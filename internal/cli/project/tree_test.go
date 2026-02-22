@@ -18,12 +18,12 @@ func TestMarkBlockingChains(t *testing.T) {
 			name: "simple blocker - marks parent as in blocking path",
 			tree: &models.TaskTreeNode{
 				ID:           1,
-				TicketNumber: 1,
+				TaskNumber: 1,
 				Title:        "Parent Task",
 				Children: []*models.TaskTreeNode{
 					{
 						ID:           2,
-						TicketNumber: 2,
+						TaskNumber: 2,
 						Title:        "Blocking Child",
 						IsBlocking:   true,
 						Children:     []*models.TaskTreeNode{},
@@ -39,12 +39,12 @@ func TestMarkBlockingChains(t *testing.T) {
 			name: "no blockers - nothing marked",
 			tree: &models.TaskTreeNode{
 				ID:           1,
-				TicketNumber: 1,
+				TaskNumber: 1,
 				Title:        "Parent Task",
 				Children: []*models.TaskTreeNode{
 					{
 						ID:           2,
-						TicketNumber: 2,
+						TaskNumber: 2,
 						Title:        "Normal Child",
 						IsBlocking:   false,
 						Children:     []*models.TaskTreeNode{},
@@ -60,18 +60,18 @@ func TestMarkBlockingChains(t *testing.T) {
 			name: "deep blocker - marks entire chain",
 			tree: &models.TaskTreeNode{
 				ID:           1,
-				TicketNumber: 1,
+				TaskNumber: 1,
 				Title:        "Root Task",
 				Children: []*models.TaskTreeNode{
 					{
 						ID:           2,
-						TicketNumber: 2,
+						TaskNumber: 2,
 						Title:        "Mid Task",
 						IsBlocking:   false,
 						Children: []*models.TaskTreeNode{
 							{
 								ID:           3,
-								TicketNumber: 3,
+								TaskNumber: 3,
 								Title:        "Deep Blocker",
 								IsBlocking:   true,
 								Children:     []*models.TaskTreeNode{},
@@ -90,26 +90,26 @@ func TestMarkBlockingChains(t *testing.T) {
 			name: "multiple children with one blocker",
 			tree: &models.TaskTreeNode{
 				ID:           1,
-				TicketNumber: 1,
+				TaskNumber: 1,
 				Title:        "Parent Task",
 				Children: []*models.TaskTreeNode{
 					{
 						ID:           2,
-						TicketNumber: 2,
+						TaskNumber: 2,
 						Title:        "Normal Child 1",
 						IsBlocking:   false,
 						Children:     []*models.TaskTreeNode{},
 					},
 					{
 						ID:           3,
-						TicketNumber: 3,
+						TaskNumber: 3,
 						Title:        "Blocking Child",
 						IsBlocking:   true,
 						Children:     []*models.TaskTreeNode{},
 					},
 					{
 						ID:           4,
-						TicketNumber: 4,
+						TaskNumber: 4,
 						Title:        "Normal Child 2",
 						IsBlocking:   false,
 						Children:     []*models.TaskTreeNode{},
@@ -127,18 +127,18 @@ func TestMarkBlockingChains(t *testing.T) {
 			name: "mixed chain - blocker in one branch only",
 			tree: &models.TaskTreeNode{
 				ID:           1,
-				TicketNumber: 1,
+				TaskNumber: 1,
 				Title:        "Root Task",
 				Children: []*models.TaskTreeNode{
 					{
 						ID:           2,
-						TicketNumber: 2,
+						TaskNumber: 2,
 						Title:        "Branch A",
 						IsBlocking:   false,
 						Children: []*models.TaskTreeNode{
 							{
 								ID:           3,
-								TicketNumber: 3,
+								TaskNumber: 3,
 								Title:        "Branch A Child (blocker)",
 								IsBlocking:   true,
 								Children:     []*models.TaskTreeNode{},
@@ -147,13 +147,13 @@ func TestMarkBlockingChains(t *testing.T) {
 					},
 					{
 						ID:           4,
-						TicketNumber: 4,
+						TaskNumber: 4,
 						Title:        "Branch B",
 						IsBlocking:   false,
 						Children: []*models.TaskTreeNode{
 							{
 								ID:           5,
-								TicketNumber: 5,
+								TaskNumber: 5,
 								Title:        "Branch B Child (normal)",
 								IsBlocking:   false,
 								Children:     []*models.TaskTreeNode{},
@@ -207,7 +207,7 @@ func TestMarkBlockingChainsEmptyTree(t *testing.T) {
 	// Test with a node that has no children
 	node := &models.TaskTreeNode{
 		ID:           1,
-		TicketNumber: 1,
+		TaskNumber: 1,
 		Title:        "Solo Task",
 		IsBlocking:   false,
 		Children:     []*models.TaskTreeNode{},
@@ -224,7 +224,7 @@ func TestMarkBlockingChainsSelfBlocking(t *testing.T) {
 	// Test with a root node that is itself blocking (edge case)
 	node := &models.TaskTreeNode{
 		ID:           1,
-		TicketNumber: 1,
+		TaskNumber: 1,
 		Title:        "Self Blocking Task",
 		IsBlocking:   true,
 		Children:     []*models.TaskTreeNode{},

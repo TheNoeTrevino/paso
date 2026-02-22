@@ -115,7 +115,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.subscribeToEvents()
 	}
 
-	if m.UIState.Mode == state.TicketFormMode {
+	if m.UIState.Mode == state.TaskFormMode {
 		return m.updateTaskForm(msg)
 	}
 	if m.UIState.Mode == state.ProjectFormMode || m.UIState.Mode == state.EditProjectFormMode {
@@ -339,7 +339,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDeleteLabelConfirm(msg)
 	case state.ProjectBranchConfirmMode:
 		return m.handleProjectBranchConfirm(msg)
-	case state.TicketFormLoadingMode:
+	case state.TaskFormLoadingMode:
 		switch msg.String() {
 		case "esc", m.Config.KeyMappings.General.Quit:
 			m.LoadingGitInfo = false
@@ -370,7 +370,7 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case state.TaskFormHelpMode:
 		switch msg.String() {
 		case m.Config.KeyMappings.Forms.ShowHelp, "esc":
-			m.UIState.Mode = state.TicketFormMode
+			m.UIState.Mode = state.TaskFormMode
 			return m, nil
 		}
 		return m, nil
@@ -518,7 +518,7 @@ func (m Model) handleTaskDetailForEdit(msg taskDetailForEditMsg) (tea.Model, tea
 		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.Forms.Form.SnapshotTaskFormInitialValues()
-	m.UIState.Mode = state.TicketFormMode
+	m.UIState.Mode = state.TaskFormMode
 	return m, m.Forms.Form.TaskForm.Init()
 }
 

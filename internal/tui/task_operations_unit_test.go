@@ -12,7 +12,7 @@ import (
 )
 
 // TestUnit_TaskOp_AddTaskKeyOpensForm verifies that pressing the 'a' key
-// (default AddTask binding) transitions the model into TicketFormMode.
+// (default AddTask binding) transitions the model into TaskFormMode.
 func TestUnit_TaskOp_AddTaskKeyOpensForm(t *testing.T) {
 	t.Parallel()
 	svc := NewDefaultMockServices()
@@ -35,8 +35,8 @@ func TestUnit_TaskOp_AddTaskKeyOpensForm(t *testing.T) {
 	keyMsg := tea.KeyPressMsg(tea.Key{Text: "a", Code: 'a'})
 	updated := UpdateModelWithMessage(m, keyMsg)
 
-	assert.Equal(t, state.TicketFormMode, updated.UIState.Mode,
-		"pressing AddTask key should transition to TicketFormMode")
+	assert.Equal(t, state.TaskFormMode, updated.UIState.Mode,
+		"pressing AddTask key should transition to TaskFormMode")
 	assert.NotNil(t, updated.Forms.Form.TaskForm,
 		"TaskForm should be initialized after pressing AddTask key")
 	assert.Equal(t, 0, updated.Forms.Form.EditingTaskID,
@@ -68,7 +68,7 @@ func TestUnit_TaskOp_AddTaskNoColumnsShowsError(t *testing.T) {
 }
 
 // TestUnit_TaskOp_EditTaskEntersLoadingMode verifies that pressing the edit
-// task key ('e') transitions into TicketFormLoadingMode when a task is selected.
+// task key ('e') transitions into TaskFormLoadingMode when a task is selected.
 func TestUnit_TaskOp_EditTaskEntersLoadingMode(t *testing.T) {
 	t.Parallel()
 	svc := NewDefaultMockServices()
@@ -93,8 +93,8 @@ func TestUnit_TaskOp_EditTaskEntersLoadingMode(t *testing.T) {
 	keyMsg := tea.KeyPressMsg(tea.Key{Text: "e", Code: 'e'})
 	updated := UpdateModelWithMessage(m, keyMsg)
 
-	assert.Equal(t, state.TicketFormLoadingMode, updated.UIState.Mode,
-		"pressing EditTask key should enter TicketFormLoadingMode")
+	assert.Equal(t, state.TaskFormLoadingMode, updated.UIState.Mode,
+		"pressing EditTask key should enter TaskFormLoadingMode")
 }
 
 // TestUnit_TaskOp_EditTaskNoTaskShowsError verifies that pressing edit
@@ -143,7 +143,7 @@ func TestUnit_TaskOp_TaskDetailLoadError(t *testing.T) {
 	m.UIState.Height = 40
 
 	// Simulate being in loading mode
-	m.UIState.Mode = state.TicketFormLoadingMode
+	m.UIState.Mode = state.TaskFormLoadingMode
 	m.LoadingGitInfo = true
 
 	// Send error message

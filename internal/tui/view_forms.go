@@ -145,7 +145,7 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 		parts = append(parts, subtleStyle.Render("No parents"))
 	} else {
 		for _, parent := range m.Forms.Form.FormParentRefs {
-			taskLine := fmt.Sprintf("#%d - %s", parent.TicketNumber, parent.Title)
+			taskLine := fmt.Sprintf("#%d - %s", parent.TaskNumber, parent.Title)
 			parts = append(parts, taskLine)
 		}
 	}
@@ -157,7 +157,7 @@ func (m Model) renderFormMetadataZone(width, height int) string {
 		parts = append(parts, subtleStyle.Render("No children"))
 	} else {
 		for _, child := range m.Forms.Form.FormChildRefs {
-			taskLine := fmt.Sprintf("#%d - %s", child.TicketNumber, child.Title)
+			taskLine := fmt.Sprintf("#%d - %s", child.TaskNumber, child.Title)
 			parts = append(parts, taskLine)
 		}
 	}

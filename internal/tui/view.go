@@ -36,10 +36,10 @@ func (m Model) View() tea.View {
 		// Add modal overlay based on mode
 		var modalLayer *lipgloss.Layer
 		switch m.UIState.Mode {
-		case state.TicketFormMode:
+		case state.TaskFormMode:
 			modalLayer = m.renderTaskFormLayer()
-		case state.TicketFormLoadingMode:
-			modalLayer = m.renderTicketFormLoadingLayer()
+		case state.TaskFormLoadingMode:
+			modalLayer = m.renderTaskFormLoadingLayer()
 		case state.ProjectFormMode, state.EditProjectFormMode:
 			modalLayer = m.renderProjectFormLayer()
 		case state.ProjectFormLoadingMode:
@@ -164,18 +164,18 @@ func (m Model) View() tea.View {
 
 // shouldStackTaskForm determines if the task form should be stacked below a picker.
 // The task form is stacked when:
-//   - The picker will return directly to TicketFormMode (picker opened from task form)
+//   - The picker will return directly to TaskFormMode (picker opened from task form)
 //   - The picker will return to another picker that was opened from task form
 //     (e.g., RelationTypePicker returns to ParentPicker which was opened from task form)
 func (m Model) shouldStackTaskForm(returnMode state.Mode) bool {
-	return returnMode == state.TicketFormMode ||
+	return returnMode == state.TaskFormMode ||
 		returnMode == state.ParentPickerMode ||
 		returnMode == state.ChildPickerMode
 }
 
 // buildPickerLayers is a helper method that builds layer stacks for picker modes.
 // It handles the common pattern of stacking the task form layer when a picker was
-// opened from TicketFormMode, and supports stacking additional intermediate layers.
+// opened from TaskFormMode, and supports stacking additional intermediate layers.
 //
 // Parameters:
 //   - layers: the base layer stack to append to

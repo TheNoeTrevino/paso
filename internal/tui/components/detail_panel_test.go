@@ -117,7 +117,7 @@ func TestRenderDetailPanel_MinimalTask(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:           1,
 		Title:        "Test Task",
-		TicketNumber: 42,
+		TaskNumber: 42,
 		ProjectName:  "PROJ",
 		ColumnName:   "Todo",
 		CreatedAt:    time.Now(),
@@ -140,7 +140,7 @@ func TestRenderDetailPanel_FullTask(t *testing.T) {
 		ID:                  1,
 		Title:               "Full Feature Task",
 		Description:         "This is a detailed description of the task that explains what needs to be done.",
-		TicketNumber:        123,
+		TaskNumber:        123,
 		ProjectName:         "TEST",
 		ColumnName:          "In Progress",
 		TypeDescription:     "Feature",
@@ -154,7 +154,7 @@ func TestRenderDetailPanel_FullTask(t *testing.T) {
 		ParentTasks: []*models.TaskReference{
 			{
 				ID:            10,
-				TicketNumber:  100,
+				TaskNumber:  100,
 				Title:         "Parent Task",
 				ProjectName:   "TEST",
 				RelationLabel: "Blocks",
@@ -165,7 +165,7 @@ func TestRenderDetailPanel_FullTask(t *testing.T) {
 		ChildTasks: []*models.TaskReference{
 			{
 				ID:            20,
-				TicketNumber:  200,
+				TaskNumber:  200,
 				Title:         "Child Task",
 				ProjectName:   "TEST",
 				RelationLabel: "Blocked by",
@@ -204,7 +204,7 @@ func TestRenderDetailPanel_WithoutOptionalSections(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:           1,
 		Title:        "Simple Task",
-		TicketNumber: 1,
+		TaskNumber: 1,
 		ProjectName:  "PROJ",
 		ColumnName:   "Done",
 		// No description, labels, relations, or comments
@@ -226,7 +226,7 @@ func TestRenderDetailPanel_SingleComment(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:           1,
 		Title:        "Task with one comment",
-		TicketNumber: 1,
+		TaskNumber: 1,
 		ProjectName:  "PROJ",
 		ColumnName:   "Todo",
 		Comments: []*models.Comment{
@@ -251,7 +251,7 @@ func TestRenderDetailPanel_LongDescription(t *testing.T) {
 		ID:           1,
 		Title:        "Task",
 		Description:  longDescription,
-		TicketNumber: 1,
+		TaskNumber: 1,
 		ProjectName:  "PROJ",
 		ColumnName:   "Todo",
 		CreatedAt:    time.Now(),
@@ -272,7 +272,7 @@ func TestRenderDetailPanel_LongCommentPreview(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:           1,
 		Title:        "Task",
-		TicketNumber: 1,
+		TaskNumber: 1,
 		ProjectName:  "PROJ",
 		ColumnName:   "Todo",
 		Comments: []*models.Comment{
@@ -319,7 +319,7 @@ func TestRenderDetailPanel_NarrowWidth(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:           1,
 		Title:        "This is a very long task title that should wrap properly in narrow panels",
-		TicketNumber: 999,
+		TaskNumber: 999,
 		ProjectName:  "PROJECT",
 		ColumnName:   "In Progress",
 		CreatedAt:    time.Now(),
@@ -339,7 +339,7 @@ func TestRenderDetailPanel_VerySmallDimensions(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:           1,
 		Title:        "Task",
-		TicketNumber: 1,
+		TaskNumber: 1,
 		ProjectName:  "P",
 		ColumnName:   "Todo",
 		CreatedAt:    time.Now(),
@@ -358,13 +358,13 @@ func TestRenderDetailPanel_RelationsWithBlockingParent(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:           1,
 		Title:        "Blocked Task",
-		TicketNumber: 1,
+		TaskNumber: 1,
 		ProjectName:  "PROJ",
 		ColumnName:   "Todo",
 		ParentTasks: []*models.TaskReference{
 			{
 				ID:            10,
-				TicketNumber:  10,
+				TaskNumber:  10,
 				Title:         "Blocking Parent",
 				ProjectName:   "PROJ",
 				RelationLabel: "Blocked by",
@@ -388,13 +388,13 @@ func TestRenderDetailPanel_RelationsWithChild(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:           1,
 		Title:        "Parent Task",
-		TicketNumber: 1,
+		TaskNumber: 1,
 		ProjectName:  "PROJ",
 		ColumnName:   "Todo",
 		ChildTasks: []*models.TaskReference{
 			{
 				ID:            20,
-				TicketNumber:  20,
+				TaskNumber:  20,
 				Title:         "Child Task",
 				ProjectName:   "PROJ",
 				RelationLabel: "Blocks",
@@ -417,7 +417,7 @@ func TestRenderDetailPanel_MultipleLabels(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:           1,
 		Title:        "Task with many labels",
-		TicketNumber: 1,
+		TaskNumber: 1,
 		ProjectName:  "PROJ",
 		ColumnName:   "Todo",
 		Labels: []*models.Label{
@@ -450,7 +450,7 @@ func TestRenderDetailPanel_Timestamps(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:           1,
 		Title:        "Task",
-		TicketNumber: 1,
+		TaskNumber: 1,
 		ProjectName:  "PROJ",
 		ColumnName:   "Done",
 		CreatedAt:    createdAt,
@@ -469,7 +469,7 @@ func TestRenderDetailPanel_NotBlocked(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:           1,
 		Title:        "Normal Task",
-		TicketNumber: 1,
+		TaskNumber: 1,
 		ProjectName:  "PROJ",
 		ColumnName:   "Todo",
 		IsBlocked:    false,
@@ -488,7 +488,7 @@ func TestRenderDetailPanel_WithTypeOnly(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:              1,
 		Title:           "Typed Task",
-		TicketNumber:    1,
+		TaskNumber:    1,
 		ProjectName:     "PROJ",
 		ColumnName:      "Todo",
 		TypeDescription: "Bug",
@@ -508,7 +508,7 @@ func TestRenderDetailPanel_WithPriorityOnly(t *testing.T) {
 	task := &models.TaskDetail{
 		ID:                  1,
 		Title:               "Priority Task",
-		TicketNumber:        1,
+		TaskNumber:        1,
 		ProjectName:         "PROJ",
 		ColumnName:          "Todo",
 		PriorityDescription: "Critical",

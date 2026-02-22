@@ -67,7 +67,7 @@ func FormatShowJSON(task *models.TaskDetail) map[string]any {
 		"success": true,
 		"task": map[string]any{
 			"id":            task.ID,
-			"ticket_number": task.TicketNumber,
+			"task_number": task.TaskNumber,
 			"project_name":  task.ProjectName,
 			"title":         task.Title,
 			"description":   task.Description,
@@ -129,9 +129,9 @@ func FormatShowHuman(task *models.TaskDetail, colorScheme colors.ColorScheme) st
 
 	var content strings.Builder
 
-	// Header with ticket ID
-	ticketID := fmt.Sprintf("%s-%d", task.ProjectName, task.TicketNumber)
-	header := styles.TitleStyle.Render(ticketID + ": " + task.Title)
+	// Header with task ID
+	taskID := fmt.Sprintf("%s-%d", task.ProjectName, task.TaskNumber)
+	header := styles.TitleStyle.Render(taskID + ": " + task.Title)
 	content.WriteString(header)
 	content.WriteString("\n\n")
 

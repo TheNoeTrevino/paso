@@ -48,7 +48,7 @@ func (t *TaskSummary) PickerValue() string {
 // Used for displaying parent/child relationships without loading full task details
 type TaskReference struct {
 	ID             int
-	TicketNumber   int
+	TaskNumber   int
 	Title          string
 	ProjectName    string
 	RelationTypeID int    // FK to relation_types
@@ -75,7 +75,7 @@ type TaskSummary struct {
 	IsBlocked           bool // True if any child task has is_blocking=true
 }
 
-// TaskDetail is a DTO for the full ticket view
+// TaskDetail is a DTO for the full task view
 // Contains all task information including description and timestamps
 type TaskDetail struct {
 	ID                  int
@@ -95,7 +95,7 @@ type TaskDetail struct {
 	ColumnID            int
 	ColumnName          string // Column name for display
 	Position            int
-	TicketNumber        int    // For display "PROJ-12"
+	TaskNumber        int    // For display "PROJ-12"
 	ProjectName         string // Project name for display
 	IsBlocked           bool   // True if any child task has is_blocking=true
 	CreatedAt           time.Time
@@ -105,7 +105,7 @@ type TaskDetail struct {
 // TaskTreeNode represents a task in a tree structure for hierarchical display
 type TaskTreeNode struct {
 	ID             int
-	TicketNumber   int
+	TaskNumber   int
 	Title          string
 	ColumnName     string
 	ProjectName    string

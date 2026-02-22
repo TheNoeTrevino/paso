@@ -24,7 +24,7 @@ type InProgressInput struct {
 // TaskDisplay represents a simplified task for display
 type TaskDisplay struct {
 	ID                  int    `json:"id"`
-	TicketNumber        int    `json:"ticket_number"`
+	TaskNumber        int    `json:"task_number"`
 	Title               string `json:"title"`
 	TypeDescription     string `json:"type_description"`
 	PriorityDescription string `json:"priority_description"`

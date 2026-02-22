@@ -13,14 +13,14 @@ import (
 )
 
 // TestModeDispatch_TaskFormMode ensures form mode intercepts all messages.
-// Edge case: When in TicketFormMode, ALL messages should go to updateTaskForm.
+// Edge case: When in TaskFormMode, ALL messages should go to updateTaskForm.
 func TestModeDispatch_TaskFormMode(t *testing.T) {
 	t.Parallel()
 	columns := []*models.Column{{ID: 1, Name: "Todo"}}
 	m := setupTestModel(columns, nil)
 
 	// Create a simple form (will be nil initially, but mode is what matters)
-	m.UIState.Mode = state.TicketFormMode
+	m.UIState.Mode = state.TaskFormMode
 	title := ""
 	description := ""
 	confirm := false
@@ -33,8 +33,8 @@ func TestModeDispatch_TaskFormMode(t *testing.T) {
 	newModel, cmd := m.Update(keyMsg)
 	m = newModel.(Model)
 
-	// Mode should still be TicketFormMode (until form completes)
-	assert.Equal(t, state.TicketFormMode, m.UIState.Mode)
+	// Mode should still be TaskFormMode (until form completes)
+	assert.Equal(t, state.TaskFormMode, m.UIState.Mode)
 
 	// Cmd should not be nil (form returns commands)
 	if cmd == nil {
@@ -74,7 +74,7 @@ func TestUpdateTaskForm_EscapeCancels(t *testing.T) {
 	m := setupTestModel(columns, nil)
 
 	// Set up form mode
-	m.UIState.Mode = state.TicketFormMode
+	m.UIState.Mode = state.TaskFormMode
 	title := ""
 	description := ""
 	confirm := false
@@ -113,7 +113,7 @@ func TestUpdateTaskForm_EmptyTitleEscNoTask(t *testing.T) {
 	require.NoError(t, err)
 
 	// Enter task form mode with an empty title
-	m.UIState.Mode = state.TicketFormMode
+	m.UIState.Mode = state.TaskFormMode
 	title := ""
 	description := ""
 	confirm := false

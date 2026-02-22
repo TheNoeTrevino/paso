@@ -17,8 +17,8 @@ const (
 	EditColumnFormMode                     // Renaming an existing column (huh form)
 	DeleteColumnConfirmMode                // Confirming column deletion
 	HelpMode                               // Displaying help screen
-	TicketFormMode                         // Full task form with huh
-	TicketFormLoadingMode                  // Loading task data for edit form
+	TaskFormMode                         // Full task form with huh
+	TaskFormLoadingMode                  // Loading task data for edit form
 	ProjectFormMode                        // Creating a new project with huh
 	EditProjectFormMode                    // Editing an existing project (huh form)
 	ProjectFormLoadingMode                 // Loading git data for project form
@@ -54,8 +54,8 @@ const (
 // Modes that don't use layers render full-screen content.
 func (m Mode) UsesLayers() bool {
 	switch m {
-	case TicketFormMode,
-		TicketFormLoadingMode,
+	case TaskFormMode,
+		TaskFormLoadingMode,
 		ProjectFormMode,
 		EditProjectFormMode,
 		ProjectFormLoadingMode,

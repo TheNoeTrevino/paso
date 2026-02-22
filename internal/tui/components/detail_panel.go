@@ -90,20 +90,20 @@ func renderEmptyDetailPanel(width, height int) string {
 		Render(content)
 }
 
-// renderDetailHeader renders the ticket number and title
+// renderDetailHeader renders the task number and title
 func renderDetailHeader(task *models.TaskDetail, width int) string {
-	ticketStyle := lipgloss.NewStyle().
+	taskStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Highlight)).
 		Bold(true)
 
-	ticketNumber := fmt.Sprintf("%s-%d", task.ProjectName, task.TicketNumber)
-	header := ticketStyle.Render(ticketNumber)
+	taskNumber := fmt.Sprintf("%s-%d", task.ProjectName, task.TaskNumber)
+	header := taskStyle.Render(taskNumber)
 
 	titleStyle := lipgloss.NewStyle().Bold(true)
 	title := task.Title
 
 	// Wrap title if needed
-	maxTitleWidth := width - len(ticketNumber) - 3
+	maxTitleWidth := width - len(taskNumber) - 3
 	if len(title) > maxTitleWidth {
 		wrappedTitle := wordwrap.String(title, width)
 		lines := strings.Split(wrappedTitle, "\n")
@@ -230,11 +230,11 @@ func renderDetailRelations(task *models.TaskDetail, width int) string {
 		relationStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(parent.RelationColor))
 
-		ticketNum := fmt.Sprintf("%s-%d", parent.ProjectName, parent.TicketNumber)
+		taskNum := fmt.Sprintf("%s-%d", parent.ProjectName, parent.TaskNumber)
 		line := fmt.Sprintf("  %s %s %s",
 			arrow,
 			relationStyle.Render(parent.RelationLabel+":"),
-			ticketNum+" "+truncateString(parent.Title, width-len(ticketNum)-20))
+			taskNum+" "+truncateString(parent.Title, width-len(taskNum)-20))
 
 		if parent.IsBlocking {
 			blockedStyle := lipgloss.NewStyle().
@@ -251,11 +251,11 @@ func renderDetailRelations(task *models.TaskDetail, width int) string {
 		relationStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(child.RelationColor))
 
-		ticketNum := fmt.Sprintf("%s-%d", child.ProjectName, child.TicketNumber)
+		taskNum := fmt.Sprintf("%s-%d", child.ProjectName, child.TaskNumber)
 		line := fmt.Sprintf("  %s %s %s",
 			arrow,
 			relationStyle.Render(child.RelationLabel+":"),
-			ticketNum+" "+truncateString(child.Title, width-len(ticketNum)-20))
+			taskNum+" "+truncateString(child.Title, width-len(taskNum)-20))
 
 		if child.IsBlocking {
 			blockedStyle := lipgloss.NewStyle().

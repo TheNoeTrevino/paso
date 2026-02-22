@@ -824,7 +824,7 @@ func (m *Model) initParentPickerForForm() bool {
 	m.Pickers.Parent.Cursor = 0
 	m.Pickers.Parent.Filter = ""
 	m.Pickers.Parent.PickerType = "parent"
-	m.Pickers.Parent.ReturnMode = state.TicketFormMode
+	m.Pickers.Parent.ReturnMode = state.TaskFormMode
 
 	return true
 }
@@ -889,7 +889,7 @@ func (m *Model) initChildPickerForForm() bool {
 	m.Pickers.Child.Cursor = 0
 	m.Pickers.Child.Filter = ""
 	m.Pickers.Child.PickerType = "child"
-	m.Pickers.Child.ReturnMode = state.TicketFormMode
+	m.Pickers.Child.ReturnMode = state.TaskFormMode
 
 	return true
 }
@@ -909,7 +909,7 @@ func (m *Model) initLabelPicker(mode state.Mode) bool {
 	var labelIDMap map[int]bool
 	var taskID int
 
-	if mode == state.TicketFormMode {
+	if mode == state.TaskFormMode {
 		// Form mode: use FormLabelIDs
 		labelIDMap = make(map[int]bool)
 		for _, labelID := range m.Forms.Form.FormLabelIDs {
@@ -965,7 +965,7 @@ func (m *Model) initPriorityPicker(mode state.Mode) bool {
 	var currentPriorityID int
 	var taskID int
 
-	if mode == state.TicketFormMode {
+	if mode == state.TaskFormMode {
 		// Form mode: default to medium priority for new tasks
 		currentPriorityID = 3
 		taskID = m.Forms.Form.EditingTaskID
@@ -1022,7 +1022,7 @@ func (m *Model) initTypePicker(mode state.Mode) bool {
 	var currentTypeID int
 	var taskID int
 
-	if mode == state.TicketFormMode {
+	if mode == state.TaskFormMode {
 		currentTypeID = 1 // Default to task
 		taskID = m.Forms.Form.EditingTaskID
 
@@ -1085,7 +1085,7 @@ func (m *Model) initAssigneePicker(mode state.Mode) bool {
 	var currentAssigneeID int
 	var taskID int
 
-	if mode == state.TicketFormMode {
+	if mode == state.TaskFormMode {
 		// Form mode: use FormAssigneeID
 		currentAssigneeID = m.Forms.Form.FormAssigneeID
 	} else {
@@ -1176,7 +1176,7 @@ func (m *Model) initEstimateInput(mode state.Mode) bool {
 	var estimateValue string
 	var taskID int
 
-	if mode == state.TicketFormMode {
+	if mode == state.TaskFormMode {
 		// Form mode: use FormEstimate
 		estimateValue = m.Forms.Form.FormEstimate
 	} else {
@@ -1204,9 +1204,9 @@ func (m *Model) initEstimateInput(mode state.Mode) bool {
 
 // initEstimateInputForForm initializes the estimate input for use in task form mode.
 // Pre-fills the input buffer with the current estimate value.
-// Deprecated: Use initEstimateInput(state.TicketFormMode) instead.
+// Deprecated: Use initEstimateInput(state.TaskFormMode) instead.
 func (m *Model) initEstimateInputForForm() {
-	m.initEstimateInput(state.TicketFormMode)
+	m.initEstimateInput(state.TaskFormMode)
 }
 
 // initDatePickerForForm initializes the date picker for use in task form mode.
@@ -1214,13 +1214,13 @@ func (m *Model) initEstimateInputForForm() {
 // If FormDueDate is nil, defaults to today's date.
 func (m *Model) initDatePickerForForm() {
 	m.Pickers.DatePicker.InitFromDate(m.Forms.Form.FormDueDate)
-	m.Pickers.DatePicker.ReturnMode = state.TicketFormMode
+	m.Pickers.DatePicker.ReturnMode = state.TaskFormMode
 }
 
 func (m *Model) initDatePicker(mode state.Mode) bool {
 	var currentDueDate *time.Time
 
-	if mode == state.TicketFormMode {
+	if mode == state.TaskFormMode {
 		// Form mode: use the form's due date
 		currentDueDate = m.Forms.Form.FormDueDate
 	} else {

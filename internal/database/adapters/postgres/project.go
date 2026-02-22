@@ -30,8 +30,8 @@ func (a *Adapter) GetAllProjects(ctx context.Context) ([]types.Project, error) {
 	return types.ConvertSlice(results, fromGeneratedGetAllProjectsRow), nil
 }
 
-func (a *Adapter) GetNextTicketNumber(ctx context.Context, projectID int64) (types.NullInt64, error) {
-	result, err := a.queries.GetNextTicketNumber(ctx, projectID)
+func (a *Adapter) GetNextTaskNumber(ctx context.Context, projectID int64) (types.NullInt64, error) {
+	result, err := a.queries.GetNextTaskNumber(ctx, projectID)
 	if err != nil {
 		return types.NullInt64{}, err
 	}
@@ -66,8 +66,8 @@ func (a *Adapter) GetProjectTaskCount(ctx context.Context, projectID int64) (int
 	return a.queries.GetProjectTaskCount(ctx, projectID)
 }
 
-func (a *Adapter) IncrementTicketNumber(ctx context.Context, projectID int64) error {
-	return a.queries.IncrementTicketNumber(ctx, projectID)
+func (a *Adapter) IncrementTaskNumber(ctx context.Context, projectID int64) error {
+	return a.queries.IncrementTaskNumber(ctx, projectID)
 }
 
 func (a *Adapter) InitializeProjectCounter(ctx context.Context, projectID int64) error {

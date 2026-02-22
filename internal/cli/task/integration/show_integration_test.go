@@ -27,7 +27,7 @@ func TestShowTask_Integration(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Test Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
 			"description":   "Test Description",
-			"ticket_number": 1,
+			"task_number": 1,
 		})
 
 		cmd := task.ShowCmd()
@@ -44,7 +44,7 @@ func TestShowTask_Integration(t *testing.T) {
 
 	t.Run("show task with positional argument", func(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Another Task")
-		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 2})
+		cli.UpdateTaskFields(t, db, taskID, map[string]any{"task_number": 2})
 
 		cmd := task.ShowCmd()
 
@@ -77,7 +77,7 @@ func TestShowTask_Integration(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "JSON Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
 			"description":   "JSON Description",
-			"ticket_number": 3,
+			"task_number": 3,
 		})
 
 		cmd := task.ShowCmd()
@@ -100,12 +100,12 @@ func TestShowTask_Integration(t *testing.T) {
 		assert.Equal(t, "JSON Task", taskData["title"])
 		assert.Equal(t, "JSON Description", taskData["description"])
 		assert.Equal(t, "Test Project", taskData["project_name"])
-		assert.Equal(t, float64(3), taskData["ticket_number"])
+		assert.Equal(t, float64(3), taskData["task_number"])
 	})
 
 	t.Run("show task with labels", func(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task with Labels")
-		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 4})
+		cli.UpdateTaskFields(t, db, taskID, map[string]any{"task_number": 4})
 
 		// Create labels and attach to task
 		labelID1 := cli.CreateTestLabel(t, db, projectID, "bug", "#EF4444")
@@ -129,11 +129,11 @@ func TestShowTask_Integration(t *testing.T) {
 	t.Run("show task with parent relationship", func(t *testing.T) {
 		// Create parent task
 		parentID := cli.CreateTestTask(t, db, todoColumnID, "Parent Task")
-		cli.UpdateTaskFields(t, db, parentID, map[string]any{"ticket_number": 5})
+		cli.UpdateTaskFields(t, db, parentID, map[string]any{"task_number": 5})
 
 		// Create child task
 		childID := cli.CreateTestTask(t, db, todoColumnID, "Child Task")
-		cli.UpdateTaskFields(t, db, childID, map[string]any{"ticket_number": 6})
+		cli.UpdateTaskFields(t, db, childID, map[string]any{"task_number": 6})
 
 		// Create relationship (parent-child, non-blocking)
 		cli.AddTaskSubtask(t, db, parentID, childID, 1)
@@ -154,11 +154,11 @@ func TestShowTask_Integration(t *testing.T) {
 	t.Run("show task with blocking relationship", func(t *testing.T) {
 		// Create blocker task
 		blockerID := cli.CreateTestTask(t, db, todoColumnID, "Blocker Task")
-		cli.UpdateTaskFields(t, db, blockerID, map[string]any{"ticket_number": 7})
+		cli.UpdateTaskFields(t, db, blockerID, map[string]any{"task_number": 7})
 
 		// Create blocked task
 		blockedID := cli.CreateTestTask(t, db, todoColumnID, "Blocked Task")
-		cli.UpdateTaskFields(t, db, blockedID, map[string]any{"ticket_number": 8})
+		cli.UpdateTaskFields(t, db, blockedID, map[string]any{"task_number": 8})
 
 		// Create blocking relationship (relation_type_id = 2 for blocking)
 		cli.AddTaskSubtask(t, db, blockedID, blockerID, 2)
@@ -181,7 +181,7 @@ func TestShowTask_Integration(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Full Metadata Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
 			"description":   "Full description with details",
-			"ticket_number": 9,
+			"task_number": 9,
 			"type_id":       2,
 			"priority_id":   4,
 		})
@@ -212,7 +212,7 @@ func TestShowTask_Integration(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Complete JSON Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
 			"description":   "Complete description",
-			"ticket_number": 10,
+			"task_number": 10,
 			"type_id":       3,
 			"priority_id":   5,
 		})
@@ -244,7 +244,7 @@ func TestShowTask_Integration(t *testing.T) {
 		assert.Equal(t, "Complete JSON Task", taskData["title"])
 		assert.Equal(t, "Complete description", taskData["description"])
 		assert.Equal(t, "bug", taskData["type"])
-		assert.Equal(t, float64(10), taskData["ticket_number"])
+		assert.Equal(t, float64(10), taskData["task_number"])
 		assert.Equal(t, "Test Project", taskData["project_name"])
 
 		// Verify priority structure
@@ -274,7 +274,7 @@ Each line should be properly displayed.`
 
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
 			"description":   multiLineDesc,
-			"ticket_number": 11,
+			"task_number": 11,
 		})
 
 		cmd := task.ShowCmd()
@@ -295,8 +295,8 @@ Each line should be properly displayed.`
 		task1ID := cli.CreateTestTask(t, db, todoColumnID, "Position Task 1")
 		task2ID := cli.CreateTestTask(t, db, todoColumnID, "Position Task 2")
 
-		cli.UpdateTaskFields(t, db, task1ID, map[string]any{"ticket_number": 12})
-		cli.UpdateTaskFields(t, db, task2ID, map[string]any{"ticket_number": 13})
+		cli.UpdateTaskFields(t, db, task1ID, map[string]any{"task_number": 12})
+		cli.UpdateTaskFields(t, db, task2ID, map[string]any{"task_number": 13})
 
 		cmd := task.ShowCmd()
 
@@ -319,7 +319,7 @@ Each line should be properly displayed.`
 
 	t.Run("show task with empty description", func(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "No Description Task")
-		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 14})
+		cli.UpdateTaskFields(t, db, taskID, map[string]any{"task_number": 14})
 
 		cmd := task.ShowCmd()
 
@@ -340,9 +340,9 @@ Each line should be properly displayed.`
 		parentTaskID := cli.CreateTestTask(t, db, todoColumnID, "Parent of Middle")
 		childTaskID := cli.CreateTestTask(t, db, todoColumnID, "Child of Middle")
 
-		cli.UpdateTaskFields(t, db, middleTaskID, map[string]any{"ticket_number": 15})
-		cli.UpdateTaskFields(t, db, parentTaskID, map[string]any{"ticket_number": 16})
-		cli.UpdateTaskFields(t, db, childTaskID, map[string]any{"ticket_number": 17})
+		cli.UpdateTaskFields(t, db, middleTaskID, map[string]any{"task_number": 15})
+		cli.UpdateTaskFields(t, db, parentTaskID, map[string]any{"task_number": 16})
+		cli.UpdateTaskFields(t, db, childTaskID, map[string]any{"task_number": 17})
 
 		// Middle task is child of parentTask
 		cli.AddTaskSubtask(t, db, parentTaskID, middleTaskID, 1)

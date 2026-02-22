@@ -51,10 +51,10 @@ create table projects (
     updated_at DATETIME default current_timestamp
 );
 
--- Project ticket number counters
+-- Project task number counters
 create table project_counters (
     project_id integer primary key,
-    next_ticket_number integer default 1,
+    next_task_number integer default 1,
     foreign key (project_id) references projects(id) on delete cascade
 );
 
@@ -88,7 +88,7 @@ create table tasks (
     description text,
     column_id integer not null,
     position integer not null,
-    ticket_number integer,
+    task_number integer,
     type_id integer not null default 1,
     priority_id integer not null default 3,
     created_at DATETIME default current_timestamp,

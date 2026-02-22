@@ -122,7 +122,7 @@ func TestFormatShowJSON(t *testing.T) {
 			name: "minimal task",
 			task: &models.TaskDetail{
 				ID:                  1,
-				TicketNumber:        42,
+				TaskNumber:        42,
 				ProjectName:         "TEST",
 				Title:               "Test Task",
 				Description:         "",
@@ -146,7 +146,7 @@ func TestFormatShowJSON(t *testing.T) {
 				assert.True(t, result["success"].(bool))
 				task := result["task"].(map[string]any)
 				assert.Equal(t, 1, task["id"])
-				assert.Equal(t, 42, task["ticket_number"])
+				assert.Equal(t, 42, task["task_number"])
 				assert.Equal(t, "TEST", task["project_name"])
 				assert.Equal(t, "Test Task", task["title"])
 				assert.Equal(t, "", task["description"])
@@ -164,7 +164,7 @@ func TestFormatShowJSON(t *testing.T) {
 			name: "full task with all fields",
 			task: &models.TaskDetail{
 				ID:                  2,
-				TicketNumber:        100,
+				TaskNumber:        100,
 				ProjectName:         "FULL",
 				Title:               "Complete Task",
 				Description:         "This is a complete task\nwith multiple lines",
@@ -182,10 +182,10 @@ func TestFormatShowJSON(t *testing.T) {
 					{ID: 2, Name: "urgent", Color: "#FF0000"},
 				},
 				ParentTasks: []*models.TaskReference{
-					{ID: 50, TicketNumber: 10, ProjectName: "PARENT", Title: "Parent Task", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 50, TaskNumber: 10, ProjectName: "PARENT", Title: "Parent Task", IsBlocking: false, RelationLabel: "subtask"},
 				},
 				ChildTasks: []*models.TaskReference{
-					{ID: 60, TicketNumber: 20, ProjectName: "CHILD", Title: "Child Task", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 60, TaskNumber: 20, ProjectName: "CHILD", Title: "Child Task", IsBlocking: true, RelationLabel: "blocks"},
 				},
 				Comments: []*models.Comment{
 					{ID: 1, TaskID: 2, Message: "First comment", Author: "bob", CreatedAt: commentCreatedAt, UpdatedAt: commentUpdatedAt},
@@ -197,7 +197,7 @@ func TestFormatShowJSON(t *testing.T) {
 				assert.True(t, result["success"].(bool))
 				task := result["task"].(map[string]any)
 				assert.Equal(t, 2, task["id"])
-				assert.Equal(t, 100, task["ticket_number"])
+				assert.Equal(t, 100, task["task_number"])
 				assert.Equal(t, "FULL", task["project_name"])
 				assert.Equal(t, "Complete Task", task["title"])
 				assert.Equal(t, "This is a complete task\nwith multiple lines", task["description"])
@@ -237,7 +237,7 @@ func TestFormatShowJSON(t *testing.T) {
 			name: "task with multiple comments",
 			task: &models.TaskDetail{
 				ID:                  3,
-				TicketNumber:        200,
+				TaskNumber:        200,
 				ProjectName:         "COMMENT",
 				Title:               "Task with comments",
 				TypeDescription:     "Feature",
@@ -274,7 +274,7 @@ func TestFormatShowJSON(t *testing.T) {
 			name: "task with empty comments list",
 			task: &models.TaskDetail{
 				ID:                  4,
-				TicketNumber:        300,
+				TaskNumber:        300,
 				ProjectName:         "NO-COMMENT",
 				Title:               "No comments",
 				TypeDescription:     "Feature",
@@ -335,14 +335,14 @@ func TestOrganizeTaskRelationships(t *testing.T) {
 			task: &models.TaskDetail{
 				ParentTasks: []*models.TaskReference{},
 				ChildTasks: []*models.TaskReference{
-					{ID: 1, TicketNumber: 10, ProjectName: "TEST", Title: "Blocker 1", IsBlocking: true, RelationLabel: "blocks"},
-					{ID: 2, TicketNumber: 20, ProjectName: "TEST", Title: "Blocker 2", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 1, TaskNumber: 10, ProjectName: "TEST", Title: "Blocker 1", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 2, TaskNumber: 20, ProjectName: "TEST", Title: "Blocker 2", IsBlocking: true, RelationLabel: "blocks"},
 				},
 			},
 			expected: &TaskRelationships{
 				BlockingChildren: []*models.TaskReference{
-					{ID: 1, TicketNumber: 10, ProjectName: "TEST", Title: "Blocker 1", IsBlocking: true, RelationLabel: "blocks"},
-					{ID: 2, TicketNumber: 20, ProjectName: "TEST", Title: "Blocker 2", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 1, TaskNumber: 10, ProjectName: "TEST", Title: "Blocker 1", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 2, TaskNumber: 20, ProjectName: "TEST", Title: "Blocker 2", IsBlocking: true, RelationLabel: "blocks"},
 				},
 				BlockingParents:     []*models.TaskReference{},
 				NonBlockingParents:  []*models.TaskReference{},
@@ -353,16 +353,16 @@ func TestOrganizeTaskRelationships(t *testing.T) {
 			name: "only blocking parents",
 			task: &models.TaskDetail{
 				ParentTasks: []*models.TaskReference{
-					{ID: 3, TicketNumber: 30, ProjectName: "TEST", Title: "Blocked 1", IsBlocking: true, RelationLabel: "blocks"},
-					{ID: 4, TicketNumber: 40, ProjectName: "TEST", Title: "Blocked 2", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 3, TaskNumber: 30, ProjectName: "TEST", Title: "Blocked 1", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 4, TaskNumber: 40, ProjectName: "TEST", Title: "Blocked 2", IsBlocking: true, RelationLabel: "blocks"},
 				},
 				ChildTasks: []*models.TaskReference{},
 			},
 			expected: &TaskRelationships{
 				BlockingChildren: []*models.TaskReference{},
 				BlockingParents: []*models.TaskReference{
-					{ID: 3, TicketNumber: 30, ProjectName: "TEST", Title: "Blocked 1", IsBlocking: true, RelationLabel: "blocks"},
-					{ID: 4, TicketNumber: 40, ProjectName: "TEST", Title: "Blocked 2", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 3, TaskNumber: 30, ProjectName: "TEST", Title: "Blocked 1", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 4, TaskNumber: 40, ProjectName: "TEST", Title: "Blocked 2", IsBlocking: true, RelationLabel: "blocks"},
 				},
 				NonBlockingParents:  []*models.TaskReference{},
 				NonBlockingChildren: []*models.TaskReference{},
@@ -372,8 +372,8 @@ func TestOrganizeTaskRelationships(t *testing.T) {
 			name: "only non-blocking parents",
 			task: &models.TaskDetail{
 				ParentTasks: []*models.TaskReference{
-					{ID: 5, TicketNumber: 50, ProjectName: "TEST", Title: "Parent 1", IsBlocking: false, RelationLabel: "subtask"},
-					{ID: 6, TicketNumber: 60, ProjectName: "TEST", Title: "Parent 2", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 5, TaskNumber: 50, ProjectName: "TEST", Title: "Parent 1", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 6, TaskNumber: 60, ProjectName: "TEST", Title: "Parent 2", IsBlocking: false, RelationLabel: "subtask"},
 				},
 				ChildTasks: []*models.TaskReference{},
 			},
@@ -381,8 +381,8 @@ func TestOrganizeTaskRelationships(t *testing.T) {
 				BlockingChildren: []*models.TaskReference{},
 				BlockingParents:  []*models.TaskReference{},
 				NonBlockingParents: []*models.TaskReference{
-					{ID: 5, TicketNumber: 50, ProjectName: "TEST", Title: "Parent 1", IsBlocking: false, RelationLabel: "subtask"},
-					{ID: 6, TicketNumber: 60, ProjectName: "TEST", Title: "Parent 2", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 5, TaskNumber: 50, ProjectName: "TEST", Title: "Parent 1", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 6, TaskNumber: 60, ProjectName: "TEST", Title: "Parent 2", IsBlocking: false, RelationLabel: "subtask"},
 				},
 				NonBlockingChildren: []*models.TaskReference{},
 			},
@@ -392,8 +392,8 @@ func TestOrganizeTaskRelationships(t *testing.T) {
 			task: &models.TaskDetail{
 				ParentTasks: []*models.TaskReference{},
 				ChildTasks: []*models.TaskReference{
-					{ID: 7, TicketNumber: 70, ProjectName: "TEST", Title: "Child 1", IsBlocking: false, RelationLabel: "subtask"},
-					{ID: 8, TicketNumber: 80, ProjectName: "TEST", Title: "Child 2", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 7, TaskNumber: 70, ProjectName: "TEST", Title: "Child 1", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 8, TaskNumber: 80, ProjectName: "TEST", Title: "Child 2", IsBlocking: false, RelationLabel: "subtask"},
 				},
 			},
 			expected: &TaskRelationships{
@@ -401,8 +401,8 @@ func TestOrganizeTaskRelationships(t *testing.T) {
 				BlockingParents:    []*models.TaskReference{},
 				NonBlockingParents: []*models.TaskReference{},
 				NonBlockingChildren: []*models.TaskReference{
-					{ID: 7, TicketNumber: 70, ProjectName: "TEST", Title: "Child 1", IsBlocking: false, RelationLabel: "subtask"},
-					{ID: 8, TicketNumber: 80, ProjectName: "TEST", Title: "Child 2", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 7, TaskNumber: 70, ProjectName: "TEST", Title: "Child 1", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 8, TaskNumber: 80, ProjectName: "TEST", Title: "Child 2", IsBlocking: false, RelationLabel: "subtask"},
 				},
 			},
 		},
@@ -410,26 +410,26 @@ func TestOrganizeTaskRelationships(t *testing.T) {
 			name: "mixed relationships",
 			task: &models.TaskDetail{
 				ParentTasks: []*models.TaskReference{
-					{ID: 9, TicketNumber: 90, ProjectName: "TEST", Title: "Blocking Parent", IsBlocking: true, RelationLabel: "blocks"},
-					{ID: 10, TicketNumber: 100, ProjectName: "TEST", Title: "Non-blocking Parent", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 9, TaskNumber: 90, ProjectName: "TEST", Title: "Blocking Parent", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 10, TaskNumber: 100, ProjectName: "TEST", Title: "Non-blocking Parent", IsBlocking: false, RelationLabel: "subtask"},
 				},
 				ChildTasks: []*models.TaskReference{
-					{ID: 11, TicketNumber: 110, ProjectName: "TEST", Title: "Blocking Child", IsBlocking: true, RelationLabel: "blocks"},
-					{ID: 12, TicketNumber: 120, ProjectName: "TEST", Title: "Non-blocking Child", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 11, TaskNumber: 110, ProjectName: "TEST", Title: "Blocking Child", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 12, TaskNumber: 120, ProjectName: "TEST", Title: "Non-blocking Child", IsBlocking: false, RelationLabel: "subtask"},
 				},
 			},
 			expected: &TaskRelationships{
 				BlockingChildren: []*models.TaskReference{
-					{ID: 11, TicketNumber: 110, ProjectName: "TEST", Title: "Blocking Child", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 11, TaskNumber: 110, ProjectName: "TEST", Title: "Blocking Child", IsBlocking: true, RelationLabel: "blocks"},
 				},
 				BlockingParents: []*models.TaskReference{
-					{ID: 9, TicketNumber: 90, ProjectName: "TEST", Title: "Blocking Parent", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 9, TaskNumber: 90, ProjectName: "TEST", Title: "Blocking Parent", IsBlocking: true, RelationLabel: "blocks"},
 				},
 				NonBlockingParents: []*models.TaskReference{
-					{ID: 10, TicketNumber: 100, ProjectName: "TEST", Title: "Non-blocking Parent", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 10, TaskNumber: 100, ProjectName: "TEST", Title: "Non-blocking Parent", IsBlocking: false, RelationLabel: "subtask"},
 				},
 				NonBlockingChildren: []*models.TaskReference{
-					{ID: 12, TicketNumber: 120, ProjectName: "TEST", Title: "Non-blocking Child", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 12, TaskNumber: 120, ProjectName: "TEST", Title: "Non-blocking Child", IsBlocking: false, RelationLabel: "subtask"},
 				},
 			},
 		},
@@ -437,34 +437,34 @@ func TestOrganizeTaskRelationships(t *testing.T) {
 			name: "multiple mixed relationships",
 			task: &models.TaskDetail{
 				ParentTasks: []*models.TaskReference{
-					{ID: 13, TicketNumber: 130, ProjectName: "TEST", Title: "Blocking Parent 1", IsBlocking: true, RelationLabel: "blocks"},
-					{ID: 14, TicketNumber: 140, ProjectName: "TEST", Title: "Blocking Parent 2", IsBlocking: true, RelationLabel: "blocks"},
-					{ID: 15, TicketNumber: 150, ProjectName: "TEST", Title: "Non-blocking Parent 1", IsBlocking: false, RelationLabel: "subtask"},
-					{ID: 16, TicketNumber: 160, ProjectName: "TEST", Title: "Non-blocking Parent 2", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 13, TaskNumber: 130, ProjectName: "TEST", Title: "Blocking Parent 1", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 14, TaskNumber: 140, ProjectName: "TEST", Title: "Blocking Parent 2", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 15, TaskNumber: 150, ProjectName: "TEST", Title: "Non-blocking Parent 1", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 16, TaskNumber: 160, ProjectName: "TEST", Title: "Non-blocking Parent 2", IsBlocking: false, RelationLabel: "subtask"},
 				},
 				ChildTasks: []*models.TaskReference{
-					{ID: 17, TicketNumber: 170, ProjectName: "TEST", Title: "Blocking Child 1", IsBlocking: true, RelationLabel: "blocks"},
-					{ID: 18, TicketNumber: 180, ProjectName: "TEST", Title: "Blocking Child 2", IsBlocking: true, RelationLabel: "blocks"},
-					{ID: 19, TicketNumber: 190, ProjectName: "TEST", Title: "Non-blocking Child 1", IsBlocking: false, RelationLabel: "subtask"},
-					{ID: 20, TicketNumber: 200, ProjectName: "TEST", Title: "Non-blocking Child 2", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 17, TaskNumber: 170, ProjectName: "TEST", Title: "Blocking Child 1", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 18, TaskNumber: 180, ProjectName: "TEST", Title: "Blocking Child 2", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 19, TaskNumber: 190, ProjectName: "TEST", Title: "Non-blocking Child 1", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 20, TaskNumber: 200, ProjectName: "TEST", Title: "Non-blocking Child 2", IsBlocking: false, RelationLabel: "subtask"},
 				},
 			},
 			expected: &TaskRelationships{
 				BlockingChildren: []*models.TaskReference{
-					{ID: 17, TicketNumber: 170, ProjectName: "TEST", Title: "Blocking Child 1", IsBlocking: true, RelationLabel: "blocks"},
-					{ID: 18, TicketNumber: 180, ProjectName: "TEST", Title: "Blocking Child 2", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 17, TaskNumber: 170, ProjectName: "TEST", Title: "Blocking Child 1", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 18, TaskNumber: 180, ProjectName: "TEST", Title: "Blocking Child 2", IsBlocking: true, RelationLabel: "blocks"},
 				},
 				BlockingParents: []*models.TaskReference{
-					{ID: 13, TicketNumber: 130, ProjectName: "TEST", Title: "Blocking Parent 1", IsBlocking: true, RelationLabel: "blocks"},
-					{ID: 14, TicketNumber: 140, ProjectName: "TEST", Title: "Blocking Parent 2", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 13, TaskNumber: 130, ProjectName: "TEST", Title: "Blocking Parent 1", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 14, TaskNumber: 140, ProjectName: "TEST", Title: "Blocking Parent 2", IsBlocking: true, RelationLabel: "blocks"},
 				},
 				NonBlockingParents: []*models.TaskReference{
-					{ID: 15, TicketNumber: 150, ProjectName: "TEST", Title: "Non-blocking Parent 1", IsBlocking: false, RelationLabel: "subtask"},
-					{ID: 16, TicketNumber: 160, ProjectName: "TEST", Title: "Non-blocking Parent 2", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 15, TaskNumber: 150, ProjectName: "TEST", Title: "Non-blocking Parent 1", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 16, TaskNumber: 160, ProjectName: "TEST", Title: "Non-blocking Parent 2", IsBlocking: false, RelationLabel: "subtask"},
 				},
 				NonBlockingChildren: []*models.TaskReference{
-					{ID: 19, TicketNumber: 190, ProjectName: "TEST", Title: "Non-blocking Child 1", IsBlocking: false, RelationLabel: "subtask"},
-					{ID: 20, TicketNumber: 200, ProjectName: "TEST", Title: "Non-blocking Child 2", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 19, TaskNumber: 190, ProjectName: "TEST", Title: "Non-blocking Child 1", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 20, TaskNumber: 200, ProjectName: "TEST", Title: "Non-blocking Child 2", IsBlocking: false, RelationLabel: "subtask"},
 				},
 			},
 		},
@@ -502,7 +502,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "minimal task",
 			task: &models.TaskDetail{
 				ID:                  1,
-				TicketNumber:        42,
+				TaskNumber:        42,
 				ProjectName:         "TEST",
 				Title:               "Test Task",
 				Description:         "",
@@ -536,7 +536,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "blocked task",
 			task: &models.TaskDetail{
 				ID:                  2,
-				TicketNumber:        100,
+				TaskNumber:        100,
 				ProjectName:         "BLOCK",
 				Title:               "Blocked Task",
 				TypeDescription:     "Bug",
@@ -562,7 +562,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with description",
 			task: &models.TaskDetail{
 				ID:                  3,
-				TicketNumber:        200,
+				TaskNumber:        200,
 				ProjectName:         "DESC",
 				Title:               "Task with Description",
 				Description:         "Line 1\nLine 2\nLine 3",
@@ -591,7 +591,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with assignee and estimate",
 			task: &models.TaskDetail{
 				ID:                  4,
-				TicketNumber:        300,
+				TaskNumber:        300,
 				ProjectName:         "ASSIGN",
 				Title:               "Assigned Task",
 				TypeDescription:     "Feature",
@@ -619,7 +619,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with labels",
 			task: &models.TaskDetail{
 				ID:                  5,
-				TicketNumber:        400,
+				TaskNumber:        400,
 				ProjectName:         "LABEL",
 				Title:               "Labeled Task",
 				TypeDescription:     "Feature",
@@ -649,7 +649,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with blocking children",
 			task: &models.TaskDetail{
 				ID:                  6,
-				TicketNumber:        500,
+				TaskNumber:        500,
 				ProjectName:         "BLOCKER",
 				Title:               "Task blocked by children",
 				TypeDescription:     "Feature",
@@ -662,7 +662,7 @@ func TestFormatShowHuman(t *testing.T) {
 				Labels:              []*models.Label{},
 				ParentTasks:         []*models.TaskReference{},
 				ChildTasks: []*models.TaskReference{
-					{ID: 1, TicketNumber: 10, ProjectName: "CHILD", Title: "Blocking Child", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 1, TaskNumber: 10, ProjectName: "CHILD", Title: "Blocking Child", IsBlocking: true, RelationLabel: "blocks"},
 				},
 				Comments:  []*models.Comment{},
 				CreatedAt: createdAt,
@@ -678,7 +678,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with blocking parents",
 			task: &models.TaskDetail{
 				ID:                  7,
-				TicketNumber:        600,
+				TaskNumber:        600,
 				ProjectName:         "BLOCKER",
 				Title:               "Task blocking parents",
 				TypeDescription:     "Feature",
@@ -690,7 +690,7 @@ func TestFormatShowHuman(t *testing.T) {
 				IsBlocked:           false,
 				Labels:              []*models.Label{},
 				ParentTasks: []*models.TaskReference{
-					{ID: 2, TicketNumber: 20, ProjectName: "PARENT", Title: "Blocked Parent", IsBlocking: true, RelationLabel: "blocks"},
+					{ID: 2, TaskNumber: 20, ProjectName: "PARENT", Title: "Blocked Parent", IsBlocking: true, RelationLabel: "blocks"},
 				},
 				ChildTasks: []*models.TaskReference{},
 				Comments:   []*models.Comment{},
@@ -707,7 +707,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with non-blocking parents",
 			task: &models.TaskDetail{
 				ID:                  8,
-				TicketNumber:        700,
+				TaskNumber:        700,
 				ProjectName:         "PARENT",
 				Title:               "Subtask",
 				TypeDescription:     "Feature",
@@ -719,7 +719,7 @@ func TestFormatShowHuman(t *testing.T) {
 				IsBlocked:           false,
 				Labels:              []*models.Label{},
 				ParentTasks: []*models.TaskReference{
-					{ID: 3, TicketNumber: 30, ProjectName: "PARENT", Title: "Parent Task", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 3, TaskNumber: 30, ProjectName: "PARENT", Title: "Parent Task", IsBlocking: false, RelationLabel: "subtask"},
 				},
 				ChildTasks: []*models.TaskReference{},
 				Comments:   []*models.Comment{},
@@ -735,7 +735,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with non-blocking children",
 			task: &models.TaskDetail{
 				ID:                  9,
-				TicketNumber:        800,
+				TaskNumber:        800,
 				ProjectName:         "CHILD",
 				Title:               "Parent with subtasks",
 				TypeDescription:     "Feature",
@@ -748,7 +748,7 @@ func TestFormatShowHuman(t *testing.T) {
 				Labels:              []*models.Label{},
 				ParentTasks:         []*models.TaskReference{},
 				ChildTasks: []*models.TaskReference{
-					{ID: 4, TicketNumber: 40, ProjectName: "CHILD", Title: "Child Task", IsBlocking: false, RelationLabel: "subtask"},
+					{ID: 4, TaskNumber: 40, ProjectName: "CHILD", Title: "Child Task", IsBlocking: false, RelationLabel: "subtask"},
 				},
 				Comments:  []*models.Comment{},
 				CreatedAt: createdAt,
@@ -763,7 +763,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with comments",
 			task: &models.TaskDetail{
 				ID:                  10,
-				TicketNumber:        900,
+				TaskNumber:        900,
 				ProjectName:         "COMMENT",
 				Title:               "Task with comments",
 				TypeDescription:     "Feature",

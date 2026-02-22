@@ -130,7 +130,7 @@ func TestFormatCommentJSON(t *testing.T) {
 				Author:       "alice",
 				CreatedAt:    "2024-01-15 10:30:00",
 				TaskTitle:    "Fix bug in login",
-				TicketNumber: 100,
+				TaskNumber: 100,
 				ProjectName:  "Auth Service",
 			},
 			expected: map[string]any{
@@ -145,7 +145,7 @@ func TestFormatCommentJSON(t *testing.T) {
 				"task": map[string]any{
 					"id":            42,
 					"title":         "Fix bug in login",
-					"ticket_number": 100,
+					"task_number": 100,
 					"project":       "Auth Service",
 				},
 			},
@@ -159,7 +159,7 @@ func TestFormatCommentJSON(t *testing.T) {
 				Author:       "bob",
 				CreatedAt:    "2024-01-01 00:00:00",
 				TaskTitle:    "Task",
-				TicketNumber: 1,
+				TaskNumber: 1,
 				ProjectName:  "Project",
 			},
 			expected: map[string]any{
@@ -174,7 +174,7 @@ func TestFormatCommentJSON(t *testing.T) {
 				"task": map[string]any{
 					"id":            1,
 					"title":         "Task",
-					"ticket_number": 1,
+					"task_number": 1,
 					"project":       "Project",
 				},
 			},
@@ -188,7 +188,7 @@ func TestFormatCommentJSON(t *testing.T) {
 				Author:       "user.name@domain",
 				CreatedAt:    "2024-12-31 23:59:59",
 				TaskTitle:    "Task with symbols: @#$%",
-				TicketNumber: 777,
+				TaskNumber: 777,
 				ProjectName:  "Project-Name_123",
 			},
 			expected: map[string]any{
@@ -203,7 +203,7 @@ func TestFormatCommentJSON(t *testing.T) {
 				"task": map[string]any{
 					"id":            555,
 					"title":         "Task with symbols: @#$%",
-					"ticket_number": 777,
+					"task_number": 777,
 					"project":       "Project-Name_123",
 				},
 			},
@@ -246,7 +246,7 @@ func TestFormatCommentHuman(t *testing.T) {
 				Author:       "alice",
 				CreatedAt:    "2024-01-15 10:30:00",
 				TaskTitle:    "Fix bug",
-				TicketNumber: 123,
+				TaskNumber: 123,
 				ProjectName:  "Test Project",
 			},
 			colorScheme: testColorScheme,
@@ -268,7 +268,7 @@ func TestFormatCommentHuman(t *testing.T) {
 				Author:       "bob",
 				CreatedAt:    "2024-01-01 00:00:00",
 				TaskTitle:    "Task",
-				TicketNumber: 1,
+				TaskNumber: 1,
 				ProjectName:  "Project",
 			},
 			colorScheme: testColorScheme,
@@ -289,7 +289,7 @@ func TestFormatCommentHuman(t *testing.T) {
 				Author:       "charlie",
 				CreatedAt:    "2024-02-01 12:00:00",
 				TaskTitle:    "Another Task",
-				TicketNumber: 50,
+				TaskNumber: 50,
 				ProjectName:  "Another Project",
 			},
 			colorScheme: testColorScheme,
@@ -309,7 +309,7 @@ func TestFormatCommentHuman(t *testing.T) {
 				Author:       "dave",
 				CreatedAt:    "2024-03-01 08:00:00",
 				TaskTitle:    "Task with @mentions and #hashtags",
-				TicketNumber: 777,
+				TaskNumber: 777,
 				ProjectName:  "Special-Project_123",
 			},
 			colorScheme: testColorScheme,
@@ -357,7 +357,7 @@ func TestFormatCommentHuman_StructureValidation(t *testing.T) {
 		Author:       "alice",
 		CreatedAt:    "2024-01-15 10:30:00",
 		TaskTitle:    "Fix bug",
-		TicketNumber: 123,
+		TaskNumber: 123,
 		ProjectName:  "Test Project",
 	}
 
@@ -402,7 +402,7 @@ func TestCommentResult_Struct(t *testing.T) {
 		Author:       "alice",
 		CreatedAt:    "2024-01-15 10:30:00",
 		TaskTitle:    "Fix bug",
-		TicketNumber: 100,
+		TaskNumber: 100,
 		ProjectName:  "Test Project",
 	}
 
@@ -412,6 +412,6 @@ func TestCommentResult_Struct(t *testing.T) {
 	assert.Equal(t, "alice", result.Author)
 	assert.Equal(t, "2024-01-15 10:30:00", result.CreatedAt)
 	assert.Equal(t, "Fix bug", result.TaskTitle)
-	assert.Equal(t, 100, result.TicketNumber)
+	assert.Equal(t, 100, result.TaskNumber)
 	assert.Equal(t, "Test Project", result.ProjectName)
 }

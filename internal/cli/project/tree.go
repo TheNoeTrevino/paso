@@ -172,7 +172,7 @@ func (t taskNode) String() string {
 		return lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color(color)).
-			Render(fmt.Sprintf("%d: %s - %s", t.node.TicketNumber, t.node.Title, t.node.ColumnName))
+			Render(fmt.Sprintf("%d: %s - %s", t.node.TaskNumber, t.node.Title, t.node.ColumnName))
 	}
 
 	textColor := t.colors.Normal
@@ -183,17 +183,17 @@ func (t taskNode) String() string {
 		textColor = styles.DimColor(textColor, styles.CompletedDimIntensity)
 	}
 
-	ticketStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(textColor))
+	taskStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(textColor))
 	relationStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(textColor)).
 		Bold(t.node.IsBlocking)
 	titleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(textColor))
 
-	ticketNum := ticketStyle.Render(fmt.Sprintf("%d: ", t.node.TicketNumber))
+	taskNum := taskStyle.Render(fmt.Sprintf("%d: ", t.node.TaskNumber))
 	relationChip := relationStyle.Render(t.node.RelationLabel)
 	titleInfo := titleStyle.Render(fmt.Sprintf(" %s - %s", t.node.Title, t.node.ColumnName))
 
-	return fmt.Sprintf("%s%s%s", ticketNum, relationChip, titleInfo)
+	return fmt.Sprintf("%s%s%s", taskNum, relationChip, titleInfo)
 }
 
 // buildTaskTrees converts a slice of TaskTreeNodes to lipgloss trees (one per root)
@@ -236,7 +236,7 @@ func outputQuietTree(nodes []*models.TaskTreeNode, prefix string, isRoot bool) {
 			if isLast {
 				connector = styles.TreeLastBranch
 			}
-			fmt.Printf("%s%s%d %s\n", prefix, connector, node.TicketNumber, node.RelationLabel)
+			fmt.Printf("%s%s%d %s\n", prefix, connector, node.TaskNumber, node.RelationLabel)
 
 			childPrefix := prefix
 			if isLast {
@@ -252,7 +252,7 @@ func outputQuietTree(nodes []*models.TaskTreeNode, prefix string, isRoot bool) {
 // treeNodeJSON represents a node in JSON output
 type treeNodeJSON struct {
 	ID           int             `json:"id"`
-	TicketNumber int             `json:"ticket_number"`
+	TaskNumber int             `json:"task_number"`
 	Title        string          `json:"title"`
 	ColumnName   string          `json:"column_name"`
 	RelationType string          `json:"relation_type,omitempty"`
@@ -265,7 +265,7 @@ func convertToJSONTree(nodes []*models.TaskTreeNode) []*treeNodeJSON {
 	for _, node := range nodes {
 		jsonNode := &treeNodeJSON{
 			ID:           node.ID,
-			TicketNumber: node.TicketNumber,
+			TaskNumber: node.TaskNumber,
 			Title:        node.Title,
 			ColumnName:   node.ColumnName,
 			RelationType: node.RelationLabel,

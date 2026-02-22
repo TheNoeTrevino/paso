@@ -28,7 +28,7 @@ type CommentResult struct {
 	Author       string
 	CreatedAt    string // Formatted time string
 	TaskTitle    string
-	TicketNumber int
+	TaskNumber int
 	ProjectName  string
 }
 
@@ -59,7 +59,7 @@ func FormatCommentJSON(result *CommentResult) map[string]any {
 		"task": map[string]any{
 			"id":            result.TaskID,
 			"title":         result.TaskTitle,
-			"ticket_number": result.TicketNumber,
+			"task_number": result.TaskNumber,
 			"project":       result.ProjectName,
 		},
 	}
@@ -68,7 +68,7 @@ func FormatCommentJSON(result *CommentResult) map[string]any {
 // FormatCommentHuman generates the human-readable output with details
 func FormatCommentHuman(result *CommentResult, colorScheme colors.ColorScheme) string {
 	details := []styles.Detail{
-		{Key: "Task", Value: fmt.Sprintf("#%d (%s)", result.TicketNumber, result.TaskTitle)},
+		{Key: "Task", Value: fmt.Sprintf("#%d (%s)", result.TaskNumber, result.TaskTitle)},
 		{Key: "Project", Value: result.ProjectName},
 		{Key: "Message", Value: styles.TruncateString(result.Message, commentTruncateLength)},
 		{Key: "Comment ID", Value: strconv.Itoa(result.CommentID)},

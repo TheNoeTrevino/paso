@@ -163,7 +163,7 @@ func TestGetTaskTreeByProject_BlockingRelationship(t *testing.T) {
 	})
 }
 
-func TestGetTaskTreeByProject_SortedByTicketNumber(t *testing.T) {
+func TestGetTaskTreeByProject_SortedByTaskNumber(t *testing.T) {
 	t.Parallel()
 	fixtures.RunDatabaseTests(t, func(t *testing.T, db *sql.DB, d fixtures.Dialect, dbType database.DatabaseType) {
 		env := setupTestEnv(t, db, d, dbType)
@@ -172,12 +172,12 @@ func TestGetTaskTreeByProject_SortedByTicketNumber(t *testing.T) {
 		task2 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Task 2")
 		task3 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Task 3")
 
-		// Set ticket numbers (in database they auto-increment, but let's verify sorting)
-		_, err := env.DB.ExecContext(env.Ctx, fmt.Sprintf("UPDATE tasks SET ticket_number = 3 WHERE id = %s", d.Placeholder(1)), task1)
+		// Set task numbers (in database they auto-increment, but let's verify sorting)
+		_, err := env.DB.ExecContext(env.Ctx, fmt.Sprintf("UPDATE tasks SET task_number = 3 WHERE id = %s", d.Placeholder(1)), task1)
 		require.NoError(t, err)
-		_, err = env.DB.ExecContext(env.Ctx, fmt.Sprintf("UPDATE tasks SET ticket_number = 1 WHERE id = %s", d.Placeholder(1)), task2)
+		_, err = env.DB.ExecContext(env.Ctx, fmt.Sprintf("UPDATE tasks SET task_number = 1 WHERE id = %s", d.Placeholder(1)), task2)
 		require.NoError(t, err)
-		_, err = env.DB.ExecContext(env.Ctx, fmt.Sprintf("UPDATE tasks SET ticket_number = 2 WHERE id = %s", d.Placeholder(1)), task3)
+		_, err = env.DB.ExecContext(env.Ctx, fmt.Sprintf("UPDATE tasks SET task_number = 2 WHERE id = %s", d.Placeholder(1)), task3)
 		require.NoError(t, err)
 
 		// Get tree
@@ -186,10 +186,10 @@ func TestGetTaskTreeByProject_SortedByTicketNumber(t *testing.T) {
 
 		require.Len(t, tree, 3)
 
-		// Verify sorted by ticket number
-		assert.Equal(t, 1, tree[0].TicketNumber)
-		assert.Equal(t, 2, tree[1].TicketNumber)
-		assert.Equal(t, 3, tree[2].TicketNumber)
+		// Verify sorted by task number
+		assert.Equal(t, 1, tree[0].TaskNumber)
+		assert.Equal(t, 2, tree[1].TaskNumber)
+		assert.Equal(t, 3, tree[2].TaskNumber)
 	})
 }
 
@@ -304,12 +304,12 @@ func TestGetTaskTreeByProject_MultipleRoots(t *testing.T) {
 		task2 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Root 2")
 		task3 := fixtures.CreateTestTask(t, env.DB, env.Dialect, env.ColumnID, "Root 3")
 
-		// Set ticket numbers to establish deterministic order
-		_, err := env.DB.ExecContext(env.Ctx, fmt.Sprintf("UPDATE tasks SET ticket_number = 1 WHERE id = %s", d.Placeholder(1)), task1)
+		// Set task numbers to establish deterministic order
+		_, err := env.DB.ExecContext(env.Ctx, fmt.Sprintf("UPDATE tasks SET task_number = 1 WHERE id = %s", d.Placeholder(1)), task1)
 		require.NoError(t, err)
-		_, err = env.DB.ExecContext(env.Ctx, fmt.Sprintf("UPDATE tasks SET ticket_number = 2 WHERE id = %s", d.Placeholder(1)), task2)
+		_, err = env.DB.ExecContext(env.Ctx, fmt.Sprintf("UPDATE tasks SET task_number = 2 WHERE id = %s", d.Placeholder(1)), task2)
 		require.NoError(t, err)
-		_, err = env.DB.ExecContext(env.Ctx, fmt.Sprintf("UPDATE tasks SET ticket_number = 3 WHERE id = %s", d.Placeholder(1)), task3)
+		_, err = env.DB.ExecContext(env.Ctx, fmt.Sprintf("UPDATE tasks SET task_number = 3 WHERE id = %s", d.Placeholder(1)), task3)
 		require.NoError(t, err)
 
 		// Get tree
@@ -319,10 +319,10 @@ func TestGetTaskTreeByProject_MultipleRoots(t *testing.T) {
 		// Should have 3 roots
 		require.Len(t, nodes, 3)
 
-		// Verify roots are sorted by ticket number (ascending)
-		assert.Equal(t, 1, nodes[0].TicketNumber)
-		assert.Equal(t, 2, nodes[1].TicketNumber)
-		assert.Equal(t, 3, nodes[2].TicketNumber)
+		// Verify roots are sorted by task number (ascending)
+		assert.Equal(t, 1, nodes[0].TaskNumber)
+		assert.Equal(t, 2, nodes[1].TaskNumber)
+		assert.Equal(t, 3, nodes[2].TaskNumber)
 
 		// Verify the task IDs match what we created
 		assert.Equal(t, task1, nodes[0].ID)

@@ -57,7 +57,7 @@ var (
 	// TaskTitleStyle defines the appearance of titles (column names, app header)
 	TaskTitleStyle lipgloss.Style
 
-	// FormBoxStyle defines the base style for ticket forms (purple border)
+	// FormBoxStyle defines the base style for task forms (purple border)
 	FormBoxStyle lipgloss.Style
 
 	// ProjectFormBoxStyle defines the base style for project creation forms (green border)

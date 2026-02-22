@@ -116,7 +116,7 @@ func runComment(cmd *cobra.Command, args []string) error {
 		Author:       comment.Author,
 		CreatedAt:    comment.CreatedAt.Format("2006-01-02 15:04:05"),
 		TaskTitle:    taskDetail.Title,
-		TicketNumber: taskDetail.TicketNumber,
+		TaskNumber: taskDetail.TaskNumber,
 		ProjectName:  taskDetail.ProjectName,
 	}
 

@@ -15,7 +15,7 @@ type AssigneePickerState struct {
 // NewAssigneePickerState creates a new AssigneePickerState with default values.
 func NewAssigneePickerState() *AssigneePickerState {
 	return &AssigneePickerState{
-		ReturnMode:   TicketFormMode,
+		ReturnMode:   TaskFormMode,
 		showClearOpt: true,
 	}
 }
@@ -101,5 +101,5 @@ func (s *AssigneePickerState) Reset() {
 	s.assignees = nil
 	s.selectedID = 0
 	s.cursor = 0
-	s.ReturnMode = TicketFormMode
+	s.ReturnMode = TaskFormMode
 }

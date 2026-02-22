@@ -195,7 +195,7 @@ func TestReadyMoveTask(t *testing.T) {
 		description := "This task has a detailed description"
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
 			"description":   description,
-			"ticket_number": 99,
+			"task_number": 99,
 			"type_id":       2,
 			"priority_id":   4,
 		})
@@ -211,14 +211,14 @@ func TestReadyMoveTask(t *testing.T) {
 		// Verify task moved and metadata is preserved
 		var columnID int
 		var savedDescription string
-		var ticketNumber, typeID, priorityID int
+		var taskNumber, typeID, priorityID int
 		err = db.QueryRowContext(ctx,
-			"SELECT column_id, description, ticket_number, type_id, priority_id FROM tasks WHERE id = ?",
-			taskID).Scan(&columnID, &savedDescription, &ticketNumber, &typeID, &priorityID)
+			"SELECT column_id, description, task_number, type_id, priority_id FROM tasks WHERE id = ?",
+			taskID).Scan(&columnID, &savedDescription, &taskNumber, &typeID, &priorityID)
 		assert.NoError(t, err)
 		assert.Equal(t, todoColumnID, columnID)
 		assert.Equal(t, description, savedDescription)
-		assert.Equal(t, 99, ticketNumber)
+		assert.Equal(t, 99, taskNumber)
 		assert.Equal(t, 2, typeID)
 		assert.Equal(t, 4, priorityID)
 	})

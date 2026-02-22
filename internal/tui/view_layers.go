@@ -104,8 +104,8 @@ func (m Model) renderProjectFormLayer() *lipgloss.Layer {
 	return layers.CreateCenteredLayer(formBox, m.UIState.Width(), m.UIState.Height)
 }
 
-// renderTicketFormLoadingLayer renders a loading indicator while task details are being fetched
-func (m Model) renderTicketFormLoadingLayer() *lipgloss.Layer {
+// renderTaskFormLoadingLayer renders a loading indicator while task details are being fetched
+func (m Model) renderTaskFormLoadingLayer() *lipgloss.Layer {
 	spinnerIcon := spinner.Frames[m.SpinnerFrame%spinner.FrameCount()]
 
 	loadingText := lipgloss.NewStyle().

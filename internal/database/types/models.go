@@ -45,10 +45,10 @@ type Project struct {
 	UpdatedAt   NullTime
 }
 
-// ProjectCounter tracks the next ticket number for a project.
+// ProjectCounter tracks the next task number for a project.
 type ProjectCounter struct {
 	ProjectID        int64
-	NextTicketNumber NullInt64
+	NextTaskNumber NullInt64
 }
 
 // RelationType represents the type of relationship between tasks.
@@ -67,7 +67,7 @@ type Task struct {
 	Description  NullString
 	ColumnID     int64
 	Position     int64
-	TicketNumber NullInt64
+	TaskNumber NullInt64
 	TypeID       int64
 	PriorityID   int64
 	CreatedAt    NullTime

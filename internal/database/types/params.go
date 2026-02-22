@@ -108,7 +108,7 @@ type CreateTaskParams struct {
 	Description  NullString
 	ColumnID     int64
 	Position     int64
-	TicketNumber NullInt64
+	TaskNumber NullInt64
 	AssigneeID   NullInt64
 	Estimate     NullString
 	DueDate      NullTime
