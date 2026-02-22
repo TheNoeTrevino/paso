@@ -16,17 +16,17 @@ func fromGeneratedAssignee(g generated_sqlite.Assignee) types.Assignee {
 
 func fromGeneratedTask(g generated_sqlite.Task) types.Task {
 	return types.Task{
-		ID:           g.ID,
-		Title:        g.Title,
-		Description:  types.FromSQLNullString(g.Description),
-		ColumnID:     g.ColumnID,
-		Position:     g.Position,
-		TaskNumber: types.FromSQLNullInt64(g.TaskNumber),
-		TypeID:       g.TypeID,
-		PriorityID:   g.PriorityID,
-		CreatedAt:    types.FromSQLNullTime(g.CreatedAt),
-		UpdatedAt:    types.FromSQLNullTime(g.UpdatedAt),
-		DueDate:      types.NullTimeFromInterface(g.DueDate),
+		ID:          g.ID,
+		Title:       g.Title,
+		Description: types.FromSQLNullString(g.Description),
+		ColumnID:    g.ColumnID,
+		Position:    g.Position,
+		TaskNumber:  types.FromSQLNullInt64(g.TaskNumber),
+		TypeID:      g.TypeID,
+		PriorityID:  g.PriorityID,
+		CreatedAt:   types.FromSQLNullTime(g.CreatedAt),
+		UpdatedAt:   types.FromSQLNullTime(g.UpdatedAt),
+		DueDate:     types.NullTimeFromInterface(g.DueDate),
 	}
 }
 
@@ -134,21 +134,21 @@ func fromGeneratedType(g generated_sqlite.Type) types.Type {
 
 func fromGeneratedGetChildTasksRow(g generated_sqlite.GetChildTasksRow) types.GetChildTasksRow {
 	return types.GetChildTasksRow{
-		ID:           g.ID,
+		ID:         g.ID,
 		TaskNumber: types.FromSQLNullInt64(g.TaskNumber),
-		Title:        g.Title,
-		Name:         g.Name,
-		ID_2:         g.ID_2,
-		CToPLabel:    g.CToPLabel,
-		Color:        g.Color,
-		IsBlocking:   g.IsBlocking,
+		Title:      g.Title,
+		Name:       g.Name,
+		ID_2:       g.ID_2,
+		CToPLabel:  g.CToPLabel,
+		Color:      g.Color,
+		IsBlocking: g.IsBlocking,
 	}
 }
 
 func fromGeneratedGetInProgressTaskDetailsRow(g generated_sqlite.GetInProgressTaskDetailsRow) types.GetInProgressTaskDetailsRow {
 	return types.GetInProgressTaskDetailsRow{
 		ID:                  g.ID,
-		TaskNumber:        types.FromSQLNullInt64(g.TaskNumber),
+		TaskNumber:          types.FromSQLNullInt64(g.TaskNumber),
 		Title:               g.Title,
 		Description:         types.FromSQLNullString(g.Description),
 		ColumnID:            g.ColumnID,
@@ -173,25 +173,25 @@ func fromGeneratedGetInProgressTaskDetailsRow(g generated_sqlite.GetInProgressTa
 
 func fromGeneratedGetInProgressTasksByProjectRow(g generated_sqlite.GetInProgressTasksByProjectRow) types.GetInProgressTasksByProjectRow {
 	return types.GetInProgressTasksByProjectRow{
-		ID:           g.ID,
-		TaskNumber: types.FromSQLNullInt64(g.TaskNumber),
-		Title:        g.Title,
-		Description:  types.FromSQLNullString(g.Description),
-		ColumnName:   g.ColumnName,
-		ProjectName:  g.ProjectName,
+		ID:          g.ID,
+		TaskNumber:  types.FromSQLNullInt64(g.TaskNumber),
+		Title:       g.Title,
+		Description: types.FromSQLNullString(g.Description),
+		ColumnName:  g.ColumnName,
+		ProjectName: g.ProjectName,
 	}
 }
 
 func fromGeneratedGetParentTasksRow(g generated_sqlite.GetParentTasksRow) types.GetParentTasksRow {
 	return types.GetParentTasksRow{
-		ID:           g.ID,
+		ID:         g.ID,
 		TaskNumber: types.FromSQLNullInt64(g.TaskNumber),
-		Title:        g.Title,
-		Name:         g.Name,
-		ID_2:         g.ID_2,
-		PToCLabel:    g.PToCLabel,
-		Color:        g.Color,
-		IsBlocking:   g.IsBlocking,
+		Title:      g.Title,
+		Name:       g.Name,
+		ID_2:       g.ID_2,
+		PToCLabel:  g.PToCLabel,
+		Color:      g.Color,
+		IsBlocking: g.IsBlocking,
 	}
 }
 
@@ -248,7 +248,7 @@ func fromGeneratedGetTaskDetailRow(g generated_sqlite.GetTaskDetailRow) types.Ge
 		Description:         types.FromSQLNullString(g.Description),
 		ColumnID:            g.ColumnID,
 		Position:            g.Position,
-		TaskNumber:        types.FromSQLNullInt64(g.TaskNumber),
+		TaskNumber:          types.FromSQLNullInt64(g.TaskNumber),
 		CreatedAt:           types.FromSQLNullTime(g.CreatedAt),
 		UpdatedAt:           types.FromSQLNullTime(g.UpdatedAt),
 		Estimate:            types.NullStringFromInterface(g.Estimate),
@@ -273,10 +273,10 @@ func fromGeneratedGetTaskPositionRow(g generated_sqlite.GetTaskPositionRow) type
 
 func fromGeneratedGetTaskReferencesForProjectRow(g generated_sqlite.GetTaskReferencesForProjectRow) types.GetTaskReferencesForProjectRow {
 	return types.GetTaskReferencesForProjectRow{
-		ID:           g.ID,
+		ID:         g.ID,
 		TaskNumber: types.FromSQLNullInt64(g.TaskNumber),
-		Title:        g.Title,
-		Name:         g.Name,
+		Title:      g.Title,
+		Name:       g.Name,
 	}
 }
 
@@ -363,12 +363,12 @@ func fromGeneratedGetTasksByColumnRow(g generated_sqlite.GetTasksByColumnRow) ty
 
 func fromGeneratedGetTasksForTreeRow(g generated_sqlite.GetTasksForTreeRow) types.GetTasksForTreeRow {
 	return types.GetTasksForTreeRow{
-		ID:           g.ID,
-		TaskNumber: types.FromSQLNullInt64(g.TaskNumber),
-		Title:        g.Title,
-		ColumnName:   g.ColumnName,
-		ProjectName:  g.ProjectName,
-		IsCompleted:  g.IsCompleted,
+		ID:          g.ID,
+		TaskNumber:  types.FromSQLNullInt64(g.TaskNumber),
+		Title:       g.Title,
+		ColumnName:  g.ColumnName,
+		ProjectName: g.ProjectName,
+		IsCompleted: g.IsCompleted,
 	}
 }
 

@@ -22,14 +22,14 @@ type CommentInput struct {
 
 // CommentResult represents the output of a successful comment operation
 type CommentResult struct {
-	CommentID    int
-	TaskID       int
-	Message      string
-	Author       string
-	CreatedAt    string // Formatted time string
-	TaskTitle    string
-	TaskNumber int
-	ProjectName  string
+	CommentID   int
+	TaskID      int
+	Message     string
+	Author      string
+	CreatedAt   string // Formatted time string
+	TaskTitle   string
+	TaskNumber  int
+	ProjectName string
 }
 
 // ValidateCommentMessage validates the comment message length
@@ -57,10 +57,10 @@ func FormatCommentJSON(result *CommentResult) map[string]any {
 			"created_at": result.CreatedAt,
 		},
 		"task": map[string]any{
-			"id":            result.TaskID,
-			"title":         result.TaskTitle,
+			"id":          result.TaskID,
+			"title":       result.TaskTitle,
 			"task_number": result.TaskNumber,
-			"project":       result.ProjectName,
+			"project":     result.ProjectName,
 		},
 	}
 }

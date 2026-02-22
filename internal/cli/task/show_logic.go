@@ -66,12 +66,12 @@ func FormatShowJSON(task *models.TaskDetail) map[string]any {
 	return map[string]any{
 		"success": true,
 		"task": map[string]any{
-			"id":            task.ID,
-			"task_number": task.TaskNumber,
-			"project_name":  task.ProjectName,
-			"title":         task.Title,
-			"description":   task.Description,
-			"type":          task.TypeDescription,
+			"id":           task.ID,
+			"task_number":  task.TaskNumber,
+			"project_name": task.ProjectName,
+			"title":        task.Title,
+			"description":  task.Description,
+			"type":         task.TypeDescription,
 			"priority": map[string]string{
 				"name":  task.PriorityDescription,
 				"color": task.PriorityColor,

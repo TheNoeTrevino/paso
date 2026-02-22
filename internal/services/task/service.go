@@ -223,14 +223,14 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 
 		var taskErr error
 		createdTask, taskErr = qtx.CreateTask(ctx, types.CreateTaskParams{
-			Title:        req.Title,
-			Description:  desc,
-			ColumnID:     int64(req.ColumnID),
-			Position:     int64(req.Position),
-			TaskNumber: taskNumber,
-			AssigneeID:   assigneeID,
-			Estimate:     estimate,
-			DueDate:      dueDate,
+			Title:       req.Title,
+			Description: desc,
+			ColumnID:    int64(req.ColumnID),
+			Position:    int64(req.Position),
+			TaskNumber:  taskNumber,
+			AssigneeID:  assigneeID,
+			Estimate:    estimate,
+			DueDate:     dueDate,
 		})
 		if taskErr != nil {
 			return fmt.Errorf("failed to create task: %w", taskErr)
@@ -945,7 +945,7 @@ func (s *service) GetTaskTreeByProject(ctx context.Context, projectID int) ([]*m
 			// Create a copy with relation info for this specific parent-child relationship
 			nodeCopy := &models.TaskTreeNode{
 				ID:            childNode.ID,
-				TaskNumber:  childNode.TaskNumber,
+				TaskNumber:    childNode.TaskNumber,
 				Title:         childNode.Title,
 				ColumnName:    childNode.ColumnName,
 				ProjectName:   childNode.ProjectName,
@@ -966,13 +966,13 @@ func (s *service) GetTaskTreeByProject(ctx context.Context, projectID int) ([]*m
 		if !hasParent[node.ID] {
 			// This is a root task - build its children
 			rootCopy := &models.TaskTreeNode{
-				ID:           node.ID,
-				TaskNumber: node.TaskNumber,
-				Title:        node.Title,
-				ColumnName:   node.ColumnName,
-				ProjectName:  node.ProjectName,
-				IsCompleted:  node.IsCompleted,
-				Children:     buildChildren(node.ID, 0),
+				ID:          node.ID,
+				TaskNumber:  node.TaskNumber,
+				Title:       node.Title,
+				ColumnName:  node.ColumnName,
+				ProjectName: node.ProjectName,
+				IsCompleted: node.IsCompleted,
+				Children:    buildChildren(node.ID, 0),
 			}
 			roots = append(roots, rootCopy)
 		}
@@ -1325,18 +1325,18 @@ func (s *service) GetInProgressTasksByProject(ctx context.Context, projectID int
 	for _, row := range detailRows {
 		// Convert row to TaskDetail - no additional queries needed!
 		taskDetail := &models.TaskDetail{
-			ID:           int(row.ID),
-			Title:        row.Title,
-			Description:  row.Description.String,
-			ColumnID:     int(row.ColumnID),
-			ColumnName:   row.ColumnName,
-			ProjectName:  row.ProjectName,
-			Position:     int(row.Position),
-			TaskNumber: int(row.TaskNumber.Int64),
-			Labels:       converters.ParseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
-			IsBlocked:    row.IsBlocked,
-			CreatedAt:    row.CreatedAt.Time,
-			UpdatedAt:    row.UpdatedAt.Time,
+			ID:          int(row.ID),
+			Title:       row.Title,
+			Description: row.Description.String,
+			ColumnID:    int(row.ColumnID),
+			ColumnName:  row.ColumnName,
+			ProjectName: row.ProjectName,
+			Position:    int(row.Position),
+			TaskNumber:  int(row.TaskNumber.Int64),
+			Labels:      converters.ParseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
+			IsBlocked:   row.IsBlocked,
+			CreatedAt:   row.CreatedAt.Time,
+			UpdatedAt:   row.UpdatedAt.Time,
 		}
 
 		// Set optional fields

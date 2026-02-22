@@ -104,14 +104,14 @@ type AddSubtaskWithRelationTypeParams struct {
 }
 
 type CreateTaskParams struct {
-	Title        string
-	Description  NullString
-	ColumnID     int64
-	Position     int64
-	TaskNumber NullInt64
-	AssigneeID   NullInt64
-	Estimate     NullString
-	DueDate      NullTime
+	Title       string
+	Description NullString
+	ColumnID    int64
+	Position    int64
+	TaskNumber  NullInt64
+	AssigneeID  NullInt64
+	Estimate    NullString
+	DueDate     NullTime
 }
 
 type GetTaskAboveParams struct {

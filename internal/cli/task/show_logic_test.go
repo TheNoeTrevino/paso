@@ -122,7 +122,7 @@ func TestFormatShowJSON(t *testing.T) {
 			name: "minimal task",
 			task: &models.TaskDetail{
 				ID:                  1,
-				TaskNumber:        42,
+				TaskNumber:          42,
 				ProjectName:         "TEST",
 				Title:               "Test Task",
 				Description:         "",
@@ -164,7 +164,7 @@ func TestFormatShowJSON(t *testing.T) {
 			name: "full task with all fields",
 			task: &models.TaskDetail{
 				ID:                  2,
-				TaskNumber:        100,
+				TaskNumber:          100,
 				ProjectName:         "FULL",
 				Title:               "Complete Task",
 				Description:         "This is a complete task\nwith multiple lines",
@@ -237,7 +237,7 @@ func TestFormatShowJSON(t *testing.T) {
 			name: "task with multiple comments",
 			task: &models.TaskDetail{
 				ID:                  3,
-				TaskNumber:        200,
+				TaskNumber:          200,
 				ProjectName:         "COMMENT",
 				Title:               "Task with comments",
 				TypeDescription:     "Feature",
@@ -274,7 +274,7 @@ func TestFormatShowJSON(t *testing.T) {
 			name: "task with empty comments list",
 			task: &models.TaskDetail{
 				ID:                  4,
-				TaskNumber:        300,
+				TaskNumber:          300,
 				ProjectName:         "NO-COMMENT",
 				Title:               "No comments",
 				TypeDescription:     "Feature",
@@ -502,7 +502,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "minimal task",
 			task: &models.TaskDetail{
 				ID:                  1,
-				TaskNumber:        42,
+				TaskNumber:          42,
 				ProjectName:         "TEST",
 				Title:               "Test Task",
 				Description:         "",
@@ -536,7 +536,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "blocked task",
 			task: &models.TaskDetail{
 				ID:                  2,
-				TaskNumber:        100,
+				TaskNumber:          100,
 				ProjectName:         "BLOCK",
 				Title:               "Blocked Task",
 				TypeDescription:     "Bug",
@@ -562,7 +562,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with description",
 			task: &models.TaskDetail{
 				ID:                  3,
-				TaskNumber:        200,
+				TaskNumber:          200,
 				ProjectName:         "DESC",
 				Title:               "Task with Description",
 				Description:         "Line 1\nLine 2\nLine 3",
@@ -591,7 +591,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with assignee and estimate",
 			task: &models.TaskDetail{
 				ID:                  4,
-				TaskNumber:        300,
+				TaskNumber:          300,
 				ProjectName:         "ASSIGN",
 				Title:               "Assigned Task",
 				TypeDescription:     "Feature",
@@ -619,7 +619,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with labels",
 			task: &models.TaskDetail{
 				ID:                  5,
-				TaskNumber:        400,
+				TaskNumber:          400,
 				ProjectName:         "LABEL",
 				Title:               "Labeled Task",
 				TypeDescription:     "Feature",
@@ -649,7 +649,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with blocking children",
 			task: &models.TaskDetail{
 				ID:                  6,
-				TaskNumber:        500,
+				TaskNumber:          500,
 				ProjectName:         "BLOCKER",
 				Title:               "Task blocked by children",
 				TypeDescription:     "Feature",
@@ -678,7 +678,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with blocking parents",
 			task: &models.TaskDetail{
 				ID:                  7,
-				TaskNumber:        600,
+				TaskNumber:          600,
 				ProjectName:         "BLOCKER",
 				Title:               "Task blocking parents",
 				TypeDescription:     "Feature",
@@ -707,7 +707,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with non-blocking parents",
 			task: &models.TaskDetail{
 				ID:                  8,
-				TaskNumber:        700,
+				TaskNumber:          700,
 				ProjectName:         "PARENT",
 				Title:               "Subtask",
 				TypeDescription:     "Feature",
@@ -735,7 +735,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with non-blocking children",
 			task: &models.TaskDetail{
 				ID:                  9,
-				TaskNumber:        800,
+				TaskNumber:          800,
 				ProjectName:         "CHILD",
 				Title:               "Parent with subtasks",
 				TypeDescription:     "Feature",
@@ -763,7 +763,7 @@ func TestFormatShowHuman(t *testing.T) {
 			name: "task with comments",
 			task: &models.TaskDetail{
 				ID:                  10,
-				TaskNumber:        900,
+				TaskNumber:          900,
 				ProjectName:         "COMMENT",
 				Title:               "Task with comments",
 				TypeDescription:     "Feature",

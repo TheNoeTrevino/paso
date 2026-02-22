@@ -47,7 +47,7 @@ type Project struct {
 
 // ProjectCounter tracks the next task number for a project.
 type ProjectCounter struct {
-	ProjectID        int64
+	ProjectID      int64
 	NextTaskNumber NullInt64
 }
 
@@ -62,17 +62,17 @@ type RelationType struct {
 
 // Task represents a task in the system.
 type Task struct {
-	ID           int64
-	Title        string
-	Description  NullString
-	ColumnID     int64
-	Position     int64
-	TaskNumber NullInt64
-	TypeID       int64
-	PriorityID   int64
-	CreatedAt    NullTime
-	UpdatedAt    NullTime
-	DueDate      NullTime
+	ID          int64
+	Title       string
+	Description NullString
+	ColumnID    int64
+	Position    int64
+	TaskNumber  NullInt64
+	TypeID      int64
+	PriorityID  int64
+	CreatedAt   NullTime
+	UpdatedAt   NullTime
+	DueDate     NullTime
 }
 
 // TaskComment represents a comment on a task.

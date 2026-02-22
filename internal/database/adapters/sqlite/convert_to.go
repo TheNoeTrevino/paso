@@ -9,14 +9,14 @@ import (
 
 func toGeneratedCreateTaskParams(t types.CreateTaskParams) generated_sqlite.CreateTaskParams {
 	return generated_sqlite.CreateTaskParams{
-		Title:        t.Title,
-		Description:  t.Description.ToSQLNullString(),
-		ColumnID:     t.ColumnID,
-		Position:     t.Position,
-		TaskNumber: t.TaskNumber.ToSQLNullInt64(),
-		AssigneeID:   t.AssigneeID.ToInterface(),
-		Estimate:     t.Estimate.ToInterface(),
-		DueDate:      t.DueDate.ToInterface(),
+		Title:       t.Title,
+		Description: t.Description.ToSQLNullString(),
+		ColumnID:    t.ColumnID,
+		Position:    t.Position,
+		TaskNumber:  t.TaskNumber.ToSQLNullInt64(),
+		AssigneeID:  t.AssigneeID.ToInterface(),
+		Estimate:    t.Estimate.ToInterface(),
+		DueDate:     t.DueDate.ToInterface(),
 	}
 }
 

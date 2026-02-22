@@ -17,8 +17,8 @@ const (
 	EditColumnFormMode                     // Renaming an existing column (huh form)
 	DeleteColumnConfirmMode                // Confirming column deletion
 	HelpMode                               // Displaying help screen
-	TaskFormMode                         // Full task form with huh
-	TaskFormLoadingMode                  // Loading task data for edit form
+	TaskFormMode                           // Full task form with huh
+	TaskFormLoadingMode                    // Loading task data for edit form
 	ProjectFormMode                        // Creating a new project with huh
 	EditProjectFormMode                    // Editing an existing project (huh form)
 	ProjectFormLoadingMode                 // Loading git data for project form

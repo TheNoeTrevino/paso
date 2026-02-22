@@ -59,14 +59,14 @@ returning id, title, description, column_id, position, task_number, type_id, pri
 `
 
 type CreateTaskParams struct {
-	Title        string
-	Description  sql.NullString
-	ColumnID     int64
-	Position     int64
-	TaskNumber sql.NullInt64
-	AssigneeID   interface{}
-	Estimate     interface{}
-	DueDate      interface{}
+	Title       string
+	Description sql.NullString
+	ColumnID    int64
+	Position    int64
+	TaskNumber  sql.NullInt64
+	AssigneeID  interface{}
+	Estimate    interface{}
+	DueDate     interface{}
 }
 
 // Creates a new task with title, description, position, task number, and assignee
@@ -217,14 +217,14 @@ order by p.name, t.task_number
 `
 
 type GetChildTasksRow struct {
-	ID           int64
+	ID         int64
 	TaskNumber sql.NullInt64
-	Title        string
-	Name         string
-	ID_2         int64
-	CToPLabel    string
-	Color        string
-	IsBlocking   bool
+	Title      string
+	Name       string
+	ID_2       int64
+	CToPLabel  string
+	Color      string
+	IsBlocking bool
 }
 
 // Retrieves all child tasks for a given parent task with relationship details
@@ -322,7 +322,7 @@ order by t.position
 
 type GetInProgressTaskDetailsRow struct {
 	ID                  int64
-	TaskNumber        sql.NullInt64
+	TaskNumber          sql.NullInt64
 	Title               string
 	Description         sql.NullString
 	ColumnID            int64
@@ -406,12 +406,12 @@ order by t.position
 `
 
 type GetInProgressTasksByProjectRow struct {
-	ID           int64
-	TaskNumber sql.NullInt64
-	Title        string
-	Description  sql.NullString
-	ColumnName   string
-	ProjectName  string
+	ID          int64
+	TaskNumber  sql.NullInt64
+	Title       string
+	Description sql.NullString
+	ColumnName  string
+	ProjectName string
 }
 
 // Retrieves basic information for tasks currently in progress for a project
@@ -484,14 +484,14 @@ order by p.name, t.task_number
 `
 
 type GetParentTasksRow struct {
-	ID           int64
+	ID         int64
 	TaskNumber sql.NullInt64
-	Title        string
-	Name         string
-	ID_2         int64
-	PToCLabel    string
-	Color        string
-	IsBlocking   bool
+	Title      string
+	Name       string
+	ID_2       int64
+	PToCLabel  string
+	Color      string
+	IsBlocking bool
 }
 
 // Retrieves all parent tasks for a given child task with relationship details
@@ -815,7 +815,7 @@ type GetTaskDetailRow struct {
 	Description         sql.NullString
 	ColumnID            int64
 	Position            int64
-	TaskNumber        sql.NullInt64
+	TaskNumber          sql.NullInt64
 	CreatedAt           sql.NullTime
 	UpdatedAt           sql.NullTime
 	Estimate            interface{}
@@ -924,10 +924,10 @@ order by p.name, t.task_number
 `
 
 type GetTaskReferencesForProjectRow struct {
-	ID           int64
+	ID         int64
 	TaskNumber sql.NullInt64
-	Title        string
-	Name         string
+	Title      string
+	Name       string
 }
 
 // Retrieves basic task references for all tasks in a project
@@ -1435,12 +1435,12 @@ order by t.task_number
 `
 
 type GetTasksForTreeRow struct {
-	ID           int64
-	TaskNumber sql.NullInt64
-	Title        string
-	ColumnName   string
-	ProjectName  string
-	IsCompleted  bool
+	ID          int64
+	TaskNumber  sql.NullInt64
+	Title       string
+	ColumnName  string
+	ProjectName string
+	IsCompleted bool
 }
 
 // Retrieves all tasks in a project with column

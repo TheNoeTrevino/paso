@@ -26,10 +26,10 @@ func setupCommentMocks() (*mocks.MockTaskService, cli.MockServices) {
 
 func setDefaultCommentResults(mockTask *mocks.MockTaskService) {
 	mockTask.GetTaskDetailResult = &models.TaskDetail{
-		ID:           1,
-		Title:        "Test Task",
-		TaskNumber: 42,
-		ProjectName:  "Test Project",
+		ID:          1,
+		Title:       "Test Task",
+		TaskNumber:  42,
+		ProjectName: "Test Project",
 	}
 	mockTask.CreateCommentResult = &models.Comment{
 		ID:        5,

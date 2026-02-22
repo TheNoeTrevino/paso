@@ -1213,7 +1213,7 @@ func buildTaskRefWithRelationType(
 ) *models.TaskReference {
 	ref := &models.TaskReference{
 		ID:             taskRef.ID,
-		TaskNumber:   taskRef.TaskNumber,
+		TaskNumber:     taskRef.TaskNumber,
 		Title:          taskRef.Title,
 		ProjectName:    taskRef.ProjectName,
 		RelationTypeID: relationTypeID,

@@ -31,7 +31,7 @@ func defaultShowTask() *models.TaskDetail {
 		ColumnID:            10,
 		ColumnName:          "Todo",
 		ProjectName:         "Test Project",
-		TaskNumber:        42,
+		TaskNumber:          42,
 		TypeDescription:     "task",
 		PriorityDescription: "medium",
 		PriorityColor:       "#F59E0B",

@@ -49,7 +49,7 @@ type Project struct {
 }
 
 type ProjectCounter struct {
-	ProjectID        int64
+	ProjectID      int64
 	NextTaskNumber sql.NullInt64
 }
 
@@ -69,20 +69,20 @@ type StandupLog struct {
 }
 
 type Task struct {
-	ID           int64
-	Title        string
-	Description  sql.NullString
-	ColumnID     int64
-	Position     int64
-	TaskNumber sql.NullInt64
-	TypeID       int64
-	PriorityID   int64
-	CreatedAt    sql.NullTime
-	UpdatedAt    sql.NullTime
-	AssigneeID   sql.NullInt32
-	Estimate     sql.NullString
-	DueDate      sql.NullTime
-	Archived     bool
+	ID          int64
+	Title       string
+	Description sql.NullString
+	ColumnID    int64
+	Position    int64
+	TaskNumber  sql.NullInt64
+	TypeID      int64
+	PriorityID  int64
+	CreatedAt   sql.NullTime
+	UpdatedAt   sql.NullTime
+	AssigneeID  sql.NullInt32
+	Estimate    sql.NullString
+	DueDate     sql.NullTime
+	Archived    bool
 }
 
 type TaskComment struct {

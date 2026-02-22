@@ -26,7 +26,7 @@ func TestShowTask_Integration(t *testing.T) {
 		// Create a task with description
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Test Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
-			"description":   "Test Description",
+			"description": "Test Description",
 			"task_number": 1,
 		})
 
@@ -76,7 +76,7 @@ func TestShowTask_Integration(t *testing.T) {
 	t.Run("show task in JSON mode", func(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "JSON Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
-			"description":   "JSON Description",
+			"description": "JSON Description",
 			"task_number": 3,
 		})
 
@@ -180,10 +180,10 @@ func TestShowTask_Integration(t *testing.T) {
 	t.Run("show task with all metadata", func(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Full Metadata Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
-			"description":   "Full description with details",
+			"description": "Full description with details",
 			"task_number": 9,
-			"type_id":       2,
-			"priority_id":   4,
+			"type_id":     2,
+			"priority_id": 4,
 		})
 
 		cmd := task.ShowCmd()
@@ -211,10 +211,10 @@ func TestShowTask_Integration(t *testing.T) {
 	t.Run("show task in JSON mode with complete structure", func(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Complete JSON Task")
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
-			"description":   "Complete description",
+			"description": "Complete description",
 			"task_number": 10,
-			"type_id":       3,
-			"priority_id":   5,
+			"type_id":     3,
+			"priority_id": 5,
 		})
 
 		// Add a label
@@ -273,7 +273,7 @@ It spans multiple lines.
 Each line should be properly displayed.`
 
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
-			"description":   multiLineDesc,
+			"description": multiLineDesc,
 			"task_number": 11,
 		})
 

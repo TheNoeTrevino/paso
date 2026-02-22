@@ -194,10 +194,10 @@ func TestReadyMoveTask(t *testing.T) {
 
 		description := "This task has a detailed description"
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
-			"description":   description,
+			"description": description,
 			"task_number": 99,
-			"type_id":       2,
-			"priority_id":   4,
+			"type_id":     2,
+			"priority_id": 4,
 		})
 
 		cmd := task.ReadyMoveCmd()

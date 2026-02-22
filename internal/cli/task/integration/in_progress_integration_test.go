@@ -426,10 +426,10 @@ func TestInProgressTask(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Complete Metadata Task")
 
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
-			"description":   "Complete description",
+			"description": "Complete description",
 			"task_number": 20,
-			"type_id":       2,
-			"priority_id":   4,
+			"type_id":     2,
+			"priority_id": 4,
 		})
 
 		cmd := task.InProgressCmd()

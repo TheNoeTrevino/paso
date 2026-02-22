@@ -252,7 +252,7 @@ func outputQuietTree(nodes []*models.TaskTreeNode, prefix string, isRoot bool) {
 // treeNodeJSON represents a node in JSON output
 type treeNodeJSON struct {
 	ID           int             `json:"id"`
-	TaskNumber int             `json:"task_number"`
+	TaskNumber   int             `json:"task_number"`
 	Title        string          `json:"title"`
 	ColumnName   string          `json:"column_name"`
 	RelationType string          `json:"relation_type,omitempty"`
@@ -265,7 +265,7 @@ func convertToJSONTree(nodes []*models.TaskTreeNode) []*treeNodeJSON {
 	for _, node := range nodes {
 		jsonNode := &treeNodeJSON{
 			ID:           node.ID,
-			TaskNumber: node.TaskNumber,
+			TaskNumber:   node.TaskNumber,
 			Title:        node.Title,
 			ColumnName:   node.ColumnName,
 			RelationType: node.RelationLabel,
