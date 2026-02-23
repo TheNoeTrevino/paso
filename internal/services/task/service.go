@@ -55,6 +55,7 @@ type TaskWriter interface {
 	UpdateTaskEstimate(ctx context.Context, taskID int, estimate *string) error
 	UpdateTaskDueDate(ctx context.Context, taskID int, dueDate *time.Time) error
 	DeleteTask(ctx context.Context, taskID int) error
+	ArchiveTask(ctx context.Context, taskID int) error
 }
 
 // TaskMover defines task movement operations within the task management system
@@ -579,6 +580,37 @@ func (s *service) DeleteTask(ctx context.Context, taskID int) error {
 	return nil
 }
 
+// ArchiveTask toggles the archived state of a task
+func (s *service) ArchiveTask(ctx context.Context, taskID int) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	if err := validateTaskID(taskID); err != nil {
+		return err
+	}
+
+	projectID, err := s.queries.GetProjectIDFromTask(ctx, int64(taskID))
+	if err != nil {
+		return fmt.Errorf("failed to get project ID for task: %w", err)
+	}
+
+	task, err := s.GetTaskDetail(ctx, taskID)
+	if err != nil {
+		return fmt.Errorf("failed to get task: %w", err)
+	}
+
+	if err := s.queries.UpdateTaskArchived(ctx, types.UpdateTaskArchivedParams{
+		Archived: !task.Archived,
+		ID:       int64(taskID),
+	}); err != nil {
+		return fmt.Errorf("failed to archive task: %w", err)
+	}
+
+	s.publishTaskEventForProject(int(projectID))
+
+	return nil
+}
+
 // GetTaskDetail retrieves full task details
 func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDetail, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -627,6 +659,7 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 		ColumnName:  taskRow.ColumnName,
 		ProjectName: taskRow.ProjectName,
 		Position:    int(taskRow.Position),
+		Archived:    taskRow.Archived,
 		Labels:      converters.LabelsToModels(labels),
 		ParentTasks: converters.ParentTasksToReferences(parentRows),
 		ChildTasks:  converters.ChildTasksToReferences(childRows),
