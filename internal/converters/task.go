@@ -48,6 +48,7 @@ func TaskToModel(t types.Task) *models.Task {
 		Position:   int(t.Position),
 		TypeID:     int(t.TypeID),
 		PriorityID: int(t.PriorityID),
+		Archived:   t.Archived,
 	}
 
 	if t.Description.Valid {
@@ -130,6 +131,7 @@ func TaskSummaryFromRowToModel(row types.GetTaskSummariesByProjectRow) *models.T
 		Title:     row.Title,
 		ColumnID:  int(row.ColumnID),
 		Position:  int(row.Position),
+		Archived:  row.Archived,
 		IsBlocked: row.IsBlocked,
 		Labels:    ParseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
 	}
@@ -208,6 +210,7 @@ func WithFiltersTaskSummaryFromRowToModel(row types.GetTaskSummariesWithFiltersR
 		Title:     row.Title,
 		ColumnID:  int(row.ColumnID),
 		Position:  int(row.Position),
+		Archived:  row.Archived,
 		IsBlocked: row.IsBlocked,
 		Labels:    ParseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
 	}

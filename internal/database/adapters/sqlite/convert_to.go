@@ -133,6 +133,17 @@ func toGeneratedUpdateTaskDueDateParams(t types.UpdateTaskDueDateParams) generat
 	}
 }
 
+func toGeneratedUpdateTaskArchivedParams(t types.UpdateTaskArchivedParams) generated_sqlite.UpdateTaskArchivedParams {
+	archived := int64(0)
+	if t.Archived {
+		archived = 1
+	}
+	return generated_sqlite.UpdateTaskArchivedParams{
+		Archived: archived,
+		ID:       t.ID,
+	}
+}
+
 func toGeneratedCreateProjectRecordParams(t types.CreateProjectRecordParams) generated_sqlite.CreateProjectRecordParams {
 	return generated_sqlite.CreateProjectRecordParams{
 		Name:        t.Name,

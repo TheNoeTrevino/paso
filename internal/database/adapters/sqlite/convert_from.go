@@ -27,6 +27,7 @@ func fromGeneratedTask(g generated_sqlite.Task) types.Task {
 		CreatedAt:    types.FromSQLNullTime(g.CreatedAt),
 		UpdatedAt:    types.FromSQLNullTime(g.UpdatedAt),
 		DueDate:      types.NullTimeFromInterface(g.DueDate),
+		Archived:     g.Archived != 0,
 	}
 }
 
@@ -253,6 +254,7 @@ func fromGeneratedGetTaskDetailRow(g generated_sqlite.GetTaskDetailRow) types.Ge
 		UpdatedAt:           types.FromSQLNullTime(g.UpdatedAt),
 		Estimate:            types.NullStringFromInterface(g.Estimate),
 		DueDate:             types.NullTimeFromInterface(g.DueDate),
+		Archived:            g.Archived != 0,
 		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
 		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
 		PriorityColor:       types.FromSQLNullString(g.PriorityColor),
@@ -317,6 +319,7 @@ func fromGeneratedGetTaskSummariesByProjectRow(g generated_sqlite.GetTaskSummari
 		Position:            g.Position,
 		Estimate:            types.NullStringFromInterface(g.Estimate),
 		DueDate:             types.NullTimeFromInterface(g.DueDate),
+		Archived:            g.Archived != 0,
 		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
 		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
 		PriorityColor:       types.FromSQLNullString(g.PriorityColor),
@@ -337,6 +340,7 @@ func fromGeneratedGetTaskSummariesWithFiltersRow(g generated_sqlite.GetTaskSumma
 		Position:            g.Position,
 		Estimate:            types.NullStringFromInterface(g.Estimate),
 		DueDate:             types.NullTimeFromInterface(g.DueDate),
+		Archived:            g.Archived != 0,
 		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
 		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
 		PriorityColor:       types.FromSQLNullString(g.PriorityColor),

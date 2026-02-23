@@ -124,6 +124,13 @@ func toGeneratedUpdateTaskDueDateParams(t types.UpdateTaskDueDateParams) generat
 	}
 }
 
+func toGeneratedUpdateTaskArchivedParams(t types.UpdateTaskArchivedParams) generated_postgres.UpdateTaskArchivedParams {
+	return generated_postgres.UpdateTaskArchivedParams{
+		Archived: t.Archived,
+		ID:       t.ID,
+	}
+}
+
 func toGeneratedCreateProjectRecordParams(t types.CreateProjectRecordParams) generated_postgres.CreateProjectRecordParams {
 	return generated_postgres.CreateProjectRecordParams{
 		Name:        t.Name,

@@ -19,6 +19,7 @@ type Task struct {
 	DueDate     *time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	Archived    bool
 }
 
 // PickerLabel returns a display label for the interactive picker.
@@ -73,6 +74,7 @@ type TaskSummary struct {
 	ColumnID            int
 	Position            int
 	IsBlocked           bool // True if any child task has is_blocking=true
+	Archived            bool
 }
 
 // TaskDetail is a DTO for the full ticket view
@@ -98,6 +100,7 @@ type TaskDetail struct {
 	TicketNumber        int    // For display "PROJ-12"
 	ProjectName         string // Project name for display
 	IsBlocked           bool   // True if any child task has is_blocking=true
+	Archived            bool
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
