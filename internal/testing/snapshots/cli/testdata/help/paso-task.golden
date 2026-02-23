@@ -4,6 +4,7 @@ Usage:
   paso task [command]
 
 Available Commands:
+  archive     Toggle archived status of a task
   assign      Assign a task to an assignee
   blocked     List blocked tasks
   comment     Add a comment to a task

@@ -61,6 +61,8 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleEditTask()
 	case km.Tasks.DeleteTask:
 		return m.handleDeleteTask()
+	case km.Tasks.ArchiveTask:
+		return m.handleArchiveTask()
 	case km.Tasks.ViewTask:
 		return m.handleEditTask()
 	case km.Kanban.CreateColumn:
@@ -300,6 +302,30 @@ func (m Model) handleDeleteTask() (tea.Model, tea.Cmd) {
 	}
 	m.UIState.Mode = state.DeleteConfirmMode
 	return m, nil
+}
+
+func (m Model) handleArchiveTask() (tea.Model, tea.Cmd) {
+	task := m.getCurrentTask()
+	if task == nil {
+		return m, m.addNotification(state.LevelError, "No task selected to archive")
+	}
+
+	wasArchived := task.Archived
+
+	ctx, cancel := m.DBContext()
+	defer cancel()
+	if err := m.App.TaskService.ArchiveTask(ctx, task.ID); err != nil {
+		slog.Error("failed to archive task", "error", err)
+		return m, m.addNotification(state.LevelError, "Failed to archive task")
+	}
+
+	m.reloadCurrentColumnTasks()
+
+	msg := "Task archived"
+	if wasArchived {
+		msg = "Task unarchived"
+	}
+	return m, m.addNotification(state.LevelInfo, msg)
 }
 
 func (m Model) handleMoveTaskRight() (tea.Model, tea.Cmd) {
