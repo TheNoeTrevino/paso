@@ -290,13 +290,5 @@ func toGeneratedCreateStandupLogParams(t types.CreateStandupLogParams) generated
 	}
 }
 
-func toGeneratedGetStandupLogsByProjectAndDateRangeParams(t types.GetStandupLogsByProjectAndDateRangeParams) generated_sqlite.GetStandupLogsByProjectAndDateRangeParams {
-	return generated_sqlite.GetStandupLogsByProjectAndDateRangeParams{
-		ProjectID:   t.ProjectID,
-		CreatedAt:   sql.NullTime{Time: t.Since, Valid: true},
-		CreatedAt_2: sql.NullTime{Time: t.Until, Valid: true},
-	}
-}
-
 // Suppress unused import warning
 var _ = sql.ErrNoRows
