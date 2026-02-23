@@ -35,7 +35,7 @@ type TaskKeys struct {
 	EditEstimate      string `yaml:"edit_estimate"`
 	EditDueDate       string `yaml:"edit_due_date"`
 	EditParentTask    string `yaml:"edit_parent_task"`
-	EditChildTask     string `yaml:"edit_child_task"`
+	ArchiveTask       string `yaml:"archive_task"`
 	EditType          string `yaml:"edit_type"`
 	MoveTaskToProject string `yaml:"move_task_to_project"`
 }
@@ -115,7 +115,7 @@ func DefaultKeyMappings() KeyMappings {
 			EditEstimate:      "ctrl+e",
 			EditDueDate:       "ctrl+d",
 			EditParentTask:    "p",
-			EditChildTask:     "c",
+			ArchiveTask:       "c",
 			EditType:          "ctrl+t",
 			MoveTaskToProject: "s",
 		},
@@ -220,8 +220,8 @@ func (t *TaskKeys) applyDefaultsFrom(defaults TaskKeys) {
 	if t.EditParentTask == "" {
 		t.EditParentTask = defaults.EditParentTask
 	}
-	if t.EditChildTask == "" {
-		t.EditChildTask = defaults.EditChildTask
+	if t.ArchiveTask == "" {
+		t.ArchiveTask = defaults.ArchiveTask
 	}
 	if t.EditType == "" {
 		t.EditType = defaults.EditType

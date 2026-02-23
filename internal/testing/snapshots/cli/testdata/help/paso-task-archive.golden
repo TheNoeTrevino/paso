@@ -1,0 +1,24 @@
+Toggle the archived state of a task.
+
+If the task is currently active, it will be archived.
+If the task is already archived, it will be unarchived (restored to active).
+
+Examples:
+  # Archive or unarchive a task
+  paso task archive 42
+
+  # JSON output for agents
+  paso task archive 42 -j
+
+  # Quiet mode for bash capture
+  paso task archive 42 -q
+
+  # Long-form flags also supported
+  paso task archive 42 --json
+
+Usage:
+  paso task archive <task_id> [flags]
+
+Flags:
+  -j, --json    Output in JSON format
+  -q, --quiet   Minimal output (ID only)

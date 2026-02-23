@@ -245,6 +245,10 @@ func (a *Adapter) UpdateTaskDueDate(ctx context.Context, arg types.UpdateTaskDue
 	return a.queries.UpdateTaskDueDate(ctx, toGeneratedUpdateTaskDueDateParams(arg))
 }
 
+func (a *Adapter) UpdateTaskArchived(ctx context.Context, arg types.UpdateTaskArchivedParams) error {
+	return a.queries.UpdateTaskArchived(ctx, toGeneratedUpdateTaskArchivedParams(arg))
+}
+
 func (a *Adapter) UpdateTaskType(ctx context.Context, arg types.UpdateTaskTypeParams) error {
 	return a.queries.UpdateTaskType(ctx, toGeneratedUpdateTaskTypeParams(arg))
 }

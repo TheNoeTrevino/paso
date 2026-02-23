@@ -27,6 +27,7 @@ func fromGeneratedTask(g generated_postgres.Task) types.Task {
 		CreatedAt:    types.FromSQLNullTime(g.CreatedAt),
 		UpdatedAt:    types.FromSQLNullTime(g.UpdatedAt),
 		DueDate:      types.FromSQLNullTime(g.DueDate),
+		Archived:     g.Archived,
 	}
 }
 
@@ -253,6 +254,7 @@ func fromGeneratedGetTaskDetailRow(g generated_postgres.GetTaskDetailRow) types.
 		UpdatedAt:           types.FromSQLNullTime(g.UpdatedAt),
 		Estimate:            types.FromSQLNullString(g.Estimate),
 		DueDate:             types.FromSQLNullTime(g.DueDate),
+		Archived:            g.Archived,
 		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
 		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
 		PriorityColor:       types.FromSQLNullString(g.PriorityColor),
@@ -317,6 +319,7 @@ func fromGeneratedGetTaskSummariesByProjectRow(g generated_postgres.GetTaskSumma
 		Position:            g.Position,
 		Estimate:            types.FromSQLNullString(g.Estimate),
 		DueDate:             types.FromSQLNullTime(g.DueDate),
+		Archived:            g.Archived,
 		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
 		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
 		PriorityColor:       types.FromSQLNullString(g.PriorityColor),
@@ -337,6 +340,7 @@ func fromGeneratedGetTaskSummariesWithFiltersRow(g generated_postgres.GetTaskSum
 		Position:            g.Position,
 		Estimate:            types.FromSQLNullString(g.Estimate),
 		DueDate:             types.FromSQLNullTime(g.DueDate),
+		Archived:            g.Archived,
 		TypeDescription:     types.FromSQLNullString(g.TypeDescription),
 		PriorityDescription: types.FromSQLNullString(g.PriorityDescription),
 		PriorityColor:       types.FromSQLNullString(g.PriorityColor),

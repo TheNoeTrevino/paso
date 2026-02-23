@@ -51,6 +51,7 @@ type MockTaskService struct {
 	UpdateTaskEstimateErr error
 	UpdateTaskDueDateErr  error
 	DeleteTaskErr         error
+	ArchiveTaskErr        error
 
 	// TaskWriter result injection
 	CreateTaskResult *models.Task
@@ -285,6 +286,13 @@ func (m *MockTaskService) DeleteTask(_ context.Context, taskID int) error {
 	defer m.mu.Unlock()
 	m.recordCall("DeleteTask", taskID, nil)
 	return m.DeleteTaskErr
+}
+
+func (m *MockTaskService) ArchiveTask(_ context.Context, taskID int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.recordCall("ArchiveTask", taskID, nil)
+	return m.ArchiveTaskErr
 }
 
 // TaskMover methods

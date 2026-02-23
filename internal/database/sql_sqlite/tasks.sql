@@ -88,6 +88,12 @@ update tasks
 set due_date = ?, updated_at = current_timestamp
 where id = ?;
 
+-- name: UpdateTaskArchived :exec
+-- Updates a task's archived status
+update tasks
+set archived = ?, updated_at = current_timestamp
+where id = ?;
+
 -- name: DeleteTask :exec
 -- Permanently deletes a task by ID
 delete from tasks
@@ -107,6 +113,7 @@ select
     t.updated_at,
     t.estimate,
     t.due_date,
+    t.archived,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -185,6 +192,7 @@ select
     t.position,
     t.estimate,
     t.due_date,
+    t.archived,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -355,6 +363,7 @@ select
     t.position,
     t.estimate,
     t.due_date,
+    t.archived,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
