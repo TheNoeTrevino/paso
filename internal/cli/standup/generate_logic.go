@@ -34,7 +34,9 @@ func GroupLogsByDate(logs []models.StandupLog) []DateGroup {
 	groupMap := map[string][]models.StandupLog{}
 
 	for _, l := range logs {
-		dateKey := l.CreatedAt.Format("2006-01-02")
+		// Use Local() so logs are grouped by the user's local calendar date, not UTC.
+		// Timestamps are stored in UTC but should be displayed in the user's timezone.
+		dateKey := l.CreatedAt.Local().Format("2006-01-02")
 		if _, exists := groupMap[dateKey]; !exists {
 			orderMap[dateKey] = len(orderMap)
 		}
@@ -116,7 +118,7 @@ func FormatGenerateHuman(logs []models.StandupLog, since, until time.Time, color
 	headerStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(colorScheme.Subtle))
 
-	rangeStr := fmt.Sprintf("%s to %s", since.Format("Jan 02, 2006"), until.Format("Jan 02, 2006"))
+	rangeStr := fmt.Sprintf("%s to %s", since.Local().Format("Jan 02, 2006"), until.Local().Format("Jan 02, 2006"))
 	fmt.Fprintf(&out, "%s\n\n", headerStyle.Render(fmt.Sprintf("Standup report (%s) - %d log(s)", rangeStr, len(logs))))
 
 	for i, g := range groups {
@@ -124,7 +126,7 @@ func FormatGenerateHuman(logs []models.StandupLog, since, until time.Time, color
 		out.WriteString("\n")
 
 		for _, l := range g.Logs {
-			timestamp := l.CreatedAt.Format("3:04 PM")
+			timestamp := l.CreatedAt.Local().Format("3:04 PM")
 			idStr := fmt.Sprintf("#%d", l.ID)
 
 			out.WriteString("  ")

@@ -63,7 +63,9 @@ func runGenerate(cmd *cobra.Command, _ []string) error {
 		weeks = 1
 	}
 
-	now := time.Now()
+	// Use UTC so that query boundaries align with how both SQLite (CURRENT_TIMESTAMP stores
+	// UTC) and PostgreSQL (lib/pq normalises to UTC over the wire) persist timestamps.
+	now := time.Now().UTC()
 	since := ComputeSince(now, days, weeks)
 	until := now
 
