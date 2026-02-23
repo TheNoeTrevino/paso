@@ -63,7 +63,7 @@ func (a *Adapter) GetStandupLogsByProjectAndDateRange(ctx context.Context, arg t
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var items []types.StandupLog
 	for rows.Next() {
