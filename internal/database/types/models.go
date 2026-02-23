@@ -73,6 +73,7 @@ type Task struct {
 	CreatedAt    NullTime
 	UpdatedAt    NullTime
 	DueDate      NullTime
+	Archived     bool
 }
 
 // TaskComment represents a comment on a task.

@@ -786,6 +786,7 @@ select
     t.updated_at,
     t.estimate,
     t.due_date,
+    t.archived,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -820,6 +821,7 @@ type GetTaskDetailRow struct {
 	UpdatedAt           sql.NullTime
 	Estimate            interface{}
 	DueDate             interface{}
+	Archived            int64
 	TypeDescription     sql.NullString
 	PriorityDescription sql.NullString
 	PriorityColor       sql.NullString
@@ -846,6 +848,7 @@ func (q *Queries) GetTaskDetail(ctx context.Context, id int64) (GetTaskDetailRow
 		&i.UpdatedAt,
 		&i.Estimate,
 		&i.DueDate,
+		&i.Archived,
 		&i.TypeDescription,
 		&i.PriorityDescription,
 		&i.PriorityColor,
@@ -1114,6 +1117,7 @@ select
     t.position,
     t.estimate,
     t.due_date,
+    t.archived,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -1161,6 +1165,7 @@ type GetTaskSummariesByProjectRow struct {
 	Position            int64
 	Estimate            interface{}
 	DueDate             interface{}
+	Archived            int64
 	TypeDescription     sql.NullString
 	PriorityDescription sql.NullString
 	PriorityColor       sql.NullString
@@ -1190,6 +1195,7 @@ func (q *Queries) GetTaskSummariesByProject(ctx context.Context, projectID int64
 			&i.Position,
 			&i.Estimate,
 			&i.DueDate,
+			&i.Archived,
 			&i.TypeDescription,
 			&i.PriorityDescription,
 			&i.PriorityColor,
@@ -1221,6 +1227,7 @@ select
     t.position,
     t.estimate,
     t.due_date,
+    t.archived,
     ty.description as type_description,
     p.description as priority_description,
     p.color as priority_color,
@@ -1283,6 +1290,7 @@ type GetTaskSummariesWithFiltersRow struct {
 	Position            int64
 	Estimate            interface{}
 	DueDate             interface{}
+	Archived            int64
 	TypeDescription     sql.NullString
 	PriorityDescription sql.NullString
 	PriorityColor       sql.NullString
@@ -1319,6 +1327,7 @@ func (q *Queries) GetTaskSummariesWithFilters(ctx context.Context, arg GetTaskSu
 			&i.Position,
 			&i.Estimate,
 			&i.DueDate,
+			&i.Archived,
 			&i.TypeDescription,
 			&i.PriorityDescription,
 			&i.PriorityColor,
@@ -1568,6 +1577,23 @@ type UpdateTaskParams struct {
 // Updates a task's title and description
 func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) error {
 	_, err := q.db.ExecContext(ctx, updateTask, arg.Title, arg.Description, arg.ID)
+	return err
+}
+
+const updateTaskArchived = `-- name: UpdateTaskArchived :exec
+update tasks
+set archived = ?, updated_at = current_timestamp
+where id = ?
+`
+
+type UpdateTaskArchivedParams struct {
+	Archived int64
+	ID       int64
+}
+
+// Updates a task's archived status
+func (q *Queries) UpdateTaskArchived(ctx context.Context, arg UpdateTaskArchivedParams) error {
+	_, err := q.db.ExecContext(ctx, updateTaskArchived, arg.Archived, arg.ID)
 	return err
 }
 

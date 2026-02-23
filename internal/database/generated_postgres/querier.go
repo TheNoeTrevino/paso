@@ -208,6 +208,8 @@ type Querier interface {
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) error
 	// Updates a task's title and description
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) error
+	// Updates a task's archived status
+	UpdateTaskArchived(ctx context.Context, arg UpdateTaskArchivedParams) error
 	// Updates a task's assignee
 	UpdateTaskAssignee(ctx context.Context, arg UpdateTaskAssigneeParams) error
 	// Updates a task's due date

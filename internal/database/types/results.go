@@ -113,6 +113,7 @@ type GetTaskDetailRow struct {
 	UpdatedAt           NullTime
 	Estimate            NullString
 	DueDate             NullTime
+	Archived            bool
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
@@ -172,6 +173,7 @@ type GetTaskSummariesByProjectRow struct {
 	Position            int64
 	Estimate            NullString
 	DueDate             NullTime
+	Archived            bool
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString
@@ -191,6 +193,7 @@ type GetTaskSummariesWithFiltersRow struct {
 	Position            int64
 	Estimate            NullString
 	DueDate             NullTime
+	Archived            bool
 	TypeDescription     NullString
 	PriorityDescription NullString
 	PriorityColor       NullString

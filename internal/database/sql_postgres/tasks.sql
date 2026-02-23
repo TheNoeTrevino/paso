@@ -88,6 +88,12 @@ update tasks
 set due_date = $1, updated_at = current_timestamp
 where id = $2;
 
+-- name: UpdateTaskArchived :exec
+-- Updates a task's archived status
+update tasks
+set archived = $1, updated_at = current_timestamp
+where id = $2;
+
 -- name: DeleteTask :exec
 -- Permanently deletes a task by ID
 delete from tasks

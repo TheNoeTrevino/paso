@@ -179,6 +179,11 @@ type UpdateTaskDueDateParams struct {
 	ID      int64
 }
 
+type UpdateTaskArchivedParams struct {
+	Archived bool
+	ID       int64
+}
+
 // comments.sql.go params
 type CreateCommentParams struct {
 	TaskID  int64
