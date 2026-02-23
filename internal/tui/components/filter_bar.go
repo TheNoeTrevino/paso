@@ -105,7 +105,7 @@ func styleChip(text string, chip state.FilterChip, props FilterBarProps) string 
 	hasValue := chipHasValue(chip, props)
 	isFocused := props.Focused && props.Filter.FocusedChip == chip
 
-	style := lipgloss.NewStyle()
+	style := lipgloss.NewStyle().PaddingLeft(1).PaddingRight(1)
 
 	switch {
 	case isFocused && hasValue:
