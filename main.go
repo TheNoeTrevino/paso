@@ -12,13 +12,12 @@ import (
 	clidaemon "github.com/thenoetrevino/paso/internal/cli/daemon"
 	"github.com/thenoetrevino/paso/internal/cli/db"
 	"github.com/thenoetrevino/paso/internal/cli/gh"
+	"github.com/thenoetrevino/paso/internal/cli/install"
 	jiracli "github.com/thenoetrevino/paso/internal/cli/jira"
 	"github.com/thenoetrevino/paso/internal/cli/label"
 	"github.com/thenoetrevino/paso/internal/cli/project"
-	"github.com/thenoetrevino/paso/internal/cli/setup"
 	"github.com/thenoetrevino/paso/internal/cli/standup"
 	"github.com/thenoetrevino/paso/internal/cli/task"
-	"github.com/thenoetrevino/paso/internal/cli/tutorial"
 	"github.com/thenoetrevino/paso/internal/launcher"
 )
 
@@ -64,8 +63,7 @@ func init() {
 	rootCmd.AddCommand(column.ColumnCmd())
 	rootCmd.AddCommand(label.LabelCmd())
 	rootCmd.AddCommand(assignee.AssigneeCmd())
-	rootCmd.AddCommand(tutorial.TutorialCmd())
-	rootCmd.AddCommand(setup.SetupCmd())
+	rootCmd.AddCommand(install.InstallCmd())
 	rootCmd.AddCommand(db.DbCmd())
 	rootCmd.AddCommand(gh.GhCmd())
 	rootCmd.AddCommand(clidaemon.DaemonCmd())
