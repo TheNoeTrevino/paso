@@ -75,6 +75,9 @@ func SetupTestDBFile(tb testing.TB) *sql.DB {
 	if _, err := db.ExecContext(context.Background(), "PRAGMA busy_timeout = 5000"); err != nil {
 		tb.Fatalf("Failed to set busy timeout: %v", err)
 	}
+	if _, err := db.ExecContext(context.Background(), "PRAGMA synchronous = NORMAL"); err != nil {
+		tb.Fatalf("Failed to set synchronous mode: %v", err)
+	}
 
 	db.SetMaxOpenConns(8)
 	db.SetMaxIdleConns(8)
