@@ -31,8 +31,32 @@ func createBenchmarkTaskWithLabels(b *testing.B, db *sql.DB, columnID int, title
 	return taskID
 }
 
+// getTaskDetailSequential runs the same 5 queries as GetTaskDetail but sequentially.
+// Used only for benchmark comparison against the concurrent (errgroup) implementation.
+func getTaskDetailSequential(ctx context.Context, svc Service, taskID int) error {
+	s := svc.(*service)
+	id := int64(taskID)
+
+	if _, err := s.queries.GetTaskDetail(ctx, id); err != nil {
+		return err
+	}
+	if _, err := s.queries.GetTaskLabels(ctx, id); err != nil {
+		return err
+	}
+	if _, err := s.queries.GetParentTasks(ctx, id); err != nil {
+		return err
+	}
+	if _, err := s.queries.GetChildTasks(ctx, id); err != nil {
+		return err
+	}
+	if _, err := s.queries.GetCommentsByTask(ctx, id); err != nil {
+		return err
+	}
+	return nil
+}
+
 func BenchmarkGetTaskDetail(b *testing.B) {
-	db := fixtures.SetupTestDB(b)
+	db := fixtures.SetupTestDBFile(b)
 
 	projectID := fixtures.CreateBareProject(b, db, testDialect, "Benchmark Project")
 	columnID := fixtures.CreateTestColumn(b, db, testDialect, projectID, "Column")
@@ -51,16 +75,25 @@ func BenchmarkGetTaskDetail(b *testing.B) {
 	fixtures.CreateTestComment(b, db, testDialect, taskID, "Great progress!", "user1")
 	fixtures.CreateTestComment(b, db, testDialect, taskID, "Looks good to me", "user2")
 
-	service := newBenchmarkService(b, db)
+	svc := newBenchmarkService(b, db)
 	ctx := context.Background()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := service.GetTaskDetail(ctx, taskID)
-		if err != nil {
-			b.Fatalf("GetTaskDetail failed: %v", err)
+	b.Run("Sequential", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			if err := getTaskDetailSequential(ctx, svc, taskID); err != nil {
+				b.Fatalf("sequential GetTaskDetail failed: %v", err)
+			}
 		}
-	}
+	})
+
+	b.Run("Concurrent", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, err := svc.GetTaskDetail(ctx, taskID)
+			if err != nil {
+				b.Fatalf("concurrent GetTaskDetail failed: %v", err)
+			}
+		}
+	})
 }
 
 func BenchmarkGetInProgressTasksByProject(b *testing.B) {
