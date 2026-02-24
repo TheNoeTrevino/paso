@@ -10,11 +10,10 @@ Available Commands:
   assignee    Manage assignees
   column      Manage columns
   db          Manage database connections
+  install     Install paso skills and commands for AI tools
   label       Manage labels
   project     Manage projects
-  setup       Setup integrations with AI tools
   task        Manage tasks
-  tutorial    Output AI-optimized workflow context
 
 Additional help topics:
   paso completion Generate shell completion script
