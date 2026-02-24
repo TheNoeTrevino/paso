@@ -1,9 +1,0 @@
-Install paso skills and commands for AI tools
-
-Usage:
-  paso install [flags]
-
-Flags:
-      --all      Install everything for all targets
-      --check    Show installation status
-      --remove   Remove installed files

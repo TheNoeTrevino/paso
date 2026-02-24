@@ -1,0 +1,10 @@
+Set up paso for OpenCode (~/.config/opencode/)
+
+Usage:
+  paso setup opencode [flags]
+
+Flags:
+      --all      Set up all skills and commands
+      --check    Show setup status
+  -f, --force    Overwrite existing files without prompting
+      --remove   Remove files set up by paso

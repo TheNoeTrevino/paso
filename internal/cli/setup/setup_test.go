@@ -1,4 +1,4 @@
-package install
+package setup
 
 import (
 	"os"
@@ -23,43 +23,49 @@ func TestEmbeddedContent_NotEmpty(t *testing.T) {
 	})
 }
 
-func TestInstallSelected(t *testing.T) {
+func testTarget(t *testing.T) target {
+	t.Helper()
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 
-	allItems := allKeys()
-	allTargetKeys := make([]string, len(targets))
-	for i, tgt := range targets {
-		allTargetKeys[i] = tgt.key
-	}
-
-	err := installSelected(allItems, allTargetKeys)
-	require.NoError(t, err)
-
-	for _, tgt := range targets {
-		baseDir, err := tgt.baseDir()
-		require.NoError(t, err)
-
-		for _, item := range allInstallables() {
-			dest := item.pathFunc(baseDir)
-			assert.True(t, FileExists(dest), "expected file to exist: %s", dest)
-
-			content, err := os.ReadFile(dest)
-			require.NoError(t, err)
-			assert.Equal(t, item.content, content, "content mismatch for %s at %s", item.key, dest)
-		}
+	return target{
+		key:   "test",
+		label: "Test",
+		baseDir: func() (string, error) {
+			return filepath.Join(tmpHome, ".config", "test-tool"), nil
+		},
 	}
 }
 
-func TestInstallSelected_SingleSkillSingleTarget(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
+func TestSetupSelected(t *testing.T) {
+	tgt := testTarget(t)
 
-	err := installSelected([]string{"skill:paso"}, []string{"opencode"})
+	err := setupSelected(allKeys(), tgt, true)
 	require.NoError(t, err)
 
-	opencodeBase := filepath.Join(tmpHome, ".config", "opencode")
-	skillPath := filepath.Join(opencodeBase, "skills", "paso", "SKILL.md")
+	baseDir, err := tgt.baseDir()
+	require.NoError(t, err)
+
+	for _, item := range allInstallables() {
+		dest := item.pathFunc(baseDir)
+		assert.True(t, FileExists(dest), "expected file to exist: %s", dest)
+
+		content, err := os.ReadFile(dest)
+		require.NoError(t, err)
+		assert.Equal(t, item.content, content, "content mismatch for %s at %s", item.key, dest)
+	}
+}
+
+func TestSetupSelected_SingleSkill(t *testing.T) {
+	tgt := testTarget(t)
+
+	err := setupSelected([]string{"skill:paso"}, tgt, true)
+	require.NoError(t, err)
+
+	baseDir, err := tgt.baseDir()
+	require.NoError(t, err)
+
+	skillPath := filepath.Join(baseDir, "skills", "paso", "SKILL.md")
 	assert.True(t, FileExists(skillPath), "expected skill file to exist")
 
 	content, err := os.ReadFile(skillPath)
@@ -67,136 +73,156 @@ func TestInstallSelected_SingleSkillSingleTarget(t *testing.T) {
 	assert.Equal(t, pasoSkillContent, content)
 
 	// Commands should not be installed
-	delegatePath := filepath.Join(opencodeBase, "commands", "paso-delegate.md")
+	delegatePath := filepath.Join(baseDir, "commands", "paso-delegate.md")
 	assert.False(t, FileExists(delegatePath), "delegate command should not be installed")
-
-	// Claude target should not have anything
-	claudeBase := filepath.Join(tmpHome, ".claude")
-	assert.False(t, DirExists(claudeBase), "claude directory should not exist")
 }
 
-func TestInstallSelected_Idempotent(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
+func TestSetupSelected_Idempotent(t *testing.T) {
+	tgt := testTarget(t)
 
-	allItems := allKeys()
-	allTargetKeys := []string{"opencode"}
-
-	err := installSelected(allItems, allTargetKeys)
+	err := setupSelected(allKeys(), tgt, true)
 	require.NoError(t, err)
 
-	// Install again — should succeed without error
-	err = installSelected(allItems, allTargetKeys)
+	// Set up again — should succeed without error
+	err = setupSelected(allKeys(), tgt, true)
 	require.NoError(t, err)
 
-	opencodeBase := filepath.Join(tmpHome, ".config", "opencode")
+	baseDir, err := tgt.baseDir()
+	require.NoError(t, err)
+
 	for _, item := range allInstallables() {
-		dest := item.pathFunc(opencodeBase)
+		dest := item.pathFunc(baseDir)
 		content, err := os.ReadFile(dest)
 		require.NoError(t, err)
 		assert.Equal(t, item.content, content, "content should still match after reinstall for %s", item.key)
 	}
 }
 
-func TestInstallAll(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
+func TestSetupSelected_ForceOverwritesModifiedFiles(t *testing.T) {
+	tgt := testTarget(t)
 
-	err := installAll()
+	err := setupSelected([]string{"skill:paso"}, tgt, true)
 	require.NoError(t, err)
 
-	for _, tgt := range targets {
-		baseDir, err := tgt.baseDir()
+	baseDir, err := tgt.baseDir()
+	require.NoError(t, err)
+
+	skillPath := filepath.Join(baseDir, "skills", "paso", "SKILL.md")
+
+	// Tamper with the file
+	require.NoError(t, os.WriteFile(skillPath, []byte("modified content"), 0644))
+
+	// Force reinstall should overwrite
+	err = setupSelected([]string{"skill:paso"}, tgt, true)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(skillPath)
+	require.NoError(t, err)
+	assert.Equal(t, pasoSkillContent, content, "force should overwrite modified content")
+}
+
+func TestSetupAll(t *testing.T) {
+	tgt := testTarget(t)
+
+	err := setupAll(tgt, true)
+	require.NoError(t, err)
+
+	baseDir, err := tgt.baseDir()
+	require.NoError(t, err)
+
+	for _, item := range allInstallables() {
+		dest := item.pathFunc(baseDir)
+		assert.True(t, FileExists(dest), "expected file to exist after setupAll: %s", dest)
+
+		content, err := os.ReadFile(dest)
 		require.NoError(t, err)
-
-		for _, item := range allInstallables() {
-			dest := item.pathFunc(baseDir)
-			assert.True(t, FileExists(dest), "expected file to exist after installAll: %s", dest)
-
-			content, err := os.ReadFile(dest)
-			require.NoError(t, err)
-			assert.Equal(t, item.content, content, "content mismatch for %s", item.key)
-		}
+		assert.Equal(t, item.content, content, "content mismatch for %s", item.key)
 	}
 }
 
 func TestRunCheck(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
+	tgt := testTarget(t)
 
-	// Install everything first
-	err := installAll()
+	err := setupAll(tgt, true)
 	require.NoError(t, err)
 
-	// runCheck should succeed
-	err = runCheck()
+	err = runCheck(tgt)
 	require.NoError(t, err)
 }
 
 func TestRunCheck_NothingInstalled(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
+	tgt := testTarget(t)
 
-	// runCheck should still succeed even with nothing installed
-	err := runCheck()
+	err := runCheck(tgt)
 	require.NoError(t, err)
 }
 
 func TestRunRemove(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
+	tgt := testTarget(t)
 
-	// Install everything
-	err := installAll()
+	err := setupAll(tgt, true)
+	require.NoError(t, err)
+
+	baseDir, err := tgt.baseDir()
 	require.NoError(t, err)
 
 	// Verify files exist before removal
-	for _, tgt := range targets {
-		baseDir, err := tgt.baseDir()
-		require.NoError(t, err)
-		for _, item := range allInstallables() {
-			dest := item.pathFunc(baseDir)
-			assert.True(t, FileExists(dest), "expected file to exist before removal: %s", dest)
-		}
+	for _, item := range allInstallables() {
+		dest := item.pathFunc(baseDir)
+		assert.True(t, FileExists(dest), "expected file to exist before removal: %s", dest)
 	}
 
-	// Remove everything
-	err = runRemove()
+	err = runRemove(tgt)
 	require.NoError(t, err)
 
 	// Verify all files are gone
-	for _, tgt := range targets {
-		baseDir, err := tgt.baseDir()
-		require.NoError(t, err)
-		for _, item := range allInstallables() {
-			dest := item.pathFunc(baseDir)
-			assert.False(t, FileExists(dest), "expected file to be removed: %s", dest)
-		}
+	for _, item := range allInstallables() {
+		dest := item.pathFunc(baseDir)
+		assert.False(t, FileExists(dest), "expected file to be removed: %s", dest)
 	}
 }
 
 func TestRunRemove_NothingInstalled(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
+	tgt := testTarget(t)
 
-	// Remove with nothing installed should succeed
-	err := runRemove()
+	err := runRemove(tgt)
 	require.NoError(t, err)
 }
 
 func TestRunRemove_Idempotent(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
+	tgt := testTarget(t)
 
-	err := installAll()
+	err := setupAll(tgt, true)
 	require.NoError(t, err)
 
-	err = runRemove()
+	err = runRemove(tgt)
 	require.NoError(t, err)
 
 	// Removing again should still succeed
-	err = runRemove()
+	err = runRemove(tgt)
 	require.NoError(t, err)
+}
+
+func TestSetupSelected_RealTargets(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+
+	for _, tgt := range targets {
+		err := setupAll(tgt, true)
+		require.NoError(t, err)
+
+		baseDir, err := tgt.baseDir()
+		require.NoError(t, err)
+
+		for _, item := range allInstallables() {
+			dest := item.pathFunc(baseDir)
+			assert.True(t, FileExists(dest), "expected file to exist for %s/%s: %s", tgt.key, item.key, dest)
+
+			content, err := os.ReadFile(dest)
+			require.NoError(t, err)
+			assert.Equal(t, item.content, content, "content mismatch for %s/%s", tgt.key, item.key)
+		}
+	}
 }
 
 func TestAtomicWriteFile(t *testing.T) {
@@ -383,27 +409,5 @@ func TestResolveItems(t *testing.T) {
 	t.Run("returns empty for empty input", func(t *testing.T) {
 		items := resolveItems([]string{})
 		assert.Empty(t, items)
-	})
-}
-
-func TestResolveTargets(t *testing.T) {
-	t.Run("resolves single target", func(t *testing.T) {
-		resolved := resolveTargets([]string{"opencode"})
-		require.Len(t, resolved, 1)
-		assert.Equal(t, "opencode", resolved[0].key)
-	})
-
-	t.Run("resolves all targets", func(t *testing.T) {
-		keys := make([]string, len(targets))
-		for i, tgt := range targets {
-			keys[i] = tgt.key
-		}
-		resolved := resolveTargets(keys)
-		assert.Len(t, resolved, len(targets))
-	})
-
-	t.Run("returns empty for unknown keys", func(t *testing.T) {
-		resolved := resolveTargets([]string{"nonexistent"})
-		assert.Empty(t, resolved)
 	})
 }

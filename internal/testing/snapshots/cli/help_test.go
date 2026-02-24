@@ -10,9 +10,9 @@ import (
 	"github.com/thenoetrevino/paso/internal/cli/assignee"
 	"github.com/thenoetrevino/paso/internal/cli/column"
 	"github.com/thenoetrevino/paso/internal/cli/db"
-	"github.com/thenoetrevino/paso/internal/cli/install"
 	"github.com/thenoetrevino/paso/internal/cli/label"
 	"github.com/thenoetrevino/paso/internal/cli/project"
+	"github.com/thenoetrevino/paso/internal/cli/setup"
 	"github.com/thenoetrevino/paso/internal/cli/task"
 	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 	"github.com/thenoetrevino/paso/internal/testing/snapshots"
@@ -35,7 +35,7 @@ Use 'paso task create ...' for CLI commands.`,
 	root.AddCommand(column.ColumnCmd())
 	root.AddCommand(label.LabelCmd())
 	root.AddCommand(assignee.AssigneeCmd())
-	root.AddCommand(install.InstallCmd())
+	root.AddCommand(setup.SetupCmd())
 	root.AddCommand(db.DbCmd())
 
 	root.AddCommand(&cobra.Command{

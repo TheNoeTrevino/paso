@@ -1,0 +1,10 @@
+Set up paso for Claude Code (~/.claude/)
+
+Usage:
+  paso setup claude [flags]
+
+Flags:
+      --all      Set up all skills and commands
+      --check    Show setup status
+  -f, --force    Overwrite existing files without prompting
+      --remove   Remove files set up by paso
