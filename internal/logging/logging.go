@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"io"
 	"log"
 	"log/slog"
 	"os"
@@ -44,4 +45,11 @@ func Init() error {
 	log.SetFlags(log.LstdFlags) // Include timestamp
 
 	return nil
+}
+
+// Disable disables logging by setting the default logger to write to io.Discard.
+// This is intended for use in tests to silence log output during test runs.
+func Disable() {
+	handler := slog.NewTextHandler(io.Discard, nil)
+	slog.SetDefault(slog.New(handler))
 }
