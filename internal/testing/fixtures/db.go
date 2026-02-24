@@ -95,11 +95,13 @@ func SetupTestDBFile(tb testing.TB) *sql.DB {
 	return db
 }
 
-// SetupTestDB creates an in-memory database with the full production schema applied via goose migrations.
+// SetupTestDB creates a file-backed SQLite database with the full production schema applied via goose migrations.
 // This ensures the test schema always matches production, eliminating schema drift.
 func SetupTestDB(tb testing.TB) *sql.DB {
 	tb.Helper()
-	db, err := sql.Open("sqlite", ":memory:")
+
+	dbPath := filepath.Join(tb.TempDir(), "test.db")
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		tb.Fatalf("Failed to create test database: %v", err)
 	}
@@ -110,8 +112,7 @@ func SetupTestDB(tb testing.TB) *sql.DB {
 		tb.Fatalf("Failed to enable foreign keys: %v", err)
 	}
 
-	// In-memory SQLite DBs are per-connection: each new connection is a separate empty DB.
-	// Limit to 1 connection so all queries share the same schema and data.
+	// Single connection avoids concurrent-write contention on SQLite.
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 
