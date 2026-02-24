@@ -3,10 +3,12 @@ package daemon
 import (
 	"testing"
 
+	"github.com/thenoetrevino/paso/internal/logging"
 	"go.uber.org/goleak"
 )
 
 func TestMain(m *testing.M) {
+	logging.Disable()
 	// Ignore goroutines from the events.Client package that are spawned by
 	// testutil.SetupTestClient and cleaned up via client.Close() in t.Cleanup
 	goleak.VerifyTestMain(m,
