@@ -28,7 +28,7 @@ func setupTestDB(tb testing.TB) *sql.DB {
 	if _, err := db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON"); err != nil {
 		tb.Fatalf("Failed to enable foreign keys: %v", err)
 	}
-	if err := applyMigrations(db, SQLite); err != nil {
+	if err := applyMigrations(db, SQLite, false); err != nil {
 		tb.Fatalf("Failed to run migrations: %v", err)
 	}
 	tb.Cleanup(func() {
@@ -88,7 +88,7 @@ func setupPostgresTestDB(tb testing.TB) *sql.DB {
 		tb.Logf("warning: failed to drop tables during cleanup: %v", err)
 	}
 
-	if err := applyMigrations(db, PostgreSQL); err != nil {
+	if err := applyMigrations(db, PostgreSQL, false); err != nil {
 		tb.Fatalf("Failed to run PostgreSQL migrations: %v", err)
 	}
 
