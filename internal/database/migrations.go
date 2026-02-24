@@ -30,15 +30,20 @@ var gooseMu sync.Mutex
 
 // RunMigrationsOnly applies goose schema migrations without seeding default data.
 // This is intended for test setup where tests need a clean schema without seed data.
+// Goose verbose logging is suppressed to reduce test output noise.
 func RunMigrationsOnly(db *sql.DB, dbType DatabaseType) error {
-	return applyMigrations(db, dbType)
+	return applyMigrations(db, dbType, false)
 }
 
-// applyMigrations runs goose migrations for the appropriate database type
-func applyMigrations(db *sql.DB, dbType DatabaseType) error {
+// applyMigrations runs goose migrations for the appropriate database type.
+// When verbose is false, all goose logging is suppressed.
+func applyMigrations(db *sql.DB, dbType DatabaseType, verbose bool) error {
 	gooseMu.Lock()
 	defer gooseMu.Unlock()
 
+	if !verbose {
+		goose.SetLogger(goose.NopLogger())
+	}
 	goose.SetBaseFS(embedMigrations)
 
 	switch dbType {
@@ -66,7 +71,7 @@ func applyMigrations(db *sql.DB, dbType DatabaseType) error {
 // runMigrations runs goose migrations for the appropriate database type and seeds default data
 func runMigrations(ctx context.Context, db *sql.DB, dbType DatabaseType) error {
 	slog.Info("running database migrations", "type", dbType)
-	if err := applyMigrations(db, dbType); err != nil {
+	if err := applyMigrations(db, dbType, true); err != nil {
 		slog.Error("migrations failed", "error", err)
 		return err
 	}

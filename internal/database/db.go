@@ -81,9 +81,19 @@ func initSQLiteDB(ctx context.Context, cfg Config) (*sql.DB, error) {
 		return nil, err
 	}
 
-	// Enable WAL mode for better concurrency
+	// Enable WAL mode for concurrent readers alongside a single writer.
 	if _, err := db.ExecContext(ctx, "PRAGMA journal_mode = WAL"); err != nil {
 		slog.Error("failed to enable WAL mode", "error", err)
+		if closeErr := db.Close(); closeErr != nil {
+			slog.Error("failed to close db", "error", closeErr)
+		}
+		return nil, err
+	}
+
+	// NORMAL synchronous is safe with WAL: commits are durable after a power loss,
+	// only the last few WAL frames might be lost (not the whole DB).
+	if _, err := db.ExecContext(ctx, "PRAGMA synchronous = NORMAL"); err != nil {
+		slog.Error("failed to set synchronous mode", "error", err)
 		if closeErr := db.Close(); closeErr != nil {
 			slog.Error("failed to close db", "error", closeErr)
 		}
@@ -106,9 +116,10 @@ func initSQLiteDB(ctx context.Context, cfg Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// Configure connection pool to reduce contention
-	db.SetMaxOpenConns(1) // SQLite benefits from a single writer connection
-	db.SetMaxIdleConns(1)
+	// WAL mode allows concurrent readers, so we open multiple connections.
+	// Writes still serialize via SQLite's internal WAL lock.
+	db.SetMaxOpenConns(8)
+	db.SetMaxIdleConns(8)
 
 	return db, nil
 }

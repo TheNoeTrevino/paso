@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -52,6 +53,48 @@ func CaptureOutput(tb testing.TB, fn func()) string {
 // DefaultTestLabelColor is the default color used for test labels when the specific color doesn't matter.
 const DefaultTestLabelColor = "#FF5733"
 
+// SetupTestDBFile creates a file-backed SQLite database with WAL mode and multiple connections enabled.
+// Use this for benchmarks that need concurrent query execution (e.g., errgroup patterns).
+// Unlike SetupTestDB (in-memory, single connection), this allows true parallel reads.
+func SetupTestDBFile(tb testing.TB) *sql.DB {
+	tb.Helper()
+	dir := tb.TempDir()
+	dbPath := filepath.Join(dir, "bench.db")
+
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		tb.Fatalf("Failed to create file-backed test database: %v", err)
+	}
+
+	if _, err := db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON"); err != nil {
+		tb.Fatalf("Failed to enable foreign keys: %v", err)
+	}
+	if _, err := db.ExecContext(context.Background(), "PRAGMA journal_mode = WAL"); err != nil {
+		tb.Fatalf("Failed to enable WAL mode: %v", err)
+	}
+	if _, err := db.ExecContext(context.Background(), "PRAGMA busy_timeout = 5000"); err != nil {
+		tb.Fatalf("Failed to set busy timeout: %v", err)
+	}
+	if _, err := db.ExecContext(context.Background(), "PRAGMA synchronous = NORMAL"); err != nil {
+		tb.Fatalf("Failed to set synchronous mode: %v", err)
+	}
+
+	db.SetMaxOpenConns(8)
+	db.SetMaxIdleConns(8)
+
+	if err := database.RunMigrationsOnly(db, database.SQLite); err != nil {
+		tb.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	tb.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			tb.Logf("failed to close test db: %v", err)
+		}
+	})
+
+	return db
+}
+
 // SetupTestDB creates an in-memory database with the full production schema applied via goose migrations.
 // This ensures the test schema always matches production, eliminating schema drift.
 func SetupTestDB(tb testing.TB) *sql.DB {
@@ -66,6 +109,11 @@ func SetupTestDB(tb testing.TB) *sql.DB {
 	if err != nil {
 		tb.Fatalf("Failed to enable foreign keys: %v", err)
 	}
+
+	// In-memory SQLite DBs are per-connection: each new connection is a separate empty DB.
+	// Limit to 1 connection so all queries share the same schema and data.
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
 
 	// Apply production migrations (schema only, no seed data)
 	if err := database.RunMigrationsOnly(db, database.SQLite); err != nil {

@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/thenoetrevino/paso/internal/converters"
 	"github.com/thenoetrevino/paso/internal/database"
 	"github.com/thenoetrevino/paso/internal/database/types"
@@ -620,34 +622,64 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 		return nil, ErrInvalidTaskID
 	}
 
-	// Get task detail
-	taskRow, err := s.queries.GetTaskDetail(ctx, int64(taskID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get task detail: %w", err)
-	}
+	var (
+		taskRow     types.GetTaskDetailRow
+		labels      []types.Label
+		parentRows  []types.GetParentTasksRow
+		childRows   []types.GetChildTasksRow
+		commentRows []types.TaskComment
+	)
 
-	// Get labels
-	labels, err := s.queries.GetTaskLabels(ctx, int64(taskID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get task labels: %w", err)
-	}
+	id := int64(taskID)
+	g, gctx := errgroup.WithContext(ctx)
 
-	// Get parent tasks
-	parentRows, err := s.queries.GetParentTasks(ctx, int64(taskID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get parent tasks: %w", err)
-	}
+	g.Go(func() error {
+		var err error
+		taskRow, err = s.queries.GetTaskDetail(gctx, id)
+		if err != nil {
+			return fmt.Errorf("failed to get task detail: %w", err)
+		}
+		return nil
+	})
 
-	// Get child tasks
-	childRows, err := s.queries.GetChildTasks(ctx, int64(taskID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get child tasks: %w", err)
-	}
+	g.Go(func() error {
+		var err error
+		labels, err = s.queries.GetTaskLabels(gctx, id)
+		if err != nil {
+			return fmt.Errorf("failed to get task labels: %w", err)
+		}
+		return nil
+	})
 
-	// Get comments
-	commentRows, err := s.queries.GetCommentsByTask(ctx, int64(taskID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get task comments: %w", err)
+	g.Go(func() error {
+		var err error
+		parentRows, err = s.queries.GetParentTasks(gctx, id)
+		if err != nil {
+			return fmt.Errorf("failed to get parent tasks: %w", err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		var err error
+		childRows, err = s.queries.GetChildTasks(gctx, id)
+		if err != nil {
+			return fmt.Errorf("failed to get child tasks: %w", err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		var err error
+		commentRows, err = s.queries.GetCommentsByTask(gctx, id)
+		if err != nil {
+			return fmt.Errorf("failed to get task comments: %w", err)
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 
 	// Convert to model
