@@ -125,13 +125,13 @@ Manage connections through the CLI or config file:
 
 ```bash
 # Add a SQLite database
-paso db add --name=local --connection="~/.paso/tasks.db" --type=sqlite
+paso db add ~/.paso/tasks.db -n local -l
 
 # Add a remote PostgreSQL database
-paso db add --name=remote --connection="postgres://user:pass@host/db" --type=postgres
+paso db add "postgres://user:pass@host/db" -n remote -r
 
 # Switch between them
-paso db connect --name=remote
+paso db connect remote
 ```
 
 ## External Integrations
