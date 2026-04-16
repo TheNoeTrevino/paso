@@ -565,7 +565,14 @@ func TestRenderDetailPanel_CommentsAdaptToHeight(t *testing.T) {
 		UpdatedAt: time.Now(),
 	}
 
-	// With plenty of height, the most recent comment (Charlie) should be visible
+	// With plenty of height, all comments should be visible (most recent first).
 	tallResult := RenderDetailPanel(task, 80, 60)
 	assert.Contains(t, tallResult, "Charlie", "tall panel should show most recent comment")
+	assert.Contains(t, tallResult, "Alice", "tall panel should also show older comments")
+
+	// With constrained height, only the most recent comment should fit;
+	// older comments should be truncated out.
+	shortResult := RenderDetailPanel(task, 80, 18)
+	assert.Contains(t, shortResult, "Charlie", "short panel should still show most recent comment")
+	assert.NotContains(t, shortResult, "Alice", "short panel should truncate older comments")
 }
