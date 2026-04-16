@@ -268,26 +268,26 @@ func (m *Model) UIContext() (context.Context, context.CancelFunc) {
 // HandleDBError handles database errors with context-aware messages
 // It distinguishes between cancellation, timeout, and other errors,
 // providing appropriate user feedback for each case.
-func (m *Model) HandleDBError(err error, operation string) {
+// Returns a tea.Cmd that auto-dismisses the notification, or nil if no notification was added.
+func (m *Model) HandleDBError(err error, operation string) tea.Cmd {
 	if err == nil {
-		return
+		return nil
 	}
 
 	if errors.Is(err, context.Canceled) {
 		// Operation was cancelled - this is expected during shutdown
 		// Don't show error notification, just log for debugging
 		slog.Info("operation cancelled by user", "operation", operation)
-		return
+		return nil
 	}
 
 	if errors.Is(err, context.DeadlineExceeded) {
 		// Operation timed out - show user-friendly message
-		m.UI.Notification.Add(state.LevelError, fmt.Sprintf("%s timed out. Please try again.", operation))
-		return
+		return m.addNotification(state.LevelError, fmt.Sprintf("%s timed out. Please try again.", operation))
 	}
 
 	// Other errors - show detailed error message
-	m.UI.Notification.Add(state.LevelError, fmt.Sprintf("%s failed: %v", operation, err))
+	return m.addNotification(state.LevelError, fmt.Sprintf("%s failed: %v", operation, err))
 }
 
 // notificationDuration is how long notifications are visible before auto-dismissing
@@ -309,7 +309,6 @@ func (m *Model) addNotification(level state.NotificationLevel, message string) t
 // Init initializes the Bubble Tea application
 // Required by tea.Model interface
 func (m Model) Init() tea.Cmd {
-	// Start listening for notifications from events client
 	return m.listenForNotifications()
 }
 
@@ -419,12 +418,13 @@ func (m Model) removeCurrentColumn() {
 
 // removeCurrentProject removes the currently selected project from local state
 // and navigates to an adjacent project, or creates a default project if none remain.
-func (m Model) removeCurrentProject() {
+// Returns a tea.Cmd if a notification was generated, or nil otherwise.
+func (m *Model) removeCurrentProject() tea.Cmd {
 	projects := m.AppState.Projects()
 	selectedIdx := m.AppState.SelectedProject()
 
 	if selectedIdx < 0 || selectedIdx >= len(projects) {
-		return
+		return nil
 	}
 
 	// Remove project from slice
@@ -438,8 +438,7 @@ func (m Model) removeCurrentProject() {
 
 	if len(newProjects) == 0 {
 		// Create default project
-		m.createDefaultProject()
-		return
+		return m.createDefaultProject()
 	}
 
 	// Navigate to appropriate project
@@ -449,10 +448,12 @@ func (m Model) removeCurrentProject() {
 	}
 
 	m.switchToProject(newIdx)
+	return nil
 }
 
-// createDefaultProject creates a "Default" project when no projects exist
-func (m Model) createDefaultProject() {
+// createDefaultProject creates a "Default" project when no projects exist.
+// Returns a tea.Cmd that auto-dismisses the notification, or nil if no notification was added.
+func (m *Model) createDefaultProject() tea.Cmd {
 	ctx, cancel := m.DBContext()
 	defer cancel()
 
@@ -462,40 +463,39 @@ func (m Model) createDefaultProject() {
 	})
 	if err != nil {
 		slog.Error("failed to create default project", "error", err)
-		m.UI.Notification.Add(state.LevelError, "Failed to create default project")
 		// Clear state anyway
 		m.AppState.SetColumns([]*models.Column{})
 		m.AppState.SetTasks(make(map[int][]*models.TaskSummary))
 		m.AppState.SetLabels([]*models.Label{})
 		m.UIState.ResetSelection()
-		return
+		return m.addNotification(state.LevelError, "Failed to create default project")
 	}
 
 	// Add to projects and switch to it
 	m.AppState.SetProjects([]*models.Project{newProject})
 	m.switchToProject(0)
-	m.UI.Notification.Add(state.LevelInfo, "Created default project")
+	return m.addNotification(state.LevelInfo, "Created default project")
 }
 
 // moveTaskRight moves the currently selected task to the next column (right)
 // Updates both the local state and the database using the linked list structure
-// The selection follows the moved task and the viewport scrolls if needed
-func (m Model) moveTaskRight() {
+// The selection follows the moved task and the viewport scrolls if needed.
+// Returns a tea.Cmd if a notification was generated, or nil otherwise.
+func (m *Model) moveTaskRight() tea.Cmd {
 	// Get the current task
 	task := m.getCurrentTask()
 	if task == nil {
-		return
+		return nil
 	}
 
 	// Check if there's a next column using the linked list
 	currentCol := m.getCurrentColumn()
 	if currentCol == nil {
-		return
+		return nil
 	}
 	if currentCol.NextID == nil {
 		// Already at last column - show notification
-		m.UI.Notification.Add(state.LevelInfo, "There are no more columns to move to.")
-		return
+		return m.addNotification(state.LevelInfo, "There are no more columns to move to.")
 	}
 
 	// Use the new database function to move task
@@ -505,9 +505,9 @@ func (m Model) moveTaskRight() {
 	if err != nil {
 		slog.Error("failed to moving task to next column", "error", err)
 		if err != tasksvc.ErrAlreadyLastColumn {
-			m.UI.Notification.Add(state.LevelError, "Failed to move task to next column")
+			return m.addNotification(state.LevelError, "Failed to move task to next column")
 		}
-		return
+		return nil
 	}
 
 	// Update local state: remove from current column
@@ -529,27 +529,28 @@ func (m Model) moveTaskRight() {
 	if m.UIState.SelectedColumn >= m.UIState.ViewportOffset+m.UIState.ViewportSize() {
 		m.UIState.ViewportOffset = m.UIState.ViewportOffset + 1
 	}
+	return nil
 }
 
 // moveTaskLeft moves the currently selected task to the previous column (left)
 // Updates both the local state and the database using the linked list structure
-// The selection follows the moved task and the viewport scrolls if needed
-func (m Model) moveTaskLeft() {
+// The selection follows the moved task and the viewport scrolls if needed.
+// Returns a tea.Cmd if a notification was generated, or nil otherwise.
+func (m *Model) moveTaskLeft() tea.Cmd {
 	// Get the current task
 	task := m.getCurrentTask()
 	if task == nil {
-		return
+		return nil
 	}
 
 	// Check if there's a previous column using the linked list
 	currentCol := m.getCurrentColumn()
 	if currentCol == nil {
-		return
+		return nil
 	}
 	if currentCol.PrevID == nil {
 		// Already at first column - show notification
-		m.UI.Notification.Add(state.LevelInfo, "There are no more columns to move to.")
-		return
+		return m.addNotification(state.LevelInfo, "There are no more columns to move to.")
 	}
 
 	// Use the new database function to move task
@@ -559,9 +560,9 @@ func (m Model) moveTaskLeft() {
 	if err != nil {
 		slog.Error("failed to moving task to previous column", "error", err)
 		if err != tasksvc.ErrAlreadyFirstColumn {
-			m.UI.Notification.Add(state.LevelError, "Failed to move task to previous column")
+			return m.addNotification(state.LevelError, "Failed to move task to previous column")
 		}
-		return
+		return nil
 	}
 
 	// Update local state: remove from current column
@@ -583,21 +584,22 @@ func (m Model) moveTaskLeft() {
 	if m.UIState.SelectedColumn < m.UIState.ViewportOffset {
 		m.UIState.ViewportOffset = m.UIState.ViewportOffset - 1
 	}
+	return nil
 }
 
 // moveTaskUp moves the currently selected task up within its column
 // Updates both the local state and the database
-// The selection follows the moved task
-func (m Model) moveTaskUp() {
+// The selection follows the moved task.
+// Returns a tea.Cmd if a notification was generated, or nil otherwise.
+func (m *Model) moveTaskUp() tea.Cmd {
 	task := m.getCurrentTask()
 	if task == nil {
-		return
+		return nil
 	}
 
 	// Check if already at top (edge case handled here for quick feedback)
 	if m.UIState.SelectedTask == 0 {
-		m.UI.Notification.Add(state.LevelInfo, "Task is already at the top")
-		return
+		return m.addNotification(state.LevelInfo, "Task is already at the top")
 	}
 
 	// Call database swap
@@ -607,25 +609,25 @@ func (m Model) moveTaskUp() {
 	if err != nil {
 		slog.Error("failed to moving task up", "error", err)
 		if err != tasksvc.ErrAlreadyFirstTask {
-			m.UI.Notification.Add(state.LevelError, "Failed to move task up")
+			return m.addNotification(state.LevelError, "Failed to move task up")
 		}
-		return
+		return nil
 	}
 
 	// Update local state: swap tasks in slice
 	currentCol := m.getCurrentColumn()
 	if currentCol == nil {
-		return
+		return nil
 	}
 
 	tasks := m.getTasksForColumn(currentCol.ID)
 	if len(tasks) < 2 {
-		return
+		return nil
 	}
 
 	selectedIdx := m.UIState.SelectedTask
 	if selectedIdx == 0 || selectedIdx >= len(tasks) {
-		return
+		return nil
 	}
 
 	// Swap positions in slice
@@ -637,21 +639,23 @@ func (m Model) moveTaskUp() {
 
 	// Move selection to follow the task
 	m.UIState.SelectedTask = selectedIdx - 1
+	return nil
 }
 
 // moveTaskDown moves the currently selected task down within its column
 // Updates both the local state and the database
-// The selection follows the moved task
-func (m Model) moveTaskDown() {
+// The selection follows the moved task.
+// Returns a tea.Cmd if a notification was generated, or nil otherwise.
+func (m *Model) moveTaskDown() tea.Cmd {
 	task := m.getCurrentTask()
 	if task == nil {
-		return
+		return nil
 	}
 
 	// Get current tasks for edge case check
 	currentCol := m.getCurrentColumn()
 	if currentCol == nil {
-		return
+		return nil
 	}
 
 	tasks := m.getTasksForColumn(currentCol.ID)
@@ -659,8 +663,7 @@ func (m Model) moveTaskDown() {
 
 	// Check if already at bottom
 	if selectedIdx >= len(tasks)-1 {
-		m.UI.Notification.Add(state.LevelInfo, "Task is already at the bottom")
-		return
+		return m.addNotification(state.LevelInfo, "Task is already at the bottom")
 	}
 
 	// Call database swap
@@ -670,9 +673,9 @@ func (m Model) moveTaskDown() {
 	if err != nil {
 		slog.Error("failed to moving task down", "error", err)
 		if err != tasksvc.ErrAlreadyLastTask {
-			m.UI.Notification.Add(state.LevelError, "Failed to move task down")
+			return m.addNotification(state.LevelError, "Failed to move task down")
 		}
-		return
+		return nil
 	}
 
 	// Update local state: swap tasks in slice
@@ -684,6 +687,7 @@ func (m Model) moveTaskDown() {
 
 	// Move selection to follow the task
 	m.UIState.SelectedTask = selectedIdx + 1
+	return nil
 }
 
 // getCurrentProject returns the currently selected project
@@ -898,12 +902,12 @@ func (m *Model) initChildPickerForForm() bool {
 // - In form mode: Uses FormLabelIDs from form state (edit or create)
 // - In board mode: Uses labels from the currently selected task (quick edit)
 //
-// Returns false if there's no current project or (in board mode) no selected task.
-func (m *Model) initLabelPicker(mode state.Mode) bool {
+// Returns (false, cmd) if there's no current project or (in board mode) no selected task.
+// Returns (true, nil) on success.
+func (m *Model) initLabelPicker(mode state.Mode) (bool, tea.Cmd) {
 	project := m.getCurrentProject()
 	if project == nil {
-		m.UI.Notification.Add(state.LevelError, "No project selected")
-		return false
+		return false, m.addNotification(state.LevelError, "No project selected")
 	}
 
 	var labelIDMap map[int]bool
@@ -920,8 +924,7 @@ func (m *Model) initLabelPicker(mode state.Mode) bool {
 		// Board mode: use current task's labels
 		task := m.getCurrentTask()
 		if task == nil {
-			m.UI.Notification.Add(state.LevelError, "No task selected")
-			return false
+			return false, m.addNotification(state.LevelError, "No task selected")
 		}
 		labelIDMap = make(map[int]bool)
 		for _, label := range task.Labels {
@@ -947,7 +950,7 @@ func (m *Model) initLabelPicker(mode state.Mode) bool {
 	m.Pickers.Label.Filter = ""
 	m.Pickers.Label.ReturnMode = mode
 
-	return true
+	return true, nil
 }
 
 // getFilteredLabelPickerItems returns label picker items filtered by the current filter text
@@ -960,8 +963,9 @@ func (m *Model) getFilteredLabelPickerItems() []state.LabelPickerItem {
 // - In form mode: Defaults to medium priority (id=3) for new tasks, loads from DB for editing
 // - In board mode: Loads priority from the currently selected task
 //
-// Returns false if there's a database error or (in board mode) no selected task.
-func (m *Model) initPriorityPicker(mode state.Mode) bool {
+// Returns (false, cmd) if there's a database error or (in board mode) no selected task.
+// Returns (true, nil) on success.
+func (m *Model) initPriorityPicker(mode state.Mode) (bool, tea.Cmd) {
 	var currentPriorityID int
 	var taskID int
 
@@ -978,7 +982,7 @@ func (m *Model) initPriorityPicker(mode state.Mode) bool {
 			_, priorityID, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, taskID)
 			if err != nil {
 				slog.Error("failed to get task priority ID for priority picker", "error", err)
-				return false
+				return false, nil
 			}
 			currentPriorityID = priorityID
 		}
@@ -986,8 +990,7 @@ func (m *Model) initPriorityPicker(mode state.Mode) bool {
 		// Board mode: use current task's priority
 		task := m.getCurrentTask()
 		if task == nil {
-			m.UI.Notification.Add(state.LevelError, "No task selected")
-			return false
+			return false, m.addNotification(state.LevelError, "No task selected")
 		}
 
 		ctx, cancel := m.DBContext()
@@ -996,8 +999,7 @@ func (m *Model) initPriorityPicker(mode state.Mode) bool {
 		_, priorityID, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, task.ID)
 		if err != nil {
 			slog.Error("failed to get task priority ID for board picker", "error", err)
-			m.UI.Notification.Add(state.LevelError, "Failed to load task priority")
-			return false
+			return false, m.addNotification(state.LevelError, "Failed to load task priority")
 		}
 
 		currentPriorityID = priorityID
@@ -1010,15 +1012,16 @@ func (m *Model) initPriorityPicker(mode state.Mode) bool {
 	m.Pickers.Priority.SetCursor(currentPriorityID - 1) // 0-indexed
 	m.Pickers.Priority.ReturnMode = mode
 
-	return true
+	return true, nil
 }
 
 // initTypePicker initializes the type picker for both form and board modes.
 // - In form mode: Defaults to task (id=1) for new tasks, loads from DB for editing
 // - In board mode: Loads type from the currently selected task
 //
-// Returns false if there's a database error or (in board mode) no selected task.
-func (m *Model) initTypePicker(mode state.Mode) bool {
+// Returns (false, cmd) if there's a database error or (in board mode) no selected task.
+// Returns (true, nil) on success.
+func (m *Model) initTypePicker(mode state.Mode) (bool, tea.Cmd) {
 	var currentTypeID int
 	var taskID int
 
@@ -1033,15 +1036,14 @@ func (m *Model) initTypePicker(mode state.Mode) bool {
 			typeID, _, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, taskID)
 			if err != nil {
 				slog.Error("failed to get task type ID for type picker", "error", err)
-				return false
+				return false, nil
 			}
 			currentTypeID = typeID
 		}
 	} else {
 		task := m.getCurrentTask()
 		if task == nil {
-			m.UI.Notification.Add(state.LevelError, "No task selected")
-			return false
+			return false, m.addNotification(state.LevelError, "No task selected")
 		}
 
 		ctx, cancel := m.DBContext()
@@ -1050,8 +1052,7 @@ func (m *Model) initTypePicker(mode state.Mode) bool {
 		typeID, _, err := m.App.TaskService.GetTaskTypeAndPriorityIDs(ctx, task.ID)
 		if err != nil {
 			slog.Error("failed to get task type ID for board picker", "error", err)
-			m.UI.Notification.Add(state.LevelError, "Failed to load task type")
-			return false
+			return false, m.addNotification(state.LevelError, "Failed to load task type")
 		}
 
 		currentTypeID = typeID
@@ -1063,23 +1064,23 @@ func (m *Model) initTypePicker(mode state.Mode) bool {
 	m.Pickers.Type.SetCursor(currentTypeID - 1)
 	m.Pickers.Type.ReturnMode = mode
 
-	return true
+	return true, nil
 }
 
 // initAssigneePicker initializes the assignee picker for both form and board modes.
 // - In form mode: Uses FormAssigneeID from form state
 // - In board mode: Uses assignee from the currently selected task
 //
-// Returns false if there's a database error or (in board mode) no selected task.
-func (m *Model) initAssigneePicker(mode state.Mode) bool {
+// Returns (false, cmd) if there's a database error or (in board mode) no selected task.
+// Returns (true, nil) on success.
+func (m *Model) initAssigneePicker(mode state.Mode) (bool, tea.Cmd) {
 	ctx, cancel := m.DBContext()
 	defer cancel()
 
 	assignees, err := m.App.AssigneeService.List(ctx)
 	if err != nil {
 		slog.Error("failed to load assignees for picker", "error", err)
-		m.UI.Notification.Add(state.LevelError, "Failed to load assignees")
-		return false
+		return false, m.addNotification(state.LevelError, "Failed to load assignees")
 	}
 
 	var currentAssigneeID int
@@ -1092,8 +1093,7 @@ func (m *Model) initAssigneePicker(mode state.Mode) bool {
 		// Board mode: use current task's assignee
 		task := m.getCurrentTask()
 		if task == nil {
-			m.UI.Notification.Add(state.LevelError, "No task selected")
-			return false
+			return false, m.addNotification(state.LevelError, "No task selected")
 		}
 
 		if task.AssigneeID != nil {
@@ -1117,27 +1117,26 @@ func (m *Model) initAssigneePicker(mode state.Mode) bool {
 	m.Pickers.Assignee.SetCursor(cursorPos)
 	m.Pickers.Assignee.ReturnMode = mode
 
-	return true
+	return true, nil
 }
 
 // initProjectPicker initializes the project picker for moving a task to another project.
 // It loads all projects, filters out the current project, and sets up the picker state.
-// Returns false if there's a database error, no current project, no other projects, or no selected task.
-func (m *Model) initProjectPicker() bool {
+// Returns (false, cmd) if there's a database error, no current project, no other projects, or no selected task.
+// Returns (true, nil) on success.
+func (m *Model) initProjectPicker() (bool, tea.Cmd) {
 	ctx, cancel := m.DBContext()
 	defer cancel()
 
 	projects, err := m.App.ProjectService.GetAllProjects(ctx)
 	if err != nil {
 		slog.Error("failed to load projects for picker", "error", err)
-		m.UI.Notification.Add(state.LevelError, "Failed to load projects")
-		return false
+		return false, m.addNotification(state.LevelError, "Failed to load projects")
 	}
 
 	currentProject := m.getCurrentProject()
 	if currentProject == nil {
-		m.UI.Notification.Add(state.LevelError, "No project selected")
-		return false
+		return false, m.addNotification(state.LevelError, "No project selected")
 	}
 
 	// Filter out the current project
@@ -1149,14 +1148,12 @@ func (m *Model) initProjectPicker() bool {
 	}
 
 	if len(filtered) == 0 {
-		m.UI.Notification.Add(state.LevelInfo, "No other projects available")
-		return false
+		return false, m.addNotification(state.LevelInfo, "No other projects available")
 	}
 
 	task := m.getCurrentTask()
 	if task == nil {
-		m.UI.Notification.Add(state.LevelError, "No task selected")
-		return false
+		return false, m.addNotification(state.LevelError, "No task selected")
 	}
 
 	m.Forms.Form.EditingTaskID = task.ID
@@ -1164,15 +1161,16 @@ func (m *Model) initProjectPicker() bool {
 	m.Pickers.Project.SetCursor(0)
 	m.Pickers.Project.ReturnMode = state.NormalMode
 
-	return true
+	return true, nil
 }
 
 // initEstimateInput initializes the estimate input for both form and board modes.
 // - In form mode: Uses FormEstimate from form state (edit or create)
 // - In board mode: Uses estimate from the currently selected task (quick edit)
 //
-// Returns false if there's no selected task in board mode.
-func (m *Model) initEstimateInput(mode state.Mode) bool {
+// Returns (false, cmd) if there's no selected task in board mode.
+// Returns (true, nil) on success.
+func (m *Model) initEstimateInput(mode state.Mode) (bool, tea.Cmd) {
 	var estimateValue string
 	var taskID int
 
@@ -1183,8 +1181,7 @@ func (m *Model) initEstimateInput(mode state.Mode) bool {
 		// Board mode: use current task's estimate
 		task := m.getCurrentTask()
 		if task == nil {
-			m.UI.Notification.Add(state.LevelError, "No task selected")
-			return false
+			return false, m.addNotification(state.LevelError, "No task selected")
 		}
 		if task.Estimate != nil {
 			estimateValue = *task.Estimate
@@ -1199,14 +1196,14 @@ func (m *Model) initEstimateInput(mode state.Mode) bool {
 	m.Pickers.Estimate.SetError("")
 	m.Pickers.Estimate.ReturnMode = mode
 
-	return true
+	return true, nil
 }
 
 // initEstimateInputForForm initializes the estimate input for use in task form mode.
 // Pre-fills the input buffer with the current estimate value.
 // Deprecated: Use initEstimateInput(state.TicketFormMode) instead.
 func (m *Model) initEstimateInputForForm() {
-	m.initEstimateInput(state.TicketFormMode)
+	_, _ = m.initEstimateInput(state.TicketFormMode)
 }
 
 // initDatePickerForForm initializes the date picker for use in task form mode.
@@ -1217,7 +1214,7 @@ func (m *Model) initDatePickerForForm() {
 	m.Pickers.DatePicker.ReturnMode = state.TicketFormMode
 }
 
-func (m *Model) initDatePicker(mode state.Mode) bool {
+func (m *Model) initDatePicker(mode state.Mode) (bool, tea.Cmd) {
 	var currentDueDate *time.Time
 
 	if mode == state.TicketFormMode {
@@ -1227,8 +1224,7 @@ func (m *Model) initDatePicker(mode state.Mode) bool {
 		// Board mode: use current task's due date
 		task := m.getCurrentTask()
 		if task == nil {
-			m.UI.Notification.Add(state.LevelError, "No task selected")
-			return false
+			return false, m.addNotification(state.LevelError, "No task selected")
 		}
 
 		currentDueDate = task.DueDate
@@ -1239,7 +1235,7 @@ func (m *Model) initDatePicker(mode state.Mode) bool {
 	m.Pickers.DatePicker.InitFromDate(currentDueDate)
 	m.Pickers.DatePicker.ReturnMode = mode
 
-	return true
+	return true, nil
 }
 
 // buildListViewRows creates a flat list of all tasks with their column names.

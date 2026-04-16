@@ -65,14 +65,12 @@ func (m Model) handleCommentsViewDown() (tea.Model, tea.Cmd) {
 func (m Model) handleCommentsViewEdit() (tea.Model, tea.Cmd) {
 	selectedActivity := m.Forms.Comment.GetSelectedActivity()
 	if selectedActivity == nil {
-		m.UI.Notification.Add(state.LevelError, "No item selected")
-		return m, nil
+		return m, m.addNotification(state.LevelError, "No item selected")
 	}
 
 	// Events are read-only and cannot be edited
 	if selectedActivity.Type == models.ActivityTypeEvent {
-		m.UI.Notification.Add(state.LevelWarning, "Events cannot be edited")
-		return m, nil
+		return m, m.addNotification(state.LevelWarning, "Events cannot be edited")
 	}
 
 	// Set up form state for editing
@@ -119,14 +117,12 @@ func (m Model) handleCommentsViewAdd() (tea.Model, tea.Cmd) {
 func (m Model) handleCommentsViewDelete() (tea.Model, tea.Cmd) {
 	selectedActivity := m.Forms.Comment.GetSelectedActivity()
 	if selectedActivity == nil {
-		m.UI.Notification.Add(state.LevelError, "No item selected")
-		return m, nil
+		return m, m.addNotification(state.LevelError, "No item selected")
 	}
 
 	// Events are read-only and cannot be deleted
 	if selectedActivity.Type == models.ActivityTypeEvent {
-		m.UI.Notification.Add(state.LevelWarning, "Events cannot be deleted")
-		return m, nil
+		return m, m.addNotification(state.LevelWarning, "Events cannot be deleted")
 	}
 
 	// Store comment ID for deletion

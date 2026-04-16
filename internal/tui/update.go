@@ -245,8 +245,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LoadingGitInfo = false
 		m.SpinnerFrame = 0
 		m.UIState.Mode = state.NormalMode
-		m.HandleDBError(msg.err, "Loading task details")
-		return m, nil
+		cmd := m.HandleDBError(msg.err, "Loading task details")
+		return m, cmd
 
 	case gitInfoFetched:
 		m.LoadingGitInfo = false

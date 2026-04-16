@@ -330,28 +330,32 @@ func (m Model) handleArchiveTask() (tea.Model, tea.Cmd) {
 
 func (m Model) handleMoveTaskRight() (tea.Model, tea.Cmd) {
 	if m.getCurrentTask() != nil {
-		m.moveTaskRight()
+		cmd := m.moveTaskRight()
+		return m, cmd
 	}
 	return m, nil
 }
 
 func (m Model) handleMoveTaskLeft() (tea.Model, tea.Cmd) {
 	if m.getCurrentTask() != nil {
-		m.moveTaskLeft()
+		cmd := m.moveTaskLeft()
+		return m, cmd
 	}
 	return m, nil
 }
 
 func (m Model) handleMoveTaskUp() (tea.Model, tea.Cmd) {
 	if m.getCurrentTask() != nil {
-		m.moveTaskUp()
+		cmd := m.moveTaskUp()
+		return m, cmd
 	}
 	return m, nil
 }
 
 func (m Model) handleMoveTaskDown() (tea.Model, tea.Cmd) {
 	if m.getCurrentTask() != nil {
-		m.moveTaskDown()
+		cmd := m.moveTaskDown()
+		return m, cmd
 	}
 	return m, nil
 }
@@ -459,8 +463,8 @@ func (m Model) handleDeleteProject() (tea.Model, tea.Cmd) {
 	defer cancel()
 	taskCount, err := m.App.ProjectService.GetTaskCount(ctx, currentProject.ID)
 	if err != nil {
-		m.HandleDBError(err, "Checking project tasks")
-		return m, nil
+		cmd := m.HandleDBError(err, "Checking project tasks")
+		return m, cmd
 	}
 
 	m.Forms.Input.DeleteProjectTaskCount = taskCount
@@ -575,48 +579,54 @@ func (m *Model) ensureCurrentTaskVisible() {
 }
 
 func (m Model) handleQuickEditLabels() (tea.Model, tea.Cmd) {
-	if !m.initLabelPicker(state.NormalMode) {
-		return m, nil
+	ok, cmd := m.initLabelPicker(state.NormalMode)
+	if !ok {
+		return m, cmd
 	}
 	m.UIState.Mode = state.LabelPickerMode
 	return m, nil
 }
 
 func (m Model) handleQuickEditPriority() (tea.Model, tea.Cmd) {
-	if !m.initPriorityPicker(state.NormalMode) {
-		return m, nil
+	ok, cmd := m.initPriorityPicker(state.NormalMode)
+	if !ok {
+		return m, cmd
 	}
 	m.UIState.Mode = state.PriorityPickerMode
 	return m, nil
 }
 
 func (m Model) handleQuickEditAssignee() (tea.Model, tea.Cmd) {
-	if !m.initAssigneePicker(state.NormalMode) {
-		return m, nil
+	ok, cmd := m.initAssigneePicker(state.NormalMode)
+	if !ok {
+		return m, cmd
 	}
 	m.UIState.Mode = state.AssigneePickerMode
 	return m, nil
 }
 
 func (m Model) handleQuickEditEstimate() (tea.Model, tea.Cmd) {
-	if !m.initEstimateInput(state.NormalMode) {
-		return m, nil
+	ok, cmd := m.initEstimateInput(state.NormalMode)
+	if !ok {
+		return m, cmd
 	}
 	m.UIState.Mode = state.EstimateInputMode
 	return m, nil
 }
 
 func (m Model) handleQuickEditDueDate() (tea.Model, tea.Cmd) {
-	if !m.initDatePicker(state.NormalMode) {
-		return m, nil
+	ok, cmd := m.initDatePicker(state.NormalMode)
+	if !ok {
+		return m, cmd
 	}
 	m.UIState.Mode = state.DatePickerMode
 	return m, nil
 }
 
 func (m Model) handleQuickEditType() (tea.Model, tea.Cmd) {
-	if !m.initTypePicker(state.NormalMode) {
-		return m, nil
+	ok, cmd := m.initTypePicker(state.NormalMode)
+	if !ok {
+		return m, cmd
 	}
 	m.UIState.Mode = state.TypePickerMode
 	return m, nil

@@ -40,8 +40,7 @@ func (m Model) extractTaskFormValues() taskFormValues {
 func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) tea.Cmd {
 	currentCol := m.getCurrentColumn()
 	if currentCol == nil {
-		m.UI.Notification.Add(state.LevelError, "No column selected")
-		return nil
+		return m.addNotification(state.LevelError, "No column selected")
 	}
 
 	// Create context for database operations
@@ -78,8 +77,7 @@ func (m *Model) createNewTaskWithLabelsAndRelationships(values taskFormValues) t
 	})
 	if err != nil {
 		slog.Error("failed to creating task", "error", err)
-		m.UI.Notification.Add(state.LevelError, "Error creating task")
-		return nil
+		return m.addNotification(state.LevelError, "Error creating task")
 	}
 
 	m.applyParentRelationships(ctx, task.ID)
@@ -124,8 +122,7 @@ func (m *Model) updateExistingTaskWithLabelsAndRelationships(values taskFormValu
 	})
 	if err != nil {
 		slog.Error("failed to updating task", "error", err)
-		m.UI.Notification.Add(state.LevelError, "Error updating task")
-		return nil
+		return m.addNotification(state.LevelError, "Error updating task")
 	}
 
 	// update labels - need to handle this through detaching old and attaching new
@@ -459,30 +456,38 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case km.Forms.EditLabels:
 			// Open label picker
-			if m.initLabelPicker(state.TicketFormMode) {
-				m.UIState.Mode = state.LabelPickerMode
+			ok, cmd := m.initLabelPicker(state.TicketFormMode)
+			if !ok {
+				return m, cmd
 			}
+			m.UIState.Mode = state.LabelPickerMode
 			return m, nil
 
 		case km.Forms.EditPriority:
 			// Open priority picker
-			if m.initPriorityPicker(state.TicketFormMode) {
-				m.UIState.Mode = state.PriorityPickerMode
+			ok, cmd := m.initPriorityPicker(state.TicketFormMode)
+			if !ok {
+				return m, cmd
 			}
+			m.UIState.Mode = state.PriorityPickerMode
 			return m, nil
 
 		case km.Forms.EditType:
 			// Open type picker
-			if m.initTypePicker(state.TicketFormMode) {
-				m.UIState.Mode = state.TypePickerMode
+			ok, cmd := m.initTypePicker(state.TicketFormMode)
+			if !ok {
+				return m, cmd
 			}
+			m.UIState.Mode = state.TypePickerMode
 			return m, nil
 
 		case km.Forms.EditAssignee:
 			// Open assignee picker
-			if m.initAssigneePicker(state.TicketFormMode) {
-				m.UIState.Mode = state.AssigneePickerMode
+			ok, cmd := m.initAssigneePicker(state.TicketFormMode)
+			if !ok {
+				return m, cmd
 			}
+			m.UIState.Mode = state.AssigneePickerMode
 			return m, nil
 
 		case km.Forms.EditEstimate:
@@ -622,8 +627,7 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.Forms.Form.ClearProjectForm()
 				},
 				onComplete: func() tea.Cmd {
-					m.submitProjectForm()
-					return nil
+					return m.submitProjectForm()
 				},
 				confirmPtr: &m.Forms.Form.FormProjectConfirm,
 			})
@@ -642,50 +646,49 @@ func (m Model) updateProjectForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Forms.Form.ClearProjectForm()
 		},
 		onComplete: func() tea.Cmd {
-			m.submitProjectForm()
-			return nil
+			return m.submitProjectForm()
 		},
 	})
 }
 
-func (m *Model) submitProjectForm() {
+func (m *Model) submitProjectForm() tea.Cmd {
 	name := strings.TrimSpace(m.Forms.Form.FormProjectName)
 	description := strings.TrimSpace(m.Forms.Form.FormProjectDescription)
 	gitBranch := strings.TrimSpace(m.Forms.Form.FormProjectGitBranch)
 	confirm := m.Forms.Form.FormProjectConfirm
 
 	if !confirm || name == "" {
-		return
+		return nil
 	}
 
 	if m.Forms.Form.Git.EditingProjectID != 0 {
-		m.updateProject(name, description, gitBranch)
-	} else {
-		if gitBranch != "" {
-			ctx, cancel := m.DBContext()
-			defer cancel()
-			existingProject, err := m.App.ProjectService.GetProjectByGitBranch(ctx, gitBranch)
-			if err != nil {
-				slog.Error("failed to check branch association", "branch", gitBranch, "error", err)
-			}
+		return m.updateProject(name, description, gitBranch)
+	}
 
-			if existingProject != nil {
-				m.UIState.ProjectBranchContext = &state.ProjectBranchContext{
-					ProjectName:        name,
-					ProjectDescription: description,
-					GitBranch:          gitBranch,
-					ExistingProject:    existingProject,
-				}
-				m.UIState.Mode = state.ProjectBranchConfirmMode
-				return
-			}
+	if gitBranch != "" {
+		ctx, cancel := m.DBContext()
+		defer cancel()
+		existingProject, err := m.App.ProjectService.GetProjectByGitBranch(ctx, gitBranch)
+		if err != nil {
+			slog.Error("failed to check branch association", "branch", gitBranch, "error", err)
 		}
 
-		m.createProjectWithoutDialog(name, description, gitBranch)
+		if existingProject != nil {
+			m.UIState.ProjectBranchContext = &state.ProjectBranchContext{
+				ProjectName:        name,
+				ProjectDescription: description,
+				GitBranch:          gitBranch,
+				ExistingProject:    existingProject,
+			}
+			m.UIState.Mode = state.ProjectBranchConfirmMode
+			return nil
+		}
 	}
+
+	return m.createProjectWithoutDialog(name, description, gitBranch)
 }
 
-func (m *Model) updateProject(name, description, gitBranch string) {
+func (m *Model) updateProject(name, description, gitBranch string) tea.Cmd {
 	ctx, cancel := m.DBContext()
 	defer cancel()
 
@@ -708,22 +711,20 @@ func (m *Model) updateProject(name, description, gitBranch string) {
 		if errors.Is(err, projectService.ErrGitBranchAlreadyAssociated) && gitBranch != "" {
 			existingProject, lookupErr := m.App.ProjectService.GetProjectByGitBranch(ctx, gitBranch)
 			if lookupErr == nil && existingProject != nil {
-				m.UI.Notification.Add(state.LevelError,
+				return m.addNotification(state.LevelError,
 					fmt.Sprintf("Error: Branch already in use by project: %s", existingProject.Name))
-			} else {
-				m.UI.Notification.Add(state.LevelError, "Error: Branch already in use by another project")
 			}
-		} else {
-			slog.Error("failed updating project", "error", err)
-			m.UI.Notification.Add(state.LevelError, "Error updating project")
+			return m.addNotification(state.LevelError, "Error: Branch already in use by another project")
 		}
-	} else {
-		m.reloadProjects()
-		m.UI.Notification.Add(state.LevelInfo, "Project updated successfully")
+		slog.Error("failed updating project", "error", err)
+		return m.addNotification(state.LevelError, "Error updating project")
 	}
+
+	m.reloadProjects()
+	return m.addNotification(state.LevelInfo, "Project updated successfully")
 }
 
-func (m *Model) createProjectWithoutDialog(name, description, gitBranch string) {
+func (m *Model) createProjectWithoutDialog(name, description, gitBranch string) tea.Cmd {
 	ctx, cancel := m.DBContext()
 	defer cancel()
 	project, err := m.App.ProjectService.CreateProject(ctx, projectService.CreateProjectRequest{
@@ -735,32 +736,31 @@ func (m *Model) createProjectWithoutDialog(name, description, gitBranch string) 
 		if errors.Is(err, projectService.ErrGitBranchAlreadyAssociated) && gitBranch != "" {
 			existingProject, lookupErr := m.App.ProjectService.GetProjectByGitBranch(ctx, gitBranch)
 			if lookupErr == nil && existingProject != nil {
-				m.UI.Notification.Add(state.LevelError,
+				return m.addNotification(state.LevelError,
 					fmt.Sprintf("Error: Branch already in use by project: %s", existingProject.Name))
-			} else {
-				m.UI.Notification.Add(state.LevelError, "Error: Branch already in use by another project")
 			}
-		} else {
-			slog.Error("failed to creating project", "error", err)
-			m.UI.Notification.Add(state.LevelError, "Error creating project")
+			return m.addNotification(state.LevelError, "Error: Branch already in use by another project")
 		}
-	} else {
-		m.reloadProjects()
-		for i, p := range m.AppState.Projects() {
-			if p.ID == project.ID {
-				m.switchToProject(i)
-				break
-			}
+		slog.Error("failed to creating project", "error", err)
+		return m.addNotification(state.LevelError, "Error creating project")
+	}
+
+	m.reloadProjects()
+	for i, p := range m.AppState.Projects() {
+		if p.ID == project.ID {
+			m.switchToProject(i)
+			break
 		}
 	}
+	return nil
 }
 
 func (m Model) handleRefreshGitData() (tea.Model, tea.Cmd) {
 	workDir, err := os.Getwd()
 	if err != nil {
 		slog.Warn("failed to get working directory for cache invalidation", "error", err)
-		m.UI.Notification.Add(state.LevelWarning, "Could not refresh git data")
-		return m, nil
+		notifCmd := m.addNotification(state.LevelWarning, "Could not refresh git data")
+		return m, notifCmd
 	}
 
 	m.GitCache.Invalidate(workDir)
@@ -826,8 +826,7 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Create new column
 				project := m.getCurrentProject()
 				if project == nil {
-					m.UI.Notification.Add(state.LevelError, "No project selected")
-					return nil
+					return m.addNotification(state.LevelError, "No project selected")
 				}
 
 				_, err := m.App.ColumnService.CreateColumn(ctx, columnService.CreateColumnRequest{
@@ -837,8 +836,7 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				})
 				if err != nil {
 					slog.Error("failed to creating column", "error", err)
-					m.UI.Notification.Add(state.LevelError, "Error creating column")
-					return nil
+					return m.addNotification(state.LevelError, "Error creating column")
 				}
 
 				// Reload columns
@@ -848,8 +846,7 @@ func (m Model) updateColumnForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				err := m.App.ColumnService.UpdateColumnName(ctx, m.Forms.Form.EditingColumnID, name)
 				if err != nil {
 					slog.Error("failed to renaming column", "error", err)
-					m.UI.Notification.Add(state.LevelError, "Error renaming column")
-					return nil
+					return m.addNotification(state.LevelError, "Error renaming column")
 				}
 
 				// Reload columns
@@ -886,10 +883,12 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				activities, err := m.App.TaskService.GetTaskActivities(ctx, m.Forms.Comment.TaskID)
 				cancel()
 				if err != nil {
-					m.UI.Notification.Add(state.LevelError, "Failed to refresh activity")
-				} else {
-					m.Forms.Comment.SetActivities(activities)
+					notifCmd := m.addNotification(state.LevelError, "Failed to refresh activity")
+					m.UIState.Mode = state.CommentsViewMode
+					m.Forms.Form.ClearCommentForm()
+					return m, tea.Batch(tea.ClearScreen, notifCmd)
 				}
+				m.Forms.Comment.SetActivities(activities)
 				m.UIState.Mode = state.CommentsViewMode
 			} else {
 				m.UIState.Mode = state.TicketFormMode
@@ -918,12 +917,13 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			ctx, cancel := m.DBContext()
 			defer cancel()
 
+			var notifCmd tea.Cmd
+
 			if m.Forms.Form.EditingCommentID == 0 {
 				// Create new comment
 				taskID := m.Forms.Form.EditingTaskID
 				if taskID == 0 {
-					m.UI.Notification.Add(state.LevelError, "No task selected")
-					return nil
+					return m.addNotification(state.LevelError, "No task selected")
 				}
 
 				_, err := m.App.TaskService.CreateComment(ctx, taskService.CreateCommentRequest{
@@ -933,11 +933,10 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				})
 				if err != nil {
 					slog.Error("failed to creating comment", "error", err)
-					m.UI.Notification.Add(state.LevelError, "Error creating comment")
-					return nil
+					return m.addNotification(state.LevelError, "Error creating comment")
 				}
 
-				m.UI.Notification.Add(state.LevelInfo, "Comment added")
+				notifCmd = m.addNotification(state.LevelInfo, "Comment added")
 			} else {
 				// Update existing comment
 				err := m.App.TaskService.UpdateComment(ctx, taskService.UpdateCommentRequest{
@@ -946,11 +945,10 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				})
 				if err != nil {
 					slog.Error("failed to updating comment", "error", err)
-					m.UI.Notification.Add(state.LevelError, "Error updating comment")
-					return nil
+					return m.addNotification(state.LevelError, "Error updating comment")
 				}
 
-				m.UI.Notification.Add(state.LevelInfo, "Comment updated")
+				notifCmd = m.addNotification(state.LevelInfo, "Comment updated")
 			}
 
 			// Reload comments for task form viewport
@@ -958,7 +956,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			comments, err := m.App.TaskService.GetCommentsByTask(ctx, taskID)
 			if err != nil {
 				slog.Error("failed to reloading comments", "error", err)
-				m.UI.Notification.Add(state.LevelError, "Failed to reload comments")
+				notifCmd = tea.Batch(notifCmd, m.addNotification(state.LevelError, "Failed to reload comments"))
 			} else {
 				m.Forms.Form.FormComments = comments
 			}
@@ -977,7 +975,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.UIState.Mode = state.TicketFormMode
 			}
-			return nil
+			return notifCmd
 		},
 		confirmPtr: nil, // Comment forms don't have confirmation field
 	})
@@ -987,8 +985,8 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) handleOpenCommentsView() (tea.Model, tea.Cmd) {
 	taskID := m.Forms.Form.EditingTaskID
 	if taskID == 0 {
-		m.UI.Notification.Add(state.LevelError, "No task selected")
-		return m, nil
+		notifCmd := m.addNotification(state.LevelError, "No task selected")
+		return m, notifCmd
 	}
 
 	// Fetch activities (events + comments) from the service
@@ -998,8 +996,8 @@ func (m Model) handleOpenCommentsView() (tea.Model, tea.Cmd) {
 	activities, err := m.App.TaskService.GetTaskActivities(ctx, taskID)
 	if err != nil {
 		slog.Error("failed to fetch task activities", "error", err)
-		m.UI.Notification.Add(state.LevelError, "Failed to load activity")
-		return m, nil
+		notifCmd := m.addNotification(state.LevelError, "Failed to load activity")
+		return m, notifCmd
 	}
 
 	// Set up comments view state with activities

@@ -90,6 +90,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			item := filteredItems[m.Pickers.Label.Cursor]
 
 			// Find the index in the unfiltered list
+			var notifCmd tea.Cmd
 			for i, pi := range m.Pickers.Label.Items {
 				if pi.Label.ID == item.Label.ID {
 					if m.Pickers.Label.ReturnMode == state.TicketFormMode || m.Pickers.Label.ReturnMode == state.FilterBarMode {
@@ -104,7 +105,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							err := m.App.TaskService.DetachLabel(ctx, m.Pickers.Label.TaskID, item.Label.ID)
 							if err != nil {
 								slog.Error("failed to removing label", "error", err)
-								m.UI.Notification.Add(state.LevelError, "Failed to remove label from task")
+								notifCmd = m.addNotification(state.LevelError, "Failed to remove label from task")
 							} else {
 								m.Pickers.Label.Items[i].Selected = false
 							}
@@ -113,7 +114,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							err := m.App.TaskService.AttachLabel(ctx, m.Pickers.Label.TaskID, item.Label.ID)
 							if err != nil {
 								slog.Error("failed to adding label", "error", err)
-								m.UI.Notification.Add(state.LevelError, "Failed to add label to task")
+								notifCmd = m.addNotification(state.LevelError, "Failed to add label to task")
 							} else {
 								m.Pickers.Label.Items[i].Selected = true
 							}
@@ -124,6 +125,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
+			return m, notifCmd
 		} else if m.Pickers.Label.ReturnMode != state.FilterBarMode {
 			// Create new label - switch to name input sub-mode (first step)
 			// Not available in filter mode — only existing labels can be filtered by
@@ -149,8 +151,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			taskCount, err := m.App.LabelService.CountTasksByLabel(ctx, item.Label.ID)
 			if err != nil {
 				slog.Error("failed to count tasks by label", "error", err)
-				m.UI.Notification.Add(state.LevelError, "Failed to count tasks for label")
-				return m, nil
+				return m, m.addNotification(state.LevelError, "Failed to count tasks for label")
 			}
 
 			// Store label info for confirmation dialog
@@ -270,9 +271,8 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		})
 		if err != nil {
 			slog.Error("failed to creating label", "error", err)
-			m.UI.Notification.Add(state.LevelError, "Failed to create label")
 			m.Pickers.Label.CreateMode = false
-			return m, nil
+			return m, m.addNotification(state.LevelError, "Failed to create label")
 		}
 
 		// Add to labels list
@@ -285,10 +285,11 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		})
 
 		// Assign to current task
+		var notifCmd tea.Cmd
 		err = m.App.TaskService.AttachLabel(ctx, m.Pickers.Label.TaskID, label.ID)
 		if err != nil {
 			slog.Error("failed to assigning new label to task", "error", err)
-			m.UI.Notification.Add(state.LevelError, "Failed to assign label to task")
+			notifCmd = m.addNotification(state.LevelError, "Failed to assign label to task")
 		}
 
 		// Reload task summaries for the current column
@@ -300,7 +301,7 @@ func (m Model) updateLabelColorPicker(keyMsg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.Pickers.Label.NameBuffer = ""
 		m.Pickers.Label.Cursor = 0
 
-		return m, nil
+		return m, notifCmd
 	}
 
 	return m, nil
@@ -361,6 +362,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			item := filteredItems[m.Pickers.Parent.Cursor]
 
 			// Find the index in the unfiltered list
+			var notifCmd tea.Cmd
 			for i, pi := range m.Pickers.Parent.Items {
 				if pi.TaskRef.ID == item.TaskRef.ID {
 					// Determine if we're in form mode or view mode
@@ -383,7 +385,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							err := m.App.TaskService.RemoveParentRelation(ctx, m.Pickers.Parent.TaskID, item.TaskRef.ID)
 							if err != nil {
 								slog.Error("failed to removing parent", "error", err)
-								m.UI.Notification.Add(state.LevelError, "Failed to remove parent from task")
+								notifCmd = m.addNotification(state.LevelError, "Failed to remove parent from task")
 							} else {
 								m.Pickers.Parent.Items[i].Selected = false
 							}
@@ -395,7 +397,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							err := m.App.TaskService.AddParentRelation(ctx, m.Pickers.Parent.TaskID, item.TaskRef.ID, 1)
 							if err != nil {
 								slog.Error("failed to adding parent", "error", err)
-								m.UI.Notification.Add(state.LevelError, "Failed to add parent to task")
+								notifCmd = m.addNotification(state.LevelError, "Failed to add parent to task")
 							} else {
 								m.Pickers.Parent.Items[i].Selected = true
 							}
@@ -407,6 +409,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
+			return m, notifCmd
 		}
 		return m, nil
 
@@ -517,6 +520,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			item := filteredItems[m.Pickers.Child.Cursor]
 
 			// Find the index in the unfiltered list
+			var notifCmd tea.Cmd
 			for i, pi := range m.Pickers.Child.Items {
 				if pi.TaskRef.ID == item.TaskRef.ID {
 					// Determine if we're in form mode or view mode
@@ -539,7 +543,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							err := m.App.TaskService.RemoveChildRelation(ctx, m.Pickers.Child.TaskID, item.TaskRef.ID)
 							if err != nil {
 								slog.Error("failed to removing child", "error", err)
-								m.UI.Notification.Add(state.LevelError, "Failed to remove child from task")
+								notifCmd = m.addNotification(state.LevelError, "Failed to remove child from task")
 							} else {
 								m.Pickers.Child.Items[i].Selected = false
 							}
@@ -551,7 +555,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 							err := m.App.TaskService.AddChildRelation(ctx, m.Pickers.Child.TaskID, item.TaskRef.ID, 1)
 							if err != nil {
 								slog.Error("failed to adding child", "error", err)
-								m.UI.Notification.Add(state.LevelError, "Failed to add child to task")
+								notifCmd = m.addNotification(state.LevelError, "Failed to add child to task")
 							} else {
 								m.Pickers.Child.Items[i].Selected = true
 							}
@@ -563,6 +567,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
+			return m, notifCmd
 		}
 		return m, nil
 
@@ -650,6 +655,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		priorities := renderers.GetPriorityOptions()
 		cursorIdx := m.Pickers.Priority.Cursor()
 
+		var notifCmd tea.Cmd
 		if cursorIdx >= 0 && cursorIdx < len(priorities) {
 			selectedPriority := priorities[cursorIdx]
 
@@ -675,12 +681,12 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				if err != nil {
 					slog.Error("failed to updating task priority", "error", err)
-					m.UI.Notification.Add(state.LevelError, "Failed to update priority")
+					notifCmd = m.addNotification(state.LevelError, "Failed to update priority")
 				} else {
 					// Update form state with new priority
 					m.Forms.Form.FormPriorityDescription = selectedPriority.Description
 					m.Forms.Form.FormPriorityColor = selectedPriority.Color
-					m.UI.Notification.Add(state.LevelInfo, "Priority updated to "+selectedPriority.Description)
+					notifCmd = m.addNotification(state.LevelInfo, "Priority updated to "+selectedPriority.Description)
 
 					// Reload tasks to reflect the change
 					m.reloadCurrentColumnTasks()
@@ -689,7 +695,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// For new tasks, just update the form state
 				m.Forms.Form.FormPriorityDescription = selectedPriority.Description
 				m.Forms.Form.FormPriorityColor = selectedPriority.Color
-				m.UI.Notification.Add(state.LevelInfo, "Priority set to "+selectedPriority.Description)
+				notifCmd = m.addNotification(state.LevelInfo, "Priority set to "+selectedPriority.Description)
 			}
 
 			// Update the selected priority ID in picker state
@@ -702,7 +708,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.Pickers.Priority.ReturnMode == state.NormalMode {
 			m.Forms.Form.EditingTaskID = 0
 		}
-		return m, nil
+		return m, notifCmd
 	}
 
 	return m, nil
@@ -740,6 +746,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		types := renderers.GetTypeOptions()
 		cursorIdx := m.Pickers.Type.Cursor()
 
+		var notifCmd tea.Cmd
 		if cursorIdx >= 0 && cursorIdx < len(types) {
 			selectedType := types[cursorIdx]
 
@@ -765,11 +772,11 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				if err != nil {
 					slog.Error("failed to updating task type", "error", err)
-					m.UI.Notification.Add(state.LevelError, "Failed to update type")
+					notifCmd = m.addNotification(state.LevelError, "Failed to update type")
 				} else {
 					// Update form state with new type
 					m.Forms.Form.FormTypeDescription = selectedType.Description
-					m.UI.Notification.Add(state.LevelInfo, "Type updated to "+selectedType.Description)
+					notifCmd = m.addNotification(state.LevelInfo, "Type updated to "+selectedType.Description)
 
 					// Reload tasks to reflect the change
 					m.reloadCurrentColumnTasks()
@@ -777,7 +784,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				// For new tasks, just update the form state
 				m.Forms.Form.FormTypeDescription = selectedType.Description
-				m.UI.Notification.Add(state.LevelInfo, "Type set to "+selectedType.Description)
+				notifCmd = m.addNotification(state.LevelInfo, "Type set to "+selectedType.Description)
 			}
 
 			// Update the selected type ID in picker state
@@ -788,7 +795,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.Pickers.Type.ReturnMode == state.NormalMode {
 			m.Forms.Form.EditingTaskID = 0
 		}
-		return m, nil
+		return m, notifCmd
 	}
 
 	return m, nil
@@ -827,6 +834,7 @@ func (m Model) updateProjectPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		var notifCmd tea.Cmd
 		if m.Forms.Form.EditingTaskID != 0 {
 			ctx, cancel := m.DBContext()
 			defer cancel()
@@ -834,9 +842,9 @@ func (m Model) updateProjectPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			err := m.App.TaskService.MoveTaskToProject(ctx, m.Forms.Form.EditingTaskID, selected.ID)
 			if err != nil {
 				slog.Error("failed to move task to project", "error", err)
-				m.UI.Notification.Add(state.LevelError, "Failed to move task to project")
+				notifCmd = m.addNotification(state.LevelError, "Failed to move task to project")
 			} else {
-				m.UI.Notification.Add(state.LevelInfo, "Task moved to "+selected.Name)
+				notifCmd = m.addNotification(state.LevelInfo, "Task moved to "+selected.Name)
 				m.reloadCurrentColumnTasks()
 			}
 		}
@@ -846,7 +854,7 @@ func (m Model) updateProjectPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Forms.Form.EditingTaskID = 0
 		}
 		m.Pickers.Project.Reset()
-		return m, nil
+		return m, notifCmd
 	}
 
 	return m, nil
@@ -896,6 +904,7 @@ func (m Model) updateAssigneePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.refreshFilteredTasks()
 		}
 
+		var notifCmd tea.Cmd
 		if m.Pickers.Assignee.IsClearSelected() {
 			// Clear assignee
 			if m.Forms.Form.EditingTaskID != 0 {
@@ -905,17 +914,17 @@ func (m Model) updateAssigneePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				err := m.App.TaskService.UpdateTaskAssignee(ctx, m.Forms.Form.EditingTaskID, nil)
 				if err != nil {
 					slog.Error("failed to clear task assignee", "error", err)
-					m.UI.Notification.Add(state.LevelError, "Failed to clear assignee")
+					notifCmd = m.addNotification(state.LevelError, "Failed to clear assignee")
 				} else {
 					m.Forms.Form.FormAssigneeID = 0
 					m.Forms.Form.FormAssigneeName = ""
-					m.UI.Notification.Add(state.LevelInfo, "Assignee cleared")
+					notifCmd = m.addNotification(state.LevelInfo, "Assignee cleared")
 					m.reloadCurrentColumnTasks()
 				}
 			} else {
 				m.Forms.Form.FormAssigneeID = 0
 				m.Forms.Form.FormAssigneeName = ""
-				m.UI.Notification.Add(state.LevelInfo, "Assignee cleared")
+				notifCmd = m.addNotification(state.LevelInfo, "Assignee cleared")
 			}
 		} else if selected := m.Pickers.Assignee.SelectedAssignee(); selected != nil {
 			if m.Forms.Form.EditingTaskID != 0 {
@@ -926,17 +935,17 @@ func (m Model) updateAssigneePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 				err := m.App.TaskService.UpdateTaskAssignee(ctx, m.Forms.Form.EditingTaskID, &assigneeID)
 				if err != nil {
 					slog.Error("failed to update task assignee", "error", err)
-					m.UI.Notification.Add(state.LevelError, "Failed to update assignee")
+					notifCmd = m.addNotification(state.LevelError, "Failed to update assignee")
 				} else {
 					m.Forms.Form.FormAssigneeID = selected.ID
 					m.Forms.Form.FormAssigneeName = selected.Name
-					m.UI.Notification.Add(state.LevelInfo, "Assignee set to @"+selected.Name)
+					notifCmd = m.addNotification(state.LevelInfo, "Assignee set to @"+selected.Name)
 					m.reloadCurrentColumnTasks()
 				}
 			} else {
 				m.Forms.Form.FormAssigneeID = selected.ID
 				m.Forms.Form.FormAssigneeName = selected.Name
-				m.UI.Notification.Add(state.LevelInfo, "Assignee set to @"+selected.Name)
+				notifCmd = m.addNotification(state.LevelInfo, "Assignee set to @"+selected.Name)
 			}
 			m.Pickers.Assignee.SetSelectedID(selected.ID)
 		}
@@ -946,7 +955,7 @@ func (m Model) updateAssigneePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.Pickers.Assignee.ReturnMode == state.NormalMode {
 			m.Forms.Form.EditingTaskID = 0
 		}
-		return m, nil
+		return m, notifCmd
 	}
 
 	return m, nil
@@ -980,6 +989,7 @@ func (m Model) updateEstimateInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Forms.Form.FormEstimate = buffer
 
 		// If editing existing task, save immediately to database
+		var notifCmd tea.Cmd
 		if m.Forms.Form.EditingTaskID != 0 {
 			ctx, cancel := m.DBContext()
 			defer cancel()
@@ -992,26 +1002,26 @@ func (m Model) updateEstimateInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 			err := m.App.TaskService.UpdateTaskEstimate(ctx, m.Forms.Form.EditingTaskID, estimatePtr)
 			if err != nil {
 				slog.Error("failed to update task estimate", "error", err)
-				m.UI.Notification.Add(state.LevelError, "Failed to update estimate")
+				notifCmd = m.addNotification(state.LevelError, "Failed to update estimate")
 			} else {
 				if buffer == "" {
-					m.UI.Notification.Add(state.LevelInfo, "Estimate cleared")
+					notifCmd = m.addNotification(state.LevelInfo, "Estimate cleared")
 				} else {
-					m.UI.Notification.Add(state.LevelInfo, "Estimate set to "+buffer)
+					notifCmd = m.addNotification(state.LevelInfo, "Estimate set to "+buffer)
 				}
 				m.reloadCurrentColumnTasks()
 			}
 		} else {
 			// New task - just show notification
 			if buffer == "" {
-				m.UI.Notification.Add(state.LevelInfo, "Estimate cleared")
+				notifCmd = m.addNotification(state.LevelInfo, "Estimate cleared")
 			} else {
-				m.UI.Notification.Add(state.LevelInfo, "Estimate set to "+buffer)
+				notifCmd = m.addNotification(state.LevelInfo, "Estimate set to "+buffer)
 			}
 		}
 
 		m.UIState.Mode = m.Pickers.Estimate.ReturnMode
-		return m, nil
+		return m, notifCmd
 
 	default:
 		// Accept single printable characters
@@ -1068,6 +1078,7 @@ func (m Model) updateDatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Forms.Form.FormDueDate = nil
 
 		// If editing existing task, save immediately to database
+		var notifCmd tea.Cmd
 		if m.Forms.Form.EditingTaskID != 0 {
 			ctx, cancel := m.DBContext()
 			defer cancel()
@@ -1075,17 +1086,17 @@ func (m Model) updateDatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			err := m.App.TaskService.UpdateTaskDueDate(ctx, m.Forms.Form.EditingTaskID, nil)
 			if err != nil {
 				slog.Error("failed to clear task due date", "error", err)
-				m.UI.Notification.Add(state.LevelError, "Failed to clear due date")
+				notifCmd = m.addNotification(state.LevelError, "Failed to clear due date")
 			} else {
-				m.UI.Notification.Add(state.LevelInfo, "Due date cleared")
+				notifCmd = m.addNotification(state.LevelInfo, "Due date cleared")
 				m.reloadCurrentColumnTasks()
 			}
 		} else {
-			m.UI.Notification.Add(state.LevelInfo, "Due date cleared")
+			notifCmd = m.addNotification(state.LevelInfo, "Due date cleared")
 		}
 
 		m.UIState.Mode = m.Pickers.DatePicker.ReturnMode
-		return m, nil
+		return m, notifCmd
 
 	case "enter":
 		// Confirm selection - set selectedDate to current cursor position
@@ -1102,6 +1113,7 @@ func (m Model) updateDatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Forms.Form.FormDueDate = &selectedDate
 
 		// If editing existing task, save immediately to database
+		var notifCmd tea.Cmd
 		if m.Forms.Form.EditingTaskID != 0 {
 			ctx, cancel := m.DBContext()
 			defer cancel()
@@ -1109,17 +1121,17 @@ func (m Model) updateDatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			err := m.App.TaskService.UpdateTaskDueDate(ctx, m.Forms.Form.EditingTaskID, &selectedDate)
 			if err != nil {
 				slog.Error("failed to update task due date", "error", err)
-				m.UI.Notification.Add(state.LevelError, "Failed to update due date")
+				notifCmd = m.addNotification(state.LevelError, "Failed to update due date")
 			} else {
-				m.UI.Notification.Add(state.LevelInfo, "Due date set to "+selectedDate.Format("Jan 2, 2006"))
+				notifCmd = m.addNotification(state.LevelInfo, "Due date set to "+selectedDate.Format("Jan 2, 2006"))
 				m.reloadCurrentColumnTasks()
 			}
 		} else {
-			m.UI.Notification.Add(state.LevelInfo, "Due date set to "+selectedDate.Format("Jan 2, 2006"))
+			notifCmd = m.addNotification(state.LevelInfo, "Due date set to "+selectedDate.Format("Jan 2, 2006"))
 		}
 
 		m.UIState.Mode = m.Pickers.DatePicker.ReturnMode
-		return m, nil
+		return m, notifCmd
 	}
 
 	return m, nil

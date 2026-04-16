@@ -38,8 +38,7 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			activity := m.Forms.Comment.Items[m.Forms.Comment.Cursor].Activity
 			// Events are read-only and cannot be edited
 			if activity.Type == models.ActivityTypeEvent {
-				m.UI.Notification.Add(state.LevelWarning, "Events cannot be edited")
-				return m, nil
+				return m, m.addNotification(state.LevelWarning, "Events cannot be edited")
 			}
 			m.Forms.Form.FormCommentMessage = activity.Content
 			m.Forms.Form.EditingCommentID = activity.ID
@@ -67,8 +66,7 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			activity := m.Forms.Comment.Items[m.Forms.Comment.Cursor].Activity
 			// Events are read-only and cannot be deleted
 			if activity.Type == models.ActivityTypeEvent {
-				m.UI.Notification.Add(state.LevelWarning, "Events cannot be deleted")
-				return m, nil
+				return m, m.addNotification(state.LevelWarning, "Events cannot be deleted")
 			}
 
 			ctx, cancel := m.DBContext()
@@ -78,8 +76,7 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			err := m.App.TaskService.DeleteComment(ctx, commentID)
 			if err != nil {
 				slog.Error("failed to deleting comment", "error", err)
-				m.UI.Notification.Add(state.LevelError, "Failed to delete comment")
-				return m, nil
+				return m, m.addNotification(state.LevelError, "Failed to delete comment")
 			}
 
 			// Reload comments from database
@@ -87,8 +84,7 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			comments, err := m.App.TaskService.GetCommentsByTask(ctx, taskID)
 			if err != nil {
 				slog.Error("failed to reloading comments", "error", err)
-				m.UI.Notification.Add(state.LevelError, "Failed to reload comments")
-				return m, nil
+				return m, m.addNotification(state.LevelError, "Failed to reload comments")
 			}
 
 			// Update form state
@@ -108,7 +104,8 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.Forms.Comment.Cursor = 0
 			}
 
-			m.UI.Notification.Add(state.LevelInfo, "Comment deleted")
+			notifCmd := m.addNotification(state.LevelInfo, "Comment deleted")
+			return m, notifCmd
 		}
 		return m, nil
 	}
