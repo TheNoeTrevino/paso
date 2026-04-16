@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/muesli/reflow/wordwrap"
 	"github.com/thenoetrevino/paso/internal/models"
 	"github.com/thenoetrevino/paso/internal/tui/components"
 	"github.com/thenoetrevino/paso/internal/tui/theme"
@@ -208,50 +207,11 @@ func (m *Model) renderFormCommentsPreview(width, height int) string {
 	if activityCount == 0 {
 		previewContent = subtleStyle.Render("No activity yet · ctrl+n to add comment")
 	} else {
-		// Show most recent activities based on available height
-		// Each activity takes ~2-3 lines (header + 1-2 lines content)
-		maxActivities := max((availableHeight+1)/2, 1)
-
-		var previewLines []string
-		displayCount := min(activityCount, maxActivities)
-
-		// Activities are already sorted newest first by MergeActivities
-		for i := range displayCount {
-			activity := m.Forms.Form.FormActivities[i]
-
-			// Truncate content to fit preview
-			contentWidth := max(width-4, 20)
-			content := activity.Content
-			lines := strings.Split(wordwrap.String(content, contentWidth), "\n")
-
-			// Take first 2 lines only
-			maxLines := 2
-			if len(lines) > maxLines {
-				lines = lines[:maxLines]
-				lines[maxLines-1] = lines[maxLines-1] + "..."
-			}
-
-			// Render activity badge
-			badge := renderActivityBadgePreview(activity.Type)
-
-			// Render activity header with badge
-			timestamp := activity.CreatedAt.Format("Jan 2 15:04")
-			authorIcon := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render(" 󰀄 ")
-			author := activity.Author
-			if author == "" {
-				author = "Unknown"
-			}
-			dateIcon := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render("  ")
-
-			activityHeader := fmt.Sprintf("%s%s%s%s%s", badge, authorIcon, author, dateIcon, timestamp)
-			headerLine := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Subtle)).Render(activityHeader)
-
-			contentLines := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Normal)).Render(strings.Join(lines, "\n"))
-
-			previewLines = append(previewLines, headerLine+"\n"+contentLines)
-		}
-
-		previewContent = strings.Join(previewLines, "\n\n")
+		previewContent = components.RenderActivityPreviews(
+			m.Forms.Form.FormActivities,
+			width,
+			availableHeight,
+		)
 	}
 
 	// Compose content
@@ -273,30 +233,4 @@ func (m *Model) renderFormCommentsPreview(width, height int) string {
 		BorderForeground(lipgloss.Color(theme.Subtle))
 
 	return noteZoneStyle.Render(content)
-}
-
-// renderActivityBadgePreview renders a compact badge for activity type in the preview
-func renderActivityBadgePreview(activityType models.ActivityType) string {
-	var bgColor, fgColor, text string
-
-	switch activityType {
-	case models.ActivityTypeEvent:
-		bgColor = theme.Subtle
-		fgColor = "#ffffff"
-		text = "Event"
-	case models.ActivityTypeComment:
-		bgColor = theme.Create
-		fgColor = "#ffffff"
-		text = "Comment"
-	default:
-		bgColor = theme.Subtle
-		fgColor = "#ffffff"
-		text = "Unknown"
-	}
-
-	return lipgloss.NewStyle().
-		Background(lipgloss.Color(bgColor)).
-		Foreground(lipgloss.Color(fgColor)).
-		Padding(0, 1).
-		Render(text)
 }
