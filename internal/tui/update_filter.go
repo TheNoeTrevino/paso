@@ -123,10 +123,11 @@ func (m Model) openFilterPicker() (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case state.FilterChipAssignee:
-		if m.initAssigneePickerForFilter() {
+		ok, notifCmd := m.initAssigneePickerForFilter()
+		if ok {
 			m.UIState.Mode = state.AssigneePickerMode
 		}
-		return m, nil
+		return m, notifCmd
 
 	case state.FilterChipLabel:
 		if m.initLabelPickerForFilter() {
@@ -169,14 +170,13 @@ func (m *Model) initTypePickerForFilter() bool {
 }
 
 // initAssigneePickerForFilter initializes the assignee picker for filter bar mode.
-func (m *Model) initAssigneePickerForFilter() bool {
+func (m *Model) initAssigneePickerForFilter() (bool, tea.Cmd) {
 	ctx, cancel := m.DBContext()
 	defer cancel()
 
 	assignees, err := m.App.AssigneeService.List(ctx)
 	if err != nil {
-		m.UI.Notification.Add(state.LevelError, "Failed to load assignees")
-		return false
+		return false, m.addNotification(state.LevelError, "Failed to load assignees")
 	}
 
 	m.Pickers.Assignee.SetAssignees(assignees)
@@ -202,7 +202,7 @@ func (m *Model) initAssigneePickerForFilter() bool {
 	m.Pickers.Assignee.SetCursor(cursorPos)
 	m.Pickers.Assignee.ReturnMode = state.FilterBarMode
 
-	return true
+	return true, nil
 }
 
 // initLabelPickerForFilter initializes the label picker for filter bar mode.

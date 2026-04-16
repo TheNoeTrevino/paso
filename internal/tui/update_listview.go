@@ -18,8 +18,9 @@ func (m Model) handleToggleView() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleMoveTaskToProject() (tea.Model, tea.Cmd) {
-	if !m.initProjectPicker() {
-		return m, nil
+	ok, cmd := m.initProjectPicker()
+	if !ok {
+		return m, cmd
 	}
 	m.UIState.Mode = state.ProjectPickerMode
 	return m, nil
@@ -81,10 +82,10 @@ func (m Model) confirmStatusChange() (tea.Model, tea.Cmd) {
 
 	err := m.App.TaskService.MoveTaskToColumn(ctx, taskID, selectedCol.ID)
 	if err != nil {
-		m.HandleDBError(err, "Moving task to new status")
+		cmd := m.HandleDBError(err, "Moving task to new status")
 		m.Pickers.Status.Reset()
 		m.UIState.Mode = state.NormalMode
-		return m, nil
+		return m, cmd
 	}
 
 	if taskToMove != nil {

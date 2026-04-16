@@ -27,9 +27,10 @@ const DefaultDebounceDuration = 500 * time.Millisecond
 
 // Notification represents a single notification message with a severity level.
 type Notification struct {
-	ID      int
-	Level   NotificationLevel
-	Message string
+	ID        int
+	Level     NotificationLevel
+	Message   string
+	CreatedAt time.Time
 }
 
 // NotificationState manages notification display state.
@@ -88,9 +89,10 @@ func (s *NotificationState) Add(level NotificationLevel, message string) int {
 
 	id := s.nextID
 	s.notifications = append(s.notifications, Notification{
-		ID:      id,
-		Level:   level,
-		Message: message,
+		ID:        id,
+		Level:     level,
+		Message:   message,
+		CreatedAt: now,
 	})
 	s.nextID++
 
