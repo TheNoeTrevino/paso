@@ -86,17 +86,10 @@ func RenderActivityPreviewItem(item models.ActivityItem, width int) string {
 
 // RenderActivityPreviews renders a height-aware list of activity items in
 // the compact preview format. Items are assumed to be pre-sorted (typically
-// newest first). If items is empty, a subtle italic "No comments" message
-// is returned. Otherwise, at most availableHeight/activityPreviewLines
-// items are rendered (always at least one), joined by a blank line.
+// newest first) and non-empty (callers are expected to pre-guard). At most
+// availableHeight/activityPreviewLines items are rendered (always at least
+// one), joined by a blank line.
 func RenderActivityPreviews(items []models.ActivityItem, width, availableHeight int) string {
-	if len(items) == 0 {
-		subtleStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(theme.Subtle)).
-			Italic(true)
-		return subtleStyle.Render("No comments")
-	}
-
 	maxItems := max(availableHeight/activityPreviewLines, 1)
 	displayCount := min(len(items), maxItems)
 

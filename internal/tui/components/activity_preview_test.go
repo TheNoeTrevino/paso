@@ -102,14 +102,6 @@ func TestRenderActivityPreviews_TruncatesWhenTall(t *testing.T) {
 	assert.NotContains(t, result, "third-item")
 }
 
-func TestRenderActivityPreviews_Empty(t *testing.T) {
-	t.Parallel()
-
-	result := RenderActivityPreviews(nil, 60, 100)
-
-	assert.Contains(t, result, "No comments")
-}
-
 func TestRenderActivityPreviews_MinimumHeight(t *testing.T) {
 	t.Parallel()
 
