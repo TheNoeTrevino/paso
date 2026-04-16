@@ -209,6 +209,9 @@ func setupSelected(selectedKeys []string, t target, force bool) error {
 			).WithTheme(theme)
 
 			if err := confirm.Run(); err != nil {
+				if errors.Is(err, huh.ErrUserAborted) {
+					return nil
+				}
 				return cli.NewExitErr(cli.ExitError, fmt.Sprintf("prompt error: %v", err))
 			}
 
