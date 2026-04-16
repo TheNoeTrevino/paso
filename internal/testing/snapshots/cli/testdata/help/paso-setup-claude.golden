@@ -1,24 +1,10 @@
-Install hooks to automatically run 'paso tutorial' on SessionStart and PreCompact.
-
-This ensures AI agents always have paso workflow context, even after context compaction.
-
-Examples:
-  # Install globally (default)
-  paso setup claude
-
-  # Install for current project only
-  paso setup claude --project
-
-  # Check installation status
-  paso setup claude --check
-
-  # Remove hooks
-  paso setup claude --remove
+Set up paso for Claude Code (~/.claude/)
 
 Usage:
   paso setup claude [flags]
 
 Flags:
-      --check     Check installation status
-      --project   Install for current project only
-      --remove    Remove hooks
+      --all      Set up all skills and commands
+      --check    Show setup status
+  -f, --force    Overwrite existing files without prompting
+      --remove   Remove files set up by paso

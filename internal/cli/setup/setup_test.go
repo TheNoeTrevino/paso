@@ -1,7 +1,6 @@
 package setup
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,443 +9,405 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func readJSON(t *testing.T, path string) map[string]any {
-	t.Helper()
-	data, err := os.ReadFile(path)
-	require.NoError(t, err)
-	var result map[string]any
-	require.NoError(t, json.Unmarshal(data, &result))
-	return result
-}
-
-func writeJSON(t *testing.T, path string, v any) {
-	t.Helper()
-	data, err := json.MarshalIndent(v, "", "  ")
-	require.NoError(t, err)
-	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
-	require.NoError(t, os.WriteFile(path, data, 0o644))
-}
-
-func chdir(t *testing.T, dir string) {
-	t.Helper()
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { _ = os.Chdir(orig) })
-}
-
-func TestInstallClaude_Project(t *testing.T) {
-	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
-
-	require.NoError(t, os.MkdirAll(".claude", 0o755))
-
-	err := InstallClaude(true)
-	require.NoError(t, err)
-
-	settingsPath := filepath.Join(tmpDir, ".claude", "settings.local.json")
-	require.FileExists(t, settingsPath)
-
-	settings := readJSON(t, settingsPath)
-	hooks, ok := settings["hooks"].(map[string]any)
-	require.True(t, ok, "expected hooks key in settings")
-
-	for _, event := range []string{"SessionStart", "PreCompact"} {
-		eventHooks, ok := hooks[event].([]any)
-		require.True(t, ok, "expected %s key in hooks", event)
-		require.Len(t, eventHooks, 1)
-
-		hookMap := eventHooks[0].(map[string]any)
-		commands := hookMap["hooks"].([]any)
-		require.Len(t, commands, 1)
-		assert.Equal(t, "paso tutorial", commands[0].(map[string]any)["command"])
-	}
-}
-
-func TestInstallClaude_Global(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-
-	err := InstallClaude(false)
-	require.NoError(t, err)
-
-	settingsPath := filepath.Join(tmpHome, ".claude", "settings.json")
-	require.FileExists(t, settingsPath)
-
-	settings := readJSON(t, settingsPath)
-	hooks, ok := settings["hooks"].(map[string]any)
-	require.True(t, ok)
-
-	for _, event := range []string{"SessionStart", "PreCompact"} {
-		eventHooks, ok := hooks[event].([]any)
-		require.True(t, ok)
-		require.Len(t, eventHooks, 1)
-
-		hookMap := eventHooks[0].(map[string]any)
-		commands := hookMap["hooks"].([]any)
-		require.Len(t, commands, 1)
-		assert.Equal(t, "paso tutorial", commands[0].(map[string]any)["command"])
-	}
-}
-
-func TestInstallClaude_Idempotent(t *testing.T) {
-	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
-	require.NoError(t, os.MkdirAll(".claude", 0o755))
-
-	require.NoError(t, InstallClaude(true))
-	require.NoError(t, InstallClaude(true))
-
-	settings := readJSON(t, filepath.Join(tmpDir, ".claude", "settings.local.json"))
-	hooks := settings["hooks"].(map[string]any)
-	for _, event := range []string{"SessionStart", "PreCompact"} {
-		eventHooks := hooks[event].([]any)
-		assert.Len(t, eventHooks, 1, "duplicate hooks created for %s", event)
-	}
-}
-
-func TestInstallClaude_PreservesExistingSettings(t *testing.T) {
-	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
-
-	existing := map[string]any{
-		"permissions": map[string]any{"allow": []any{"Read"}},
-	}
-	writeJSON(t, filepath.Join(tmpDir, ".claude", "settings.local.json"), existing)
-
-	require.NoError(t, InstallClaude(true))
-
-	settings := readJSON(t, filepath.Join(tmpDir, ".claude", "settings.local.json"))
-	_, ok := settings["permissions"]
-	assert.True(t, ok, "existing permissions key should be preserved")
-	_, ok = settings["hooks"]
-	assert.True(t, ok, "hooks key should be added")
-}
-
-func TestCheckClaude_Installed(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-
-	require.NoError(t, InstallClaude(false))
-
-	err := CheckClaude()
-	assert.NoError(t, err)
-}
-
-func TestCheckClaude_NotInstalled(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-
-	tmpProject := t.TempDir()
-	chdir(t, tmpProject)
-
-	err := CheckClaude()
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no hooks installed")
-}
-
-func TestRemoveClaude_Project(t *testing.T) {
-	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
-	require.NoError(t, os.MkdirAll(".claude", 0o755))
-
-	require.NoError(t, InstallClaude(true))
-
-	settingsPath := filepath.Join(tmpDir, ".claude", "settings.local.json")
-	assert.True(t, hasPasoHooks(settingsPath))
-
-	require.NoError(t, RemoveClaude(true))
-
-	assert.False(t, hasPasoHooks(settingsPath), "hooks should be removed")
-}
-
-func TestRemoveClaude_Global(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-
-	require.NoError(t, InstallClaude(false))
-
-	settingsPath := filepath.Join(tmpHome, ".claude", "settings.json")
-	assert.True(t, hasPasoHooks(settingsPath))
-
-	require.NoError(t, RemoveClaude(false))
-
-	assert.False(t, hasPasoHooks(settingsPath))
-}
-
-func TestRemoveClaude_NoSettingsFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
-
-	err := RemoveClaude(true)
-	assert.NoError(t, err, "removing from nonexistent file should not error")
-}
-
-func TestInstallOpenCode_Project(t *testing.T) {
-	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
-
-	err := InstallOpenCode(true)
-	require.NoError(t, err)
-
-	configPath := filepath.Join(tmpDir, "opencode.json")
-	require.FileExists(t, configPath)
-
-	config := readJSON(t, configPath)
-	plugins, ok := config["plugin"].([]any)
-	require.True(t, ok, "expected plugin key in config")
-	require.Len(t, plugins, 1)
-	assert.Equal(t, "opencode-paso", plugins[0])
-}
-
-func TestInstallOpenCode_Global(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-
-	err := InstallOpenCode(false)
-	require.NoError(t, err)
-
-	configPath := filepath.Join(tmpHome, ".config", "opencode", "opencode.json")
-	require.FileExists(t, configPath)
-
-	config := readJSON(t, configPath)
-	plugins, ok := config["plugin"].([]any)
-	require.True(t, ok)
-	require.Len(t, plugins, 1)
-	assert.Equal(t, "opencode-paso", plugins[0])
-}
-
-func TestInstallOpenCode_Idempotent(t *testing.T) {
-	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
-
-	require.NoError(t, InstallOpenCode(true))
-	require.NoError(t, InstallOpenCode(true))
-
-	config := readJSON(t, filepath.Join(tmpDir, "opencode.json"))
-	plugins := config["plugin"].([]any)
-	assert.Len(t, plugins, 1, "duplicate plugin entries should not be created")
-}
-
-func TestInstallOpenCode_PreservesExistingConfig(t *testing.T) {
-	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
-
-	existing := map[string]any{
-		"theme": "dark",
-	}
-	writeJSON(t, filepath.Join(tmpDir, "opencode.json"), existing)
-
-	require.NoError(t, InstallOpenCode(true))
-
-	config := readJSON(t, filepath.Join(tmpDir, "opencode.json"))
-	assert.Equal(t, "dark", config["theme"], "existing config keys should be preserved")
-	plugins, ok := config["plugin"].([]any)
-	require.True(t, ok)
-	assert.Contains(t, plugins, "opencode-paso")
-}
-
-func TestCheckOpenCode_Installed(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-
-	require.NoError(t, InstallOpenCode(false))
-
-	err := CheckOpenCode()
-	assert.NoError(t, err)
-}
-
-func TestCheckOpenCode_NotInstalled(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-
-	tmpProject := t.TempDir()
-	chdir(t, tmpProject)
-
-	err := CheckOpenCode()
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "plugin not installed")
-}
-
-func TestRemoveOpenCode_Project(t *testing.T) {
-	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
-
-	require.NoError(t, InstallOpenCode(true))
-
-	configPath := filepath.Join(tmpDir, "opencode.json")
-	assert.True(t, hasPasoPlugin(configPath))
-
-	require.NoError(t, RemoveOpenCode(true))
-
-	assert.False(t, hasPasoPlugin(configPath), "plugin should be removed")
-}
-
-func TestRemoveOpenCode_Global(t *testing.T) {
-	tmpHome := t.TempDir()
-	t.Setenv("HOME", tmpHome)
-
-	require.NoError(t, InstallOpenCode(false))
-
-	configPath := filepath.Join(tmpHome, ".config", "opencode", "opencode.json")
-	assert.True(t, hasPasoPlugin(configPath))
-
-	require.NoError(t, RemoveOpenCode(false))
-
-	assert.False(t, hasPasoPlugin(configPath))
-}
-
-func TestRemoveOpenCode_NoConfigFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
-
-	err := RemoveOpenCode(true)
-	assert.NoError(t, err, "removing from nonexistent file should not error")
-}
-
-func TestRemoveOpenCode_PreservesOtherPlugins(t *testing.T) {
-	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
-
-	existing := map[string]any{
-		"plugin": []any{"other-plugin", "opencode-paso", "another-plugin"},
-	}
-	writeJSON(t, filepath.Join(tmpDir, "opencode.json"), existing)
-
-	require.NoError(t, RemoveOpenCode(true))
-
-	config := readJSON(t, filepath.Join(tmpDir, "opencode.json"))
-	plugins := config["plugin"].([]any)
-	assert.Len(t, plugins, 2)
-	assert.Contains(t, plugins, "other-plugin")
-	assert.Contains(t, plugins, "another-plugin")
-	assert.NotContains(t, plugins, "opencode-paso")
-}
-
-func TestRemoveClaude_PreservesOtherHooks(t *testing.T) {
-	tmpDir := t.TempDir()
-	chdir(t, tmpDir)
-
-	settings := map[string]any{
-		"hooks": map[string]any{
-			"SessionStart": []any{
-				map[string]any{
-					"matcher": "",
-					"hooks": []any{
-						map[string]any{
-							"type":    "command",
-							"command": "paso tutorial",
-						},
-					},
-				},
-				map[string]any{
-					"matcher": "",
-					"hooks": []any{
-						map[string]any{
-							"type":    "command",
-							"command": "other-tool init",
-						},
-					},
-				},
-			},
-		},
-	}
-	writeJSON(t, filepath.Join(tmpDir, ".claude", "settings.local.json"), settings)
-
-	require.NoError(t, RemoveClaude(true))
-
-	result := readJSON(t, filepath.Join(tmpDir, ".claude", "settings.local.json"))
-	hooks := result["hooks"].(map[string]any)
-	sessionHooks := hooks["SessionStart"].([]any)
-	assert.Len(t, sessionHooks, 1, "should only remove paso hook, keeping other-tool")
-
-	remaining := sessionHooks[0].(map[string]any)
-	cmds := remaining["hooks"].([]any)
-	assert.Equal(t, "other-tool init", cmds[0].(map[string]any)["command"])
-}
-
-func TestHasPasoHooks(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	noHooksPath := filepath.Join(tmpDir, "no-hooks.json")
-	writeJSON(t, noHooksPath, map[string]any{"hooks": map[string]any{}})
-	assert.False(t, hasPasoHooks(noHooksPath))
-
-	assert.False(t, hasPasoHooks(filepath.Join(tmpDir, "nonexistent.json")))
-
-	withHooksPath := filepath.Join(tmpDir, "with-hooks.json")
-	writeJSON(t, withHooksPath, map[string]any{
-		"hooks": map[string]any{
-			"SessionStart": []any{
-				map[string]any{
-					"matcher": "",
-					"hooks": []any{
-						map[string]any{"type": "command", "command": "paso tutorial"},
-					},
-				},
-			},
-		},
+func TestEmbeddedContent_NotEmpty(t *testing.T) {
+	t.Run("pasoSkillContent is populated", func(t *testing.T) {
+		assert.NotEmpty(t, pasoSkillContent, "pasoSkillContent should not be empty")
 	})
-	assert.True(t, hasPasoHooks(withHooksPath))
+
+	t.Run("pasoDelegateContent is populated", func(t *testing.T) {
+		assert.NotEmpty(t, pasoDelegateContent, "pasoDelegateContent should not be empty")
+	})
+
+	t.Run("pasoSetupContent is populated", func(t *testing.T) {
+		assert.NotEmpty(t, pasoSetupContent, "pasoSetupContent should not be empty")
+	})
 }
 
-func TestHasPasoPlugin(t *testing.T) {
-	tmpDir := t.TempDir()
+func testTarget(t *testing.T) target {
+	t.Helper()
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
 
-	noPluginPath := filepath.Join(tmpDir, "no-plugin.json")
-	writeJSON(t, noPluginPath, map[string]any{"plugin": []any{}})
-	assert.False(t, hasPasoPlugin(noPluginPath))
+	return target{
+		key:   "test",
+		label: "Test",
+		baseDir: func() (string, error) {
+			return filepath.Join(tmpHome, ".config", "test-tool"), nil
+		},
+	}
+}
 
-	assert.False(t, hasPasoPlugin(filepath.Join(tmpDir, "nonexistent.json")))
+func TestSetupSelected(t *testing.T) {
+	tgt := testTarget(t)
 
-	withPluginPath := filepath.Join(tmpDir, "with-plugin.json")
-	writeJSON(t, withPluginPath, map[string]any{"plugin": []any{"opencode-paso"}})
-	assert.True(t, hasPasoPlugin(withPluginPath))
+	err := setupSelected(allKeys(), tgt, true)
+	require.NoError(t, err)
+
+	baseDir, err := tgt.baseDir()
+	require.NoError(t, err)
+
+	for _, item := range allInstallables() {
+		dest := item.pathFunc(baseDir)
+		assert.True(t, FileExists(dest), "expected file to exist: %s", dest)
+
+		content, err := os.ReadFile(dest)
+		require.NoError(t, err)
+		assert.Equal(t, item.content, content, "content mismatch for %s at %s", item.key, dest)
+	}
+}
+
+func TestSetupSelected_SingleSkill(t *testing.T) {
+	tgt := testTarget(t)
+
+	err := setupSelected([]string{"skill:paso"}, tgt, true)
+	require.NoError(t, err)
+
+	baseDir, err := tgt.baseDir()
+	require.NoError(t, err)
+
+	skillPath := filepath.Join(baseDir, "skills", "paso", "SKILL.md")
+	assert.True(t, FileExists(skillPath), "expected skill file to exist")
+
+	content, err := os.ReadFile(skillPath)
+	require.NoError(t, err)
+	assert.Equal(t, pasoSkillContent, content)
+
+	// Commands should not be installed
+	delegatePath := filepath.Join(baseDir, "commands", "paso-delegate.md")
+	assert.False(t, FileExists(delegatePath), "delegate command should not be installed")
+}
+
+func TestSetupSelected_Idempotent(t *testing.T) {
+	tgt := testTarget(t)
+
+	err := setupSelected(allKeys(), tgt, true)
+	require.NoError(t, err)
+
+	// Set up again — should succeed without error
+	err = setupSelected(allKeys(), tgt, true)
+	require.NoError(t, err)
+
+	baseDir, err := tgt.baseDir()
+	require.NoError(t, err)
+
+	for _, item := range allInstallables() {
+		dest := item.pathFunc(baseDir)
+		content, err := os.ReadFile(dest)
+		require.NoError(t, err)
+		assert.Equal(t, item.content, content, "content should still match after reinstall for %s", item.key)
+	}
+}
+
+func TestSetupSelected_ForceOverwritesModifiedFiles(t *testing.T) {
+	tgt := testTarget(t)
+
+	err := setupSelected([]string{"skill:paso"}, tgt, true)
+	require.NoError(t, err)
+
+	baseDir, err := tgt.baseDir()
+	require.NoError(t, err)
+
+	skillPath := filepath.Join(baseDir, "skills", "paso", "SKILL.md")
+
+	// Tamper with the file
+	require.NoError(t, os.WriteFile(skillPath, []byte("modified content"), 0644))
+
+	// Force reinstall should overwrite
+	err = setupSelected([]string{"skill:paso"}, tgt, true)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(skillPath)
+	require.NoError(t, err)
+	assert.Equal(t, pasoSkillContent, content, "force should overwrite modified content")
+}
+
+func TestSetupAll(t *testing.T) {
+	tgt := testTarget(t)
+
+	err := setupAll(tgt, true)
+	require.NoError(t, err)
+
+	baseDir, err := tgt.baseDir()
+	require.NoError(t, err)
+
+	for _, item := range allInstallables() {
+		dest := item.pathFunc(baseDir)
+		assert.True(t, FileExists(dest), "expected file to exist after setupAll: %s", dest)
+
+		content, err := os.ReadFile(dest)
+		require.NoError(t, err)
+		assert.Equal(t, item.content, content, "content mismatch for %s", item.key)
+	}
+}
+
+func TestRunCheck(t *testing.T) {
+	tgt := testTarget(t)
+
+	err := setupAll(tgt, true)
+	require.NoError(t, err)
+
+	err = runCheck(tgt)
+	require.NoError(t, err)
+}
+
+func TestRunCheck_NothingInstalled(t *testing.T) {
+	tgt := testTarget(t)
+
+	err := runCheck(tgt)
+	require.NoError(t, err)
+}
+
+func TestRunRemove(t *testing.T) {
+	tgt := testTarget(t)
+
+	err := setupAll(tgt, true)
+	require.NoError(t, err)
+
+	baseDir, err := tgt.baseDir()
+	require.NoError(t, err)
+
+	// Verify files exist before removal
+	for _, item := range allInstallables() {
+		dest := item.pathFunc(baseDir)
+		assert.True(t, FileExists(dest), "expected file to exist before removal: %s", dest)
+	}
+
+	err = runRemove(tgt)
+	require.NoError(t, err)
+
+	// Verify all files are gone
+	for _, item := range allInstallables() {
+		dest := item.pathFunc(baseDir)
+		assert.False(t, FileExists(dest), "expected file to be removed: %s", dest)
+	}
+}
+
+func TestRunRemove_NothingInstalled(t *testing.T) {
+	tgt := testTarget(t)
+
+	err := runRemove(tgt)
+	require.NoError(t, err)
+}
+
+func TestRunRemove_Idempotent(t *testing.T) {
+	tgt := testTarget(t)
+
+	err := setupAll(tgt, true)
+	require.NoError(t, err)
+
+	err = runRemove(tgt)
+	require.NoError(t, err)
+
+	// Removing again should still succeed
+	err = runRemove(tgt)
+	require.NoError(t, err)
+}
+
+func TestSetupSelected_RealTargets(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+
+	for _, tgt := range targets {
+		err := setupAll(tgt, true)
+		require.NoError(t, err)
+
+		baseDir, err := tgt.baseDir()
+		require.NoError(t, err)
+
+		for _, item := range allInstallables() {
+			dest := item.pathFunc(baseDir)
+			assert.True(t, FileExists(dest), "expected file to exist for %s/%s: %s", tgt.key, item.key, dest)
+
+			content, err := os.ReadFile(dest)
+			require.NoError(t, err)
+			assert.Equal(t, item.content, content, "content mismatch for %s/%s", tgt.key, item.key)
+		}
+	}
 }
 
 func TestAtomicWriteFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	path := filepath.Join(tmpDir, "test.json")
+	t.Run("writes file with correct content", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "test.txt")
+		data := []byte("hello world")
 
-	content := []byte(`{"key": "value"}`)
-	require.NoError(t, atomicWriteFile(path, content))
+		err := atomicWriteFile(path, data)
+		require.NoError(t, err)
 
-	data, err := os.ReadFile(path)
-	require.NoError(t, err)
-	assert.Equal(t, content, data)
+		content, err := os.ReadFile(path)
+		require.NoError(t, err)
+		assert.Equal(t, data, content)
+	})
 
-	info, err := os.Stat(path)
-	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
-}
+	t.Run("sets permissions to 0644", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "perms.txt")
 
-func TestEnsureDir(t *testing.T) {
-	tmpDir := t.TempDir()
-	newDir := filepath.Join(tmpDir, "a", "b", "c")
+		err := atomicWriteFile(path, []byte("content"))
+		require.NoError(t, err)
 
-	require.NoError(t, EnsureDir(newDir, 0o755))
-	assert.True(t, DirExists(newDir))
+		info, err := os.Stat(path)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0644), info.Mode().Perm())
+	})
 
-	require.NoError(t, EnsureDir(newDir, 0o755), "calling on existing dir should not error")
+	t.Run("overwrites existing file", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "overwrite.txt")
+
+		err := atomicWriteFile(path, []byte("original"))
+		require.NoError(t, err)
+
+		err = atomicWriteFile(path, []byte("updated"))
+		require.NoError(t, err)
+
+		content, err := os.ReadFile(path)
+		require.NoError(t, err)
+		assert.Equal(t, []byte("updated"), content)
+	})
+
+	t.Run("handles empty content", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "empty.txt")
+
+		err := atomicWriteFile(path, []byte{})
+		require.NoError(t, err)
+
+		content, err := os.ReadFile(path)
+		require.NoError(t, err)
+		assert.Empty(t, content)
+	})
+
+	t.Run("fails for nonexistent directory", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "no", "such", "dir", "file.txt")
+
+		err := atomicWriteFile(path, []byte("data"))
+		assert.Error(t, err)
+	})
+
+	t.Run("no leftover temp files on success", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "clean.txt")
+
+		err := atomicWriteFile(path, []byte("data"))
+		require.NoError(t, err)
+
+		entries, err := os.ReadDir(dir)
+		require.NoError(t, err)
+		assert.Len(t, entries, 1, "should only have the target file, no leftover temp files")
+		assert.Equal(t, "clean.txt", entries[0].Name())
+	})
 }
 
 func TestDirExists(t *testing.T) {
-	tmpDir := t.TempDir()
-	assert.True(t, DirExists(tmpDir))
-	assert.False(t, DirExists(filepath.Join(tmpDir, "nonexistent")))
+	t.Run("returns true for existing directory", func(t *testing.T) {
+		dir := t.TempDir()
+		assert.True(t, DirExists(dir))
+	})
 
-	f := filepath.Join(tmpDir, "file.txt")
-	require.NoError(t, os.WriteFile(f, []byte("hi"), 0o644))
-	assert.False(t, DirExists(f), "regular file should not count as dir")
+	t.Run("returns false for nonexistent path", func(t *testing.T) {
+		assert.False(t, DirExists("/nonexistent/path/that/does/not/exist"))
+	})
+
+	t.Run("returns false for a file", func(t *testing.T) {
+		dir := t.TempDir()
+		filePath := filepath.Join(dir, "file.txt")
+		require.NoError(t, os.WriteFile(filePath, []byte("data"), 0644))
+
+		assert.False(t, DirExists(filePath))
+	})
 }
 
 func TestFileExists(t *testing.T) {
-	tmpDir := t.TempDir()
+	t.Run("returns true for existing file", func(t *testing.T) {
+		dir := t.TempDir()
+		filePath := filepath.Join(dir, "file.txt")
+		require.NoError(t, os.WriteFile(filePath, []byte("data"), 0644))
 
-	f := filepath.Join(tmpDir, "file.txt")
-	require.NoError(t, os.WriteFile(f, []byte("hi"), 0o644))
-	assert.True(t, FileExists(f))
+		assert.True(t, FileExists(filePath))
+	})
 
-	assert.False(t, FileExists(filepath.Join(tmpDir, "nonexistent")))
-	assert.False(t, FileExists(tmpDir), "directory should not count as file")
+	t.Run("returns false for nonexistent path", func(t *testing.T) {
+		assert.False(t, FileExists("/nonexistent/file.txt"))
+	})
+
+	t.Run("returns false for a directory", func(t *testing.T) {
+		dir := t.TempDir()
+		assert.False(t, FileExists(dir))
+	})
+}
+
+func TestEnsureDir(t *testing.T) {
+	t.Run("creates directory that does not exist", func(t *testing.T) {
+		base := t.TempDir()
+		newDir := filepath.Join(base, "a", "b", "c")
+
+		err := EnsureDir(newDir, 0755)
+		require.NoError(t, err)
+		assert.True(t, DirExists(newDir))
+	})
+
+	t.Run("succeeds for already existing directory", func(t *testing.T) {
+		dir := t.TempDir()
+
+		err := EnsureDir(dir, 0755)
+		require.NoError(t, err)
+		assert.True(t, DirExists(dir))
+	})
+
+	t.Run("creates with correct permissions", func(t *testing.T) {
+		base := t.TempDir()
+		newDir := filepath.Join(base, "permdir")
+
+		err := EnsureDir(newDir, 0700)
+		require.NoError(t, err)
+
+		info, err := os.Stat(newDir)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0700), info.Mode().Perm())
+	})
+}
+
+func TestAllInstallables(t *testing.T) {
+	items := allInstallables()
+	assert.Len(t, items, len(skills)+len(commands))
+
+	keys := make(map[string]bool)
+	for _, item := range items {
+		keys[item.key] = true
+	}
+	assert.True(t, keys["skill:paso"])
+	assert.True(t, keys["cmd:paso-delegate"])
+	assert.True(t, keys["cmd:paso-setup"])
+}
+
+func TestAllKeys(t *testing.T) {
+	keys := allKeys()
+	assert.Len(t, keys, len(skills)+len(commands))
+	assert.Contains(t, keys, "skill:paso")
+	assert.Contains(t, keys, "cmd:paso-delegate")
+	assert.Contains(t, keys, "cmd:paso-setup")
+}
+
+func TestResolveItems(t *testing.T) {
+	t.Run("resolves subset of items", func(t *testing.T) {
+		items := resolveItems([]string{"skill:paso"})
+		require.Len(t, items, 1)
+		assert.Equal(t, "skill:paso", items[0].key)
+	})
+
+	t.Run("resolves all items", func(t *testing.T) {
+		items := resolveItems(allKeys())
+		assert.Len(t, items, len(skills)+len(commands))
+	})
+
+	t.Run("returns empty for unknown keys", func(t *testing.T) {
+		items := resolveItems([]string{"nonexistent:key"})
+		assert.Empty(t, items)
+	})
+
+	t.Run("returns empty for empty input", func(t *testing.T) {
+		items := resolveItems([]string{})
+		assert.Empty(t, items)
+	})
 }

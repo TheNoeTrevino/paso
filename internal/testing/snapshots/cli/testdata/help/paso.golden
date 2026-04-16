@@ -12,9 +12,8 @@ Available Commands:
   db          Manage database connections
   label       Manage labels
   project     Manage projects
-  setup       Setup integrations with AI tools
+  setup       Set up paso skills and commands for AI tools
   task        Manage tasks
-  tutorial    Output AI-optimized workflow context
 
 Additional help topics:
   paso completion Generate shell completion script

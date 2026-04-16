@@ -45,7 +45,6 @@ func TestRootCommand_Help(t *testing.T) {
 		"column",
 		"label",
 		"assignee",
-		"tutorial",
 		"setup",
 		"db",
 		"tui",

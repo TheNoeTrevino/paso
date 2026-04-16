@@ -1,10 +1,10 @@
-Configure paso to work with AI coding assistants like Claude Code and OpenCode.
+Set up paso skills and commands for AI tools
 
 Usage:
   paso setup [command]
 
 Available Commands:
-  claude      Setup Claude Code integration
-  opencode    Setup OpenCode integration
+  claude      Set up paso for Claude Code (~/.claude/)
+  opencode    Set up paso for OpenCode (~/.config/opencode/)
 
 Use "paso setup [command] --help" for more information about a command.

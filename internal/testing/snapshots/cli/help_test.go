@@ -14,7 +14,6 @@ import (
 	"github.com/thenoetrevino/paso/internal/cli/project"
 	"github.com/thenoetrevino/paso/internal/cli/setup"
 	"github.com/thenoetrevino/paso/internal/cli/task"
-	"github.com/thenoetrevino/paso/internal/cli/tutorial"
 	"github.com/thenoetrevino/paso/internal/testing/fixtures"
 	"github.com/thenoetrevino/paso/internal/testing/snapshots"
 )
@@ -36,7 +35,6 @@ Use 'paso task create ...' for CLI commands.`,
 	root.AddCommand(column.ColumnCmd())
 	root.AddCommand(label.LabelCmd())
 	root.AddCommand(assignee.AssigneeCmd())
-	root.AddCommand(tutorial.TutorialCmd())
 	root.AddCommand(setup.SetupCmd())
 	root.AddCommand(db.DbCmd())
 
