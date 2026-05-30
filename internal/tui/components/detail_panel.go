@@ -127,6 +127,7 @@ func renderDetailHeader(task *models.TaskDetail, width int) string {
 		Bold(true)
 
 	ticketNumber := fmt.Sprintf("%s-%d", task.ProjectName, task.TicketNumber)
+	// Build the header up incrementally: ticket number, title, then status.
 	var header strings.Builder
 	header.WriteString(ticketStyle.Render(ticketNumber))
 
