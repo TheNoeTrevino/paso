@@ -12,8 +12,11 @@ import (
 )
 
 const (
-	descriptionMaxLines  = 6
-	commentPreviewLength = 80
+	descriptionMaxLines = 6
+	// detailPanelPadding accounts for DetailPanelStyle padding (1 top + 1 bottom)
+	detailPanelPadding = 2
+	// detailDividerHeight is the height of each divider between sections (1 line)
+	detailDividerHeight = 1
 )
 
 // RenderDetailPanel renders the complete detail panel for a task
@@ -24,32 +27,59 @@ func RenderDetailPanel(task *models.TaskDetail, width, height int) string {
 
 	contentWidth := width - 4 // Account for padding (2 left + 2 right)
 
-	var sections []string
+	// Build fixed sections (everything except comments)
+	var fixedSections []string
 
-	sections = append(sections, renderDetailHeader(task, contentWidth))
-	sections = append(sections, renderDetailMetadata(task))
+	fixedSections = append(fixedSections, renderDetailHeader(task, contentWidth))
+	fixedSections = append(fixedSections, renderDetailMetadata(task))
 
 	if len(task.Labels) > 0 {
-		sections = append(sections, renderDetailLabels(task.Labels))
+		fixedSections = append(fixedSections, renderDetailLabels(task.Labels))
 	}
 
 	if task.Description != "" {
-		sections = append(sections, renderDetailDescription(task.Description, contentWidth))
+		fixedSections = append(fixedSections, renderDetailDescription(task.Description, contentWidth))
 	}
 
 	if len(task.ParentTasks) > 0 || len(task.ChildTasks) > 0 {
-		sections = append(sections, renderDetailRelations(task, contentWidth))
+		fixedSections = append(fixedSections, renderDetailRelations(task, contentWidth))
 	}
 
-	if len(task.Comments) > 0 {
-		sections = append(sections, renderDetailComments(task.Comments, contentWidth))
-	}
-
-	sections = append(sections, renderDetailTimestamps(task, contentWidth))
-	sections = append(sections, renderDetailFooter(contentWidth))
+	timestampsSection := renderDetailTimestamps(task, contentWidth)
+	footerSection := renderDetailFooter(contentWidth)
 
 	divider := SubtleStyle.Render(strings.Repeat("─", contentWidth))
-	content := strings.Join(sections, "\n"+divider+"\n")
+	fixedContent := strings.Join(fixedSections, "\n"+divider+"\n")
+
+	fixedHeight := lipgloss.Height(fixedContent)
+	timestampsHeight := lipgloss.Height(timestampsSection)
+	footerHeight := lipgloss.Height(footerSection)
+
+	// Dividers count: fixed sections have internal dividers already in fixedContent.
+	// When comments exist: +1 divider before comments, +1 after comments, +1 before footer = 3
+	// When no comments: +1 divider before timestamps, +1 before footer = 2
+	extraDividers := 3
+	if len(task.Comments) == 0 {
+		extraDividers = 2
+	}
+
+	usedHeight := fixedHeight + timestampsHeight + footerHeight +
+		(extraDividers * detailDividerHeight) + detailPanelPadding
+
+	remainingHeight := max(height-usedHeight, 1)
+
+	// Build final content with comments filling remaining space
+	var allSections []string
+	allSections = append(allSections, fixedSections...)
+
+	if len(task.Comments) > 0 {
+		allSections = append(allSections, renderDetailComments(task.Comments, contentWidth, remainingHeight))
+	}
+
+	allSections = append(allSections, timestampsSection)
+	allSections = append(allSections, footerSection)
+
+	content := strings.Join(allSections, "\n"+divider+"\n")
 
 	return DetailPanelStyle.
 		Width(width).
@@ -97,7 +127,8 @@ func renderDetailHeader(task *models.TaskDetail, width int) string {
 		Bold(true)
 
 	ticketNumber := fmt.Sprintf("%s-%d", task.ProjectName, task.TicketNumber)
-	header := ticketStyle.Render(ticketNumber)
+	var header strings.Builder
+	header.WriteString(ticketStyle.Render(ticketNumber))
 
 	titleStyle := lipgloss.NewStyle().Bold(true)
 	title := task.Title
@@ -109,15 +140,15 @@ func renderDetailHeader(task *models.TaskDetail, width int) string {
 		lines := strings.Split(wrappedTitle, "\n")
 		title = lines[0]
 		if len(lines) > 1 {
-			header += "\n" + titleStyle.Render(title)
+			header.WriteString("\n" + titleStyle.Render(title))
 			for i := 1; i < len(lines); i++ {
-				header += "\n" + titleStyle.Render(lines[i])
+				header.WriteString("\n" + titleStyle.Render(lines[i]))
 			}
-			return header
+			return header.String()
 		}
 	}
 
-	return header + "\n" + titleStyle.Render(title)
+	return header.String() + "\n" + titleStyle.Render(title)
 }
 
 // renderDetailMetadata renders status, type, and priority
@@ -269,8 +300,10 @@ func renderDetailRelations(task *models.TaskDetail, width int) string {
 	return header + "\n" + strings.Join(lines, "\n")
 }
 
-// renderDetailComments renders comment count and preview
-func renderDetailComments(comments []*models.Comment, width int) string {
+// renderDetailComments renders a height-aware comments section using compact preview format.
+// Converts comments to ActivityItems and delegates to RenderActivityPreviews.
+// Shows as many recent comments as fit in the available height.
+func renderDetailComments(comments []*models.Comment, width, availableHeight int) string {
 	labelStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Highlight)).
 		Bold(true)
@@ -285,18 +318,25 @@ func renderDetailComments(comments []*models.Comment, width int) string {
 		return header
 	}
 
-	// Show preview of the most recent comment
-	latestComment := comments[len(comments)-1]
-	preview := latestComment.Message
-	if len(preview) > commentPreviewLength {
-		preview = preview[:commentPreviewLength] + SubtleStyle.Render("...")
+	// Convert comments to ActivityItems for shared rendering.
+	// Comments are stored oldest-first; reverse so most recent appear first.
+	items := make([]models.ActivityItem, len(comments))
+	for i, c := range comments {
+		items[len(comments)-1-i] = models.ActivityItem{
+			ID:        c.ID,
+			TaskID:    c.TaskID,
+			Type:      models.ActivityTypeComment,
+			Content:   c.Message,
+			Author:    c.Author,
+			CreatedAt: c.CreatedAt,
+		}
 	}
 
-	authorStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Subtle)).
-		Italic(true)
+	// Subtract header line from available height
+	previewHeight := max(availableHeight-1, 1)
+	previews := RenderActivityPreviews(items, width, previewHeight)
 
-	return header + "\n" + authorStyle.Render(latestComment.Author+": ") + preview
+	return header + "\n" + previews
 }
 
 // renderDetailTimestamps renders created/updated timestamps

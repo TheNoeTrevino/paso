@@ -266,8 +266,7 @@ func TestRenderDetailPanel_LongDescription(t *testing.T) {
 func TestRenderDetailPanel_LongCommentPreview(t *testing.T) {
 	t.Parallel()
 
-	// Create a comment longer than commentPreviewLength (80)
-	longMessage := strings.Repeat("a", 100)
+	longMessage := strings.Repeat("This is a long comment that should be word wrapped and truncated. ", 10)
 
 	task := &models.TaskDetail{
 		ID:           1,
@@ -276,14 +275,15 @@ func TestRenderDetailPanel_LongCommentPreview(t *testing.T) {
 		ProjectName:  "PROJ",
 		ColumnName:   "Todo",
 		Comments: []*models.Comment{
-			{ID: 1, Author: "Alice", Message: longMessage},
+			{ID: 1, Author: "Alice", Message: longMessage, CreatedAt: time.Now(), UpdatedAt: time.Now()},
 		},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
 
-	result := RenderDetailPanel(task, 100, 50)
+	result := RenderDetailPanel(task, 80, 50)
 
+	assert.Contains(t, result, "Alice")
 	assert.Contains(t, result, "...")
 	assert.NotContains(t, result, longMessage)
 }
@@ -521,4 +521,58 @@ func TestRenderDetailPanel_WithPriorityOnly(t *testing.T) {
 
 	assert.Contains(t, result, "Priority")
 	assert.Contains(t, result, "Critical")
+}
+
+func TestRenderDetailPanel_CommentsShowContent(t *testing.T) {
+	t.Parallel()
+
+	task := &models.TaskDetail{
+		ID:           1,
+		Title:        "Task",
+		TicketNumber: 1,
+		ProjectName:  "PROJ",
+		ColumnName:   "Todo",
+		Comments: []*models.Comment{
+			{ID: 1, Author: "Alice", Message: "First comment with real content", CreatedAt: time.Now(), UpdatedAt: time.Now()},
+			{ID: 2, Author: "Bob", Message: "Second comment here", CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// Tall panel — should show comment content, not just a count preview
+	result := RenderDetailPanel(task, 80, 50)
+
+	assert.Contains(t, result, "First comment with real content")
+	assert.Contains(t, result, "Alice")
+}
+
+func TestRenderDetailPanel_CommentsAdaptToHeight(t *testing.T) {
+	t.Parallel()
+
+	task := &models.TaskDetail{
+		ID:           1,
+		Title:        "Task",
+		TicketNumber: 1,
+		ProjectName:  "PROJ",
+		ColumnName:   "Todo",
+		Comments: []*models.Comment{
+			{ID: 1, Author: "Alice", Message: "First", CreatedAt: time.Now(), UpdatedAt: time.Now()},
+			{ID: 2, Author: "Bob", Message: "Second", CreatedAt: time.Now(), UpdatedAt: time.Now()},
+			{ID: 3, Author: "Charlie", Message: "Third", CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// With plenty of height, all comments should be visible (most recent first).
+	tallResult := RenderDetailPanel(task, 80, 60)
+	assert.Contains(t, tallResult, "Charlie", "tall panel should show most recent comment")
+	assert.Contains(t, tallResult, "Alice", "tall panel should also show older comments")
+
+	// With constrained height, only the most recent comment should fit;
+	// older comments should be truncated out.
+	shortResult := RenderDetailPanel(task, 80, 18)
+	assert.Contains(t, shortResult, "Charlie", "short panel should still show most recent comment")
+	assert.NotContains(t, shortResult, "Alice", "short panel should truncate older comments")
 }
