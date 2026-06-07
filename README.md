@@ -11,6 +11,9 @@
 TODO: cool photo of a spanish dude walking slowly
 > Paso is Spanish for "step"
 
+<img width="2856" height="1734" alt="image" src="https://github.com/user-attachments/assets/54b6826d-db66-4dda-b5da-8b57d9b62a31" />
+
+
 Paso is a zero-setup task management tool that runs entirely in your terminal.
 Use the interactive TUI for a visual kanban board, or the CLI for scripting and automation.
 Tasks, projects, labels, comments, and relationships are all stored locally in SQLite — or remotely in PostgreSQL if you prefer.
