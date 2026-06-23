@@ -7,8 +7,7 @@ import (
 	"sync"
 
 	"charm.land/lipgloss/v2"
-	"github.com/muesli/reflow/wordwrap"
-	"github.com/muesli/reflow/wrap"
+	xansi "github.com/charmbracelet/x/ansi"
 	"github.com/thenoetrevino/paso/internal/config/colors"
 	"github.com/thenoetrevino/paso/internal/models"
 )
@@ -182,8 +181,11 @@ func WrapText(s string, limit int) []string {
 	if limit < 1 {
 		limit = 1
 	}
-	wrapped := wrap.String(wordwrap.String(s, limit), limit)
-	return strings.Split(wrapped, "\n")
+	// xansi.Wrap is a single, width-correct pass: it breaks on word boundaries
+	// and hard-breaks words longer than the limit. A previous two-pass approach
+	// (muesli wordwrap then wrap) chopped words mid-word because the two passes
+	// disagreed on cell width by one, slicing the last char off overlong lines.
+	return strings.Split(xansi.Wrap(s, limit, ""), "\n")
 }
 
 // RenderCard wraps content in a styled card border
