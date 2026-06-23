@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mattn/go-runewidth"
 	"github.com/stretchr/testify/assert"
 	"github.com/thenoetrevino/paso/internal/config/colors"
 	"github.com/thenoetrevino/paso/internal/models"
@@ -163,9 +164,10 @@ func TestRenderTaskReferenceWrapsWithHangingIndent(t *testing.T) {
 		assert.True(t, strings.HasPrefix(l, "    "), "continuation %q lost its hanging indent", l)
 		assert.False(t, strings.HasPrefix(l, "    •"), "continuation %q should not repeat the bullet", l)
 	}
-	// Every line stays within the card content width.
+	// Every line stays within the card content width. Measure visual columns
+	// (not bytes), matching how the wrap library and CardContentWidth count.
 	for _, l := range lines {
-		assert.LessOrEqual(t, len(l), CardContentWidth(), "line %q exceeds card width", l)
+		assert.LessOrEqual(t, runewidth.StringWidth(l), CardContentWidth(), "line %q exceeds card width", l)
 	}
 }
 
