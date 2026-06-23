@@ -18,7 +18,7 @@ func NewPriorityPickerState() *PriorityPickerState {
 	return &PriorityPickerState{
 		selectedPriorityID: 3, // Default to medium (id=3)
 		cursor:             0,
-		ReturnMode:         TicketFormMode,
+		ReturnMode:         TaskFormMode,
 	}
 }
 
@@ -62,5 +62,5 @@ func (s *PriorityPickerState) MoveDown() {
 func (s *PriorityPickerState) Reset() {
 	s.selectedPriorityID = 3 // Default to medium
 	s.cursor = 0
-	s.ReturnMode = TicketFormMode
+	s.ReturnMode = TaskFormMode
 }

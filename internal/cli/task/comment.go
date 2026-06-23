@@ -110,14 +110,14 @@ func runComment(cmd *cobra.Command, args []string) error {
 
 	// Build result
 	result := &CommentResult{
-		CommentID:    comment.ID,
-		TaskID:       comment.TaskID,
-		Message:      comment.Message,
-		Author:       comment.Author,
-		CreatedAt:    comment.CreatedAt.Format("2006-01-02 15:04:05"),
-		TaskTitle:    taskDetail.Title,
-		TicketNumber: taskDetail.TicketNumber,
-		ProjectName:  taskDetail.ProjectName,
+		CommentID:   comment.ID,
+		TaskID:      comment.TaskID,
+		Message:     comment.Message,
+		Author:      comment.Author,
+		CreatedAt:   comment.CreatedAt.Format("2006-01-02 15:04:05"),
+		TaskTitle:   taskDetail.Title,
+		TaskNumber:  taskDetail.TaskNumber,
+		ProjectName: taskDetail.ProjectName,
 	}
 
 	// Output based on mode (JSON/Quiet/Human)

@@ -26,10 +26,10 @@ func setupCommentMocks() (*mocks.MockTaskService, cli.MockServices) {
 
 func setDefaultCommentResults(mockTask *mocks.MockTaskService) {
 	mockTask.GetTaskDetailResult = &models.TaskDetail{
-		ID:           1,
-		Title:        "Test Task",
-		TicketNumber: 42,
-		ProjectName:  "Test Project",
+		ID:          1,
+		Title:       "Test Task",
+		TaskNumber:  42,
+		ProjectName: "Test Project",
 	}
 	mockTask.CreateCommentResult = &models.Comment{
 		ID:        5,
@@ -109,7 +109,7 @@ func TestCommentTask_JSON(t *testing.T) {
 	require.True(t, ok, "task should be a map")
 	assert.Equal(t, float64(1), taskData["id"])
 	assert.Equal(t, "Test Task", taskData["title"])
-	assert.Equal(t, float64(42), taskData["ticket_number"])
+	assert.Equal(t, float64(42), taskData["task_number"])
 	assert.Equal(t, "Test Project", taskData["project"])
 }
 

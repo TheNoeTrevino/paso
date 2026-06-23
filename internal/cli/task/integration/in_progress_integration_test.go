@@ -32,7 +32,7 @@ func TestInProgressTask(t *testing.T) {
 		// Create task in todo column
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task to Start")
 
-		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 1})
+		cli.UpdateTaskFields(t, db, taskID, map[string]any{"task_number": 1})
 
 		cmd := task.InProgressCmd()
 
@@ -53,7 +53,7 @@ func TestInProgressTask(t *testing.T) {
 		// Create task in todo column
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Quiet Mode Task")
 
-		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 2})
+		cli.UpdateTaskFields(t, db, taskID, map[string]any{"task_number": 2})
 
 		cmd := task.InProgressCmd()
 
@@ -75,7 +75,7 @@ func TestInProgressTask(t *testing.T) {
 		// Create task in todo column
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "JSON Mode Task")
 
-		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 3})
+		cli.UpdateTaskFields(t, db, taskID, map[string]any{"task_number": 3})
 
 		cmd := task.InProgressCmd()
 
@@ -105,7 +105,7 @@ func TestInProgressTask(t *testing.T) {
 	t.Run("list in-progress tasks", func(t *testing.T) {
 		// Create task and move it to in-progress using the command
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Listed In Progress Task")
-		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 4})
+		cli.UpdateTaskFields(t, db, taskID, map[string]any{"task_number": 4})
 
 		// Move task to in-progress using the command
 		moveCmd := task.InProgressCmd()
@@ -131,8 +131,8 @@ func TestInProgressTask(t *testing.T) {
 		// Create and move tasks to in-progress using the command
 		taskID1 := cli.CreateTestTask(t, db, todoColumnID, "Quiet List Task 1")
 		taskID2 := cli.CreateTestTask(t, db, todoColumnID, "Quiet List Task 2")
-		cli.UpdateTaskFields(t, db, taskID1, map[string]any{"ticket_number": 5})
-		cli.UpdateTaskFields(t, db, taskID2, map[string]any{"ticket_number": 6})
+		cli.UpdateTaskFields(t, db, taskID1, map[string]any{"task_number": 5})
+		cli.UpdateTaskFields(t, db, taskID2, map[string]any{"task_number": 6})
 
 		// Move tasks using the command
 		moveCmd1 := task.InProgressCmd()
@@ -171,7 +171,7 @@ func TestInProgressTask(t *testing.T) {
 	t.Run("list in-progress tasks - JSON mode", func(t *testing.T) {
 		// Create and move a task to in-progress using the command
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "JSON List Task")
-		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 7})
+		cli.UpdateTaskFields(t, db, taskID, map[string]any{"task_number": 7})
 
 		// Move task using the command
 		moveCmd := task.InProgressCmd()
@@ -210,7 +210,7 @@ func TestInProgressTask(t *testing.T) {
 			if int(taskData["id"].(float64)) == taskID {
 				foundTask = true
 				assert.Equal(t, "JSON List Task", taskData["title"])
-				assert.Equal(t, float64(7), taskData["ticket_number"])
+				assert.Equal(t, float64(7), taskData["task_number"])
 				break
 			}
 		}
@@ -221,7 +221,7 @@ func TestInProgressTask(t *testing.T) {
 		// Create task already in in-progress column
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Already In Progress")
 
-		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 8})
+		cli.UpdateTaskFields(t, db, taskID, map[string]any{"task_number": 8})
 
 		cmd := task.InProgressCmd()
 
@@ -245,9 +245,9 @@ func TestInProgressTask(t *testing.T) {
 		taskID2 := cli.CreateTestTask(t, db, todoColumnID, "Multi Task 2")
 		taskID3 := cli.CreateTestTask(t, db, todoColumnID, "Multi Task 3")
 
-		cli.UpdateTaskFields(t, db, taskID1, map[string]any{"ticket_number": 9})
-		cli.UpdateTaskFields(t, db, taskID2, map[string]any{"ticket_number": 10})
-		cli.UpdateTaskFields(t, db, taskID3, map[string]any{"ticket_number": 11})
+		cli.UpdateTaskFields(t, db, taskID1, map[string]any{"task_number": 9})
+		cli.UpdateTaskFields(t, db, taskID2, map[string]any{"task_number": 10})
+		cli.UpdateTaskFields(t, db, taskID3, map[string]any{"task_number": 11})
 
 		cmd1 := task.InProgressCmd()
 		cmd2 := task.InProgressCmd()
@@ -285,10 +285,10 @@ func TestInProgressTask(t *testing.T) {
 		highPriorityTaskID := cli.CreateTestTask(t, db, inProgressColumnID, "High Priority Task")
 		criticalPriorityTaskID := cli.CreateTestTask(t, db, inProgressColumnID, "Critical Priority Task")
 
-		// Assign ticket numbers and priorities
-		cli.UpdateTaskFields(t, db, lowPriorityTaskID, map[string]any{"ticket_number": 12, "priority_id": 2})
-		cli.UpdateTaskFields(t, db, highPriorityTaskID, map[string]any{"ticket_number": 13, "priority_id": 4})
-		cli.UpdateTaskFields(t, db, criticalPriorityTaskID, map[string]any{"ticket_number": 14, "priority_id": 5})
+		// Assign task numbers and priorities
+		cli.UpdateTaskFields(t, db, lowPriorityTaskID, map[string]any{"task_number": 12, "priority_id": 2})
+		cli.UpdateTaskFields(t, db, highPriorityTaskID, map[string]any{"task_number": 13, "priority_id": 4})
+		cli.UpdateTaskFields(t, db, criticalPriorityTaskID, map[string]any{"task_number": 14, "priority_id": 5})
 
 		cmd := task.InProgressCmd()
 
@@ -307,8 +307,8 @@ func TestInProgressTask(t *testing.T) {
 		blockerTaskID := cli.CreateTestTask(t, db, todoColumnID, "Blocker Task")
 		blockedTaskID := cli.CreateTestTask(t, db, inProgressColumnID, "Blocked In Progress Task")
 
-		cli.UpdateTaskFields(t, db, blockerTaskID, map[string]any{"ticket_number": 15})
-		cli.UpdateTaskFields(t, db, blockedTaskID, map[string]any{"ticket_number": 16})
+		cli.UpdateTaskFields(t, db, blockerTaskID, map[string]any{"task_number": 15})
+		cli.UpdateTaskFields(t, db, blockedTaskID, map[string]any{"task_number": 16})
 
 		// Create blocking relationship
 		cli.AddTaskSubtask(t, db, blockedTaskID, blockerTaskID, 2)
@@ -343,7 +343,7 @@ func TestInProgressTask(t *testing.T) {
 		// Create task with labels
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task With Labels")
 
-		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 17})
+		cli.UpdateTaskFields(t, db, taskID, map[string]any{"task_number": 17})
 
 		// Create and attach labels
 		labelID1 := cli.CreateTestLabel(t, db, projectID, "bug", "#EF4444")
@@ -379,7 +379,7 @@ func TestInProgressTask(t *testing.T) {
 		// Create task in Done column
 		taskID := cli.CreateTestTask(t, db, doneColumnID, "Task From Done")
 
-		cli.UpdateTaskFields(t, db, taskID, map[string]any{"ticket_number": 18})
+		cli.UpdateTaskFields(t, db, taskID, map[string]any{"task_number": 18})
 
 		cmd := task.InProgressCmd()
 
@@ -400,7 +400,7 @@ func TestInProgressTask(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, todoColumnID, "Task With Description")
 
 		description := "This is a detailed description of the task that needs to be completed."
-		cli.UpdateTaskFields(t, db, taskID, map[string]any{"description": description, "ticket_number": 19})
+		cli.UpdateTaskFields(t, db, taskID, map[string]any{"description": description, "task_number": 19})
 
 		cmd := task.InProgressCmd()
 
@@ -426,10 +426,10 @@ func TestInProgressTask(t *testing.T) {
 		taskID := cli.CreateTestTask(t, db, inProgressColumnID, "Complete Metadata Task")
 
 		cli.UpdateTaskFields(t, db, taskID, map[string]any{
-			"description":   "Complete description",
-			"ticket_number": 20,
-			"type_id":       2,
-			"priority_id":   4,
+			"description": "Complete description",
+			"task_number": 20,
+			"type_id":     2,
+			"priority_id": 4,
 		})
 
 		cmd := task.InProgressCmd()
@@ -457,7 +457,7 @@ func TestInProgressTask(t *testing.T) {
 			if int(taskData["id"].(float64)) == taskID {
 				foundTask = true
 				assert.Equal(t, "Complete Metadata Task", taskData["title"])
-				assert.Equal(t, float64(20), taskData["ticket_number"])
+				assert.Equal(t, float64(20), taskData["task_number"])
 				assert.Equal(t, "feature", taskData["type_description"])
 				assert.Equal(t, "high", taskData["priority_description"])
 				assert.NotEmpty(t, taskData["priority_color"])

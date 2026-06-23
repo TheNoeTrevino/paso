@@ -163,7 +163,7 @@ func (s *service) CreateProject(ctx context.Context, req CreateProjectRequest) (
 			return fmt.Errorf("failed to create project: %w", projErr)
 		}
 
-		// Initialize project counter (for task ticket numbers)
+		// Initialize project counter (for task numbers)
 		if err := qtx.InitializeProjectCounter(ctx, project.ID); err != nil {
 			return fmt.Errorf("failed to initialize project counter: %w", err)
 		}

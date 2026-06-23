@@ -62,7 +62,7 @@ const deleteProjectCounter = `-- name: DeleteProjectCounter :exec
 delete from project_counters where project_id = $1
 `
 
-// Deletes the ticket counter for a project
+// Deletes the task counter for a project
 func (q *Queries) DeleteProjectCounter(ctx context.Context, projectID int64) error {
 	_, err := q.db.ExecContext(ctx, deleteProjectCounter, projectID)
 	return err
@@ -209,10 +209,10 @@ func (q *Queries) GetProjectTaskCount(ctx context.Context, projectID int64) (int
 }
 
 const initializeProjectCounter = `-- name: InitializeProjectCounter :exec
-insert into project_counters (project_id, next_ticket_number) values ($1, 1)
+insert into project_counters (project_id, next_task_number) values ($1, 1)
 `
 
-// Initializes the ticket number counter for a new project starting at 1
+// Initializes the task number counter for a new project starting at 1
 func (q *Queries) InitializeProjectCounter(ctx context.Context, projectID int64) error {
 	_, err := q.db.ExecContext(ctx, initializeProjectCounter, projectID)
 	return err

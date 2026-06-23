@@ -57,7 +57,7 @@ func TestRenderTaskReference(t *testing.T) {
 	t.Parallel()
 	ref := &models.TaskReference{
 		ID:            1,
-		TicketNumber:  42,
+		TaskNumber:    42,
 		Title:         "Fix the thing",
 		ProjectName:   "MyProject",
 		RelationColor: "#0000FF",
@@ -72,7 +72,7 @@ func TestRenderTaskReferenceWithLabel(t *testing.T) {
 	t.Parallel()
 	ref := &models.TaskReference{
 		ID:            1,
-		TicketNumber:  42,
+		TaskNumber:    42,
 		Title:         "Fix the thing",
 		ProjectName:   "MyProject",
 		RelationLabel: "blocks",

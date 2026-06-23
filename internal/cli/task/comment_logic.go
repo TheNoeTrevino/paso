@@ -22,14 +22,14 @@ type CommentInput struct {
 
 // CommentResult represents the output of a successful comment operation
 type CommentResult struct {
-	CommentID    int
-	TaskID       int
-	Message      string
-	Author       string
-	CreatedAt    string // Formatted time string
-	TaskTitle    string
-	TicketNumber int
-	ProjectName  string
+	CommentID   int
+	TaskID      int
+	Message     string
+	Author      string
+	CreatedAt   string // Formatted time string
+	TaskTitle   string
+	TaskNumber  int
+	ProjectName string
 }
 
 // ValidateCommentMessage validates the comment message length
@@ -57,10 +57,10 @@ func FormatCommentJSON(result *CommentResult) map[string]any {
 			"created_at": result.CreatedAt,
 		},
 		"task": map[string]any{
-			"id":            result.TaskID,
-			"title":         result.TaskTitle,
-			"ticket_number": result.TicketNumber,
-			"project":       result.ProjectName,
+			"id":          result.TaskID,
+			"title":       result.TaskTitle,
+			"task_number": result.TaskNumber,
+			"project":     result.ProjectName,
 		},
 	}
 }
@@ -68,7 +68,7 @@ func FormatCommentJSON(result *CommentResult) map[string]any {
 // FormatCommentHuman generates the human-readable output with details
 func FormatCommentHuman(result *CommentResult, colorScheme colors.ColorScheme) string {
 	details := []styles.Detail{
-		{Key: "Task", Value: fmt.Sprintf("#%d (%s)", result.TicketNumber, result.TaskTitle)},
+		{Key: "Task", Value: fmt.Sprintf("#%d (%s)", result.TaskNumber, result.TaskTitle)},
 		{Key: "Project", Value: result.ProjectName},
 		{Key: "Message", Value: styles.TruncateString(result.Message, commentTruncateLength)},
 		{Key: "Comment ID", Value: strconv.Itoa(result.CommentID)},

@@ -16,18 +16,18 @@ func fromGeneratedAssignee(g generated_postgres.Assignee) types.Assignee {
 
 func fromGeneratedTask(g generated_postgres.Task) types.Task {
 	return types.Task{
-		ID:           g.ID,
-		Title:        g.Title,
-		Description:  types.FromSQLNullString(g.Description),
-		ColumnID:     g.ColumnID,
-		Position:     g.Position,
-		TicketNumber: types.FromSQLNullInt64(g.TicketNumber),
-		TypeID:       g.TypeID,
-		PriorityID:   g.PriorityID,
-		CreatedAt:    types.FromSQLNullTime(g.CreatedAt),
-		UpdatedAt:    types.FromSQLNullTime(g.UpdatedAt),
-		DueDate:      types.FromSQLNullTime(g.DueDate),
-		Archived:     g.Archived,
+		ID:          g.ID,
+		Title:       g.Title,
+		Description: types.FromSQLNullString(g.Description),
+		ColumnID:    g.ColumnID,
+		Position:    g.Position,
+		TaskNumber:  types.FromSQLNullInt64(g.TaskNumber),
+		TypeID:      g.TypeID,
+		PriorityID:  g.PriorityID,
+		CreatedAt:   types.FromSQLNullTime(g.CreatedAt),
+		UpdatedAt:   types.FromSQLNullTime(g.UpdatedAt),
+		DueDate:     types.FromSQLNullTime(g.DueDate),
+		Archived:    g.Archived,
 	}
 }
 
@@ -135,21 +135,21 @@ func fromGeneratedType(g generated_postgres.Type) types.Type {
 
 func fromGeneratedGetChildTasksRow(g generated_postgres.GetChildTasksRow) types.GetChildTasksRow {
 	return types.GetChildTasksRow{
-		ID:           g.ID,
-		TicketNumber: types.FromSQLNullInt64(g.TicketNumber),
-		Title:        g.Title,
-		Name:         g.Name,
-		ID_2:         g.ID_2,
-		CToPLabel:    g.CToPLabel,
-		Color:        g.Color,
-		IsBlocking:   g.IsBlocking,
+		ID:         g.ID,
+		TaskNumber: types.FromSQLNullInt64(g.TaskNumber),
+		Title:      g.Title,
+		Name:       g.Name,
+		ID_2:       g.ID_2,
+		CToPLabel:  g.CToPLabel,
+		Color:      g.Color,
+		IsBlocking: g.IsBlocking,
 	}
 }
 
 func fromGeneratedGetInProgressTaskDetailsRow(g generated_postgres.GetInProgressTaskDetailsRow) types.GetInProgressTaskDetailsRow {
 	return types.GetInProgressTaskDetailsRow{
 		ID:                  g.ID,
-		TicketNumber:        types.FromSQLNullInt64(g.TicketNumber),
+		TaskNumber:          types.FromSQLNullInt64(g.TaskNumber),
 		Title:               g.Title,
 		Description:         types.FromSQLNullString(g.Description),
 		ColumnID:            g.ColumnID,
@@ -174,25 +174,25 @@ func fromGeneratedGetInProgressTaskDetailsRow(g generated_postgres.GetInProgress
 
 func fromGeneratedGetInProgressTasksByProjectRow(g generated_postgres.GetInProgressTasksByProjectRow) types.GetInProgressTasksByProjectRow {
 	return types.GetInProgressTasksByProjectRow{
-		ID:           g.ID,
-		TicketNumber: types.FromSQLNullInt64(g.TicketNumber),
-		Title:        g.Title,
-		Description:  types.FromSQLNullString(g.Description),
-		ColumnName:   g.ColumnName,
-		ProjectName:  g.ProjectName,
+		ID:          g.ID,
+		TaskNumber:  types.FromSQLNullInt64(g.TaskNumber),
+		Title:       g.Title,
+		Description: types.FromSQLNullString(g.Description),
+		ColumnName:  g.ColumnName,
+		ProjectName: g.ProjectName,
 	}
 }
 
 func fromGeneratedGetParentTasksRow(g generated_postgres.GetParentTasksRow) types.GetParentTasksRow {
 	return types.GetParentTasksRow{
-		ID:           g.ID,
-		TicketNumber: types.FromSQLNullInt64(g.TicketNumber),
-		Title:        g.Title,
-		Name:         g.Name,
-		ID_2:         g.ID_2,
-		PToCLabel:    g.PToCLabel,
-		Color:        g.Color,
-		IsBlocking:   g.IsBlocking,
+		ID:         g.ID,
+		TaskNumber: types.FromSQLNullInt64(g.TaskNumber),
+		Title:      g.Title,
+		Name:       g.Name,
+		ID_2:       g.ID_2,
+		PToCLabel:  g.PToCLabel,
+		Color:      g.Color,
+		IsBlocking: g.IsBlocking,
 	}
 }
 
@@ -249,7 +249,7 @@ func fromGeneratedGetTaskDetailRow(g generated_postgres.GetTaskDetailRow) types.
 		Description:         types.FromSQLNullString(g.Description),
 		ColumnID:            g.ColumnID,
 		Position:            g.Position,
-		TicketNumber:        types.FromSQLNullInt64(g.TicketNumber),
+		TaskNumber:          types.FromSQLNullInt64(g.TaskNumber),
 		CreatedAt:           types.FromSQLNullTime(g.CreatedAt),
 		UpdatedAt:           types.FromSQLNullTime(g.UpdatedAt),
 		Estimate:            types.FromSQLNullString(g.Estimate),
@@ -275,10 +275,10 @@ func fromGeneratedGetTaskPositionRow(g generated_postgres.GetTaskPositionRow) ty
 
 func fromGeneratedGetTaskReferencesForProjectRow(g generated_postgres.GetTaskReferencesForProjectRow) types.GetTaskReferencesForProjectRow {
 	return types.GetTaskReferencesForProjectRow{
-		ID:           g.ID,
-		TicketNumber: types.FromSQLNullInt64(g.TicketNumber),
-		Title:        g.Title,
-		Name:         g.Name,
+		ID:         g.ID,
+		TaskNumber: types.FromSQLNullInt64(g.TaskNumber),
+		Title:      g.Title,
+		Name:       g.Name,
 	}
 }
 
@@ -367,12 +367,12 @@ func fromGeneratedGetTasksByColumnRow(g generated_postgres.GetTasksByColumnRow) 
 
 func fromGeneratedGetTasksForTreeRow(g generated_postgres.GetTasksForTreeRow) types.GetTasksForTreeRow {
 	return types.GetTasksForTreeRow{
-		ID:           g.ID,
-		TicketNumber: types.FromSQLNullInt64(g.TicketNumber),
-		Title:        g.Title,
-		ColumnName:   g.ColumnName,
-		ProjectName:  g.ProjectName,
-		IsCompleted:  g.IsCompleted,
+		ID:          g.ID,
+		TaskNumber:  types.FromSQLNullInt64(g.TaskNumber),
+		Title:       g.Title,
+		ColumnName:  g.ColumnName,
+		ProjectName: g.ProjectName,
+		IsCompleted: g.IsCompleted,
 	}
 }
 

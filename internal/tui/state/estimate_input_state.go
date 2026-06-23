@@ -11,7 +11,7 @@ type EstimateInputState struct {
 // NewEstimateInputState creates a new EstimateInputState with default values.
 func NewEstimateInputState() *EstimateInputState {
 	return &EstimateInputState{
-		ReturnMode: TicketFormMode,
+		ReturnMode: TaskFormMode,
 	}
 }
 
@@ -39,7 +39,7 @@ func (s *EstimateInputState) SetError(msg string) {
 func (s *EstimateInputState) Reset() {
 	s.buffer = ""
 	s.error = ""
-	s.ReturnMode = TicketFormMode
+	s.ReturnMode = TaskFormMode
 }
 
 // AppendChar adds a character to the buffer and validates the result.

@@ -116,7 +116,7 @@ func RenderTaskReference(ref *models.TaskReference) string {
 
 	taskRef := fmt.Sprintf("%s-%d - %s",
 		ref.ProjectName,
-		ref.TicketNumber,
+		ref.TaskNumber,
 		ref.Title)
 
 	return bulletStyle.Render("• " + taskRef)
@@ -130,7 +130,7 @@ func RenderTaskReferenceWithLabel(ref *models.TaskReference) string {
 
 	taskRef := fmt.Sprintf("%s-%d - %s - %s",
 		ref.ProjectName,
-		ref.TicketNumber,
+		ref.TaskNumber,
 		ref.RelationLabel,
 		ref.Title)
 

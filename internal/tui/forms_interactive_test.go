@@ -18,7 +18,7 @@ func TestTaskForm_FieldProgression(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	// Enter task form mode
-	m.UIState.Mode = state.TicketFormMode
+	m.UIState.Mode = state.TaskFormMode
 
 	// Press Tab to move to next field
 	msg := tea.KeyPressMsg(tea.Key{Code: tea.KeyTab})
@@ -46,7 +46,7 @@ func TestTaskForm_ShortcutToPriorityPicker(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	// Enter task form mode
-	m.UIState.Mode = state.TicketFormMode
+	m.UIState.Mode = state.TaskFormMode
 
 	// Press Ctrl+P to open priority picker
 	msg := tea.KeyPressMsg(tea.Key{Code: 'p', Mod: tea.ModCtrl})
@@ -64,7 +64,7 @@ func TestTaskForm_ShortcutToLabelPicker(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	// Enter task form mode
-	m.UIState.Mode = state.TicketFormMode
+	m.UIState.Mode = state.TaskFormMode
 
 	// Press Ctrl+L to open label picker
 	msg := tea.KeyPressMsg(tea.Key{Code: 'l', Mod: tea.ModCtrl})
@@ -82,7 +82,7 @@ func TestTaskForm_ShortcutToParentPicker(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	// Enter task form mode
-	m.UIState.Mode = state.TicketFormMode
+	m.UIState.Mode = state.TaskFormMode
 
 	// Press Ctrl+Shift+P to open parent picker
 	msg := tea.KeyPressMsg(tea.Key{Code: 'P', Mod: tea.ModCtrl | tea.ModShift})
@@ -100,7 +100,7 @@ func TestTaskForm_SaveWithCtrlS(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	// Enter task form mode
-	m.UIState.Mode = state.TicketFormMode
+	m.UIState.Mode = state.TaskFormMode
 
 	// Type some input (simulating user filling the form)
 	TypeStringToModel(&m, "Test Task")
@@ -121,7 +121,7 @@ func TestTaskForm_DiscardConfirmation(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	// Enter task form mode
-	m.UIState.Mode = state.TicketFormMode
+	m.UIState.Mode = state.TaskFormMode
 
 	// Type some input to make form "dirty"
 	TypeStringToModel(&m, "Unsaved Task")
@@ -277,12 +277,12 @@ func TestTaskForm_CharacterInput(t *testing.T) {
 	defer func() { _ = db.Close() }()
 
 	// Enter task form mode
-	m.UIState.Mode = state.TicketFormMode
+	m.UIState.Mode = state.TaskFormMode
 
 	// Type a series of characters
 	testChars := "This is a task title with spaces 123!@#"
 	TypeStringToModel(&m, testChars)
 
 	// Verify form is still in task form mode
-	assert.Equal(t, state.TicketFormMode, m.UIState.Mode)
+	assert.Equal(t, state.TaskFormMode, m.UIState.Mode)
 }
