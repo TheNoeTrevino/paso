@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/thenoetrevino/paso/internal/cli/styles"
 )
 
 // ShouldDisplayPriority returns true if priority should be shown in output
@@ -31,9 +33,15 @@ func DisplayOrDefault(ptr *string, defaultVal string) string {
 	return defaultVal
 }
 
-// WriteIndentedLines writes text to a builder with each line indented and styled
+// WriteIndentedLines writes text to a builder with each line indented and
+// styled. Lines wider than the card content area are word-wrapped to the same
+// indent so they don't get re-wrapped (and lose their indentation) when the
+// card border is rendered.
 func WriteIndentedLines(builder *strings.Builder, text string, indent string, style lipgloss.Style) {
-	for line := range strings.SplitSeq(text, "\n") {
-		builder.WriteString(indent + style.Render(line) + "\n")
+	limit := styles.CardContentWidth() - len(indent)
+	for src := range strings.SplitSeq(text, "\n") {
+		for _, line := range styles.WrapText(src, limit) {
+			builder.WriteString(indent + style.Render(line) + "\n")
+		}
 	}
 }
