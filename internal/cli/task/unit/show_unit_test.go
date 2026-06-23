@@ -31,7 +31,7 @@ func defaultShowTask() *models.TaskDetail {
 		ColumnID:            10,
 		ColumnName:          "Todo",
 		ProjectName:         "Test Project",
-		TicketNumber:        42,
+		TaskNumber:          42,
 		TypeDescription:     "task",
 		PriorityDescription: "medium",
 		PriorityColor:       "#F59E0B",
@@ -94,7 +94,7 @@ func TestShowTask(t *testing.T) {
 				assert.Equal(t, "Test Task", taskData["title"])
 				assert.Equal(t, "desc", taskData["description"])
 				assert.Equal(t, "Test Project", taskData["project_name"])
-				assert.Equal(t, float64(42), taskData["ticket_number"])
+				assert.Equal(t, float64(42), taskData["task_number"])
 
 				column := taskData["column"].(map[string]any)
 				assert.Equal(t, float64(10), column["id"])

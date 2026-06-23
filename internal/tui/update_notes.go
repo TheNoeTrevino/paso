@@ -16,8 +16,8 @@ func (m Model) updateCommentEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "esc":
-		// Return to ticket form mode
-		m.UIState.Mode = state.TicketFormMode
+		// Return to task form mode
+		m.UIState.Mode = state.TaskFormMode
 		return m, nil
 
 	case km.Navigation.MoveDown, "down":

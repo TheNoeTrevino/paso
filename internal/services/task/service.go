@@ -197,10 +197,10 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 	err = database.WithTx(ctx, s.db, func(tx *sql.Tx) error {
 		qtx := database.MustNewQuerier(tx, s.dbType)
 
-		// Get next ticket number
-		ticketNumber, err := qtx.GetNextTicketNumber(ctx, projectID)
+		// Get next task number
+		taskNumber, err := qtx.GetNextTaskNumber(ctx, projectID)
 		if err != nil {
-			return fmt.Errorf("failed to get ticket number: %w", err)
+			return fmt.Errorf("failed to get task number: %w", err)
 		}
 
 		// Create task
@@ -226,22 +226,22 @@ func (s *service) CreateTask(ctx context.Context, req CreateTaskRequest) (*model
 
 		var taskErr error
 		createdTask, taskErr = qtx.CreateTask(ctx, types.CreateTaskParams{
-			Title:        req.Title,
-			Description:  desc,
-			ColumnID:     int64(req.ColumnID),
-			Position:     int64(req.Position),
-			TicketNumber: ticketNumber,
-			AssigneeID:   assigneeID,
-			Estimate:     estimate,
-			DueDate:      dueDate,
+			Title:       req.Title,
+			Description: desc,
+			ColumnID:    int64(req.ColumnID),
+			Position:    int64(req.Position),
+			TaskNumber:  taskNumber,
+			AssigneeID:  assigneeID,
+			Estimate:    estimate,
+			DueDate:     dueDate,
 		})
 		if taskErr != nil {
 			return fmt.Errorf("failed to create task: %w", taskErr)
 		}
 
-		// Increment ticket number
-		if err := qtx.IncrementTicketNumber(ctx, projectID); err != nil {
-			return fmt.Errorf("failed to increment ticket number: %w", err)
+		// Increment task number
+		if err := qtx.IncrementTaskNumber(ctx, projectID); err != nil {
+			return fmt.Errorf("failed to increment task number: %w", err)
 		}
 
 		// Set priority if provided (default is handled by database)
@@ -699,8 +699,8 @@ func (s *service) GetTaskDetail(ctx context.Context, taskID int) (*models.TaskDe
 		IsBlocked:   taskRow.IsBlocked,
 	}
 
-	if taskRow.TicketNumber.Valid {
-		detail.TicketNumber = int(taskRow.TicketNumber.Int64)
+	if taskRow.TaskNumber.Valid {
+		detail.TaskNumber = int(taskRow.TaskNumber.Int64)
 	}
 	if taskRow.TypeDescription.Valid {
 		detail.TypeDescription = taskRow.TypeDescription.String
@@ -909,8 +909,8 @@ func (s *service) GetTaskReferencesForProject(ctx context.Context, projectID int
 			Title:       row.Title,
 			ProjectName: row.Name,
 		}
-		if row.TicketNumber.Valid {
-			ref.TicketNumber = int(row.TicketNumber.Int64)
+		if row.TaskNumber.Valid {
+			ref.TaskNumber = int(row.TaskNumber.Int64)
 		}
 		references = append(references, ref)
 	}
@@ -959,8 +959,8 @@ func (s *service) GetTaskTreeByProject(ctx context.Context, projectID int) ([]*m
 			IsCompleted: row.IsCompleted,
 			Children:    []*models.TaskTreeNode{},
 		}
-		if row.TicketNumber.Valid {
-			node.TicketNumber = int(row.TicketNumber.Int64)
+		if row.TaskNumber.Valid {
+			node.TaskNumber = int(row.TaskNumber.Int64)
 		}
 		taskMap[node.ID] = node
 	}
@@ -1010,7 +1010,7 @@ func (s *service) GetTaskTreeByProject(ctx context.Context, projectID int) ([]*m
 			// Create a copy with relation info for this specific parent-child relationship
 			nodeCopy := &models.TaskTreeNode{
 				ID:            childNode.ID,
-				TicketNumber:  childNode.TicketNumber,
+				TaskNumber:    childNode.TaskNumber,
 				Title:         childNode.Title,
 				ColumnName:    childNode.ColumnName,
 				ProjectName:   childNode.ProjectName,
@@ -1031,21 +1031,21 @@ func (s *service) GetTaskTreeByProject(ctx context.Context, projectID int) ([]*m
 		if !hasParent[node.ID] {
 			// This is a root task - build its children
 			rootCopy := &models.TaskTreeNode{
-				ID:           node.ID,
-				TicketNumber: node.TicketNumber,
-				Title:        node.Title,
-				ColumnName:   node.ColumnName,
-				ProjectName:  node.ProjectName,
-				IsCompleted:  node.IsCompleted,
-				Children:     buildChildren(node.ID, 0),
+				ID:          node.ID,
+				TaskNumber:  node.TaskNumber,
+				Title:       node.Title,
+				ColumnName:  node.ColumnName,
+				ProjectName: node.ProjectName,
+				IsCompleted: node.IsCompleted,
+				Children:    buildChildren(node.ID, 0),
 			}
 			roots = append(roots, rootCopy)
 		}
 	}
 
-	// Sort roots by ticket number for deterministic output order
+	// Sort roots by task number for deterministic output order
 	sort.Slice(roots, func(i, j int) bool {
-		return roots[i].TicketNumber < roots[j].TicketNumber
+		return roots[i].TaskNumber < roots[j].TaskNumber
 	})
 
 	return roots, nil
@@ -1390,18 +1390,18 @@ func (s *service) GetInProgressTasksByProject(ctx context.Context, projectID int
 	for _, row := range detailRows {
 		// Convert row to TaskDetail - no additional queries needed!
 		taskDetail := &models.TaskDetail{
-			ID:           int(row.ID),
-			Title:        row.Title,
-			Description:  row.Description.String,
-			ColumnID:     int(row.ColumnID),
-			ColumnName:   row.ColumnName,
-			ProjectName:  row.ProjectName,
-			Position:     int(row.Position),
-			TicketNumber: int(row.TicketNumber.Int64),
-			Labels:       converters.ParseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
-			IsBlocked:    row.IsBlocked,
-			CreatedAt:    row.CreatedAt.Time,
-			UpdatedAt:    row.UpdatedAt.Time,
+			ID:          int(row.ID),
+			Title:       row.Title,
+			Description: row.Description.String,
+			ColumnID:    int(row.ColumnID),
+			ColumnName:  row.ColumnName,
+			ProjectName: row.ProjectName,
+			Position:    int(row.Position),
+			TaskNumber:  int(row.TaskNumber.Int64),
+			Labels:      converters.ParseLabelsFromConcatenated(row.LabelIds, row.LabelNames, row.LabelColors),
+			IsBlocked:   row.IsBlocked,
+			CreatedAt:   row.CreatedAt.Time,
+			UpdatedAt:   row.UpdatedAt.Time,
 		}
 
 		// Set optional fields

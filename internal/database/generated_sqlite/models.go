@@ -49,8 +49,8 @@ type Project struct {
 }
 
 type ProjectCounter struct {
-	ProjectID        int64
-	NextTicketNumber sql.NullInt64
+	ProjectID      int64
+	NextTaskNumber sql.NullInt64
 }
 
 type RelationType struct {
@@ -69,20 +69,20 @@ type StandupLog struct {
 }
 
 type Task struct {
-	ID           int64
-	Title        string
-	Description  sql.NullString
-	ColumnID     int64
-	Position     int64
-	TicketNumber sql.NullInt64
-	TypeID       int64
-	PriorityID   int64
-	CreatedAt    sql.NullTime
-	UpdatedAt    sql.NullTime
-	AssigneeID   interface{}
-	Estimate     interface{}
-	DueDate      interface{}
-	Archived     int64
+	ID          int64
+	Title       string
+	Description sql.NullString
+	ColumnID    int64
+	Position    int64
+	TaskNumber  sql.NullInt64
+	TypeID      int64
+	PriorityID  int64
+	CreatedAt   sql.NullTime
+	UpdatedAt   sql.NullTime
+	AssigneeID  interface{}
+	Estimate    interface{}
+	DueDate     interface{}
+	Archived    int64
 }
 
 type TaskComment struct {

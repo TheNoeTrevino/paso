@@ -286,11 +286,11 @@ func TestEventHandler_SequentialStateUpdates(t *testing.T) {
 
 	m.UIState.SelectedColumn = 1
 	m.UIState.SelectedTask = 2
-	m.UIState.Mode = state.TicketFormMode
+	m.UIState.Mode = state.TaskFormMode
 
 	assert.Equal(t, 1, m.UIState.SelectedColumn)
 	assert.Equal(t, 2, m.UIState.SelectedTask)
-	assert.Equal(t, state.TicketFormMode, m.UIState.Mode)
+	assert.Equal(t, state.TaskFormMode, m.UIState.Mode)
 
 	select {
 	case <-ctx.Done():

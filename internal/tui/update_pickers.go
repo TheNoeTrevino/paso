@@ -55,10 +55,10 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Pickers.Label.Cursor = 0
 			m.UIState.Mode = state.FilterBarMode
 			return m.refreshFilteredTasks()
-		case state.TicketFormMode:
+		case state.TaskFormMode:
 			// In form mode: sync selections and return to form
 			m.syncLabelPickerToFormState()
-			m.UIState.Mode = state.TicketFormMode
+			m.UIState.Mode = state.TaskFormMode
 		default:
 			// In view mode: return to NormalMode
 			m.UIState.Mode = state.NormalMode
@@ -93,7 +93,7 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var notifCmd tea.Cmd
 			for i, pi := range m.Pickers.Label.Items {
 				if pi.Label.ID == item.Label.ID {
-					if m.Pickers.Label.ReturnMode == state.TicketFormMode || m.Pickers.Label.ReturnMode == state.FilterBarMode {
+					if m.Pickers.Label.ReturnMode == state.TaskFormMode || m.Pickers.Label.ReturnMode == state.FilterBarMode {
 						// In form/filter mode: just toggle selection state, don't update database
 						m.Pickers.Label.Items[i].Selected = !m.Pickers.Label.Items[i].Selected
 					} else {
@@ -336,8 +336,8 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			returnMode = state.NormalMode
 		}
 
-		// If returning to TicketFormMode, sync selections back to FormState
-		if returnMode == state.TicketFormMode {
+		// If returning to TaskFormMode, sync selections back to FormState
+		if returnMode == state.TaskFormMode {
 			m.syncParentPickerToFormState()
 		}
 
@@ -366,7 +366,7 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			for i, pi := range m.Pickers.Parent.Items {
 				if pi.TaskRef.ID == item.TaskRef.ID {
 					// Determine if we're in form mode or view mode
-					if m.Pickers.Parent.ReturnMode == state.TicketFormMode {
+					if m.Pickers.Parent.ReturnMode == state.TaskFormMode {
 						// Form mode: just toggle the selection state
 						// Actual database changes happen on form submission
 						m.Pickers.Parent.Items[i].Selected = !m.Pickers.Parent.Items[i].Selected
@@ -494,8 +494,8 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			returnMode = state.NormalMode
 		}
 
-		// If returning to TicketFormMode, sync selections back to FormState
-		if returnMode == state.TicketFormMode {
+		// If returning to TaskFormMode, sync selections back to FormState
+		if returnMode == state.TaskFormMode {
 			m.syncChildPickerToFormState()
 		}
 
@@ -524,7 +524,7 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 			for i, pi := range m.Pickers.Child.Items {
 				if pi.TaskRef.ID == item.TaskRef.ID {
 					// Determine if we're in form mode or view mode
-					if m.Pickers.Child.ReturnMode == state.TicketFormMode {
+					if m.Pickers.Child.ReturnMode == state.TaskFormMode {
 						// Form mode: just toggle the selection state
 						// Actual database changes happen on form submission
 						m.Pickers.Child.Items[i].Selected = !m.Pickers.Child.Items[i].Selected
@@ -635,7 +635,7 @@ func (m Model) updatePriorityPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch keyMsg.String() {
 	case "esc":
-		// Return to ticket form mode without changing priority
+		// Return to task form mode without changing priority
 		m.UIState.Mode = m.Pickers.Priority.ReturnMode
 		m.Pickers.Priority.Reset()
 		return m, nil
@@ -726,7 +726,7 @@ func (m Model) updateTypePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch keyMsg.String() {
 	case "esc":
-		// Return to ticket form mode without changing type
+		// Return to task form mode without changing type
 		m.UIState.Mode = m.Pickers.Type.ReturnMode
 		m.Pickers.Type.Reset()
 		return m, nil
@@ -1225,7 +1225,7 @@ func buildTaskRefWithRelationType(
 ) *models.TaskReference {
 	ref := &models.TaskReference{
 		ID:             taskRef.ID,
-		TicketNumber:   taskRef.TicketNumber,
+		TaskNumber:     taskRef.TaskNumber,
 		Title:          taskRef.Title,
 		ProjectName:    taskRef.ProjectName,
 		RelationTypeID: relationTypeID,

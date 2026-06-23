@@ -287,7 +287,7 @@ func TestActivityView_EscapeClosesView(t *testing.T) {
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
 
-	assert.Equal(t, state.TicketFormMode, m.UIState.Mode, "Escape should return to task form mode")
+	assert.Equal(t, state.TaskFormMode, m.UIState.Mode, "Escape should return to task form mode")
 }
 
 func TestActivityView_QClosesView(t *testing.T) {
@@ -301,7 +301,7 @@ func TestActivityView_QClosesView(t *testing.T) {
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
 
-	assert.Equal(t, state.TicketFormMode, m.UIState.Mode, "'q' should return to task form mode")
+	assert.Equal(t, state.TaskFormMode, m.UIState.Mode, "'q' should return to task form mode")
 }
 
 func TestActivityView_EnterAlsoEdits(t *testing.T) {

@@ -50,7 +50,7 @@ type Querier interface {
 	CreateLabel(ctx context.Context, arg CreateLabelParams) (Label, error)
 	// Creates a new project with name and description
 	CreateProjectRecord(ctx context.Context, arg CreateProjectRecordParams) (Project, error)
-	// Creates a new task with title, description, position, and ticket number
+	// Creates a new task with title, description, position, and task number
 	CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error)
 	// Removes all labels from a task
 	DeleteAllLabelsFromTask(ctx context.Context, taskID int64) error
@@ -64,7 +64,7 @@ type Querier interface {
 	DeleteLabel(ctx context.Context, id int64) error
 	// Permanently deletes a project by ID
 	DeleteProject(ctx context.Context, id int64) error
-	// Deletes the ticket counter for a project
+	// Deletes the task counter for a project
 	DeleteProjectCounter(ctx context.Context, projectID int64) error
 	// Permanently deletes a task by ID
 	DeleteTask(ctx context.Context, id int64) error
@@ -122,8 +122,8 @@ type Querier interface {
 	CountTasksByLabel(ctx context.Context, labelID int64) (int64, error)
 	// Retrieves the ID of the next column in the linked list
 	GetNextColumnID(ctx context.Context, id int64) (NullInt64, error)
-	// Retrieves the next available ticket number for a project
-	GetNextTicketNumber(ctx context.Context, projectID int64) (NullInt64, error)
+	// Retrieves the next available task number for a project
+	GetNextTaskNumber(ctx context.Context, projectID int64) (NullInt64, error)
 	// Retrieves all parent tasks for a given child task with relationship details
 	GetParentTasks(ctx context.Context, childID int64) ([]GetParentTasksRow, error)
 	// Retrieves the ID of the previous column in the linked list
@@ -178,9 +178,9 @@ type Querier interface {
 	// Retrieves all tasks in a project with column
 	// and project names for tree visualization
 	GetTasksForTree(ctx context.Context, id int64) ([]GetTasksForTreeRow, error)
-	// Increments the ticket counter for a project after assigning a ticket number
-	IncrementTicketNumber(ctx context.Context, projectID int64) error
-	// Initializes the ticket number counter for a new project starting at 1
+	// Increments the task counter for a project after assigning a task number
+	IncrementTaskNumber(ctx context.Context, projectID int64) error
+	// Initializes the task number counter for a new project starting at 1
 	InitializeProjectCounter(ctx context.Context, projectID int64) error
 	// Creates a task-label association
 	InsertTaskLabel(ctx context.Context, arg InsertTaskLabelParams) error

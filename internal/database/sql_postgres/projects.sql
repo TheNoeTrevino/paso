@@ -42,8 +42,8 @@ updated_at = current_timestamp where id = $4;
 delete from projects where id = $1;
 
 -- name: InitializeProjectCounter :exec
--- Initializes the ticket number counter for a new project starting at 1
-insert into project_counters (project_id, next_ticket_number) values ($1, 1);
+-- Initializes the task number counter for a new project starting at 1
+insert into project_counters (project_id, next_task_number) values ($1, 1);
 
 -- name: GetProjectTaskCount :one
 -- Returns the total number of tasks in a project
@@ -53,7 +53,7 @@ join columns c on t.column_id = c.id
 where c.project_id = $1;
 
 -- name: DeleteProjectCounter :exec
--- Deletes the ticket counter for a project
+-- Deletes the task counter for a project
 delete from project_counters where project_id = $1;
 
 -- name: DeleteTasksByProject :exec

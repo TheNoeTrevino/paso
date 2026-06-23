@@ -124,14 +124,14 @@ func TestFormatCommentJSON(t *testing.T) {
 		{
 			name: "complete comment result",
 			result: &CommentResult{
-				CommentID:    123,
-				TaskID:       42,
-				Message:      "This is a test comment",
-				Author:       "alice",
-				CreatedAt:    "2024-01-15 10:30:00",
-				TaskTitle:    "Fix bug in login",
-				TicketNumber: 100,
-				ProjectName:  "Auth Service",
+				CommentID:   123,
+				TaskID:      42,
+				Message:     "This is a test comment",
+				Author:      "alice",
+				CreatedAt:   "2024-01-15 10:30:00",
+				TaskTitle:   "Fix bug in login",
+				TaskNumber:  100,
+				ProjectName: "Auth Service",
 			},
 			expected: map[string]any{
 				"success": true,
@@ -143,24 +143,24 @@ func TestFormatCommentJSON(t *testing.T) {
 					"created_at": "2024-01-15 10:30:00",
 				},
 				"task": map[string]any{
-					"id":            42,
-					"title":         "Fix bug in login",
-					"ticket_number": 100,
-					"project":       "Auth Service",
+					"id":          42,
+					"title":       "Fix bug in login",
+					"task_number": 100,
+					"project":     "Auth Service",
 				},
 			},
 		},
 		{
 			name: "comment with empty message",
 			result: &CommentResult{
-				CommentID:    1,
-				TaskID:       1,
-				Message:      "",
-				Author:       "bob",
-				CreatedAt:    "2024-01-01 00:00:00",
-				TaskTitle:    "Task",
-				TicketNumber: 1,
-				ProjectName:  "Project",
+				CommentID:   1,
+				TaskID:      1,
+				Message:     "",
+				Author:      "bob",
+				CreatedAt:   "2024-01-01 00:00:00",
+				TaskTitle:   "Task",
+				TaskNumber:  1,
+				ProjectName: "Project",
 			},
 			expected: map[string]any{
 				"success": true,
@@ -172,24 +172,24 @@ func TestFormatCommentJSON(t *testing.T) {
 					"created_at": "2024-01-01 00:00:00",
 				},
 				"task": map[string]any{
-					"id":            1,
-					"title":         "Task",
-					"ticket_number": 1,
-					"project":       "Project",
+					"id":          1,
+					"title":       "Task",
+					"task_number": 1,
+					"project":     "Project",
 				},
 			},
 		},
 		{
 			name: "comment with special characters",
 			result: &CommentResult{
-				CommentID:    999,
-				TaskID:       555,
-				Message:      "Test with \"quotes\" and 'apostrophes' & symbols",
-				Author:       "user.name@domain",
-				CreatedAt:    "2024-12-31 23:59:59",
-				TaskTitle:    "Task with symbols: @#$%",
-				TicketNumber: 777,
-				ProjectName:  "Project-Name_123",
+				CommentID:   999,
+				TaskID:      555,
+				Message:     "Test with \"quotes\" and 'apostrophes' & symbols",
+				Author:      "user.name@domain",
+				CreatedAt:   "2024-12-31 23:59:59",
+				TaskTitle:   "Task with symbols: @#$%",
+				TaskNumber:  777,
+				ProjectName: "Project-Name_123",
 			},
 			expected: map[string]any{
 				"success": true,
@@ -201,10 +201,10 @@ func TestFormatCommentJSON(t *testing.T) {
 					"created_at": "2024-12-31 23:59:59",
 				},
 				"task": map[string]any{
-					"id":            555,
-					"title":         "Task with symbols: @#$%",
-					"ticket_number": 777,
-					"project":       "Project-Name_123",
+					"id":          555,
+					"title":       "Task with symbols: @#$%",
+					"task_number": 777,
+					"project":     "Project-Name_123",
 				},
 			},
 		},
@@ -240,14 +240,14 @@ func TestFormatCommentHuman(t *testing.T) {
 		{
 			name: "standard comment output",
 			result: &CommentResult{
-				CommentID:    42,
-				TaskID:       100,
-				Message:      "This is a test comment",
-				Author:       "alice",
-				CreatedAt:    "2024-01-15 10:30:00",
-				TaskTitle:    "Fix bug",
-				TicketNumber: 123,
-				ProjectName:  "Test Project",
+				CommentID:   42,
+				TaskID:      100,
+				Message:     "This is a test comment",
+				Author:      "alice",
+				CreatedAt:   "2024-01-15 10:30:00",
+				TaskTitle:   "Fix bug",
+				TaskNumber:  123,
+				ProjectName: "Test Project",
 			},
 			colorScheme: testColorScheme,
 			expectContains: []string{
@@ -262,14 +262,14 @@ func TestFormatCommentHuman(t *testing.T) {
 		{
 			name: "long message gets truncated",
 			result: &CommentResult{
-				CommentID:    1,
-				TaskID:       1,
-				Message:      "This is a very long message that should be truncated because it exceeds the 60 character limit for display purposes",
-				Author:       "bob",
-				CreatedAt:    "2024-01-01 00:00:00",
-				TaskTitle:    "Task",
-				TicketNumber: 1,
-				ProjectName:  "Project",
+				CommentID:   1,
+				TaskID:      1,
+				Message:     "This is a very long message that should be truncated because it exceeds the 60 character limit for display purposes",
+				Author:      "bob",
+				CreatedAt:   "2024-01-01 00:00:00",
+				TaskTitle:   "Task",
+				TaskNumber:  1,
+				ProjectName: "Project",
 			},
 			colorScheme: testColorScheme,
 			expectContains: []string{
@@ -283,14 +283,14 @@ func TestFormatCommentHuman(t *testing.T) {
 		{
 			name: "message exactly 60 chars - no truncation",
 			result: &CommentResult{
-				CommentID:    2,
-				TaskID:       2,
-				Message:      "This message is exactly sixty characters long for the test",
-				Author:       "charlie",
-				CreatedAt:    "2024-02-01 12:00:00",
-				TaskTitle:    "Another Task",
-				TicketNumber: 50,
-				ProjectName:  "Another Project",
+				CommentID:   2,
+				TaskID:      2,
+				Message:     "This message is exactly sixty characters long for the test",
+				Author:      "charlie",
+				CreatedAt:   "2024-02-01 12:00:00",
+				TaskTitle:   "Another Task",
+				TaskNumber:  50,
+				ProjectName: "Another Project",
 			},
 			colorScheme: testColorScheme,
 			expectContains: []string{
@@ -303,14 +303,14 @@ func TestFormatCommentHuman(t *testing.T) {
 		{
 			name: "comment with special characters in task title",
 			result: &CommentResult{
-				CommentID:    999,
-				TaskID:       888,
-				Message:      "Comment message",
-				Author:       "dave",
-				CreatedAt:    "2024-03-01 08:00:00",
-				TaskTitle:    "Task with @mentions and #hashtags",
-				TicketNumber: 777,
-				ProjectName:  "Special-Project_123",
+				CommentID:   999,
+				TaskID:      888,
+				Message:     "Comment message",
+				Author:      "dave",
+				CreatedAt:   "2024-03-01 08:00:00",
+				TaskTitle:   "Task with @mentions and #hashtags",
+				TaskNumber:  777,
+				ProjectName: "Special-Project_123",
 			},
 			colorScheme: testColorScheme,
 			expectContains: []string{
@@ -351,14 +351,14 @@ func TestFormatCommentHuman_StructureValidation(t *testing.T) {
 	}
 
 	result := &CommentResult{
-		CommentID:    42,
-		TaskID:       100,
-		Message:      "Test message",
-		Author:       "alice",
-		CreatedAt:    "2024-01-15 10:30:00",
-		TaskTitle:    "Fix bug",
-		TicketNumber: 123,
-		ProjectName:  "Test Project",
+		CommentID:   42,
+		TaskID:      100,
+		Message:     "Test message",
+		Author:      "alice",
+		CreatedAt:   "2024-01-15 10:30:00",
+		TaskTitle:   "Fix bug",
+		TaskNumber:  123,
+		ProjectName: "Test Project",
 	}
 
 	output := FormatCommentHuman(result, testColorScheme)
@@ -396,14 +396,14 @@ func TestCommentResult_Struct(t *testing.T) {
 
 	// Test struct creation and field access
 	result := &CommentResult{
-		CommentID:    123,
-		TaskID:       42,
-		Message:      "Test message",
-		Author:       "alice",
-		CreatedAt:    "2024-01-15 10:30:00",
-		TaskTitle:    "Fix bug",
-		TicketNumber: 100,
-		ProjectName:  "Test Project",
+		CommentID:   123,
+		TaskID:      42,
+		Message:     "Test message",
+		Author:      "alice",
+		CreatedAt:   "2024-01-15 10:30:00",
+		TaskTitle:   "Fix bug",
+		TaskNumber:  100,
+		ProjectName: "Test Project",
 	}
 
 	assert.Equal(t, 123, result.CommentID)
@@ -412,6 +412,6 @@ func TestCommentResult_Struct(t *testing.T) {
 	assert.Equal(t, "alice", result.Author)
 	assert.Equal(t, "2024-01-15 10:30:00", result.CreatedAt)
 	assert.Equal(t, "Fix bug", result.TaskTitle)
-	assert.Equal(t, 100, result.TicketNumber)
+	assert.Equal(t, 100, result.TaskNumber)
 	assert.Equal(t, "Test Project", result.ProjectName)
 }

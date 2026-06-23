@@ -137,7 +137,7 @@ func (m Model) confirmDiscard() (tea.Model, tea.Cmd) {
 
 	// Clear the appropriate form/input based on source mode
 	switch ctx.SourceMode {
-	case state.TicketFormMode:
+	case state.TaskFormMode:
 		m.Forms.Form.ClearTaskForm()
 
 	case state.ProjectFormMode, state.EditProjectFormMode:

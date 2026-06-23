@@ -9,14 +9,14 @@ import (
 
 func toGeneratedCreateTaskParams(t types.CreateTaskParams) generated_postgres.CreateTaskParams {
 	return generated_postgres.CreateTaskParams{
-		Title:        t.Title,
-		Description:  t.Description.ToSQLNullString(),
-		ColumnID:     t.ColumnID,
-		Position:     t.Position,
-		TicketNumber: t.TicketNumber.ToSQLNullInt64(),
-		AssigneeID:   t.AssigneeID.ToSQLNullInt32(),
-		Estimate:     t.Estimate.ToSQLNullString(),
-		DueDate:      t.DueDate.ToSQLNullTime(),
+		Title:       t.Title,
+		Description: t.Description.ToSQLNullString(),
+		ColumnID:    t.ColumnID,
+		Position:    t.Position,
+		TaskNumber:  t.TaskNumber.ToSQLNullInt64(),
+		AssigneeID:  t.AssigneeID.ToSQLNullInt32(),
+		Estimate:    t.Estimate.ToSQLNullString(),
+		DueDate:     t.DueDate.ToSQLNullTime(),
 	}
 }
 

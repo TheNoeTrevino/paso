@@ -98,7 +98,7 @@ func TestCommentTask(t *testing.T) {
 		task := result["task"].(map[string]any)
 		assert.Equal(t, float64(taskID), task["id"])
 		assert.Equal(t, "JSON Test Task", task["title"])
-		assert.NotNil(t, task["ticket_number"])
+		assert.NotNil(t, task["task_number"])
 		assert.Equal(t, "Test Project", task["project"])
 	})
 

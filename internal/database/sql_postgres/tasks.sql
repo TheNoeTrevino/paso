@@ -1,11 +1,11 @@
 -- name: CreateTask :one
--- Creates a new task with title, description, position, ticket number, and assignee
+-- Creates a new task with title, description, position, task number, and assignee
 insert into tasks (
     title,
     description,
     column_id,
     position,
-    ticket_number,
+    task_number,
     assignee_id,
     estimate,
     due_date)
@@ -108,7 +108,7 @@ select
     t.description,
     t.column_id,
     t.position,
-    t.ticket_number,
+    t.task_number,
     t.created_at,
     t.updated_at,
     t.estimate,
@@ -283,7 +283,7 @@ order by t.position;
 -- Retrieves basic information for tasks currently in progress for a project
 select
     t.id,
-    t.ticket_number,
+    t.task_number,
     t.title,
     t.description,
     c.name as column_name,
@@ -298,7 +298,7 @@ order by t.position;
 -- Retrieves comprehensive details for all in-progress tasks using string_agg to avoid N+1 queries
 select
     t.id,
-    t.ticket_number,
+    t.task_number,
     t.title,
     t.description,
     t.column_id,
@@ -336,7 +336,7 @@ left join labels l on tl.label_id = l.id
 where proj.id = $1 and c.holds_in_progress_tasks = true
 group by
     t.id,
-    t.ticket_number,
+    t.task_number,
     t.title,
     t.description,
     t.column_id,
@@ -471,20 +471,20 @@ where t.id = $1;
 select project_id
 from columns where id = $1;
 
--- name: GetNextTicketNumber :one
--- Retrieves the next available ticket number for a project
-select next_ticket_number
+-- name: GetNextTaskNumber :one
+-- Retrieves the next available task number for a project
+select next_task_number
 from project_counters where project_id = $1;
 
--- name: IncrementTicketNumber :exec
--- Increments the ticket counter for a project after assigning a ticket number
+-- name: IncrementTaskNumber :exec
+-- Increments the task counter for a project after assigning a task number
 update project_counters
-set next_ticket_number = next_ticket_number + 1
+set next_task_number = next_task_number + 1
 where project_id = $1;
 
 -- name: GetParentTasks :many
 -- Retrieves all parent tasks for a given child task with relationship details
-select t.id, t.ticket_number, t.title, p.name,
+select t.id, t.task_number, t.title, p.name,
 rt.id, rt.p_to_c_label, rt.color, rt.is_blocking
 from tasks t
 inner join task_subtasks ts on t.id = ts.parent_id
@@ -492,11 +492,11 @@ inner join relation_types rt on ts.relation_type_id = rt.id
 inner join columns c on t.column_id = c.id
 inner join projects p on c.project_id = p.id
 where ts.child_id = $1
-order by p.name, t.ticket_number;
+order by p.name, t.task_number;
 
 -- name: GetChildTasks :many
 -- Retrieves all child tasks for a given parent task with relationship details
-select t.id, t.ticket_number, t.title, p.name,
+select t.id, t.task_number, t.title, p.name,
 rt.id, rt.c_to_p_label, rt.color, rt.is_blocking
 from tasks t
 inner join task_subtasks ts on t.id = ts.child_id
@@ -504,16 +504,16 @@ inner join relation_types rt on ts.relation_type_id = rt.id
 inner join columns c on t.column_id = c.id
 inner join projects p on c.project_id = p.id
 where ts.parent_id = $1
-order by p.name, t.ticket_number;
+order by p.name, t.task_number;
 
 -- name: GetTaskReferencesForProject :many
 -- Retrieves basic task references for all tasks in a project
-select t.id, t.ticket_number, t.title, p.name
+select t.id, t.task_number, t.title, p.name
 from tasks t
 inner join columns c on t.column_id = c.id
 inner join projects p on c.project_id = p.id
 where p.id = $1
-order by p.name, t.ticket_number;
+order by p.name, t.task_number;
 
 -- name: AddSubtask :exec
 -- Creates a parent-child relationship between two tasks (ignores duplicates)
@@ -550,7 +550,7 @@ select id, description from types order by id;
 -- and project names for tree visualization
 select
     t.id,
-    t.ticket_number,
+    t.task_number,
     t.title,
     c.name as column_name,
     proj.name as project_name,
@@ -559,7 +559,7 @@ from tasks t
 inner join columns c on t.column_id = c.id
 inner join projects proj on c.project_id = proj.id
 where proj.id = $1
-order by t.ticket_number;
+order by t.task_number;
 
 -- name: GetTaskRelationsForProject :many
 -- Retrieves all parent-child task relationships

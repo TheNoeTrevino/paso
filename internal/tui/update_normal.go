@@ -275,7 +275,7 @@ func (m Model) handleAddTask() (tea.Model, tea.Cmd) {
 		descriptionLines,
 	).WithTheme(huhforms.CreatePasoTheme(m.Config.ColorScheme))
 	m.Forms.Form.SnapshotTaskFormInitialValues()
-	m.UIState.Mode = state.TicketFormMode
+	m.UIState.Mode = state.TaskFormMode
 	return m, m.Forms.Form.TaskForm.Init()
 }
 
@@ -286,7 +286,7 @@ func (m Model) handleEditTask() (tea.Model, tea.Cmd) {
 	}
 
 	// Enter loading state and fetch task details asynchronously
-	m.UIState.Mode = state.TicketFormLoadingMode
+	m.UIState.Mode = state.TaskFormLoadingMode
 	m.LoadingGitInfo = true // Reuse this flag for the loading spinner
 	m.SpinnerFrame = 0
 

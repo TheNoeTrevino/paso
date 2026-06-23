@@ -429,7 +429,7 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Forms.Form.HasTaskFormChanges() {
 				// Show discard confirmation
 				m.UIState.DiscardContext = &state.DiscardContext{
-					SourceMode: state.TicketFormMode,
+					SourceMode: state.TaskFormMode,
 					Message:    "This task has unsaved changes. Discard?",
 				}
 				m.UIState.Mode = state.DiscardConfirmMode
@@ -456,7 +456,7 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case km.Forms.EditLabels:
 			// Open label picker
-			ok, cmd := m.initLabelPicker(state.TicketFormMode)
+			ok, cmd := m.initLabelPicker(state.TaskFormMode)
 			if !ok {
 				return m, cmd
 			}
@@ -465,7 +465,7 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case km.Forms.EditPriority:
 			// Open priority picker
-			ok, cmd := m.initPriorityPicker(state.TicketFormMode)
+			ok, cmd := m.initPriorityPicker(state.TaskFormMode)
 			if !ok {
 				return m, cmd
 			}
@@ -474,7 +474,7 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case km.Forms.EditType:
 			// Open type picker
-			ok, cmd := m.initTypePicker(state.TicketFormMode)
+			ok, cmd := m.initTypePicker(state.TaskFormMode)
 			if !ok {
 				return m, cmd
 			}
@@ -483,7 +483,7 @@ func (m Model) updateTaskForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case km.Forms.EditAssignee:
 			// Open assignee picker
-			ok, cmd := m.initAssigneePicker(state.TicketFormMode)
+			ok, cmd := m.initAssigneePicker(state.TaskFormMode)
 			if !ok {
 				return m, cmd
 			}
@@ -891,7 +891,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Forms.Comment.SetActivities(activities)
 				m.UIState.Mode = state.CommentsViewMode
 			} else {
-				m.UIState.Mode = state.TicketFormMode
+				m.UIState.Mode = state.TaskFormMode
 			}
 			m.Forms.Form.ClearCommentForm()
 			return m, tea.ClearScreen
@@ -973,7 +973,7 @@ func (m Model) updateCommentForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if returnMode == state.CommentsViewMode {
 				m.UIState.Mode = state.CommentsViewMode
 			} else {
-				m.UIState.Mode = state.TicketFormMode
+				m.UIState.Mode = state.TaskFormMode
 			}
 			return notifCmd
 		},
