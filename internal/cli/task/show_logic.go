@@ -212,7 +212,7 @@ func FormatShowHuman(task *models.TaskDetail, colorScheme colors.ColorScheme) st
 		content.WriteString(styles.SectionStyle.Render("Blocked By"))
 		content.WriteString("\n")
 		for _, child := range relationships.BlockingChildren {
-			content.WriteString("  " + styles.RenderTaskReference(child) + "\n")
+			content.WriteString(styles.RenderTaskReference(child) + "\n")
 		}
 	}
 
@@ -222,7 +222,7 @@ func FormatShowHuman(task *models.TaskDetail, colorScheme colors.ColorScheme) st
 		content.WriteString(styles.SectionStyle.Render("Blocking"))
 		content.WriteString("\n")
 		for _, parent := range relationships.BlockingParents {
-			content.WriteString("  " + styles.RenderTaskReference(parent) + "\n")
+			content.WriteString(styles.RenderTaskReference(parent) + "\n")
 		}
 	}
 
@@ -232,7 +232,7 @@ func FormatShowHuman(task *models.TaskDetail, colorScheme colors.ColorScheme) st
 		content.WriteString(styles.SectionStyle.Render("Parent Tasks"))
 		content.WriteString("\n")
 		for _, parent := range relationships.NonBlockingParents {
-			content.WriteString("  " + styles.RenderTaskReferenceWithLabel(parent) + "\n")
+			content.WriteString(styles.RenderTaskReferenceWithLabel(parent) + "\n")
 		}
 	}
 
@@ -242,7 +242,7 @@ func FormatShowHuman(task *models.TaskDetail, colorScheme colors.ColorScheme) st
 		content.WriteString(styles.SectionStyle.Render("Child Tasks"))
 		content.WriteString("\n")
 		for _, child := range relationships.NonBlockingChildren {
-			content.WriteString("  " + styles.RenderTaskReferenceWithLabel(child) + "\n")
+			content.WriteString(styles.RenderTaskReferenceWithLabel(child) + "\n")
 		}
 	}
 

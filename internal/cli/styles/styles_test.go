@@ -1,6 +1,7 @@
 package styles
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -104,6 +105,68 @@ func TestRenderCard(t *testing.T) {
 
 	result := RenderCard("card content")
 	assert.Contains(t, result, "card content")
+}
+
+func TestCardContentWidth(t *testing.T) {
+	t.Parallel()
+	// CardWidth includes the border and horizontal padding on both sides, so
+	// the usable text width is narrower than CardWidth itself.
+	assert.Equal(t, CardWidth-(CardBorderX+CardPaddingX)*2, CardContentWidth())
+	assert.Less(t, CardContentWidth(), CardWidth)
+}
+
+func TestWrapText(t *testing.T) {
+	t.Parallel()
+
+	t.Run("wraps on word boundaries within the limit", func(t *testing.T) {
+		t.Parallel()
+		lines := WrapText("the quick brown fox jumps", 10)
+		for _, l := range lines {
+			assert.LessOrEqual(t, len(l), 10, "line %q exceeds limit", l)
+		}
+		assert.Equal(t, "the quick brown fox jumps", strings.Join(lines, " "))
+	})
+
+	t.Run("hard-breaks words longer than the limit", func(t *testing.T) {
+		t.Parallel()
+		lines := WrapText("supercalifragilistic", 5)
+		assert.Greater(t, len(lines), 1)
+		for _, l := range lines {
+			assert.LessOrEqual(t, len(l), 5, "line %q exceeds limit", l)
+		}
+	})
+
+	t.Run("preserves existing newlines as hard breaks", func(t *testing.T) {
+		t.Parallel()
+		lines := WrapText("- one\n- two", 40)
+		assert.Equal(t, []string{"- one", "- two"}, lines)
+	})
+}
+
+func TestRenderTaskReferenceWrapsWithHangingIndent(t *testing.T) {
+	t.Parallel()
+	ref := &models.TaskReference{
+		TaskNumber:    42,
+		ProjectName:   "MyProject",
+		Title:         strings.Repeat("word ", 40), // forces wrapping
+		RelationColor: "#0000FF",
+	}
+
+	lines := strings.Split(stripANSI(RenderTaskReference(ref)), "\n")
+	assert.Greater(t, len(lines), 1, "long title should wrap onto multiple lines")
+
+	// First line carries the bullet at a two-space indent.
+	assert.True(t, strings.HasPrefix(lines[0], "  • "), "got %q", lines[0])
+	// Continuation lines hang under the bullet text at a four-space indent
+	// (and never collapse back to the card margin).
+	for _, l := range lines[1:] {
+		assert.True(t, strings.HasPrefix(l, "    "), "continuation %q lost its hanging indent", l)
+		assert.False(t, strings.HasPrefix(l, "    •"), "continuation %q should not repeat the bullet", l)
+	}
+	// Every line stays within the card content width.
+	for _, l := range lines {
+		assert.LessOrEqual(t, len(l), CardContentWidth(), "line %q exceeds card width", l)
+	}
 }
 
 func TestTreeConstants(t *testing.T) {
