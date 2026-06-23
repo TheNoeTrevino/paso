@@ -1,12 +1,19 @@
 package task
 
 import (
+	"regexp"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 
 	"github.com/thenoetrevino/paso/internal/cli/styles"
 )
+
+// listMarkerRe matches a leading list marker so wrapped continuation lines can
+// be hang-indented under the marker's text. Covers "- ", "* ", "• ", checkbox
+// "[ ] "/"[x] ", and numbered "1. "/"1) " markers, with optional leading
+// whitespace.
+var listMarkerRe = regexp.MustCompile(`^(\s*(?:[-*•]|\[.?\]|\d+[.)])\s+)`)
 
 // ShouldDisplayPriority returns true if priority should be shown in output
 // (i.e., it's set and not the default "medium")
@@ -40,8 +47,19 @@ func DisplayOrDefault(ptr *string, defaultVal string) string {
 func WriteIndentedLines(builder *strings.Builder, text string, indent string, style lipgloss.Style) {
 	limit := styles.CardContentWidth() - len(indent)
 	for src := range strings.SplitSeq(text, "\n") {
-		for _, line := range styles.WrapText(src, limit) {
-			builder.WriteString(indent + style.Render(line) + "\n")
+		// Hang-indent wrapped continuation lines under a list marker's text so a
+		// bullet whose body wraps still reads as one item rather than several.
+		hang := ""
+		if m := listMarkerRe.FindString(src); m != "" {
+			hang = strings.Repeat(" ", len(m))
+		}
+		// Reserve the hang width so wrapped lines fit once it's prepended.
+		for i, line := range styles.WrapText(src, limit-len(hang)) {
+			lineIndent := indent
+			if i > 0 {
+				lineIndent = indent + hang
+			}
+			builder.WriteString(lineIndent + style.Render(line) + "\n")
 		}
 	}
 }
