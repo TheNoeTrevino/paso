@@ -167,6 +167,22 @@ paso task create -t "Fix bug" -p 1 -e 2h
 ### Comments
 - `paso task comment -i <id> -m "..." -a "opencode"` - Add comment with author
 
+Comments preserve newlines, so `paso task show` renders multi-line content
+faithfully. When a comment has more than one point, write it as a real list with
+line breaks instead of one long run-on sentence — `show` keeps the structure and
+hang-indents wrapped lines under each marker, so it stays parsable.
+
+```bash
+# GOOD: newline-separated list — renders as discrete, readable items
+paso task comment -i 42 -a opencode -m "$(printf 'Verification checklist:\n- Field Site Number line removed\n- Has Vandalism checkbox added\n- Source Graphics line removed')"
+
+# AVOID: everything on one line — wraps into an unparsable stream of text
+paso task comment -i 42 -a opencode -m "Verification checklist: Field Site Number line removed; Has Vandalism checkbox added; Source Graphics line removed"
+```
+
+Supported list markers (continuation lines hang-indent under the marker text):
+`-`, `*`, `•`, checkboxes `[ ]`/`[x]`, and numbered `1.`/`1)`.
+
 ### Assignees
 - `paso assignee list` - List all assignees
 - `paso assignee create -n "..."` - Create assignee
@@ -316,6 +332,9 @@ HASH=$(paso task create -t "Add password hashing" -B $EPIC -q)
 ```bash
 paso task comment -i 42 -m "Started implementation, found edge case in auth flow" -a opencode
 paso task comment -i 42 -m "Edge case resolved, ready for review" -a opencode
+
+# Multi-point updates: use newlines so `paso task show` keeps them as a list
+paso task comment -i 42 -a opencode -m "$(printf 'Review notes:\n- Auth flow covered by tests\n- Needs follow-up on rate limiting\n- Docs updated')"
 ```
 
 **Moving tasks through workflow:**
