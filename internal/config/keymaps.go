@@ -76,8 +76,12 @@ type FormKeys struct {
 }
 
 // PickerKeys defines keybindings used within picker overlays.
+// MoveUp/MoveDown use ctrl+ modifiers because filter-as-you-type pickers
+// consume bare runes as search text.
 type PickerKeys struct {
 	DeleteLabel string `yaml:"delete_label"`
+	MoveUp      string `yaml:"move_up"`
+	MoveDown    string `yaml:"move_down"`
 }
 
 // GeneralKeys defines global keybindings.
@@ -149,6 +153,8 @@ func DefaultKeyMappings() KeyMappings {
 		},
 		Pickers: PickerKeys{
 			DeleteLabel: "ctrl+d",
+			MoveUp:      "ctrl+k",
+			MoveDown:    "ctrl+j",
 		},
 		General: GeneralKeys{
 			ShowHelp:      "?",
@@ -309,6 +315,12 @@ func (f *FormKeys) applyDefaultsFrom(defaults FormKeys) {
 func (p *PickerKeys) applyDefaultsFrom(defaults PickerKeys) {
 	if p.DeleteLabel == "" {
 		p.DeleteLabel = defaults.DeleteLabel
+	}
+	if p.MoveUp == "" {
+		p.MoveUp = defaults.MoveUp
+	}
+	if p.MoveDown == "" {
+		p.MoveDown = defaults.MoveDown
 	}
 }
 

@@ -69,14 +69,16 @@ func (m Model) updateLabelPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Pickers.Label.Cursor = 0
 		return m, nil
 
-	case km.Navigation.MoveUp, "up":
+	// Navigation uses the picker keymap, not the global one: bare letters must
+	// stay available as filter text.
+	case km.Pickers.MoveUp, "up":
 		// Move cursor up
 		if m.Pickers.Label.Cursor > 0 {
 			m.Pickers.Label.Cursor--
 		}
 		return m, nil
 
-	case km.Navigation.MoveDown, "down":
+	case km.Pickers.MoveDown, "down":
 		// Move cursor down
 		if m.Pickers.Label.Cursor < maxIdx {
 			m.Pickers.Label.Cursor++
@@ -346,12 +348,14 @@ func (m Model) updateParentPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Pickers.Parent.Cursor = 0
 		return m, nil
 
-	case km.Navigation.MoveUp, "up":
+	// Navigation uses the picker keymap, not the global one: bare letters must
+	// stay available as filter text.
+	case km.Pickers.MoveUp, "up":
 		// Move cursor up
 		m.Pickers.Parent.MoveCursorUp()
 		return m, nil
 
-	case km.Navigation.MoveDown, "down":
+	case km.Pickers.MoveDown, "down":
 		// Move cursor down
 		m.Pickers.Parent.MoveCursorDown(maxIdx)
 		return m, nil
@@ -504,12 +508,14 @@ func (m Model) updateChildPicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Pickers.Child.Cursor = 0
 		return m, nil
 
-	case km.Navigation.MoveUp, "up":
+	// Navigation uses the picker keymap, not the global one: bare letters must
+	// stay available as filter text.
+	case km.Pickers.MoveUp, "up":
 		// Move cursor up
 		m.Pickers.Child.MoveCursorUp()
 		return m, nil
 
-	case km.Navigation.MoveDown, "down":
+	case km.Pickers.MoveDown, "down":
 		// Move cursor down
 		m.Pickers.Child.MoveCursorDown(maxIdx)
 		return m, nil
