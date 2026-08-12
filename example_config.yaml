@@ -71,6 +71,10 @@ key_mappings:
   # Picker overlay shortcuts
   pickers:
     delete_label: "ctrl+d"
+    # Navigation inside filter-as-you-type pickers (parent/child task pickers).
+    # Uses ctrl+ modifiers so bare letters stay available as filter text.
+    move_up: "ctrl+k"
+    move_down: "ctrl+j"
 
   # Global shortcuts
   general:
