@@ -7,6 +7,7 @@ require (
 	charm.land/bubbletea/v2 v2.0.0-rc.2.0.20251202162339-5fa38b798f16
 	charm.land/huh/v2 v2.0.0-20251118172832-2c1322d36358
 	charm.land/lipgloss/v2 v2.0.0-beta.3.0.20251117163933-ca12a5a8a7a3
+	github.com/charmbracelet/x/ansi v0.11.2
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-runewidth v0.0.19
 	github.com/muesli/reflow v0.3.0
@@ -25,7 +26,6 @@ require (
 	github.com/catppuccin/go v0.3.0 // indirect
 	github.com/charmbracelet/colorprofile v0.3.3 // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20251202162030-ecc8c1ae4b2b // indirect
-	github.com/charmbracelet/x/ansi v0.11.2 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.14 // indirect
 	github.com/charmbracelet/x/exp/ordered v0.1.0 // indirect
 	github.com/charmbracelet/x/exp/strings v0.0.0-20240722160745-212f7b056ed0 // indirect
