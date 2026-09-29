@@ -152,6 +152,11 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
+      # GitHub's runner image ships gh, and TestCheckInstalled_GHExists needs it.
+      # The Forgejo runner's image does not.
+      - name: Install the GitHub CLI
+        run: sudo apt-get update && sudo apt-get install -y gh
+
       - name: Run tests with coverage and race detection
         env:
           PG_HOST: postgres
