@@ -13,7 +13,7 @@ on:
       - "go.sum"
       - ".golangci.yml"
       - ".sqlc"
-      - ".github/workflows/ci.yml"
+      - ".forgejo/workflows/ci.yml"
   pull_request:
     branches:
       - main
@@ -26,7 +26,9 @@ on:
       - "go.sum"
       - ".golangci.yml"
       - ".sqlc"
-      - ".github/workflows/ci.yml"
+      - ".forgejo/workflows/ci.yml"
+
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -134,8 +136,6 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: paso_test
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 10s
@@ -152,9 +152,14 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
+      # GitHub's runner image ships gh, and TestCheckInstalled_GHExists needs it.
+      # The Forgejo runner's image does not.
+      - name: Install the GitHub CLI
+        run: sudo apt-get update && sudo apt-get install -y gh
+
       - name: Run tests with coverage and race detection
         env:
-          PG_HOST: localhost
+          PG_HOST: postgres
           PG_PORT: "5432"
           PG_USER: postgres
           PG_PASSWORD: postgres
@@ -201,7 +206,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Upload coverage reports
-        uses: actions/upload-artifact@v4
+        uses: forgejo/upload-artifact@v4
         with:
           name: coverage-report
           path: |
