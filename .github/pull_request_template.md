@@ -1,15 +1,3 @@
-## Checklist
-- [ ] Read `CONTRIBUTING.md`
-- [ ] Ran tests (`go test ./... -race`) locally
-- [ ] Formatted and linted with `gofmt -w .` and `golangci-lint run ./...` respectively
-- [ ] Added tests if necessary (significant changes/complex logic)
-- [ ] Updated documentation if applicable
-- [ ] Updated `README.md` if applicable
-
-## Summary
-<!--
-What does this PR change and/or fix? 
-Examples:
-Closes: 54
-Fixes: 67
--->
+> **This repository is a read-only mirror.** Pull requests opened here are not reviewed and cannot be merged.
+>
+> Development happens at https://git.thenoetrevino.com/noe.trevino/paso. Sign in there with your GitHub account (one click, no approval), fork the repo, and open your pull request against `main`. Thank you!
