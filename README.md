@@ -8,6 +8,9 @@
     </p>
 </div>
 
+> Development happens at https://git.thenoetrevino.com/noe.trevino/paso.
+> GitHub is a read-only mirror. Please open issues and pull requests there.
+
 TODO: cool photo of a spanish dude walking slowly
 > Paso is Spanish for "step"
 
