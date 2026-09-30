@@ -1,5 +1,8 @@
 # Contributing
 
+> Development happens at https://git.thenoetrevino.com/noe.trevino/paso.
+> GitHub is a read-only mirror. Please open issues and pull requests there.
+
 First of all, thank you for considering contributing to this project! 
 
 ## Some Ceremonial Stuff
